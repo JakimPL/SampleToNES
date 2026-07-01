@@ -64,10 +64,10 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.background import stop_background_workers
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
@@ -104,7 +104,7 @@ class Application:
         FontRegistry.setup(self.layout.general.fonts)
         setup_themes(THEME_DIRECTORY)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
-        self.config_manager = ConfigManager(config_path, dialogs=self.dialogs)
+        self.config_manager = ConfigManager(config_path)
         self.session_manager = SessionManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
@@ -277,6 +277,7 @@ class Application:
             instructions_tab=self._instructions_tab,
         )
         self._setup_gui()
+        self._config_coordinator.present_pending_load_outcomes()
         self._load_settings()
 
     def _load_settings(self) -> None:
@@ -704,7 +705,14 @@ class Application:
         finally:
             stop_background_workers()
             self._main_tab.cleanup()
-            self.config_manager.save_config()
+            save_failed = False
+            try:
+                self.config_manager.save_config()
+            except OSError as exception:
+                logger.error_with_traceback(exception, "Failed to save configuration on exit")
+                save_failed = True
             self._persist_application_state()
             self.audio_device_manager.terminate()
             dpg.destroy_context()
+            if save_failed:
+                raise SystemExit(1)

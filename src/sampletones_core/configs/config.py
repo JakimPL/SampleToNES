@@ -12,6 +12,7 @@ from sampletones_core.paths import CONFIG_PATH
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_json, save_json
 from sampletones_shared.utils.system.paths import to_path
+from sampletones_shared.utils.validation import validate_with_recovery
 
 from .general import GeneralConfig
 from .generation import GenerationConfig
@@ -52,7 +53,10 @@ class Config(DataModel):
         if not isinstance(config_dict, dict):
             raise TypeError(f"Expected config file to contain a dict, got {type(config_dict)}")
 
-        return cls._construct(fast=fast, **config_dict)
+        if fast:
+            return cls.model_construct(**config_dict)
+
+        return validate_with_recovery(cls, config_dict).model
 
     def save(self, path: Pathlike) -> None:
         path = to_path(path)

@@ -25,8 +25,8 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.callbacks.frame import FrameCallbackManager
-from sampletones_application.utils.dpg import dpg_delete_children
+from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,

@@ -1,43 +1,43 @@
+import json
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import ValidationError
 
+from sampletones_application.config.managers.outcome import (
+    ConfigLoadFailure,
+    ConfigLoadFailureReason,
+    ConfigLoadOutcome,
+    ConfigRecovered,
+)
 from sampletones_application.config.updates import (
     AdvancedSettingsUpdate,
     AudioSettingsUpdate,
     GenerationSettingsUpdate,
     LibrarySettingsUpdate,
 )
-from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_core.configs import Config
+from sampletones_core.data.metadata import Metadata
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.paths import CONFIG_PATH, LIBRARY_DIRECTORY
 from sampletones_shared.constants.project import RECONSTRUCTIONS_DIRECTORY
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
-
-_MSG_INVALID_ERROR: Final = "Invalid configuration file."
-_MSG_LOAD_ERROR: Final = "Error loading configuration."
-_MSG_SAVE_ERROR: Final = "Error saving configuration."
+from sampletones_shared.utils.serialization import load_json
+from sampletones_shared.utils.validation import validate_with_recovery
 
 
 class ConfigManager:
-    def __init__(
-        self,
-        config_path: Optional[Path] = None,
-        *,
-        dialogs: DialogsRenderer,
-    ) -> None:
+    def __init__(self, config_path: Optional[Path] = None) -> None:
         self.config: Config
         self.window: Window
-        self._dialogs = dialogs
 
         self.library_directory: Optional[Path] = None
         self.reconstructions_directory: Optional[Path] = None
         self.config_change_callbacks: List[VoidCallback] = []
         self.config_path: Path = config_path or Path(CONFIG_PATH)
+        self.pending_load_outcomes: List[ConfigLoadOutcome] = []
 
         self.initialize(config_path)
 
@@ -45,59 +45,40 @@ class ConfigManager:
         if config_path is None:
             config_path = self.config_path
 
-        if config_path.exists():
-            try:
-                self.load_config_from_file(config_path)
-            except FileNotFoundError as exception:
-                self.load_default_config()
-                logger.error(f"Config file not found: {config_path}")
-                self._dialogs.show_error(exception, _MSG_LOAD_ERROR)
-            except (
-                IOError,
-                IsADirectoryError,
-                PermissionError,
-                OSError,
-            ) as exception:
-                self.load_default_config()
-                logger.error_with_traceback(
-                    exception,
-                    f"File error while loading config from {config_path}",
-                )
-                self._dialogs.show_error(exception, _MSG_LOAD_ERROR)
-            except ValidationError as exception:
-                self.load_default_config()
-                logger.error_with_traceback(exception, f"Invalid config file: {config_path}")
-                self._dialogs.show_error(exception, _MSG_INVALID_ERROR)
-            except Exception as exception:  # TODO: specify exception type
-                self.load_default_config()
-                logger.error_with_traceback(exception, f"Failed to load config from {config_path}")
-                self._dialogs.show_error(exception, _MSG_LOAD_ERROR)
-        else:
+        if not config_path.exists():
             self.load_default_config()
             logger.warning(f"Config file does not exist: {config_path}")
+            return
+
+        try:
+            self.load_config_from_file(config_path)
+        except FileNotFoundError as exception:
+            self.load_default_config()
+            logger.error(f"Config file not found: {config_path}")
+            self.pending_load_outcomes.append(ConfigLoadFailure(exception, ConfigLoadFailureReason.LOAD_ERROR))
+        except OSError as exception:
+            self.load_default_config()
+            logger.error_with_traceback(
+                exception,
+                f"File error while loading config from {config_path}",
+            )
+            self.pending_load_outcomes.append(ConfigLoadFailure(exception, ConfigLoadFailureReason.LOAD_ERROR))
+        except (json.JSONDecodeError, UnicodeDecodeError, TypeError) as exception:
+            self.load_default_config()
+            logger.error_with_traceback(exception, f"Unreadable config file: {config_path}")
+            self.pending_load_outcomes.append(ConfigLoadFailure(exception, ConfigLoadFailureReason.PARSE_ERROR))
+        except ValidationError as exception:
+            self.load_default_config()
+            logger.error_with_traceback(exception, f"Invalid config file: {config_path}")
+            self.pending_load_outcomes.append(ConfigLoadFailure(exception, ConfigLoadFailureReason.INVALID))
 
     def save_config(self) -> None:
         if not self.config:
             logger.warning("No configuration to save")
             return
 
-        try:
-            self.config_path.parent.mkdir(parents=True, exist_ok=True)
-            self.config.save(self.config_path)
-        except (
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ) as exception:
-            logger.error_with_traceback(
-                exception,
-                f"File error while saving config from {self.config_path}",
-            )
-            self._dialogs.show_error(exception, _MSG_SAVE_ERROR)
-        except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(exception, f"Failed to save config to {self.config_path}")
-            self._dialogs.show_error(exception, _MSG_SAVE_ERROR)
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        self.config.save(self.config_path)
 
     def apply_audio_settings(self, update: AudioSettingsUpdate) -> None:
         new_general = self.config.general.model_copy(
@@ -207,5 +188,28 @@ class ConfigManager:
         self.config.save(filepath)
 
     def load_config_from_file(self, filepath: Path) -> None:
-        config = Config.load(filepath)
-        return self.load_config(config)
+        raw = load_json(filepath)
+        if not isinstance(raw, dict):
+            raise TypeError(f"Expected config file to contain a dict, got {type(raw)}")
+
+        old_version = self._extract_version(raw)
+        recovered = validate_with_recovery(Config, raw)
+        config = recovered.model.model_copy(update={"metadata": Metadata.default()})
+        self.load_config(config)
+
+        if recovered.dropped:
+            self.pending_load_outcomes.append(
+                ConfigRecovered(
+                    source_version=old_version,
+                    dropped=recovered.dropped,
+                )
+            )
+
+    @staticmethod
+    def _extract_version(raw: Dict[str, Any]) -> Optional[str]:
+        try:
+            version = raw["metadata"]["version"]
+        except KeyError:
+            return None
+
+        return version if isinstance(version, str) else None

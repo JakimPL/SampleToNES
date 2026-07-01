@@ -20,21 +20,34 @@ APP_ROOT = Path(__file__).parent.parent / "src" / "sampletones_application"
 
 IMPORT_RE = re.compile(r"^\s*(import|from)\s+([\w.]+)")
 
+VISUAL = [
+    "dearpygui",
+    "sampletones_application.ui",
+    "sampletones_application.utils.gui",
+]
+
 RULES: list[tuple[str, list[str]]] = [
+    (
+        "config/**/*.py",
+        [
+            *VISUAL,
+            "sampletones_application.coordinators",
+            "sampletones_application.application",
+        ],
+    ),
     (
         "logic/**/*.py",
         [
-            "dearpygui",
-            "sampletones_application.ui",
+            *VISUAL,
             "sampletones_application.coordinators",
         ],
     ),
     (
         "view_model/**/*.py",
         [
-            "dearpygui",
-            "sampletones_application.ui",
+            *VISUAL,
             "sampletones_application.coordinators",
+            "sampletones_application.config",
             "sampletones_application.logic",
             "sampletones_application.services",
         ],
@@ -42,10 +55,10 @@ RULES: list[tuple[str, list[str]]] = [
     (
         "services/**/*.py",
         [
-            "dearpygui",
-            "sampletones_application.ui",
+            *VISUAL,
             "sampletones_application.view_model",
             "sampletones_application.coordinators",
+            "sampletones_application.config",
             "sampletones_application.logic",
         ],
     ),
@@ -59,7 +72,10 @@ RULES: list[tuple[str, list[str]]] = [
 ]
 
 
-def find_violations(filepath: Path, forbidden_prefixes: list[str]) -> list[tuple[str, str]]:
+def find_violations(
+    filepath: Path,
+    forbidden_prefixes: list[str],
+) -> list[tuple[str, str]]:
     violations: list[tuple[str, str]] = []
     for line_number, line in enumerate(
         filepath.read_text(encoding="utf-8").splitlines(),

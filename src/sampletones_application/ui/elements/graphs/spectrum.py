@@ -12,7 +12,7 @@ from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.spectrum import SpectrumLayer
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.dpg import (
     dpg_bind_item_theme,
     dpg_delete_children,
 )

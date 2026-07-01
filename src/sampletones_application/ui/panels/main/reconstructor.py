@@ -24,9 +24,9 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.dpg import dpg_set_value
-from sampletones_application.utils.tooltip import show_tooltip
-from sampletones_application.utils.widgets import clamp_widget_value
+from sampletones_application.utils.gui.dpg import dpg_set_value
+from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )

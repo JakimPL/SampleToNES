@@ -7,6 +7,7 @@ from sampletones_application.paths import APPLICATION_STATE_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import get_directory, to_path
+from sampletones_shared.utils.validation import flatten_location, validate_with_recovery
 
 
 class ApplicationStateManager:
@@ -24,7 +25,15 @@ class ApplicationStateManager:
             )
             return ApplicationState()
 
-        return ApplicationState(**raw)
+        recovered = validate_with_recovery(ApplicationState, raw)
+        if recovered.dropped:
+            properties = ", ".join(flatten_location(location) for location in recovered.dropped)
+            logger.warning(
+                f"Application state file '{APPLICATION_STATE_PATH}' had incompatible settings"
+                f" that were reset to defaults: {properties}"
+            )
+
+        return recovered.model
 
     def save(self) -> None:
         try:

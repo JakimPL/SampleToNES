@@ -25,7 +25,7 @@ from sampletones_application.ui.elements.graphs.layers.instruction import (
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
     dpg_delete_children,

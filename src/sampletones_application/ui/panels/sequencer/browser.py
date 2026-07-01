@@ -32,8 +32,8 @@ from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.utils.dpg import dpg_configure_item
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import (

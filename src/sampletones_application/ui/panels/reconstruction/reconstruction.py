@@ -44,10 +44,10 @@ from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
-from sampletones_application.utils.tooltip import show_tooltip
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )

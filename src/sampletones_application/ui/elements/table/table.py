@@ -9,7 +9,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.dpg import dpg_delete_children
+from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.view_model.instruction.cell import TableCell
 from sampletones_shared.types.application import Color, Sender
 from sampletones_shared.types.data import SerializedData

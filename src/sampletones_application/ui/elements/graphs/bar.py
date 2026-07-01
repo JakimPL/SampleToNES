@@ -20,7 +20,7 @@ from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.bar import BarLayer
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
     dpg_delete_item,

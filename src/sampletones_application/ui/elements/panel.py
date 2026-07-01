@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from sampletones_application.utils.dpg import dpg_configure_item
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 

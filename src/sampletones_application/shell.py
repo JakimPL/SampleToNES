@@ -33,10 +33,10 @@ from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
-from sampletones_application.utils.shortcuts.ids import ShortcutId
-from sampletones_application.utils.shortcuts.keys import Modifier
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.shortcuts.shortcut import Shortcut
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.keys import Modifier
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_shared.types.application import Sender

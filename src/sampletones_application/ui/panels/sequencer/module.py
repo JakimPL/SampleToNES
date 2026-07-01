@@ -27,9 +27,9 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.dpg import dpg_configure_item
-from sampletones_application.utils.tooltip import show_tooltip
-from sampletones_application.utils.widgets import clamp_widget_value
+from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.constants.project import MAX_ROWS_PER_PATTERN, MIN_ROWS_PER_PATTERN

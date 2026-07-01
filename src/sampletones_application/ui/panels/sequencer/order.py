@@ -31,9 +31,9 @@ from sampletones_application.ui.panels.sequencer.order_input import (
     OrderCursor,
     OrderInputState,
 )
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_item
-from sampletones_application.utils.shortcuts.keys import HEX_KEYS, Modifier
-from sampletones_application.utils.shortcuts.shortcut import Shortcut
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
+from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, Modifier
+from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.order import (
     SequencerOrderGridViewModel,

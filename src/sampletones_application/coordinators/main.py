@@ -32,8 +32,8 @@ from sampletones_application.ui.panels.main.converter.success_dialog import (
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.main.advanced import (
     AdvancedSettingsPanelViewModel,
 )

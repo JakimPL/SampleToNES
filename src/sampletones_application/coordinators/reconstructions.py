@@ -40,9 +40,9 @@ from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
-from sampletones_application.utils.callbacks.frame import FrameCallbackManager
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import (
     DeserializationError,

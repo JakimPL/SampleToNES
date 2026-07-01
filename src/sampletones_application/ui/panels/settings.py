@@ -22,8 +22,8 @@ from sampletones_application.constants.settings import (
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.window import GUIWindow
-from sampletones_application.utils.align import table_wrapper
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.align import table_wrapper
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_core.audio import (
     AudioDevice,
     AudioDeviceManager,

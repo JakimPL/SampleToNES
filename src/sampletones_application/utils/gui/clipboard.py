@@ -2,7 +2,7 @@ import threading
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.utils.dpg import dpg_configure_item
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 
 
 def copy_to_clipboard(

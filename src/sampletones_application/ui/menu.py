@@ -29,9 +29,9 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TEXT_MENU_FPS,
 )
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.utils.shortcuts.ids import ShortcutId
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 
 

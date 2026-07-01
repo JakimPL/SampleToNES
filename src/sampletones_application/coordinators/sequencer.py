@@ -50,9 +50,9 @@ from sampletones_application.ui.panels.sequencer.module import GUISequencerModul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.song_player import GUISongPlayerPanel
-from sampletones_application.utils.callbacks.frame import FrameCallbackManager
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )

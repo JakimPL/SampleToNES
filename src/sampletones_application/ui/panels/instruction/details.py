@@ -39,11 +39,11 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.table import GUITable
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
 )
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import (
     InstructionDetailsPanelViewModel,

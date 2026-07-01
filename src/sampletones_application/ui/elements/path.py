@@ -11,9 +11,9 @@ from sampletones_application.constants.general import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.callbacks.frame import FrameCallbackManager
-from sampletones_application.utils.dpg import dpg_delete_item, dpg_set_value
-from sampletones_application.utils.tooltip import show_tooltip
+from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
+from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_shared.types.application import Color, Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.types.path import Pathlike

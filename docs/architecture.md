@@ -37,14 +37,23 @@ graph TD
 
 Concretely: nothing in `logic/` or `services/` may import from `ui/`, `view_model/`, or `coordinators/`. Violations of this rule compromise testability and create hidden coupling.
 
-### 2. No DPG in logic or services
+### 2. No DPG or visual utilities in the non-visual layers
 
 Calls to `dearpygui` (`dpg.*`) are confined to:
 - `ui/` — widget construction and update
 - `shell.py` — context and viewport management
 - Coordinator `create_tab()` methods — the single entry point where a coordinator assembles its top-level tab container
 
-Logic classes and services must remain DPG-free so that they can be instantiated and tested without a running GUI context.
+The `logic/`, `services/`, `view_model/`, and `config/` layers must remain DPG-free so they can be
+instantiated and tested without a running GUI context. This extends past `import dearpygui`: the
+dpg-bound helpers (`DialogsRenderer`, the `dpg_*` wrappers, fonts, tooltips, shortcuts, …) are grouped
+under `utils/gui/`, and the non-visual layers must not import that subpackage either — they may use
+only the dpg-free helpers that remain directly under `utils/` (e.g. `utils/callbacks/`).
+
+This boundary is enforced, not merely documented: `scripts/check_import_boundary.py` (run as a
+pre-commit hook and via `make check-import-boundary`) fails when a non-visual layer imports
+`dearpygui`, `sampletones_application.ui`, or `sampletones_application.utils.gui`. `config/` is
+additionally forbidden from importing `coordinators/` or `application.py`.
 
 ### 3. No UI state in logic
 
@@ -226,11 +235,11 @@ There are two coordinator kinds:
 
 | Package | Purpose |
 |---------|---------|
-| `config/` | `ConfigManager` (domain generation config), `SessionManager` (runtime session: last paths, audio device, window geometry, autoplay state) |
+| `config/` | `ConfigManager` (domain generation config), `SessionManager` (runtime session: last paths, audio device, window geometry, autoplay state). Presentation-free: it records a `ConfigLoadOutcome` (recovery or failure) for `ConfigCoordinator` to present, and holds no `DialogsRenderer` or `LanguageManager` |
 | `categories/` | `LanguageManager` and the `Page / Panel / TextType / Element` enum hierarchy used as lookup keys |
 | `layout/` | Pydantic models loaded from YAML at startup; injected into coordinators and panels as `LayoutConfig` |
 | `constants/` | DPG widget tags (`TAG_*`) and tag suffix fragments (`SUF_*`) |
-| `utils/` | `CallbackQueue`, `CallbackMixin`, `DialogsRenderer`, DPG wrapper functions, shortcut manager, file-dialog helpers |
+| `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/` `CallbackQueue`, file helpers, colour, threading). DPG-bound helpers live in `utils/gui/` (`DialogsRenderer`, `dpg_*` wrappers, fonts, tooltips, shortcuts, frame callbacks) and are off-limits to the non-visual layers |
 | `viewport.py` | Manages DPG viewport geometry and fullscreen state |
 
 ---
@@ -306,6 +315,8 @@ Each layer has a distinct role in the error-handling chain. The rule of thumb is
 ### Logic and manager classes — propagate, don't catch
 
 Logic classes and managers do not catch exceptions unless they can take a concrete recovery action in place (e.g. retrying with a fallback path). I/O errors (`OSError` and subclasses) from file operations propagate directly to the caller. Catching and repackaging an exception without recovery is forbidden by the coding guidelines.
+
+When a manager does recover, it records *what happened* as domain data and lets a coordinator present it — it never renders a dialog itself. For example `ConfigManager` recovers a malformed configuration by loading defaults and appending a `ConfigLoadOutcome` (`ConfigRecovered` or `ConfigLoadFailure`, carrying only domain values and a failure category); `ConfigCoordinator.present_pending_load_outcomes()` later turns each outcome into the matching dialog with text from `LanguageManager`.
 
 ### Services — the only legitimate broad catch
 
@@ -407,7 +418,8 @@ sampletones_application/
 ├── categories/             ← LanguageManager + Page/Panel/TextType/Element enums
 ├── layout/                 ← LayoutConfig (Pydantic) + YAML loaders
 ├── constants/              ← TAG_* and SUF_* identifiers only
-└── utils/                  ← CallbackQueue, CallbackMixin, dialogs, dpg wrappers, shortcuts
+└── utils/                  ← dpg-free helpers (callbacks/, file, color, thread, …)
+    └── gui/                ← dpg-bound helpers (dialogs, dpg wrappers, fonts, tooltips, shortcuts/, frame)
 ```
 
 ---

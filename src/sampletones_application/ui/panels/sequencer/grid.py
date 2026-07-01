@@ -43,8 +43,8 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.dpg import dpg_delete_children
-from sampletones_application.utils.shortcuts.keys import HEX_KEYS, SIGN_KEYS
+from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,

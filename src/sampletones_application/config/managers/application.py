@@ -8,6 +8,7 @@ from sampletones_core.paths import APPLICATION_CONFIG_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import to_path
+from sampletones_shared.utils.validation import flatten_location, validate_with_recovery
 
 
 class ApplicationConfigManager:
@@ -30,7 +31,15 @@ class ApplicationConfigManager:
             return ApplicationConfig()
 
         raw.pop("state", None)
-        return ApplicationConfig(**raw)
+        recovered = validate_with_recovery(ApplicationConfig, raw)
+        if recovered.dropped:
+            properties = ", ".join(flatten_location(location) for location in recovered.dropped)
+            logger.warning(
+                f"Application config file '{APPLICATION_CONFIG_PATH}' had incompatible settings"
+                f" that were reset to defaults: {properties}"
+            )
+
+        return recovered.model
 
     def save(self) -> None:
         try:
