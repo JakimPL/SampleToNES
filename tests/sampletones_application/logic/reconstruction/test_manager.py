@@ -46,6 +46,17 @@ class TestReconstructionManagerLoadReconstruction:
         reconstruction_manager.load_reconstruction(save_path)
         assert reconstruction_manager.session.is_loaded
 
+    def test_load_reconstruction_from_file_keeps_extension_in_session_name(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        save_path = tmp_path / "song.stn"
+        reconstruction_factory().save(save_path)
+        reconstruction_manager.load_reconstruction(save_path)
+        assert reconstruction_manager.session.name == save_path.name
+
     def test_load_reconstruction_from_file_fires_callback(
         self,
         reconstruction_manager: ReconstructionManager,

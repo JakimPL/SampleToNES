@@ -228,6 +228,8 @@ class ReconstructionsTabCoordinator:
             self._reconstruction_player_logic,
             layout_graphs=layout.graphs,
             layout_player=layout.player,
+            path_colors=layout.general.colors.paths,
+            path_status_color=layout.general.colors.text.disabled,
             file_dialog_width=layout.general.dialogs.file.width,
             file_dialog_height=layout.general.dialogs.file.height,
             language_manager=language_manager,

@@ -1,8 +1,12 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import pytest
 
-from sampletones_application.logic.project.title import document_title, is_any_unsaved
+from sampletones_application.logic.project.title.document import (
+    ReconstructionTitlePart,
+    document_title,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -22,9 +26,9 @@ class TestDocumentTitle(BaseTestSuite):
         project_name: str
         project_unsaved: bool
         project_open: bool
-        reconstruction_name: str
+        reconstruction_name: Optional[str]
         reconstruction_unsaved: bool
-        reconstruction_loaded: bool
+        reconstruction_included: bool
         expected: str
 
     test_cases = [
@@ -33,9 +37,9 @@ class TestDocumentTitle(BaseTestSuite):
             project_name="Song",
             project_unsaved=False,
             project_open=True,
-            reconstruction_name="Recon",
+            reconstruction_name=None,
             reconstruction_unsaved=False,
-            reconstruction_loaded=False,
+            reconstruction_included=False,
             expected="Song",
         ),
         TestCase(
@@ -43,9 +47,9 @@ class TestDocumentTitle(BaseTestSuite):
             project_name="Song",
             project_unsaved=True,
             project_open=True,
-            reconstruction_name="",
+            reconstruction_name=None,
             reconstruction_unsaved=False,
-            reconstruction_loaded=False,
+            reconstruction_included=False,
             expected="Song*",
         ),
         TestCase(
@@ -53,71 +57,89 @@ class TestDocumentTitle(BaseTestSuite):
             project_name="",
             project_unsaved=False,
             project_open=True,
-            reconstruction_name="",
+            reconstruction_name=None,
             reconstruction_unsaved=False,
-            reconstruction_loaded=False,
+            reconstruction_included=False,
             expected="Untitled",
         ),
         TestCase(
-            label="reconstruction_appended_as_secondary",
+            label="file_reconstruction_appended_after_em_dash_with_extension",
             project_name="Song",
             project_unsaved=False,
             project_open=True,
-            reconstruction_name="Recon",
+            reconstruction_name="Recon.stn",
             reconstruction_unsaved=True,
-            reconstruction_loaded=True,
-            expected="Song — Recon*",
+            reconstruction_included=False,
+            expected="Song — Recon.stn*",
         ),
         TestCase(
-            label="closed_project_reconstruction_is_primary",
+            label="included_reconstruction_shown_in_brackets",
+            project_name="Song",
+            project_unsaved=False,
+            project_open=True,
+            reconstruction_name="1A: kick",
+            reconstruction_unsaved=False,
+            reconstruction_included=True,
+            expected="Song [1A: kick]",
+        ),
+        TestCase(
+            label="included_reconstruction_defers_dirty_marker_to_project",
+            project_name="Song",
+            project_unsaved=True,
+            project_open=True,
+            reconstruction_name="1A: kick",
+            reconstruction_unsaved=True,
+            reconstruction_included=True,
+            expected="Song* [1A: kick]",
+        ),
+        TestCase(
+            label="closed_project_file_reconstruction_is_primary",
             project_name="",
             project_unsaved=False,
             project_open=False,
-            reconstruction_name="Recon",
+            reconstruction_name="Recon.stn",
             reconstruction_unsaved=False,
-            reconstruction_loaded=True,
-            expected="Recon",
+            reconstruction_included=False,
+            expected="Recon.stn",
         ),
         TestCase(
             label="closed_project_no_reconstruction_is_empty",
             project_name="",
             project_unsaved=False,
             project_open=False,
-            reconstruction_name="",
+            reconstruction_name=None,
             reconstruction_unsaved=False,
-            reconstruction_loaded=False,
+            reconstruction_included=False,
             expected="",
         ),
         TestCase(
-            label="closed_project_unsaved_reconstruction_is_marked",
+            label="closed_project_unsaved_file_reconstruction_is_marked",
             project_name="",
             project_unsaved=False,
             project_open=False,
-            reconstruction_name="Recon",
+            reconstruction_name="Recon.stn",
             reconstruction_unsaved=True,
-            reconstruction_loaded=True,
-            expected="Recon*",
+            reconstruction_included=False,
+            expected="Recon.stn*",
         ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_document_title(self, test_case: TestCase) -> None:
         project = State(test_case.project_name, test_case.project_unsaved)
-        reconstruction = State(test_case.reconstruction_name, test_case.reconstruction_unsaved)
+        reconstruction = (
+            None
+            if test_case.reconstruction_name is None
+            else ReconstructionTitlePart(
+                name=test_case.reconstruction_name,
+                unsaved_changes=test_case.reconstruction_unsaved,
+                included=test_case.reconstruction_included,
+            )
+        )
         result = document_title(
             project,
             reconstruction,
             untitled=UNTITLED,
             project_open=test_case.project_open,
-            reconstruction_loaded=test_case.reconstruction_loaded,
         )
         assert result == test_case.expected
-
-
-class TestIsAnyUnsaved:
-    def test_either_unsaved(self) -> None:
-        assert is_any_unsaved(State("a", False), State("b", True)) is True
-        assert is_any_unsaved(State("a", True), State("b", False)) is True
-
-    def test_both_clean(self) -> None:
-        assert is_any_unsaved(State("a", False), State("b", False)) is False

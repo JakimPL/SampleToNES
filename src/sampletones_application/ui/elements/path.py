@@ -47,6 +47,8 @@ class GUIPathText(CallbackMixin):
         self.font = font
         self.color = color
         self.hover_color = hover_color
+        self._path_color = color
+        self._path_hover_color = hover_color
         self._status_message = status_message
 
         self.parent = parent
@@ -112,9 +114,27 @@ class GUIPathText(CallbackMixin):
     def set_path(self, path: Pathlike, shorten: bool = True) -> None:
         self.path = to_path(path)
         self.display_text = shorten_path(self.path) if shorten else str(self.path)
+        self.color = self._path_color
+        self.hover_color = self._path_hover_color
         dpg_set_value(self.tag, self.display_text)
+        dpg.configure_item(self.tag, color=self.color)
         if self.tooltip is not None:
             dpg.set_value(self.tooltip, self.path_text)
+
+    def set_status(self, text: str, color: Color) -> None:
+        """Displays a non-path status (missing or not applicable) in a muted colour.
+
+        The path is cleared so the row is inert: clicking opens nothing and hovering
+        keeps the muted colour rather than the interactive highlight.
+        """
+        self.path = Path()
+        self.display_text = text
+        self.color = color
+        self.hover_color = color
+        dpg_set_value(self.tag, text)
+        dpg.configure_item(self.tag, color=color)
+        if self.tooltip is not None:
+            dpg.set_value(self.tooltip, text)
 
     def get_path(self) -> Path:
         return self.path

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -40,7 +40,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.project.title import document_title
+from sampletones_application.logic.project.title.document import ReconstructionTitlePart, document_title
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import (
@@ -75,9 +75,13 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
+from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
+
+SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"
+SEQUENCER_SAMPLE_ORDINAL_FORMAT: Final[str] = "02X"
 
 
 class Application:
@@ -546,12 +550,19 @@ class Application:
         if self._editing_project_sample():
             self.project_controller.mark_updated()
 
-    def _editing_project_sample(self) -> bool:
+    def _owning_project_sample(self) -> Optional[Sample]:
         reconstruction = self.reconstruction_manager.reconstruction
         if reconstruction is None:
-            return False
+            return None
 
-        return any(sample.reconstruction is reconstruction for sample in self.project_manager.current.samples)
+        for sample in self.project_manager.current.samples:
+            if sample.reconstruction is reconstruction:
+                return sample
+
+        return None
+
+    def _editing_project_sample(self) -> bool:
+        return self._owning_project_sample() is not None
 
     def _add_current_reconstruction_to_sequencer(self) -> None:
         reconstruction = self.reconstruction_manager.reconstruction
@@ -569,6 +580,22 @@ class Application:
             )
         )
 
+    def _reconstruction_title_part(self) -> Optional[ReconstructionTitlePart]:
+        session = self._reconstruction_coordinator.reconstruction_session
+        if not session.is_loaded:
+            return None
+
+        sample = self._owning_project_sample()
+        if sample is not None:
+            ordinal = self.project_manager.current.samples.get_index(sample.id)
+            name = SEQUENCER_SAMPLE_TITLE_FORMAT.format(
+                ordinal=format(ordinal, SEQUENCER_SAMPLE_ORDINAL_FORMAT),
+                name=sample.name,
+            )
+            return ReconstructionTitlePart(name=name, unsaved_changes=session.unsaved_changes, included=True)
+
+        return ReconstructionTitlePart(name=session.name, unsaved_changes=session.unsaved_changes, included=False)
+
     def _update_title(self) -> None:
         untitled = self.language_manager[
             Page.GLOBAL,
@@ -578,10 +605,9 @@ class Application:
         ]
         composed = document_title(
             self.project_manager.session,
-            self._reconstruction_coordinator.reconstruction_session,
+            self._reconstruction_title_part(),
             untitled=untitled,
             project_open=self.project_manager.is_open,
-            reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
         )
         self._viewport_manager.update_title(
             self.language_manager[

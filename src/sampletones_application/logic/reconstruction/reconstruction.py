@@ -1,11 +1,13 @@
 from pathlib import Path
-from typing import Callable, FrozenSet, List, Optional
+from typing import Callable, FrozenSet, List, Optional, Tuple
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.export import ExportService
 from sampletones_application.view_model.reconstruction.reconstruction import (
+    ReconstructionPathState,
+    ReconstructionPathViewModel,
     ReconstructionViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
@@ -56,6 +58,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._selected_generators = list(available_generators)
 
+        reconstruction_file, original_audio = self._build_path_view_models(reconstruction_data)
         self.call(
             self.on_view_changed,
             ReconstructionViewModel(
@@ -63,6 +66,8 @@ class ReconstructionPanelLogic(CallbackMixin):
                 available_generators=available_generators,
                 audio_source_enabled=True,
                 buttons_enabled=True,
+                reconstruction_file=reconstruction_file,
+                original_audio=original_audio,
             ),
         )
         self.call(self.on_waveform_source_changed, self._current_audio_source)
@@ -91,6 +96,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._selected_generators = []
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
+        empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path="")
         self.call(
             self.on_view_changed,
             ReconstructionViewModel(
@@ -98,6 +104,8 @@ class ReconstructionPanelLogic(CallbackMixin):
                 available_generators=frozenset(),
                 audio_source_enabled=False,
                 buttons_enabled=False,
+                reconstruction_file=empty_path,
+                original_audio=empty_path,
             ),
         )
 
@@ -239,6 +247,37 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         partial_approximation = reconstruction_data.get_partials(self._selected_generators)
         return AudioData.from_array(partial_approximation, sample_rate)
+
+    def _build_path_view_models(
+        self,
+        reconstruction_data: ReconstructionData,
+    ) -> Tuple[ReconstructionPathViewModel, ReconstructionPathViewModel]:
+        """Resolves the reconstruction-file and original-audio locations for display.
+
+        A file-backed reconstruction always knows its own file and points at the audio
+        it was built from, which may be absent on this machine. A sequencer sample is
+        detached from both locations, so each reports as not applicable.
+        """
+        reconstruction_filepath = reconstruction_data.filepath
+        if reconstruction_filepath is None:
+            detached = ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
+            return detached, detached
+
+        reconstruction_file = ReconstructionPathViewModel(
+            state=ReconstructionPathState.AVAILABLE,
+            path=str(reconstruction_filepath),
+        )
+
+        audio_filepath = reconstruction_data.reconstruction.audio_filepath
+        if audio_filepath.exists():
+            original_audio = ReconstructionPathViewModel(
+                state=ReconstructionPathState.AVAILABLE,
+                path=str(audio_filepath),
+            )
+        else:
+            original_audio = ReconstructionPathViewModel(state=ReconstructionPathState.NOT_FOUND, path="")
+
+        return reconstruction_file, original_audio
 
     @property
     def _reconstruction_data(self) -> Optional[ReconstructionData]:

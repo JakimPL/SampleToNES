@@ -44,7 +44,7 @@ class ReconstructionManager(CallbackMixin):
         logger.info(f"Loading project: {logger.format_path(path)}")
         self._load_reconstruction_data(path)
         self._load_reconstruction_features()
-        self._session.mark_loaded(path.stem)
+        self._session.mark_loaded(path.name)
         self.call(self.on_reconstruction_loaded)
         logger.info(f"Reconstruction {logger.format_path(path)} loaded successfully")
 
@@ -85,7 +85,7 @@ class ReconstructionManager(CallbackMixin):
 
         reconstruction.save(target_path)
         logger.info(f"Saved reconstruction to: {logger.format_path(target_path)}")
-        self._session.mark_saved(filepath.stem if filepath is not None else None)
+        self._session.mark_saved(filepath.name if filepath is not None else None)
 
     def mark_updated(self) -> None:
         self._session.mark_updated()
