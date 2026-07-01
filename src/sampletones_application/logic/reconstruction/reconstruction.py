@@ -16,7 +16,6 @@ from sampletones_core.paths import EXT_FILE_INSTRUMENT
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.paths import to_path
 
 
 class ReconstructionPanelLogic(CallbackMixin):
@@ -132,9 +131,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if generator_name not in feature_data.generators:
             return
 
-        reconstruction = reconstruction_data.reconstruction
-        filename = to_path(reconstruction.audio_filepath).stem
-        instrument_name = f"{filename} ({generator_name})"
+        instrument_name = f"{reconstruction_data.name} ({generator_name})"
         default_path = str(self._session_manager.get_instrument_path())
 
         self._pending_generator_name = generator_name
@@ -145,8 +142,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting FTIs")
 
-        reconstruction = reconstruction_data.reconstruction
-        default_filename = to_path(reconstruction.audio_filepath).stem
+        default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_instrument_path())
 
         self.call(
@@ -160,8 +156,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting to WAV")
 
-        reconstruction = reconstruction_data.reconstruction
-        default_filename = to_path(reconstruction.audio_filepath).stem
+        default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_audio_path())
 
         self.call(self.on_open_export_wav_dialog, default_filename, default_path)
@@ -225,8 +220,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be present")
 
-        reconstruction = reconstruction_data.reconstruction
-        filename = to_path(reconstruction.audio_filepath).stem
+        filename = reconstruction_data.name
         if generator_name is None:
             return filename
 
@@ -254,30 +248,31 @@ class ReconstructionPanelLogic(CallbackMixin):
     ) -> Tuple[ReconstructionPathViewModel, ReconstructionPathViewModel]:
         """Resolves the reconstruction-file and original-audio locations for display.
 
-        A file-backed reconstruction always knows its own file and points at the audio
-        it was built from, which may be absent on this machine. A sequencer sample is
-        detached from both locations, so each reports as not applicable.
+        Each location is reported independently. A file-backed reconstruction knows its own file;
+        a detached one (a project sample) reports not-applicable. Its source audio is available when
+        it exists on this machine, not-found when the path is set but missing, and not-applicable
+        when the reconstruction has been detached from its origin.
         """
-        reconstruction_filepath = reconstruction_data.filepath
-        if reconstruction_filepath is None:
-            detached = ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
-            return detached, detached
-
-        reconstruction_file = ReconstructionPathViewModel(
-            state=ReconstructionPathState.AVAILABLE,
-            path=str(reconstruction_filepath),
-        )
-
-        audio_filepath = reconstruction_data.reconstruction.audio_filepath
-        if audio_filepath.exists():
-            original_audio = ReconstructionPathViewModel(
-                state=ReconstructionPathState.AVAILABLE,
-                path=str(audio_filepath),
-            )
-        else:
-            original_audio = ReconstructionPathViewModel(state=ReconstructionPathState.NOT_FOUND, path="")
-
+        reconstruction_file = self._build_file_path_view_model(reconstruction_data.filepath)
+        original_audio = self._build_audio_path_view_model(reconstruction_data.reconstruction.audio_filepath)
         return reconstruction_file, original_audio
+
+    @staticmethod
+    def _build_file_path_view_model(filepath: Optional[Path]) -> ReconstructionPathViewModel:
+        if filepath is None:
+            return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
+
+        return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(filepath))
+
+    @staticmethod
+    def _build_audio_path_view_model(audio_filepath: Optional[Path]) -> ReconstructionPathViewModel:
+        if audio_filepath is None:
+            return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
+
+        if audio_filepath.exists():
+            return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(audio_filepath))
+
+        return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_FOUND, path="")
 
     @property
     def _reconstruction_data(self) -> Optional[ReconstructionData]:

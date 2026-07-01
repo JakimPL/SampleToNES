@@ -118,6 +118,12 @@ class ProjectController(CallbackMixin):
         self.call(self.on_song_changed)
 
     def add_sample(self, reconstruction: Reconstruction, name: str) -> Sample:
+        """Embeds a reconstruction as a project sample, detaching its local source-audio origin.
+
+        A project is a self-contained, shareable artifact, so a sample keeps only the reconstruction
+        itself and the display name given here — never the author's local audio path.
+        """
+        reconstruction.detach_source()
         sample = Sample(name=name, reconstruction=reconstruction)
         self.project.samples.append(sample)
         self._touch()

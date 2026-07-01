@@ -55,4 +55,5 @@ def reconstruction_data(default_config, minimal_reconstruction) -> Reconstructio
         original_audio=np.zeros(256, dtype=np.float32),
         feature_data=feature_data,
         filepath=Path("/dev/null"),
+        name="null",
     )

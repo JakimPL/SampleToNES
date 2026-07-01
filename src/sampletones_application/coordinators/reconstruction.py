@@ -327,9 +327,10 @@ class ReconstructionCoordinator:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
         self._audio_device_manager.stop()
-        if not reconstruction_data.reconstruction.audio_filepath.exists():
+        audio_filepath = reconstruction_data.reconstruction.audio_filepath
+        if audio_filepath is not None and not audio_filepath.exists():
             self._dialogs.show_file_not_found(
-                reconstruction_data.reconstruction.audio_filepath,
+                audio_filepath,
                 self._language_manager[
                     Page.RECONSTRUCTIONS,
                     Panel.BROWSER,

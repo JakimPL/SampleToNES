@@ -16,7 +16,7 @@ class TestFromReconstruction:
     ) -> None:
         reconstruction = reconstruction_factory()
 
-        data = ReconstructionData.from_reconstruction(reconstruction)
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         assert data.reconstruction is reconstruction
 
@@ -26,8 +26,27 @@ class TestFromReconstruction:
     ) -> None:
         reconstruction = reconstruction_factory()
 
-        data = ReconstructionData.from_reconstruction(reconstruction)
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
         assert data.filepath is None
+
+    def test_uses_the_supplied_display_name(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Kick drum")
+        assert data.name == "Kick drum"
+
+    def test_detached_reconstruction_yields_silent_original_audio(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction.detach_source()
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        assert reconstruction.audio_filepath is None
+        assert np.all(data.original_audio == 0.0)
 
 
 class TestReconstructionDataLoad:
@@ -64,7 +83,7 @@ class TestReconstructionDataGetPartials:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction)
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         result = data.get_partials([])
 
@@ -75,7 +94,7 @@ class TestReconstructionDataGetPartials:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction)
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         result = data.get_partials([GeneratorName.TRIANGLE])
 
@@ -86,7 +105,7 @@ class TestReconstructionDataGetPartials:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction)
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         result = data.get_partials([GeneratorName.PULSE1])
 

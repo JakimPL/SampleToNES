@@ -14,6 +14,7 @@ from sampletones_shared.logger import logger
 
 @dataclass(frozen=True)
 class ReconstructionData:
+    name: str
     config: Config
     reconstruction: Reconstruction
     original_audio: np.ndarray
@@ -23,19 +24,23 @@ class ReconstructionData:
     @classmethod
     def load(cls, path: Path) -> Self:
         reconstruction = Reconstruction.load(path)
-        return cls._assemble(reconstruction, filepath=path)
+        audio_filepath = reconstruction.audio_filepath
+        name = audio_filepath.stem if audio_filepath is not None else path.stem
+        return cls._assemble(reconstruction, filepath=path, name=name)
 
     @classmethod
-    def from_reconstruction(cls, reconstruction: Reconstruction) -> Self:
+    def from_reconstruction(cls, reconstruction: Reconstruction, *, name: str) -> Self:
         """Wraps an in-memory reconstruction for live-linked editing.
 
         The reconstruction tab edits the very same object the project sample
         holds, so changes propagate live. Such a sample lives only in memory,
-        hence ``filepath`` is ``None``.
+        hence ``filepath`` is ``None`` and its display name is supplied by the
+        caller (the project sample's name) rather than derived from a file path.
         """
         return cls._assemble(
             reconstruction,
             filepath=None,
+            name=name,
         )
 
     @classmethod
@@ -44,18 +49,39 @@ class ReconstructionData:
         reconstruction: Reconstruction,
         *,
         filepath: Optional[Path],
+        name: str,
     ) -> Self:
-        audio_filepath = reconstruction.audio_filepath
-        sample_rate = reconstruction.config.library.sample_rate
-        normalize = reconstruction.config.general.normalize
-        quantize = reconstruction.config.general.quantize
+        original_audio = cls._load_original_audio(reconstruction)
+        feature_data = FeatureData.load(reconstruction)
 
+        return cls(
+            config=reconstruction.config,
+            reconstruction=reconstruction,
+            original_audio=original_audio,
+            feature_data=feature_data,
+            filepath=filepath,
+            name=name,
+        )
+
+    @staticmethod
+    def _load_original_audio(reconstruction: Reconstruction) -> np.ndarray:
+        """Loads the source audio, falling back to silence when it is detached or unreadable.
+
+        A reconstruction detached from its origin (a project sample) carries no source path, and a
+        file-backed reconstruction may point at audio absent on this machine. In both cases the
+        approximation still plays; only the original-audio comparison is silent.
+        """
+        audio_filepath = reconstruction.audio_filepath
+        if audio_filepath is None:
+            return np.zeros_like(reconstruction.approximation)
+
+        config = reconstruction.config
         try:
-            original_audio = load_audio(
+            return load_audio(
                 path=audio_filepath,
-                target_sample_rate=sample_rate,
-                normalize=normalize,
-                quantize=quantize,
+                target_sample_rate=config.library.sample_rate,
+                normalize=config.general.normalize,
+                quantize=config.general.quantize,
             )
         except (
             FileNotFoundError,
@@ -65,17 +91,7 @@ class ReconstructionData:
             OSError,
         ):
             logger.warning(f"Could not load original audio from '{audio_filepath}'. Using silent audio instead")
-            original_audio = np.zeros_like(reconstruction.approximation)
-
-        feature_data = FeatureData.load(reconstruction)
-
-        return cls(
-            config=reconstruction.config,
-            reconstruction=reconstruction,
-            original_audio=original_audio,
-            feature_data=feature_data,
-            filepath=filepath,
-        )
+            return np.zeros_like(reconstruction.approximation)
 
     def get_partials(self, generator_names: List[GeneratorName]) -> np.ndarray:
         if not generator_names:

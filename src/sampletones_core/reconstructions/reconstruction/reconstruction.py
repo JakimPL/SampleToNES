@@ -51,7 +51,10 @@ class Reconstruction(DataModel):
 
     metadata: Metadata = Field(default_factory=Metadata.default, description="Reconstruction metadata")
     id: str = Field(..., description="Unique identifier for the reconstruction")
-    audio_filepath: Path = Field(..., description="Path to the original audio file")
+    audio_filepath: Optional[Path] = Field(
+        ...,
+        description="Location of the source audio; None marks a reconstruction detached from its local origin",
+    )
     config: Config = Field(..., description="Configuration used for reconstruction", frozen=True)
     approximation: np.ndarray = Field(..., description="Audio approximation")
     approximations_data: List[ApproximationsItem] = Field(..., description="Approximations per generator")
@@ -204,6 +207,16 @@ class Reconstruction(DataModel):
     def get_generator_instructions(self, generator_name: GeneratorName) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])
 
+    def detach_source(self) -> None:
+        """Drops the local source-audio location so the reconstruction becomes self-contained.
+
+        Embedding a reconstruction in a project makes it part of a shareable artifact, where an
+        absolute path to the author's machine carries no meaning. Clearing ``audio_filepath`` keeps
+        the reconstruction — its approximation and instructions — intact while removing the local
+        origin, so a saved project stays portable.
+        """
+        self.audio_filepath = None
+
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
         binary = load_binary(path)
@@ -284,5 +297,8 @@ class Reconstruction(DataModel):
         return serialize_array(approximation)
 
     @field_serializer("audio_filepath")
-    def _serialize_audio_filepath(self, audio_filepath: Path, _info: Any) -> str:
+    def _serialize_audio_filepath(self, audio_filepath: Optional[Path], _info: Any) -> Optional[str]:
+        if audio_filepath is None:
+            return None
+
         return str(audio_filepath)

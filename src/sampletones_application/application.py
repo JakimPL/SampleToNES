@@ -537,7 +537,7 @@ class Application:
             logger.warning(f"Cannot edit unknown project sample: {sample_id}")
             return
 
-        self.reconstruction_manager.load_reconstruction_object(sample.reconstruction)
+        self.reconstruction_manager.load_reconstruction_object(sample.reconstruction, name=sample.name)
 
     def _regenerate_instrument(
         self,
@@ -565,11 +565,14 @@ class Application:
         return self._owning_project_sample() is not None
 
     def _add_current_reconstruction_to_sequencer(self) -> None:
-        reconstruction = self.reconstruction_manager.reconstruction
-        if reconstruction is None or self._editing_project_sample():
+        reconstruction_data = self.reconstruction_manager.current_reconstruction
+        if reconstruction_data is None or self._editing_project_sample():
             return
 
-        self._sequencer_tab.import_reconstruction_object(reconstruction, reconstruction.audio_filepath.stem)
+        self._sequencer_tab.import_reconstruction_object(
+            reconstruction_data.reconstruction,
+            reconstruction_data.name,
+        )
 
     def _update_add_to_sequencer_state(self) -> None:
         self._reconstructions_tab.update_add_to_sequencer(
@@ -619,7 +622,26 @@ class Application:
             composed,
         )
 
+    def _sync_reconstruction_ownership(self) -> None:
+        """Reflects sequencer ownership in the open reconstruction view.
+
+        When the reconstruction on screen becomes a project sample — added to the sequencer — its
+        source audio and file location are detached. The open document follows so both locations read
+        as not applicable, matching an owned sample. The guard makes this a no-op except at the moment
+        a file-backed reconstruction is added while it is the one on screen.
+        """
+        reconstruction_data = self.reconstruction_manager.current_reconstruction
+        if reconstruction_data is None or reconstruction_data.filepath is None:
+            return
+
+        if self._owning_project_sample() is None:
+            return
+
+        self.reconstruction_manager.detach_current_reconstruction()
+        self._reconstructions_tab.display_reconstruction()
+
     def _on_project_state_changed(self) -> None:
+        self._sync_reconstruction_ownership()
         self._update_title()
         self._update_menu()
         self._update_add_to_sequencer_state()

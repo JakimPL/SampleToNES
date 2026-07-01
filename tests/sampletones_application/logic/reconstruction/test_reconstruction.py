@@ -9,6 +9,10 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
+from sampletones_application.view_model.reconstruction.reconstruction import (
+    ReconstructionPathState,
+    ReconstructionViewModel,
+)
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.reconstructions import Reconstruction
 
@@ -45,7 +49,7 @@ def panel_logic(
 
 @pytest.fixture
 def loaded_data(reconstruction_factory: Callable[[], Reconstruction]) -> ReconstructionData:
-    return ReconstructionData.from_reconstruction(reconstruction_factory())
+    return ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
 
 
 class TestReconstructionPanelLogicDisplay:
@@ -93,6 +97,38 @@ class TestReconstructionPanelLogicDisplay:
         panel_logic.on_audio_data_changed = callback
         panel_logic.display_reconstruction()
         callback.assert_called_once()
+
+
+class TestReconstructionPanelLogicPathRows:
+    def test_detached_reconstruction_reports_both_locations_not_applicable(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction.detach_source()
+        mock_reconstruction_manager.current_reconstruction = ReconstructionData.from_reconstruction(
+            reconstruction, name="Sample"
+        )
+        captured: list[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = captured.append
+
+        panel_logic.display_reconstruction()
+
+        view_model = captured[0]
+        assert view_model.reconstruction_file.state is ReconstructionPathState.NOT_APPLICABLE
+        assert view_model.original_audio.state is ReconstructionPathState.NOT_APPLICABLE
+
+    def test_missing_source_audio_reports_original_not_found(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        missing_audio = tmp_path / "ghost.wav"
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": missing_audio})
+        original_audio = ReconstructionPanelLogic._build_audio_path_view_model(reconstruction.audio_filepath)
+        assert original_audio.state is ReconstructionPathState.NOT_FOUND
 
 
 class TestReconstructionPanelLogicUpdate:
