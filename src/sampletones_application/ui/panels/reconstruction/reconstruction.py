@@ -248,6 +248,9 @@ class GUIReconstructionPanel(GUIPanel):
         self._frame_length = reconstruction_data.reconstruction.config.frame_length
         self.waveform_display.load_reconstruction_data(reconstruction_data, generators)
 
+    def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
+        self.waveform_display.set_top_source(audio_source)
+
     def update_waveform_data(
         self,
         reconstruction_data: ReconstructionData,

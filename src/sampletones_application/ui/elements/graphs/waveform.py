@@ -31,7 +31,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Sender
 
@@ -103,6 +103,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         )
 
         self.reconstruction_autoscale = True
+        self._top_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
 
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
         self.overlay_rectangle_tag = f"{tag}{SUF_WAVEFORM_OVERLAY}"
@@ -280,8 +281,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             selected_generators,
         )
 
-        self.layers[self._lbl_waveform_reconstruction] = reconstruction_layer
-        self.layers[self._lbl_waveform_original] = sample_layer
+        for layer in self._ordered_layers(sample_layer, reconstruction_layer):
+            self.layers[layer.name] = layer
         self._update_display()
 
     def load_reconstruction_data(
@@ -321,8 +322,44 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         reconstruction_layer: ArrayLayer,
         sample_layer: ArrayLayer,
     ) -> None:
-        self.add_layer(sample_layer)
-        self.add_layer(reconstruction_layer)
+        for layer in self._ordered_layers(sample_layer, reconstruction_layer):
+            self.add_layer(layer)
+        self._update_display()
+
+    def _ordered_layers(
+        self,
+        sample_layer: Union[ArrayLayer, InstructionLayer],
+        reconstruction_layer: Union[ArrayLayer, InstructionLayer],
+    ) -> List[Union[ArrayLayer, InstructionLayer]]:
+        """Orders the two waveform layers so the playback-selected source is drawn last.
+
+        DearPyGui draws sibling series in child order, so the layer placed last renders
+        on top. Returning the selected source last keeps the audible waveform in front.
+        """
+        if self._top_source == AudioSourceType.ORIGINAL:
+            return [reconstruction_layer, sample_layer]
+
+        return [sample_layer, reconstruction_layer]
+
+    def set_top_source(self, audio_source: AudioSourceType) -> None:
+        """Selects which waveform is drawn on top, following the playback source."""
+        if audio_source == self._top_source:
+            return
+
+        self._top_source = audio_source
+        if isinstance(self.current_data, ReconstructionData):
+            self._reorder_series()
+
+    def _reorder_series(self) -> None:
+        sample_layer = self.layers[self._lbl_waveform_original]
+        reconstruction_layer = self.layers[self._lbl_waveform_reconstruction]
+        for layer in (sample_layer, reconstruction_layer):
+            dpg_delete_item(self._series_tag(layer.name))
+
+        self.layers.clear()
+        for layer in self._ordered_layers(sample_layer, reconstruction_layer):
+            self.layers[layer.name] = layer
+
         self._update_display()
 
     def clear(self) -> None:
@@ -336,12 +373,15 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self.load_reconstruction_data(self.current_data)
             self._update_ranges()
 
+    def _series_tag(self, layer_name: str) -> str:
+        return f"{self.y_axis_tag}{TAG_SEPARATOR}{layer_name.replace(' ', '_')}".lower()
+
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
         for layer in self.layers.values():
-            series_tag = f"{self.y_axis_tag}{TAG_SEPARATOR}{layer.name.replace(' ', '_')}".lower()
+            series_tag = self._series_tag(layer.name)
             theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
             if dpg.does_item_exist(series_tag):
                 dpg.configure_item(

@@ -37,6 +37,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_waveform_load_changed: Optional[Callable[[ReconstructionData, List[GeneratorName]], None]] = None
         self.on_waveform_update_changed: Optional[Callable[[ReconstructionData, List[GeneratorName]], None]] = None
         self.on_waveform_cleared: Optional[VoidCallback] = None
+        self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
         self.on_open_export_instrument_dialog: Optional[Callable[[str, str], None]] = None
         self.on_open_export_instruments_dialog: Optional[Callable[[str, str], None]] = None
@@ -64,6 +65,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 buttons_enabled=True,
             ),
         )
+        self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
             reconstruction_data,
@@ -102,6 +104,7 @@ class ReconstructionPanelLogic(CallbackMixin):
     def set_audio_source(self, audio_source: AudioSourceType) -> None:
         self._current_audio_source = audio_source
         self._emit_audio_data()
+        self.call(self.on_waveform_source_changed, audio_source)
 
     def set_selected_generators(self, generators: List[GeneratorName]) -> None:
         self._selected_generators = generators

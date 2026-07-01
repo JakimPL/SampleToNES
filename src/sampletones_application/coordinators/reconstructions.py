@@ -277,6 +277,7 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = self._reconstruction_panel.update_waveform_data
         self._reconstruction_panel_logic.on_waveform_cleared = self._reconstruction_panel.clear_waveform
+        self._reconstruction_panel_logic.on_waveform_source_changed = self._reconstruction_panel.set_waveform_top_source
         self._reconstruction_panel_logic.on_open_export_instrument_dialog = (
             self._reconstruction_panel.open_export_instrument_dialog
         )
