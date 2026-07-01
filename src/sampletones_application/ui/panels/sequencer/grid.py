@@ -45,6 +45,7 @@ from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColum
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
@@ -77,9 +78,11 @@ class GUISequencerGridPanel(GUIPanel):
         *,
         layout: SequencerLayout,
         language_manager: LanguageManager,
+        shortcut_manager: ShortcutManager,
     ) -> None:
         self._layout = layout
         self._language_manager = language_manager
+        self._shortcut_manager = shortcut_manager
 
         widths = layout.tracker.subcolumn_widths
         self._subcolumn_widths: Dict[SubColumn, int] = {
@@ -848,6 +851,9 @@ class GUISequencerGridPanel(GUIPanel):
         )
 
     def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
+        if self._shortcut_manager.is_input_focused:
+            return
+
         if self._input_state.cursor is None:
             return
 

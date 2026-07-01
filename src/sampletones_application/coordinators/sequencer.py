@@ -209,20 +209,24 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
+            shortcut_manager=shortcut_manager,
         )
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
             self._sequencer_grid_logic,
             layout=layout.sequencer,
             input_width=layout.general.inputs.default_width,
             language_manager=language_manager,
+            shortcut_manager=shortcut_manager,
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
+            shortcut_manager=shortcut_manager,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
+            shortcut_manager=shortcut_manager,
         )
 
         self._wire_callbacks()

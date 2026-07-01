@@ -18,6 +18,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
+    TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
@@ -345,7 +346,10 @@ class Application:
         )
 
     def _initialize_caret(self) -> None:
-        CaretOverlay.initialize(self.layout.general.caret)
+        CaretOverlay.initialize(
+            self.layout.general.caret,
+            root_window_tag=TAG_GLOBAL_WINDOW_MAIN,
+        )
 
     def _restore_current_items(self) -> None:
         self._shell.restore_current_items(

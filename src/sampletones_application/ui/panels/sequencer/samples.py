@@ -27,6 +27,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
@@ -42,8 +43,10 @@ class GUISequencerSamplesPanel(GUIPanel):
         *,
         layout: SequencerLayout,
         language_manager: LanguageManager,
+        shortcut_manager: ShortcutManager,
     ) -> None:
         self._layout = layout
+        self._shortcut_manager = shortcut_manager
         self._row_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_TABLE}{SUF_HANDLER_REGISTRY}"
         self._rename_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME}{SUF_HANDLER_REGISTRY}"
         self._selected_sample_id: Optional[str] = None
@@ -154,6 +157,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         ):
             self._create_section_text()
             self._create_samples_table()
+
         self._create_row_handlers()
         self._create_rename_handler()
         self._create_key_handler()
@@ -166,6 +170,8 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _create_rename_handler(self) -> None:
         with dpg.item_handler_registry(tag=self._rename_handler_tag):
             dpg.add_item_deactivated_handler(callback=self._on_rename_deactivated)
+
+        self._shortcut_manager.attach_focus_tracking(self._rename_handler_tag)
 
     def _create_key_handler(self) -> None:
         with dpg.handler_registry(tag=TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER):
@@ -311,7 +317,11 @@ class GUISequencerSamplesPanel(GUIPanel):
         another panel clears this one's selection via this method.
         """
         if self._selected_row is not None:
-            dpg.unhighlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, self._selected_row)
+            dpg.unhighlight_table_row(
+                TAG_SEQUENCER_INSTRUMENTS_TABLE,
+                self._selected_row,
+            )
+
         self._selected_row = None
         self._selected_sample_id = None
 
@@ -319,6 +329,9 @@ class GUISequencerSamplesPanel(GUIPanel):
         if self._editing_sample_id is not None:
             if app_data == dpg.mvKey_Escape:
                 self._cancel_rename()
+            return
+
+        if self._shortcut_manager.is_input_focused:
             return
 
         if self._selected_sample_id is None:
