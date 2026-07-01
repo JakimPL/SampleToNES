@@ -43,6 +43,7 @@ from sampletones_application.ui.panels.reconstruction.reconstruction import GUIR
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -440,6 +441,12 @@ class ReconstructionsTabCoordinator:
 
     def set_can_add_to_sequencer(self, predicate: Callable[[], bool]) -> None:
         self._browser_panel.can_add_to_sequencer = predicate
+
+    def set_on_add_current_reconstruction(self, callback: VoidCallback) -> None:
+        self._reconstruction_panel.on_add_to_sequencer_requested = callback
+
+    def update_add_to_sequencer(self, view_model: AddToSequencerViewModel) -> None:
+        self._reconstruction_panel.update_add_to_sequencer(view_model)
 
     def load_reconstruction(self, filepath: Path) -> None:
         self._browser_panel.lock()

@@ -22,14 +22,17 @@ from sampletones_application.constants.reconstructions import (
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_ADD_TO_SEQUENCER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_ADD_TO_SEQUENCER,
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
@@ -47,7 +50,10 @@ from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip, show_tooltip
+from sampletones_application.view_model.reconstruction.add_to_sequencer import (
+    AddToSequencerViewModel,
+)
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -93,6 +99,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.on_export_instruments_confirmed: Optional[PathCallback] = None
         self.on_export_wav_confirmed: Optional[PathCallback] = None
         self.on_locate_original_audio_requested: Optional[VoidCallback] = None
+        self.on_add_to_sequencer_requested: Optional[VoidCallback] = None
 
         self.audio_tag = f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
@@ -121,6 +128,18 @@ class GUIReconstructionPanel(GUIPanel):
             Panel.RECONSTRUCTION,
             TextType.LABEL,
             ReconstructionPanelElements.LOCATE_AUDIO_BUTTON,
+        ]
+        self._lbl_add_to_sequencer = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.ADD_TO_SEQUENCER,
+        ]
+        self._tooltip_already_in_sequencer = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.TOOLTIP,
+            ReconstructionPanelElements.ALREADY_IN_SEQUENCER_TOOLTIP,
         ]
         self._lbl_original_audio = language_manager[
             Page.RECONSTRUCTIONS,
@@ -251,6 +270,16 @@ class GUIReconstructionPanel(GUIPanel):
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
 
+    def update_add_to_sequencer(self, view_model: AddToSequencerViewModel) -> None:
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_ADD_TO_SEQUENCER,
+            enabled=view_model.enabled,
+        )
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_ADD_TO_SEQUENCER,
+            show=view_model.show_already_in_sequencer_hint,
+        )
+
     def update_waveform_data(
         self,
         reconstruction_data: ReconstructionData,
@@ -345,6 +374,7 @@ class GUIReconstructionPanel(GUIPanel):
             border=False,
         ):
             self._create_audio_source_radio_buttons()
+            self._create_add_to_sequencer_button()
             self._create_locate_original_audio_button()
             self._create_export_wav_button()
 
@@ -398,6 +428,26 @@ class GUIReconstructionPanel(GUIPanel):
                 enabled=False,
             )
             FontRegistry.bind_to_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, Font.REGULAR_SMALL)
+
+    def _create_add_to_sequencer_button(self) -> None:
+        with dpg.group(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
+            parent=self.audio_tag,
+        ):
+            GUIButton(
+                label=self._lbl_add_to_sequencer,
+                tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_ADD_TO_SEQUENCER,
+                parent=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
+                callback=self._handle_add_to_sequencer_button_click,
+                width=-1,
+                enabled=False,
+            )
+
+        attach_disabled_tooltip(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
+            self._tooltip_already_in_sequencer,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_ADD_TO_SEQUENCER,
+        )
 
     def _create_locate_original_audio_button(self) -> None:
         GUIButton(
@@ -510,6 +560,9 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _handle_locate_original_audio_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self.call(self.on_locate_original_audio_requested)
+
+    def _handle_add_to_sequencer_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+        self.call(self.on_add_to_sequencer_requested)
 
     def _handle_export_wav_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self.call(self.on_export_wav_requested)

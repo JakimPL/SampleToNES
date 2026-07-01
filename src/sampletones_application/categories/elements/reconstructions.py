@@ -22,6 +22,7 @@ class ReconstructionPanelElements(AbstractElement):
     AUTOSCALE_CHECKBOX = "autoscale_checkbox"
     EXPORT_WAV_BUTTON = "export_wav_button"
     LOCATE_AUDIO_BUTTON = "locate_audio_button"
+    ALREADY_IN_SEQUENCER_TOOLTIP = "already_in_sequencer_tooltip"
     ORIGINAL_AUDIO_RADIO = "original_audio_radio"
     RECONSTRUCTION_RADIO = "reconstruction_radio"
     WAVEFORM_LABEL = "waveform_label"

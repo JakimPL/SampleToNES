@@ -68,6 +68,7 @@ from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
@@ -301,6 +302,7 @@ class Application:
         self._sequencer_tab.initialize()
         self.config_manager.update_gui()
         self._update_menu()
+        self._update_add_to_sequencer_state()
         self._restore_current_items()
 
     def _create_shortcut_bindings(self) -> ShortcutBindings:
@@ -352,6 +354,7 @@ class Application:
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
         self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
         self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
+        self._reconstructions_tab.set_on_add_current_reconstruction(self._add_current_reconstruction_to_sequencer)
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
@@ -550,6 +553,22 @@ class Application:
 
         return any(sample.reconstruction is reconstruction for sample in self.project_manager.current.samples)
 
+    def _add_current_reconstruction_to_sequencer(self) -> None:
+        reconstruction = self.reconstruction_manager.reconstruction
+        if reconstruction is None or self._editing_project_sample():
+            return
+
+        self._sequencer_tab.import_reconstruction_object(reconstruction, reconstruction.audio_filepath.stem)
+
+    def _update_add_to_sequencer_state(self) -> None:
+        self._reconstructions_tab.update_add_to_sequencer(
+            AddToSequencerViewModel(
+                reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+                project_open=self.project_controller.is_open,
+                already_in_sequencer=self._editing_project_sample(),
+            )
+        )
+
     def _update_title(self) -> None:
         untitled = self.language_manager[
             Page.GLOBAL,
@@ -577,10 +596,12 @@ class Application:
     def _on_project_state_changed(self) -> None:
         self._update_title()
         self._update_menu()
+        self._update_add_to_sequencer_state()
 
     def _on_reconstruction_state_changed(self) -> None:
         self._update_title()
         self._update_menu()
+        self._update_add_to_sequencer_state()
 
     def _set_current_tab(self, tab: Tab) -> None:
         self._shell.set_current_tab(tab)

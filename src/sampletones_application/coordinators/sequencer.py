@@ -360,6 +360,18 @@ class SequencerTabCoordinator:
 
         self._add_reconstruction_with_frequency_check(reconstruction, filepath.stem)
 
+    def import_reconstruction_object(self, reconstruction: Reconstruction, name: str) -> None:
+        """Adds an in-memory reconstruction — the one open in the Reconstruction tab — as a sample."""
+        if not self._project_controller.is_open:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
+                self._msg_no_project,
+                self._ttl_no_project,
+            )
+            return
+
+        self._add_reconstruction_with_frequency_check(reconstruction, name)
+
     def _add_reconstruction_with_frequency_check(self, reconstruction: Reconstruction, name: str) -> None:
         """Adds a loaded reconstruction, reconciling its NES frequency with the project's.
 
