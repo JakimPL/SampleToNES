@@ -7,8 +7,8 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.famitracker.fti import write_fti
 from sampletones_core.types.feature import FeatureMap, FeatureValue
-from sampletones_shared.utils.famitracker import write_fti
 
 
 class Features(BaseModel):
