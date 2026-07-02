@@ -110,7 +110,47 @@ empty effect `0`. A pitch converts to a cell by `note = pitch % 12 + 1` and
 `octave = pitch // 12 − 2`, matching `pitch_to_name` in
 `sampletones_core/utils/frequencies.py`.
 
-## B. FamiTracker capacity limits
+## B. The 2A03 instrument
+
+Both file formats describe the same instrument model. A 2A03 instrument is a name
+plus five **sequences**, one per dimension, advanced one item per engine tick while a
+note sounds. The `.fti` file stores the sequences inline; the `.ftm` module pools
+them in the `SEQUENCES` block and references them by index, so identical sequences
+are stored once.
+
+The five sequence kinds, in slot order (`SequenceKind` in `constants.py`):
+
+| Slot | Kind | Meaning |
+| --- | --- | --- |
+| 0 | Volume | output volume per tick, 0–15 |
+| 1 | Arpeggio | semitone offsets added to the played note (absolute mode) |
+| 2 | Pitch | fine per-tick pitch bend, applied cumulatively |
+| 3 | Hi-pitch | coarse pitch bend |
+| 4 | Duty / Noise | pulse duty cycle 0–3, or the noise short/long mode |
+
+Each sequence carries:
+
+- **items** — the signed per-tick values (`int8`);
+- **loop point** — the item index playback returns to after the last item, or `-1`
+  to stop at the end;
+- **release point** — the item index playback jumps to when the note is released,
+  or `-1` for none;
+- **setting** — the sequence mode; for arpeggio, `0` selects absolute (the offsets
+  are added to the played note).
+
+**Looping.** A looping instrument sets the loop point to `0` on every populated
+sequence, so its envelopes repeat from the start while the note is held; a one-shot
+instrument leaves every loop point at `-1`. A sample's `loop` flag drives this when
+the sample is exported into a module.
+
+**How SampleToNES fills an instrument.** Each generator slice of a sample's
+reconstruction becomes one instrument, so a sample yields one to four instruments.
+The arpeggio sequence is the reconstruction's pitch contour expressed as
+`pitch − initial_pitch`; triggering the instrument at the note `initial_pitch`
+replays the original contour. Volume, duty (or noise mode) and any pitch sequences
+carry across directly. The DPCM key-assignment table is empty by design.
+
+## C. FamiTracker capacity limits
 
 FamiTracker bounds several quantities that the SampleToNES `Project` currently
 leaves looser. The exporter guards these limits and raises when a project exceeds

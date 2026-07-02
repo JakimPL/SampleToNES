@@ -29,7 +29,7 @@ class InstrumentSequence(BaseModel):
     release_point: int = NO_RELEASE_POINT
     setting: int = DEFAULT_SEQUENCE_SETTING
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
-    @computed_field
     def enabled(self) -> bool:
         return len(self.items) > 0
