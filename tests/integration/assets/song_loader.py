@@ -1,5 +1,3 @@
-import json
-from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 
 from sampletones_core.constants.enums import GeneratorName
@@ -11,6 +9,7 @@ from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils.serialization import load_yaml
 
 RowSpec = Dict[str, Any]
 
@@ -19,6 +18,7 @@ def _order(order_specs: List[Dict[str, int]]) -> List[Dict[GeneratorName, Option
     frames: List[Dict[GeneratorName, Optional[int]]] = []
     for spec in order_specs:
         frames.append({generator: spec.get(generator.value) for generator in GeneratorName.items()})
+
     return frames
 
 
@@ -50,6 +50,7 @@ def _pattern(
     rows = [Row() for _ in range(rows_per_pattern)]
     for spec in row_specs:
         rows[spec["row"]] = _row(spec, generator, samples_by_name)
+
     return Pattern(rows=rows)
 
 
@@ -62,10 +63,18 @@ def _channels(
     for name, spec in channels_spec.items():
         generator = GeneratorName(name)
         patterns = {
-            int(index): _pattern(row_specs, rows_per_pattern, generator, samples_by_name)
+            int(index): _pattern(
+                row_specs,
+                rows_per_pattern,
+                generator,
+                samples_by_name,
+            )
             for index, row_specs in spec["patterns"].items()
         }
-        channels[generator] = Channel(generator=generator, patterns=patterns)
+        channels[generator] = Channel(
+            generator=generator,
+            patterns=patterns,
+        )
 
     for generator in GeneratorName.items():
         channels.setdefault(generator, Channel(generator=generator, patterns={}))
@@ -73,8 +82,8 @@ def _channels(
     return channels
 
 
-def load_song(json_path: Pathlike, samples_by_name: Mapping[str, Sample]) -> Song:
-    document = json.loads(Path(json_path).read_text(encoding="utf-8"))
+def load_song(path: Pathlike, samples_by_name: Mapping[str, Sample]) -> Song:
+    document = load_yaml(path)
     rows_per_pattern = document["rows_per_pattern"]
     return Song(
         rows_per_pattern=rows_per_pattern,

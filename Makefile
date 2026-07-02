@@ -1,4 +1,4 @@
-.PHONY: pre-commit build setup test clean help
+.PHONY: pre-commit build setup test ftm-samples clean help
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
@@ -22,6 +22,7 @@ help:
 	@echo "  make pre-commit  - Install pre-commit hooks"
 	@echo "  make build       - Compile standalone executable"
 	@echo "  make test        - Run unit tests with coverage"
+	@echo "  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite"
 	@echo "  make clean       - Remove build artifacts and cache files"
 	@echo "  make lint        - Run linting (pylint, mypy)"
 	@echo "  make format      - Auto-format code (isort, black)"
@@ -45,6 +46,9 @@ pre-commit:
 
 test:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/tests$(SCRIPT_EXT)
+
+ftm-samples:
+	SAMPLETONES_FTM_OUTPUT_DIR=build/ftm uv run python -m pytest tests/integration/famitracker
 
 check-import-boundary:
 	uv run scripts/check_import_boundary.py --all

@@ -41,7 +41,7 @@ class InstructionsLibraryConfig(DataModel):
     )
     transformation_gamma: int = Field(
         default=TRANSFORMATION_GAMMA,
-        ge=MAX_TRANSFORMATION_GAMMA,
+        ge=0,
         le=MAX_TRANSFORMATION_GAMMA,
     )
     a4_frequency: float = Field(
