@@ -1,10 +1,3 @@
-"""A test-only inverse parser for the ``.ftm`` byte layout.
-
-It reads a module produced by the serializer back into comparable structures so
-tests can assert the round trip. It mirrors the format documented in
-``docs/famitracker.md``.
-"""
-
 import struct
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
