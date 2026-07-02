@@ -1,7 +1,7 @@
 reconstruction:
   spectrum_method: cqt
   transformation_gamma: 0
-  instructions_per_generator: 48
+  instructions_per_generator: 32
 instruments:
   - { name: kick,  synth: kick,  generators: [pulse1, triangle] }
   - { name: lead,  synth: lead,  generators: [pulse1, pulse2] }

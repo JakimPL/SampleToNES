@@ -27,9 +27,9 @@ from sampletones_core.famitracker.specification.patterns import (
     NoteValue,
 )
 from sampletones_core.famitracker.specification.sequences import SequenceKind
+from tests.suite.famitracker import ParsedModule, ParsedSequence, parse_ftm
 
 from .conftest import ProjectFixture
-from .reader import ParsedModule, ParsedSequence, parse_ftm
 
 ALL_BLOCKS = [
     BLOCK_PARAMS,

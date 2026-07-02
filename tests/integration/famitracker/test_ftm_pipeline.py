@@ -7,7 +7,7 @@ from sampletones_core.famitracker.specification.channels import ChannelId
 from sampletones_core.famitracker.specification.file import FTM_VERSION
 from sampletones_core.famitracker.specification.sequences import SequenceKind
 from sampletones_core.project.project import Project
-from tests.unit.sampletones_core.famitracker.reader import ParsedModule, parse_ftm
+from tests.suite.famitracker import ParsedModule, parse_ftm
 
 EXPECTED_INSTRUMENT_COUNT = 5  # kick -> pulse1 + triangle (2); hihat -> pulse1 + pulse2 + noise (3)
 PLAYED_CHANNELS = {
