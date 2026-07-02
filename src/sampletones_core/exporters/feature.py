@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict
 
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.famitracker.fti import write_fti
+from sampletones_core.famitracker.model.instrument import Instrument2A03
+from sampletones_core.famitracker.sequences import features_to_instrument_sequences
 from sampletones_core.types.feature import FeatureMap, FeatureValue
 
 
@@ -78,16 +80,17 @@ class Features(BaseModel):
         return [value for value in self.feature_map.values() if value is not None]
 
     def save(self, filepath: Path, instrument_name: str) -> None:
+        sequences = features_to_instrument_sequences(
+            volume=self.volume,
+            arpeggio=self.arpeggio,
+            pitch=self.pitch,
+            hi_pitch=self.hi_pitch,
+            duty_cycle=self.duty_cycle,
+            loop=False,
+        )
+        instrument = Instrument2A03(index=0, name=instrument_name, sequences=sequences)
         try:
-            write_fti(
-                filename=filepath,
-                instrument_name=instrument_name,
-                volume=self.volume,
-                arpeggio=self.arpeggio,
-                pitch=self.pitch,
-                hi_pitch=self.hi_pitch,
-                duty_cycle=self.duty_cycle,
-            )
+            write_fti(filepath, instrument)
         except (
             FileNotFoundError,
             IOError,

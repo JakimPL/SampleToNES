@@ -1,81 +1,68 @@
-import struct
-from typing import Optional
+from __future__ import annotations
 
-import numpy as np
-
+from sampletones_core.famitracker.binary import BinaryWriter
+from sampletones_core.famitracker.constants import (
+    EMPTY_DPCM_ASSIGNMENTS,
+    EMPTY_DPCM_SAMPLES,
+    FTI_MAGIC,
+    FTI_VERSION,
+    INSTRUMENT_TYPE_2A03,
+    SEQUENCE_COUNT_2A03,
+    SEQUENCE_DISABLED,
+    SEQUENCE_ENABLED,
+    SequenceKind,
+)
+from sampletones_core.famitracker.model.instrument import Instrument2A03
+from sampletones_core.famitracker.model.sequence import InstrumentSequence
 from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils.serialization import save_binary
 
 
-def write_fti(
-    filename: Pathlike,
-    instrument_name: str,
-    volume: Optional[np.ndarray] = None,
-    arpeggio: Optional[np.ndarray] = None,
-    pitch: Optional[np.ndarray] = None,
-    hi_pitch: Optional[np.ndarray] = None,
-    duty_cycle: Optional[np.ndarray] = None,
-    volume_loop: int = -1,
-    arpeggio_loop: int = -1,
-    pitch_loop: int = -1,
-    hi_pitch_loop: int = -1,
-    duty_cycle_loop: int = -1,
-    volume_release: int = -1,
-    arpeggio_release: int = -1,
-    pitch_release: int = -1,
-    hi_pitch_release: int = -1,
-    duty_cycle_release: int = -1,
-    volume_setting: int = 0,
-    arpeggio_setting: int = 0,
-    pitch_setting: int = 0,
-    hi_pitch_setting: int = 0,
-    duty_cycle_setting: int = 0,
-) -> None:
-    with open(filename, "wb") as file:
-        file.write(b"FTI")
-        file.write(b"2.4")
+def _write_header(writer: BinaryWriter) -> None:
+    writer.write_bytes(FTI_MAGIC)
+    writer.write_bytes(FTI_VERSION)
 
-        instrument_type_2a03 = 1
-        file.write(struct.pack("<B", instrument_type_2a03))
 
-        name_bytes = instrument_name.encode("utf-8")
-        file.write(struct.pack("<I", len(name_bytes)))
-        file.write(name_bytes)
+def _write_type_and_name(writer: BinaryWriter, instrument: Instrument2A03) -> None:
+    writer.write_uint8(INSTRUMENT_TYPE_2A03)
+    writer.write_counted_string(instrument.name)
 
-        sequences = [
-            (volume, volume_loop, volume_release, volume_setting),
-            (arpeggio, arpeggio_loop, arpeggio_release, arpeggio_setting),
-            (pitch, pitch_loop, pitch_release, pitch_setting),
-            (hi_pitch, hi_pitch_loop, hi_pitch_release, hi_pitch_setting),
-            (
-                duty_cycle,
-                duty_cycle_loop,
-                duty_cycle_release,
-                duty_cycle_setting,
-            ),
-        ]
 
-        sequence_count_2a03 = 5
-        file.write(struct.pack("<b", sequence_count_2a03))
+def _write_sequence(writer: BinaryWriter, sequence: InstrumentSequence) -> None:
+    if not sequence.enabled:
+        writer.write_int8(SEQUENCE_DISABLED)
+        return
 
-        for sequence_data, loop_point, release_point, setting in sequences:
-            if sequence_data is not None and len(sequence_data) > 0:
-                sequence_enabled = 1
-                file.write(struct.pack("<b", sequence_enabled))
+    writer.write_int8(SEQUENCE_ENABLED)
+    writer.write_uint32(len(sequence.items))
+    writer.write_int32(sequence.loop_point)
+    writer.write_int32(sequence.release_point)
+    writer.write_uint32(sequence.setting)
+    for item in sequence.items:
+        writer.write_int8(item)
 
-                sequence_length = len(sequence_data)
-                file.write(struct.pack("<I", sequence_length))
 
-                file.write(struct.pack("<i", loop_point))
-                file.write(struct.pack("<i", release_point))
-                file.write(struct.pack("<I", setting))
+def _write_sequences(writer: BinaryWriter, instrument: Instrument2A03) -> None:
+    writer.write_int8(SEQUENCE_COUNT_2A03)
+    for kind in SequenceKind:
+        _write_sequence(writer, instrument.sequences[kind])
 
-                for item in sequence_data:
-                    file.write(struct.pack("<b", int(item)))
-            else:
-                sequence_disabled = 0
-                file.write(struct.pack("<b", sequence_disabled))
 
-        dpcm_assignment_count = 0
-        dpcm_sample_count = 0
-        file.write(struct.pack("<I", dpcm_assignment_count))
-        file.write(struct.pack("<I", dpcm_sample_count))
+def _write_empty_dpcm_section(writer: BinaryWriter) -> None:
+    writer.write_uint32(EMPTY_DPCM_ASSIGNMENTS)
+    writer.write_uint32(EMPTY_DPCM_SAMPLES)
+
+
+def instrument_to_fti_bytes(instrument: Instrument2A03) -> bytes:
+    """Serializes a 2A03 instrument to the FamiTracker ``.fti`` byte layout."""
+    writer = BinaryWriter()
+    _write_header(writer)
+    _write_type_and_name(writer, instrument)
+    _write_sequences(writer, instrument)
+    _write_empty_dpcm_section(writer)
+    return writer.data
+
+
+def write_fti(filepath: Pathlike, instrument: Instrument2A03) -> None:
+    """Writes a 2A03 instrument to a ``.fti`` file."""
+    save_binary(filepath, instrument_to_fti_bytes(instrument))

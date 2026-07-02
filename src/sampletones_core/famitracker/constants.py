@@ -92,6 +92,12 @@ NO_LOOP_POINT: Final[int] = -1
 NO_RELEASE_POINT: Final[int] = -1
 DEFAULT_SEQUENCE_SETTING: Final[int] = 0
 LOOP_FROM_START: Final[int] = 0
+SEQUENCE_ENABLED: Final[int] = 1
+SEQUENCE_DISABLED: Final[int] = 0
+
+# Empty DPCM section (DPCM is empty by design)
+EMPTY_DPCM_ASSIGNMENTS: Final[int] = 0
+EMPTY_DPCM_SAMPLES: Final[int] = 0
 
 # PARAMS defaults
 EXPANSION_NONE: Final[int] = 0
