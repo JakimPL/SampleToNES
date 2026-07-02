@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class HistoryEntryViewModel(BaseModel, frozen=True):
     index: int
-    label: str
+    text: str
     is_current: bool
     is_future: bool
 

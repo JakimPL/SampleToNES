@@ -1,4 +1,4 @@
-from typing import Any, Callable, Final, Optional
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -18,10 +18,8 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.view_model.sequencer.history import HistoryViewModel
+from sampletones_application.view_model.sequencer.history import HistoryEntryViewModel, HistoryViewModel
 from sampletones_shared.types.application import Sender
-
-_FUTURE_TEXT_COLOR: Final[tuple[int, int, int, int]] = (128, 128, 128, 255)
 
 
 class GUISequencerHistoryPanel(GUIPanel):
@@ -46,12 +44,28 @@ class GUISequencerHistoryPanel(GUIPanel):
         self.on_jump_to: Optional[Callable[[int], None]] = None
 
         self._lbl_history = language_manager[
-            Page.SEQUENCER, Panel.HISTORY, TextType.LABEL, SequencerHistoryElements.HISTORY_TEXT
+            Page.SEQUENCER,
+            Panel.HISTORY,
+            TextType.LABEL,
+            SequencerHistoryElements.HISTORY_TEXT,
         ]
-        self._lbl_undo = language_manager[Page.SEQUENCER, Panel.HISTORY, TextType.LABEL, SequencerHistoryElements.UNDO]
-        self._lbl_redo = language_manager[Page.SEQUENCER, Panel.HISTORY, TextType.LABEL, SequencerHistoryElements.REDO]
+        self._lbl_undo = language_manager[
+            Page.SEQUENCER,
+            Panel.HISTORY,
+            TextType.LABEL,
+            SequencerHistoryElements.UNDO,
+        ]
+        self._lbl_redo = language_manager[
+            Page.SEQUENCER,
+            Panel.HISTORY,
+            TextType.LABEL,
+            SequencerHistoryElements.REDO,
+        ]
         self._lbl_empty = language_manager[
-            Page.SEQUENCER, Panel.HISTORY, TextType.LABEL, SequencerHistoryElements.EMPTY
+            Page.SEQUENCER,
+            Panel.HISTORY,
+            TextType.LABEL,
+            SequencerHistoryElements.EMPTY,
         ]
 
         super().__init__(
@@ -62,9 +76,14 @@ class GUISequencerHistoryPanel(GUIPanel):
     def create_panel(self) -> None:
         with dpg.theme() as self._future_theme:
             with dpg.theme_component(dpg.mvAll):
-                dpg.add_theme_color(dpg.mvThemeCol_Text, _FUTURE_TEXT_COLOR)
+                dpg.add_theme_color(dpg.mvThemeCol_Text, self._layout.colors.history_future)
 
-        with dpg.group(tag=self.tag, parent=self.parent):
+        with dpg.child_window(
+            tag=self.tag,
+            parent=self.parent,
+            height=self._layout.history.height,
+            border=False,
+        ):
             dpg.add_separator()
             header = dpg.add_text(self._lbl_history)
             FontRegistry.bind_to_item(header, Font.BOLD)
@@ -82,7 +101,7 @@ class GUISequencerHistoryPanel(GUIPanel):
             dpg.add_child_window(
                 tag=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
                 width=-1,
-                height=self._layout.history.height,
+                height=-1,
                 border=True,
             )
 
@@ -92,19 +111,24 @@ class GUISequencerHistoryPanel(GUIPanel):
         dpg.delete_item(TAG_SEQUENCER_HISTORY_WINDOW_LIST, children_only=True)
 
         if view_model.is_empty:
-            dpg.add_text(self._lbl_empty, parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST)
+            empty = dpg.add_text(self._lbl_empty, parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST)
+            FontRegistry.bind_to_item(empty, Font.REGULAR_SMALL)
             return
 
-        for entry in view_model.entries:
-            selectable = dpg.add_selectable(
-                label=entry.label,
-                parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
-                default_value=entry.is_current,
-                user_data=entry.index,
-                callback=self._on_entry_clicked,
-            )
-            if entry.is_future:
-                dpg.bind_item_theme(selectable, self._future_theme)
+        for entry in reversed(view_model.entries):
+            self._create_entry(entry)
+
+    def _create_entry(self, entry: HistoryEntryViewModel) -> None:
+        selectable = dpg.add_selectable(
+            label=entry.text,
+            default_value=entry.is_current,
+            user_data=entry.index,
+            callback=self._on_entry_clicked,
+            parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
+        )
+        FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
+        if entry.is_future:
+            dpg.bind_item_theme(selectable, self._future_theme)
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_HISTORY_GROUP_ACTIONS, enabled=enabled)

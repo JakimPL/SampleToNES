@@ -517,5 +517,13 @@ class TestUndoableWrapper:
         wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target)
         wrapped(150)
 
-        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO)
+        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail=None)
         target.assert_called_once_with(150)
+
+    def test_wrapped_call_passes_computed_detail(self, history_coordinator: SequencerTabCoordinator) -> None:
+        target = MagicMock()
+
+        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda value: f"v{value}")
+        wrapped(150)
+
+        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail="v150")

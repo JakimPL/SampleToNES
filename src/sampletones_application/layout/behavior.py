@@ -16,10 +16,6 @@ class UiBehavior(BaseModel, frozen=True):
     status_bar_display_time: float
 
 
-class HistoryBehavior(BaseModel, frozen=True):
-    budget: int
-
-
 class TreeBehavior(BaseModel, frozen=True):
     priority_add_handler: int
     priority_add_node: int
@@ -34,7 +30,6 @@ class MainBehavior(BaseModel, frozen=True):
 class BehaviorConfig(BaseModel, frozen=True):
     scheduling: SchedulingBehavior
     ui: UiBehavior
-    history: HistoryBehavior
     main: MainBehavior
     instructions: TreeBehavior
     reconstructions: TreeBehavior

@@ -1,12 +1,14 @@
-from typing import Tuple
+from typing import Final, Tuple
 
 import pytest
 
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.errors import UntrackedMutationError
-from sampletones_application.logic.history.manager import DEFAULT_HISTORY_BUDGET, HistoryManager
+from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+
+DEFAULT_HISTORY_BUDGET: Final[int] = 10
 
 
 def _history(

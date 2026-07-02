@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_application.config.session.application.audio import AudioConfig
 from sampletones_application.config.session.application.favorites import Favorites
+from sampletones_application.config.session.application.history import HistoryConfig
 from sampletones_core.data import Metadata
 
 
@@ -19,4 +20,8 @@ class ApplicationConfig(BaseModel):
     favorites: Favorites = Field(
         default_factory=Favorites,
         description="The user's favorite files and recent files.",
+    )
+    history: HistoryConfig = Field(
+        default_factory=HistoryConfig,
+        description="The undo/redo history preferences.",
     )

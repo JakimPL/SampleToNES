@@ -88,6 +88,24 @@ class MenuBar:
             TextType.LABEL,
             MenuElements.ITEM_PROJECT_CLOSE,
         ]
+        self._lbl_group_edit = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.GROUP_EDIT,
+        ]
+        self._lbl_item_edit_undo = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_EDIT_UNDO,
+        ]
+        self._lbl_item_edit_redo = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_EDIT_REDO,
+        ]
         self._lbl_group_reconstruction = language_manager[
             Page.GLOBAL,
             Panel.MENU,
@@ -256,6 +274,17 @@ class MenuBar:
                     ShortcutId.CLOSE_PROJECT,
                     tag=TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
                     label=self._lbl_item_project_close,
+                    enabled=state.project_open,
+                )
+            with dpg.menu(label=self._lbl_group_edit):
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.UNDO,
+                    label=self._lbl_item_edit_undo,
+                    enabled=state.project_open,
+                )
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.REDO,
+                    label=self._lbl_item_edit_redo,
                     enabled=state.project_open,
                 )
             with dpg.menu(label=self._lbl_group_reconstruction):

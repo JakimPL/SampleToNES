@@ -65,11 +65,13 @@ class SequencerColors(BaseModel, frozen=True):
     order_column_current: RGBA
     order_column_playing: RGBA
     playback_row: RGBA
+    history_future: RGBA
     subcolumns: SubcolumnColors
 
 
 class HistoryLayout(BaseModel, frozen=True):
     height: int
+    margin: int
 
 
 class SequencerLayout(BaseModel, frozen=True):

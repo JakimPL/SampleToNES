@@ -140,7 +140,7 @@ class Application:
         self.project_controller: ProjectController = ProjectController(self.project_manager)
         self.history: HistoryManager = HistoryManager(
             self.project_controller,
-            budget=self.layout.behavior.history.budget,
+            budget=self.session_manager.history_budget,
             strict=self.deployment.strict_history,
         )
         self.project_controller.on_mutation = self.history.handle_mutation

@@ -12,6 +12,7 @@ from sampletones_application.view_model.sequencer.samples import (
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.utils.display import display_sample
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -79,6 +80,10 @@ class SequencerSamplesLogic(CallbackMixin):
 
     def sample_name(self, sample_id: str) -> str:
         return self._controller.project.samples[sample_id].name
+
+    def sample_position(self, sample_id: str) -> str:
+        """Returns the sample's hex list position, matching how the tracker labels it."""
+        return display_sample(samples=self._controller.project.samples, sample_id=sample_id)
 
     def remove_sample(self, sample_id: str) -> None:
         self._controller.remove_sample(sample_id)

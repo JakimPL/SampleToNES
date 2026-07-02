@@ -62,4 +62,5 @@ class HistoryEntry:
     project: Project
     action: HistoryAction
     created: datetime
+    detail: Optional[str] = None
     fingerprint: Optional[str] = None
