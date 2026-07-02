@@ -6,7 +6,7 @@ from typing import Any, Optional
 import numpy as np
 import pytest
 
-from sampletones_core.array import xp
+from sampletones_shared.array import xp
 from sampletones_shared.utils.transformations.functions import (
     energy,
     exp,

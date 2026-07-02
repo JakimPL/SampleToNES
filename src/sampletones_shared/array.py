@@ -35,7 +35,7 @@ try:
     import cupy.typing as xp_typing
 
     CUPY_AVAILABLE = True  # pylint: disable=invalid-name
-except (ImportError, ModuleNotFoundError):
+except (AttributeError, ImportError, ModuleNotFoundError):
     import warnings
 
     from sampletones_shared.exceptions import CuPyNotInstalledWarning
