@@ -11,6 +11,9 @@ scheduling:
 ui:
   status_bar_display_time: 2.0
 
+history:
+  budget: 500
+
 main:
   fps_update_interval: 2.0
   max_workers_minimum: 1

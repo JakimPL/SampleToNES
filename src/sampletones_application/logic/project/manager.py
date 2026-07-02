@@ -59,3 +59,13 @@ class ProjectManager:
 
     def mark_updated(self) -> None:
         self._session.mark_updated()
+
+    def install(self, project: Project) -> None:
+        """Swaps in a project restored from history, keeping the open document dirty.
+
+        Undo and redo reinstall a previously captured project; the session stays
+        marked as having unsaved changes because the restored state differs from
+        the last save until the user saves again.
+        """
+        self._current = project
+        self._session.mark_updated()

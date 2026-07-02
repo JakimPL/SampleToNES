@@ -12,6 +12,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.config.deployment import DeploymentConfig, load_deployment_config
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
@@ -46,6 +47,7 @@ from sampletones_application.logic.reconstruction.browser_manager import Browser
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import (
     BEHAVIOR_DIRECTORY,
+    DEPLOYMENT_CONFIG_PATH,
     LANG_EN,
     LAYOUT_DIRECTORY,
     THEME_DIRECTORY,
@@ -101,6 +103,8 @@ class Application:
     """
 
     def __init__(self, config_path: Optional[Path] = None) -> None:
+        self.deployment: DeploymentConfig = load_deployment_config(DEPLOYMENT_CONFIG_PATH)
+        logger.set_level(self.deployment.log_level.to_logging_level())
         self.layout: LayoutConfig = load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
         self.language_manager: LanguageManager = LanguageManager(LANG_EN)
         self.dialogs: DialogsRenderer = DialogsRenderer(
