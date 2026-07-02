@@ -4,9 +4,10 @@ from typing import Dict, Tuple
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_core.famitracker.constants import ChannelId, Machine
 from sampletones_core.famitracker.model.instrument import Instrument2A03
 from sampletones_core.famitracker.model.pattern import PatternData
+from sampletones_core.famitracker.specification.channels import ChannelId
+from sampletones_core.famitracker.specification.parameters import Machine
 
 OrderFrame = Tuple[int, ...]
 """One order position: the pattern index each channel plays, in channel-id order."""

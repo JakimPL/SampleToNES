@@ -12,9 +12,10 @@ noise, DPCM), with the DPCM channel and DPCM sample bank always empty by design.
 
 All multi-byte integers are **little-endian**. Field types below use `uint8`,
 `int8`, `uint32`, `int32`; strings are noted per field. Every constant referenced
-here has a named counterpart in `sampletones_core/famitracker/constants.py`, and
-every block has its own writer function so this specification is readable straight
-from the code.
+here has a named counterpart under `sampletones_core/famitracker/specification/`
+(grouped by unit: `file`, `blocks`, `channels`, `sequences`, `instruments`,
+`patterns`, `parameters`), and every block has its own writer function so this
+specification is readable straight from the code.
 
 ## A. Binary formats
 

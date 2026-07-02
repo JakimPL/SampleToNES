@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 from sampletones_core.famitracker.binary import BinaryWriter
-from sampletones_core.famitracker.constants import (
+from sampletones_core.famitracker.model.instrument import Instrument2A03
+from sampletones_core.famitracker.model.sequence import InstrumentSequence
+from sampletones_core.famitracker.specification.file import FTI_MAGIC, FTI_VERSION
+from sampletones_core.famitracker.specification.instruments import (
     EMPTY_DPCM_ASSIGNMENTS,
     EMPTY_DPCM_SAMPLES,
-    FTI_MAGIC,
-    FTI_VERSION,
     INSTRUMENT_TYPE_2A03,
+)
+from sampletones_core.famitracker.specification.sequences import (
     SEQUENCE_COUNT_2A03,
     SEQUENCE_DISABLED,
     SEQUENCE_ENABLED,
     SequenceKind,
 )
-from sampletones_core.famitracker.model.instrument import Instrument2A03
-from sampletones_core.famitracker.model.sequence import InstrumentSequence
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import save_binary
 

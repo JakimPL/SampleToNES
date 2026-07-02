@@ -4,7 +4,7 @@ from typing import Tuple
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
-from sampletones_core.famitracker.constants import (
+from sampletones_core.famitracker.specification.sequences import (
     DEFAULT_SEQUENCE_SETTING,
     NO_LOOP_POINT,
     NO_RELEASE_POINT,

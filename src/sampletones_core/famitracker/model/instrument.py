@@ -4,8 +4,8 @@ from typing import Dict
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_core.famitracker.constants import SequenceKind
 from sampletones_core.famitracker.model.sequence import InstrumentSequence
+from sampletones_core.famitracker.specification.sequences import SequenceKind
 
 
 class Instrument2A03(BaseModel):

@@ -4,28 +4,6 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.famitracker.constants import (
-    CHANNEL_COUNT_2A03,
-    DEFAULT_COPYRIGHT,
-    DEFAULT_EFFECT_COLUMNS,
-    DEFAULT_HIGHLIGHT_FIRST,
-    DEFAULT_HIGHLIGHT_SECOND,
-    DEFAULT_VIBRATO_STYLE,
-    DPCM_EMPTY_PATTERN_INDEX,
-    EMPTY_EFFECT,
-    EMPTY_EFFECT_PARAM,
-    EMPTY_INSTRUMENT,
-    EMPTY_NOTE,
-    EMPTY_VOLUME,
-    EXPANSION_NONE,
-    GENERATOR_NAME_TO_CHANNEL_ID,
-    MAX_FRAMES,
-    MAX_INSTRUMENTS,
-    MAX_PATTERN_INDEX,
-    MIN_OCTAVE,
-    ChannelId,
-    NoteValue,
-)
 from sampletones_core.famitracker.model.instrument import Instrument2A03
 from sampletones_core.famitracker.model.module import (
     FamiTrackerModule,
@@ -41,6 +19,32 @@ from sampletones_core.famitracker.notes import (
     resolve_machine,
 )
 from sampletones_core.famitracker.sequences import features_to_instrument_sequences
+from sampletones_core.famitracker.specification.channels import (
+    CHANNEL_COUNT_2A03,
+    GENERATOR_NAME_TO_CHANNEL_ID,
+    ChannelId,
+)
+from sampletones_core.famitracker.specification.instruments import MAX_INSTRUMENTS
+from sampletones_core.famitracker.specification.parameters import (
+    DEFAULT_COPYRIGHT,
+    DEFAULT_HIGHLIGHT_FIRST,
+    DEFAULT_HIGHLIGHT_SECOND,
+    DEFAULT_VIBRATO_STYLE,
+    EXPANSION_NONE,
+)
+from sampletones_core.famitracker.specification.patterns import (
+    DEFAULT_EFFECT_COLUMNS,
+    DPCM_EMPTY_PATTERN_INDEX,
+    EMPTY_EFFECT,
+    EMPTY_EFFECT_PARAM,
+    EMPTY_INSTRUMENT,
+    EMPTY_NOTE,
+    EMPTY_VOLUME,
+    MAX_FRAMES,
+    MAX_PATTERN_INDEX,
+    MIN_OCTAVE,
+    NoteValue,
+)
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.channel import Channel

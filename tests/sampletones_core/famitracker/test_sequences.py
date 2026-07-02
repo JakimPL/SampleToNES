@@ -1,11 +1,11 @@
 import numpy as np
 
-from sampletones_core.famitracker.constants import (
+from sampletones_core.famitracker.sequences import features_to_instrument_sequences
+from sampletones_core.famitracker.specification.sequences import (
     LOOP_FROM_START,
     NO_LOOP_POINT,
     SequenceKind,
 )
-from sampletones_core.famitracker.sequences import features_to_instrument_sequences
 
 
 class TestFeaturesToInstrumentSequences:

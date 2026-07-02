@@ -4,7 +4,7 @@ from typing import Tuple
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_core.famitracker.constants import ChannelId
+from sampletones_core.famitracker.specification.channels import ChannelId
 
 
 class NoteCell(BaseModel):

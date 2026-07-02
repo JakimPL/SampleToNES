@@ -4,7 +4,7 @@ import struct
 from contextlib import contextmanager
 from typing import Iterator
 
-from sampletones_core.famitracker.constants import BLOCK_NAME_LENGTH, Block
+from sampletones_core.famitracker.specification.blocks import BLOCK_NAME_LENGTH, Block
 
 
 class BinaryWriter:

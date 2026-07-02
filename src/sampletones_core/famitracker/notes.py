@@ -3,17 +3,19 @@ from __future__ import annotations
 from typing import Tuple
 
 from sampletones_core.constants.general import NUM_PERIODS
-from sampletones_core.famitracker.constants import (
+from sampletones_core.famitracker.model.pattern import NoteCell
+from sampletones_core.famitracker.specification.parameters import (
     ENGINE_SPEED_MACHINE_DEFAULT,
+    NTSC_FREQUENCY,
+    PAL_FREQUENCY,
+    Machine,
+)
+from sampletones_core.famitracker.specification.patterns import (
     FT_MAX_PITCH,
     FT_MIN_PITCH,
     NOTE_RANGE,
-    NTSC_FREQUENCY,
-    PAL_FREQUENCY,
     PITCH_OCTAVE_OFFSET,
-    Machine,
 )
-from sampletones_core.famitracker.model.pattern import NoteCell
 
 
 def pitch_to_note_cell(pitch: int) -> NoteCell:

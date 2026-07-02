@@ -3,14 +3,14 @@ from typing import List
 
 import pytest
 
-from sampletones_core.famitracker.constants import (
-    ENGINE_SPEED_MACHINE_DEFAULT,
-    Machine,
-)
 from sampletones_core.famitracker.notes import (
     period_to_note_cell,
     pitch_to_note_cell,
     resolve_machine,
+)
+from sampletones_core.famitracker.specification.parameters import (
+    ENGINE_SPEED_MACHINE_DEFAULT,
+    Machine,
 )
 
 

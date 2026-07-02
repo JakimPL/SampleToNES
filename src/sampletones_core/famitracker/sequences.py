@@ -4,12 +4,12 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.famitracker.constants import (
+from sampletones_core.famitracker.model.sequence import InstrumentSequence
+from sampletones_core.famitracker.specification.sequences import (
     LOOP_FROM_START,
     NO_LOOP_POINT,
     SequenceKind,
 )
-from sampletones_core.famitracker.model.sequence import InstrumentSequence
 
 
 def _to_items(array: Optional[np.ndarray]) -> Tuple[int, ...]:
