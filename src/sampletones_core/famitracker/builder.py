@@ -29,6 +29,7 @@ from sampletones_core.famitracker.specification.parameters import (
     DEFAULT_COPYRIGHT,
     DEFAULT_HIGHLIGHT_FIRST,
     DEFAULT_HIGHLIGHT_SECOND,
+    DEFAULT_SPEED_SPLIT_POINT,
     DEFAULT_VIBRATO_STYLE,
     EXPANSION_NONE,
 )
@@ -224,6 +225,7 @@ def project_to_module(project: Project) -> FamiTrackerModule:
         vibrato_style=DEFAULT_VIBRATO_STYLE,
         highlight_first=DEFAULT_HIGHLIGHT_FIRST,
         highlight_second=DEFAULT_HIGHLIGHT_SECOND,
+        speed_split_point=DEFAULT_SPEED_SPLIT_POINT,
     )
     information = ModuleInformation(title=info.title, author=info.author, copyright=DEFAULT_COPYRIGHT)
 

@@ -156,6 +156,24 @@ carry across directly. The DPCM key-assignment table is empty by design.
 FamiTracker bounds several quantities that the SampleToNES `Project` currently
 leaves looser. The exporter guards these limits and raises when a project exceeds
 them, so it never writes a corrupt file. Enforcing them on the domain model — so the
-editor prevents reaching an unexportable state — is planned as a follow-up phase.
+editor prevents reaching an unexportable state — is planned as a follow-up phase; this
+table is that checklist.
 
-_This section is completed in Phase 5, once the exporter's guards are in place._
+| Quantity | FamiTracker limit | Project bound today | Exporter behaviour |
+| --- | --- | --- | --- |
+| Instruments | 64 total | unbounded (1–4 per sample, so ≈16–64 samples) | raises when the distinct slices exceed 64 |
+| Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
+| Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
+| Order frames | 128 | unbounded | raises when the order exceeds 128 frames |
+| Pattern length (rows) | 256 | 1–256 (`rows_per_pattern`) | matches; no guard needed |
+| Note range | C-0..B-7 (pitch 24–119) | `initial_pitch` 33–119 + `transpose` −24..+36 can exceed it | clamps to the nearest playable note (fidelity loss at the extremes) |
+| Title / author | 32 bytes each | 64 characters | truncates to 32 bytes |
+| Comment | free text (COMMENTS block) | 65536 characters | carried in full |
+| Tempo / speed | engine-dependent (split at row `speed_split_point`) | tempo 1–300, speed 1–31 | written verbatim from settings |
+| DPCM samples | 64 | not modelled | always empty by design |
+
+The exporter also reserves a per-channel empty pattern index (`max used index + 1`)
+for order slots the song leaves unset; a channel that already fills indices up to
+127 leaves no room for it, which the exporter reports rather than emitting a corrupt
+order. When the domain model grows to enforce these limits, the editor can prevent
+reaching a state the exporter would reject.

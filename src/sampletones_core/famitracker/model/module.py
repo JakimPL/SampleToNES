@@ -25,6 +25,7 @@ class ModuleParameters(BaseModel):
     vibrato_style: int
     highlight_first: int
     highlight_second: int
+    speed_split_point: int
 
 
 class ModuleInformation(BaseModel):
