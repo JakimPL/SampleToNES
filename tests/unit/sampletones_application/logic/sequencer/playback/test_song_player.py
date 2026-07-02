@@ -10,7 +10,7 @@ from sampletones_application.view_model.sequencer.song_player import SongPlayerV
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
-from tests.sampletones_application.logic.sequencer.playback.conftest import make_controller
+from tests.unit.sampletones_application.logic.sequencer.playback.conftest import make_controller
 
 
 def _make_logic(*, is_open: bool = True) -> SongPlayerLogic:

@@ -8,7 +8,8 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERENCE_TEMPO
-from tests.sampletones_application.logic.sequencer.playback.conftest import (
+from tests.suite.scenario import BaseTestScenario, ScenarioStep
+from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     add_sample,
     make_controller,
     make_pulse_reconstruction,
@@ -16,7 +17,6 @@ from tests.sampletones_application.logic.sequencer.playback.conftest import (
     place_note_off,
     place_row,
 )
-from tests.suite.scenario import BaseTestScenario, ScenarioStep
 
 
 @dataclass
