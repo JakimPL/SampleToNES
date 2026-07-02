@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.logic.history.action import HistoryAction
 from sampletones_core.constants.enums import GeneratorName
 
 
@@ -17,6 +18,7 @@ def coordinator() -> SequencerTabCoordinator:
     with samples and a matching reconstruction frequency (60 Hz); individual tests override.
     """
     instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
     instance._project_controller = MagicMock()
     instance._project_controller.is_open = True
     instance._project_controller.has_samples = True
@@ -38,6 +40,7 @@ def coordinator() -> SequencerTabCoordinator:
 def samples_coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the collaborators the samples-menu handlers touch."""
     instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
     instance._sequencer_samples_logic = MagicMock()
     instance._dialogs = MagicMock()
     instance._ttl_remove_sample = "Remove sample"
@@ -100,6 +103,7 @@ class TestSubmitRename:
 def nes_frequency_coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the collaborators the NES-frequency change handler touches."""
     instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
     instance._sequencer_grid_logic = MagicMock()
     instance._sequencer_grid_logic.settings.nes_frequency = 60
     instance._project_controller = MagicMock()
@@ -479,3 +483,39 @@ class TestImportFrequencyCheck:
 
         coordinator._sequencer_browser_logic.add_reconstruction.assert_called_once()
         coordinator._on_tab_switch.assert_called_once_with(Tab.SEQUENCER)
+
+
+@pytest.fixture
+def history_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the history collaborator wired."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
+    return instance
+
+
+class TestHistoryDelegation:
+    def test_undo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator.undo()
+
+        history_coordinator._history.undo.assert_called_once_with()
+
+    def test_redo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator.redo()
+
+        history_coordinator._history.redo.assert_called_once_with()
+
+    def test_jump_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator.jump_to_history(3)
+
+        history_coordinator._history.jump_to.assert_called_once_with(3)
+
+
+class TestUndoableWrapper:
+    def test_wrapped_call_runs_inside_a_transaction(self, history_coordinator: SequencerTabCoordinator) -> None:
+        target = MagicMock()
+
+        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target)
+        wrapped(150)
+
+        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO)
+        target.assert_called_once_with(150)

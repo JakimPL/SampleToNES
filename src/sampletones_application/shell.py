@@ -76,6 +76,8 @@ class ShortcutBindings:
     play_from_start: Callback
     stop: Callback
     toggle_autoplay: Callback
+    undo: Callback
+    redo: Callback
 
 
 class ApplicationShell:
@@ -272,6 +274,16 @@ class ApplicationShell:
             ShortcutId.TOGGLE_AUTOPLAY,
             Shortcut(dpg.mvKey_P, (Modifier.CTRL,)),
             bindings.toggle_autoplay,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.UNDO,
+            Shortcut(dpg.mvKey_Z, (Modifier.CTRL,)),
+            bindings.undo,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.REDO,
+            Shortcut(dpg.mvKey_Y, (Modifier.CTRL,)),
+            bindings.redo,
         )
 
         self._shortcut_manager.bind_all()

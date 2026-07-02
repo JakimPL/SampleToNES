@@ -308,6 +308,58 @@ sequenceDiagram
 
 ---
 
+## History & Undo
+
+Undo/redo is session-scoped and owned by `HistoryManager` (`logic/history/`). It
+upholds two invariants:
+
+1. **Completeness** — every mutation of project state belongs to the history.
+2. **Reversibility determinism** — any composition of undos and redos that returns
+   the cursor to an index reproduces that index's exact state.
+
+### Engine: snapshot + cursor
+
+`HistoryManager` holds an ordered list of whole-project snapshots and a cursor;
+the live project always equals a restoration of `entries[cursor]`. Undo and redo
+move the cursor and reinstall the snapshot there — they never mutate a stored
+snapshot, so reversibility determinism holds by construction. Restore installs a
+fresh copy through `ProjectController.replace_project`, which fires
+`on_project_replaced` to rebuild the tabs exactly as loading a project does.
+
+A snapshot (`snapshot_project`) deep-copies the light structure (song, settings,
+metadata, sample shells) but **shares each `Reconstruction` by reference**.
+Reconstruction edits are copy-on-write: `RegenerationService` emits a *new*
+reconstruction and the apply path installs it via
+`ProjectController.replace_sample_reconstruction`, so a shared reconstruction
+never mutates in place and the multi-megabyte audio arrays are never duplicated
+for an ordinary edit.
+
+### Grouping vs. detection
+
+- **Grouping — coordinators.** Each state-changing coordinator intent runs inside
+  `HistoryManager.transaction(HistoryAction.X)` (the sequencer wraps its hooks via
+  `_undoable`). All controller calls a gesture makes collapse into one entry;
+  nested transactions coalesce.
+- **Detection — the controller.** `ProjectController._touch()` fires `on_mutation`
+  on every fine-grained mutation. `HistoryManager.handle_mutation` counts those
+  inside a transaction and rejects any that occur outside one: under strict
+  deployment it raises `UntrackedMutationError`; otherwise it self-heals by
+  recording the mutation as its own entry. This makes completeness a checkable
+  property. Under strict deployment each committed snapshot also carries a
+  fingerprint, and every restore verifies the reproduced project matches it.
+
+### Configuration
+
+The entry budget is an application knob (`behavior.history.budget`, default 500).
+Strict checking and log level are deployment knobs
+(`behavior/deployment.yaml` → `DeploymentConfig`). Both models are authoritative
+from YAML with no field defaults.
+
+Standalone reconstruction documents (a reconstruction loaded from disk that is not
+a project sample) will gain their own history later, reusing the same engine.
+
+---
+
 ## Error Handling Policy
 
 Each layer has a distinct role in the error-handling chain. The rule of thumb is: **errors propagate up until they reach a layer that can recover meaningfully and communicate the result to the user.**

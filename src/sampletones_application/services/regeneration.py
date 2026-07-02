@@ -17,6 +17,14 @@ RegenerationResult = ServiceSuccess[Reconstruction] | ServiceError | ServiceCanc
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
+    """Recomputes one generator's instructions and audio for a reconstruction.
+
+    The result is a fresh reconstruction carrying the updated generator data; the
+    source reconstruction is left intact. Producing a new object lets callers swap
+    the edited reconstruction in while any history snapshot that shares the prior
+    object stays valid.
+    """
+
     def __init__(self, priority: int = 0) -> None:
         super().__init__(priority)
         self._executor = SingleThreadExecutor()
@@ -66,11 +74,12 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 [generator(instruction, save=True) for instruction in instructions],  # type: ignore[arg-type]
             )
 
-            reconstruction.update_generator_data(
+            updated = reconstruction.model_copy(deep=True)
+            updated.update_generator_data(
                 generator_name,
                 instructions,
                 audio,
             )
-            self._emit(ServiceSuccess(value=reconstruction))
+            self._emit(ServiceSuccess(value=updated))
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self._emit(ServiceError(exception=exception))

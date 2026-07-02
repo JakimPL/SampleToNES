@@ -120,7 +120,8 @@ class TestRegenerationServiceRun:
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
-        assert results[0].value is reconstruction
+        assert results[0].value is reconstruction.model_copy.return_value
+        assert results[0].value is not reconstruction
 
     def test_run_updates_feature_before_synthesis(self, synthesis_mocks, reconstruction) -> None:
         service = RegenerationService()
@@ -138,7 +139,7 @@ class TestRegenerationServiceRun:
 
         assert features[feature_key] == new_value
 
-    def test_run_updates_reconstruction(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_updates_reconstruction_copy(self, synthesis_mocks, reconstruction) -> None:
         service = RegenerationService()
 
         service._run(
@@ -149,8 +150,10 @@ class TestRegenerationServiceRun:
             1,
         )
 
-        reconstruction.update_generator_data.assert_called_once()
-        call_args = reconstruction.update_generator_data.call_args
+        updated = reconstruction.model_copy.return_value
+        updated.update_generator_data.assert_called_once()
+        reconstruction.update_generator_data.assert_not_called()
+        call_args = updated.update_generator_data.call_args
         assert call_args.args[0] == synthesis_mocks.generator_name
 
     def test_run_calls_generator_for_each_instruction(self, synthesis_mocks, reconstruction) -> None:

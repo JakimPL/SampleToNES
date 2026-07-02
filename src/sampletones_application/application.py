@@ -37,6 +37,8 @@ from sampletones_application.coordinators.reconstructions import (
 )
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig, load_layout_config
+from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
@@ -79,6 +81,7 @@ from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
@@ -135,6 +138,12 @@ class Application:
 
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)
+        self.history: HistoryManager = HistoryManager(
+            self.project_controller,
+            budget=self.layout.behavior.history.budget,
+            strict=self.deployment.strict_history,
+        )
+        self.project_controller.on_mutation = self.history.handle_mutation
 
         self.fps_timer: FPSTimer = FPSTimer()
 
@@ -183,6 +192,7 @@ class Application:
             layout=self.layout,
             on_tab_switch=self._set_current_tab,
             on_session_state_changed=self._on_reconstruction_state_changed,
+            on_reconstruction_updated=self._on_reconstruction_updated,
         )
 
         self._reconstructions_tab = ReconstructionsTabCoordinator(
@@ -250,6 +260,7 @@ class Application:
             shortcut_manager=self.shortcut_manager,
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
+            history=self.history,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -309,6 +320,7 @@ class Application:
         self._set_callbacks()
         self._main_tab.emit_initial_view()
         self._sequencer_tab.initialize()
+        self.history.reset()
         self.config_manager.update_gui()
         self._update_menu()
         self._update_add_to_sequencer_state()
@@ -339,6 +351,8 @@ class Application:
             play_from_start=self._play_from_start,
             stop=self._stop,
             toggle_autoplay=self._toggle_autoplay,
+            undo=self._sequencer_tab.undo,
+            redo=self._sequencer_tab.redo,
         )
 
     def _setup_shell(self, bindings: ShortcutBindings) -> None:
@@ -555,8 +569,21 @@ class Application:
         feature_value: FeatureValue,
     ) -> None:
         self._reconstruction_coordinator.regenerate_instrument(generator_name, features, feature_key, feature_value)
-        if self._editing_project_sample():
-            self.project_controller.mark_updated()
+
+    def _on_reconstruction_updated(self, reconstruction: Reconstruction) -> None:
+        """Records a reconstruction edit against the project when it owns the sample.
+
+        Regeneration produces a fresh reconstruction. When the edited document is a
+        project sample, the sample adopts the new reconstruction as one history
+        entry; the copy-on-write swap keeps every prior snapshot's reconstruction
+        intact. A standalone reconstruction leaves the project untouched.
+        """
+        sample = self._owning_project_sample()
+        if sample is None:
+            return
+
+        with self.history.transaction(HistoryAction.EDIT_RECONSTRUCTION):
+            self.project_controller.replace_sample_reconstruction(sample.id, reconstruction)
 
     def _owning_project_sample(self) -> Optional[Sample]:
         reconstruction = self.reconstruction_manager.reconstruction

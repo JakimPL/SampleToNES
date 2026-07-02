@@ -34,6 +34,9 @@ tracker:
     transpose: 30
     volume: 18
 
+history:
+  height: 160
+
 colors:
   pattern_highlight: "#ffffff40"
   cell_cursor: "#4488ff60"

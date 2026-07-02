@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, ParamSpec
 
 import dearpygui.dearpygui as dpg
 
@@ -9,6 +9,7 @@ from sampletones_application.categories.elements.global_ import (
     GlobalMessageElements,
     MenuElements,
 )
+from sampletones_application.categories.elements.sequencer import SequencerHistoryActionElements
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -30,6 +31,8 @@ from sampletones_application.constants.sequencer import (
 )
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
@@ -45,6 +48,7 @@ from sampletones_application.logic.sequencer.samples import SequencerSamplesLogi
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
@@ -53,6 +57,10 @@ from sampletones_application.ui.panels.sequencer.song_player import GUISongPlaye
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.sequencer.history import (
+    HistoryEntryViewModel,
+    HistoryViewModel,
+)
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
@@ -64,6 +72,8 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 
+_UndoableParams = ParamSpec("_UndoableParams")
+
 
 class SequencerTabCoordinator:
     def __init__(
@@ -74,6 +84,7 @@ class SequencerTabCoordinator:
         shortcut_manager: ShortcutManager,
         browser_manager: BrowserManager,
         project_controller: ProjectController,
+        history: HistoryManager,
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -82,6 +93,7 @@ class SequencerTabCoordinator:
         on_tab_switch: Callable[[Tab], None],
     ) -> None:
         self._project_controller = project_controller
+        self._history = history
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_tab_switch = on_tab_switch
         self._layout = layout
@@ -228,36 +240,60 @@ class SequencerTabCoordinator:
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
+        self._sequencer_history_panel: GUISequencerHistoryPanel = GUISequencerHistoryPanel(
+            layout=layout.sequencer,
+            language_manager=language_manager,
+        )
 
         self._wire_callbacks()
 
     def _wire_callbacks(self) -> None:
         self._sequencer_module_panel.on_nes_frequency = self._request_nes_frequency_change
-        self._sequencer_module_panel.on_rows_per_pattern = self._sequencer_grid_logic.set_rows_per_pattern
-        self._sequencer_module_panel.on_tempo = self._sequencer_grid_logic.set_tempo
-        self._sequencer_module_panel.on_speed = self._sequencer_grid_logic.set_speed
-        self._sequencer_grid_panel.on_clear_row = self._on_clear_row
-        self._sequencer_grid_panel.on_clear_subcolumn = self._on_clear_subcolumn
-        self._sequencer_grid_panel.on_set_row = self._on_set_row
-        self._sequencer_grid_panel.on_set_note_off = self._on_set_note_off
+        self._sequencer_module_panel.on_rows_per_pattern = self._undoable(
+            HistoryAction.SET_ROWS_PER_PATTERN, self._sequencer_grid_logic.set_rows_per_pattern
+        )
+        self._sequencer_module_panel.on_tempo = self._undoable(
+            HistoryAction.SET_TEMPO, self._sequencer_grid_logic.set_tempo
+        )
+        self._sequencer_module_panel.on_speed = self._undoable(
+            HistoryAction.SET_SPEED, self._sequencer_grid_logic.set_speed
+        )
+        self._sequencer_grid_panel.on_clear_row = self._undoable(HistoryAction.CLEAR_ROW, self._on_clear_row)
+        self._sequencer_grid_panel.on_clear_subcolumn = self._undoable(
+            HistoryAction.CLEAR_SUBCOLUMN, self._on_clear_subcolumn
+        )
+        self._sequencer_grid_panel.on_set_row = self._undoable(HistoryAction.EDIT_ROW, self._on_set_row)
+        self._sequencer_grid_panel.on_set_note_off = self._undoable(HistoryAction.NOTE_OFF, self._on_set_note_off)
         self._sequencer_grid_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_grid_panel.on_play_from_row = self._on_grid_play_from_row
-        self._sequencer_grid_panel.on_adjust_transpose = self._on_adjust_transpose
-        self._sequencer_grid_panel.on_adjust_volume = self._on_adjust_volume
+        self._sequencer_grid_panel.on_adjust_transpose = self._undoable(
+            HistoryAction.ADJUST_TRANSPOSE, self._on_adjust_transpose
+        )
+        self._sequencer_grid_panel.on_adjust_volume = self._undoable(
+            HistoryAction.ADJUST_VOLUME, self._on_adjust_volume
+        )
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
         self._sequencer_order_panel.on_frame_selected = self._on_order_frame_selected
-        self._sequencer_order_panel.on_remove_requested = self._on_order_remove
-        self._sequencer_order_panel.on_duplicate_requested = self._on_order_duplicate
-        self._sequencer_order_panel.on_insert_requested = self._on_order_insert
-        self._sequencer_order_panel.on_clear_requested = self._on_order_clear
+        self._sequencer_order_panel.on_remove_requested = self._undoable(
+            HistoryAction.REMOVE_FRAME, self._on_order_remove
+        )
+        self._sequencer_order_panel.on_duplicate_requested = self._undoable(
+            HistoryAction.DUPLICATE_FRAME, self._on_order_duplicate
+        )
+        self._sequencer_order_panel.on_insert_requested = self._undoable(HistoryAction.ADD_FRAME, self._on_order_insert)
+        self._sequencer_order_panel.on_clear_requested = self._undoable(HistoryAction.CLEAR_FRAME, self._on_order_clear)
         self._sequencer_order_panel.on_play_from_requested = self._on_order_play_from
-        self._sequencer_order_panel.on_move_requested = self._on_order_move
-        self._sequencer_order_panel.on_set_order_entry = self._sequencer_order_logic.set_order_entry
-        self._sequencer_order_panel.on_set_master_entry = self._sequencer_order_logic.set_master_entry
+        self._sequencer_order_panel.on_move_requested = self._undoable(HistoryAction.MOVE_FRAME, self._on_order_move)
+        self._sequencer_order_panel.on_set_order_entry = self._undoable(
+            HistoryAction.SET_ORDER_ENTRY, self._sequencer_order_logic.set_order_entry
+        )
+        self._sequencer_order_panel.on_set_master_entry = self._undoable(
+            HistoryAction.SET_ORDER_ENTRY, self._sequencer_order_logic.set_master_entry
+        )
         self._sequencer_order_panel.on_cell_selected = self._on_order_cell_focused
 
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
@@ -265,12 +301,18 @@ class SequencerTabCoordinator:
         self._sequencer_samples_logic.on_autoplay_error = self._on_preview_error
         self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
-        self._sequencer_samples_panel.on_loop_changed = self._sequencer_samples_logic.set_sample_loop
+        self._sequencer_samples_panel.on_loop_changed = self._undoable(
+            HistoryAction.SET_SAMPLE_LOOP, self._sequencer_samples_logic.set_sample_loop
+        )
         self._sequencer_samples_panel.on_remove_requested = self._remove_sample
         self._sequencer_samples_panel.on_play_requested = self._sequencer_samples_logic.play_sample
-        self._sequencer_samples_panel.on_move_requested = self._sequencer_samples_logic.move_sample
+        self._sequencer_samples_panel.on_move_requested = self._undoable(
+            HistoryAction.MOVE_SAMPLE, self._sequencer_samples_logic.move_sample
+        )
         self._sequencer_samples_panel.on_rename_committed = self._submit_rename
-        self._sequencer_samples_panel.on_duplicate_requested = self._sequencer_samples_logic.duplicate_sample
+        self._sequencer_samples_panel.on_duplicate_requested = self._undoable(
+            HistoryAction.DUPLICATE_SAMPLE, self._sequencer_samples_logic.duplicate_sample
+        )
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.logic.on_autoplay_error = self._on_preview_error
@@ -281,7 +323,62 @@ class SequencerTabCoordinator:
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
         self._project_controller.on_song_changed = self._on_song_changed
         self._project_controller.on_samples_changed = self._sequencer_samples_logic.push_samples
-        self._project_controller.on_project_replaced = self.refresh
+        self._project_controller.on_project_replaced = self._on_project_replaced
+        self._history.on_history_changed = self._on_history_changed
+        self._sequencer_history_panel.on_undo = self.undo
+        self._sequencer_history_panel.on_redo = self.redo
+        self._sequencer_history_panel.on_jump_to = self.jump_to_history
+
+    def _undoable(
+        self,
+        action: HistoryAction,
+        callback: Callable[_UndoableParams, None],
+    ) -> Callable[_UndoableParams, None]:
+        """Wraps a state-changing hook so its whole gesture becomes one undo entry.
+
+        Every mutation the wrapped callback triggers is grouped under ``action``;
+        a gesture that changes nothing records no entry.
+        """
+
+        def wrapped(*args: _UndoableParams.args, **kwargs: _UndoableParams.kwargs) -> None:
+            with self._history.transaction(action):
+                callback(*args, **kwargs)
+
+        return wrapped
+
+    def _on_project_replaced(self) -> None:
+        self._history.reset()
+        self.refresh()
+
+    def undo(self) -> None:
+        self._history.undo()
+
+    def redo(self) -> None:
+        self._history.redo()
+
+    def jump_to_history(self, index: int) -> None:
+        self._history.jump_to(index)
+
+    def _on_history_changed(self) -> None:
+        self._sequencer_history_panel.update_view(self._build_history_view_model())
+
+    def _build_history_view_model(self) -> HistoryViewModel:
+        cursor = self._history.cursor
+        entries = tuple(
+            HistoryEntryViewModel(
+                index=index,
+                label=self._language_manager[
+                    Page.SEQUENCER,
+                    Panel.HISTORY,
+                    TextType.LABEL,
+                    SequencerHistoryActionElements(entry.action.value),
+                ],
+                is_current=index == cursor,
+                is_future=index > cursor,
+            )
+            for index, entry in enumerate(self._history.entries)
+        )
+        return HistoryViewModel(entries=entries, cursor=cursor)
 
     def initialize(self) -> None:
         """Pushes the current project into every sequencer panel.
@@ -301,6 +398,7 @@ class SequencerTabCoordinator:
         self._sequencer_module_panel.set_enabled(is_open)
         self._sequencer_grid_panel.set_enabled(is_open)
         self._sequencer_order_panel.set_enabled(is_open)
+        self._sequencer_history_panel.set_enabled(is_open)
 
     def _on_song_changed(self) -> None:
         self._sequencer_grid_logic.push_settings()
@@ -388,12 +486,11 @@ class SequencerTabCoordinator:
         project_frequency = self._sequencer_grid_logic.settings.nes_frequency
 
         if reconstruction_frequency == project_frequency:
-            self._add_reconstruction_to_sequencer(reconstruction, name)
+            self._commit_add_reconstruction(reconstruction, name, adopt_frequency=None)
             return
 
         if not self._project_controller.has_samples:
-            self._sequencer_grid_logic.set_nes_frequency(reconstruction_frequency)
-            self._add_reconstruction_to_sequencer(reconstruction, name)
+            self._commit_add_reconstruction(reconstruction, name, adopt_frequency=reconstruction_frequency)
             return
 
         self._dialogs.show_confirmation(
@@ -403,19 +500,30 @@ class SequencerTabCoordinator:
                 reconstruction=reconstruction_frequency,
                 project=project_frequency,
             ),
-            on_confirm=lambda: self._add_reconstruction_to_sequencer(
+            on_confirm=lambda: self._commit_add_reconstruction(
                 reconstruction,
                 name,
+                adopt_frequency=None,
             ),
             ok_label=self._lbl_add_anyway,
         )
 
-    def _add_reconstruction_to_sequencer(
+    def _commit_add_reconstruction(
         self,
         reconstruction: Reconstruction,
         name: str,
+        *,
+        adopt_frequency: Optional[int],
     ) -> None:
-        self._sequencer_browser_logic.add_reconstruction(reconstruction, name)
+        """Adds a reconstruction as one undoable gesture, optionally adopting its frequency.
+
+        The frequency reconciliation and the sample insertion form a single history
+        entry, so undoing a freshly-imported sample also restores the prior rate.
+        """
+        with self._history.transaction(HistoryAction.ADD_SAMPLE):
+            if adopt_frequency is not None:
+                self._sequencer_grid_logic.set_nes_frequency(adopt_frequency)
+            self._sequencer_browser_logic.add_reconstruction(reconstruction, name)
         self._on_tab_switch(Tab.SEQUENCER)
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
@@ -568,7 +676,7 @@ class SequencerTabCoordinator:
         that points at it, so the user confirms that loss first.
         """
         if not self._sequencer_samples_logic.is_sample_used(sample_id):
-            self._sequencer_samples_logic.remove_sample(sample_id)
+            self._perform_remove_sample(sample_id)
             return
 
         name = self._sequencer_samples_logic.sample_name(sample_id)
@@ -576,15 +684,20 @@ class SequencerTabCoordinator:
             tag=TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
             title=self._ttl_remove_sample,
             message=self._msg_remove_sample.format(name=name),
-            on_confirm=lambda: self._sequencer_samples_logic.remove_sample(sample_id),
+            on_confirm=lambda: self._perform_remove_sample(sample_id),
             ok_label=self._lbl_remove_sample,
         )
+
+    def _perform_remove_sample(self, sample_id: str) -> None:
+        with self._history.transaction(HistoryAction.REMOVE_SAMPLE):
+            self._sequencer_samples_logic.remove_sample(sample_id)
 
     def _submit_rename(self, sample_id: str, name: str) -> None:
         """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
         stripped = name.strip()
         if stripped:
-            self._sequencer_samples_logic.rename_sample(sample_id, stripped)
+            with self._history.transaction(HistoryAction.RENAME_SAMPLE):
+                self._sequencer_samples_logic.rename_sample(sample_id, stripped)
 
     def _request_nes_frequency_change(self, nes_frequency: int) -> None:
         """Applies a NES-frequency change, confirming first when it would re-time existing samples.
@@ -597,19 +710,23 @@ class SequencerTabCoordinator:
             return
 
         if self._nes_frequency_change_acknowledged or not self._project_controller.has_samples:
-            self._sequencer_grid_logic.set_nes_frequency(nes_frequency)
+            self._perform_nes_frequency_change(nes_frequency)
             return
 
         self._dialogs.show_confirmation(
             tag=TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
             title=self._ttl_change_nes_frequency,
             message=self._msg_change_nes_frequency,
-            on_confirm=lambda: self._sequencer_grid_logic.set_nes_frequency(nes_frequency),
+            on_confirm=lambda: self._perform_nes_frequency_change(nes_frequency),
             ok_label=self._lbl_change_nes_frequency,
             opt_out_label=self._lbl_dont_ask_again,
             on_opt_out=self._acknowledge_nes_frequency_changes,
             on_cancel=self._sequencer_grid_logic.push_settings,
         )
+
+    def _perform_nes_frequency_change(self, nes_frequency: int) -> None:
+        with self._history.transaction(HistoryAction.SET_NES_FREQUENCY):
+            self._sequencer_grid_logic.set_nes_frequency(nes_frequency)
 
     def _acknowledge_nes_frequency_changes(self) -> None:
         self._nes_frequency_change_acknowledged = True
@@ -761,6 +878,7 @@ class SequencerTabCoordinator:
                     ):
                         self._sequencer_module_panel.create_panel()
                         self._sequencer_samples_panel.create_panel()
+                        self._sequencer_history_panel.create_panel()
 
     @property
     def player_panel(self) -> AudioPlayerPanelProtocol:

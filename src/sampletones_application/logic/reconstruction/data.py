@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import List, Optional, Self
 
@@ -41,6 +41,20 @@ class ReconstructionData:
             reconstruction,
             filepath=None,
             name=name,
+        )
+
+    def with_reconstruction(self, reconstruction: Reconstruction) -> Self:
+        """Rebinds this data to an edited reconstruction, keeping name and origin.
+
+        A regeneration produces a fresh reconstruction object; the display name,
+        file location and source audio are unchanged, so only the reconstruction
+        and its derived features are refreshed.
+        """
+        return replace(
+            self,
+            reconstruction=reconstruction,
+            config=reconstruction.config,
+            feature_data=FeatureData.load(reconstruction),
         )
 
     @classmethod

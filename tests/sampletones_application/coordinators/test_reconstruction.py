@@ -25,6 +25,7 @@ def reconstruction_coordinator() -> ReconstructionCoordinator:
         layout=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
+        on_reconstruction_updated=MagicMock(),
     )
 
 

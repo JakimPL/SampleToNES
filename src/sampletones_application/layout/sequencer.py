@@ -68,6 +68,10 @@ class SequencerColors(BaseModel, frozen=True):
     subcolumns: SubcolumnColors
 
 
+class HistoryLayout(BaseModel, frozen=True):
+    height: int
+
+
 class SequencerLayout(BaseModel, frozen=True):
     samples_panel_width: int
     cell_padding: Padding
@@ -76,4 +80,5 @@ class SequencerLayout(BaseModel, frozen=True):
     tempo: TempoLayout
     speed: SpeedLayout
     tracker: TrackerLayout
+    history: HistoryLayout
     colors: SequencerColors
