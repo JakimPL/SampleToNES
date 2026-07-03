@@ -57,6 +57,7 @@ class ShortcutBindings:
     open_project: Callback
     save_project: Callback
     save_project_as: Callback
+    export_project_module: Callback
     close_project: Callback
     save_reconstruction: Callback
     save_reconstruction_as: Callback
@@ -177,6 +178,11 @@ class ApplicationShell:
             ShortcutId.SAVE_PROJECT_AS,
             Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
             bindings.save_project_as,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.EXPORT_PROJECT_MODULE,
+            Shortcut(dpg.mvKey_M, (Modifier.CTRL,)),
+            bindings.export_project_module,
         )
         self._shortcut_manager.register(
             ShortcutId.CLOSE_PROJECT,

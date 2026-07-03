@@ -259,6 +259,12 @@ TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS = TagName(
     Widget.MENU,
     "item_project_save_as",
 )
+TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_project_export_module",
+)
 TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -270,6 +276,12 @@ TAG_GLOBAL_DIALOG_PROJECT_SAVED = TagName(
     Panel.IMPLICIT,
     Widget.DIALOG,
     "project_saved",
+)
+TAG_GLOBAL_DIALOG_MODULE_EXPORTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "module_exported",
 )
 TAG_GLOBAL_DIALOG_PROJECT_UNSAVED = TagName(
     Page.GLOBAL,

@@ -245,6 +245,7 @@ class Application:
             dialogs=self.dialogs,
             on_edit_sample_requested=self._edit_project_sample,
             on_tab_switch=self._set_current_tab,
+            on_export_module=self._project_coordinator.export_module_dialog,
         )
 
         self._playback_router = PlaybackRouter(
@@ -308,6 +309,7 @@ class Application:
             open_project=self._project_coordinator.open_with_confirmation,
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
+            export_project_module=self._project_coordinator.export_module_dialog,
             close_project=self._project_coordinator.close_with_confirmation,
             save_reconstruction=self._reconstruction_coordinator.save,
             save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,

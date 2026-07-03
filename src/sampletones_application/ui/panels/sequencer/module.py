@@ -55,6 +55,7 @@ class GUISequencerModulePanel(GUIPanel):
         self.on_rows_per_pattern: Optional[Callable[[int], None]] = None
         self.on_tempo: Optional[Callable[[int], None]] = None
         self.on_speed: Optional[Callable[[int], None]] = None
+        self.on_export_module: Optional[Callable[[], None]] = None
 
         self._lbl_module_options = language_manager[
             Page.SEQUENCER,
@@ -191,7 +192,11 @@ class GUISequencerModulePanel(GUIPanel):
             label=self._lbl_export_module,
             width=-1,
             font=Font.BOLD,
+            callback=self._on_export_clicked,
         )
+
+    def _on_export_clicked(self) -> None:
+        self.call(self.on_export_module)
 
     def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, view_model.nes_frequency)
@@ -201,6 +206,7 @@ class GUISequencerModulePanel(GUIPanel):
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_MODULE_GROUP_OPTIONS, enabled=enabled)
+        dpg_configure_item(TAG_SEQUENCER_MODULE_BUTTON_EXPORT, enabled=enabled)
 
     def _commit_on_finish(self, input_tag: str, handler_tag: str, callback: Callable[[Sender, int], None]) -> None:
         """Commits a field only when editing finishes (focus lost or Enter pressed).

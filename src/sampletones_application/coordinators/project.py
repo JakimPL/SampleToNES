@@ -13,6 +13,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextT
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
+    TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
     TAG_GLOBAL_DIALOG_PROJECT_OPEN,
     TAG_GLOBAL_DIALOG_PROJECT_SAVED,
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
@@ -22,8 +23,8 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
-from sampletones_core.paths import EXT_FILE_PROJECT
-from sampletones_shared.constants.project import DEFAULT_PROJECT_FILENAME
+from sampletones_core.paths import EXT_FILE_MODULE, EXT_FILE_PROJECT
+from sampletones_shared.constants.project import DEFAULT_MODULE_FILENAME, DEFAULT_PROJECT_FILENAME
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
@@ -154,6 +155,24 @@ class ProjectCoordinator:
         ):
             dpg.add_file_extension(EXT_FILE_PROJECT)
 
+    def export_module_dialog(self) -> None:
+        if not self._project_controller.is_open:
+            return
+
+        path = self._session_manager.get_project_path()
+        filename = f"{self.project_name}{EXT_FILE_MODULE}" if self.project_name else DEFAULT_MODULE_FILENAME
+        directory = get_directory(path)
+        with dpg.file_dialog(
+            label=self._title(GlobalDialogTitleElements.EXPORT_MODULE),
+            width=self._layout.general.dialogs.file.width,
+            height=self._layout.general.dialogs.file.height,
+            callback=self._handle_export_module,
+            file_count=1,
+            default_filename=filename,
+            default_path=str(directory),
+        ):
+            dpg.add_file_extension(EXT_FILE_MODULE)
+
     def _open_dialog(self) -> None:
         with dpg.file_dialog(
             label=self._title(GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT),
@@ -174,6 +193,10 @@ class ProjectCoordinator:
     def _handle_save_as(self, filepath: Path) -> None:
         self._session_manager.set_project_path(filepath.parent)
         self._save(filepath)
+
+    @file_dialog_handler
+    def _handle_export_module(self, filepath: Path) -> None:
+        self._export_module(filepath)
 
     def _new(self) -> None:
         self._project_controller.new()
@@ -211,6 +234,23 @@ class ProjectCoordinator:
             TAG_GLOBAL_DIALOG_PROJECT_SAVED,
             self._message(GlobalMessageElements.PROJECT_SAVED_SUCCESSFULLY),
             self._title(GlobalDialogTitleElements.PROJECT_SAVED),
+        )
+
+    def _export_module(self, filepath: Path) -> None:
+        try:
+            self._project_controller.export_module(filepath)
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(exception, f"Failed to export FamiTracker module to {filepath}")
+            self._dialogs.show_error(
+                exception,
+                self._message(GlobalMessageElements.PROJECT_EXPORT_FAILED),
+            )
+            return
+
+        self._dialogs.show_info(
+            TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
+            self._message(GlobalMessageElements.PROJECT_EXPORTED_SUCCESSFULLY),
+            self._title(GlobalDialogTitleElements.MODULE_EXPORTED),
         )
 
     def _guard_open(

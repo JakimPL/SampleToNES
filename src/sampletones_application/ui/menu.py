@@ -12,6 +12,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
     TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
+    TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE,
     TAG_GLOBAL_MENU_ITEM_PROJECT_NEW,
     TAG_GLOBAL_MENU_ITEM_PROJECT_OPEN,
     TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE,
@@ -81,6 +82,12 @@ class MenuBar:
             Panel.MENU,
             TextType.LABEL,
             MenuElements.ITEM_PROJECT_SAVE_AS,
+        ]
+        self._lbl_item_project_export_module = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PROJECT_EXPORT_MODULE,
         ]
         self._lbl_item_project_close = language_manager[
             Page.GLOBAL,
@@ -253,6 +260,13 @@ class MenuBar:
                 )
                 dpg.add_separator()
                 self._shortcut_manager.add_menu_item(
+                    ShortcutId.EXPORT_PROJECT_MODULE,
+                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE,
+                    label=self._lbl_item_project_export_module,
+                    enabled=state.project_open,
+                )
+                dpg.add_separator()
+                self._shortcut_manager.add_menu_item(
                     ShortcutId.CLOSE_PROJECT,
                     tag=TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
                     label=self._lbl_item_project_close,
@@ -371,6 +385,10 @@ class MenuBar:
         )
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS,
+            enabled=state.project_open,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE,
             enabled=state.project_open,
         )
         dpg_configure_item(
