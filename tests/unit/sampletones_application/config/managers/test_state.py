@@ -1,9 +1,25 @@
 from pathlib import Path
 from unittest.mock import patch
 
+import yaml
+
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.state import ApplicationStateManager
 from sampletones_application.config.session.state.state import ApplicationState
+
+
+class TestApplicationStateManagerRecovery:
+    def test_incompatible_field_preserves_remaining_state(self, tmp_path: Path) -> None:
+        path = tmp_path / "state.yaml"
+        path.write_text(yaml.safe_dump({"window": {"width": "huge"}, "autoplay": False}))
+        with patch(
+            "sampletones_application.config.managers.state.APPLICATION_STATE_PATH",
+            path,
+        ):
+            manager = ApplicationStateManager()
+
+        assert manager.autoplay is False
+        assert manager.window_width == ApplicationState().window.width
 
 
 class TestApplicationStateManagerInit:

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from sampletones_application.utils.shortcuts.keys import (
+from sampletones_application.utils.gui.shortcuts.keys import (
     KEY_DISPLAY_NAMES,
     Modifier,
 )

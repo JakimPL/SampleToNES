@@ -1,22 +1,48 @@
+import json
 from pathlib import Path
+from typing import Dict
 
 import dearpygui.dearpygui as dpg
+from pydantic import ValidationError
 
 from sampletones_application.categories.elements.global_ import (
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
-from sampletones_application.categories.elements.reconstructions import ReconstructionPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.config.managers.outcome import (
+    ConfigLoadFailure,
+    ConfigLoadFailureReason,
+    ConfigRecovered,
+)
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import TAG_GLOBAL_DIALOG_CONFIG_STATUS
+from sampletones_application.constants.general import (
+    TAG_GLOBAL_DIALOG_CONFIG_RECOVERY,
+    TAG_GLOBAL_DIALOG_CONFIG_STATUS,
+)
 from sampletones_application.layout import LayoutConfig
-from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_JSON
+from sampletones_shared.constants.application import SAMPLETONES_VERSION
 from sampletones_shared.logger import logger
+from sampletones_shared.utils.validation import flatten_location
+
+_LOAD_FAILURE_MESSAGES: Dict[ConfigLoadFailureReason, GlobalMessageElements] = {
+    ConfigLoadFailureReason.LOAD_ERROR: GlobalMessageElements.CONFIGURATION_LOAD_ERROR,
+    ConfigLoadFailureReason.PARSE_ERROR: GlobalMessageElements.CONFIGURATION_PARSE_ERROR,
+    ConfigLoadFailureReason.INVALID: GlobalMessageElements.CONFIGURATION_INVALID_ERROR,
+}
+
+_LOAD_EXCEPTIONS = (
+    OSError,
+    json.JSONDecodeError,
+    UnicodeDecodeError,
+    TypeError,
+    ValidationError,
+)
 
 
 class ConfigCoordinator:
@@ -98,27 +124,40 @@ class ConfigCoordinator:
     def _handle_load(self, filepath: Path) -> None:
         try:
             self._config_manager.load_config_from_file(filepath)
-            self._show_status_dialog(
-                self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.CONFIGURATION_LOADED_SUCCESSFULLY,
-                ]
-            )
-        except Exception as exception:  # TODO: specify exception type
+            self.present_pending_load_outcomes()
+            self._show_status_dialog(self._message(GlobalMessageElements.CONFIGURATION_LOADED_SUCCESSFULLY))
+        except _LOAD_EXCEPTIONS as exception:
             logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
-            self._dialogs.show_error(
-                exception,
-                self._language_manager[
-                    Page.RECONSTRUCTIONS,
-                    Panel.RECONSTRUCTION,
-                    TextType.MESSAGE,
-                    ReconstructionPanelElements.EXPORT_WAV_FAILED,
-                ],
-            )
+            self._dialogs.show_error(exception, self._message(GlobalMessageElements.CONFIGURATION_LOAD_ERROR))
 
         self._session_manager.set_config_path(filepath)
+
+    def present_pending_load_outcomes(self) -> None:
+        """
+        Presents the outcomes the config manager recorded while loading, then clears them.
+
+        The manager loads its configuration during construction, before the GUI exists, so it
+        records each recovery or failure as data. This coordinator, once a window can be drawn,
+        turns each outcome into the matching dialog with text from the language manager.
+        """
+        for outcome in self._config_manager.pending_load_outcomes:
+            match outcome:
+                case ConfigRecovered(source_version=source_version, dropped=dropped):
+                    properties = tuple(flatten_location(location) for location in sorted(dropped, key=flatten_location))
+                    self._dialogs.show_config_recovery(
+                        tag=TAG_GLOBAL_DIALOG_CONFIG_RECOVERY,
+                        source_version=source_version,
+                        target_version=SAMPLETONES_VERSION,
+                        properties=properties,
+                        config_path=self._config_manager.config_path,
+                    )
+                case ConfigLoadFailure(exception=exception, reason=reason):
+                    self._dialogs.show_error(exception, self._message(_LOAD_FAILURE_MESSAGES[reason]))
+
+        self._config_manager.pending_load_outcomes.clear()
+
+    def _message(self, element: GlobalMessageElements) -> str:
+        return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, element]
 
     def _show_status_dialog(self, message: str) -> None:
         def content(parent: str) -> None:

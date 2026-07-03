@@ -18,7 +18,7 @@ from sampletones_application.constants.general import (
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.clipboard import copy_to_clipboard
+from sampletones_application.utils.gui.clipboard import copy_to_clipboard
 
 
 class GUITraceback:

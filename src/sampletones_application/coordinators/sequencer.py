@@ -50,9 +50,9 @@ from sampletones_application.ui.panels.sequencer.module import GUISequencerModul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.song_player import GUISongPlayerPanel
-from sampletones_application.utils.callbacks.frame import FrameCallbackManager
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
@@ -211,20 +211,24 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
+            shortcut_manager=shortcut_manager,
         )
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
             self._sequencer_grid_logic,
             layout=layout.sequencer,
             input_width=layout.general.inputs.default_width,
             language_manager=language_manager,
+            shortcut_manager=shortcut_manager,
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
+            shortcut_manager=shortcut_manager,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
+            shortcut_manager=shortcut_manager,
         )
 
         self._wire_callbacks()
@@ -362,6 +366,18 @@ class SequencerTabCoordinator:
             return
 
         self._add_reconstruction_with_frequency_check(reconstruction, filepath.stem)
+
+    def import_reconstruction_object(self, reconstruction: Reconstruction, name: str) -> None:
+        """Adds an in-memory reconstruction — the one open in the Reconstruction tab — as a sample."""
+        if not self._project_controller.is_open:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
+                self._msg_no_project,
+                self._ttl_no_project,
+            )
+            return
+
+        self._add_reconstruction_with_frequency_check(reconstruction, name)
 
     def _add_reconstruction_with_frequency_check(self, reconstruction: Reconstruction, name: str) -> None:
         """Adds a loaded reconstruction, reconciling its NES frequency with the project's.

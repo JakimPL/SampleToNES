@@ -56,6 +56,19 @@ class TestSamples:
         assert controller.project.sample(sample.id) is sample
         assert emitted == ["samples"]
 
+    def test_add_sample_detaches_source_but_keeps_object_identity(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller = _controller()
+        reconstruction = reconstruction_factory()
+        assert reconstruction.audio_filepath is not None
+
+        sample = controller.add_sample(reconstruction, name="lead")
+
+        assert sample.reconstruction is reconstruction
+        assert sample.reconstruction.audio_filepath is None
+
     def test_remove_sample_purges_row_references(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")

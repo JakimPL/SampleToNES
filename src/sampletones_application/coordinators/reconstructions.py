@@ -40,9 +40,10 @@ from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
-from sampletones_application.utils.callbacks.frame import FrameCallbackManager
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -227,6 +228,8 @@ class ReconstructionsTabCoordinator:
             self._reconstruction_player_logic,
             layout_graphs=layout.graphs,
             layout_player=layout.player,
+            path_colors=layout.general.colors.paths,
+            path_status_color=layout.general.colors.text.disabled,
             file_dialog_width=layout.general.dialogs.file.width,
             file_dialog_height=layout.general.dialogs.file.height,
             language_manager=language_manager,
@@ -277,6 +280,7 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = self._reconstruction_panel.update_waveform_data
         self._reconstruction_panel_logic.on_waveform_cleared = self._reconstruction_panel.clear_waveform
+        self._reconstruction_panel_logic.on_waveform_source_changed = self._reconstruction_panel.set_waveform_top_source
         self._reconstruction_panel_logic.on_open_export_instrument_dialog = (
             self._reconstruction_panel.open_export_instrument_dialog
         )
@@ -439,6 +443,12 @@ class ReconstructionsTabCoordinator:
 
     def set_can_add_to_sequencer(self, predicate: Callable[[], bool]) -> None:
         self._browser_panel.can_add_to_sequencer = predicate
+
+    def set_on_add_current_reconstruction(self, callback: VoidCallback) -> None:
+        self._reconstruction_panel.on_add_to_sequencer_requested = callback
+
+    def update_add_to_sequencer(self, view_model: AddToSequencerViewModel) -> None:
+        self._reconstruction_panel.update_add_to_sequencer(view_model)
 
     def load_reconstruction(self, filepath: Path) -> None:
         self._browser_panel.lock()

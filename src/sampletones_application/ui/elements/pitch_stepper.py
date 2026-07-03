@@ -18,9 +18,9 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.dpg import dpg_delete_item, dpg_set_value
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.tooltip import show_tooltip
+from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_core.utils.pitch_kind import PitchValueKind
 from sampletones_shared.types.application import Color, Sender
 from sampletones_shared.utils.callbacks import CallbackMixin

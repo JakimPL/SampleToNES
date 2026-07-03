@@ -38,8 +38,8 @@ from sampletones_application.ui.panels.instruction.instruction import (
 from sampletones_application.ui.panels.instruction.library import (
     GUIInstructionsLibraryPanel,
 )
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import LibraryDisplayError

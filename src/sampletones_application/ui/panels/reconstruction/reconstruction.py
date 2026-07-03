@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import (
     ContextElements,
     GlobalTemplateElements,
+    StatusElements,
 )
 from sampletones_application.categories.elements.reconstructions import (
     ReconstructionPanelElements,
@@ -22,15 +23,21 @@ from sampletones_application.constants.reconstructions import (
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_ADD_TO_SEQUENCER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_ORIGINAL_AUDIO,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_ADD_TO_SEQUENCER,
 )
+from sampletones_application.layout.general import PathColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.logic.reconstruction.data import (
@@ -42,13 +49,20 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.file import file_dialog_handler
-from sampletones_application.utils.tooltip import show_tooltip
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip, show_tooltip
+from sampletones_application.view_model.reconstruction.add_to_sequencer import (
+    AddToSequencerViewModel,
+)
 from sampletones_application.view_model.reconstruction.reconstruction import (
+    ReconstructionPathState,
+    ReconstructionPathViewModel,
     ReconstructionViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
@@ -69,6 +83,8 @@ class GUIReconstructionPanel(GUIPanel):
         *,
         layout_graphs: GraphsLayout,
         layout_player: PlayerLayout,
+        path_colors: PathColors,
+        path_status_color: RGBA,
         file_dialog_width: int,
         file_dialog_height: int,
         language_manager: LanguageManager,
@@ -76,6 +92,8 @@ class GUIReconstructionPanel(GUIPanel):
     ) -> None:
         self._player_logic = player_logic
         self._layout_graphs = layout_graphs
+        self._path_colors = path_colors
+        self._path_status_color = path_status_color
         self._file_dialog_width = file_dialog_width
         self._file_dialog_height = file_dialog_height
         self._layout_player = layout_player
@@ -83,6 +101,8 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.waveform_display: GUIWaveformGraph
         self.player_panel: GUIAudioPlayerPanel
+        self._reconstruction_file_path: GUIPathText
+        self._original_audio_path: GUIPathText
 
         self._frame_length: Optional[int] = None
 
@@ -93,6 +113,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.on_export_instruments_confirmed: Optional[PathCallback] = None
         self.on_export_wav_confirmed: Optional[PathCallback] = None
         self.on_locate_original_audio_requested: Optional[VoidCallback] = None
+        self.on_add_to_sequencer_requested: Optional[VoidCallback] = None
 
         self.audio_tag = f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
@@ -121,6 +142,19 @@ class GUIReconstructionPanel(GUIPanel):
             Panel.RECONSTRUCTION,
             TextType.LABEL,
             ReconstructionPanelElements.LOCATE_AUDIO_BUTTON,
+        ]
+        self._lbl_add_to_sequencer = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.ADD_TO_SEQUENCER,
+        ]
+        self._load_path_text(language_manager)
+        self._tooltip_already_in_sequencer = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.TOOLTIP,
+            ReconstructionPanelElements.ALREADY_IN_SEQUENCER_TOOLTIP,
         ]
         self._lbl_original_audio = language_manager[
             Page.RECONSTRUCTIONS,
@@ -213,12 +247,47 @@ class GUIReconstructionPanel(GUIPanel):
             parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
 
+    def _load_path_text(self, language_manager: LanguageManager) -> None:
+        self._lbl_reconstruction_file = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.RECONSTRUCTION_FILE_LABEL,
+        ]
+        self._lbl_original_audio = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.ORIGINAL_AUDIO_LABEL,
+        ]
+        self._msg_path_not_found = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.PATH_NOT_FOUND,
+        ]
+        self._msg_path_not_applicable = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.PATH_NOT_APPLICABLE,
+        ]
+        self._msg_path_status = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.PATH,
+        ]
+
     def create_panel(self) -> None:
         self._create_player_panel()
         self._create_audio_panel()
         self._create_plot_panel()
 
     def update_view(self, view_model: ReconstructionViewModel) -> None:
+        self._render_path(self._reconstruction_file_path, view_model.reconstruction_file)
+        self._render_path(self._original_audio_path, view_model.original_audio)
+
         for generator_name in GeneratorName:
             tag = self._get_generator_checkbox_tag(generator_name)
             is_available = generator_name in view_model.available_generators
@@ -247,6 +316,30 @@ class GUIReconstructionPanel(GUIPanel):
     ) -> None:
         self._frame_length = reconstruction_data.reconstruction.config.frame_length
         self.waveform_display.load_reconstruction_data(reconstruction_data, generators)
+
+    def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
+        self.waveform_display.set_top_source(audio_source)
+
+    def _render_path(self, path_widget: GUIPathText, view_model: ReconstructionPathViewModel) -> None:
+        match view_model.state:
+            case ReconstructionPathState.AVAILABLE:
+                path_widget.set_path(view_model.path)
+            case ReconstructionPathState.NOT_FOUND:
+                path_widget.set_status(self._msg_path_not_found, self._path_status_color)
+            case ReconstructionPathState.NOT_APPLICABLE:
+                path_widget.set_status(self._msg_path_not_applicable, self._path_status_color)
+            case ReconstructionPathState.EMPTY:
+                path_widget.set_status("", self._path_status_color)
+
+    def update_add_to_sequencer(self, view_model: AddToSequencerViewModel) -> None:
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_ADD_TO_SEQUENCER,
+            enabled=view_model.enabled,
+        )
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_ADD_TO_SEQUENCER,
+            show=view_model.show_already_in_sequencer_hint,
+        )
 
     def update_waveform_data(
         self,
@@ -342,6 +435,8 @@ class GUIReconstructionPanel(GUIPanel):
             border=False,
         ):
             self._create_audio_source_radio_buttons()
+            self._create_path_display()
+            self._create_add_to_sequencer_button()
             self._create_locate_original_audio_button()
             self._create_export_wav_button()
 
@@ -364,6 +459,31 @@ class GUIReconstructionPanel(GUIPanel):
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
             enabled=False,
         )
+
+    def _create_path_display(self) -> None:
+        self._reconstruction_file_path = GUIPathText(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE,
+            path=None,
+            parent=self.audio_tag,
+            color=self._path_colors.default,
+            hover_color=self._path_colors.hover,
+            status_message=self._msg_path_status,
+            prefix=self._lbl_reconstruction_file,
+            font=Font.REGULAR_SMALL,
+        )
+        self._original_audio_path = GUIPathText(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_ORIGINAL_AUDIO,
+            path=None,
+            parent=self.audio_tag,
+            color=self._path_colors.default,
+            hover_color=self._path_colors.hover,
+            status_message=self._msg_path_status,
+            prefix=self._lbl_original_audio,
+            font=Font.REGULAR_SMALL,
+        )
+
+        self._reconstruction_file_path.set_status("", self._path_status_color)
+        self._original_audio_path.set_status("", self._path_status_color)
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
@@ -395,6 +515,26 @@ class GUIReconstructionPanel(GUIPanel):
                 enabled=False,
             )
             FontRegistry.bind_to_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, Font.REGULAR_SMALL)
+
+    def _create_add_to_sequencer_button(self) -> None:
+        with dpg.group(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
+            parent=self.audio_tag,
+        ):
+            GUIButton(
+                label=self._lbl_add_to_sequencer,
+                tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_ADD_TO_SEQUENCER,
+                parent=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
+                callback=self._handle_add_to_sequencer_button_click,
+                width=-1,
+                enabled=False,
+            )
+
+        attach_disabled_tooltip(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
+            self._tooltip_already_in_sequencer,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_ADD_TO_SEQUENCER,
+        )
 
     def _create_locate_original_audio_button(self) -> None:
         GUIButton(
@@ -507,6 +647,9 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _handle_locate_original_audio_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self.call(self.on_locate_original_audio_requested)
+
+    def _handle_add_to_sequencer_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+        self.call(self.on_add_to_sequencer_requested)
 
     def _handle_export_wav_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self.call(self.on_export_wav_requested)

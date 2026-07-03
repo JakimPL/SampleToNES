@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -80,8 +80,50 @@ class Song(BaseModel):
         frame = self.order.pop(from_position)
         self.order.insert(to_position, frame)
 
+    def add_pattern(self, generator: GeneratorName) -> int:
+        """Adds an empty pattern to ``generator`` at a free index and returns it.
+
+        The index clears both the channel's pool and every index its order slots
+        already reference, so it never aliases a slot whose pattern is unmaterialised.
+        """
+        return self.channels[generator].add_pattern(
+            self.rows_per_pattern,
+            reserved_indices=self._referenced_indices(generator),
+        )
+
+    def duplicate_pattern(self, generator: GeneratorName, index: int) -> int:
+        """Clones ``generator``'s pattern at ``index`` into a free index and returns it.
+
+        The clone index clears the channel's pool and every order-referenced index, so
+        the copy stays independent of any slot the order already plays.
+        """
+        return self.channels[generator].duplicate_pattern(
+            index,
+            reserved_indices=self._referenced_indices(generator),
+        )
+
     def duplicate_frame(self, position: int) -> None:
-        self.order.insert(position + 1, dict(self.order[position]))
+        """Inserts an independent copy of the frame directly after ``position``.
+
+        Each channel's referenced pattern is cloned into a fresh index within that
+        channel, so the new frame plays its own patterns; editing either frame leaves
+        the other unchanged. Silent slots stay silent.
+        """
+        source_frame = self.order[position]
+        duplicate: Dict[GeneratorName, Optional[int]] = {}
+        for generator in GeneratorName.items():
+            index = source_frame.get(generator)
+            if index is None:
+                duplicate[generator] = None
+                continue
+
+            self.channels[generator].ensure_pattern(index, self.rows_per_pattern)
+            duplicate[generator] = self.duplicate_pattern(generator, index)
+
+        self.order.insert(position + 1, duplicate)
+
+    def _referenced_indices(self, generator: GeneratorName) -> Set[int]:
+        return {index for frame in self.order if (index := frame.get(generator)) is not None}
 
     def clear_frame(self, position: int) -> None:
         self.order[position] = self._empty_frame()

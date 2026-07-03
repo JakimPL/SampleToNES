@@ -21,8 +21,8 @@ from sampletones_application.constants.general import (
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_MODULE, EXT_FILE_PROJECT
 from sampletones_shared.constants.project import DEFAULT_MODULE_FILENAME, DEFAULT_PROJECT_FILENAME
 from sampletones_shared.exceptions import SampleToNESError

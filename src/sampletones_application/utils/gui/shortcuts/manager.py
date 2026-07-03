@@ -3,9 +3,9 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import TAG_GLOBAL_HANDLER_FOCUS
-from sampletones_application.utils.shortcuts.ids import ShortcutId
-from sampletones_application.utils.shortcuts.keys import Modifier
-from sampletones_application.utils.shortcuts.shortcut import Shortcut
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.keys import Modifier
+from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
 
@@ -13,7 +13,7 @@ from sampletones_shared.types.callback import Callback
 class ShortcutManager:
     def __init__(self) -> None:
         self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, Callback]] = {}
-        self._enabled: bool = True
+        self._focused_input: Optional[Sender] = None
 
         self._handler_registry: Optional[int] = None
         self._focus_handler_tag = TAG_GLOBAL_HANDLER_FOCUS
@@ -26,11 +26,15 @@ class ShortcutManager:
     ) -> None:
         self._shortcuts[shortcut_id] = (shortcut, callback)
 
-    def enable(self) -> None:
-        self._enabled = True
+    @property
+    def is_input_focused(self) -> bool:
+        """Whether a text or numeric input currently owns keyboard focus.
 
-    def disable(self) -> None:
-        self._enabled = False
+        Registered inputs report focus through the shared focus handler, so both shortcut
+        dispatch and the sequencer key handlers consult this to keep typed characters from
+        reaching the tracker tables.
+        """
+        return self._focused_input is not None
 
     def get_shortcut_display(self, shortcut_id: ShortcutId) -> str:
         if shortcut_id in self._shortcuts:
@@ -68,7 +72,7 @@ class ShortcutManager:
                 )
 
     def _handle_key(self, shortcut: Shortcut, callback: Callback) -> None:
-        if self._enabled and self._modifiers_match(shortcut.modifiers):
+        if not self.is_input_focused and self._modifiers_match(shortcut.modifiers):
             callback()
 
     @staticmethod
@@ -99,8 +103,20 @@ class ShortcutManager:
         if dpg.does_item_exist(input_tag) and dpg.does_item_exist(self._focus_handler_tag):
             dpg.bind_item_handler_registry(input_tag, self._focus_handler_tag)
 
-    def _on_input_focused(self, sender: Sender, app_data: Any) -> None:
-        self.disable()
+    def attach_focus_tracking(self, registry_tag: str) -> None:
+        """Adds focus tracking to an item handler registry the input already binds.
 
-    def _on_input_unfocused(self, sender: Sender, app_data: Any) -> None:
-        self.enable()
+        Inputs that carry their own registry (a commit or rename handler) bind one
+        registry each, so their focus reporting is added into that same registry rather
+        than the shared focus registry.
+        """
+        dpg.add_item_activated_handler(parent=registry_tag, callback=self._on_input_focused)
+        dpg.add_item_deactivated_handler(parent=registry_tag, callback=self._on_input_unfocused)
+        dpg.add_item_deactivated_after_edit_handler(parent=registry_tag, callback=self._on_input_unfocused)
+
+    def _on_input_focused(self, sender: Sender, app_data: Sender) -> None:
+        self._focused_input = app_data
+
+    def _on_input_unfocused(self, sender: Sender, app_data: Sender) -> None:
+        if self._focused_input == app_data:
+            self._focused_input = None

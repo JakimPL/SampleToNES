@@ -11,6 +11,21 @@ from sampletones_shared.types.application import ColorRGBA, Sender
 Box = Tuple[float, float, float, float]
 
 
+_ANCESTOR_WALK_LIMIT = 32
+
+
+def _as_item_id(item: Sender) -> Sender:
+    """Resolves an alias string to its numeric item id, passing ids through unchanged.
+
+    ``get_active_window`` and ``get_item_parent`` report items by alias while stored tags
+    are also aliases, so both sides are normalised to ids before comparison.
+    """
+    if isinstance(item, str):
+        return int(dpg.get_alias_id(item))
+
+    return item
+
+
 class CaretOverlay(metaclass=NonInstantiableMeta):
     """A single-character translucent box marking the tracker edit cursor.
 
@@ -34,14 +49,22 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
     _caret_index: int = 0
     _font: Optional[Font] = None
     _clip_widget: Optional[Sender] = None
+    _root_window: Optional[str] = None
 
     @classmethod
-    def initialize(cls, layout: CaretLayout) -> None:
-        """Creates the (hidden) overlay rectangle. Call once after the viewport exists."""
+    def initialize(cls, layout: CaretLayout, *, root_window_tag: str) -> None:
+        """Creates the (hidden) overlay rectangle. Call once after the viewport exists.
+
+        ``root_window_tag`` is the primary window that hosts the tracker tables. The caret
+        shows only while the active window sits within that window's tree, so a dialog or
+        other top-level window that takes focus keeps the front-drawn caret from painting
+        over it.
+        """
         cls._fill = layout.fill
         cls._border = layout.border
         cls._offset = layout.offset
         cls._width_padding = layout.width_padding
+        cls._root_window = root_window_tag
         drawlist = dpg.add_viewport_drawlist(front=True)
         cls._rectangle = dpg.draw_rectangle(
             (0.0, 0.0),
@@ -89,8 +112,17 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
 
     @classmethod
     def redraw(cls) -> None:
-        """Repositions the box for the current frame. Cheap no-op when disarmed."""
+        """Repositions the box for the current frame. Cheap no-op when disarmed.
+
+        Hides the box while the active window sits outside the tracker's window tree (a
+        dialog or another window holds focus), keeping the armed state so the caret returns
+        to the same cell once focus comes back.
+        """
         if cls._rectangle is None:
+            return
+
+        if not cls._active_within_root():
+            cls._hide()
             return
 
         box = cls._compute_box()
@@ -173,6 +205,44 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
             return None
 
         return (rect_min[0], rect_min[1], rect_max[0], rect_max[1])
+
+    @classmethod
+    def _active_within_root(cls) -> bool:
+        """Whether the active window sits within the tracker's root window tree.
+
+        ``get_active_window`` reports the top child window under the primary that owns the
+        focused widget, so the tracker's active window carries the primary among its
+        ancestors. A dialog or other top-level window opens outside that tree, so its
+        ancestor chain excludes the primary and the caret is suppressed. An absent active
+        window counts as outside; the caret is armed only after a tracker cell is clicked,
+        which puts focus back inside the tree.
+
+        The frame after a dialog closes, ``get_active_window`` can still name the destroyed
+        window, so each node is confirmed to exist before it is walked.
+        """
+        if cls._root_window is None:
+            return True
+
+        active_window = dpg.get_active_window()
+        if not active_window:
+            return False
+
+        root_id = _as_item_id(cls._root_window)
+        node: Sender = active_window
+        for _ in range(_ANCESTOR_WALK_LIMIT):
+            if not dpg.does_item_exist(node):
+                return False
+
+            if _as_item_id(node) == root_id:
+                return True
+
+            parent = dpg.get_item_parent(node)
+            if not parent:
+                return False
+
+            node = parent
+
+        return False
 
     @classmethod
     def _hide(cls) -> None:

@@ -44,20 +44,22 @@ class ReconstructionManager(CallbackMixin):
         logger.info(f"Loading project: {logger.format_path(path)}")
         self._load_reconstruction_data(path)
         self._load_reconstruction_features()
-        self._session.mark_loaded(path.stem)
+        self._session.mark_loaded(path.name)
         self.call(self.on_reconstruction_loaded)
         logger.info(f"Reconstruction {logger.format_path(path)} loaded successfully")
 
-    def load_reconstruction_object(self, reconstruction: Reconstruction) -> None:
+    def load_reconstruction_object(self, reconstruction: Reconstruction, *, name: str) -> None:
         """Loads an in-memory reconstruction (e.g. a project sample's) for editing.
 
         Mirrors :meth:`load_reconstruction` for an object already in memory, so edits
-        made in the reconstruction tab mutate the same instance the caller holds.
+        made in the reconstruction tab mutate the same instance the caller holds. The
+        display name is supplied by the caller, since a detached reconstruction has no
+        source path to derive it from.
         """
-        self._current_reconstruction = ReconstructionData.from_reconstruction(reconstruction)
+        self._current_reconstruction = ReconstructionData.from_reconstruction(reconstruction, name=name)
         self._coefficient = reconstruction.coefficient
         self._load_reconstruction_features()
-        self._session.mark_loaded(reconstruction.audio_filepath.stem)
+        self._session.mark_loaded(name)
         self.call(self.on_reconstruction_loaded)
 
     def _load_reconstruction_data(self, filepath: Path) -> None:
@@ -85,7 +87,22 @@ class ReconstructionManager(CallbackMixin):
 
         reconstruction.save(target_path)
         logger.info(f"Saved reconstruction to: {logger.format_path(target_path)}")
-        self._session.mark_saved(filepath.stem if filepath is not None else None)
+        self._session.mark_saved(filepath.name if filepath is not None else None)
+
+    def detach_current_reconstruction(self) -> None:
+        """Re-binds the open reconstruction to its detached, in-memory form.
+
+        Adding a file-backed reconstruction to the sequencer turns it into a project sample: its
+        source audio is detached and it maps to no standalone file. The open document adopts that
+        form so the reconstruction view reflects the owned sample, keeping the same reconstruction
+        object so live editing continues.
+        """
+        if self._current_reconstruction is None:
+            return
+
+        reconstruction = self._current_reconstruction.reconstruction
+        name = self._current_reconstruction.name
+        self._current_reconstruction = ReconstructionData.from_reconstruction(reconstruction, name=name)
 
     def mark_updated(self) -> None:
         self._session.mark_updated()

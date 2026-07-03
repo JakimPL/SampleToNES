@@ -1,6 +1,7 @@
+import re
 import uuid
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional, Pattern, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -8,6 +9,7 @@ from sampletones_application.categories.elements.global_ import (
     DialogElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
+    GlobalTemplateElements,
     StatusElements,
     TracebackElements,
 )
@@ -36,15 +38,19 @@ from sampletones_application.constants.reconstructions import (
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.trace import GUITraceback
-from sampletones_application.utils.align import table_wrapper
-from sampletones_application.utils.callbacks.frame import FrameCallbackManager
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.align import table_wrapper
+from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_item,
 )
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.callback import Callback
+
+_TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 
 
 def get_center(width: int, height: int) -> tuple[int, int]:
@@ -112,8 +118,12 @@ class DialogsRenderer:
         self._default_wrap = layout.dialogs.default.width - 10
         self._error_wrap = layout.dialogs.error.width - 10
         self._col_text_error = layout.colors.text.error
+        self._col_text_highlight = layout.colors.text.highlight
         self._col_path = layout.colors.paths.default
         self._col_path_hover = layout.colors.paths.hover
+        self._recovery_width = layout.dialogs.recovery.width
+        self._recovery_height = layout.dialogs.recovery.height
+        self._recovery_wrap = layout.dialogs.recovery.width - 10
 
         self._msg_path = language_manager[
             Page.GLOBAL,
@@ -175,6 +185,36 @@ class DialogsRenderer:
             TextType.MESSAGE,
             GlobalMessageElements.RECONSTRUCTION_NO_DATA,
         ]
+        self._ttl_config_recovery = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.CONFIGURATION_RECOVERY,
+        ]
+        self._tpl_config_recovery_intro = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TEMPLATE,
+            GlobalTemplateElements.CONFIGURATION_RECOVERY_INTRO,
+        ]
+        self._msg_config_recovery_earlier_version = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.CONFIGURATION_RECOVERY_EARLIER_VERSION,
+        ]
+        self._msg_config_recovery_list_header = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.CONFIGURATION_RECOVERY_LIST_HEADER,
+        ]
+        self._msg_config_recovery_path_prefix = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.CONFIGURATION_RECOVERY_PATH_PREFIX,
+        ]
 
     def show_modal(
         self,
@@ -211,6 +251,86 @@ class DialogsRenderer:
             height=self._default_height,
             modal=False,
         )
+
+    def show_config_recovery(
+        self,
+        *,
+        tag: str,
+        source_version: Optional[str],
+        target_version: str,
+        properties: Tuple[str, ...],
+        config_path: Path,
+    ) -> None:
+        """
+        Reports that a stored configuration was migrated, listing the discarded settings.
+
+        The version numbers are emphasised in bold, each discarded setting is drawn in the
+        highlight colour to stand apart from the surrounding prose, and the trailing path
+        opens the configuration file's directory so the user can edit it directly.
+        """
+        source = source_version if source_version is not None else self._msg_config_recovery_earlier_version
+
+        def content(parent: str) -> None:
+            self._render_template_bold(
+                parent,
+                self._tpl_config_recovery_intro,
+                {"source": source, "target": target_version},
+            )
+
+            dpg.add_text(self._msg_config_recovery_list_header, parent=parent, wrap=self._recovery_wrap)
+            for property_name in properties:
+                dpg.add_text(
+                    f"- {property_name}",
+                    parent=parent,
+                    wrap=self._recovery_wrap,
+                    color=self._col_text_highlight,
+                )
+
+            dpg.add_text(self._msg_config_recovery_path_prefix, parent=parent, wrap=self._recovery_wrap)
+            GUIPathText(
+                tag=f"{parent}{SUF_PATH}",
+                path=config_path,
+                parent=parent,
+                color=self._col_path,
+                hover_color=self._col_path_hover,
+                status_message=self._msg_path,
+            )
+
+        dpg_delete_item(tag)
+        _show_modal_dialog(
+            tag=tag,
+            title=self._ttl_config_recovery,
+            content=content,
+            ok_label=self._lbl_ok,
+            width=self._recovery_width,
+            height=self._recovery_height,
+            modal=False,
+        )
+
+    def _render_template_bold(self, parent: str, template: str, substitutions: Dict[str, str]) -> None:
+        """
+        Renders a placeholder template on one line with the substituted values in bold.
+
+        The literal spans of ``template`` are drawn as regular text and each ``{name}``
+        placeholder is replaced by ``substitutions[name]`` in bold, so a sentence keeps its
+        natural word order in the language file while its dynamic values stand out. The
+        literal spans carry their own spacing, so the row abuts its runs without extra gaps.
+        """
+        group_tag = f"{parent}{SUF_GROUP}"
+        with dpg.group(horizontal=True, horizontal_spacing=0, tag=group_tag, parent=parent):
+            position = 0
+            for match in _TEMPLATE_PLACEHOLDER.finditer(template):
+                literal = template[position : match.start()]
+                if literal:
+                    dpg.add_text(literal, parent=group_tag)
+
+                value_item = dpg.add_text(substitutions[match.group(1)], parent=group_tag)
+                FontRegistry.bind_to_item(value_item, Font.BOLD)
+                position = match.end()
+
+            trailing = template[position:]
+            if trailing:
+                dpg.add_text(trailing, parent=group_tag)
 
     def show_error(self, exception: Exception, message: Optional[str] = None) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)

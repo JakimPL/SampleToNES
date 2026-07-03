@@ -159,6 +159,10 @@ class GlobalMessageElements(AbstractElement):
     CONFIGURATION_SAVE_ERROR = "configuration_save_error"
     CONFIGURATION_LOAD_ERROR = "configuration_load_error"
     CONFIGURATION_INVALID_ERROR = "configuration_invalid_error"
+    CONFIGURATION_PARSE_ERROR = "configuration_parse_error"
+    CONFIGURATION_RECOVERY_EARLIER_VERSION = "configuration_recovery_earlier_version"
+    CONFIGURATION_RECOVERY_LIST_HEADER = "configuration_recovery_list_header"
+    CONFIGURATION_RECOVERY_PATH_PREFIX = "configuration_recovery_path_prefix"
     AUDIO_PLAYBACK_ERROR = "audio_playback_error"
     ALL_AUDIO_FORMATS = "all_audio_formats"
     NO_PROJECT_OPEN = "no_project_open"
@@ -172,6 +176,7 @@ class GlobalDialogTitleElements(AbstractElement):
     MAIN_WINDOW = "main_window"
     SAVE_CONFIG = "save_config"
     LOAD_CONFIG = "load_config"
+    CONFIGURATION_RECOVERY = "configuration_recovery"
     ERROR = "error"
     CONFIG_STATUS = "config_status"
     FILE_NOT_FOUND = "file_not_found"
@@ -197,6 +202,7 @@ class GlobalDialogTitleElements(AbstractElement):
 
 class GlobalTemplateElements(AbstractElement):
     TIME_ESTIMATION = "time_estimation"
+    CONFIGURATION_RECOVERY_INTRO = "configuration_recovery_intro"
     FPS = "fps"
     EXPAND = "expand"
     COLLAPSE = "collapse"

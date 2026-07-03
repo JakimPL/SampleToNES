@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import AbstractSet, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -31,11 +31,23 @@ class Channel(BaseModel):
     def pattern(self, index: int) -> Optional[Pattern]:
         return self.patterns.get(index)
 
-    def _next_index(self) -> int:
-        return max(self.patterns, default=-1) + 1
+    def _next_index(self, reserved_indices: AbstractSet[int] = frozenset()) -> int:
+        """Returns a free index above every pool key and ``reserved_indices``.
 
-    def add_pattern(self, length: int, *, name: Optional[str] = None) -> int:
-        index = self._next_index()
+        The pool alone does not reveal indices an order slot references before its
+        pattern is materialised, so a caller aware of those passes them as
+        ``reserved_indices`` to keep the new index from taking one of them.
+        """
+        return max(self.patterns.keys() | reserved_indices, default=-1) + 1
+
+    def add_pattern(
+        self,
+        length: int,
+        *,
+        name: Optional[str] = None,
+        reserved_indices: AbstractSet[int] = frozenset(),
+    ) -> int:
+        index = self._next_index(reserved_indices)
         self.patterns[index] = Pattern.empty(length, name=name)
         return index
 
@@ -50,9 +62,15 @@ class Channel(BaseModel):
 
         return self.patterns[index]
 
-    def duplicate_pattern(self, index: int) -> int:
+    def duplicate_pattern(self, index: int, *, reserved_indices: AbstractSet[int] = frozenset()) -> int:
+        """Clones the pattern at ``index`` into a fresh index and returns that index.
+
+        ``reserved_indices`` are extra indices the clone must avoid beyond the pool's
+        own keys, so a caller that knows of indices referenced elsewhere (order slots
+        whose patterns are not yet materialised) keeps the clone from taking one of them.
+        """
         source = self.patterns[index]
-        clone_index = self._next_index()
+        clone_index = self._next_index(reserved_indices)
         self.patterns[clone_index] = Pattern(name=source.name, rows=list(source.rows))
         return clone_index
 

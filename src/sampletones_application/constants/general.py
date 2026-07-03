@@ -187,6 +187,12 @@ TAG_GLOBAL_DIALOG_CONFIG_STATUS = TagName(
     Widget.DIALOG,
     "config_status",
 )
+TAG_GLOBAL_DIALOG_CONFIG_RECOVERY = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "config_recovery",
+)
 TAG_GLOBAL_DIALOG_RECONSTRUCTION_STATUS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

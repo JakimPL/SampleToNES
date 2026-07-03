@@ -59,12 +59,12 @@ from sampletones_application.ui.panels.reconstruction.details.config import (
     make_feature_plot_configs,
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.clipboard import copy_to_clipboard
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.clipboard import copy_to_clipboard
+from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_value,
 )
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.details import (
     ReconstructionDetailsViewModel,
 )

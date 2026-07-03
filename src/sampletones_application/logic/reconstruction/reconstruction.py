@@ -1,11 +1,13 @@
 from pathlib import Path
-from typing import Callable, FrozenSet, List, Optional
+from typing import Callable, FrozenSet, List, Optional, Tuple
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.export import ExportService
 from sampletones_application.view_model.reconstruction.reconstruction import (
+    ReconstructionPathState,
+    ReconstructionPathViewModel,
     ReconstructionViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
@@ -14,7 +16,6 @@ from sampletones_core.paths import EXT_FILE_INSTRUMENT
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.paths import to_path
 
 
 class ReconstructionPanelLogic(CallbackMixin):
@@ -37,6 +38,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_waveform_load_changed: Optional[Callable[[ReconstructionData, List[GeneratorName]], None]] = None
         self.on_waveform_update_changed: Optional[Callable[[ReconstructionData, List[GeneratorName]], None]] = None
         self.on_waveform_cleared: Optional[VoidCallback] = None
+        self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
         self.on_open_export_instrument_dialog: Optional[Callable[[str, str], None]] = None
         self.on_open_export_instruments_dialog: Optional[Callable[[str, str], None]] = None
@@ -55,6 +57,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._selected_generators = list(available_generators)
 
+        reconstruction_file, original_audio = self._build_path_view_models(reconstruction_data)
         self.call(
             self.on_view_changed,
             ReconstructionViewModel(
@@ -62,8 +65,11 @@ class ReconstructionPanelLogic(CallbackMixin):
                 available_generators=available_generators,
                 audio_source_enabled=True,
                 buttons_enabled=True,
+                reconstruction_file=reconstruction_file,
+                original_audio=original_audio,
             ),
         )
+        self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
             reconstruction_data,
@@ -89,6 +95,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._selected_generators = []
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
+        empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path="")
         self.call(
             self.on_view_changed,
             ReconstructionViewModel(
@@ -96,12 +103,15 @@ class ReconstructionPanelLogic(CallbackMixin):
                 available_generators=frozenset(),
                 audio_source_enabled=False,
                 buttons_enabled=False,
+                reconstruction_file=empty_path,
+                original_audio=empty_path,
             ),
         )
 
     def set_audio_source(self, audio_source: AudioSourceType) -> None:
         self._current_audio_source = audio_source
         self._emit_audio_data()
+        self.call(self.on_waveform_source_changed, audio_source)
 
     def set_selected_generators(self, generators: List[GeneratorName]) -> None:
         self._selected_generators = generators
@@ -121,9 +131,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if generator_name not in feature_data.generators:
             return
 
-        reconstruction = reconstruction_data.reconstruction
-        filename = to_path(reconstruction.audio_filepath).stem
-        instrument_name = f"{filename} ({generator_name})"
+        instrument_name = f"{reconstruction_data.name} ({generator_name})"
         default_path = str(self._session_manager.get_instrument_path())
 
         self._pending_generator_name = generator_name
@@ -134,8 +142,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting FTIs")
 
-        reconstruction = reconstruction_data.reconstruction
-        default_filename = to_path(reconstruction.audio_filepath).stem
+        default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_instrument_path())
 
         self.call(
@@ -149,8 +156,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting to WAV")
 
-        reconstruction = reconstruction_data.reconstruction
-        default_filename = to_path(reconstruction.audio_filepath).stem
+        default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_audio_path())
 
         self.call(self.on_open_export_wav_dialog, default_filename, default_path)
@@ -214,8 +220,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be present")
 
-        reconstruction = reconstruction_data.reconstruction
-        filename = to_path(reconstruction.audio_filepath).stem
+        filename = reconstruction_data.name
         if generator_name is None:
             return filename
 
@@ -236,6 +241,38 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         partial_approximation = reconstruction_data.get_partials(self._selected_generators)
         return AudioData.from_array(partial_approximation, sample_rate)
+
+    def _build_path_view_models(
+        self,
+        reconstruction_data: ReconstructionData,
+    ) -> Tuple[ReconstructionPathViewModel, ReconstructionPathViewModel]:
+        """Resolves the reconstruction-file and original-audio locations for display.
+
+        Each location is reported independently. A file-backed reconstruction knows its own file;
+        a detached one (a project sample) reports not-applicable. Its source audio is available when
+        it exists on this machine, not-found when the path is set but missing, and not-applicable
+        when the reconstruction has been detached from its origin.
+        """
+        reconstruction_file = self._build_file_path_view_model(reconstruction_data.filepath)
+        original_audio = self._build_audio_path_view_model(reconstruction_data.reconstruction.audio_filepath)
+        return reconstruction_file, original_audio
+
+    @staticmethod
+    def _build_file_path_view_model(filepath: Optional[Path]) -> ReconstructionPathViewModel:
+        if filepath is None:
+            return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
+
+        return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(filepath))
+
+    @staticmethod
+    def _build_audio_path_view_model(audio_filepath: Optional[Path]) -> ReconstructionPathViewModel:
+        if audio_filepath is None:
+            return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
+
+        if audio_filepath.exists():
+            return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(audio_filepath))
+
+        return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_FOUND, path="")
 
     @property
     def _reconstruction_data(self) -> Optional[ReconstructionData]:

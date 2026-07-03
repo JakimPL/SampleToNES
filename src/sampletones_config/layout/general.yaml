@@ -37,6 +37,9 @@ dialogs:
   error:
     width: 600
     height: 120
+  recovery:
+    width: 640
+    height: 120
   file:
     width: 720
     height: 400
@@ -87,6 +90,7 @@ colors:
     default: "#dcdcdc"
     disabled: "#828282"
     error: "#ff6464"
+    highlight: "#ffcf6e"
     traceback: "#c0c0c0"
   files:
     wave: "#64c8ff"

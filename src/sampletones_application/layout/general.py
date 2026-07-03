@@ -60,6 +60,7 @@ class DialogSizeNoHeight(BaseModel, frozen=True):
 class DialogsLayout(BaseModel, frozen=True):
     default: DialogSizeLayout
     error: DialogSizeLayout
+    recovery: DialogSizeLayout
     file: DialogSizeLayout
     confirmation: DialogSizeNoWidth
     text_input: DialogSizeNoWidth
@@ -110,6 +111,7 @@ class TextColors(BaseModel, frozen=True):
     default: RGBA
     disabled: RGBA
     error: RGBA
+    highlight: RGBA
     traceback: RGBA
 
 

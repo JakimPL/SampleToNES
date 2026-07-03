@@ -49,9 +49,9 @@ from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.dpg import dpg_delete_children, dpg_get_value
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.tooltip import show_detail_tooltip
+from sampletones_application.utils.gui.dpg import dpg_delete_children, dpg_get_value
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.tooltip import show_detail_tooltip
 from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs.display import (

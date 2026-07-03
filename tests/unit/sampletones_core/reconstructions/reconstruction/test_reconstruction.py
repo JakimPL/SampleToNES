@@ -41,6 +41,33 @@ class TestRoundTrip:
         assert loaded.audio_filepath == reconstruction.audio_filepath
         assert_array_equal(loaded.approximation, reconstruction.approximation)
 
+    def test_detached_source_round_trips_as_none(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction.detach_source()
+        path = tmp_path / "detached.stn"
+
+        reconstruction.save(path)
+        loaded = Reconstruction.load(path)
+
+        assert loaded.audio_filepath is None
+
+
+class TestDetachSource:
+    def test_detach_clears_the_source_location(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        assert reconstruction.audio_filepath is not None
+
+        reconstruction.detach_source()
+
+        assert reconstruction.audio_filepath is None
+
 
 class TestLoadRejectsForeignFiles:
     def test_non_reconstruction_file_raises_load_error(self, tmp_path: Path) -> None:

@@ -31,8 +31,8 @@ from sampletones_application.services import (
     ServiceError,
     ServiceSuccess,
 )
-from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
@@ -327,9 +327,10 @@ class ReconstructionCoordinator:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
         self._audio_device_manager.stop()
-        if not reconstruction_data.reconstruction.audio_filepath.exists():
+        audio_filepath = reconstruction_data.reconstruction.audio_filepath
+        if audio_filepath is not None and not audio_filepath.exists():
             self._dialogs.show_file_not_found(
-                reconstruction_data.reconstruction.audio_filepath,
+                audio_filepath,
                 self._language_manager[
                     Page.RECONSTRUCTIONS,
                     Panel.BROWSER,

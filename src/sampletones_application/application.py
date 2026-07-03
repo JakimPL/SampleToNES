@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -18,6 +18,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
+    TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
@@ -40,7 +41,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.project.title import document_title
+from sampletones_application.logic.project.title.document import ReconstructionTitlePart, document_title
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import (
@@ -64,19 +65,24 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.background import stop_background_workers
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
-from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
+from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
+
+SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"
+SEQUENCER_SAMPLE_ORDINAL_FORMAT: Final[str] = "02X"
 
 
 class Application:
@@ -104,7 +110,7 @@ class Application:
         FontRegistry.setup(self.layout.general.fonts)
         setup_themes(THEME_DIRECTORY)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
-        self.config_manager = ConfigManager(config_path, dialogs=self.dialogs)
+        self.config_manager = ConfigManager(config_path)
         self.session_manager = SessionManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
@@ -278,6 +284,7 @@ class Application:
             instructions_tab=self._instructions_tab,
         )
         self._setup_gui()
+        self._config_coordinator.present_pending_load_outcomes()
         self._load_settings()
 
     def _load_settings(self) -> None:
@@ -301,6 +308,7 @@ class Application:
         self._sequencer_tab.initialize()
         self.config_manager.update_gui()
         self._update_menu()
+        self._update_add_to_sequencer_state()
         self._restore_current_items()
 
     def _create_shortcut_bindings(self) -> ShortcutBindings:
@@ -340,7 +348,10 @@ class Application:
         )
 
     def _initialize_caret(self) -> None:
-        CaretOverlay.initialize(self.layout.general.caret)
+        CaretOverlay.initialize(
+            self.layout.general.caret,
+            root_window_tag=TAG_GLOBAL_WINDOW_MAIN,
+        )
 
     def _restore_current_items(self) -> None:
         self._shell.restore_current_items(
@@ -353,6 +364,7 @@ class Application:
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
         self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
         self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
+        self._reconstructions_tab.set_on_add_current_reconstruction(self._add_current_reconstruction_to_sequencer)
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
@@ -531,7 +543,7 @@ class Application:
             logger.warning(f"Cannot edit unknown project sample: {sample_id}")
             return
 
-        self.reconstruction_manager.load_reconstruction_object(sample.reconstruction)
+        self.reconstruction_manager.load_reconstruction_object(sample.reconstruction, name=sample.name)
 
     def _regenerate_instrument(
         self,
@@ -544,12 +556,54 @@ class Application:
         if self._editing_project_sample():
             self.project_controller.mark_updated()
 
-    def _editing_project_sample(self) -> bool:
+    def _owning_project_sample(self) -> Optional[Sample]:
         reconstruction = self.reconstruction_manager.reconstruction
         if reconstruction is None:
-            return False
+            return None
 
-        return any(sample.reconstruction is reconstruction for sample in self.project_manager.current.samples)
+        for sample in self.project_manager.current.samples:
+            if sample.reconstruction is reconstruction:
+                return sample
+
+        return None
+
+    def _editing_project_sample(self) -> bool:
+        return self._owning_project_sample() is not None
+
+    def _add_current_reconstruction_to_sequencer(self) -> None:
+        reconstruction_data = self.reconstruction_manager.current_reconstruction
+        if reconstruction_data is None or self._editing_project_sample():
+            return
+
+        self._sequencer_tab.import_reconstruction_object(
+            reconstruction_data.reconstruction,
+            reconstruction_data.name,
+        )
+
+    def _update_add_to_sequencer_state(self) -> None:
+        self._reconstructions_tab.update_add_to_sequencer(
+            AddToSequencerViewModel(
+                reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+                project_open=self.project_controller.is_open,
+                already_in_sequencer=self._editing_project_sample(),
+            )
+        )
+
+    def _reconstruction_title_part(self) -> Optional[ReconstructionTitlePart]:
+        session = self._reconstruction_coordinator.reconstruction_session
+        if not session.is_loaded:
+            return None
+
+        sample = self._owning_project_sample()
+        if sample is not None:
+            ordinal = self.project_manager.current.samples.get_index(sample.id)
+            name = SEQUENCER_SAMPLE_TITLE_FORMAT.format(
+                ordinal=format(ordinal, SEQUENCER_SAMPLE_ORDINAL_FORMAT),
+                name=sample.name,
+            )
+            return ReconstructionTitlePart(name=name, unsaved_changes=session.unsaved_changes, included=True)
+
+        return ReconstructionTitlePart(name=session.name, unsaved_changes=session.unsaved_changes, included=False)
 
     def _update_title(self) -> None:
         untitled = self.language_manager[
@@ -560,10 +614,9 @@ class Application:
         ]
         composed = document_title(
             self.project_manager.session,
-            self._reconstruction_coordinator.reconstruction_session,
+            self._reconstruction_title_part(),
             untitled=untitled,
             project_open=self.project_manager.is_open,
-            reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
         )
         self._viewport_manager.update_title(
             self.language_manager[
@@ -575,13 +628,34 @@ class Application:
             composed,
         )
 
+    def _sync_reconstruction_ownership(self) -> None:
+        """Reflects sequencer ownership in the open reconstruction view.
+
+        When the reconstruction on screen becomes a project sample — added to the sequencer — its
+        source audio and file location are detached. The open document follows so both locations read
+        as not applicable, matching an owned sample. The guard makes this a no-op except at the moment
+        a file-backed reconstruction is added while it is the one on screen.
+        """
+        reconstruction_data = self.reconstruction_manager.current_reconstruction
+        if reconstruction_data is None or reconstruction_data.filepath is None:
+            return
+
+        if self._owning_project_sample() is None:
+            return
+
+        self.reconstruction_manager.detach_current_reconstruction()
+        self._reconstructions_tab.display_reconstruction()
+
     def _on_project_state_changed(self) -> None:
+        self._sync_reconstruction_ownership()
         self._update_title()
         self._update_menu()
+        self._update_add_to_sequencer_state()
 
     def _on_reconstruction_state_changed(self) -> None:
         self._update_title()
         self._update_menu()
+        self._update_add_to_sequencer_state()
 
     def _set_current_tab(self, tab: Tab) -> None:
         self._shell.set_current_tab(tab)
@@ -706,7 +780,14 @@ class Application:
         finally:
             stop_background_workers()
             self._main_tab.cleanup()
-            self.config_manager.save_config()
+            save_failed = False
+            try:
+                self.config_manager.save_config()
+            except OSError as exception:
+                logger.error_with_traceback(exception, "Failed to save configuration on exit")
+                save_failed = True
             self._persist_application_state()
             self.audio_device_manager.terminate()
             dpg.destroy_context()
+            if save_failed:
+                raise SystemExit(1)

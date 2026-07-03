@@ -12,7 +12,7 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_item,
     dpg_is_item_hovered,

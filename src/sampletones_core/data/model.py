@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from enum import StrEnum
 from pathlib import Path
+from types import NoneType
 from typing import (
     Any,
     Dict,
@@ -37,6 +38,28 @@ from sampletones_shared.utils.serialization import (
     load_binary,
     save_binary,
 )
+
+
+def _optional_inner_annotation(annotation: Any) -> Optional[Any]:
+    """Returns the wrapped annotation of an ``Optional`` field, or ``None`` for a non-optional Union.
+
+    ``Optional[X]`` is ``Union[X, None]``, so an optional field is a Union carrying ``NoneType`` among
+    its arguments. Stripping ``NoneType`` yields the payload type to serialize when the value is set:
+    a single remaining type is returned directly; several remaining types stay a Union so a tagged
+    union still resolves through its ``union_map``.
+    """
+    if get_origin(annotation) is not Union:
+        return None
+
+    arguments = get_args(annotation)
+    if NoneType not in arguments:
+        return None
+
+    payload = tuple(argument for argument in arguments if argument is not NoneType)
+    if len(payload) == 1:
+        return payload[0]
+
+    return Union[payload]
 
 
 class DataModel(BaseModel, ABC):
@@ -98,7 +121,15 @@ class DataModel(BaseModel, ABC):
         if annotation in (Array, *ArrayClasses):
             return self._pack_array(value, field_name)
 
-        if isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
+        if get_origin(annotation) is Union:
+            optional_inner = _optional_inner_annotation(annotation)
+            if optional_inner is not None:
+                if value is None:
+                    return None
+                return self._pack_value(value, optional_inner, field_name)
+            return self._pack_union(value, field_name)
+
+        if isinstance(annotation, TypeVar):
             return self._pack_union(value, field_name)
 
         if get_origin(annotation) is list:
@@ -133,7 +164,15 @@ class DataModel(BaseModel, ABC):
         if annotation in (Array, *ArrayClasses):
             return cls._unpack_array(raw, field_name)
 
-        if isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
+        if get_origin(annotation) is Union:
+            optional_inner = _optional_inner_annotation(annotation)
+            if optional_inner is not None:
+                if raw is None:
+                    return None
+                return cls._unpack_value(raw, optional_inner, field_name, validation, fast)
+            return cls._unpack_union(raw, field_name)
+
+        if isinstance(annotation, TypeVar):
             return cls._unpack_union(raw, field_name)
 
         if get_origin(annotation) is list:

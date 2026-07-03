@@ -18,8 +18,8 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_item_label,
     dpg_set_value,

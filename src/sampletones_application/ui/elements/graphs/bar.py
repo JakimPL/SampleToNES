@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
@@ -19,16 +20,23 @@ from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.bar import BarLayer
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.dpg import (
+from sampletones_application.utils.gui.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
     dpg_delete_item,
     dpg_is_item_hovered,
 )
 from sampletones_shared.types.application import Color, Sender
+from sampletones_shared.utils.arrays import interpolate_segment
 
 OnBarPointClickedCallback = Callable[[np.ndarray], None]
 OnBarPointHoveredCallback = Callable[[Optional[str], Optional[int]], None]
+
+
+@dataclass(frozen=True)
+class DrawStroke:
+    index: int
+    value: float
 
 
 class GUIBarGraph(GUIGraph[BarLayer]):
@@ -78,6 +86,8 @@ class GUIBarGraph(GUIGraph[BarLayer]):
 
         self.on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None
         self.on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None
+
+        self._draw_stroke: Optional[DrawStroke] = None
 
         _min_x = layout.graph.min_x
         _max_x = layout.graph.max_x
@@ -298,6 +308,9 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
 
     def _on_mouse_action(self, sender: Sender) -> None:
+        previous_stroke = self._draw_stroke
+        self._draw_stroke = None
+
         if dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_LAlt):
             return
 
@@ -322,11 +335,31 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             self.call(self.on_bar_point_hovered, name, None)
             return
 
-        clamped_y = round(np.clip(mouse_y, *self.data_range))
+        clamped_y = float(round(np.clip(mouse_y, *self.data_range)))
         self._set_hover_bar_position(bar_index, clamped_y)
         self.call(self.on_bar_point_hovered, name, bar_index)
 
         if dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left):
-            layer.y_data[bar_index] = clamped_y
-            self._update_display()
-            self.call(self.on_bar_point_clicked, layer.y_data)
+            self._draw_bar(layer, bar_index, clamped_y, previous_stroke)
+
+    def _draw_bar(
+        self,
+        layer: BarLayer,
+        bar_index: int,
+        value: float,
+        previous_stroke: Optional[DrawStroke],
+    ) -> None:
+        if previous_stroke is not None and previous_stroke.index != bar_index:
+            interpolate_segment(
+                layer.y_data,
+                previous_stroke.index,
+                bar_index,
+                previous_stroke.value,
+                value,
+            )
+        else:
+            layer.y_data[bar_index] = value
+
+        self._draw_stroke = DrawStroke(index=bar_index, value=value)
+        self._update_display()
+        self.call(self.on_bar_point_clicked, layer.y_data)

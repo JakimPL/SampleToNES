@@ -32,6 +32,20 @@ class TestPatternPool:
         assert clone is not source
         assert clone.rows[0] == source.rows[0]
 
+    def test_duplicate_pattern_avoids_reserved_indices(self) -> None:
+        channel = _channel()
+
+        clone_index = channel.duplicate_pattern(0, reserved_indices={1, 2})
+
+        assert clone_index == 3
+
+    def test_add_pattern_avoids_reserved_indices(self) -> None:
+        channel = _channel()
+
+        index = channel.add_pattern(ROWS_PER_PATTERN, reserved_indices={1, 2})
+
+        assert index == 3
+
     def test_remove_pattern_drops_from_pool(self) -> None:
         channel = _channel()
         extra_index = channel.add_pattern(ROWS_PER_PATTERN)

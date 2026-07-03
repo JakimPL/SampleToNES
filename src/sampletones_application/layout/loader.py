@@ -15,10 +15,10 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_shared.utils.serialization import load_yaml
 
-M = TypeVar("M", bound=BaseModel)
+ModelTypeT = TypeVar("ModelTypeT", bound=BaseModel)
 
 
-def _load(path: Path, model: Type[M]) -> M:
+def _load(path: Path, model: Type[ModelTypeT]) -> ModelTypeT:
     raw = load_yaml(path)
     if not isinstance(raw, dict):
         raise TypeError(f"Layout file {path} must contain a mapping, got {type(raw)}")

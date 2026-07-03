@@ -1,11 +1,14 @@
 import json
 from pathlib import Path
-from typing import Optional
-from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.config.managers.outcome import (
+    ConfigLoadFailure,
+    ConfigLoadFailureReason,
+    ConfigRecovered,
+)
 from sampletones_application.config.updates import (
     AdvancedSettingsUpdate,
     AudioSettingsUpdate,
@@ -17,12 +20,8 @@ from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
 from sampletones_core.library import InstructionLibraryKey
 
 
-def _dialogs() -> MagicMock:
-    return MagicMock()
-
-
-def _manager(path: Path, dialogs: Optional[MagicMock] = None) -> ConfigManager:
-    return ConfigManager(path, dialogs=dialogs or _dialogs())
+def _manager(path: Path) -> ConfigManager:
+    return ConfigManager(path)
 
 
 class TestConfigManagerInitialize:
@@ -36,24 +35,56 @@ class TestConfigManagerInitialize:
         manager = _manager(path)
         assert isinstance(manager.config, Config)
 
-    def test_directory_path_shows_error_dialog(self, tmp_path: Path) -> None:
-        dialogs = _dialogs()
-        _manager(tmp_path, dialogs)
-        dialogs.show_error.assert_called_once()
+    def test_directory_path_records_load_failure(self, tmp_path: Path) -> None:
+        manager = _manager(tmp_path)
+        assert isinstance(manager.config, Config)
+        [outcome] = manager.pending_load_outcomes
+        assert isinstance(outcome, ConfigLoadFailure)
+        assert outcome.reason is ConfigLoadFailureReason.LOAD_ERROR
 
-    def test_invalid_json_schema_shows_error_dialog(self, tmp_path: Path) -> None:
+    def test_unknown_field_records_recovery(self, tmp_path: Path) -> None:
         path = tmp_path / "config.json"
         path.write_text(json.dumps({"unexpected_field": True}))
-        dialogs = _dialogs()
-        _manager(path, dialogs)
-        dialogs.show_error.assert_called_once()
+        manager = _manager(path)
+        assert isinstance(manager.config, Config)
+        [outcome] = manager.pending_load_outcomes
+        assert isinstance(outcome, ConfigRecovered)
 
-    def test_corrupt_json_shows_error_dialog(self, tmp_path: Path) -> None:
+    def test_recovery_preserves_valid_settings_and_lists_dropped(self, tmp_path: Path) -> None:
+        path = tmp_path / "config.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "library": {"sample_rate": 22050},
+                    "generation": {"drive": -5.0},
+                    "obsolete_field": 1,
+                }
+            )
+        )
+        manager = _manager(path)
+        assert manager.config.library.sample_rate == 22050
+        assert manager.config.generation.drive == Config().generation.drive
+        [outcome] = manager.pending_load_outcomes
+        assert isinstance(outcome, ConfigRecovered)
+        dropped = set(outcome.dropped)
+        assert ("generation", "drive") in dropped
+        assert ("obsolete_field",) in dropped
+
+    def test_config_without_metadata_recovers(self, tmp_path: Path) -> None:
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"library": {"sample_rate": 22050}}))
+        manager = _manager(path)
+        assert manager.config.library.sample_rate == 22050
+        assert not any(isinstance(outcome, ConfigLoadFailure) for outcome in manager.pending_load_outcomes)
+
+    def test_corrupt_json_resets_to_default_and_records_parse_failure(self, tmp_path: Path) -> None:
         path = tmp_path / "config.json"
         path.write_text("{ not valid json {{")
-        dialogs = _dialogs()
-        _manager(path, dialogs)
-        dialogs.show_error.assert_called_once()
+        manager = _manager(path)
+        assert isinstance(manager.config, Config)
+        [outcome] = manager.pending_load_outcomes
+        assert isinstance(outcome, ConfigLoadFailure)
+        assert outcome.reason is ConfigLoadFailureReason.PARSE_ERROR
 
 
 class TestConfigManagerSaveConfig:

@@ -13,7 +13,7 @@ from sampletones_core.library import InstructionLibraryKey
 
 @pytest.fixture
 def config_manager(tmp_path: Path) -> ConfigManager:
-    return ConfigManager(tmp_path / "config.json", dialogs=MagicMock())
+    return ConfigManager(tmp_path / "config.json")
 
 
 @pytest.fixture

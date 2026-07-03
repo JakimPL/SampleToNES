@@ -6,8 +6,8 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_DIALOG_SUCCESS,
 )
-from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.dpg import dpg_delete_item
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import dpg_delete_item
 
 
 class ConverterSuccessDialog:
