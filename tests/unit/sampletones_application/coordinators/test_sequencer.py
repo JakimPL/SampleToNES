@@ -6,6 +6,10 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.logic.history.manager import HistoryManager
+from sampletones_application.logic.history.snapshot import snapshot_project
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_core.constants.enums import GeneratorName
 
@@ -497,6 +501,60 @@ def history_coordinator() -> SequencerTabCoordinator:
     return instance
 
 
+@pytest.fixture
+def wired_history_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
+    """A coordinator whose history wiring matches production.
+
+    A real manager observes a real controller, and every project replacement —
+    including the ones undo/redo drive — routes back through
+    ``_on_project_replaced``, exactly as ``_wire_callbacks`` sets it up. The
+    panel-refreshing ``refresh`` is stubbed since no GUI subtree exists here.
+    """
+    instance = object.__new__(SequencerTabCoordinator)
+    controller = ProjectController(ProjectManager())
+    history = HistoryManager(controller, budget=10, strict=True)
+    controller.on_mutation = history.handle_mutation
+    controller.on_project_replaced = instance._on_project_replaced
+    instance._project_controller = controller
+    instance._history = history
+    monkeypatch.setattr(instance, "refresh", MagicMock())
+    history.reset()
+    return instance
+
+
+class TestHistoryResetWiring:
+    def test_project_replacement_reseeds_history(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+
+        controller.replace_project(snapshot_project(controller.project))
+
+        assert len(coordinator._history.entries) == 1
+        assert coordinator._history.entries[0].action is HistoryAction.INITIAL
+
+    def test_undo_keeps_the_stack_it_navigates(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        with coordinator._history.transaction(HistoryAction.SET_SPEED):
+            controller.set_speed(4)
+
+        coordinator.undo()
+
+        assert len(coordinator._history.entries) == 3
+        assert coordinator._history.can_redo is True
+        assert controller.project.settings.tempo == 150
+
+
 class TestHistoryDelegation:
     def test_undo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:
         history_coordinator.undo()
@@ -532,7 +590,7 @@ class TestUndoableWrapper:
         target = MagicMock()
         segments = (HistoryDetailSegment(text="v150", role=HistoryDetailRole.VALUE),)
 
-        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda value: segments)
+        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda _: segments)
         wrapped(150)
 
         history_coordinator._history.transaction.assert_called_once_with(
@@ -547,7 +605,7 @@ class TestUndoableWrapper:
         wrapped = history_coordinator._undoable(
             HistoryAction.SET_TEMPO,
             target,
-            coalesce=lambda value: ("tempo",),
+            coalesce=lambda _: ("tempo",),
         )
         wrapped(150)
 
