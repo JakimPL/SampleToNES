@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec
+from typing import Callable, Optional, ParamSpec, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -38,6 +38,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
+from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
 from sampletones_application.logic.sequencer.order import SequencerOrderLogic
 from sampletones_application.logic.sequencer.playback.playhead import (
     remap_after_insert,
@@ -59,6 +60,7 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.history import (
+    HistoryDetailSegment,
     HistoryEntryViewModel,
     HistoryViewModel,
 )
@@ -70,7 +72,6 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.utils.display import display_id
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 
@@ -246,6 +247,11 @@ class SequencerTabCoordinator:
             layout=layout.sequencer,
             language_manager=language_manager,
         )
+        self._history_detail: SequencerHistoryDetail = SequencerHistoryDetail(
+            self._sequencer_grid_logic,
+            self._sequencer_samples_logic,
+            language_manager=language_manager,
+        )
 
         self._wire_callbacks()
 
@@ -254,42 +260,49 @@ class SequencerTabCoordinator:
         self._sequencer_module_panel.on_rows_per_pattern = self._undoable(
             HistoryAction.SET_ROWS_PER_PATTERN,
             self._sequencer_grid_logic.set_rows_per_pattern,
-            detail=str,
+            detail=self._history_detail.value,
         )
         self._sequencer_module_panel.on_tempo = self._undoable(
             HistoryAction.SET_TEMPO,
             self._sequencer_grid_logic.set_tempo,
-            detail=str,
+            detail=self._history_detail.value,
         )
         self._sequencer_module_panel.on_speed = self._undoable(
             HistoryAction.SET_SPEED,
             self._sequencer_grid_logic.set_speed,
-            detail=str,
+            detail=self._history_detail.value,
         )
         self._sequencer_grid_panel.on_clear_row = self._undoable(
             HistoryAction.CLEAR_ROW,
             self._on_clear_row,
+            detail=self._history_detail.clear_row,
         )
         self._sequencer_grid_panel.on_clear_subcolumn = self._undoable(
             HistoryAction.CLEAR_SUBCOLUMN,
             self._on_clear_subcolumn,
+            detail=self._history_detail.clear_subcolumn,
         )
         self._sequencer_grid_panel.on_set_row = self._undoable(
             HistoryAction.EDIT_ROW,
             self._on_set_row,
-            detail=self._edit_row_detail,
+            detail=self._history_detail.edit_row,
         )
         self._sequencer_grid_panel.on_set_note_off = self._undoable(
             HistoryAction.NOTE_OFF,
             self._on_set_note_off,
+            detail=self._history_detail.note_off,
         )
         self._sequencer_grid_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_grid_panel.on_play_from_row = self._on_grid_play_from_row
         self._sequencer_grid_panel.on_adjust_transpose = self._undoable(
-            HistoryAction.ADJUST_TRANSPOSE, self._on_adjust_transpose
+            HistoryAction.ADJUST_TRANSPOSE,
+            self._on_adjust_transpose,
+            detail=self._history_detail.adjust_transpose,
         )
         self._sequencer_grid_panel.on_adjust_volume = self._undoable(
-            HistoryAction.ADJUST_VOLUME, self._on_adjust_volume
+            HistoryAction.ADJUST_VOLUME,
+            self._on_adjust_volume,
+            detail=self._history_detail.adjust_volume,
         )
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
@@ -298,20 +311,40 @@ class SequencerTabCoordinator:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
         self._sequencer_order_panel.on_frame_selected = self._on_order_frame_selected
         self._sequencer_order_panel.on_remove_requested = self._undoable(
-            HistoryAction.REMOVE_FRAME, self._on_order_remove
+            HistoryAction.REMOVE_FRAME,
+            self._on_order_remove,
+            detail=self._history_detail.remove_frame,
         )
         self._sequencer_order_panel.on_duplicate_requested = self._undoable(
-            HistoryAction.DUPLICATE_FRAME, self._on_order_duplicate
+            HistoryAction.DUPLICATE_FRAME,
+            self._on_order_duplicate,
+            detail=self._history_detail.duplicate_frame,
         )
-        self._sequencer_order_panel.on_insert_requested = self._undoable(HistoryAction.ADD_FRAME, self._on_order_insert)
-        self._sequencer_order_panel.on_clear_requested = self._undoable(HistoryAction.CLEAR_FRAME, self._on_order_clear)
+        self._sequencer_order_panel.on_insert_requested = self._undoable(
+            HistoryAction.ADD_FRAME,
+            self._on_order_insert,
+            detail=self._history_detail.add_frame,
+        )
+        self._sequencer_order_panel.on_clear_requested = self._undoable(
+            HistoryAction.CLEAR_FRAME,
+            self._on_order_clear,
+            detail=self._history_detail.clear_frame,
+        )
         self._sequencer_order_panel.on_play_from_requested = self._on_order_play_from
-        self._sequencer_order_panel.on_move_requested = self._undoable(HistoryAction.MOVE_FRAME, self._on_order_move)
+        self._sequencer_order_panel.on_move_requested = self._undoable(
+            HistoryAction.MOVE_FRAME,
+            self._on_order_move,
+            detail=self._history_detail.move_frame,
+        )
         self._sequencer_order_panel.on_set_order_entry = self._undoable(
-            HistoryAction.SET_ORDER_ENTRY, self._sequencer_order_logic.set_order_entry
+            HistoryAction.SET_ORDER_ENTRY,
+            self._sequencer_order_logic.set_order_entry,
+            detail=self._history_detail.set_order_entry,
         )
         self._sequencer_order_panel.on_set_master_entry = self._undoable(
-            HistoryAction.SET_ORDER_ENTRY, self._sequencer_order_logic.set_master_entry
+            HistoryAction.SET_ORDER_ENTRY,
+            self._sequencer_order_logic.set_master_entry,
+            detail=self._history_detail.set_master_entry,
         )
         self._sequencer_order_panel.on_cell_selected = self._on_order_cell_focused
 
@@ -321,16 +354,22 @@ class SequencerTabCoordinator:
         self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
         self._sequencer_samples_panel.on_loop_changed = self._undoable(
-            HistoryAction.SET_SAMPLE_LOOP, self._sequencer_samples_logic.set_sample_loop
+            HistoryAction.SET_SAMPLE_LOOP,
+            self._sequencer_samples_logic.set_sample_loop,
+            detail=self._history_detail.set_sample_loop,
         )
         self._sequencer_samples_panel.on_remove_requested = self._remove_sample
         self._sequencer_samples_panel.on_play_requested = self._sequencer_samples_logic.play_sample
         self._sequencer_samples_panel.on_move_requested = self._undoable(
-            HistoryAction.MOVE_SAMPLE, self._sequencer_samples_logic.move_sample
+            HistoryAction.MOVE_SAMPLE,
+            self._sequencer_samples_logic.move_sample,
+            detail=self._history_detail.move_sample,
         )
         self._sequencer_samples_panel.on_rename_committed = self._submit_rename
         self._sequencer_samples_panel.on_duplicate_requested = self._undoable(
-            HistoryAction.DUPLICATE_SAMPLE, self._sequencer_samples_logic.duplicate_sample
+            HistoryAction.DUPLICATE_SAMPLE,
+            self._sequencer_samples_logic.duplicate_sample,
+            detail=self._history_detail.duplicate_sample,
         )
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
@@ -356,42 +395,22 @@ class SequencerTabCoordinator:
         action: HistoryAction,
         callback: Callable[_UndoableParams, None],
         *,
-        detail: Optional[Callable[_UndoableParams, Optional[str]]] = None,
+        detail: Optional[Callable[_UndoableParams, Tuple[HistoryDetailSegment, ...]]] = None,
     ) -> Callable[_UndoableParams, None]:
         """Wraps a state-changing hook so its whole gesture becomes one undo entry.
 
         Every mutation the wrapped callback triggers is grouped under ``action``;
         a gesture that changes nothing records no entry. ``detail`` computes the
-        entry's extra description from the same arguments the hook receives.
+        entry's coloured description segments from the same arguments the hook
+        receives.
         """
 
         def wrapped(*args: _UndoableParams.args, **kwargs: _UndoableParams.kwargs) -> None:
-            description = detail(*args, **kwargs) if detail is not None else None
+            description = detail(*args, **kwargs) if detail is not None else ()
             with self._history.transaction(action, detail=description):
                 callback(*args, **kwargs)
 
         return wrapped
-
-    def _edit_row_detail(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        sample_id: Optional[str],
-        transpose: Optional[int],
-        volume: Optional[int],
-    ) -> str:
-        """Locates the edit as ``<order> [<channel>] <row>[: <sample position>]``.
-
-        Order and row are the hex frame and row indices; the channel name is
-        present for a single-channel edit and absent when the whole sample column
-        is touched; the sample position is the referenced sample's hex list id.
-        """
-        order = display_id(self._sequencer_grid_logic.frame_index)
-        row = display_id(row_index)
-        location = f"{order} {generator.capitalized} {row}" if generator is not None else f"{order} {row}"
-        if sample_id is not None:
-            return f"{location}: {self._sequencer_samples_logic.sample_position(sample_id)}"
-        return location
 
     def _on_project_replaced(self) -> None:
         self._history.reset()
@@ -415,7 +434,7 @@ class SequencerTabCoordinator:
             HistoryEntryViewModel(
                 index=index,
                 label=self._history_action_label(entry),
-                detail=entry.detail,
+                detail_segments=entry.detail,
                 is_current=index == cursor,
                 is_future=index > cursor,
             )
@@ -571,10 +590,14 @@ class SequencerTabCoordinator:
         The frequency reconciliation and the sample insertion form a single history
         entry, so undoing a freshly-imported sample also restores the prior rate.
         """
-        with self._history.transaction(HistoryAction.ADD_SAMPLE, detail=name):
+        with self._history.transaction(
+            HistoryAction.ADD_SAMPLE,
+            detail=self._history_detail.add_sample(name),
+        ):
             if adopt_frequency is not None:
                 self._sequencer_grid_logic.set_nes_frequency(adopt_frequency)
             self._sequencer_browser_logic.add_reconstruction(reconstruction, name)
+
         self._on_tab_switch(Tab.SEQUENCER)
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
@@ -740,15 +763,16 @@ class SequencerTabCoordinator:
         )
 
     def _perform_remove_sample(self, sample_id: str) -> None:
-        name = self._sequencer_samples_logic.sample_name(sample_id)
-        with self._history.transaction(HistoryAction.REMOVE_SAMPLE, detail=name):
+        detail = self._history_detail.remove_sample(sample_id)
+        with self._history.transaction(HistoryAction.REMOVE_SAMPLE, detail=detail):
             self._sequencer_samples_logic.remove_sample(sample_id)
 
     def _submit_rename(self, sample_id: str, name: str) -> None:
         """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
         stripped = name.strip()
         if stripped:
-            with self._history.transaction(HistoryAction.RENAME_SAMPLE):
+            detail = self._history_detail.rename_sample(self._sequencer_samples_logic.sample_name(sample_id), stripped)
+            with self._history.transaction(HistoryAction.RENAME_SAMPLE, detail=detail):
                 self._sequencer_samples_logic.rename_sample(sample_id, stripped)
 
     def _request_nes_frequency_change(self, nes_frequency: int) -> None:
@@ -777,7 +801,10 @@ class SequencerTabCoordinator:
         )
 
     def _perform_nes_frequency_change(self, nes_frequency: int) -> None:
-        with self._history.transaction(HistoryAction.SET_NES_FREQUENCY, detail=str(nes_frequency)):
+        with self._history.transaction(
+            HistoryAction.SET_NES_FREQUENCY,
+            detail=self._history_detail.value(nes_frequency),
+        ):
             self._sequencer_grid_logic.set_nes_frequency(nes_frequency)
 
     def _acknowledge_nes_frequency_changes(self) -> None:

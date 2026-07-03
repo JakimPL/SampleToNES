@@ -29,6 +29,25 @@ from sampletones_shared.utils.serialization import load_yaml
 _MergeKey = tuple[int, bool, int, int]
 
 _YAML_SUFFIX: Final[str] = ".yaml"
+_BASE_THEME_NAME: Final[str] = "default"
+
+
+def _effective_parent(spec: ThemeSpec) -> str | None:
+    """The theme a spec composes on top of.
+
+    A spec inherits from its explicit ``extends`` when given, and otherwise from the
+    base theme, so every theme carries the shared base's complete component set and
+    states only its own overrides. The base theme itself stands alone. This makes
+    inheritance the default: a bound item theme always resolves to the global base
+    plus its overrides, so it keeps every colour it omits rather than falling back to
+    DearPyGui's built-in defaults.
+    """
+    if spec.extends is not None:
+        return spec.extends
+    if spec.name != _BASE_THEME_NAME:
+        return _BASE_THEME_NAME
+
+    return None
 
 
 def _resolve_color_key(key: str, category: str) -> int:
@@ -108,9 +127,9 @@ class ThemeLoader:
         themes: list[Theme] = []
         for spec in ordered:
             flat = _spec_to_flat(spec)
-            if spec.extends is not None:
-                parent_flat = resolved_flats[spec.extends]
-                merged = {**parent_flat, **flat}
+            parent = _effective_parent(spec)
+            if parent is not None:
+                merged = {**resolved_flats[parent], **flat}
             else:
                 merged = flat
             resolved_flats[spec.name] = merged
@@ -140,7 +159,7 @@ class ThemeLoader:
                     raise ValueError(
                         f"Theme {name!r} extends unknown parent {current!r}. " f"Known themes: {sorted(name_index)}"
                     )
-                current = spec.extends
+                current = _effective_parent(spec)
 
     def _topological_sort(
         self,
@@ -153,8 +172,9 @@ class ThemeLoader:
         def visit(spec: ThemeSpec) -> None:
             if spec.name in visited:
                 return
-            if spec.extends is not None:
-                visit(name_index[spec.extends])
+            parent = _effective_parent(spec)
+            if parent is not None:
+                visit(name_index[parent])
             visited.add(spec.name)
             ordered.append(spec)
 

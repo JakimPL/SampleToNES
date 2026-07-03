@@ -1,15 +1,16 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Tuple
 
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
 
 
 @dataclass
 class PendingTransaction:
     """The open transaction's accumulating state.
 
-    Bundles the gesture being recorded (``action`` and its ``detail``), the
-    nesting ``depth`` of coalesced ``transaction()`` scopes, and the count of
+    Bundles the gesture being recorded (``action`` and its ``detail`` segments),
+    the nesting ``depth`` of coalesced ``transaction()`` scopes, and the count of
     fine-grained ``mutations`` absorbed so far. Keeping these together means the
     label, detail, and mutation tally of one gesture can never drift apart. The
     presence of a ``PendingTransaction`` instance is itself the signal that a
@@ -17,6 +18,6 @@ class PendingTransaction:
     """
 
     action: HistoryAction
-    detail: Optional[str]
+    detail: Tuple[HistoryDetailSegment, ...]
     depth: int = 1
     mutations: int = 0

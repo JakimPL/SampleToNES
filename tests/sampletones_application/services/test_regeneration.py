@@ -120,8 +120,11 @@ class TestRegenerationServiceRun:
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
-        assert results[0].value is reconstruction.model_copy.return_value
-        assert results[0].value is not reconstruction
+        outcome = results[0].value
+        assert outcome.reconstruction is reconstruction.model_copy.return_value
+        assert outcome.reconstruction is not reconstruction
+        assert outcome.generator_name is synthesis_mocks.generator_name
+        assert outcome.feature_key is FeatureKey.VOLUME
 
     def test_run_updates_feature_before_synthesis(self, synthesis_mocks, reconstruction) -> None:
         service = RegenerationService()

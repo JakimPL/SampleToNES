@@ -22,7 +22,11 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.view_model.sequencer.history import HistoryEntryViewModel, HistoryViewModel
+from sampletones_application.view_model.sequencer.history import (
+    HistoryDetailRole,
+    HistoryEntryViewModel,
+    HistoryViewModel,
+)
 from sampletones_shared.types.application import Sender
 
 
@@ -155,13 +159,14 @@ class GUISequencerHistoryPanel(GUIPanel):
         ThemeRegistry.get(TAG_SEQUENCER_HISTORY_THEME_LIST).bind_to_item(table)
 
     def _create_entry(self, table: int, entry: HistoryEntryViewModel) -> None:
-        """Renders one entry as a full-width selectable with two-colour text on top.
+        """Renders one entry as a full-width selectable with coloured text on top.
 
         A ``span_columns`` selectable backs the whole row, so clicking anywhere
         jumps to that entry and the current entry keeps the native selected
-        highlight. The label and its detail render as separate text items in the
-        second column, letting the detail carry its own accent colour while the
-        non-interactive text passes clicks through to the selectable beneath.
+        highlight. The label and each detail segment render as separate text items
+        in the second column, letting every segment carry its role's colour while
+        the non-interactive text passes clicks through to the selectable beneath.
+        A future (redo) entry greys every token.
         """
         with dpg.table_row(parent=table):
             selectable = dpg.add_selectable(
@@ -174,29 +179,38 @@ class GUISequencerHistoryPanel(GUIPanel):
             FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
 
             with dpg.group(horizontal=True):
-                self._add_entry_text(entry.label, greyed=entry.is_future)
-                if entry.detail is not None:
-                    detail_color = (
-                        self._layout.colors.history_future if entry.is_future else self._layout.colors.history_detail
-                    )
-                    self._add_entry_text(entry.detail, color=detail_color)
+                self._add_text(entry.label, color=self._layout.colors.history_future if entry.is_future else None)
+                for segment in entry.detail_segments:
+                    color = self._layout.colors.history_future if entry.is_future else self._role_color(segment.role)
+                    self._add_text(segment.text, color=color)
 
-    def _add_entry_text(
-        self,
-        value: str,
-        *,
-        greyed: bool = False,
-        color: Optional[RGBA] = None,
-    ) -> None:
-        """Adds a small-font text item, tinting it only when a colour is called for.
-
-        The label reads in the theme's default colour unless the entry is a future
-        (redo) state, where it greys out; the detail always carries an explicit
-        accent colour supplied by the caller.
-        """
-        resolved = self._layout.colors.history_future if greyed else color
-        text = dpg.add_text(value) if resolved is None else dpg.add_text(value, color=resolved)
+    def _add_text(self, value: str, *, color: Optional[RGBA]) -> None:
+        text = dpg.add_text(value) if color is None else dpg.add_text(value, color=color)
         FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
+
+    def _role_color(self, role: HistoryDetailRole) -> RGBA:
+        colors = self._layout.colors
+        roles = colors.history_roles
+        text = colors.text
+        match role:
+            case HistoryDetailRole.FRAME:
+                return text.frame
+            case HistoryDetailRole.CHANNEL:
+                return roles.channel
+            case HistoryDetailRole.ROW:
+                return text.row
+            case HistoryDetailRole.INSTRUMENT:
+                return text.instrument
+            case HistoryDetailRole.TRANSPOSE:
+                return text.transpose
+            case HistoryDetailRole.VOLUME:
+                return text.volume
+            case HistoryDetailRole.VALUE:
+                return roles.value
+            case HistoryDetailRole.SAMPLE | HistoryDetailRole.NAME | HistoryDetailRole.FEATURE:
+                return text.sample
+            case HistoryDetailRole.SEPARATOR:
+                return roles.separator
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_HISTORY_GROUP_ACTIONS, enabled=enabled)

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import copy
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
+from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
 from sampletones_core.project import Project
 from sampletones_shared.utils.serialization import hash_model
 
@@ -62,5 +63,5 @@ class HistoryEntry:
     project: Project
     action: HistoryAction
     created: datetime
-    detail: Optional[str] = None
+    detail: Tuple[HistoryDetailSegment, ...] = field(default_factory=tuple)
     fingerprint: Optional[str] = None

@@ -6,6 +6,7 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_core.constants.enums import GeneratorName
 
 
@@ -19,6 +20,7 @@ def coordinator() -> SequencerTabCoordinator:
     """
     instance = object.__new__(SequencerTabCoordinator)
     instance._history = MagicMock()
+    instance._history_detail = MagicMock()
     instance._project_controller = MagicMock()
     instance._project_controller.is_open = True
     instance._project_controller.has_samples = True
@@ -41,6 +43,7 @@ def samples_coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the collaborators the samples-menu handlers touch."""
     instance = object.__new__(SequencerTabCoordinator)
     instance._history = MagicMock()
+    instance._history_detail = MagicMock()
     instance._sequencer_samples_logic = MagicMock()
     instance._dialogs = MagicMock()
     instance._ttl_remove_sample = "Remove sample"
@@ -104,6 +107,7 @@ def nes_frequency_coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the collaborators the NES-frequency change handler touches."""
     instance = object.__new__(SequencerTabCoordinator)
     instance._history = MagicMock()
+    instance._history_detail = MagicMock()
     instance._sequencer_grid_logic = MagicMock()
     instance._sequencer_grid_logic.settings.nes_frequency = 60
     instance._project_controller = MagicMock()
@@ -517,13 +521,14 @@ class TestUndoableWrapper:
         wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target)
         wrapped(150)
 
-        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail=None)
+        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail=())
         target.assert_called_once_with(150)
 
     def test_wrapped_call_passes_computed_detail(self, history_coordinator: SequencerTabCoordinator) -> None:
         target = MagicMock()
+        segments = (HistoryDetailSegment(text="v150", role=HistoryDetailRole.VALUE),)
 
-        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda value: f"v{value}")
+        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda value: segments)
         wrapped(150)
 
-        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail="v150")
+        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail=segments)

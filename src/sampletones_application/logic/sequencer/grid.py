@@ -350,6 +350,22 @@ class SequencerGridLogic(CallbackMixin):
         self._frame_index = frame_index
         self.push_grid()
 
+    def used_generators(self, sample_id: str) -> List[GeneratorName]:
+        """The channels a sample provides instructions for, empty when it is unknown."""
+        sample = self._controller.project.samples.get(sample_id)
+        if sample is None:
+            return []
+
+        return self._used_generators(sample)
+
+    def relevant_generators(self, row_index: int) -> List[GeneratorName]:
+        """The channels a sample-column subcolumn edit reaches at ``row_index``.
+
+        Follows the row's sample channels when one governs it, and otherwise every
+        channel, matching where :meth:`set_sample_subcolumn` writes.
+        """
+        return self._subcolumn_generators(row_index)
+
     def _pattern_index_at_frame(self, generator: GeneratorName) -> Optional[int]:
         song = self._controller.project.song
         if self._frame_index < song.order_length():

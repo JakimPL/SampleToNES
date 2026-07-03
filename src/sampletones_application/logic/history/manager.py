@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional, Tuple
 
 from sampletones_application.logic.history.transaction import PendingTransaction
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -72,7 +73,7 @@ class HistoryManager(CallbackMixin):
             return
 
         self._pending = None
-        self._entries = [self._capture(HistoryAction.INITIAL, None)]
+        self._entries = [self._capture(HistoryAction.INITIAL, ())]
         self._cursor = 0
         self._notify()
 
@@ -81,7 +82,7 @@ class HistoryManager(CallbackMixin):
         self,
         action: HistoryAction,
         *,
-        detail: Optional[str] = None,
+        detail: Tuple[HistoryDetailSegment, ...] = (),
     ) -> Iterator[None]:
         self._begin(action, detail)
         try:
@@ -102,7 +103,8 @@ class HistoryManager(CallbackMixin):
                 "A project mutation fired outside a history transaction. "
                 "Wrap the originating coordinator intent in HistoryManager.transaction()."
             )
-        self._commit(HistoryAction.UNTRACKED, None)
+
+        self._commit(HistoryAction.UNTRACKED, ())
 
     def undo(self) -> None:
         if not self.can_undo:
@@ -125,7 +127,7 @@ class HistoryManager(CallbackMixin):
         self._cursor = index
         self._restore()
 
-    def _begin(self, action: HistoryAction, detail: Optional[str]) -> None:
+    def _begin(self, action: HistoryAction, detail: Tuple[HistoryDetailSegment, ...]) -> None:
         if self._pending is None:
             self._pending = PendingTransaction(action=action, detail=detail)
             return
@@ -145,14 +147,22 @@ class HistoryManager(CallbackMixin):
         if pending.mutations > 0:
             self._commit(pending.action, pending.detail)
 
-    def _commit(self, action: HistoryAction, detail: Optional[str]) -> None:
+    def _commit(
+        self,
+        action: HistoryAction,
+        detail: Tuple[HistoryDetailSegment, ...],
+    ) -> None:
         del self._entries[self._cursor + 1 :]
         self._entries.append(self._capture(action, detail))
         self._cursor = len(self._entries) - 1
         self._enforce_budget()
         self._notify()
 
-    def _capture(self, action: HistoryAction, detail: Optional[str]) -> HistoryEntry:
+    def _capture(
+        self,
+        action: HistoryAction,
+        detail: Tuple[HistoryDetailSegment, ...],
+    ) -> HistoryEntry:
         project = self._controller.project
         fingerprint = fingerprint_project(project) if self._strict else None
         return HistoryEntry(

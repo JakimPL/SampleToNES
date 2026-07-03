@@ -25,6 +25,7 @@ from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.services import (
+    RegeneratedInstrument,
     RegenerationResult,
     RegenerationService,
     ServiceCancelled,
@@ -72,7 +73,7 @@ class ReconstructionCoordinator:
         layout: LayoutConfig,
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
-        on_reconstruction_updated: Callable[[Reconstruction], None],
+        on_reconstruction_updated: Callable[[RegeneratedInstrument], None],
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
@@ -351,23 +352,24 @@ class ReconstructionCoordinator:
         self._tab.close_reconstruction()
         self._session_manager.set_current_reconstruction(None)
 
-    def _on_updated(self, reconstruction: Reconstruction) -> None:
+    def _on_updated(self, outcome: RegeneratedInstrument) -> None:
         """Applies a regenerated reconstruction across the open document and project.
 
         The owning-sample hook runs first, while the manager still holds the prior
         reconstruction, so it can locate the owned sample by identity and record the
-        edit against the project history. The open document then rebinds to the new
-        reconstruction, keeping the editor and any owned sample sharing one object.
+        edit against the project history, tagged with the channel and feature the
+        ``outcome`` names. The open document then rebinds to the new reconstruction,
+        keeping the editor and any owned sample sharing one object.
         """
-        self._on_reconstruction_updated_callback(reconstruction)
-        self._reconstruction_manager.apply_regenerated(reconstruction)
+        self._on_reconstruction_updated_callback(outcome)
+        self._reconstruction_manager.apply_regenerated(outcome.reconstruction)
         self._tab.update_reconstruction()
         self._reconstruction_manager.mark_updated()
 
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:
-            case ServiceSuccess(value=reconstruction):
-                self._on_updated(reconstruction)
+            case ServiceSuccess(value=outcome):
+                self._on_updated(outcome)
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Regeneration failed")
                 self._dialogs.show_error(exception)

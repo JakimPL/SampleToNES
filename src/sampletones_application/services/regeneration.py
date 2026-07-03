@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import List, cast
 
 import numpy as np
@@ -13,7 +14,22 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
 
-RegenerationResult = ServiceSuccess[Reconstruction] | ServiceError | ServiceCancelled
+
+@dataclass(frozen=True)
+class RegeneratedInstrument:
+    """A regeneration result paired with the generator and feature that changed.
+
+    Carrying the request context alongside the fresh reconstruction lets the
+    history record which channel and feature an edit touched, which the finished
+    reconstruction alone no longer reveals.
+    """
+
+    reconstruction: Reconstruction
+    generator_name: GeneratorName
+    feature_key: FeatureKey
+
+
+RegenerationResult = ServiceSuccess[RegeneratedInstrument] | ServiceError | ServiceCancelled
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
@@ -80,6 +96,14 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 instructions,
                 audio,
             )
-            self._emit(ServiceSuccess(value=updated))
+            self._emit(
+                ServiceSuccess(
+                    value=RegeneratedInstrument(
+                        reconstruction=updated,
+                        generator_name=generator_name,
+                        feature_key=feature_key,
+                    )
+                )
+            )
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self._emit(ServiceError(exception=exception))

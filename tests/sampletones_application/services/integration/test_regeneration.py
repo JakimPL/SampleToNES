@@ -46,8 +46,10 @@ class TestRegenerationServicePipeline:
         )
 
         emitted = results[0].value
-        assert emitted is not reconstruction_data.reconstruction
-        assert len(emitted.get_generator_approximation(GeneratorName.PULSE1)) > 0
+        assert emitted.reconstruction is not reconstruction_data.reconstruction
+        assert len(emitted.reconstruction.get_generator_approximation(GeneratorName.PULSE1)) > 0
+        assert emitted.generator_name is GeneratorName.PULSE1
+        assert emitted.feature_key is FeatureKey.VOLUME
 
     def test_run_updates_reconstruction_approximation(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()

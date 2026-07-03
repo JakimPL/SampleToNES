@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -57,6 +57,7 @@ from sampletones_application.paths import (
 from sampletones_application.services import (
     ConversionService,
     ExportService,
+    RegeneratedInstrument,
     RegenerationService,
 )
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
@@ -74,6 +75,7 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
+from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
@@ -83,6 +85,7 @@ from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
+from sampletones_core.utils.display import display_sample
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -570,20 +573,36 @@ class Application:
     ) -> None:
         self._reconstruction_coordinator.regenerate_instrument(generator_name, features, feature_key, feature_value)
 
-    def _on_reconstruction_updated(self, reconstruction: Reconstruction) -> None:
+    def _on_reconstruction_updated(self, outcome: RegeneratedInstrument) -> None:
         """Records a reconstruction edit against the project when it owns the sample.
 
         Regeneration produces a fresh reconstruction. When the edited document is a
         project sample, the sample adopts the new reconstruction as one history
-        entry; the copy-on-write swap keeps every prior snapshot's reconstruction
-        intact. A standalone reconstruction leaves the project untouched.
+        entry labelled with the channel and feature ``outcome`` names; the
+        copy-on-write swap keeps every prior snapshot's reconstruction intact. A
+        standalone reconstruction leaves the project untouched.
         """
         sample = self._owning_project_sample()
         if sample is None:
             return
 
-        with self.history.transaction(HistoryAction.EDIT_RECONSTRUCTION):
-            self.project_controller.replace_sample_reconstruction(sample.id, reconstruction)
+        with self.history.transaction(
+            HistoryAction.EDIT_RECONSTRUCTION,
+            detail=self._reconstruction_detail(sample, outcome),
+        ):
+            self.project_controller.replace_sample_reconstruction(sample.id, outcome.reconstruction)
+
+    def _reconstruction_detail(
+        self,
+        sample: Sample,
+        outcome: RegeneratedInstrument,
+    ) -> Tuple[HistoryDetailSegment, ...]:
+        position = display_sample(samples=self.project_manager.current.samples, sample_id=sample.id)
+        return (
+            HistoryDetailSegment(text=f"{position}:", role=HistoryDetailRole.SAMPLE),
+            HistoryDetailSegment(text=outcome.generator_name.capitalized, role=HistoryDetailRole.CHANNEL),
+            HistoryDetailSegment(text=outcome.feature_key.capitalized, role=HistoryDetailRole.FEATURE),
+        )
 
     def _owning_project_sample(self) -> Optional[Sample]:
         reconstruction = self.reconstruction_manager.reconstruction

@@ -102,6 +102,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._playing_row: Optional[int] = None
         self._input_state: TrackerInputState = TrackerInputState()
         self._subcolumn_themes: Dict[SubColumn, int] = {}
+        self._row_number_theme: int = 0
         self._current_samples: Optional[SequencerSamplesViewModel] = None
 
         self.on_clear_row: Optional[OnClearRowCallback] = None
@@ -224,7 +225,7 @@ class GUISequencerGridPanel(GUIPanel):
             )
 
     def _create_subcolumn_themes(self) -> None:
-        subcolumn_colors = self._layout.colors.subcolumns
+        subcolumn_colors = self._layout.colors.text
         theme_colors = {
             SubColumn.INSTRUMENT: subcolumn_colors.instrument,
             SubColumn.TRANSPOSE: subcolumn_colors.transpose,
@@ -240,6 +241,15 @@ class GUISequencerGridPanel(GUIPanel):
                     )
 
             self._subcolumn_themes[subcolumn] = theme
+
+        with dpg.theme() as row_number_theme:
+            with dpg.theme_component(dpg.mvSelectable):
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Text,
+                    self._layout.colors.text.row,
+                    category=dpg.mvThemeCat_Core,
+                )
+        self._row_number_theme = row_number_theme
 
     def _create_tracker_view(self) -> None:
         dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=self.tag)
@@ -428,6 +438,7 @@ class GUISequencerGridPanel(GUIPanel):
             callback=self._on_row_number_clicked,
         )
         FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
+        dpg.bind_item_theme(selectable, self._row_number_theme)
         dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
         self._rows[row_index] = selectable
 

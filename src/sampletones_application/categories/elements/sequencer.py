@@ -92,6 +92,8 @@ class SequencerHistoryElements(AbstractElement):
     UNDO = "undo"
     REDO = "redo"
     EMPTY = "empty"
+    LOOP_ON = "loop_on"
+    LOOP_OFF = "loop_off"
 
 
 class SequencerHistoryActionElements(AbstractElement):
