@@ -85,6 +85,12 @@ TAG_GLOBAL_THEME_CONVERTER = TagName(
     Widget.THEME,
     "converter",
 )
+TAG_GLOBAL_THEME_DIALOG = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "dialog",
+)
 TAG_GLOBAL_THEME_TABLE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -7,6 +7,7 @@ from sampletones_application.categories.elements.settings import AudioSettingsEl
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.audio import AudioSettingsData
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_DIALOG
 from sampletones_application.constants.settings import (
     FMT_SETTINGS_AUDIO_HZ,
     TAG_SETTINGS_AUDIO_BUTTON_APPLY,
@@ -21,7 +22,10 @@ from sampletones_application.constants.settings import (
 )
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.window import GUIWindow
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_core.audio import (
@@ -48,6 +52,7 @@ class GUIAudioSettingsWindow(GUIWindow):
     ) -> None:
         self.audio_device_manager = audio_device_manager
         self._layout = layout
+        self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
 
         self._devices: Dict[int, AudioDevice] = {}
         self._current_device: Optional[CurrentDevice] = None
@@ -137,6 +142,12 @@ class GUIAudioSettingsWindow(GUIWindow):
             dpg.add_separator()
             self._create_action_buttons()
 
+        for combo_tag in (
+            TAG_SETTINGS_AUDIO_COMBO_DEVICE,
+            TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
+            TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE,
+        ):
+            self._dialog_theme.bind_to_item(combo_tag)
         self._update_combos()
 
     def _get_device_label(
@@ -164,7 +175,8 @@ class GUIAudioSettingsWindow(GUIWindow):
 
     def _create_device_selection(self) -> None:
         with dpg.group(tag=TAG_SETTINGS_AUDIO_GROUP_DEVICE, horizontal=True):
-            dpg.add_text(self._lbl_output_device)
+            label_id = dpg.add_text(self._lbl_output_device)
+            FontRegistry.bind_to_item(label_id, Font.BOLD)
             dpg.add_spacer(
                 width=self._layout.label_width - int(dpg.get_text_size(self._lbl_output_device)[0]),
             )
@@ -178,7 +190,8 @@ class GUIAudioSettingsWindow(GUIWindow):
 
     def _create_sample_rate_selection(self) -> None:
         with dpg.group(tag=TAG_SETTINGS_AUDIO_GROUP_SAMPLE_RATE, horizontal=True):
-            dpg.add_text(self._lbl_sample_rate)
+            label_id = dpg.add_text(self._lbl_sample_rate)
+            FontRegistry.bind_to_item(label_id, Font.BOLD)
             dpg.add_spacer(
                 width=self._layout.label_width - int(dpg.get_text_size(self._lbl_sample_rate)[0]),
             )
@@ -191,7 +204,8 @@ class GUIAudioSettingsWindow(GUIWindow):
 
     def _create_buffer_size_selection(self) -> None:
         with dpg.group(tag=TAG_SETTINGS_AUDIO_GROUP_BUFFER_SIZE, horizontal=True):
-            dpg.add_text(self._lbl_buffer_size)
+            label_id = dpg.add_text(self._lbl_buffer_size)
+            FontRegistry.bind_to_item(label_id, Font.BOLD)
             dpg.add_spacer(
                 width=self._layout.label_width - int(dpg.get_text_size(self._lbl_buffer_size)[0]),
             )

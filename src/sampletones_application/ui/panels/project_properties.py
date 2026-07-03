@@ -12,6 +12,7 @@ from sampletones_application.categories.elements.settings import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_DIALOG
 from sampletones_application.constants.settings import (
     TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL,
     TAG_SETTINGS_PROPERTIES_BUTTON_OK,
@@ -23,7 +24,10 @@ from sampletones_application.constants.settings import (
 from sampletones_application.layout.project_properties import ProjectPropertiesLayout
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.window import GUIWindow
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_shared.constants.project import (
@@ -52,6 +56,7 @@ class GUIProjectPropertiesWindow(GUIWindow):
         self._project_controller = project_controller
         self._layout = layout
         self._shortcut_manager = shortcut_manager
+        self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
 
         self._title_value = ""
         self._author_value = ""
@@ -144,16 +149,25 @@ class GUIProjectPropertiesWindow(GUIWindow):
             dpg.add_separator()
             self._create_action_buttons()
 
+        for input_tag in (
+            TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
+            TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR,
+            TAG_SETTINGS_PROPERTIES_INPUT_COMMENT,
+        ):
+            self._dialog_theme.bind_to_item(input_tag)
+
     def _create_text_field(self, tag: str, label: str, value: str) -> None:
         with dpg.group(horizontal=True):
-            dpg.add_text(label)
+            label_id = dpg.add_text(label)
+            FontRegistry.bind_to_item(label_id, Font.BOLD)
             dpg.add_spacer(width=self._layout.label_width - int(dpg.get_text_size(label)[0]))
             dpg.add_input_text(tag=tag, default_value=value, width=self._layout.input_width)
 
         self._shortcut_manager.setup_input_focus_handlers(tag)
 
     def _create_comment_field(self) -> None:
-        dpg.add_text(self._lbl_comment)
+        label_id = dpg.add_text(self._lbl_comment)
+        FontRegistry.bind_to_item(label_id, Font.BOLD)
         dpg.add_input_text(
             tag=TAG_SETTINGS_PROPERTIES_INPUT_COMMENT,
             default_value=self._comment_value,
@@ -164,8 +178,14 @@ class GUIProjectPropertiesWindow(GUIWindow):
         self._shortcut_manager.setup_input_focus_handlers(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT)
 
     def _create_metadata(self) -> None:
-        dpg.add_text(f"{self._lbl_created}: {self._created_text}")
-        dpg.add_text(f"{self._lbl_modified}: {self._modified_text}")
+        self._create_metadata_row(self._lbl_created, self._created_text)
+        self._create_metadata_row(self._lbl_modified, self._modified_text)
+
+    def _create_metadata_row(self, label: str, value: str) -> None:
+        with dpg.group(horizontal=True):
+            label_id = dpg.add_text(f"{label}:")
+            FontRegistry.bind_to_item(label_id, Font.BOLD)
+            dpg.add_text(value)
 
     @table_wrapper(columns=2)
     def _create_action_buttons(self) -> None:
