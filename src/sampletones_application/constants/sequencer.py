@@ -238,3 +238,9 @@ TAG_SEQUENCER_HISTORY_WINDOW_LIST = TagName(
     Widget.WINDOW,
     "list",
 )
+TAG_SEQUENCER_HISTORY_THEME_LIST = TagName(
+    Page.SEQUENCER,
+    Panel.HISTORY,
+    Widget.THEME,
+    "list",
+)

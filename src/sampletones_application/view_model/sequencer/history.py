@@ -1,11 +1,12 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from pydantic import BaseModel
 
 
 class HistoryEntryViewModel(BaseModel, frozen=True):
     index: int
-    text: str
+    label: str
+    detail: Optional[str]
     is_current: bool
     is_future: bool
 

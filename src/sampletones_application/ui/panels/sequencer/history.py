@@ -11,12 +11,16 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
     TAG_SEQUENCER_HISTORY_GROUP_ACTIONS,
     TAG_SEQUENCER_HISTORY_PANEL,
+    TAG_SEQUENCER_HISTORY_THEME_LIST,
     TAG_SEQUENCER_HISTORY_WINDOW_LIST,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.view_model.sequencer.history import HistoryEntryViewModel, HistoryViewModel
 from sampletones_shared.types.application import Sender
@@ -37,7 +41,6 @@ class GUISequencerHistoryPanel(GUIPanel):
         language_manager: LanguageManager,
     ) -> None:
         self._layout = layout
-        self._future_theme: int = 0
 
         self.on_undo: Optional[Callable[[], None]] = None
         self.on_redo: Optional[Callable[[], None]] = None
@@ -74,10 +77,6 @@ class GUISequencerHistoryPanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
-        with dpg.theme() as self._future_theme:
-            with dpg.theme_component(dpg.mvAll):
-                dpg.add_theme_color(dpg.mvThemeCol_Text, self._layout.colors.history_future)
-
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
@@ -87,17 +86,7 @@ class GUISequencerHistoryPanel(GUIPanel):
             dpg.add_separator()
             header = dpg.add_text(self._lbl_history)
             FontRegistry.bind_to_item(header, Font.BOLD)
-            with dpg.group(tag=TAG_SEQUENCER_HISTORY_GROUP_ACTIONS, horizontal=True):
-                dpg.add_button(
-                    tag=TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
-                    label=self._lbl_undo,
-                    callback=self._on_undo_clicked,
-                )
-                dpg.add_button(
-                    tag=TAG_SEQUENCER_HISTORY_BUTTON_REDO,
-                    label=self._lbl_redo,
-                    callback=self._on_redo_clicked,
-                )
+            self._create_actions()
             dpg.add_child_window(
                 tag=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
                 width=-1,
@@ -105,30 +94,109 @@ class GUISequencerHistoryPanel(GUIPanel):
                 border=True,
             )
 
+    def _create_actions(self) -> None:
+        with dpg.group(tag=TAG_SEQUENCER_HISTORY_GROUP_ACTIONS):
+            with dpg.table(
+                header_row=False,
+                policy=dpg.mvTable_SizingStretchSame,
+                resizable=False,
+                width=-1,
+            ):
+                dpg.add_table_column()
+                dpg.add_table_column()
+                with dpg.table_row():
+                    GUIButton(
+                        tag=TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
+                        label=self._lbl_undo,
+                        callback=self._on_undo_clicked,
+                        width=-1,
+                    )
+                    GUIButton(
+                        tag=TAG_SEQUENCER_HISTORY_BUTTON_REDO,
+                        label=self._lbl_redo,
+                        callback=self._on_redo_clicked,
+                        width=-1,
+                    )
+
     def update_view(self, view_model: HistoryViewModel) -> None:
+        self._update_actions(view_model)
+        dpg.delete_item(TAG_SEQUENCER_HISTORY_WINDOW_LIST, children_only=True)
+        if view_model.is_empty:
+            self._show_empty()
+        else:
+            self._create_entry_list(view_model)
+
+    def _update_actions(self, view_model: HistoryViewModel) -> None:
         dpg_configure_item(TAG_SEQUENCER_HISTORY_BUTTON_UNDO, enabled=view_model.can_undo)
         dpg_configure_item(TAG_SEQUENCER_HISTORY_BUTTON_REDO, enabled=view_model.can_redo)
-        dpg.delete_item(TAG_SEQUENCER_HISTORY_WINDOW_LIST, children_only=True)
 
-        if view_model.is_empty:
-            empty = dpg.add_text(self._lbl_empty, parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST)
-            FontRegistry.bind_to_item(empty, Font.REGULAR_SMALL)
-            return
+    def _show_empty(self) -> None:
+        empty = dpg.add_text(self._lbl_empty, parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST)
+        FontRegistry.bind_to_item(empty, Font.REGULAR_SMALL)
 
-        for entry in reversed(view_model.entries):
-            self._create_entry(entry)
-
-    def _create_entry(self, entry: HistoryEntryViewModel) -> None:
-        selectable = dpg.add_selectable(
-            label=entry.text,
-            default_value=entry.is_current,
-            user_data=entry.index,
-            callback=self._on_entry_clicked,
+    def _create_entry_list(self, view_model: HistoryViewModel) -> None:
+        table = dpg.add_table(
             parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
+            header_row=False,
+            policy=dpg.mvTable_SizingStretchProp,
+            borders_innerH=False,
+            borders_outerH=False,
+            borders_innerV=False,
+            borders_outerV=False,
         )
-        FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
-        if entry.is_future:
-            dpg.bind_item_theme(selectable, self._future_theme)
+        dpg.add_table_column(
+            parent=table,
+            init_width_or_weight=self._layout.history.selectable_column_weight,
+        )
+        dpg.add_table_column(parent=table)
+        for entry in reversed(view_model.entries):
+            self._create_entry(table, entry)
+
+        ThemeRegistry.get(TAG_SEQUENCER_HISTORY_THEME_LIST).bind_to_item(table)
+
+    def _create_entry(self, table: int, entry: HistoryEntryViewModel) -> None:
+        """Renders one entry as a full-width selectable with two-colour text on top.
+
+        A ``span_columns`` selectable backs the whole row, so clicking anywhere
+        jumps to that entry and the current entry keeps the native selected
+        highlight. The label and its detail render as separate text items in the
+        second column, letting the detail carry its own accent colour while the
+        non-interactive text passes clicks through to the selectable beneath.
+        """
+        with dpg.table_row(parent=table):
+            selectable = dpg.add_selectable(
+                label="",
+                span_columns=True,
+                default_value=entry.is_current,
+                user_data=entry.index,
+                callback=self._on_entry_clicked,
+            )
+            FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
+
+            with dpg.group(horizontal=True):
+                self._add_entry_text(entry.label, greyed=entry.is_future)
+                if entry.detail is not None:
+                    detail_color = (
+                        self._layout.colors.history_future if entry.is_future else self._layout.colors.history_detail
+                    )
+                    self._add_entry_text(entry.detail, color=detail_color)
+
+    def _add_entry_text(
+        self,
+        value: str,
+        *,
+        greyed: bool = False,
+        color: Optional[RGBA] = None,
+    ) -> None:
+        """Adds a small-font text item, tinting it only when a colour is called for.
+
+        The label reads in the theme's default colour unless the entry is a future
+        (redo) state, where it greys out; the detail always carries an explicit
+        accent colour supplied by the caller.
+        """
+        resolved = self._layout.colors.history_future if greyed else color
+        text = dpg.add_text(value) if resolved is None else dpg.add_text(value, color=resolved)
+        FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_HISTORY_GROUP_ACTIONS, enabled=enabled)

@@ -1,0 +1,16 @@
+name: sequencer_history_list
+tag: sequencer.history.theme.list
+
+components:
+  - item_type: Table
+    entries:
+      - type: style
+        key: CellPadding
+        x: 4
+        y: 2
+  - item_type: All
+    entries:
+      - type: style
+        key: FramePadding
+        x: 4
+        y: 0

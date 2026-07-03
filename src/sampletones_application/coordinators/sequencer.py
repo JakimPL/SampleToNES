@@ -414,7 +414,8 @@ class SequencerTabCoordinator:
         entries = tuple(
             HistoryEntryViewModel(
                 index=index,
-                text=self._history_entry_text(entry),
+                label=self._history_action_label(entry),
+                detail=entry.detail,
                 is_current=index == cursor,
                 is_future=index > cursor,
             )
@@ -422,16 +423,13 @@ class SequencerTabCoordinator:
         )
         return HistoryViewModel(entries=entries, cursor=cursor)
 
-    def _history_entry_text(self, entry: HistoryEntry) -> str:
-        label = self._language_manager[
+    def _history_action_label(self, entry: HistoryEntry) -> str:
+        return self._language_manager[
             Page.SEQUENCER,
             Panel.HISTORY,
             TextType.LABEL,
             SequencerHistoryActionElements(entry.action.value),
         ]
-        if entry.detail is None:
-            return label
-        return f"{label}: {entry.detail}"
 
     def initialize(self) -> None:
         """Pushes the current project into every sequencer panel.

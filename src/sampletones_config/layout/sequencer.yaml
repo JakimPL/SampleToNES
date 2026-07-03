@@ -36,7 +36,8 @@ tracker:
 
 history:
   height: 260
-  margin: 20
+  margin: 5
+  selectable_column_weight: 0.0001
 
 colors:
   pattern_highlight: "#ffffff40"
@@ -52,6 +53,7 @@ colors:
   order_column_current: "#ffffff20"
   order_column_playing: "#64dc6430"
   playback_row: "#64dc6440"
+  history_detail: "#e0c860ff"
   history_future: "#808080ff"
   subcolumns:
     instrument: "#ffffffff"
