@@ -6,7 +6,7 @@ import pytest
 
 from sampletones_application.constants.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.paths import THEME_DIRECTORY
-from sampletones_application.ui.themes.loader import ThemeLoader, _effective_parent
+from sampletones_application.ui.themes.loader import ThemeLoader
 from sampletones_application.ui.themes.spec import ThemeSpec
 from sampletones_application.ui.themes.theme import Theme
 
@@ -19,13 +19,13 @@ def _spec(name: str, *, extends: Optional[str] = None) -> ThemeSpec:
 
 class TestEffectiveParent:
     def test_a_theme_inherits_the_base_by_default(self) -> None:
-        assert _effective_parent(_spec("converter")) == _BASE_NAME
+        assert ThemeLoader._effective_parent(_spec("converter")) == _BASE_NAME
 
     def test_the_base_theme_stands_alone(self) -> None:
-        assert _effective_parent(_spec(_BASE_NAME)) is None
+        assert ThemeLoader._effective_parent(_spec(_BASE_NAME)) is None
 
     def test_an_explicit_parent_is_respected(self) -> None:
-        assert _effective_parent(_spec("child", extends="table")) == "table"
+        assert ThemeLoader._effective_parent(_spec("child", extends="table")) == "table"
 
 
 class TestLoadedInheritance:
