@@ -29,6 +29,7 @@ from sampletones_application.layout import LayoutConfig
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
+from sampletones_application.ui.panels.project_properties import GUIProjectPropertiesWindow
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -58,6 +59,7 @@ class ShortcutBindings:
     save_project: Callback
     save_project_as: Callback
     export_project_module: Callback
+    project_properties: Callback
     close_project: Callback
     save_reconstruction: Callback
     save_reconstruction_as: Callback
@@ -105,6 +107,7 @@ class ApplicationShell:
         status_bar: GUIStatusBar,
         fps_timer: FPSTimer,
         audio_settings_window: GUIAudioSettingsWindow,
+        project_properties_window: GUIProjectPropertiesWindow,
         main_tab: MainTabCoordinator,
         reconstructions_tab: ReconstructionsTabCoordinator,
         sequencer_tab: SequencerTabCoordinator,
@@ -120,6 +123,7 @@ class ApplicationShell:
         self._status_bar = status_bar
         self._fps_timer = fps_timer
         self._audio_settings_window = audio_settings_window
+        self._project_properties_window = project_properties_window
         self._main_tab = main_tab
         self._reconstructions_tab = reconstructions_tab
         self._sequencer_tab = sequencer_tab
@@ -183,6 +187,11 @@ class ApplicationShell:
             ShortcutId.EXPORT_PROJECT_MODULE,
             Shortcut(dpg.mvKey_M, (Modifier.CTRL,)),
             bindings.export_project_module,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.PROJECT_PROPERTIES,
+            Shortcut(dpg.mvKey_P, (Modifier.ALT,)),
+            bindings.project_properties,
         )
         self._shortcut_manager.register(
             ShortcutId.CLOSE_PROJECT,
@@ -357,6 +366,9 @@ class ApplicationShell:
 
     def open_audio_settings(self) -> None:
         self._audio_settings_window.show()
+
+    def open_project_properties(self) -> None:
+        self._project_properties_window.show()
 
     def set_current_tab(self, tab: Tab) -> None:
         try:

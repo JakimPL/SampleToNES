@@ -60,6 +60,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.menu import MenuBar
+from sampletones_application.ui.panels.project_properties import GUIProjectPropertiesWindow
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
@@ -138,6 +139,12 @@ class Application:
             self.audio_device_manager,
             layout=self.layout.settings,
             language_manager=self.language_manager,
+        )
+        self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
+            self.project_controller,
+            layout=self.layout.project_properties,
+            language_manager=self.language_manager,
+            shortcut_manager=self.shortcut_manager,
         )
         self.status_bar = GUIStatusBar(
             display_time=self.layout.behavior.ui.status_bar_display_time,
@@ -252,6 +259,7 @@ class Application:
             on_edit_sample_requested=self._edit_project_sample,
             on_tab_switch=self._set_current_tab,
             on_export_module=self._project_coordinator.export_module_dialog,
+            on_open_properties=self.project_properties_window.show,
         )
 
         self._playback_router = PlaybackRouter(
@@ -278,6 +286,7 @@ class Application:
             status_bar=self.status_bar,
             fps_timer=self.fps_timer,
             audio_settings_window=self.audio_settings_window,
+            project_properties_window=self.project_properties_window,
             main_tab=self._main_tab,
             reconstructions_tab=self._reconstructions_tab,
             sequencer_tab=self._sequencer_tab,
@@ -318,6 +327,7 @@ class Application:
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
             export_project_module=self._project_coordinator.export_module_dialog,
+            project_properties=self._shell.open_project_properties,
             close_project=self._project_coordinator.close_with_confirmation,
             save_reconstruction=self._reconstruction_coordinator.save,
             save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,

@@ -56,5 +56,42 @@ TAG_SETTINGS_AUDIO_BUTTON_REFRESH = TagName(
     "refresh",
 )
 
+TAG_SETTINGS_PROPERTIES_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.PROPERTIES,
+    Widget.WINDOW,
+    "properties",
+)
+TAG_SETTINGS_PROPERTIES_INPUT_TITLE = TagName(
+    Page.SETTINGS,
+    Panel.PROPERTIES,
+    Widget.INPUT,
+    "title",
+)
+TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR = TagName(
+    Page.SETTINGS,
+    Panel.PROPERTIES,
+    Widget.INPUT,
+    "author",
+)
+TAG_SETTINGS_PROPERTIES_INPUT_COMMENT = TagName(
+    Page.SETTINGS,
+    Panel.PROPERTIES,
+    Widget.INPUT,
+    "comment",
+)
+TAG_SETTINGS_PROPERTIES_BUTTON_OK = TagName(
+    Page.SETTINGS,
+    Panel.PROPERTIES,
+    Widget.BUTTON,
+    "ok",
+)
+TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.PROPERTIES,
+    Widget.BUTTON,
+    "cancel",
+)
+
 FMT_SETTINGS_AUDIO_HZ = " Hz"
 FMT_SETTINGS_AUDIO_BIT = "-bit"

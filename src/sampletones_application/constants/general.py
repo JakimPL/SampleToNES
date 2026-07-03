@@ -271,6 +271,12 @@ TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE = TagName(
     Widget.MENU,
     "item_project_export_module",
 )
+TAG_GLOBAL_MENU_ITEM_PROJECT_PROPERTIES = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_project_properties",
+)
 TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -82,11 +82,13 @@ class SequencerTabCoordinator:
         on_edit_sample_requested: Callable[[str], None],
         on_tab_switch: Callable[[Tab], None],
         on_export_module: Callable[[], None],
+        on_open_properties: Callable[[], None],
     ) -> None:
         self._project_controller = project_controller
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_tab_switch = on_tab_switch
         self._on_export_module = on_export_module
+        self._on_open_properties = on_open_properties
         self._layout = layout
         self._language_manager = language_manager
         self._dialogs = dialogs
@@ -242,6 +244,7 @@ class SequencerTabCoordinator:
         self._sequencer_module_panel.on_rows_per_pattern = self._sequencer_grid_logic.set_rows_per_pattern
         self._sequencer_module_panel.on_tempo = self._sequencer_grid_logic.set_tempo
         self._sequencer_module_panel.on_speed = self._sequencer_grid_logic.set_speed
+        self._sequencer_actions_panel.on_open_properties = self._on_open_properties
         self._sequencer_actions_panel.on_export_module = self._on_export_module
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
         self._sequencer_grid_panel.on_clear_subcolumn = self._on_clear_subcolumn

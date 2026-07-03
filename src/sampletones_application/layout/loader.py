@@ -10,6 +10,7 @@ from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.layout.main import MainLayout
 from sampletones_application.layout.player import PlayerLayout
+from sampletones_application.layout.project_properties import ProjectPropertiesLayout
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.layout.settings import SettingsLayout
@@ -33,6 +34,7 @@ def load_layout_config(layout_directory: Path, behavior_directory: Path) -> Layo
         instructions=_load(layout_directory / "instructions.yaml", InstructionsLayout),
         main=_load(layout_directory / "main.yaml", MainLayout),
         player=_load(layout_directory / "player.yaml", PlayerLayout),
+        project_properties=_load(layout_directory / "project_properties.yaml", ProjectPropertiesLayout),
         reconstructions=_load(layout_directory / "reconstructions.yaml", ReconstructionsLayout),
         sequencer=_load(layout_directory / "sequencer.yaml", SequencerLayout),
         settings=_load(layout_directory / "settings.yaml", SettingsLayout),

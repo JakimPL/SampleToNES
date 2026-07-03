@@ -94,6 +94,7 @@ class Panel(StrEnum):
 
     # Settings
     AUDIO = "audio"
+    PROPERTIES = "properties"
 
     # Prototype
     PAGE = "page"

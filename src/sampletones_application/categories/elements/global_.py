@@ -65,6 +65,7 @@ class MenuElements(AbstractElement):
     ITEM_PROJECT_SAVE = "item_project_save"
     ITEM_PROJECT_SAVE_AS = "item_project_save_as"
     ITEM_PROJECT_EXPORT_MODULE = "item_project_export_module"
+    ITEM_PROJECT_PROPERTIES = "item_project_properties"
     ITEM_PROJECT_CLOSE = "item_project_close"
     GROUP_RECONSTRUCTION = "group_reconstruction"
     ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = "item_reconstruction_reconstruct_file"

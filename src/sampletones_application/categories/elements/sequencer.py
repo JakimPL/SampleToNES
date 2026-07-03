@@ -16,6 +16,7 @@ class SequencerModuleElements(AbstractElement):
     ROWS = "rows"
     TEMPO = "tempo"
     SPEED = "speed"
+    PROPERTIES = "properties"
     EXPORT_MODULE = "export_module"
 
 
