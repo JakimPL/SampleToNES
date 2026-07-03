@@ -11,6 +11,7 @@ from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.paths import LANG_EN
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
@@ -125,7 +126,7 @@ class TestGridDetails:
         controller = _controller()
         formatter = _formatter(controller)
 
-        segments = formatter.clear_subcolumn(0, GeneratorName.NOISE, "volume")
+        segments = formatter.clear_subcolumn(0, GeneratorName.NOISE, SubColumn.VOLUME)
 
         assert _pairs(segments) == [
             ("00", HistoryDetailRole.FRAME),

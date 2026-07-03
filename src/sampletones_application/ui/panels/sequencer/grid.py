@@ -41,7 +41,6 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
     EditAction,
 )
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
-from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
@@ -54,6 +53,7 @@ from sampletones_application.view_model.sequencer.grid import (
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id

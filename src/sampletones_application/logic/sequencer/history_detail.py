@@ -5,6 +5,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -15,15 +16,15 @@ from sampletones_core.utils.display import display_id, display_transpose, displa
 Segments = Tuple[HistoryDetailSegment, ...]
 
 _ARROW: Final[str] = ">"
-_SUBCOLUMN_LETTERS: Final[Dict[str, str]] = {
-    "instrument": "i",
-    "transpose": "t",
-    "volume": "v",
+_SUBCOLUMN_LETTERS: Final[Dict[SubColumn, str]] = {
+    SubColumn.INSTRUMENT: "i",
+    SubColumn.TRANSPOSE: "t",
+    SubColumn.VOLUME: "v",
 }
-_SUBCOLUMN_ROLES: Final[Dict[str, HistoryDetailRole]] = {
-    "instrument": HistoryDetailRole.INSTRUMENT,
-    "transpose": HistoryDetailRole.TRANSPOSE,
-    "volume": HistoryDetailRole.VOLUME,
+_SUBCOLUMN_ROLES: Final[Dict[SubColumn, HistoryDetailRole]] = {
+    SubColumn.INSTRUMENT: HistoryDetailRole.INSTRUMENT,
+    SubColumn.TRANSPOSE: HistoryDetailRole.TRANSPOSE,
+    SubColumn.VOLUME: HistoryDetailRole.VOLUME,
 }
 
 
@@ -75,11 +76,11 @@ class SequencerHistoryDetail:
             segments.append(self._sample(sample_id))
 
         if transpose is not None:
-            segments.append(self._segment("t", HistoryDetailRole.TRANSPOSE))
+            segments.append(self._subcolumn(SubColumn.TRANSPOSE))
             segments.append(self._segment(display_transpose(transpose), HistoryDetailRole.TRANSPOSE))
 
         if volume is not None:
-            segments.append(self._segment("v", HistoryDetailRole.VOLUME))
+            segments.append(self._subcolumn(SubColumn.VOLUME))
             segments.append(self._segment(display_volume(volume), HistoryDetailRole.VOLUME))
 
         return tuple(segments)
@@ -94,13 +95,15 @@ class SequencerHistoryDetail:
         self,
         row_index: int,
         generator: Optional[GeneratorName],
-        subcolumn: str,
+        subcolumn: SubColumn,
     ) -> Segments:
         affected = (
-            GeneratorName.items() if subcolumn == "instrument" else self._grid_logic.relevant_generators(row_index)
+            GeneratorName.items()
+            if subcolumn is SubColumn.INSTRUMENT
+            else self._grid_logic.relevant_generators(row_index)
         )
         segments = list(self._location(row_index, generator, affected))
-        segments.append(self._segment(_SUBCOLUMN_LETTERS[subcolumn], _SUBCOLUMN_ROLES[subcolumn]))
+        segments.append(self._subcolumn(subcolumn))
         return tuple(segments)
 
     def adjust_transpose(self, row_index: int, generator: Optional[GeneratorName], delta: int) -> Segments:
@@ -223,6 +226,9 @@ class SequencerHistoryDetail:
 
     def _segment(self, text: str, role: HistoryDetailRole) -> HistoryDetailSegment:
         return HistoryDetailSegment(text=text, role=role)
+
+    def _subcolumn(self, subcolumn: SubColumn) -> HistoryDetailSegment:
+        return self._segment(_SUBCOLUMN_LETTERS[subcolumn], _SUBCOLUMN_ROLES[subcolumn])
 
     def _name(self, text: str) -> HistoryDetailSegment:
         return HistoryDetailSegment(text=text, role=HistoryDetailRole.NAME)
