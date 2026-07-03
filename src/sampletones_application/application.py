@@ -592,7 +592,9 @@ class Application:
         project sample, the sample adopts the new reconstruction as one history
         entry labelled with the channel and feature ``outcome`` names; the
         copy-on-write swap keeps every prior snapshot's reconstruction intact. A
-        standalone reconstruction leaves the project untouched.
+        standalone reconstruction leaves the project untouched. Consecutive edits
+        of the same sample coalesce, so a continuous graph movement records a
+        single entry.
         """
         sample = self._owning_project_sample()
         if sample is None:
@@ -601,6 +603,7 @@ class Application:
         with self.history.transaction(
             HistoryAction.EDIT_RECONSTRUCTION,
             detail=self._reconstruction_detail(sample, outcome),
+            coalesce=(sample.id,),
         ):
             self.project_controller.replace_sample_reconstruction(sample.id, outcome.reconstruction)
 

@@ -521,7 +521,11 @@ class TestUndoableWrapper:
         wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target)
         wrapped(150)
 
-        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail=())
+        history_coordinator._history.transaction.assert_called_once_with(
+            HistoryAction.SET_TEMPO,
+            detail=(),
+            coalesce=None,
+        )
         target.assert_called_once_with(150)
 
     def test_wrapped_call_passes_computed_detail(self, history_coordinator: SequencerTabCoordinator) -> None:
@@ -531,4 +535,24 @@ class TestUndoableWrapper:
         wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda value: segments)
         wrapped(150)
 
-        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail=segments)
+        history_coordinator._history.transaction.assert_called_once_with(
+            HistoryAction.SET_TEMPO,
+            detail=segments,
+            coalesce=None,
+        )
+
+    def test_wrapped_call_passes_computed_coalesce_key(self, history_coordinator: SequencerTabCoordinator) -> None:
+        target = MagicMock()
+
+        wrapped = history_coordinator._undoable(
+            HistoryAction.SET_TEMPO,
+            target,
+            coalesce=lambda value: ("tempo",),
+        )
+        wrapped(150)
+
+        history_coordinator._history.transaction.assert_called_once_with(
+            HistoryAction.SET_TEMPO,
+            detail=(),
+            coalesce=("tempo",),
+        )

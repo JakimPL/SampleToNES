@@ -339,7 +339,12 @@ for an ordinary edit.
 - **Grouping — coordinators.** Each state-changing coordinator intent runs inside
   `HistoryManager.transaction(HistoryAction.X)` (the sequencer wraps its hooks via
   `_undoable`). All controller calls a gesture makes collapse into one entry;
-  nested transactions coalesce.
+  nested transactions coalesce. A transaction may also carry a *coalesce key*
+  naming the gesture's target (a grid cell, a sample, a module setting):
+  consecutive commits sharing the same action and key replace the top entry
+  instead of appending, so a continuous interaction — a graph drag, repeated
+  edits of one cell — records a single entry. Any undo, redo, or jump breaks
+  the run, so a state the user navigated to is always preserved.
 - **Detection — the controller.** `ProjectController._touch()` fires `on_mutation`
   on every fine-grained mutation. `HistoryManager.handle_mutation` counts those
   inside a transaction and rejects any that occur outside one: under strict

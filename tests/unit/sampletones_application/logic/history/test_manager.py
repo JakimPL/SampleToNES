@@ -7,6 +7,7 @@ from sampletones_application.logic.history.errors import UntrackedMutationError
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
 
 DEFAULT_HISTORY_BUDGET: Final[int] = 10
 
@@ -107,6 +108,95 @@ class TestReversibility:
 
         assert history.can_redo is False
         assert controller.project.settings.tempo == 199
+
+
+class TestCoalescing:
+    def test_same_action_and_target_replaces_top_entry(self) -> None:
+        controller, history = _history()
+        original = controller.project.settings.tempo
+
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(150)
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(160)
+
+        assert len(history.entries) == 2
+        assert controller.project.settings.tempo == 160
+
+        history.undo()
+        assert controller.project.settings.tempo == original
+
+        history.redo()
+        assert controller.project.settings.tempo == 160
+
+    def test_different_target_appends(self) -> None:
+        controller, history = _history()
+
+        with history.transaction(HistoryAction.EDIT_ROW, coalesce=(0, "pulse1", 3)):
+            controller.set_tempo(150)
+        with history.transaction(HistoryAction.EDIT_ROW, coalesce=(0, "pulse1", 4)):
+            controller.set_tempo(160)
+
+        assert len(history.entries) == 3
+
+    def test_different_action_appends(self) -> None:
+        controller, history = _history()
+
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(150)
+        with history.transaction(HistoryAction.SET_SPEED, coalesce=()):
+            controller.set_speed(4)
+
+        assert len(history.entries) == 3
+
+    def test_restore_breaks_run(self) -> None:
+        controller, history = _history()
+
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(150)
+        history.undo()
+        history.redo()
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(160)
+
+        assert len(history.entries) == 3
+        assert controller.project.settings.tempo == 160
+
+    def test_intervening_gesture_breaks_run(self) -> None:
+        controller, history = _history()
+
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(150)
+        with history.transaction(HistoryAction.SET_SPEED):
+            controller.set_speed(4)
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(160)
+
+        assert len(history.entries) == 4
+
+    def test_empty_gesture_keeps_run(self) -> None:
+        controller, history = _history()
+
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(150)
+        with history.transaction(HistoryAction.SET_SPEED):
+            pass
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(160)
+
+        assert len(history.entries) == 2
+
+    def test_replacement_refreshes_detail(self) -> None:
+        controller, history = _history()
+        first = (HistoryDetailSegment(text="150", role=HistoryDetailRole.VALUE),)
+        second = (HistoryDetailSegment(text="160", role=HistoryDetailRole.VALUE),)
+
+        with history.transaction(HistoryAction.SET_TEMPO, detail=first, coalesce=()):
+            controller.set_tempo(150)
+        with history.transaction(HistoryAction.SET_TEMPO, detail=second, coalesce=()):
+            controller.set_tempo(160)
+
+        assert history.entries[-1].detail == second
 
 
 class TestCompleteness:

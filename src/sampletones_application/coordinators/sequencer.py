@@ -34,6 +34,7 @@ from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.snapshot import HistoryEntry
+from sampletones_application.logic.history.transaction import CoalesceKey
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
@@ -269,16 +270,19 @@ class SequencerTabCoordinator:
             HistoryAction.SET_ROWS_PER_PATTERN,
             self._sequencer_grid_logic.set_rows_per_pattern,
             detail=self._history_detail.value,
+            coalesce=self._module_setting_key,
         )
         self._sequencer_module_panel.on_tempo = self._undoable(
             HistoryAction.SET_TEMPO,
             self._sequencer_grid_logic.set_tempo,
             detail=self._history_detail.value,
+            coalesce=self._module_setting_key,
         )
         self._sequencer_module_panel.on_speed = self._undoable(
             HistoryAction.SET_SPEED,
             self._sequencer_grid_logic.set_speed,
             detail=self._history_detail.value,
+            coalesce=self._module_setting_key,
         )
         self._sequencer_actions_panel.on_open_properties = self._on_open_properties
         self._sequencer_actions_panel.on_export_module = self._on_export_module
@@ -296,11 +300,13 @@ class SequencerTabCoordinator:
             HistoryAction.EDIT_ROW,
             self._on_set_row,
             detail=self._history_detail.edit_row,
+            coalesce=self._edit_row_key,
         )
         self._sequencer_grid_panel.on_set_note_off = self._undoable(
             HistoryAction.NOTE_OFF,
             self._on_set_note_off,
             detail=self._history_detail.note_off,
+            coalesce=self._cell_key,
         )
         self._sequencer_grid_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_grid_panel.on_play_from_row = self._on_grid_play_from_row
@@ -308,11 +314,13 @@ class SequencerTabCoordinator:
             HistoryAction.ADJUST_TRANSPOSE,
             self._on_adjust_transpose,
             detail=self._history_detail.adjust_transpose,
+            coalesce=self._adjustment_key,
         )
         self._sequencer_grid_panel.on_adjust_volume = self._undoable(
             HistoryAction.ADJUST_VOLUME,
             self._on_adjust_volume,
             detail=self._history_detail.adjust_volume,
+            coalesce=self._adjustment_key,
         )
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
@@ -406,21 +414,67 @@ class SequencerTabCoordinator:
         callback: Callable[_UndoableParams, None],
         *,
         detail: Optional[Callable[_UndoableParams, Tuple[HistoryDetailSegment, ...]]] = None,
+        coalesce: Optional[Callable[_UndoableParams, CoalesceKey]] = None,
     ) -> Callable[_UndoableParams, None]:
         """Wraps a state-changing hook so its whole gesture becomes one undo entry.
 
         Every mutation the wrapped callback triggers is grouped under ``action``;
         a gesture that changes nothing records no entry. ``detail`` computes the
         entry's coloured description segments from the same arguments the hook
-        receives.
+        receives, and ``coalesce`` computes the gesture's target key from them:
+        consecutive gestures sharing the same action and target collapse into a
+        single entry.
         """
 
         def wrapped(*args: _UndoableParams.args, **kwargs: _UndoableParams.kwargs) -> None:
             description = detail(*args, **kwargs) if detail is not None else ()
-            with self._history.transaction(action, detail=description):
+            key = coalesce(*args, **kwargs) if coalesce is not None else None
+            with self._history.transaction(action, detail=description, coalesce=key):
                 callback(*args, **kwargs)
 
         return wrapped
+
+    def _cell_key(self, row_index: int, generator: Optional[GeneratorName]) -> CoalesceKey:
+        """Identifies one cell of the displayed frame as a coalescing target.
+
+        The sample column (``generator`` absent) is its own target, distinct from
+        every channel column.
+        """
+        channel = generator if generator is not None else ""
+        return (self._sequencer_grid_logic.frame_index, channel, row_index)
+
+    def _adjustment_key(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        _delta: int,
+    ) -> CoalesceKey:
+        return self._cell_key(row_index, generator)
+
+    def _edit_row_key(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        sample_id: Optional[str],
+        transpose: Optional[int],
+        volume: Optional[int],
+    ) -> CoalesceKey:
+        """Extends the cell target with the subcolumns the edit writes.
+
+        Consecutive edits of one cell coalesce only when they write the same
+        subcolumns, so entering a note and then tweaking its volume stay
+        separate entries.
+        """
+        return (
+            *self._cell_key(row_index, generator),
+            sample_id is not None,
+            transpose is not None,
+            volume is not None,
+        )
+
+    def _module_setting_key(self, _value: int) -> CoalesceKey:
+        """Marks a module-wide setting as one target, shared by its whole streak."""
+        return ()
 
     def _on_project_replaced(self) -> None:
         self._history.reset()
