@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Optional, Tuple
 
-from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetailSegment
 from sampletones_core.project import Project
 
 from .action import HistoryAction

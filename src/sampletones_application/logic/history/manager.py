@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Iterator, List, Optional, Tuple
 
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetailSegment
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.serialization import hash_model

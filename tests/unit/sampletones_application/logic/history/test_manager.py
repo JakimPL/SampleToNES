@@ -4,7 +4,7 @@ import pytest
 
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.errors import UntrackedMutationError
-from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
 from tests.unit.sampletones_application.logic.history.conftest import HistoryFactory
 
 

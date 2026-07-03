@@ -5,7 +5,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
-from sampletones_application.view_model.sequencer.history import (
+from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
 )

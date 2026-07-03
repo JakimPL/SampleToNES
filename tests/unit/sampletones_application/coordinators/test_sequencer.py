@@ -10,7 +10,7 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.snapshot import snapshot_project
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_core.constants.enums import GeneratorName
 
 

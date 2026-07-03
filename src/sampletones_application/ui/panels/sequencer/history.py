@@ -23,10 +23,10 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.view_model.sequencer.history import (
-    HistoryDetailRole,
     HistoryEntryViewModel,
     HistoryViewModel,
 )
+from sampletones_application.view_model.shared.history import HistoryDetailRole
 from sampletones_shared.types.application import Sender
 
 

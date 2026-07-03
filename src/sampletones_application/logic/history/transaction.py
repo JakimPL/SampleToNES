@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
-from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetailSegment
 
 from .action import HistoryAction
 

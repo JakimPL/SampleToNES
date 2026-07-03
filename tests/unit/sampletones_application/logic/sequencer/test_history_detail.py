@@ -11,7 +11,7 @@ from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.paths import LANG_EN
-from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.instructions import PulseInstruction
