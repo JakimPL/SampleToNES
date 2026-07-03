@@ -1,4 +1,6 @@
-from typing import Optional
+import warnings
+from contextlib import contextmanager
+from typing import Final, Iterator, Optional
 
 import librosa
 import numpy as np
@@ -9,6 +11,22 @@ from sampletones_core.constants.spectrum import (
 )
 
 from .utils import calculate_n_bins, rectangle_window
+
+_SHORT_SIGNAL_WARNING: Final[str] = "n_fft=.* is too large for input signal"
+
+
+@contextmanager
+def _suppress_short_signal_warning() -> Iterator[None]:
+    """
+    Silence librosa's notice that ``n_fft`` exceeds a short signal during CQT filtering.
+
+    librosa pads a signal up to the power-of-two ``n_fft`` of its lowest-frequency filter and warns
+    when the signal is shorter. The matching criterion's reliability weighting already excludes the
+    bins such a short signal under-resolves, so this low-level notice is expected during the CQT here.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=_SHORT_SIGNAL_WARNING, category=UserWarning)
+        yield
 
 
 def calculate_cqt(
@@ -45,15 +63,16 @@ def calculate_cqt(
     """
     n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
     hop_length = len(audio) + 1  # a single frame
-    return librosa.cqt(
-        audio,
-        sr=sample_rate,
-        fmin=cutoff,
-        n_bins=n_bins,
-        bins_per_octave=bins_per_octave,
-        hop_length=hop_length,
-        window=rectangle_window,
-    )
+    with _suppress_short_signal_warning():
+        return librosa.cqt(
+            audio,
+            sr=sample_rate,
+            fmin=cutoff,
+            n_bins=n_bins,
+            bins_per_octave=bins_per_octave,
+            hop_length=hop_length,
+            window=rectangle_window,
+        )
 
 
 def calculate_cqt_frames(
@@ -85,14 +104,15 @@ def calculate_cqt_frames(
         Complex CQT coefficients, shape (n_bins, n_frames).
     """
     n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
-    return librosa.cqt(
-        audio,
-        sr=sample_rate,
-        fmin=cutoff,
-        n_bins=n_bins,
-        bins_per_octave=bins_per_octave,
-        hop_length=hop_length,
-    )
+    with _suppress_short_signal_warning():
+        return librosa.cqt(
+            audio,
+            sr=sample_rate,
+            fmin=cutoff,
+            n_bins=n_bins,
+            bins_per_octave=bins_per_octave,
+            hop_length=hop_length,
+        )
 
 
 def calculate_cqt_frequencies(

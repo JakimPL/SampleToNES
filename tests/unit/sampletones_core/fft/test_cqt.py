@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from typing import List
 
@@ -5,6 +6,8 @@ import numpy as np
 import pytest
 
 from sampletones_core.fft.cqt import (
+    calculate_cqt,
+    calculate_cqt_frames,
     calculate_cqt_frequencies,
     calculate_wavelet_lengths,
     quality_factor,
@@ -148,3 +151,26 @@ class TestResolvableBins(BaseTestSuite):
         floor = reliable_frequency_floor(sample_rate, signal_length, bins_per_octave=12)
         mask = resolvable_bins(np.array([floor]), sample_rate, signal_length, bins_per_octave=12)
         assert bool(mask[0])
+
+
+class TestShortSignalWarning:
+    SAMPLE_RATE = 11025
+    SHORT_LENGTH = 2048
+
+    @staticmethod
+    def _n_fft_warnings(caught: List[warnings.WarningMessage]) -> List[str]:
+        return [str(warning.message) for warning in caught if "is too large for input signal" in str(warning.message)]
+
+    def test_single_frame_cqt_suppresses_n_fft_warning(self) -> None:
+        audio = np.zeros(self.SHORT_LENGTH, dtype=np.float32)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            calculate_cqt(audio, self.SAMPLE_RATE)
+        assert self._n_fft_warnings(caught) == []
+
+    def test_framed_cqt_suppresses_n_fft_warning(self) -> None:
+        audio = np.zeros(self.SHORT_LENGTH, dtype=np.float32)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            calculate_cqt_frames(audio, self.SAMPLE_RATE, hop_length=512)
+        assert self._n_fft_warnings(caught) == []
