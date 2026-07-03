@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Final, Optional, Tuple, cast
+from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -31,6 +31,7 @@ from sampletones_application.ui.panels.sequencer.order_input import (
     OrderCursor,
     OrderInputState,
 )
+from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -175,15 +176,7 @@ class GUISequencerOrderPanel(GUIPanel):
         The theme targets only the selectable text, so it leaves every other colour to
         the global theme rather than shadowing it.
         """
-        with dpg.theme() as theme:
-            with dpg.theme_component(dpg.mvSelectable):
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_Text,
-                    self._layout.colors.text.order,
-                    category=dpg.mvThemeCat_Core,
-                )
-
-        self._entry_theme = cast(int, theme)
+        self._entry_theme = create_selectable_text_theme(self._layout.colors.text.order)
 
     def _create_button_row(self) -> None:
         with dpg.group(horizontal=True, parent=self.tag):

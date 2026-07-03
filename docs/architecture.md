@@ -331,8 +331,9 @@ metadata, sample shells) but **shares each `Reconstruction` by reference**.
 Reconstruction edits are copy-on-write: `RegenerationService` emits a *new*
 reconstruction and the apply path installs it via
 `ProjectController.replace_sample_reconstruction`, so a shared reconstruction
-never mutates in place and the multi-megabyte audio arrays are never duplicated
-for an ordinary edit.
+never mutates in place and snapshots never duplicate the multi-megabyte audio
+arrays. Producing the fresh reconstruction deep-copies the edited one once, on
+the regeneration worker's background thread.
 
 ### Grouping vs. detection
 
@@ -352,6 +353,11 @@ for an ordinary edit.
   recording the mutation as its own entry. This makes completeness a checkable
   property. Under strict deployment each committed snapshot also carries a
   fingerprint, and every restore verifies the reproduced project matches it.
+  Capture-time fingerprints memoize each reconstruction's hash by object
+  identity (copy-on-write keeps the content fixed for the object's lifetime),
+  collapsing the per-gesture cost to the light structure; restore-time
+  verification always hashes fresh, so an in-place mutation of shared state is
+  caught rather than masked by the memo.
 
 ### Configuration
 
