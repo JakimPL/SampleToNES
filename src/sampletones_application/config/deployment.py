@@ -27,9 +27,6 @@ _LOGGING_LEVELS: Final[Dict[LogLevel, int]] = {
     LogLevel.CRITICAL: logging.CRITICAL,
 }
 
-DEFAULT_LOG_LEVEL: Final[LogLevel] = LogLevel.INFO
-DEFAULT_STRICT_HISTORY: Final[bool] = False
-
 
 class DeploymentConfig(BaseModel, frozen=True):
     """Environment-level knobs decided at deployment time, not by the end user.

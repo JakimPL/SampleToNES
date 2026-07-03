@@ -13,6 +13,7 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import display_sample
+from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -20,10 +21,10 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 class SequencerSamplesLogic(CallbackMixin):
     """Drives the samples panel: lists the pool, edits it, and previews samples.
 
-    Adding/replacing a sample's reconstruction goes through the controller so the
-    project stays the single source of truth. ``on_edit_sample_requested`` hands a
-    sample id to the application, which opens that sample's reconstruction in the
-    Reconstruction tab for live-linked editing.
+    Every pool edit goes through the controller so the project stays the single
+    source of truth. ``on_edit_sample_requested`` hands a sample id to the
+    application, which opens that sample's reconstruction in the Reconstruction
+    tab for live-linked editing.
 
     Previewing mirrors the reconstruction browser: a single click schedules a
     debounced autoplay that fires only when the session's autoplay flag is on, and
@@ -64,13 +65,6 @@ class SequencerSamplesLogic(CallbackMixin):
 
     def add_sample(self, reconstruction: Reconstruction, name: str) -> Sample:
         return self._controller.add_sample(reconstruction, name)
-
-    def replace_sample_reconstruction(
-        self,
-        sample_id: str,
-        reconstruction: Reconstruction,
-    ) -> None:
-        self._controller.replace_sample_reconstruction(sample_id, reconstruction)
 
     def rename_sample(self, sample_id: str, name: str) -> None:
         self._controller.rename_sample(sample_id, name)
@@ -142,6 +136,6 @@ class SequencerSamplesLogic(CallbackMixin):
                 update=False,
                 priority=priority,
             )
-        except Exception as exception:
+        except (PlaybackError, ValueError) as exception:
             logger.error_with_traceback(exception, f"Failed to preview sample: {sample_id}")
             self.call(self.on_autoplay_error, exception)
