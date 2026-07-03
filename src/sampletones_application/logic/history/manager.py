@@ -4,7 +4,6 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Iterator, List, Optional, Tuple
 
-from sampletones_application.logic.history.transaction import PendingTransaction
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
 from sampletones_shared.types.callback import VoidCallback
@@ -13,6 +12,7 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 from .action import HistoryAction
 from .errors import HistoryIntegrityError, UntrackedMutationError
 from .snapshot import HistoryEntry, fingerprint_project, snapshot_project
+from .transaction import PendingTransaction
 
 
 class HistoryManager(CallbackMixin):
@@ -48,8 +48,8 @@ class HistoryManager(CallbackMixin):
         self.on_history_changed: Optional[VoidCallback] = None
 
     @property
-    def entries(self) -> List[HistoryEntry]:
-        return self._entries
+    def entries(self) -> Tuple[HistoryEntry, ...]:
+        return tuple(self._entries)
 
     @property
     def cursor(self) -> int:
@@ -84,6 +84,14 @@ class HistoryManager(CallbackMixin):
         *,
         detail: Tuple[HistoryDetailSegment, ...] = (),
     ) -> Iterator[None]:
+        """Groups every mutation of one user gesture into a single history entry.
+
+        Nested scopes coalesce into the outermost transaction, and a gesture that
+        changes nothing records no entry. The commit runs on scope exit even when
+        the gesture raises: the mutations that already landed are part of the live
+        project, so recording them preserves the invariant that the live project
+        equals a restoration of ``entries[cursor]``.
+        """
         self._begin(action, detail)
         try:
             yield

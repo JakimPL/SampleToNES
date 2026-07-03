@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from typing import Tuple
 
-from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
+
+from .action import HistoryAction
 
 
 @dataclass

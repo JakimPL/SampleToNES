@@ -371,6 +371,13 @@ class ProjectController(CallbackMixin):
         self.call(self.on_song_changed)
 
     def _touch(self) -> None:
+        """Stamps the project as modified and signals the mutation to the history.
+
+        ``on_mutation`` is invoked through a direct ``None`` check rather than
+        :meth:`CallbackMixin.call` because the hook legitimately stays unwired in
+        history-free contexts (tests, tools) and ``call`` would log a warning for
+        every mutation there.
+        """
         self.project.info.touch()
         self._project_manager.mark_updated()
         if self.on_mutation is not None:
