@@ -147,6 +147,7 @@ class Application:
             strict=self.deployment.strict_history,
         )
         self.project_controller.on_mutation = self.history.handle_mutation
+        self.history.on_history_changed = self._on_history_changed
 
         self.fps_timer: FPSTimer = FPSTimer()
 
@@ -404,6 +405,8 @@ class Application:
         return MenuBarViewModel(
             project_open=self.project_manager.is_open,
             reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+            can_undo=self.history.can_undo,
+            can_redo=self.history.can_redo,
             play_label=self.language_manager[Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_PLAY],
             play_or_pause_enabled=False,
             stop_enabled=False,
@@ -416,6 +419,8 @@ class Application:
         return MenuBarViewModel(
             project_open=self.project_manager.is_open,
             reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+            can_undo=self.history.can_undo,
+            can_redo=self.history.can_redo,
             play_label=self._playback_router.play_label,
             play_or_pause_enabled=self._playback_router.is_play_enabled,
             stop_enabled=self._playback_router.is_stop_enabled,
@@ -423,6 +428,17 @@ class Application:
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )
+
+    def _on_history_changed(self) -> None:
+        """Fans one history change out to every consumer.
+
+        The manager exposes a single ``on_history_changed`` slot; the composition
+        root owns it and forwards to the sequencer tab's history panel and the
+        menu bar's undo/redo enablement, mirroring how session-state changes
+        propagate.
+        """
+        self._sequencer_tab.refresh_history()
+        self._update_menu()
 
     def _update_menu(self) -> None:
         self._shell.update_menu(self._build_menu_bar_viewmodel())

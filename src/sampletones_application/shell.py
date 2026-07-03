@@ -300,6 +300,10 @@ class ApplicationShell:
             Shortcut(dpg.mvKey_Y, (Modifier.CTRL,)),
             bindings.redo,
         )
+        self._shortcut_manager.register_alias(
+            ShortcutId.REDO,
+            Shortcut(dpg.mvKey_Z, (Modifier.CTRL, Modifier.SHIFT)),
+        )
 
         self._shortcut_manager.bind_all()
 

@@ -403,7 +403,6 @@ class SequencerTabCoordinator:
         self._wire_history()
 
     def _wire_history(self) -> None:
-        self._history.on_history_changed = self._on_history_changed
         self._sequencer_history_panel.on_undo = self.undo
         self._sequencer_history_panel.on_redo = self.redo
         self._sequencer_history_panel.on_jump_to = self.jump_to_history
@@ -489,7 +488,13 @@ class SequencerTabCoordinator:
     def jump_to_history(self, index: int) -> None:
         self._history.jump_to(index)
 
-    def _on_history_changed(self) -> None:
+    def refresh_history(self) -> None:
+        """Re-renders the history panel from the manager's current stack.
+
+        Called by the application's history fan-out, which owns the manager's
+        single ``on_history_changed`` slot and forwards each change here and to
+        the menu bar.
+        """
         self._sequencer_history_panel.update_view(self._build_history_view_model())
 
     def _build_history_view_model(self) -> HistoryViewModel:
