@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
 from sampletones_core.project import Project
-from sampletones_shared.utils.serialization import hash_model
 
 from .action import HistoryAction
 
@@ -27,28 +25,6 @@ def snapshot_project(project: Project) -> Project:
         id(sample.reconstruction): sample.reconstruction for sample in project.samples
     }
     return copy.deepcopy(project, shared_reconstructions)
-
-
-def fingerprint_project(project: Project) -> str:
-    """Returns a content hash used to verify that a restore reproduces a snapshot.
-
-    The hash covers the full project state, including reconstruction content, so
-    any divergence between a restored project and its recorded snapshot is caught.
-    """
-    parts: List[str] = [
-        project.metadata.model_dump_json(),
-        project.info.model_dump_json(),
-        project.settings.model_dump_json(),
-        project.song.model_dump_json(),
-    ]
-    for sample in project.samples:
-        parts.append(sample.id)
-        parts.append(sample.name)
-        parts.append(str(sample.loop))
-        parts.append(hash_model(sample.reconstruction))
-
-    combined = "|".join(parts)
-    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)

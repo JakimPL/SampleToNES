@@ -8,10 +8,12 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.sequencer.history import HistoryDetailSegment
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.serialization import hash_model
 
 from .action import HistoryAction
 from .errors import HistoryIntegrityError, UntrackedMutationError
-from .snapshot import HistoryEntry, fingerprint_project, snapshot_project
+from .fingerprint import ReconstructionHashCache, fingerprint_project
+from .snapshot import HistoryEntry, snapshot_project
 from .transaction import CoalesceKey, PendingTransaction
 
 
@@ -41,6 +43,9 @@ class HistoryManager(CallbackMixin):
         self._controller = controller
         self._budget = budget
         self._strict = strict
+        self._hash_cache: Optional[ReconstructionHashCache] = (
+            ReconstructionHashCache(reconstruction_hash=hash_model) if strict else None
+        )
         self._entries: List[HistoryEntry] = []
         self._cursor: int = -1
         self._pending: Optional[PendingTransaction] = None
@@ -78,6 +83,7 @@ class HistoryManager(CallbackMixin):
         self._last_commit_key = None
         self._entries = [self._capture(HistoryAction.INITIAL, ())]
         self._cursor = 0
+        self._prune_hash_cache()
         self._notify()
 
     @contextmanager
@@ -186,6 +192,7 @@ class HistoryManager(CallbackMixin):
             self._enforce_budget()
 
         self._last_commit_key = (action, coalesce) if coalesce is not None else None
+        self._prune_hash_cache()
         self._notify()
 
     def _coalesces_with_last(
@@ -213,8 +220,19 @@ class HistoryManager(CallbackMixin):
         action: HistoryAction,
         detail: Tuple[HistoryDetailSegment, ...],
     ) -> HistoryEntry:
+        """Snapshots the live project, fingerprinting it under strict deployment.
+
+        Capture-time fingerprints reuse the memoized per-reconstruction hashes:
+        copy-on-write keeps a reconstruction's content fixed for the object's
+        lifetime, so the per-gesture cost collapses to hashing the light
+        structure.
+        """
         project = self._controller.project
-        fingerprint = fingerprint_project(project) if self._strict else None
+        fingerprint = (
+            fingerprint_project(project, reconstruction_hash=self._hash_cache.hash)
+            if self._hash_cache is not None
+            else None
+        )
         return HistoryEntry(
             project=snapshot_project(project),
             action=action,
@@ -242,15 +260,37 @@ class HistoryManager(CallbackMixin):
         self._notify()
 
     def _verify(self, entry: HistoryEntry) -> None:
+        """Checks the restored project against the entry's recorded fingerprint.
+
+        Verification always hashes reconstructions fresh: an in-place mutation of
+        shared state keeps the object's identity, so a memoized digest would
+        reproduce the pre-mutation hash and mask exactly the divergence this
+        tripwire exists to catch.
+        """
         if entry.fingerprint is None:
             return
 
-        actual = fingerprint_project(self._controller.project)
+        actual = fingerprint_project(self._controller.project, reconstruction_hash=hash_model)
         if actual != entry.fingerprint:
             raise HistoryIntegrityError(
                 f"Restoring history entry '{entry.action}' produced a project that "
                 "diverges from the recorded snapshot."
             )
+
+    def _prune_hash_cache(self) -> None:
+        """Drops memoized hashes for reconstructions the history no longer retains.
+
+        Runs wherever snapshots are discarded — reset, redo-branch truncation,
+        budget eviction, and coalescing replacement — keeping the cache bounded
+        by the reconstructions still reachable from the stack or the live
+        project.
+        """
+        if self._hash_cache is None:
+            return
+
+        projects = [entry.project for entry in self._entries]
+        projects.append(self._controller.project)
+        self._hash_cache.prune(projects)
 
     def _notify(self) -> None:
         self.call(self.on_history_changed)
