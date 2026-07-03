@@ -79,6 +79,11 @@ class SpectrumMethod(StrEnum):
     CQT = "cqt"
 
 
+class CQTWindow(StrEnum):
+    HANN = "hann"
+    RECTANGULAR = "rectangular"
+
+
 GENERATOR_ABBREVIATIONS: Final[Dict[GeneratorName, Literal["P", "p", "T", "N"]]] = {
     GeneratorName.PULSE1: "P",
     GeneratorName.PULSE2: "p",

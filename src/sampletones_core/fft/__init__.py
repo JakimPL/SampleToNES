@@ -1,9 +1,6 @@
-from .cqt import (
-    calculate_cqt,
-    calculate_cqt_frequencies,
-    convert_midpoints_to_edges,
-    normalize_cqt_energy,
-)
+from .cqt.frequencies import calculate_cqt_frequencies, convert_midpoints_to_edges
+from .cqt.normalization import normalize_cqt_energy
+from .cqt.transform import calculate_cqt
 from .fft import (
     a_weighting,
     calculate_fft,

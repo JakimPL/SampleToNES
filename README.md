@@ -80,7 +80,7 @@ _SampleToNES_ can use CUDA for acceleration via [_CuPy_](https://cupy.dev/). GPU
 
 #### Linux
 
-On Linux, the `gpu` extra installs CuPy alongside the CUDA 12 runtime libraries (`libcudart`, `libnvrtc`) as Python wheels. A compatible NVIDIA driver on the host is sufficient — no system CUDA toolkit required, regardless of which CUDA version (if any) is installed system-wide.
+On Linux, the `gpu` extra installs CuPy alongside the CUDA 12 libraries it needs (`libcudart` and `libnvrtc` for the elementwise kernels, `libcublas` for the constant-Q transform's matmul) as Python wheels. A compatible NVIDIA driver on the host is sufficient — no system CUDA toolkit required, regardless of which CUDA version (if any) is installed system-wide.
 
 ```sh
 make setup GPU=1      # environment and global command, both with GPU support
@@ -94,7 +94,7 @@ uv tool install ".[gpu]"            # global `sampletones` command with GPU supp
 
 #### Windows
 
-On Windows, the `gpu` extra installs CuPy. GPU mode additionally requires the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (version 12.x), which provides `cudart64_12.dll` and `nvrtc64_120_0.dll`.
+On Windows, the `gpu` extra installs CuPy. GPU mode additionally requires the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (version 12.x), which provides `cudart64_12.dll`, `nvrtc64_120_0.dll`, and `cublas64_12.dll` (the last backs the constant-Q transform's matmul).
 
 ## Data structures
 
