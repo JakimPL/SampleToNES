@@ -1,5 +1,7 @@
 from typing import Optional, Type, Union
 
+import numpy as np
+
 
 def _preload_cuda_libraries() -> None:
     """Make CUDA libraries shipped as ``nvidia-*-cu12`` wheels discoverable by CuPy.
@@ -54,11 +56,24 @@ except (AttributeError, ImportError, ModuleNotFoundError):
     warnings.warn("CuPy is not available, falling back to NumPy.", CuPyNotInstalledWarning)
     logger.warning("CuPy is not available, falling back to NumPy.")
 
-    import numpy as xp
-    import numpy.typing as xp_typing
+    import numpy.typing as xp_typing  # pylint: disable=ungrouped-imports
+
+    xp = np
+
+
+def to_numpy(array: Union[np.ndarray, "xp.ndarray"]) -> np.ndarray:
+    """Return a host NumPy array from the active backend.
+
+    A NumPy array passes through; a CuPy array is copied from the device to the host. This is the
+    single conversion point for handing backend arrays to NumPy-only code (spectra, histograms,
+    serialization, tests), the mirror of ``xp.asarray`` which moves data onto the backend.
+    """
+    return xp.asnumpy(array) if CUPY_AVAILABLE else np.asarray(array)
+
 
 __all__ = [
     "xp",
     "xp_typing",
     "CUPY_AVAILABLE",
+    "to_numpy",
 ]

@@ -9,13 +9,9 @@ from sampletones_core.constants.spectrum import (
 )
 from sampletones_core.structures.histogram import Histogram
 
-from ..cqt import (
-    calculate_cqt,
-    calculate_cqt_frames,
-    calculate_cqt_frequencies,
-    convert_midpoints_to_edges,
-    normalize_cqt_energy,
-)
+from ..cqt.frequencies import calculate_cqt_frequencies, convert_midpoints_to_edges
+from ..cqt.normalization import normalize_cqt_energy
+from ..cqt.transform import calculate_cqt, calculate_cqt_frames
 from ..utils import calculate_n_bins
 
 
@@ -86,11 +82,11 @@ def calculate_cqt_spectrum_columns(
     share an identical feature-extraction contract and stay directly comparable
     bin-by-bin.
 
-    librosa centers column ``i`` on sample ``i * hop_length`` (a frame's left edge),
-    whereas the matching pipeline indexes a fragment by its center (the FFT path
-    analyses a window centered on the frame). The signal is therefore advanced by
-    half a hop before transforming, so column ``i`` represents the frame centered on
-    ``(i + 0.5) * hop_length`` and the per-frame timing matches the FFT path exactly.
+    The transform centers column ``i`` on sample ``i * hop_length``, whereas the matching
+    pipeline indexes a fragment by its center (the FFT path analyses a window centered on the
+    frame). The signal is therefore advanced by half a hop before transforming, so column ``i``
+    represents the frame centered on ``(i + 0.5) * hop_length`` and the per-frame timing matches
+    the FFT path exactly.
 
     Args:
         audio: Input audio as a numpy array.

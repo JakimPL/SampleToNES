@@ -5,13 +5,13 @@ from sampletones_core.constants.enums import SpectrumMethod
 
 from ..window.window import Window
 from .base import FeatureExtractor
-from .cqt import CqtFeatureExtractor
+from .cqt import CQTFeatureExtractor
 from .windowed import WindowedFeatureExtractor
 
 FEATURE_EXTRACTORS: Dict[SpectrumMethod, Type[FeatureExtractor]] = {
     SpectrumMethod.FFT: WindowedFeatureExtractor,
     SpectrumMethod.LOG_SPACED_FFT: WindowedFeatureExtractor,
-    SpectrumMethod.CQT: CqtFeatureExtractor,
+    SpectrumMethod.CQT: CQTFeatureExtractor,
 }
 
 
@@ -23,7 +23,7 @@ def get_feature_extractor(config: Config, window: Window) -> FeatureExtractor:
 __all__ = [
     "FeatureExtractor",
     "WindowedFeatureExtractor",
-    "CqtFeatureExtractor",
+    "CQTFeatureExtractor",
     "FEATURE_EXTRACTORS",
     "get_feature_extractor",
 ]

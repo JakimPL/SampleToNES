@@ -952,6 +952,18 @@ wheels = [
 ]
 
 [[package]]
+name = "nvidia-cublas-cu12"
+version = "12.9.2.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "nvidia-cuda-nvrtc-cu12" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f7/a2/c96163a0fff1839c0c9548bbdeae7b853b867009e33b9b9264adc238b1cf/nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:5572131a59c3eebeeb1c4c8144f772d49372c20124916e072a0e3fc30df421d5", size = 575012079, upload-time = "2026-04-08T18:51:47.303Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/c0/0a517bfe63ccd3b92eb254d264e28fca3c7cab75d07daea315250fb1bf73/nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:e4f53a8ca8c5d6e8c492d0d0a3d565ecb59a751b19cfdaa4f6da0ab2104c1702", size = 581240110, upload-time = "2026-04-08T18:52:31.532Z" },
+]
+
+[[package]]
 name = "nvidia-cuda-nvrtc-cu12"
 version = "12.9.86"
 source = { registry = "https://pypi.org/simple" }
@@ -1451,6 +1463,7 @@ dependencies = [
 [package.optional-dependencies]
 gpu = [
     { name = "cupy-cuda12x" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux'" },
     { name = "nvidia-cuda-nvrtc-cu12", marker = "sys_platform == 'linux'" },
     { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform == 'linux'" },
 ]
@@ -1477,6 +1490,7 @@ requires-dist = [
     { name = "librosa", specifier = "==0.11.0" },
     { name = "msgpack", specifier = "==1.2.1" },
     { name = "numpy", specifier = "==2.4.6" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux' and extra == 'gpu'" },
     { name = "nvidia-cuda-nvrtc-cu12", marker = "sys_platform == 'linux' and extra == 'gpu'" },
     { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform == 'linux' and extra == 'gpu'" },
     { name = "pebble", specifier = "==5.2.0" },

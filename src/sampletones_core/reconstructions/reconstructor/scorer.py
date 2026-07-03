@@ -4,7 +4,7 @@ import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.fft import Fragment, Window
-from sampletones_shared.array import CUPY_AVAILABLE, xp
+from sampletones_shared.array import CUPY_AVAILABLE, to_numpy, xp
 
 from ..criterion import Criterion
 
@@ -38,7 +38,7 @@ class Scorer:
         try:
             target_gpu = target.to_cupy()
             errors = self.criterion(target_gpu, candidates)
-            return self._to_host(errors)
+            return to_numpy(errors)
         finally:
             del errors, target_gpu
             if CUPY_AVAILABLE:
@@ -49,7 +49,3 @@ class Scorer:
         count = min(k, int(costs.shape[0]))
         partitioned = np.argpartition(costs, count - 1)[:count]
         return partitioned[np.argsort(costs[partitioned])]
-
-    @staticmethod
-    def _to_host(errors: xp.ndarray) -> np.ndarray:
-        return xp.asnumpy(errors) if CUPY_AVAILABLE else np.asarray(errors)

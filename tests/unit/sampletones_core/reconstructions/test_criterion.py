@@ -10,14 +10,9 @@ from sampletones_core.configs import Config, MetricConfig, WeightsConfig
 from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.reconstructions.criterion import Criterion
-from sampletones_shared.array import CUPY_AVAILABLE, xp
+from sampletones_shared.array import to_numpy
 
 LONG_SIGNAL_LENGTH: Final[int] = 1 << 20
-
-
-def _host(array: xp.ndarray) -> np.ndarray:
-    """Bring a criterion result to NumPy regardless of the array backend."""
-    return xp.asnumpy(array) if CUPY_AVAILABLE else np.asarray(array)
 
 
 def _criterion_with_distance(
@@ -138,7 +133,7 @@ class TestCriterionSpectralLoss:
         reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
         candidates = np.stack([np.full(bins, 0.5, dtype=np.float32), np.zeros(bins, dtype=np.float32)])
         loss = criterion.spectral_loss(reference, candidates)
-        assert bool(np.all(_host(loss) >= 0.0))
+        assert bool(np.all(to_numpy(loss) >= 0.0))
 
     def test_spectral_loss_shape_matches_candidate_count(
         self,
@@ -151,7 +146,7 @@ class TestCriterionSpectralLoss:
             reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
             candidates = np.stack([reference, np.full(bins, 0.3, dtype=np.float32), np.zeros(bins, dtype=np.float32)])
             loss = criterion.spectral_loss(reference, candidates)
-            assert _host(loss).shape == (3,)
+            assert to_numpy(loss).shape == (3,)
 
     def test_closer_spectrum_scores_lower_than_distant_one(
         self,
@@ -180,8 +175,8 @@ class TestCriterionCqtAxis:
         candidates = np.stack([reference, np.zeros(bins, dtype=np.float32)])
 
         loss = criterion.spectral_loss(reference, candidates)
-        assert _host(loss).shape == (2,)
-        assert bool(np.all(_host(loss) >= 0.0))
+        assert to_numpy(loss).shape == (2,)
+        assert bool(np.all(to_numpy(loss) >= 0.0))
 
 
 class TestCriterionReliabilityMask:
@@ -197,19 +192,19 @@ class TestCriterionReliabilityMask:
 
     def test_short_signal_zeroes_low_bins_and_keeps_high_bins(self, config: Config) -> None:
         criterion = self._cqt_criterion(config, self.SHORT_SIGNAL_LENGTH)
-        weights = _host(criterion.weights)
+        weights = to_numpy(criterion.weights)
         assert float(weights[0]) == 0.0
         assert float(weights[-1]) > 0.0
         assert int(np.count_nonzero(weights == 0.0)) > 0
 
     def test_long_signal_keeps_every_bin(self, config: Config) -> None:
         criterion = self._cqt_criterion(config, LONG_SIGNAL_LENGTH)
-        weights = _host(criterion.weights)
+        weights = to_numpy(criterion.weights)
         assert bool(np.all(weights > 0.0))
 
     def test_masked_bins_do_not_affect_spectral_loss(self, config: Config) -> None:
         criterion = self._cqt_criterion(config, self.SHORT_SIGNAL_LENGTH)
-        weights = _host(criterion.weights)
+        weights = to_numpy(criterion.weights)
         masked = weights == 0.0
         assert bool(masked.any())
 
@@ -219,7 +214,7 @@ class TestCriterionReliabilityMask:
         candidate[masked] = candidate[masked] + np.float32(0.5)
 
         loss = criterion.spectral_loss(reference, candidate[None, :])
-        assert float(_host(loss)[0]) == pytest.approx(0.0, abs=1e-6)
+        assert float(to_numpy(loss)[0]) == pytest.approx(0.0, abs=1e-6)
 
     def test_fft_method_keeps_every_bin_regardless_of_length(self, config: Config) -> None:
         fft_config = config.model_copy(
@@ -227,5 +222,5 @@ class TestCriterionReliabilityMask:
         )
         fft_window = Window.from_config(fft_config)
         criterion = Criterion(fft_config, fft_window, signal_length=1)
-        weights = _host(criterion.weights)
+        weights = to_numpy(criterion.weights)
         assert bool(np.all(weights > 0.0))

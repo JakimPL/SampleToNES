@@ -13,7 +13,8 @@ from sampletones_core.fft import (
     Window,
     calculate_weights_from_edges,
 )
-from sampletones_core.fft.cqt import calculate_cqt_frequencies, resolvable_bins
+from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
+from sampletones_core.fft.cqt.geometry import resolvable_bins
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
