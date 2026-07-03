@@ -48,6 +48,18 @@ components:
   - item_type: Button
     enabled: false
     entries:
+      - type: color
+        key: Text
+        value: "#828282"
+      - type: color
+        key: Button
+        value: "#2e2e3c"
+      - type: color
+        key: ButtonHovered
+        value: "#2e2e3c"
+      - type: color
+        key: ButtonActive
+        value: "#2e2e3c"
       - type: style
         key: FrameRounding
         x: 6

@@ -1,11 +1,14 @@
-from typing import Optional
+from pathlib import Path
+from typing import Generator, Optional
 
 import dearpygui.dearpygui as dpg
+import pytest
 
 from sampletones_application.constants.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.paths import THEME_DIRECTORY
 from sampletones_application.ui.themes.loader import ThemeLoader, _effective_parent
 from sampletones_application.ui.themes.spec import ThemeSpec
+from sampletones_application.ui.themes.theme import Theme
 
 _BASE_NAME = "default"
 
@@ -56,3 +59,69 @@ class TestLoadedInheritance:
             assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg) is not None
         finally:
             dpg.destroy_context()
+
+
+_SYNTHETIC_BASE = """
+name: default
+tag: synthetic.default
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdcff"
+      - type: color
+        key: WindowBg
+        value: "#242424ff"
+  - item_type: Button
+    entries:
+      - type: color
+        key: Button
+        value: "#363648ff"
+  - item_type: Button
+    enabled: false
+    entries:
+      - type: color
+        key: Button
+        value: "#2e2e3cff"
+"""
+
+
+class TestDisabledStateMirroring:
+    """Disabled-state completeness: DearPyGui resolves each item against the theme
+    component matching the item's enabled state and re-applies its built-in palette
+    when that component is missing, letting the last themed item drawn bleed that
+    palette into the global style. A mirrored theme is complete for both states, so
+    every item renders with the theme's own values and the global style stays
+    intact.
+    """
+
+    @pytest.fixture
+    def synthetic_theme(self, tmp_path: Path) -> Generator[Theme, None, None]:
+        (tmp_path / "default.yaml").write_text(_SYNTHETIC_BASE)
+        dpg.create_context()
+        try:
+            theme = ThemeLoader(tmp_path).load_all()[0]
+            theme.create()
+            yield theme
+        finally:
+            dpg.destroy_context()
+
+    def test_mirrored_entries_equal_their_enabled_counterparts(self, synthetic_theme: Theme) -> None:
+        enabled_background = synthetic_theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
+        disabled_background = synthetic_theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg, enabled_state=False)
+        enabled_text = synthetic_theme.get_color(dpg.mvAll, dpg.mvThemeCol_Text)
+        disabled_text = synthetic_theme.get_color(dpg.mvAll, dpg.mvThemeCol_Text, enabled_state=False)
+
+        assert enabled_background is not None
+        assert disabled_background == enabled_background
+        assert enabled_text is not None
+        assert disabled_text == enabled_text
+
+    def test_explicit_disabled_entries_win_over_the_mirror(self, synthetic_theme: Theme) -> None:
+        enabled_button = synthetic_theme.get_color(dpg.mvButton, dpg.mvThemeCol_Button)
+        disabled_button = synthetic_theme.get_color(dpg.mvButton, dpg.mvThemeCol_Button, enabled_state=False)
+
+        assert enabled_button is not None
+        assert disabled_button is not None
+        assert disabled_button != enabled_button
