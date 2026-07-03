@@ -13,7 +13,7 @@ from sampletones_application.logic.sequencer.samples import SequencerSamplesLogi
 from sampletones_application.paths import LANG_EN
 from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 
@@ -246,3 +246,18 @@ class TestSampleDetails:
         formatter = _formatter(_controller())
 
         assert _pairs(formatter.value(150)) == [("150", HistoryDetailRole.VALUE)]
+
+
+class TestReconstructionDetails:
+    def test_edit_reconstruction_names_position_channel_and_feature(self) -> None:
+        controller = _controller()
+        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_reconstruction(sample.id, GeneratorName.PULSE1, FeatureKey.VOLUME)
+
+        assert _pairs(segments) == [
+            ("00:", HistoryDetailRole.SAMPLE),
+            ("Pulse 1", HistoryDetailRole.CHANNEL),
+            ("Volume", HistoryDetailRole.FEATURE),
+        ]

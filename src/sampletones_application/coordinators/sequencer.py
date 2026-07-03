@@ -71,7 +71,7 @@ from sampletones_application.view_model.sequencer.samples import (
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
@@ -496,6 +496,15 @@ class SequencerTabCoordinator:
         the menu bar.
         """
         self._sequencer_history_panel.update_view(self._build_history_view_model())
+
+    def reconstruction_edit_detail(
+        self,
+        sample_id: str,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+    ) -> Tuple[HistoryDetailSegment, ...]:
+        """Describes a reconstruction edit for the project history's detail line."""
+        return self._history_detail.edit_reconstruction(sample_id, generator_name, feature_key)
 
     def _build_history_view_model(self) -> HistoryViewModel:
         cursor = self._history.cursor

@@ -9,7 +9,7 @@ from sampletones_application.view_model.sequencer.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
 )
-from sampletones_core.constants.enums import GeneratorName, abbreviate_generator_names
+from sampletones_core.constants.enums import FeatureKey, GeneratorName, abbreviate_generator_names
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
 
 Segments = Tuple[HistoryDetailSegment, ...]
@@ -169,6 +169,19 @@ class SequencerHistoryDetail:
     def set_sample_loop(self, sample_id: str, loop: bool) -> Segments:
         state = self._loop_on if loop else self._loop_off
         return (self._sample(sample_id, colon=True), self._value(state))
+
+    def edit_reconstruction(
+        self,
+        sample_id: str,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+    ) -> Segments:
+        """Describes a regenerated sample: its position, channel, and edited feature."""
+        return (
+            self._sample(sample_id, colon=True),
+            self._segment(generator_name.capitalized, HistoryDetailRole.CHANNEL),
+            self._segment(feature_key.capitalized, HistoryDetailRole.FEATURE),
+        )
 
     def value(self, number: int) -> Segments:
         return (self._value(str(number)),)

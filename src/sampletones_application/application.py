@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Final, Optional, Tuple
+from typing import Any, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -76,7 +76,6 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
-from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
@@ -85,7 +84,6 @@ from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.types.feature import FeatureValue
-from sampletones_core.utils.display import display_sample
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -618,22 +616,14 @@ class Application:
 
         with self.history.transaction(
             HistoryAction.EDIT_RECONSTRUCTION,
-            detail=self._reconstruction_detail(sample, outcome),
+            detail=self._sequencer_tab.reconstruction_edit_detail(
+                sample.id,
+                outcome.generator_name,
+                outcome.feature_key,
+            ),
             coalesce=(sample.id,),
         ):
             self.project_controller.replace_sample_reconstruction(sample.id, outcome.reconstruction)
-
-    def _reconstruction_detail(
-        self,
-        sample: Sample,
-        outcome: RegeneratedInstrument,
-    ) -> Tuple[HistoryDetailSegment, ...]:
-        position = display_sample(samples=self.project_manager.current.samples, sample_id=sample.id)
-        return (
-            HistoryDetailSegment(text=f"{position}:", role=HistoryDetailRole.SAMPLE),
-            HistoryDetailSegment(text=outcome.generator_name.capitalized, role=HistoryDetailRole.CHANNEL),
-            HistoryDetailSegment(text=outcome.feature_key.capitalized, role=HistoryDetailRole.FEATURE),
-        )
 
     def _commit_project_properties(self, title: str, author: str, comment: str) -> None:
         """Applies the properties dialog's values as one undoable gesture.
