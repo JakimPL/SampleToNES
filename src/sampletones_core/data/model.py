@@ -21,7 +21,7 @@ import msgpack
 import numpy as np
 from pydantic import BaseModel
 
-from sampletones_shared.array import CUPY_AVAILABLE, xp
+from sampletones_shared.array import to_numpy
 from sampletones_shared.exceptions import (
     DeserializationError,
     SerializationError,
@@ -232,8 +232,7 @@ class DataModel(BaseModel, ABC):
         raise DeserializationError(f"Unsupported vector element type: {element_class} for field '{field_name}'")
 
     def _pack_array(self, array: Array, field_name: str) -> bytes:
-        if CUPY_AVAILABLE and isinstance(array, xp.ndarray):
-            array = xp.asnumpy(array)
+        array = to_numpy(array)
 
         if array.dtype != np.float32:
             raise SerializationError(

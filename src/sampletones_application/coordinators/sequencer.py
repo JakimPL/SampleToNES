@@ -48,6 +48,7 @@ from sampletones_application.logic.sequencer.playback.playhead import (
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.panels.sequencer.actions import GUISequencerActionsPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
@@ -94,11 +95,15 @@ class SequencerTabCoordinator:
         dialogs: DialogsRenderer,
         on_edit_sample_requested: Callable[[str], None],
         on_tab_switch: Callable[[Tab], None],
+        on_export_module: Callable[[], None],
+        on_open_properties: Callable[[], None],
     ) -> None:
         self._project_controller = project_controller
         self._history = history
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_tab_switch = on_tab_switch
+        self._on_export_module = on_export_module
+        self._on_open_properties = on_open_properties
         self._layout = layout
         self._language_manager = language_manager
         self._dialogs = dialogs
@@ -233,6 +238,9 @@ class SequencerTabCoordinator:
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
+        self._sequencer_actions_panel: GUISequencerActionsPanel = GUISequencerActionsPanel(
+            language_manager=language_manager,
+        )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
@@ -272,6 +280,8 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.set_speed,
             detail=self._history_detail.value,
         )
+        self._sequencer_actions_panel.on_open_properties = self._on_open_properties
+        self._sequencer_actions_panel.on_export_module = self._on_export_module
         self._sequencer_grid_panel.on_clear_row = self._undoable(
             HistoryAction.CLEAR_ROW,
             self._on_clear_row,
@@ -466,6 +476,7 @@ class SequencerTabCoordinator:
         self._sequencer_samples_logic.push_samples()
         is_open = self._project_controller.is_open
         self._sequencer_module_panel.set_enabled(is_open)
+        self._sequencer_actions_panel.set_enabled(is_open)
         self._sequencer_grid_panel.set_enabled(is_open)
         self._sequencer_order_panel.set_enabled(is_open)
         self._sequencer_history_panel.set_enabled(is_open)
@@ -945,6 +956,7 @@ class SequencerTabCoordinator:
                             language_manager=self._language_manager,
                         )
                         self._song_player_logic.on_view_changed = self._on_player_view_changed
+                        self._sequencer_actions_panel.create_panel()
                         self._sequencer_order_panel.create_panel()
                         self._sequencer_grid_panel.create_tracker()
 

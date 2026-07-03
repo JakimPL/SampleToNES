@@ -1,0 +1,7 @@
+window:
+  width: 500
+  height: 0
+
+label_width: 90
+input_width: -1
+comment_height: 160

@@ -8,3 +8,12 @@ class AudioSettingsElements(AbstractElement):
     APPLY_BUTTON = "apply_button"
     REFRESH_DEVICES_BUTTON = "refresh_devices_button"
     WINDOW_TITLE = "window_title"
+
+
+class ProjectPropertiesElements(AbstractElement):
+    WINDOW_TITLE = "window_title"
+    TITLE = "title"
+    AUTHOR = "author"
+    COMMENT = "comment"
+    CREATED = "created"
+    MODIFIED = "modified"

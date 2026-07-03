@@ -16,6 +16,7 @@ class SequencerModuleElements(AbstractElement):
     ROWS = "rows"
     TEMPO = "tempo"
     SPEED = "speed"
+    PROPERTIES = "properties"
     EXPORT_MODULE = "export_module"
 
 
@@ -123,4 +124,5 @@ class SequencerHistoryActionElements(AbstractElement):
     SET_NES_FREQUENCY = "set_nes_frequency"
     SET_ROWS_PER_PATTERN = "set_rows_per_pattern"
     EDIT_RECONSTRUCTION = "edit_reconstruction"
+    EDIT_PROJECT_PROPERTIES = "edit_project_properties"
     UNTRACKED = "untracked"

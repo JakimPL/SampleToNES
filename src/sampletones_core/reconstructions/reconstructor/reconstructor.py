@@ -37,6 +37,7 @@ def reconstruct(
         window=window,
         generators=generators,
         library_data=library_data,
+        signal_length=fragmented_audio.audio.shape[0],
     )
 
     return worker(fragmented_audio, fragments_ids)
@@ -93,6 +94,7 @@ class Reconstructor:
             window=self.window,
             generators=self.generators,
             library_data=self.library_data,
+            signal_length=fragmented_audio.audio.shape[0],
         )
 
         results = worker(fragmented_audio, fragments_ids)

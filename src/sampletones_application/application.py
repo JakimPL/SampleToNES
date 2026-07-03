@@ -65,6 +65,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.menu import MenuBar
+from sampletones_application.ui.panels.project_properties import GUIProjectPropertiesWindow
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
@@ -83,7 +84,6 @@ from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
-from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
 from sampletones_core.utils.display import display_sample
 from sampletones_shared.logger import logger
@@ -155,6 +155,13 @@ class Application:
             layout=self.layout.settings,
             language_manager=self.language_manager,
         )
+        self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
+            self.project_controller,
+            layout=self.layout.project_properties,
+            language_manager=self.language_manager,
+            shortcut_manager=self.shortcut_manager,
+        )
+        self.project_properties_window.on_commit = self._commit_project_properties
         self.status_bar = GUIStatusBar(
             display_time=self.layout.behavior.ui.status_bar_display_time,
         )
@@ -269,6 +276,8 @@ class Application:
             dialogs=self.dialogs,
             on_edit_sample_requested=self._edit_project_sample,
             on_tab_switch=self._set_current_tab,
+            on_export_module=self._project_coordinator.export_module_dialog,
+            on_open_properties=self.project_properties_window.show,
         )
 
         self._playback_router = PlaybackRouter(
@@ -295,6 +304,7 @@ class Application:
             status_bar=self.status_bar,
             fps_timer=self.fps_timer,
             audio_settings_window=self.audio_settings_window,
+            project_properties_window=self.project_properties_window,
             main_tab=self._main_tab,
             reconstructions_tab=self._reconstructions_tab,
             sequencer_tab=self._sequencer_tab,
@@ -335,6 +345,8 @@ class Application:
             open_project=self._project_coordinator.open_with_confirmation,
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
+            export_project_module=self._project_coordinator.export_module_dialog,
+            project_properties=self._shell.open_project_properties,
             close_project=self._project_coordinator.close_with_confirmation,
             save_reconstruction=self._reconstruction_coordinator.save,
             save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,
@@ -603,6 +615,21 @@ class Application:
             HistoryDetailSegment(text=outcome.generator_name.capitalized, role=HistoryDetailRole.CHANNEL),
             HistoryDetailSegment(text=outcome.feature_key.capitalized, role=HistoryDetailRole.FEATURE),
         )
+
+    def _commit_project_properties(self, title: str, author: str, comment: str) -> None:
+        """Applies the properties dialog's values as one undoable gesture.
+
+        Only fields that differ from the current project info reach the controller,
+        so confirming the dialog with nothing edited leaves the history untouched.
+        """
+        info = self.project_controller.project.info
+        with self.history.transaction(HistoryAction.EDIT_PROJECT_PROPERTIES):
+            if title != info.title:
+                self.project_controller.set_title(title)
+            if author != info.author:
+                self.project_controller.set_author(author)
+            if comment != info.comment:
+                self.project_controller.set_comment(comment)
 
     def _owning_project_sample(self) -> Optional[Sample]:
         reconstruction = self.reconstruction_manager.reconstruction

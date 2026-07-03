@@ -1,0 +1,15 @@
+kick:
+  pitch_start: 67
+  pitch_end: 29
+  duration: 0.4
+  decay: 6.0
+lead:
+  pitch_start: 60
+  pitch_end: 60
+  duration: 0.5
+  decay: 3.0
+hihat:
+  duration: 0.3
+  cutoff_hz: 5000.0
+  decay: 4.0
+  highpass_order: 4

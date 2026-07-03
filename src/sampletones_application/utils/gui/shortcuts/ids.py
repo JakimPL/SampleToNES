@@ -6,6 +6,8 @@ class ShortcutId(Enum):
     OPEN_PROJECT = "OpenProject"
     SAVE_PROJECT = "SaveProject"
     SAVE_PROJECT_AS = "SaveProjectAs"
+    EXPORT_PROJECT_MODULE = "ExportProjectModule"
+    PROJECT_PROPERTIES = "ProjectProperties"
     CLOSE_PROJECT = "CloseProject"
     SAVE_GENERATION_SETTINGS = "SaveGenerationSettings"
     LOAD_GENERATION_SETTINGS = "LoadGenerationSettings"

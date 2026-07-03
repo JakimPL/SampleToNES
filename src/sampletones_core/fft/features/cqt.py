@@ -16,12 +16,12 @@ from ..window.cyclic import CyclicArray
 from .base import FeatureExtractor
 
 
-class CqtFeatureExtractor(FeatureExtractor):
+class CQTFeatureExtractor(FeatureExtractor):
     """
     Whole-signal extraction for the `cqt` method: the constant-Q window spans several
     frames, so the transform is computed once over the whole signal (one column per
-    frame, librosa-centered) rather than per fragment. Frames are aligned to their own
-    time position; `windowed_frames` is used only for the frame count.
+    frame, each centered on its hop position) rather than per fragment. Frames are aligned
+    to their own time position; `windowed_frames` is used only for the frame count.
     """
 
     def _frame_features(self, audio: np.ndarray, windowed_frames: List[np.ndarray]) -> List[Histogram]:

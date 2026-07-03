@@ -12,7 +12,6 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
-    TAG_SEQUENCER_MODULE_BUTTON_EXPORT,
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
     TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
     TAG_SEQUENCER_MODULE_INPUT_ROWS,
@@ -22,7 +21,6 @@ from sampletones_application.constants.sequencer import (
 )
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
-from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -95,12 +93,6 @@ class GUISequencerModulePanel(GUIPanel):
             TextType.LABEL,
             SequencerModuleElements.SPEED,
         ]
-        self._lbl_export_module = language_manager[
-            Page.SEQUENCER,
-            Panel.MODULE,
-            TextType.LABEL,
-            SequencerModuleElements.EXPORT_MODULE,
-        ]
         self._msg_status_input = language_manager[
             Page.GLOBAL,
             Panel.STATUS,
@@ -119,7 +111,6 @@ class GUISequencerModulePanel(GUIPanel):
             parent=self.parent,
         ):
             self._create_module_options()
-            self._create_export_button()
 
     def _create_module_options(self) -> None:
         section_text = dpg.add_text(self._lbl_module_options)
@@ -188,15 +179,6 @@ class GUISequencerModulePanel(GUIPanel):
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_TEMPO, self._msg_status_input)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_SPEED, self._msg_status_input)
-
-    def _create_export_button(self) -> None:
-        dpg.add_separator()
-        GUIButton(
-            tag=TAG_SEQUENCER_MODULE_BUTTON_EXPORT,
-            label=self._lbl_export_module,
-            width=-1,
-            font=Font.BOLD,
-        )
 
     def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, view_model.nes_frequency)

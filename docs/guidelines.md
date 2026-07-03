@@ -66,6 +66,7 @@
 1. Use clear names instead of explanatory comments.
 1. Avoid code comments. Comments are acceptable for tensor shapes, third-party API quirks, or non-obvious invariants.
 1. Code comments and docstrings are not for documenting changes nor progress.
+1. Don't write module docstrings.
 
 ## Tests
 

@@ -25,6 +25,7 @@ class ReconstructorWorker:
     window: Window
     generators: Dict[GeneratorName, GeneratorUnion]
     library_data: InstructionLibraryData
+    signal_length: int
 
     scorer: Scorer = field(init=False)
     candidate_provider: CandidateProvider = field(init=False)
@@ -33,7 +34,7 @@ class ReconstructorWorker:
     selector: Selector = field(init=False)
 
     def __post_init__(self) -> None:
-        scorer = Scorer(self.config, self.window)
+        scorer = Scorer(self.config, self.window, self.signal_length)
         candidate_provider = CandidateProvider(self.config, self.window, self.library_data)
         phase_aligner_class = PHASE_ALIGNERS[self.config.generation.calculation.phase_aligner]
         phase_aligner = phase_aligner_class(self.config, self.window, self.library_data)

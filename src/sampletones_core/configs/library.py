@@ -54,7 +54,9 @@ class InstructionsLibraryConfig(DataModel):
         ge=1,
         le=LIMIT_MAX_PITCH,
     )
-    spectrum_method: SpectrumMethod = Field(default=SpectrumMethod.FFT)
+    spectrum_method: SpectrumMethod = Field(
+        default=SpectrumMethod.CQT,
+    )
 
     @property
     def frame_length(self) -> int:

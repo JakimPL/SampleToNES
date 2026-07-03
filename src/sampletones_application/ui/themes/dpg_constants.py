@@ -23,8 +23,11 @@ CORE_COLOR_MAP: Final[dict[str, int]] = {
     "Button": dpg.mvThemeCol_Button,
     "ButtonActive": dpg.mvThemeCol_ButtonActive,
     "ButtonHovered": dpg.mvThemeCol_ButtonHovered,
+    "Border": dpg.mvThemeCol_Border,
     "ChildBg": dpg.mvThemeCol_ChildBg,
     "FrameBg": dpg.mvThemeCol_FrameBg,
+    "FrameBgActive": dpg.mvThemeCol_FrameBgActive,
+    "FrameBgHovered": dpg.mvThemeCol_FrameBgHovered,
     "HeaderActive": dpg.mvThemeCol_HeaderActive,
     "HeaderHovered": dpg.mvThemeCol_HeaderHovered,
     "MenuBarBg": dpg.mvThemeCol_MenuBarBg,
@@ -47,6 +50,7 @@ PLOTS_COLOR_MAP: Final[dict[str, int]] = {
 CORE_STYLE_MAP: Final[dict[str, int]] = {
     "ButtonTextAlign": dpg.mvStyleVar_ButtonTextAlign,
     "CellPadding": dpg.mvStyleVar_CellPadding,
+    "FrameBorderSize": dpg.mvStyleVar_FrameBorderSize,
     "FramePadding": dpg.mvStyleVar_FramePadding,
     "FrameRounding": dpg.mvStyleVar_FrameRounding,
 }
