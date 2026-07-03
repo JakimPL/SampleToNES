@@ -43,6 +43,7 @@ from sampletones_application.logic.sequencer.playback.playhead import (
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.panels.sequencer.actions import GUISequencerActionsPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
@@ -220,6 +221,9 @@ class SequencerTabCoordinator:
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
+        self._sequencer_actions_panel: GUISequencerActionsPanel = GUISequencerActionsPanel(
+            language_manager=language_manager,
+        )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
@@ -238,7 +242,7 @@ class SequencerTabCoordinator:
         self._sequencer_module_panel.on_rows_per_pattern = self._sequencer_grid_logic.set_rows_per_pattern
         self._sequencer_module_panel.on_tempo = self._sequencer_grid_logic.set_tempo
         self._sequencer_module_panel.on_speed = self._sequencer_grid_logic.set_speed
-        self._sequencer_module_panel.on_export_module = self._on_export_module
+        self._sequencer_actions_panel.on_export_module = self._on_export_module
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
         self._sequencer_grid_panel.on_clear_subcolumn = self._on_clear_subcolumn
         self._sequencer_grid_panel.on_set_row = self._on_set_row
@@ -302,6 +306,7 @@ class SequencerTabCoordinator:
         self._sequencer_samples_logic.push_samples()
         is_open = self._project_controller.is_open
         self._sequencer_module_panel.set_enabled(is_open)
+        self._sequencer_actions_panel.set_enabled(is_open)
         self._sequencer_grid_panel.set_enabled(is_open)
         self._sequencer_order_panel.set_enabled(is_open)
 
@@ -752,6 +757,7 @@ class SequencerTabCoordinator:
                             language_manager=self._language_manager,
                         )
                         self._song_player_logic.on_view_changed = self._on_player_view_changed
+                        self._sequencer_actions_panel.create_panel()
                         self._sequencer_order_panel.create_panel()
                         self._sequencer_grid_panel.create_tracker()
 

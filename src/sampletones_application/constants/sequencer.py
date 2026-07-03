@@ -110,6 +110,12 @@ TAG_SEQUENCER_MODULE_BUTTON_EXPORT = TagName(
     Widget.BUTTON,
     "export",
 )
+TAG_SEQUENCER_MODULE_GROUP_EXPORT = TagName(
+    Page.SEQUENCER,
+    Panel.MODULE,
+    Widget.GROUP,
+    "export",
+)
 TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY = TagName(
     Page.SEQUENCER,
     Panel.MODULE,
