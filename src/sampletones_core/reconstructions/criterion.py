@@ -4,22 +4,34 @@ from typing import Tuple, Union
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import SpectralDistance
+from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.constants.general import SPECTRUM_FLOOR
+from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.fft import (
     FFTTransformer,
     Fragment,
     Window,
     calculate_weights_from_edges,
 )
+from sampletones_core.fft.cqt import calculate_cqt_frequencies, resolvable_bins
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
 
 @dataclass(frozen=True)
 class Criterion:
+    """
+    Weighted spectral-and-temporal loss between a target fragment and candidate fragments.
+
+    Under the constant-Q spectrum method, a bin resolves a frequency only when its wavelet fits
+    within the ``signal_length`` samples of the target; bins below that floor drop to zero weight,
+    so they neither reward nor penalize a candidate and the match rests on the bins both sides
+    measure. Other spectrum methods resolve every bin uniformly and keep the full weighting.
+    """
+
     config: Config
     window: Window
+    signal_length: int
 
     alpha: float = field(init=False)
     beta: float = field(init=False)
@@ -41,8 +53,31 @@ class Criterion:
         weights = calculate_weights_from_edges(self._reference_edges(), metric.perceptual_exponent)
         weights = xp.asarray(weights)
         weights = len(weights) * weights / xp.sum(weights)
+        weights = weights * self._reliability_mask(int(weights.shape[-1]))
         object.__setattr__(self, "weights", weights)
         object.__setattr__(self, "no_weights", no_weights)
+
+    def _reliability_mask(self, n_bins: int) -> xp.ndarray:
+        """
+        Per-bin factor that zeroes constant-Q bins the target signal is too short to resolve.
+
+        A constant-Q bin needs a full wavelet of ``Q * sample_rate / frequency`` samples; over a
+        target of ``signal_length`` samples only bins at or above ``reliable_frequency_floor`` reach
+        that resolution. Zeroing the rest keeps the weighted loss on the bins both the target and the
+        candidates measure. Other spectrum methods resolve every bin uniformly and keep a factor of one.
+
+        Args:
+            n_bins: Number of spectral bins in the feature.
+
+        Returns:
+            A length-``n_bins`` factor, one per resolvable bin and zero per under-resolved bin.
+        """
+        if self.config.library.spectrum_method != SpectrumMethod.CQT:
+            return xp.ones(n_bins, dtype=xp.float32)
+
+        frequencies = calculate_cqt_frequencies(n_bins, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
+        resolvable = resolvable_bins(frequencies, self.config.library.sample_rate, self.signal_length, BINS_PER_OCTAVE)
+        return xp.asarray(resolvable.astype(np.float32))
 
     def _reference_edges(self) -> np.ndarray:
         transformer = FFTTransformer.from_gamma(

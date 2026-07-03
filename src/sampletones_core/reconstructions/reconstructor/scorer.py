@@ -13,11 +13,12 @@ from ..criterion import Criterion
 class Scorer:
     config: Config
     window: Window
+    signal_length: int
 
     criterion: Criterion = field(init=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "criterion", Criterion(self.config, self.window))
+        object.__setattr__(self, "criterion", Criterion(self.config, self.window, self.signal_length))
 
     def best(self, target: Fragment, candidates: Fragment) -> int:
         errors = None

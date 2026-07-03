@@ -14,6 +14,7 @@ from sampletones_core.library import InstructionLibraryData, InstructionLibraryF
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 INSTRUCTIONS_PER_GENERATOR_IN_TEST_LIBRARY: Final[int] = 3
+WORKER_SIGNAL_LENGTH: Final[int] = 1 << 20
 
 
 @pytest.fixture(scope="module")
@@ -62,6 +63,7 @@ def worker(
         window=window,
         generators=generators,
         library_data=library_data,
+        signal_length=WORKER_SIGNAL_LENGTH,
     )
 
 

@@ -88,9 +88,9 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             layout.dimensions.width,
             layout.dimensions.height,
             _label,
-            (layout.graph.min_x, layout.graph.max_x),
-            (MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2),
-            layout.waveform.zoom_factor,
+            x_range=(layout.graph.min_x, layout.graph.max_x),
+            y_range=(MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2),
+            zoom_factor=layout.waveform.zoom_factor,
         )
 
     def _create_content(self) -> None:
@@ -156,6 +156,10 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             frequencies = [frequency for layer in self.layers.values() for frequency, _, _ in layer]
             self.y_range = (frequencies[0], frequencies[-1])
 
+    def _get_color_theme_tag(self, color: Color) -> str:
+        color_part = "_".join(str(c) for c in color)
+        return f"{self.tag}{SUF_GRAPH_THEME}{TAG_SEPARATOR}{color_part}"
+
     def _create_brightness_theme(self, color_dim: Color, color_bright: Color, brightness: float) -> str:
         t = brightness / 255.0
         color = (
@@ -167,7 +171,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         if color in self.themes:
             return self.themes[color]
 
-        theme_tag = f"{self.tag}{SUF_GRAPH_THEME}{TAG_SEPARATOR}{color[0]}_{color[1]}_{color[2]}_{color[3]}"
+        theme_tag = self._get_color_theme_tag(color)
         with dpg.theme(tag=theme_tag):
             with dpg.theme_component(dpg.mvBarSeries):
                 dpg.add_theme_color(

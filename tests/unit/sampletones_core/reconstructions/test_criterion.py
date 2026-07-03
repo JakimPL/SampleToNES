@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Final
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -10,6 +11,8 @@ from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.reconstructions.criterion import Criterion
 from sampletones_shared.array import CUPY_AVAILABLE, xp
+
+LONG_SIGNAL_LENGTH: Final[int] = 1 << 20
 
 
 def _host(array: xp.ndarray) -> np.ndarray:
@@ -30,7 +33,7 @@ def _criterion_with_distance(
             )
         }
     )
-    return Criterion(updated_config, window)
+    return Criterion(updated_config, window, LONG_SIGNAL_LENGTH)
 
 
 @pytest.fixture(scope="module")
@@ -45,7 +48,7 @@ def window(config: Config) -> Window:
 
 @pytest.fixture(scope="module")
 def criterion(config: Config, window: Window) -> Criterion:
-    return Criterion(config, window)
+    return Criterion(config, window, LONG_SIGNAL_LENGTH)
 
 
 class TestCriterionRmse:
@@ -86,7 +89,7 @@ class TestCriterionGetLossWeights:
         mock_config.generation.weights.spectral_loss_weight = -1.0
         mock_config.generation.weights.temporal_loss_weight = 1.0
         with pytest.raises(ValueError):
-            Criterion(mock_config, window)
+            Criterion(mock_config, window, LONG_SIGNAL_LENGTH)
 
     def test_zero_total_weight_raises_value_error(
         self,
@@ -106,7 +109,7 @@ class TestCriterionGetLossWeights:
             }
         )
         with pytest.raises(ValueError):
-            Criterion(zero_config, window)
+            Criterion(zero_config, window, LONG_SIGNAL_LENGTH)
 
 
 class TestCriterionSpectralLoss:
@@ -170,7 +173,7 @@ class TestCriterionCqtAxis:
             update={"library": config.library.model_copy(update={"spectrum_method": SpectrumMethod.CQT})}
         )
         cqt_window = Window.from_config(cqt_config)
-        criterion = Criterion(cqt_config, cqt_window)
+        criterion = Criterion(cqt_config, cqt_window, LONG_SIGNAL_LENGTH)
 
         bins = int(criterion.weights.shape[-1])
         reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
@@ -179,3 +182,50 @@ class TestCriterionCqtAxis:
         loss = criterion.spectral_loss(reference, candidates)
         assert _host(loss).shape == (2,)
         assert bool(np.all(_host(loss) >= 0.0))
+
+
+class TestCriterionReliabilityMask:
+    SHORT_SIGNAL_LENGTH: Final[int] = 512
+
+    @staticmethod
+    def _cqt_criterion(config: Config, signal_length: int) -> Criterion:
+        cqt_config = config.model_copy(
+            update={"library": config.library.model_copy(update={"spectrum_method": SpectrumMethod.CQT})}
+        )
+        cqt_window = Window.from_config(cqt_config)
+        return Criterion(cqt_config, cqt_window, signal_length)
+
+    def test_short_signal_zeroes_low_bins_and_keeps_high_bins(self, config: Config) -> None:
+        criterion = self._cqt_criterion(config, self.SHORT_SIGNAL_LENGTH)
+        weights = _host(criterion.weights)
+        assert float(weights[0]) == 0.0
+        assert float(weights[-1]) > 0.0
+        assert int(np.count_nonzero(weights == 0.0)) > 0
+
+    def test_long_signal_keeps_every_bin(self, config: Config) -> None:
+        criterion = self._cqt_criterion(config, LONG_SIGNAL_LENGTH)
+        weights = _host(criterion.weights)
+        assert bool(np.all(weights > 0.0))
+
+    def test_masked_bins_do_not_affect_spectral_loss(self, config: Config) -> None:
+        criterion = self._cqt_criterion(config, self.SHORT_SIGNAL_LENGTH)
+        weights = _host(criterion.weights)
+        masked = weights == 0.0
+        assert bool(masked.any())
+
+        bins = int(weights.shape[-1])
+        reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
+        candidate = reference.copy()
+        candidate[masked] = candidate[masked] + np.float32(0.5)
+
+        loss = criterion.spectral_loss(reference, candidate[None, :])
+        assert float(_host(loss)[0]) == pytest.approx(0.0, abs=1e-6)
+
+    def test_fft_method_keeps_every_bin_regardless_of_length(self, config: Config) -> None:
+        fft_config = config.model_copy(
+            update={"library": config.library.model_copy(update={"spectrum_method": SpectrumMethod.FFT})}
+        )
+        fft_window = Window.from_config(fft_config)
+        criterion = Criterion(fft_config, fft_window, signal_length=1)
+        weights = _host(criterion.weights)
+        assert bool(np.all(weights > 0.0))

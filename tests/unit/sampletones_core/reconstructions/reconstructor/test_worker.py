@@ -139,6 +139,7 @@ class TestReconstructorWorkerIntegration:
             window=window,
             generators=generators,
             library_data=library_data,
+            signal_length=1 << 20,
         )
         result = local_worker.reconstruct(fragment)
         combined = sum(np.asarray(approximation_data.approximation.audio) for approximation_data in result.values())
