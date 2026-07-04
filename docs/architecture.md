@@ -55,9 +55,10 @@ pre-commit hook and via `make check-import-boundary`) fails when a non-visual la
 `dearpygui`, `sampletones_application.ui`, or `sampletones_application.utils.gui`. `config/` is
 additionally forbidden from importing `coordinators/` or `application.py`. The `ui/` layer is
 held to its own contract by the same script: a `ui/**` rule forbids importing `coordinators/`,
-`logic/`, `services/`, `config/`, `application.py`, and `shell.py`. The pre-commit hook audits
-the entire source tree on every commit, so a rule change surfaces violations in files a commit
-never touched.
+`logic/`, `services/`, `config/`, `application.py`, `shell.py`, and `utils/gui/dialogs` —
+dialog presentation belongs to coordinators (see the error-handling policy). The pre-commit
+hook audits the entire source tree on every commit, so a rule change surfaces violations in
+files a commit never touched.
 
 ### 3. No UI state in logic
 
@@ -134,7 +135,7 @@ A new exclusive operation joins by contributing its `is_active` to the authority
 | `ui/menu.py` | `MenuBar` — the application's top menu bar |
 
 **May import:** `view_model/`, `utils/`, `categories/`, `constants/`, `layout/`, `sampletones_core` types, `sampletones_shared`.
-**Must not import:** `coordinators/`, `logic/`, `services/`, `config/`.
+**Must not import:** `coordinators/`, `logic/`, `services/`, `config/`, `utils/gui/dialogs` (`DialogsRenderer` is coordinator territory).
 
 ---
 
@@ -418,6 +419,8 @@ A coordinator must not catch `Exception` or use bare `except`. The correct excep
 ### UI layer — never catches
 
 Panels do not perform error handling. All error conditions arrive as data through coordinator-wired callbacks (`on_error: Optional[Callable[[Exception], None]]`). A panel may display an error state derived from a view model, but it never catches exceptions directly.
+
+Nor does a panel render dialogs of any kind: it fires an intent hook and the owning coordinator presents the dialog via `DialogsRenderer`, with the text resolved there. The boundary script enforces this by forbidding `ui/` from importing `utils/gui/dialogs`.
 
 ### Summary
 

@@ -3,6 +3,7 @@
 ### Features
 
 * Delete library/reconstruction (with confirmation)
+* Reconstruction action history
 
 ### Navigation
 
@@ -34,13 +35,6 @@
 
 ## Architecture
 
-* A few panels still render dialogs themselves through `DialogsRenderer` (an
-  import-legal `utils/gui` helper) where the error policy places presentation in
-  coordinators — e.g. the explorer's converter-running notice; each wants the
-  library-panel treatment (an intent hook, the dialog in the coordinator)
-* History detail segments freeze language-manager text at commit time (e.g. the
-  loop on/off words), so a future language switch would show mixed-language rows;
-  labels already resolve at render time
 * Per-tab undo routing (analogous to `PlaybackRouter`) once standalone
   reconstruction documents gain their own history
 
