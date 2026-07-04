@@ -115,6 +115,15 @@ class TestGenerationEmits:
         assert view_model.progress_value == 1.0
         assert view_model.progress_overlay == "100%"
 
+    def test_failed_emits_the_failure_status(self) -> None:
+        logic = _generation_logic()
+
+        logic._on_generation_progress(TaskStatus.FAILED, MagicMock())
+
+        view_model = logic.on_view_changed.call_args.args[0]
+        assert view_model.status_text == "failed"
+        assert view_model.progress_value == 0.0
+
     def test_update_status_yields_during_generation(self) -> None:
         logic = _generation_logic(generating=True)
 
@@ -136,6 +145,36 @@ class TestGenerationEmits:
         view_model = logic.on_view_changed.call_args.args[0]
         assert view_model.status_text == "lib doesn't exist."
         assert view_model.is_generating is False
+
+    def test_update_status_reports_a_loaded_library(self) -> None:
+        logic = _generation_logic(generating=False)
+        logic._library_manager.is_library_loaded.return_value = True
+        logic._tpl_library_loaded = "{} loaded."
+
+        with patch(
+            "sampletones_application.logic.instruction.library.get_display_name_from_key",
+            return_value="lib",
+        ):
+            logic.update_status()
+
+        view_model = logic.on_view_changed.call_args.args[0]
+        assert view_model.status_text == "lib loaded."
+        assert view_model.generate_button_label == "Regenerate"
+
+    def test_update_status_reports_an_existing_unloaded_library(self) -> None:
+        logic = _generation_logic(generating=False)
+        logic._library_manager.library_exists_for_key.return_value = True
+        logic._tpl_library_exists = "{} exists."
+
+        with patch(
+            "sampletones_application.logic.instruction.library.get_display_name_from_key",
+            return_value="lib",
+        ):
+            logic.update_status()
+
+        view_model = logic.on_view_changed.call_args.args[0]
+        assert view_model.status_text == "lib exists."
+        assert view_model.generate_button_label == "Generate"
 
 
 class TestCancelledStatusLanguageKey:
