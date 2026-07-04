@@ -77,6 +77,7 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
+from sampletones_application.view_model.shared.project_properties import ProjectPropertiesViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
@@ -156,7 +157,6 @@ class Application:
             language_manager=self.language_manager,
         )
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
-            self.project_controller,
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
             shortcut_manager=self.shortcut_manager,
@@ -277,7 +277,7 @@ class Application:
             on_edit_sample_requested=self._edit_project_sample,
             on_tab_switch=self._set_current_tab,
             on_export_module=self._project_coordinator.export_module_dialog,
-            on_open_properties=self.project_properties_window.show,
+            on_open_properties=self._open_project_properties,
         )
 
         self._playback_router = PlaybackRouter(
@@ -304,7 +304,6 @@ class Application:
             status_bar=self.status_bar,
             fps_timer=self.fps_timer,
             audio_settings_window=self.audio_settings_window,
-            project_properties_window=self.project_properties_window,
             main_tab=self._main_tab,
             reconstructions_tab=self._reconstructions_tab,
             sequencer_tab=self._sequencer_tab,
@@ -346,7 +345,7 @@ class Application:
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
             export_project_module=self._project_coordinator.export_module_dialog,
-            project_properties=self._shell.open_project_properties,
+            project_properties=self._open_project_properties,
             close_project=self._project_coordinator.close_with_confirmation,
             save_reconstruction=self._reconstruction_coordinator.save,
             save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,
@@ -625,6 +624,26 @@ class Application:
             coalesce=(sample.id,),
         ):
             self.project_controller.replace_sample_reconstruction(sample.id, outcome.reconstruction)
+
+    def _open_project_properties(self) -> None:
+        """Opens the properties dialog seeded with the current project's info.
+
+        The dialog receives a frozen snapshot, so its read path carries no
+        controller reference; the edited values return through ``on_commit``.
+        """
+        if not self.project_controller.is_open:
+            return
+
+        info = self.project_controller.project.info
+        self.project_properties_window.open(
+            ProjectPropertiesViewModel(
+                title=info.title,
+                author=info.author,
+                comment=info.comment,
+                created=info.created,
+                modified=info.modified,
+            )
+        )
 
     def _commit_project_properties(self, title: str, author: str, comment: str) -> None:
         """Applies the properties dialog's values as one undoable gesture.
