@@ -11,7 +11,7 @@ from .fft import (
 from .fragment.audio import FragmentedAudio
 from .fragment.fragment import Fragment
 from .transformer import FFTTransformer
-from .utils import calculate_n_bins, to_log_even_bands
+from .utils import calculate_n_bins, to_resolution_floored_log_bands
 from .window.cyclic import CyclicArray
 from .window.window import Window
 
@@ -28,7 +28,7 @@ __all__ = [
     "convert_midpoints_to_edges",
     "calculate_n_bins",
     "normalize_cqt_energy",
-    "to_log_even_bands",
+    "to_resolution_floored_log_bands",
     "Fragment",
     "FragmentedAudio",
     "FFTTransformer",

@@ -10,7 +10,7 @@ from sampletones_core.constants.spectrum import (
 from sampletones_core.structures.histogram import Histogram
 
 from ..fft import calculate_fft, calculate_fft_frequencies
-from ..utils import calculate_n_bins, to_log_even_bands
+from ..utils import to_resolution_floored_log_bands
 
 
 def calculate_fft_spectrum(
@@ -50,30 +50,29 @@ def calculate_log_spaced_fft_spectrum(
     fft_size: Optional[int] = None,
     cutoff: float = CQT_CUTOFF_FREQUENCY,
     bins_per_octave: int = BINS_PER_OCTAVE,
-    n_bins: Optional[int] = None,
 ) -> Histogram:
     """
     Calculate the power spectrum with logarithmically-spaced frequency bins.
 
-    Computes the linear FFT spectrum and then rebins it to logarithmic scale
-    using the configuration parameters.
+    Computes the linear FFT spectrum and rebins it onto a logarithmic axis whose
+    bin widths respect the FFT resolution: bins widen to the linear spacing where
+    a musical interval falls below it, so low tones stay compact and adjacent bins
+    aggregate independent FFT measurements at every frequency.
 
     Args:
         audio: Input audio as array.
         sample_rate: Sampling rate in Hz.
         fft_size: FFT size. If None, uses the length of the audio array.
         cutoff: Cutoff frequency.
-        bins_per_octave: Number of bins per octave. Only used if n_bins is None.
-        n_bins: Number of logarithmically spaced components.
+        bins_per_octave: Number of bins per octave in the logarithmic region.
 
     Returns:
-        Histogram with log-spaced frequency edges and rebinned power values.
+        Histogram with resolution-floored log-spaced edges and rebinned power values.
 
     Raises:
         TypeError: If fft_config or sampling have incorrect types.
     """
     fft_size = fft_size or len(audio)
-    n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
     spectrum: Histogram = calculate_fft_spectrum(audio, sample_rate, fft_size)
-    log_even_bands: np.ndarray = to_log_even_bands(spectrum.edges, cutoff, n_bins)
-    return spectrum.rebin(log_even_bands)
+    log_bands: np.ndarray = to_resolution_floored_log_bands(spectrum.edges, cutoff, bins_per_octave)
+    return spectrum.rebin(log_bands)

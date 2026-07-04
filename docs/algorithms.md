@@ -84,7 +84,7 @@ configurable via `library.spectrum_method`):
 | method   | frequency axis            | resolution                              | time support              |
 |----------|---------------------------|-----------------------------------------|---------------------------|
 | `fft`    | linear                    | uniform, `Δf ≈ sample_rate / N ≈ 27 Hz` | one short window (~37 ms) |
-| `logfft` | logarithmic (rebinned FFT)| inherited from the FFT (coarse low end) | one short window (~37 ms) |
+| `logfft` | logarithmic, floored at `Δf` | the FFT's `Δf`, on a musical axis     | one short window (~37 ms) |
 | `cqt`    | logarithmic (constant-Q)  | constant *relative* (fine low end)      | long for low notes (~300 ms) |
 
 They sit at different points of the **time–frequency trade-off** (the Gabor limit:
@@ -94,9 +94,12 @@ sharper frequency resolution requires a longer time window, and vice versa):
   sharply in time but resolves low frequencies coarsely — the lowest octave spans
   only a couple of bins. It is the simplest of the three.
 - **log-FFT** takes the same FFT and *re-bins* its linear bins onto a logarithmic
-  (musical) axis. This is useful when a log/perceptual axis is wanted, but it adds
-  **no** low-frequency information — the resolution is still the FFT's `Δf`. Like the
-  FFT it keeps a short window, so it localizes events sharply in time.
+  (musical) axis whose bin widths are floored at the FFT's `Δf`: the axis is linear
+  where a musical interval falls below the resolution (roughly under 500 Hz at the
+  defaults) and logarithmic above. Low tones therefore stay compact and every log
+  bin aggregates whole FFT bins — the resolution is still the FFT's `Δf`, presented
+  on a perceptual axis. Like the FFT it keeps a short window, so it localizes events
+  sharply in time.
 - **CQT** (constant-Q transform) places bins geometrically and gives
   every musical interval the same number of bins, so it resolves low pitches finely.
   It is the default.

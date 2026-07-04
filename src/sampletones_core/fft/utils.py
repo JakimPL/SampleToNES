@@ -1,4 +1,5 @@
-from typing import Optional
+from functools import lru_cache
+from typing import Tuple
 
 import numpy as np
 
@@ -57,35 +58,51 @@ def rectangle_window(length: int) -> np.ndarray:
     return np.ones(length, dtype=np.float32)
 
 
-def to_log_even_bands(
+@lru_cache(maxsize=128)
+def _resolution_floored_edges(
+    maximum: float,
+    cutoff: float,
+    bins_per_octave: int,
+    resolution: float,
+) -> Tuple[float, ...]:
+    ratio = 2.0 ** (1.0 / bins_per_octave)
+    edges = [cutoff]
+    while edges[-1] < maximum:
+        edges.append(min(maximum, max(edges[-1] * ratio, edges[-1] + resolution)))
+
+    return tuple(edges)
+
+
+def to_resolution_floored_log_bands(
     bands: Array,
     cutoff: float,
-    n_bins: Optional[int] = None,
+    bins_per_octave: int = BINS_PER_OCTAVE,
 ) -> Array:
     """
-    Generate logarithmically-spaced frequency band edges.
+    Generate logarithmically-spaced band edges whose widths respect the source resolution.
 
-    Creates evenly-spaced bins on a logarithmic scale from cutoff frequency
-    to the maximum frequency in the input bands, based on the provided
-    array of band edges.
-
-    Returns an array of frequency edges that are logarithmically spaced.
-    The number of edges is determined by `n_bins + 1`. If `n_bins` is not provided,
-    it defaults to the number of bins in the input array.
+    Edges advance from the cutoff frequency by a factor of `2 ** (1 / bins_per_octave)`
+    or by the source band spacing, whichever is larger, up to the maximum frequency of
+    the input bands. Every band therefore spans at least one source band: rebinned
+    values aggregate whole source bands, adjacent bands stay statistically
+    independent, and a tone narrower than the band spacing lands compactly at every
+    frequency. The axis is linear at the low end and transitions to the logarithmic
+    spacing where the musical interval outgrows the source resolution.
 
     Args:
-        bands: Original frequency band edges.
-        cutoff: Cutoff frequency.
-        n_bins: Number of logarithmically spaced components.
+        bands: Original uniformly-spaced frequency band edges.
+        cutoff: Cutoff frequency. The first generated edge.
+        bins_per_octave: Number of bands per octave in the logarithmic region.
 
     Returns:
-        Array of log-spaced frequency edges.
+        Array of strictly increasing frequency edges from the cutoff to the maximum
+        band frequency.
 
     Raises:
         TypeError: If bands is not an Array.
         ValueError: If bands has less than two elements.
         ValueError: If bands is not one-dimensional.
-        ValueError: If n_bins is provided and is not a positive integer.
+        ValueError: If bins_per_octave is not a positive integer.
         ValueError: If cutoff frequency is greater than or equal to the maximum band frequency.
     """
     if not isinstance(bands, ArrayClasses):
@@ -97,13 +114,13 @@ def to_log_even_bands(
     if bands.ndim != 1:
         raise ValueError("bands array must be one-dimensional")
 
-    if n_bins is not None and n_bins < 1:
-        raise ValueError("n_bins must be a positive integer")
+    if bins_per_octave < 1:
+        raise ValueError("bins_per_octave must be a positive integer")
 
     if cutoff >= bands[-1]:
         raise ValueError("cutoff frequency must be less than the maximum band frequency")
 
     module = get_array_module(bands)
-    size: int = n_bins or len(bands) - 1
-    edges: Array = module.exp(module.linspace(module.log(cutoff), module.log(bands[-1]), size + 1))
-    return edges.astype(bands.dtype)
+    resolution = float(bands[1] - bands[0])
+    edges = _resolution_floored_edges(float(bands[-1]), float(cutoff), bins_per_octave, resolution)
+    return module.asarray(edges, dtype=bands.dtype)

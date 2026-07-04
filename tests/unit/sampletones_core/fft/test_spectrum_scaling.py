@@ -54,9 +54,9 @@ FLATNESS_CASES: Final[Tuple[FlatnessCase, ...]] = (
         tolerance_ratio=1.35,
     ),
     FlatnessCase(
-        label="logfft-above-rebin-resolution",
+        label="logfft",
         method=SpectrumMethod.LOG_SPACED_FFT,
-        frequencies=(440.0, 1760.0, 7040.0),
+        frequencies=(110.0, 440.0, 1760.0, 7040.0),
         tolerance_ratio=1.35,
     ),
     FlatnessCase(
@@ -112,17 +112,16 @@ class TestToneResponseFlatness:
         ]
         assert max(responses) / min(responses) < case.tolerance_ratio
 
-    def test_log_rebinning_spreads_tones_below_the_fft_resolution(self) -> None:
+    def test_low_tones_stay_compact_on_the_resolution_floored_log_axis(self) -> None:
         """
-        The log-spaced rebinning distributes a linear bin's energy over several
-        narrower log bins at the low end, so a low tone's band energy drops well
-        below the band energy the same tone produces where log bins are wider than
-        the FFT resolution.
+        The log axis floors its bin widths at the FFT resolution, so a low tone's
+        energy aggregates into full-width bins and its band energy matches the band
+        energy the same tone produces higher up the axis.
         """
         spectrum_probe = probe(SpectrumMethod.LOG_SPACED_FFT)
         low = band_energy(spectrum_probe.tone_spectrum(110.0), 110.0, radius=BAND_RADIUS)
         reference = band_energy(spectrum_probe.tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
-        assert 0.1 < low / reference < 0.7
+        assert 0.75 < low / reference < 1.35
 
 
 class TestNoiseScaling:
