@@ -87,6 +87,13 @@ RULES: list[BoundaryRule] = [
         ],
     ),
     BoundaryRule(
+        "coordinators/**/*.py",
+        [
+            "sampletones_application.application",
+            "sampletones_application.shell",
+        ],
+    ),
+    BoundaryRule(
         "ui/**/*.py",
         [
             "sampletones_application.coordinators",
