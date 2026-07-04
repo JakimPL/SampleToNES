@@ -13,20 +13,15 @@ from sampletones_application.constants.instructions import (
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW,
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL,
-    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
 )
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.layout.player import PlayerLayout
-from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
-from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.view_model.instruction.data import InstructionPanelData
-from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
@@ -35,19 +30,14 @@ from sampletones_shared.types.callback import VoidCallback
 class GUIInstructionPanel(GUIPanel):
     def __init__(
         self,
-        player_logic: PlayerLogic,
+        player_panel: GUIAudioPlayerPanel,
         *,
         layout: GraphsLayout,
-        layout_player: PlayerLayout,
         language_manager: LanguageManager,
-        dialogs: DialogsRenderer,
     ) -> None:
-        self._player_logic = player_logic
+        self._player_panel = player_panel
         self._layout = layout
-        self._layout_player = layout_player
         self._language_manager = language_manager
-        self._dialogs = dialogs
-        self.player_panel: GUIAudioPlayerPanel
         self.waveform_display: GUIWaveformGraph
         self.spectrum_display: GUISpectrumGraph
 
@@ -114,15 +104,7 @@ class GUIInstructionPanel(GUIPanel):
             )
 
     def _create_player_panel(self) -> None:
-        self.player_panel = GUIAudioPlayerPanel(
-            tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
-            parent=self.parent,
-            player_logic=self._player_logic,
-            on_position_changed=self._on_player_position_changed,
-            layout=self._layout_player,
-            language_manager=self._language_manager,
-            dialogs=self._dialogs,
-        )
+        self._player_panel.create_panel()
 
     def close_instruction(self) -> None:
         self.waveform_display.clear_layers()
@@ -148,8 +130,5 @@ class GUIInstructionPanel(GUIPanel):
             logger.error_with_traceback(exception, "Error while plotting library data")
             raise LibraryDisplayError("Could not display library data") from exception
 
-        audio_data = AudioData.from_library_fragment(fragment, config.sample_rate)
-        self.player_panel.load(audio_data)
-
-    def _on_player_position_changed(self, position: int) -> None:
+    def set_playback_position(self, position: int) -> None:
         self.waveform_display.set_position(position)

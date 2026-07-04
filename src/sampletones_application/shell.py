@@ -20,7 +20,7 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
-from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
+from sampletones_application.coordinators.playback import AudioPlayerProtocol
 from sampletones_application.coordinators.reconstructions import (
     ReconstructionsTabCoordinator,
 )
@@ -394,14 +394,14 @@ class ApplicationShell:
         except KeyError as exception:
             raise SystemError(f"Current tab alias {alias} does not correspond to any known Tab.") from exception
 
-    def get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
+    def get_current_player(self) -> Optional[AudioPlayerProtocol]:
         match self.get_current_tab():
             case Tab.RECONSTRUCTIONS:
-                return self._reconstructions_tab.player_panel
+                return self._reconstructions_tab.player
             case Tab.INSTRUCTIONS:
-                return self._instructions_tab.player_panel
+                return self._instructions_tab.player
             case Tab.SEQUENCER:
-                return self._sequencer_tab.player_panel
+                return self._sequencer_tab.player
             case _:
                 return None
 

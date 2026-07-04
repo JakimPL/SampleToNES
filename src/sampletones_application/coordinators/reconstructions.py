@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import (
     GlobalMessageElements,
     MenuElements,
+    PlayerElements,
 )
 from sampletones_application.categories.elements.reconstructions import (
     ReconstructionPanelElements,
@@ -23,8 +24,11 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_TABS,
 )
-from sampletones_application.constants.reconstructions import TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_AUDIO_MISSING
-from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
+from sampletones_application.constants.reconstructions import (
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_AUDIO_MISSING,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
+)
+from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
@@ -38,6 +42,7 @@ from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.export import ExportError, ExportKind, ExportResult, ExportService, ExportSuccess
 from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
@@ -45,6 +50,7 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
+from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -230,17 +236,36 @@ class ReconstructionsTabCoordinator:
             audio_device_manager,
             on_change_audio_state,
         )
-        self._reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
+        self._reconstruction_player_panel = GUIAudioPlayerPanel(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
+            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
+            layout=layout.player,
+            language_manager=language_manager,
+        )
+        self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
+            dialogs=dialogs,
+            error_message=language_manager[
+                Page.GLOBAL,
+                Panel.PLAYER,
+                TextType.MESSAGE,
+                PlayerElements.AUDIO_PLAYBACK_ERROR,
+            ],
+        )
+        self._reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
+            self._reconstruction_player_panel,
             layout_graphs=layout.graphs,
-            layout_player=layout.player,
             path_colors=layout.general.colors.paths,
             path_status_color=layout.general.colors.text.disabled,
             file_dialog_width=layout.general.dialogs.file.width,
             file_dialog_height=layout.general.dialogs.file.height,
             language_manager=language_manager,
-            dialogs=dialogs,
         )
+        self._reconstruction_player_panel.on_play = self._guarded_player.play
+        self._reconstruction_player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
+        self._reconstruction_player_panel.on_stop = self._guarded_player.stop
+        self._reconstruction_player_logic.on_view_changed = self._reconstruction_player_panel.update_view
+        self._reconstruction_player_logic.on_position_changed = self._reconstruction_panel.set_playback_position
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
             reconstruction_manager,
@@ -280,7 +305,7 @@ class ReconstructionsTabCoordinator:
         )
 
         self._reconstruction_panel_logic.on_view_changed = self._reconstruction_panel.update_view
-        self._reconstruction_panel_logic.on_audio_data_changed = self._reconstruction_panel.update_audio_data
+        self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = self._reconstruction_panel.update_waveform_data
         self._reconstruction_panel_logic.on_waveform_cleared = self._reconstruction_panel.clear_waveform
@@ -430,8 +455,8 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_panel_logic.update_reconstruction()
 
     @property
-    def player_panel(self) -> AudioPlayerPanelProtocol:
-        return self._reconstruction_panel
+    def player(self) -> AudioPlayerProtocol:
+        return self._guarded_player
 
     def request_export_wav_dialog(self) -> None:
         self._reconstruction_panel_logic.request_export_wav_dialog()
@@ -441,6 +466,12 @@ class ReconstructionsTabCoordinator:
 
     def _on_browser_autoplay_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+
+    def _on_audio_data_changed(self, audio_data: Optional[AudioData]) -> None:
+        if audio_data is None:
+            self._reconstruction_player_logic.clear_audio()
+        else:
+            self._reconstruction_player_logic.load_audio_data(audio_data)
 
     def set_on_add_to_sequencer(self, callback: PathCallback) -> None:
         self._browser_panel.on_add_to_sequencer = callback

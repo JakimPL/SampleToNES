@@ -25,7 +25,7 @@ from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.playback import (
-    AudioPlayerPanelProtocol,
+    AudioPlayerProtocol,
     PlaybackRouter,
 )
 from sampletones_application.coordinators.project import ProjectCoordinator
@@ -784,7 +784,7 @@ class Application:
     def _set_current_tab(self, tab: Tab) -> None:
         self._shell.set_current_tab(tab)
 
-    def _get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
+    def _get_current_player(self) -> Optional[AudioPlayerProtocol]:
         return self._shell.get_current_player()
 
     def _persist_application_state(self) -> None:

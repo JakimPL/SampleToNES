@@ -29,7 +29,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
 )
-from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
+from sampletones_application.coordinators.playback import AudioPlayerProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -1049,5 +1049,5 @@ class SequencerTabCoordinator:
                         self._sequencer_history_panel.create_panel()
 
     @property
-    def player_panel(self) -> AudioPlayerPanelProtocol:
-        return self._player_panel
+    def player(self) -> AudioPlayerProtocol:
+        return self._song_player_logic

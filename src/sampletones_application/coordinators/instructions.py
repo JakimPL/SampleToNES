@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import MenuElements
+from sampletones_application.categories.elements.global_ import MenuElements, PlayerElements
 from sampletones_application.categories.elements.instructions import (
     InstructionsLibraryElements,
 )
@@ -19,10 +19,11 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TABS,
 )
 from sampletones_application.constants.instructions import (
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
 )
-from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
+from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.details import (
     InstructionDetailsPanelLogic,
@@ -43,10 +44,12 @@ from sampletones_application.ui.panels.instruction.instruction import (
 from sampletones_application.ui.panels.instruction.library import (
     GUIInstructionsLibraryPanel,
 )
+from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
+from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey
@@ -188,13 +191,32 @@ class InstructionsTabCoordinator:
             audio_device_manager,
             on_audio_state_changed,
         )
-        self._instruction_panel = GUIInstructionPanel(
-            self._instruction_player_logic,
-            layout=layout.graphs,
-            layout_player=layout.player,
+        self._instruction_player_panel = GUIAudioPlayerPanel(
+            tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
+            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
+            layout=layout.player,
             language_manager=language_manager,
-            dialogs=dialogs,
         )
+        self._guarded_player = GuardedPlayer(
+            self._instruction_player_logic,
+            dialogs=dialogs,
+            error_message=language_manager[
+                Page.GLOBAL,
+                Panel.PLAYER,
+                TextType.MESSAGE,
+                PlayerElements.AUDIO_PLAYBACK_ERROR,
+            ],
+        )
+        self._instruction_panel = GUIInstructionPanel(
+            self._instruction_player_panel,
+            layout=layout.graphs,
+            language_manager=language_manager,
+        )
+        self._instruction_player_panel.on_play = self._guarded_player.play
+        self._instruction_player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
+        self._instruction_player_panel.on_stop = self._guarded_player.stop
+        self._instruction_player_logic.on_view_changed = self._instruction_player_panel.update_view
+        self._instruction_player_logic.on_position_changed = self._instruction_panel.set_playback_position
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
             layout=layout.instructions,
@@ -220,7 +242,7 @@ class InstructionsTabCoordinator:
             on_clear_instruction_details=self._instruction_details_logic.clear_display,
         )
         self._instruction_details_logic.on_view_changed = self._instruction_details_panel.update_view
-        self._instruction_details_logic.on_instruction_changed = self._instruction_panel.display_instruction
+        self._instruction_details_logic.on_instruction_changed = self._display_instruction
         self._instruction_details_panel.on_instruction_parameter_changed = (
             self._instruction_details_logic.handle_instruction_parameter_changed
         )
@@ -270,9 +292,25 @@ class InstructionsTabCoordinator:
     def _on_library_load_error(self, exception: Exception, message: str) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception, message))
 
+    def _display_instruction(self, instruction_data: Optional[InstructionPanelData]) -> None:
+        """Renders the instruction and reloads the player with its audio.
+
+        Both entry points — a fresh load from the library and a parameter edit
+        from the details panel — route here, so the audible fragment always
+        matches the displayed one.
+        """
+        self._instruction_panel.display_instruction(instruction_data)
+        if instruction_data is not None:
+            self._instruction_player_logic.load_audio_data(
+                AudioData.from_library_fragment(
+                    instruction_data.fragment,
+                    instruction_data.config.sample_rate,
+                )
+            )
+
     def _on_instruction_loaded(self, instruction_data: InstructionPanelData) -> None:
         try:
-            self._instruction_panel.display_instruction(instruction_data)
+            self._display_instruction(instruction_data)
             self._instruction_details_logic.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
             self._dialogs.show_error(exception, self._msg_display_error)
@@ -346,5 +384,5 @@ class InstructionsTabCoordinator:
         self._library_panel.refresh_action_buttons()
 
     @property
-    def player_panel(self) -> AudioPlayerPanelProtocol:
-        return self._instruction_panel.player_panel
+    def player(self) -> AudioPlayerProtocol:
+        return self._guarded_player
