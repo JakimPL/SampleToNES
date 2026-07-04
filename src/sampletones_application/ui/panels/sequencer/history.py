@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -26,8 +27,21 @@ from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
 )
-from sampletones_application.view_model.shared.history import HistoryDetailRole
+from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_shared.types.application import Sender
+
+EntryWindow = Tuple[HistoryEntryViewModel, ...]
+WindowStructure = Tuple[Tuple[int, str, Tuple[HistoryDetailSegment, ...]], ...]
+
+
+@dataclass
+class _EntryRow:
+    """The widgets and cursor-relative state of one rendered history row."""
+
+    selectable: int
+    group: int
+    is_current: bool
+    is_future: bool
 
 
 class GUISequencerHistoryPanel(GUIPanel):
@@ -45,6 +59,8 @@ class GUISequencerHistoryPanel(GUIPanel):
         language_manager: LanguageManager,
     ) -> None:
         self._layout = layout
+        self._rows: Dict[int, _EntryRow] = {}
+        self._rendered_structure: Optional[WindowStructure] = None
 
         self.on_undo: Optional[Callable[[], None]] = None
         self.on_redo: Optional[Callable[[], None]] = None
@@ -124,21 +140,71 @@ class GUISequencerHistoryPanel(GUIPanel):
 
     def update_view(self, view_model: HistoryViewModel) -> None:
         self._update_actions(view_model)
-        dpg.delete_item(TAG_SEQUENCER_HISTORY_WINDOW_LIST, children_only=True)
-        if view_model.is_empty:
-            self._show_empty()
-        else:
-            self._create_entry_list(view_model)
+        window = self._window(view_model)
+        structure = self._structure(window)
+        if structure == self._rendered_structure:
+            self._restyle(window)
+            return
+
+        self._rendered_structure = structure
+        self._rebuild(window)
 
     def _update_actions(self, view_model: HistoryViewModel) -> None:
         dpg_configure_item(TAG_SEQUENCER_HISTORY_BUTTON_UNDO, enabled=view_model.can_undo)
         dpg_configure_item(TAG_SEQUENCER_HISTORY_BUTTON_REDO, enabled=view_model.can_redo)
 
+    def _window(self, view_model: HistoryViewModel) -> EntryWindow:
+        """Selects the slice of entries rendered around the cursor.
+
+        Rendering is capped at ``max_rendered_entries`` so a full-budget history
+        keeps the panel responsive; the window tracks the cursor, keeping the
+        current entry visible and clickable. Entries beyond the window are
+        reached by stepping the cursor towards them.
+        """
+        limit = self._layout.history.max_rendered_entries
+        entries = view_model.entries
+        if len(entries) <= limit:
+            return entries
+
+        start = min(max(view_model.cursor - limit // 2, 0), len(entries) - limit)
+        return entries[start : start + limit]
+
+    @staticmethod
+    def _structure(window: EntryWindow) -> WindowStructure:
+        return tuple((entry.index, entry.label, entry.detail_segments) for entry in window)
+
+    def _restyle(self, window: EntryWindow) -> None:
+        """Repaints only the rows whose cursor-relative state changed.
+
+        Undo, redo and jumps keep the rendered structure identical — only the
+        current marker and the redo-branch dimming move — so stepping through
+        history repaints the affected rows in place instead of recreating the
+        whole table.
+        """
+        for entry in window:
+            row = self._rows[entry.index]
+            if (row.is_current, row.is_future) == (entry.is_current, entry.is_future):
+                continue
+
+            row.is_current = entry.is_current
+            row.is_future = entry.is_future
+            dpg.set_value(row.selectable, entry.is_current)
+            dpg.delete_item(row.group, children_only=True)
+            self._fill_entry_texts(row.group, entry)
+
+    def _rebuild(self, window: EntryWindow) -> None:
+        self._rows = {}
+        dpg.delete_item(TAG_SEQUENCER_HISTORY_WINDOW_LIST, children_only=True)
+        if window:
+            self._create_entry_list(window)
+        else:
+            self._show_empty()
+
     def _show_empty(self) -> None:
         empty = dpg.add_text(self._lbl_empty, parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST)
         FontRegistry.bind_to_item(empty, Font.REGULAR_SMALL)
 
-    def _create_entry_list(self, view_model: HistoryViewModel) -> None:
+    def _create_entry_list(self, window: EntryWindow) -> None:
         table = dpg.add_table(
             parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
             header_row=False,
@@ -153,7 +219,7 @@ class GUISequencerHistoryPanel(GUIPanel):
             init_width_or_weight=self._layout.history.selectable_column_weight,
         )
         dpg.add_table_column(parent=table)
-        for entry in reversed(view_model.entries):
+        for entry in reversed(window):
             self._create_entry(table, entry)
 
         ThemeRegistry.get(TAG_SEQUENCER_HISTORY_THEME_LIST).bind_to_item(table)
@@ -177,15 +243,28 @@ class GUISequencerHistoryPanel(GUIPanel):
                 callback=self._on_entry_clicked,
             )
             FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
+            group = dpg.add_group(horizontal=True)
 
-            with dpg.group(horizontal=True):
-                self._add_text(entry.label, color=self._layout.colors.history_future if entry.is_future else None)
-                for segment in entry.detail_segments:
-                    color = self._layout.colors.history_future if entry.is_future else self._role_color(segment.role)
-                    self._add_text(segment.text, color=color)
+        self._fill_entry_texts(group, entry)
+        self._rows[entry.index] = _EntryRow(
+            selectable=selectable,
+            group=group,
+            is_current=entry.is_current,
+            is_future=entry.is_future,
+        )
 
-    def _add_text(self, value: str, *, color: Optional[RGBA]) -> None:
-        text = dpg.add_text(value) if color is None else dpg.add_text(value, color=color)
+    def _fill_entry_texts(self, group: int, entry: HistoryEntryViewModel) -> None:
+        self._add_text(
+            entry.label,
+            parent=group,
+            color=self._layout.colors.history_future if entry.is_future else None,
+        )
+        for segment in entry.detail_segments:
+            color = self._layout.colors.history_future if entry.is_future else self._role_color(segment.role)
+            self._add_text(segment.text, parent=group, color=color)
+
+    def _add_text(self, value: str, *, parent: int, color: Optional[RGBA]) -> None:
+        text = dpg.add_text(value, parent=parent) if color is None else dpg.add_text(value, parent=parent, color=color)
         FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
 
     def _role_color(self, role: HistoryDetailRole) -> RGBA:
