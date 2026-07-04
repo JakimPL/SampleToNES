@@ -1,8 +1,6 @@
-from typing import Final
-
 from pydantic import BaseModel
 
-PERCENT_SCALE: Final[int] = 100
+from sampletones_application.view_model.shared.percent import format_percent
 
 
 class LibraryPanelViewModel(BaseModel, frozen=True):
@@ -14,8 +12,7 @@ class LibraryPanelViewModel(BaseModel, frozen=True):
     @property
     def progress_overlay(self) -> str:
         """The percentage label rendered over the progress bar, derived from the fraction."""
-        fraction = max(0.0, min(1.0, self.progress_value))
-        return f"{int(fraction * PERCENT_SCALE)}%"
+        return format_percent(self.progress_value)
 
     @property
     def idle_controls_visible(self) -> bool:

@@ -148,14 +148,14 @@ class ConverterLogic(CallbackMixin):
         return self._phase in ACTIVE_PHASES
 
     def emit_initial_view(self) -> None:
-        self._emit_view_model(self._msg_idle, 0.0, "0%")
+        self._emit_view_model(self._msg_idle, 0.0)
 
     def refresh_view(self) -> None:
         """Re-emits the idle view so the Convert button reflects whether another exclusive operation
         is active. Only the idle phase carries the Convert button; the other phases disable it by
         phase alone, so re-emitting them would add nothing."""
         if self._phase == ConversionPhase.IDLE:
-            self._emit_view_model(self._msg_idle, 0.0, "0%")
+            self._emit_view_model(self._msg_idle, 0.0)
 
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:
         config = self._config_manager.config.model_copy()
@@ -164,7 +164,7 @@ class ConverterLogic(CallbackMixin):
 
         if not self.is_active:
             self._phase = ConversionPhase.IDLE
-            self._emit_view_model(self._msg_idle, 0.0, "0%")
+            self._emit_view_model(self._msg_idle, 0.0)
 
         if convert:
             self.start_conversion()
@@ -179,14 +179,14 @@ class ConverterLogic(CallbackMixin):
             return
 
         self._phase = ConversionPhase.WAITING
-        self._emit_view_model(self._msg_waiting, 0.0, "0%")
+        self._emit_view_model(self._msg_waiting, 0.0)
         self.call(self.generate_library)
         self._wait_for_library_and_start()
 
     def cancel(self) -> None:
         if self._service.is_running():
             self._phase = ConversionPhase.CANCELLING
-            self._emit_view_model(self._msg_cancelling, 0.0, "0%")
+            self._emit_view_model(self._msg_cancelling, 0.0)
             self._system_progress.error()
             self._service.cancel()
         elif self._phase == ConversionPhase.WAITING:
@@ -199,7 +199,7 @@ class ConverterLogic(CallbackMixin):
         finally:
             self._system_progress.clear()
             self._phase = ConversionPhase.IDLE
-            self._emit_view_model(self._msg_idle, 0.0, "0%")
+            self._emit_view_model(self._msg_idle, 0.0)
 
     def handle_load_request(self) -> None:
         if self._is_file:
@@ -235,7 +235,6 @@ class ConverterLogic(CallbackMixin):
             self._emit_view_model(
                 self._msg_cancelling,
                 progress.completed / total,
-                "0%",
             )
             return
 
@@ -243,7 +242,6 @@ class ConverterLogic(CallbackMixin):
         self._system_progress.set(progress.completed, progress.total)
         eta_string = ETAEstimator.format_duration(progress.eta_seconds)
         total = max(progress.total, 1)
-        percent_string = f"{min(100, int(progress.completed * 100 / total))}%"
         status_text = self._tpl_progress.format(progress.completed, progress.total)
 
         if eta_string:
@@ -255,7 +253,6 @@ class ConverterLogic(CallbackMixin):
         self._emit_view_model(
             status_text,
             progress.completed / total,
-            percent_string,
             input_path=display_input_path,
         )
 
@@ -264,7 +261,7 @@ class ConverterLogic(CallbackMixin):
             return
         total = max(progress.total, 1)
         fraction = progress.completed / total
-        self._emit_view_model(self._msg_generating_library, fraction, f"{int(fraction * 100)}%")
+        self._emit_view_model(self._msg_generating_library, fraction)
 
     def _assign_paths(self, input_path: Path, config: Config) -> bool:
         try:
@@ -305,13 +302,13 @@ class ConverterLogic(CallbackMixin):
             self._output_path = output_path
 
         self._phase = ConversionPhase.COMPLETED
-        self._emit_view_model(self._msg_completed, 1.0, "100%")
+        self._emit_view_model(self._msg_completed, 1.0)
         self.call(self.on_success)
 
     def _on_conversion_error(self, exception: Exception) -> None:
         self._system_progress.error()
         self._phase = ConversionPhase.FAILED
-        self._emit_view_model(self._msg_error, 0.0, "100%")
+        self._emit_view_model(self._msg_error, 0.0)
         if isinstance(exception, NoFilesToProcessError):
             self.call(self.on_no_files_to_process)
         else:
@@ -319,7 +316,7 @@ class ConverterLogic(CallbackMixin):
 
     def _on_cancellation_complete(self) -> None:
         self._phase = ConversionPhase.CANCELLED
-        self._emit_view_model(self._msg_cancelled, 0.0, "100%")
+        self._emit_view_model(self._msg_cancelled, 0.0)
         CallbackQueue.add(
             self.close,
             priority=self._scheduling.priority_schedule,
@@ -331,7 +328,6 @@ class ConverterLogic(CallbackMixin):
         self,
         status_text: str,
         progress: float,
-        progress_overlay: str,
         input_path: Optional[Path] = None,
     ) -> None:
         display_output = (
@@ -341,7 +337,6 @@ class ConverterLogic(CallbackMixin):
             phase=self._phase,
             status_text=status_text,
             progress=progress,
-            progress_overlay=progress_overlay,
             input_path=(input_path if input_path is not None else self._input_path),
             output_path=display_output,
             is_file=self._is_file,
