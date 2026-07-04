@@ -53,7 +53,11 @@ only the dpg-free helpers that remain directly under `utils/` (e.g. `utils/callb
 This boundary is enforced, not merely documented: `scripts/check_import_boundary.py` (run as a
 pre-commit hook and via `make check-import-boundary`) fails when a non-visual layer imports
 `dearpygui`, `sampletones_application.ui`, or `sampletones_application.utils.gui`. `config/` is
-additionally forbidden from importing `coordinators/` or `application.py`.
+additionally forbidden from importing `coordinators/` or `application.py`. The `ui/` layer is
+held to its own contract by the same script: a `ui/**` rule forbids importing `coordinators/`,
+`logic/`, `services/`, `config/`, `application.py`, and `shell.py`. The pre-commit hook audits
+the entire source tree on every commit, so a rule change surfaces violations in files a commit
+never touched.
 
 ### 3. No UI state in logic
 
@@ -117,6 +121,7 @@ A new exclusive operation joins by contributing its `is_active` to the authority
 - Panels hold only visual state: their tag, their child widget references, and layout dimensions. They do not hold domain objects.
 - Every mutation from outside goes through `update_view(view_model)` or through a direct DPG call (`dpg_configure_item`, `dpg_set_value`) triggered by an `update_*` method.
 - Callback wiring from coordinators sets public `on_x` attributes *after* construction; panels must therefore tolerate `None` hooks until wiring is complete.
+- A widget whose rendering needs synchronous per-item queries declares a consumer-owned `Protocol` of exactly that surface (`TreeLogicProtocol` for the file trees' per-node favorite and playability checks, `ExplorerLogicProtocol`, `LibraryLogicProtocol`); the owning coordinator constructs the real logic object and injects it, and the panel types against the Protocol without ever importing the implementation. Hooks and view models remain the default — the Protocol is the exception for query-heavy widgets where projecting a whole tree per repaint would be disproportionate.
 
 **Sub-structure:**
 
@@ -141,7 +146,8 @@ A new exclusive operation joins by contributing its `is_active` to the authority
 - All view model classes are `BaseModel, frozen=True`. Fields are never mutated; a new instance is produced on each logical state change.
 - Derived UI flags (`button_enabled`, `panel_visible`, `is_done`) are `@property` computations, not stored fields, to prevent inconsistency.
 - View models carry only what is needed for rendering. They must not expose raw domain objects that a panel could mutate.
-- Domain data containers (frozen dataclasses that wrap core types and are used across logic and services) belong in `logic/`, not here. A type belongs in `view_model/` only if its sole purpose is to feed a panel's `update_view()` call.
+- Edit payloads — frozen `*Update` models a panel emits through its `on_*_changed` hooks (`ReconstructionUpdate`, `AudioSettingsUpdate`, …) — also live here: they are the UI's outbound contract, the mirror of view models.
+- Domain data containers (frozen dataclasses that wrap core types and are used across logic and services) belong in `logic/`, not here. A type belongs in `view_model/` only if its purpose is to carry data across the UI boundary — a panel-feeding snapshot, an edit payload, or a projection a display renders (`WaveformData`).
 
 **Naming convention:** `<Feature><Component>ViewModel`, e.g. `ConverterViewModel`, `ReconstructionDetailsViewModel`, `SequencerGridViewModel`.
 

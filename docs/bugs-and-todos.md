@@ -34,14 +34,10 @@
 
 ## Architecture
 
-* The UI layer imports `logic/` and `config/` in ~17 files (panels holding
-  `PlayerLogic`, `ExplorerLogic`, `BrowserLogic`, `SessionManager`, …), against the
-  layer contract; `scripts/check_import_boundary.py` therefore has no `ui/**` rule.
-  Adding one requires inverting those dependencies panel by panel (the properties
-  window shows the pattern: a frozen view model in, edits out through `on_commit`)
-* `ui/panels/player.py` catches `PlaybackError` and renders dialogs itself; panels
-  must not catch or present errors — the error path belongs in a coordinator-wired
-  `on_error` hook
+* A few panels still render dialogs themselves through `DialogsRenderer` (an
+  import-legal `utils/gui` helper) where the error policy places presentation in
+  coordinators — e.g. the explorer's converter-running notice; each wants the
+  library-panel treatment (an intent hook, the dialog in the coordinator)
 * History detail segments freeze language-manager text at commit time (e.g. the
   loop on/off words), so a future language switch would show mixed-language rows;
   labels already resolve at render time
