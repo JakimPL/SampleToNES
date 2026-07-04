@@ -6,7 +6,6 @@ from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.main import ExplorerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_MAIN,
@@ -21,10 +20,7 @@ from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_TREE,
     TAG_MAIN_EXPLORER_WINDOW_TREE,
 )
-from sampletones_application.layout.behavior import (
-    SchedulingBehavior,
-    TreeBehavior,
-)
+from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
@@ -32,6 +28,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
+from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
@@ -39,11 +36,9 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
 )
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
 from sampletones_core import paths
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
@@ -60,19 +55,15 @@ class GUIExplorerPanel(GUITreePanel):
     def __init__(
         self,
         explorer_logic: ExplorerLogic,
-        session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        scheduling: SchedulingBehavior,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         colors: TreeColors,
     ) -> None:
         self.explorer_logic = explorer_logic
-        self.audio_device_manager = audio_device_manager
-        self.session_manager = session_manager
         self.shortcut_manager = shortcut_manager
         self._tree_behavior = tree_behavior
         self._dialogs = dialogs
@@ -173,10 +164,8 @@ class GUIExplorerPanel(GUITreePanel):
             tag=TAG_MAIN_EXPLORER_PANEL,
             parent=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_MAIN_EXPLORER_TREE,
-            session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
-            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -186,11 +175,6 @@ class GUIExplorerPanel(GUITreePanel):
             language_manager=language_manager,
             colors=colors,
         )
-
-        self.logic.on_autoplay_error = self._on_autoplay_error
-
-    def _on_autoplay_error(self, exception: Exception) -> None:
-        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def create_panel(self) -> None:
         self._setup_handlers()
@@ -300,7 +284,7 @@ class GUIExplorerPanel(GUITreePanel):
         dpg_delete_children(node_tag)
         if self.explorer_logic.is_directory_expanded(node.filepath):
             for child in node.children:
-                has_favorite_ancestor = self.logic.is_node_favorite(node) or self.logic.has_favorite_ancestor(child)
+                has_favorite_ancestor = self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(child)
                 self._build_tree_node(
                     child,
                     TreeNodeState(
@@ -323,7 +307,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self.logic.is_node_favorite(node)
+        is_favorite = self._logic.is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
 
         if node.node_type == NodeType.DIRECTORY:
@@ -386,10 +370,10 @@ class GUIExplorerPanel(GUITreePanel):
         if mouse_button == dpg.mvMouseButton_Left:
             match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
-                    return self.logic.request_autoplay(node)
+                    return self._logic.request_autoplay(node)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
                     self.call(self.on_wave_file_clicked, node.filepath)
-                    return self.logic.request_autoplay(node)
+                    return self._logic.request_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(node)
@@ -409,7 +393,7 @@ class GUIExplorerPanel(GUITreePanel):
                 case paths.EXT_FILE_RECONSTRUCTION:
                     self._load_reconstruction(node)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self.logic.cancel_autoplay()
+                    self._logic.cancel_autoplay()
                     return self._reconstruct_file(node)
                 case paths.EXT_FILE_LIBRARY:
                     return self._load_library(node)
@@ -436,7 +420,7 @@ class GUIExplorerPanel(GUITreePanel):
         self,
     ) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
-            if self.session_manager.autoplay:
+            if self._logic.autoplay_enabled:
                 return self._msg_status_audio
 
             return self._msg_status_audio_no_autoplay
@@ -467,7 +451,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         return True
 
-    def _set_tree_enabled(self, enabled: bool) -> None:
+    def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_MAIN_EXPLORER_GROUP_TREE, enabled=enabled)
         dpg_configure_item(TAG_MAIN_EXPLORER_GROUP_CONTROLS, enabled=enabled)
 

@@ -49,6 +49,7 @@ from sampletones_application.logic.sequencer.playback.playhead import (
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
+from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.song_player.player import SongPlayerService
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.sequencer.actions import GUISequencerActionsPanel
@@ -201,12 +202,15 @@ class SequencerTabCoordinator:
             browser_manager,
             project_controller,
         )
-        self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
-            self._sequencer_browser_logic,
+        self._sequencer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             audio_device_manager,
-            shortcut_manager,
             scheduling=layout.behavior.scheduling,
+        )
+        self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
+            self._sequencer_browser_logic,
+            self._sequencer_tree_logic,
+            shortcut_manager,
             tree_behavior=layout.behavior.sequencer,
             language_manager=language_manager,
             colors=TreeColors.create(
@@ -396,7 +400,10 @@ class SequencerTabCoordinator:
         )
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
-        self._sequencer_browser_panel.logic.on_autoplay_error = self._on_preview_error
+        self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
+        self._sequencer_tree_logic.on_favorite_changed = self._sequencer_browser_panel.update_favorite_indicator
+        self._sequencer_tree_logic.on_search_update_needed = self._sequencer_browser_panel.update_tree_visibility
+        self._sequencer_tree_logic.on_autoplay_error = self._on_preview_error
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_error = self._on_player_error

@@ -414,8 +414,8 @@ class ApplicationShell:
 
     def toggle_fullscreen(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self._viewport_manager.toggle_fullscreen()

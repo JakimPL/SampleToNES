@@ -28,6 +28,7 @@ from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.instruction.details import (
     GUIInstructionDetailsPanel,
@@ -93,12 +94,15 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
             is_operation_active=is_operation_active,
         )
-        self._library_panel = GUIInstructionsLibraryPanel(
-            self._library_logic,
+        self._library_tree_logic = TreeLogic(
             session_manager,
             audio_device_manager,
-            shortcut_manager,
             scheduling=layout.behavior.scheduling,
+        )
+        self._library_panel = GUIInstructionsLibraryPanel(
+            self._library_logic,
+            self._library_tree_logic,
+            shortcut_manager,
             tree_behavior=layout.behavior.instructions,
             language_manager=language_manager,
             dialogs=dialogs,
@@ -108,6 +112,9 @@ class InstructionsTabCoordinator:
             ),
             is_operation_active=is_operation_active,
         )
+        self._library_tree_logic.on_lock_state_changed = self._library_panel.set_tree_enabled
+        self._library_tree_logic.on_favorite_changed = self._library_panel.update_favorite_indicator
+        self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_audio_state_changed,

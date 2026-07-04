@@ -35,6 +35,7 @@ from sampletones_application.logic.reconstruction.details import (
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.export import ExportError, ExportKind, ExportResult, ExportService, ExportSuccess
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
@@ -205,12 +206,15 @@ class ReconstructionsTabCoordinator:
             config_manager,
             browser_manager,
         )
-        self._browser_panel: GUIBrowserPanel = GUIBrowserPanel(
-            self._browser_logic,
+        self._browser_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             audio_device_manager,
-            shortcut_manager,
             scheduling=layout.behavior.scheduling,
+        )
+        self._browser_panel: GUIBrowserPanel = GUIBrowserPanel(
+            self._browser_logic,
+            self._browser_tree_logic,
+            shortcut_manager,
             tree_behavior=layout.behavior.reconstructions,
             language_manager=language_manager,
             colors=TreeColors.create(
@@ -219,7 +223,10 @@ class ReconstructionsTabCoordinator:
             ),
             is_operation_active=is_operation_active,
         )
-        self._browser_panel.logic.on_autoplay_error = self._on_browser_autoplay_error
+        self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
+        self._browser_tree_logic.on_favorite_changed = self._browser_panel.update_favorite_indicator
+        self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
+        self._browser_tree_logic.on_autoplay_error = self._on_browser_autoplay_error
         self._reconstruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_change_audio_state,

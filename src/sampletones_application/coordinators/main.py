@@ -21,6 +21,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
+from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.conversion import ConversionService
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
@@ -33,6 +34,7 @@ from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.main.advanced import (
     AdvancedSettingsPanelViewModel,
@@ -91,6 +93,7 @@ class MainTabCoordinator:
         self._on_load_library = on_load_library
         self._is_operation_active = is_operation_active
         self._on_busy_state_changed = on_busy_state_changed
+        self._dialogs = dialogs
 
         self._tab_label = language_manager[
             Page.GLOBAL,
@@ -126,12 +129,15 @@ class MainTabCoordinator:
         ]
 
         self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager, language_manager=language_manager)
-        self._explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
-            self._explorer_logic,
+        self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             audio_device_manager,
-            shortcut_manager,
             scheduling=layout.behavior.scheduling,
+        )
+        self._explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
+            self._explorer_logic,
+            self._explorer_tree_logic,
+            shortcut_manager,
             tree_behavior=layout.behavior.main.explorer,
             language_manager=language_manager,
             dialogs=dialogs,
@@ -140,6 +146,10 @@ class MainTabCoordinator:
                 accent=layout.general.colors.paths.hover,
             ),
         )
+        self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
+        self._explorer_tree_logic.on_favorite_changed = self._explorer_panel.update_favorite_indicator
+        self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
+        self._explorer_tree_logic.on_autoplay_error = self._on_explorer_autoplay_error
 
         _config = config_manager.config
         self._config_panel: GUIConfigPanel = GUIConfigPanel(
@@ -250,6 +260,9 @@ class MainTabCoordinator:
         self._converter_panel.on_cancel_requested = self._converter_logic.cancel
         self._converter_panel.on_close_requested = self._converter_logic.close
         self._converter_panel.on_load_requested = self._converter_logic.handle_load_request
+
+    def _on_explorer_autoplay_error(self, exception: Exception) -> None:
+        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def _on_converter_view_changed(self, view_model: ConverterViewModel) -> None:
         self._converter_panel.update_view(view_model)

@@ -6,7 +6,6 @@ from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.sequencer import SequencerBrowserElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_SEQUENCER,
@@ -19,10 +18,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_TREE,
     TAG_SEQUENCER_BROWSER_WINDOW_TREE,
 )
-from sampletones_application.layout.behavior import (
-    SchedulingBehavior,
-    TreeBehavior,
-)
+from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
@@ -30,12 +26,12 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
+from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
@@ -50,11 +46,9 @@ class GUISequencerBrowserPanel(GUITreePanel):
     def __init__(
         self,
         sequencer_browser_logic: SequencerBrowserLogic,
-        session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        scheduling: SchedulingBehavior,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         colors: TreeColors,
@@ -81,10 +75,8 @@ class GUISequencerBrowserPanel(GUITreePanel):
             tag=TAG_SEQUENCER_BROWSER_PANEL,
             parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
             tree_tag=TAG_SEQUENCER_BROWSER_TREE,
-            session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
-            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -190,7 +182,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self.logic.is_node_favorite(node)
+        is_favorite = self._logic.is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
@@ -216,7 +208,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
         state.parent = node_tag
 
-    def _set_tree_enabled(self, enabled: bool) -> None:
+    def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_BROWSER_GROUP_TREE, enabled=enabled)
         dpg_configure_item(TAG_SEQUENCER_BROWSER_GROUP_CONTROLS, enabled=enabled)
 
@@ -242,7 +234,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, node_tag = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.logic.request_autoplay(node)
+            self._logic.request_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             self._show_reconstruction_context_menu(node, node_tag)
@@ -256,7 +248,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.logic.cancel_autoplay()
+            self._logic.cancel_autoplay()
             self.call(self.on_add_to_sequencer, node.filepath)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:

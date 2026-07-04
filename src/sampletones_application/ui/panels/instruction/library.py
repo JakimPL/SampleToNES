@@ -12,7 +12,6 @@ from sampletones_application.categories.elements.instructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
@@ -35,10 +34,7 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
 )
 from sampletones_application.constants.main import TAG_MAIN_CONVERTER_PANEL
-from sampletones_application.layout.behavior import (
-    SchedulingBehavior,
-    TreeBehavior,
-)
+from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
@@ -46,6 +42,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
+from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
@@ -55,7 +52,6 @@ from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.utils.thread import concurrent
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import (
     GeneratorNode,
     LibraryNode,
@@ -72,11 +68,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def __init__(
         self,
         library_logic: LibraryLogic,
-        session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        scheduling: SchedulingBehavior,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
@@ -199,10 +193,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
             parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
-            session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
-            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -367,7 +359,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             view_model.progress_value,
         )
 
-    def _set_tree_enabled(self, enabled: bool) -> None:
+    def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
             enabled=enabled,

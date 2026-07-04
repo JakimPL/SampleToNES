@@ -15,7 +15,6 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_SEARCH,
     SUF_HANDLER_NODE,
@@ -35,8 +34,6 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
     TAG_INSTRUCTIONS_LIBRARY_THEME_LIBRARY,
 )
-from sampletones_application.layout.behavior import SchedulingBehavior
-from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import add_play_menu_item
 from sampletones_application.ui.elements.fonts.font import Font
@@ -45,6 +42,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
+from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
@@ -53,7 +51,6 @@ from sampletones_application.utils.gui.dpg import dpg_delete_children, dpg_get_v
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import show_detail_tooltip
 from sampletones_core import paths
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs.display import (
     format_nes_frequency,
     format_sample_rate,
@@ -85,17 +82,16 @@ class GUITreePanel(GUIPanel):
         tag: str,
         parent: str,
         tree_tag: str,
-        session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         width: int = -1,
         height: int = -1,
         *,
-        scheduling: SchedulingBehavior,
         search_label: str,
         language_manager: LanguageManager,
         colors: TreeColors,
     ) -> None:
+        self._logic = tree_logic
         self.tree = tree
         self.tree_tag = tree_tag
         self.shortcut_manager = shortcut_manager
@@ -248,15 +244,6 @@ class GUITreePanel(GUIPanel):
             TextType.LABEL,
             NodeDetailElements.CONFIGURATION,
         ]
-
-        self.logic = TreeLogic(
-            session_manager,
-            audio_device_manager,
-            scheduling=scheduling,
-        )
-        self.logic.on_lock_state_changed = self._set_tree_enabled
-        self.logic.on_favorite_changed = self._update_favorite_indicator
-        self.logic.on_search_update_needed = self._update_tree_visibility
 
         self.on_add_to_sequencer: Optional[PathCallback] = None
         self.can_add_to_sequencer: Optional[Callable[[], bool]] = None
@@ -486,7 +473,7 @@ class GUITreePanel(GUIPanel):
         self,
     ) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
-            if self.logic.autoplay_enabled:
+            if self._logic.autoplay_enabled:
                 return self._msg_node_reconstruction
 
             return self._msg_node_reconstruction_no_autoplay
@@ -524,7 +511,7 @@ class GUITreePanel(GUIPanel):
         return str(node.name)
 
     def _node_header_color(self, node: TreeNode) -> ColorRGBA:
-        if self.logic.is_node_favorite(node):
+        if self._logic.is_node_favorite(node):
             return self._colors.favorite
 
         if self._node_detail_items(node):
@@ -533,7 +520,7 @@ class GUITreePanel(GUIPanel):
         return self._colors.node
 
     def _add_context_menu_text(self, node: TreeNode) -> None:
-        is_favorite = self.logic.is_node_favorite(node)
+        is_favorite = self._logic.is_node_favorite(node)
         color = self._node_header_color(node)
 
         with dpg.group(horizontal=True):
@@ -591,11 +578,11 @@ class GUITreePanel(GUIPanel):
             FontRegistry.bind_to_item(detail_text, Font.REGULAR_SMALL)
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:
-        if not self.logic.is_playable_file(node):
+        if not self._logic.is_playable_file(node):
             return
 
         dpg.add_separator()
-        add_play_menu_item(self._lbl_ctx_play, lambda: self.logic.play_node(node))
+        add_play_menu_item(self._lbl_ctx_play, lambda: self._logic.play_node(node))
 
     def _add_context_menu_path_items(self, path: Path) -> None:
         dpg.add_separator()
@@ -623,7 +610,7 @@ class GUITreePanel(GUIPanel):
 
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (
-            self._lbl_ctx_unmark_as_favorite if self.logic.is_node_favorite(node) else self._lbl_ctx_mark_as_favorite
+            self._lbl_ctx_unmark_as_favorite if self._logic.is_node_favorite(node) else self._lbl_ctx_mark_as_favorite
         )
         dpg.add_separator()
         dpg.add_menu_item(
@@ -649,7 +636,7 @@ class GUITreePanel(GUIPanel):
         else:
             self.clear_filter()
 
-        self.logic.schedule_search_update(query)
+        self._logic.schedule_search_update(query)
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
@@ -657,7 +644,7 @@ class GUITreePanel(GUIPanel):
 
         self.clear_filter()
 
-        self.logic.schedule_search_update("")
+        self._logic.schedule_search_update("")
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
@@ -665,7 +652,7 @@ class GUITreePanel(GUIPanel):
     @abstractmethod
     def _rebuild_tree(self) -> None: ...
 
-    def _update_tree_visibility(self) -> None:
+    def update_tree_visibility(self) -> None:
         root = self.tree.get_root()
         if root is None:
             return
@@ -727,7 +714,7 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor: bool = False,
     ) -> None:
         has_content = self._has_relevant_content(node)
-        is_favorite = self.logic.is_node_favorite(node)
+        is_favorite = self._logic.is_node_favorite(node)
 
         theme: Theme
         if is_favorite:
@@ -748,7 +735,7 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor: bool = False,
         is_not_expanded: bool = False,
     ) -> None:
-        is_favorite = self.logic.is_node_favorite(node)
+        is_favorite = self._logic.is_node_favorite(node)
 
         theme: Theme
         if is_favorite:
@@ -802,7 +789,7 @@ class GUITreePanel(GUIPanel):
             has_favorite_ancestor=has_favorite_ancestor,
         )
         if node.node_type == NodeType.DIRECTORY:
-            is_favorite = self.logic.is_node_favorite(node)
+            is_favorite = self._logic.is_node_favorite(node)
             child_has_favorite_ancestor = has_favorite_ancestor or is_favorite
 
             for child in node.children:
@@ -816,21 +803,21 @@ class GUITreePanel(GUIPanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        self.logic.toggle_favorite(node)
+        self._logic.toggle_favorite(node)
 
-    def _update_favorite_indicator(self, node: FileSystemNode) -> None:
-        has_favorite_ancestor = self.logic.has_favorite_ancestor(node)
+    def update_favorite_indicator(self, node: FileSystemNode) -> None:
+        has_favorite_ancestor = self._logic.has_favorite_ancestor(node)
         self._reapply_theme_recursively(node, has_favorite_ancestor)
 
     @abstractmethod
-    def _set_tree_enabled(self, enabled: bool) -> None: ...
+    def set_tree_enabled(self, enabled: bool) -> None: ...
 
     def lock(self) -> None:
-        self.logic.lock()
+        self._logic.lock()
 
     def unlock(self) -> None:
-        self.logic.unlock()
+        self._logic.unlock()
 
     @property
     def locked(self) -> bool:
-        return self.logic.locked
+        return self._logic.locked
