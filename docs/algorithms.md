@@ -153,10 +153,11 @@ cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
   spectral floor, penalizes leaving target energy uncovered more strongly than adding
   energy beyond it). Bins are weighted by a combination of log-frequency density and
   an A-weighting perceptual curve.
-- **temporal** is the RMS difference between the candidate and target *waveforms*,
-  normalized by the target frame's own level, capturing alignment that a magnitude
-  spectrum discards while keeping the spectral/temporal blend stable across frame
-  loudness.
+- **temporal** is the RMS difference between the target *waveform* and the candidate
+  rendered at its best phase against the target, normalized by the target frame's own
+  level. Evaluating it at the aligned phase makes it measure waveform *shape* — a
+  property the magnitude spectrum discards — while keeping the spectral/temporal
+  blend stable across frame loudness.
 
 A lower cost is a better match. The criterion evaluates many candidates at once and,
 on machines with a GPU, runs on the array backend in `sampletones_shared`.
@@ -166,6 +167,12 @@ on machines with a GPU, runs on the array backend in `sampletones_shared`.
 Both selectors live in `sampletones_core.reconstructions.reconstructor.selector` and
 are chosen with `generation.decoder.selector`. They share the criterion and the
 library; they differ only in how they search.
+
+Both score candidates in two stages: every candidate is first ranked by the
+phase-independent spectral term, and the best `top_k` are then re-scored with the
+full criterion, whose temporal term is evaluated on the candidate aligned to the
+target (`find_best_phase`). The aligned phase stands in for the rendered phase,
+which keeps each oscillator continuous across frames.
 
 ### 5.1 Greedy (per-frame)
 

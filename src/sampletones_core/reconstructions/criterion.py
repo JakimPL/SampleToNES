@@ -9,7 +9,6 @@ from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.fft import (
     FFTTransformer,
-    Fragment,
     Window,
     calculate_weights_from_edges,
 )
@@ -93,15 +92,6 @@ class Criterion:
             self.config.library.sample_rate,
         )
         return np.asarray(reference.edges)
-
-    def __call__(
-        self,
-        fragment: Fragment,
-        approximation: Fragment,
-    ) -> xp.ndarray:
-        temporal_loss = self.temporal_loss(fragment.audio, approximation.audio)
-        spectral_loss = self.spectral_loss(fragment.feature, approximation.feature)
-        return self.combine_losses(spectral_loss, temporal_loss)
 
     def rmse(
         self,

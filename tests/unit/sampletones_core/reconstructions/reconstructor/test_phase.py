@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+from typing import Type
+
 import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.fft import Fragment, Window
+from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.phase import (
     CrossCorrelationPhaseAligner,
+    PhaseAligner,
     SlidingRmsePhaseAligner,
 )
 
@@ -37,3 +41,29 @@ class TestPhaseAlignerEquivalence:
 
             assert cross_correlation_rmse == pytest.approx(sliding_rmse, abs=1e-6)
             assert cross_correlation_rmse == pytest.approx(0.0, abs=1e-4)
+
+
+class TestPhaseAlignerDrive:
+    @pytest.mark.parametrize("aligner_class", [SlidingRmsePhaseAligner, CrossCorrelationPhaseAligner])
+    def test_aligned_candidate_matches_a_drive_scaled_target(
+        self,
+        aligner_class: Type[PhaseAligner],
+        config: Config,
+        window: Window,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+    ) -> None:
+        """
+        The aligner searches and returns the candidate at the amplitude it competes
+        at, so a target that is a drive-scaled, phase-shifted rendering of the
+        candidate is reproduced exactly.
+        """
+        drive = 2.0
+        driven_config = config.model_copy(update={"generation": config.generation.model_copy(update={"drive": drive})})
+        aligner = aligner_class(driven_config, window, library_data)
+
+        library_fragment = library_data[audible_instruction]
+        target = library_fragment.get_fragment(library_fragment.length // 4, config, window) * drive
+        aligned = aligner.align(target, audible_instruction)
+
+        assert _rmse(target, aligned) == pytest.approx(0.0, abs=1e-4)
