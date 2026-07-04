@@ -50,10 +50,6 @@
   pre-projected display items
 * `GUIStatusBar` is a singleton reached from panels via class methods,
   bypassing constructor injection
-* `SequencerTabCoordinator.player` exposes the raw `SongPlayerLogic` where the
-  other tabs wrap theirs in `GuardedPlayer`;
-  `ReconstructionCoordinator.reconstruction_session` exposes a logic-layer
-  session object
 
 ## Bugs
 

@@ -734,10 +734,11 @@ class Application:
         )
 
     def _reconstruction_title_part(self) -> Optional[ReconstructionTitlePart]:
-        session = self._reconstruction_coordinator.reconstruction_session
-        if not session.is_loaded:
+        reconstruction_name = self._reconstruction_coordinator.reconstruction_name
+        if not self._reconstruction_coordinator.is_loaded() or reconstruction_name is None:
             return None
 
+        unsaved_changes = self._reconstruction_coordinator.is_unsaved()
         sample = self._owning_project_sample()
         if sample is not None:
             ordinal = self.project_manager.current.samples.get_index(sample.id)
@@ -745,9 +746,9 @@ class Application:
                 ordinal=format(ordinal, SEQUENCER_SAMPLE_ORDINAL_FORMAT),
                 name=sample.name,
             )
-            return ReconstructionTitlePart(name=name, unsaved_changes=session.unsaved_changes, included=True)
+            return ReconstructionTitlePart(name=name, unsaved_changes=unsaved_changes, included=True)
 
-        return ReconstructionTitlePart(name=session.name, unsaved_changes=session.unsaved_changes, included=False)
+        return ReconstructionTitlePart(name=reconstruction_name, unsaved_changes=unsaved_changes, included=False)
 
     def _update_title(self) -> None:
         untitled = self.language_manager[

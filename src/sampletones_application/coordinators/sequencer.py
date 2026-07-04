@@ -8,6 +8,7 @@ from sampletones_application.categories.elements.global_ import (
     GlobalDialogTitleElements,
     GlobalMessageElements,
     MenuElements,
+    PlayerElements,
 )
 from sampletones_application.categories.elements.sequencer import (
     SequencerHistoryActionElements,
@@ -32,7 +33,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
 )
-from sampletones_application.coordinators.playback import AudioPlayerProtocol
+from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -243,6 +244,16 @@ class SequencerTabCoordinator:
                 audio_device_manager,
                 RowSynthesizer(project_controller, config_manager.config),
             ),
+        )
+        self._guarded_player = GuardedPlayer(
+            self._song_player_logic,
+            dialogs=dialogs,
+            error_message=language_manager[
+                Page.GLOBAL,
+                Panel.PLAYER,
+                TextType.MESSAGE,
+                PlayerElements.AUDIO_PLAYBACK_ERROR,
+            ],
         )
         self._player_panel: GUISongPlayerPanel = GUISongPlayerPanel(
             tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
@@ -1078,4 +1089,4 @@ class SequencerTabCoordinator:
 
     @property
     def player(self) -> AudioPlayerProtocol:
-        return self._song_player_logic
+        return self._guarded_player

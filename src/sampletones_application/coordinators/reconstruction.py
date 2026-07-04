@@ -23,7 +23,6 @@ from sampletones_application.coordinators.reconstructions import (
 )
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.services import (
     RegeneratedInstrument,
     RegenerationResult,
@@ -102,10 +101,6 @@ class ReconstructionCoordinator:
             raise RuntimeError("set_reconstructions_tab has not been called")
 
         return self._reconstructions_tab
-
-    @property
-    def reconstruction_session(self) -> ReconstructionSession:
-        return self._reconstruction_manager.session
 
     @property
     def reconstruction_name(self) -> Optional[str]:

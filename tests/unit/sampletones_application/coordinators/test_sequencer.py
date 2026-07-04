@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.coordinators.playback import GuardedPlayer
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -679,3 +680,21 @@ class TestHistoryViewModelBuild:
             HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
             HistoryDetailSegment(text="off", role=HistoryDetailRole.VALUE),
         )
+
+
+@pytest.fixture
+def exposure_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the playback collaborators the ``player`` property touches."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._song_player_logic = MagicMock()
+    instance._guarded_player = GuardedPlayer(
+        instance._song_player_logic,
+        dialogs=MagicMock(),
+        error_message="playback failed",
+    )
+    return instance
+
+
+class TestPlayerExposure:
+    def test_player_returns_the_guarded_wrapper(self, exposure_coordinator: SequencerTabCoordinator) -> None:
+        assert isinstance(exposure_coordinator.player, GuardedPlayer)

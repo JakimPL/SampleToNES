@@ -3,7 +3,6 @@ from typing import Callable, Optional, Protocol
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_shared.exceptions import PlaybackError
 
@@ -23,8 +22,8 @@ class AudioPlayerProtocol(Protocol):
 
 
 class GuardedPlayer:
-    """Drives a ``PlayerLogic`` on behalf of panels and the ``PlaybackRouter``,
-    presenting playback failures as dialogs.
+    """Drives an ``AudioPlayerProtocol`` player on behalf of panels and the
+    ``PlaybackRouter``, presenting playback failures as dialogs.
 
     Panels only fire intent hooks, so this wrapper is the coordinator-layer
     recovery boundary for the transport commands that can raise
@@ -33,38 +32,38 @@ class GuardedPlayer:
 
     def __init__(
         self,
-        player_logic: PlayerLogic,
+        player: AudioPlayerProtocol,
         *,
         dialogs: DialogsRenderer,
         error_message: str,
     ) -> None:
-        self._player_logic = player_logic
+        self._player = player
         self._dialogs = dialogs
         self._error_message = error_message
 
     def play(self) -> None:
         try:
-            self._player_logic.play()
+            self._player.play()
         except PlaybackError as exception:
             self._dialogs.show_error(exception, self._error_message)
 
     def pause_or_resume(self) -> None:
         try:
-            self._player_logic.pause_or_resume()
+            self._player.pause_or_resume()
         except PlaybackError as exception:
             self._dialogs.show_error(exception, self._error_message)
 
     def stop(self) -> None:
-        self._player_logic.stop()
+        self._player.stop()
 
     def is_playing(self) -> bool:
-        return self._player_logic.is_playing()
+        return self._player.is_playing()
 
     def is_paused(self) -> bool:
-        return self._player_logic.is_paused()
+        return self._player.is_paused()
 
     def is_loaded(self) -> bool:
-        return self._player_logic.is_loaded()
+        return self._player.is_loaded()
 
 
 class PlaybackRouter:
