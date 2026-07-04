@@ -18,6 +18,10 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_TABS,
 )
+from sampletones_application.constants.instructions import (
+    TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
+    TAG_INSTRUCTIONS_LIBRARY_PANEL,
+)
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.details import (
@@ -40,9 +44,12 @@ from sampletones_application.ui.panels.instruction.library import (
     GUIInstructionsLibraryPanel,
 )
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.types.callback import VoidCallback
 
@@ -58,6 +65,7 @@ class InstructionsTabCoordinator:
         on_audio_state_changed: VoidCallback,
         on_generation_state_changed: VoidCallback,
         is_operation_active: Callable[[], bool],
+        is_converter_visible: Callable[[], bool],
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -69,6 +77,7 @@ class InstructionsTabCoordinator:
         self._shortcut_manager = shortcut_manager
         self._library_manager = library_manager
         self._on_audio_state_changed = on_audio_state_changed
+        self._is_converter_visible = is_converter_visible
         self._dialogs = dialogs
 
         self._tab_label = language_manager[
@@ -86,6 +95,48 @@ class InstructionsTabCoordinator:
             Panel.LIBRARY,
             TextType.MESSAGE,
             InstructionsLibraryElements.STATUS_DISPLAY_ERROR,
+        ]
+        self._lbl_regenerate_confirmation_ok = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.REGENERATE_CONFIRMATION_OK,
+        ]
+        self._msg_regenerate_confirmation = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.REGENERATE_CONFIRMATION_MESSAGE,
+        ]
+        self._ttl_regenerate_confirmation = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TITLE,
+            InstructionsLibraryElements.REGENERATE_CONFIRMATION_DIALOG,
+        ]
+        self._msg_generation_cancelled = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATION_CANCELLED,
+        ]
+        self._msg_generation_failed = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATION_FAILED,
+        ]
+        self._msg_generation_success = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATION_SUCCESS,
+        ]
+        self._ttl_generation_status = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TITLE,
+            InstructionsLibraryElements.GENERATION_STATUS_DIALOG,
         ]
 
         self._library_logic = LibraryLogic(
@@ -105,7 +156,6 @@ class InstructionsTabCoordinator:
             shortcut_manager,
             tree_behavior=layout.behavior.instructions,
             language_manager=language_manager,
-            dialogs=dialogs,
             colors=TreeColors.create(
                 layout.general.colors,
                 accent=layout.general.colors.headers.library,
@@ -115,6 +165,25 @@ class InstructionsTabCoordinator:
         self._library_tree_logic.on_lock_state_changed = self._library_panel.set_tree_enabled
         self._library_tree_logic.on_favorite_changed = self._library_panel.update_favorite_indicator
         self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
+
+        self._library_logic.configure_lock(
+            self._library_tree_logic.lock,
+            self._library_tree_logic.unlock,
+            lambda: self._library_tree_logic.locked,
+        )
+        self._library_logic.on_rebuild_tree_needed = self._library_panel.rebuild_tree
+        self._library_logic.on_view_changed = self._library_panel.update_view
+        self._library_logic.on_generation_completed = self._on_generation_completed
+        self._library_logic.on_generation_error = self._on_generation_error
+        self._library_logic.on_generation_cancelled = self._on_generation_cancelled
+        self._library_logic.on_load_file_not_found = self._on_library_file_not_found
+        self._library_logic.on_load_error = self._on_library_load_error
+
+        self._library_panel.on_refresh_requested = self._library_logic.refresh_libraries
+        self._library_panel.on_generate_requested = self._request_generate_library
+        self._library_panel.on_cancel_generation = self._library_logic.cancel_generation
+        self._library_panel.on_library_selected = self._library_logic.load_library_and_set_current
+        self._library_panel.on_generator_selected = self._on_generator_selected
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_audio_state_changed,
@@ -156,6 +225,51 @@ class InstructionsTabCoordinator:
             self._instruction_details_logic.handle_instruction_parameter_changed
         )
 
+    def _request_generate_library(self) -> None:
+        if self._library_logic.library_available_for_config():
+            self._dialogs.show_confirmation(
+                TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
+                self._msg_regenerate_confirmation,
+                self._ttl_regenerate_confirmation,
+                self._library_logic.request_generation,
+                ok_label=self._lbl_regenerate_confirmation_ok,
+            )
+            return
+
+        self._library_logic.request_generation()
+
+    def _on_generator_selected(
+        self,
+        library_key: InstructionLibraryKey,
+        generator_name: LibraryGeneratorName,
+    ) -> None:
+        self._library_logic.load_library_and_set_current(library_key)
+        self._library_logic.load_generator(generator_name)
+
+    def _on_generation_completed(self) -> None:
+        if not self._is_converter_visible():
+            self._dialogs.show_info(
+                TAG_INSTRUCTIONS_LIBRARY_PANEL,
+                self._msg_generation_success,
+                self._ttl_generation_status,
+            )
+
+    def _on_generation_error(self, exception: Exception) -> None:
+        self._dialogs.show_error(exception, self._msg_generation_failed)
+
+    def _on_generation_cancelled(self) -> None:
+        self._dialogs.show_info(
+            TAG_INSTRUCTIONS_LIBRARY_PANEL,
+            self._msg_generation_cancelled,
+            self._ttl_generation_status,
+        )
+
+    def _on_library_file_not_found(self, path: Path, message: str) -> None:
+        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_file_not_found(path, message))
+
+    def _on_library_load_error(self, exception: Exception, message: str) -> None:
+        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception, message))
+
     def _on_instruction_loaded(self, instruction_data: InstructionPanelData) -> None:
         try:
             self._instruction_panel.display_instruction(instruction_data)
@@ -190,6 +304,7 @@ class InstructionsTabCoordinator:
                         no_scroll_with_mouse=True,
                     ):
                         self._library_panel.create_panel()
+                        self._library_logic.refresh_libraries(load_if_needed=False)
 
                     with dpg.child_window(
                         tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
@@ -215,17 +330,17 @@ class InstructionsTabCoordinator:
         would overwrite the user's current settings.
         """
         if not self._library_manager.is_library_available_for_config():
-            self._library_panel.generate_library()
+            self._library_logic.generate_library()
 
     def load_library_file(self, filepath: Path) -> None:
         self._instruction_panel.close_instruction()
-        self._library_panel.load_library_file(filepath)
+        self._library_logic.load_library_file(filepath)
 
     def close_instruction(self) -> None:
         self._instruction_panel.close_instruction()
 
     def is_library_generating(self) -> bool:
-        return self._library_panel.is_library_generating()
+        return self._library_logic.is_library_generating()
 
     def refresh_generate_button(self) -> None:
         self._library_panel.refresh_action_buttons()

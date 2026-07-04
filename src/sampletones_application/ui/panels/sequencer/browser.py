@@ -102,7 +102,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
             self._create_buttons()
             self._create_tree_window()
 
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     def _setup_handlers(self) -> None:
         self._node_handlers = {
@@ -134,7 +134,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
                 tag=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
                 label=self._lbl_refresh,
                 width=-1,
-                callback=self._rebuild_tree,
+                callback=self.rebuild_tree,
             )
 
     def _create_tree_window(self) -> None:
@@ -150,10 +150,10 @@ class GUISequencerBrowserPanel(GUITreePanel):
                     pass
 
     def refresh(self) -> None:
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     @concurrent(wait=False, method_bound=True)
-    def _rebuild_tree(self) -> None:
+    def rebuild_tree(self) -> None:
         if self.locked:
             return
 

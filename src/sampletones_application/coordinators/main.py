@@ -340,6 +340,9 @@ class MainTabCoordinator:
     def is_converter_active(self) -> bool:
         return self._converter_logic.is_active
 
+    def is_converter_panel_visible(self) -> bool:
+        return self._converter_panel.is_visible()
+
     def refresh_converter_view(self) -> None:
         self._converter_logic.refresh_view()
 

@@ -79,9 +79,9 @@ class LibraryLogic(CallbackMixin):
         self.on_view_changed: Optional[Callable[[LibraryPanelViewModel], None]] = None
         self.on_instruction_loaded: Optional[OnLoadInstructionCallback] = None
         self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
-        self.on_generation_completed_dialog: Optional[Callable[[], None]] = None
-        self.on_generation_error_dialog: Optional[Callable[[Exception], None]] = None
-        self.on_generation_cancelled_dialog: Optional[Callable[[], None]] = None
+        self.on_generation_completed: Optional[Callable[[], None]] = None
+        self.on_generation_error: Optional[Callable[[Exception], None]] = None
+        self.on_generation_cancelled: Optional[Callable[[], None]] = None
         self.on_load_file_not_found: Optional[Callable[[Path, str], None]] = None
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
@@ -472,15 +472,15 @@ class LibraryLogic(CallbackMixin):
     def _on_generation_completed(self) -> None:
         self._progress_overlay = "100%"
         self._emit_view()
-        self.call(self.on_generation_completed_dialog)
+        self.call(self.on_generation_completed)
         self._finalize_generation()
 
     def _on_generation_error(self, exception: Exception) -> None:
-        self.call(self.on_generation_error_dialog, exception)
-        self._finalize_generation_error(exception)
+        self.call(self.on_generation_error, exception)
+        self._finalize_generation_error()
 
     def _on_generation_cancelled(self) -> None:
-        self.call(self.on_generation_cancelled_dialog)
+        self.call(self.on_generation_cancelled)
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:
@@ -496,9 +496,8 @@ class LibraryLogic(CallbackMixin):
             self._do_unlock()
             self.call(self.on_generation_state_changed)
 
-    def _finalize_generation_error(self, exception: Exception) -> None:
+    def _finalize_generation_error(self) -> None:
         try:
-            self.call(self.on_generation_error_dialog, exception)
             self._library_manager.cleanup_creator()
             self.update_status()
         finally:

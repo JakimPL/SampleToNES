@@ -650,7 +650,7 @@ class GUITreePanel(GUIPanel):
         return query.lower() in node.name.lower()
 
     @abstractmethod
-    def _rebuild_tree(self) -> None: ...
+    def rebuild_tree(self) -> None: ...
 
     def update_tree_visibility(self) -> None:
         root = self.tree.get_root()

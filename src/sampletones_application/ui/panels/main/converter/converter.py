@@ -145,6 +145,9 @@ class GUIConverterPanel(GUIPanel):
             self._create_paths()
             self._create_conversion_status()
 
+    def is_visible(self) -> bool:
+        return bool(dpg.get_item_configuration(self.tag)["show"])
+
     def update_view(self, view_model: ConverterViewModel) -> None:
         dpg.configure_item(TAG_MAIN_CONVERTER_GROUP, show=view_model.subpanel_visible)
         dpg_set_value(TAG_MAIN_CONVERTER_TEXT_STATUS, view_model.status_text)

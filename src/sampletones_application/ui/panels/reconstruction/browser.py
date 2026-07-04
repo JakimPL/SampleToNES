@@ -144,7 +144,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._create_buttons()
             self._create_tree_window()
 
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     def _setup_handlers(self) -> None:
         self._node_handlers = {
@@ -176,7 +176,7 @@ class GUIBrowserPanel(GUITreePanel):
                 tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
                 label=self._lbl_refresh,
                 width=-1,
-                callback=self._rebuild_tree,
+                callback=self.rebuild_tree,
             )
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT):
                 GUIButton(
@@ -212,10 +212,10 @@ class GUIBrowserPanel(GUITreePanel):
                     pass
 
     def refresh(self) -> None:
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     @concurrent(wait=False, method_bound=True)
-    def _rebuild_tree(self) -> None:
+    def rebuild_tree(self) -> None:
         if self.locked:
             return
 

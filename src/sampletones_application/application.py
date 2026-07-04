@@ -238,6 +238,7 @@ class Application:
             on_audio_state_changed=self._update_menu,
             on_generation_state_changed=self._on_library_operation_changed,
             is_operation_active=self._is_operation_active,
+            is_converter_visible=lambda: self._main_tab.is_converter_panel_visible(),
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,

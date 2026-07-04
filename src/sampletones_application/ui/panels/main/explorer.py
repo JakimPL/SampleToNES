@@ -213,7 +213,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._create_buttons()
             self._create_tree_window()
 
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     def _setup_handlers(self) -> None:
         self._node_handlers = {
@@ -276,10 +276,10 @@ class GUIExplorerPanel(GUITreePanel):
             dpg.set_value(node_tag, False)
 
     def refresh(self) -> None:
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     @concurrent(wait=False, method_bound=True)
-    def _rebuild_tree(self) -> None:
+    def rebuild_tree(self) -> None:
         if self.locked:
             return
 
