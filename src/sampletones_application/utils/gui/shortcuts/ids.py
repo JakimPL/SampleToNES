@@ -28,3 +28,5 @@ class ShortcutId(Enum):
     TOGGLE_FULLSCREEN = "ToggleFullscreen"
     TOGGLE_ADVANCED_SETTINGS = "ToggleAdvancedSettings"
     ABOUT_DIALOG = "AboutDialog"
+    UNDO = "Undo"
+    REDO = "Redo"

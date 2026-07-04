@@ -144,7 +144,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             tag=TAG_SEQUENCER_INSTRUMENTS_PANEL,
             parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
             width=-1,
-            height=-1,
+            height=-(layout.history.height + layout.history.margin),
         )
 
     def create_panel(self) -> None:

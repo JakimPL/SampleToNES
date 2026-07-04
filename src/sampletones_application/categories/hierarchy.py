@@ -87,6 +87,7 @@ class Panel(StrEnum):
     ORDER = "order"
     MODULE = "module"
     INSTRUMENTS = "instruments"
+    HISTORY = "history"
 
     # Instructions tab
     LIBRARY = "library"

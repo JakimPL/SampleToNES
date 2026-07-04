@@ -1,6 +1,8 @@
 from pathlib import Path
+from typing import Type
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 from sampletones_application.config.managers.application import ApplicationConfigManager
@@ -19,3 +21,48 @@ class TestApplicationConfigManagerRecovery:
 
         assert manager.config.audio.volume == ApplicationConfig().audio.volume
         assert Path("/x/y") in manager.favorites
+
+    def test_invalid_history_budget_recovers_to_default(self, tmp_path: Path) -> None:
+        path = tmp_path / "config.yaml"
+        path.write_text(yaml.safe_dump({"history": {"budget": 0}, "favorites": {"paths": ["/x/y"]}}))
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            path,
+        ):
+            manager = ApplicationConfigManager()
+
+        assert manager.config.history.budget == ApplicationConfig().history.budget
+        assert Path("/x/y") in manager.favorites
+
+
+class TestApplicationConfigManagerSave:
+    @pytest.mark.parametrize("exception_type", [PermissionError, IsADirectoryError, OSError])
+    def test_save_recovers_from_file_error(self, tmp_path: Path, exception_type: Type[OSError]) -> None:
+        """Config persistence degrades to logging when the disk rejects the write."""
+        config_path = tmp_path / "config.yaml"
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            config_path,
+        ):
+            manager = ApplicationConfigManager()
+            with patch(
+                "sampletones_application.config.managers.application.save_yaml_atomic",
+                side_effect=exception_type("save failed"),
+            ):
+                manager.save()
+
+        assert not config_path.exists()
+
+    def test_save_propagates_unexpected_error(self, tmp_path: Path) -> None:
+        config_path = tmp_path / "config.yaml"
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            config_path,
+        ):
+            manager = ApplicationConfigManager()
+            with patch(
+                "sampletones_application.config.managers.application.save_yaml_atomic",
+                side_effect=RuntimeError("unexpected"),
+            ):
+                with pytest.raises(RuntimeError):
+                    manager.save()

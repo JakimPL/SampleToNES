@@ -201,13 +201,13 @@ class InstructionsLibraryManager(CallbackMixin):
         self._creator.start()
 
     def _complete_generation(self, result: Tuple[InstructionLibraryKey, InstructionLibraryData]) -> None:
+        key, library_data = result
         try:
-            key, library_data = result
             self._library.save_data(key, library_data)
             self._current_library_key = key
-        except Exception as exception:
+        except OSError as exception:
             self.call(self.on_generation_error, exception)
-            raise exception
+            raise
 
         self.call(self.on_generation_completed)
 

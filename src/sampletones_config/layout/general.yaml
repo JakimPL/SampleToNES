@@ -27,8 +27,6 @@ fonts:
   size_small: 19
   size_large: 26
   scale: 1
-  icon_chars:
-    - 0x2605
 
 dialogs:
   default:
@@ -124,3 +122,8 @@ colors:
   headers:
     library: "#96d2a0"
     reconstruction: "#c8a0ff"
+  features:
+    volume: "#64ff64"
+    arpeggio: "#ff9664"
+    pitch: "#64c8ff"
+    duty_cycle: "#ffc864"

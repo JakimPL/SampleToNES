@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar
+from pathlib import Path
+from typing import Generic, Optional, TypeVar, Union
+
+from sampletones_core.parallelization import TaskProgress
 
 T = TypeVar("T")
 
@@ -37,3 +40,13 @@ class ServiceCancelled:
 @dataclass(frozen=True)
 class ServiceIntermediate(Generic[T]):
     data: T
+
+
+ConversionResult = Union[
+    ServiceStarted,
+    ServiceProgress[Path],
+    ServiceIntermediate[TaskProgress],
+    ServiceSuccess[Path],
+    ServiceError,
+    ServiceCancelled,
+]

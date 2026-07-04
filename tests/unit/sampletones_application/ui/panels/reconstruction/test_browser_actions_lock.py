@@ -49,7 +49,7 @@ def _panel(*, busy: bool = False) -> GUIBrowserPanel:
     constructor. ``self.locked`` reads the fake logic; the busy predicate is the injected source of
     truth the panel pulls."""
     panel = GUIBrowserPanel.__new__(GUIBrowserPanel)
-    panel.logic = _FakeTreeLogic()
+    panel._logic = _FakeTreeLogic()
     panel._is_operation_active = lambda: busy
     return panel
 
@@ -71,16 +71,16 @@ class TestReconstructButtonLock:
     def test_busy_survives_a_tree_rebuild_cycle(self, recorder: _ConfigureRecorder) -> None:
         panel = _panel(busy=True)
 
-        panel.logic.locked = True
-        panel._set_tree_enabled(False)
-        panel.logic.locked = False
-        panel._set_tree_enabled(True)
+        panel._logic.locked = True
+        panel.set_tree_enabled(False)
+        panel._logic.locked = False
+        panel.set_tree_enabled(True)
 
         assert all(recorder.enabled[tag] is False for tag in RECONSTRUCT_BUTTONS)
 
     def test_tree_lock_alone_disables_reconstruct_buttons(self, recorder: _ConfigureRecorder) -> None:
         panel = _panel(busy=False)
-        panel.logic.locked = True
+        panel._logic.locked = True
         panel.refresh_action_buttons()
         assert all(recorder.enabled[tag] is False for tag in RECONSTRUCT_BUTTONS)
 
@@ -101,6 +101,6 @@ class TestReconstructDisabledTooltip:
 
     def test_tooltip_hidden_under_tree_lock_alone(self, recorder: _ConfigureRecorder) -> None:
         panel = _panel(busy=False)
-        panel.logic.locked = True
+        panel._logic.locked = True
         panel.refresh_action_buttons()
         assert recorder.shown[TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT] is False

@@ -76,12 +76,14 @@ class GUIInstructionDetailsPanel(GUIPanel):
         table_colors: TableColors,
         table_layout: TablesLayout,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
     ) -> None:
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
         self.general_table: GUITable
         self.parameters_table: GUITable
 
+        self._status_bar = status_bar
         self._shortcut_manager = shortcut_manager
         self._layout = layout
         self._general_layout = general_layout
@@ -347,6 +349,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             label=label,
             tooltip=self._period_tooltip if is_period else self._pitch_tooltip,
             status_message=self._msg_status_input_period if is_period else self._msg_status_input_pitch,
+            status_bar=self._status_bar,
             layout=self._general_layout.pitch_stepper,
             value_color=self._general_layout.colors.text.disabled,
             shortcut_manager=self._shortcut_manager,
@@ -388,7 +391,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
             TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
         ]:
-            GUIStatusBar.bind_to_item(tag, self._msg_status_input)
+            self._status_bar.bind_to_item(tag, self._msg_status_input)
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
 
     def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
@@ -424,8 +427,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
             callback=self._on_instruction_changed,
         )
 
-        GUIStatusBar.bind_to_item(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME, self._msg_status_input)
-        GUIStatusBar.bind_to_item(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT, self._msg_status_input)
+        self._status_bar.bind_to_item(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME, self._msg_status_input)
+        self._status_bar.bind_to_item(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT, self._msg_status_input)
         dpg.bind_item_handler_registry(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME, self._item_handler_tag)
 
     def _on_instruction_changed(self, *_arguments: Any) -> None:

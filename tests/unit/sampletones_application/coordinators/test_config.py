@@ -89,3 +89,34 @@ class TestPresentPendingLoadOutcomes:
 
         coordinator._dialogs.show_config_recovery.assert_not_called()
         coordinator._dialogs.show_error.assert_not_called()
+
+
+class TestHandleSave:
+    """A save failure within the save contract (``OSError`` family, ``ValueError`` for an empty
+    configuration) surfaces the save-failed error dialog; a failure outside the contract is a
+    bug and propagates."""
+
+    @pytest.mark.parametrize(
+        "error",
+        [PermissionError("denied"), ValueError("No configuration to save")],
+        ids=["io", "empty"],
+    )
+    def test_save_failure_shows_the_error_dialog(self, error: Exception, tmp_path: Path) -> None:
+        config_manager = _manager_with()
+        config_manager.save_config_to_file.side_effect = error
+        coordinator = _coordinator(config_manager)
+
+        coordinator._handle_save(0, {"file_path_name": str(tmp_path / "config.json")})
+
+        coordinator._dialogs.show_error.assert_called_once()
+        assert coordinator._dialogs.show_error.call_args.args[0] is error
+
+    def test_unexpected_save_failure_propagates(self, tmp_path: Path) -> None:
+        config_manager = _manager_with()
+        config_manager.save_config_to_file.side_effect = RuntimeError("bug")
+        coordinator = _coordinator(config_manager)
+
+        with pytest.raises(RuntimeError):
+            coordinator._handle_save(0, {"file_path_name": str(tmp_path / "config.json")})
+
+        coordinator._dialogs.show_error.assert_not_called()

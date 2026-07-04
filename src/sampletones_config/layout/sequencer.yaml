@@ -34,6 +34,12 @@ tracker:
     transpose: 30
     volume: 18
 
+history:
+  height: 260
+  margin: 5
+  selectable_column_weight: 0.0001
+  max_rendered_entries: 100
+
 colors:
   pattern_highlight: "#ffffff40"
   cell_cursor: "#4488ff60"
@@ -48,7 +54,16 @@ colors:
   order_column_current: "#ffffff20"
   order_column_playing: "#64dc6430"
   playback_row: "#64dc6440"
-  subcolumns:
-    instrument: "#ffffffff"
+  history_future: "#808080ff"
+  history_roles:
+    channel: "#88bbffff"
+    value: "#d0d0d0ff"
+    separator: "#707070ff"
+  text:
+    instrument: "#e0c860ff"
     transpose: "#a0a0a0ff"
     volume: "#64dc64ff"
+    sample: "#e0c860ff"
+    frame: "#22ccffff"
+    row: "#a0a0a0ff"
+    order: "#c8d0e0ff"

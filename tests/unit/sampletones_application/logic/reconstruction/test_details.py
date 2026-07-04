@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -12,6 +12,7 @@ from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.view_model.reconstruction.details import ReconstructionDetailsViewModel
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
 
 
@@ -47,7 +48,7 @@ class TestReconstructionDetailsLogicUpdateDisplay:
         mock_reconstruction_manager: MagicMock,
     ) -> None:
         mock_reconstruction_manager.current_features = None
-        received: List[Optional[FeatureData]] = []
+        received: List[Optional[Dict[GeneratorName, Features]]] = []
         details_logic.on_feature_data_changed = received.append
         details_logic.update_display()
         assert received == [None]
@@ -72,10 +73,10 @@ class TestReconstructionDetailsLogicUpdateDisplay:
     ) -> None:
         feature_data = FeatureData.load(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
-        received: List[Optional[FeatureData]] = []
+        received: List[Optional[Dict[GeneratorName, Features]]] = []
         details_logic.on_feature_data_changed = received.append
         details_logic.update_display()
-        assert received == [feature_data]
+        assert received == [feature_data.generators]
 
     def test_with_features_exposes_available_generators(
         self,

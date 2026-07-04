@@ -39,20 +39,10 @@ class ApplicationStateManager:
         try:
             APPLICATION_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
             save_yaml_atomic(APPLICATION_STATE_PATH, self.state.model_dump(mode="json"))
-        except (
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ) as exception:
+        except OSError as exception:
             logger.error_with_traceback(
                 exception,
                 f"File error while saving application state to {APPLICATION_STATE_PATH}",
-            )
-        except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(
-                exception,
-                f"Failed to save application state to {APPLICATION_STATE_PATH}",
             )
 
     def set_window_state(

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -23,8 +23,8 @@ from sampletones_application.coordinators.reconstructions import (
 )
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.services import (
+    RegeneratedInstrument,
     RegenerationResult,
     RegenerationService,
     ServiceCancelled,
@@ -71,6 +71,7 @@ class ReconstructionCoordinator:
         layout: LayoutConfig,
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
+        on_reconstruction_updated: Callable[[RegeneratedInstrument], None],
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
@@ -82,6 +83,7 @@ class ReconstructionCoordinator:
         self._layout = layout
         self._on_tab_switch = on_tab_switch
         self._on_session_state_changed_callback = on_session_state_changed
+        self._on_reconstruction_updated_callback = on_reconstruction_updated
 
         self._reconstruction_manager.session.on_state_changed = self._on_state_changed
         self._regeneration_service.subscribe(self._on_regeneration_result)
@@ -99,10 +101,6 @@ class ReconstructionCoordinator:
             raise RuntimeError("set_reconstructions_tab has not been called")
 
         return self._reconstructions_tab
-
-    @property
-    def reconstruction_session(self) -> ReconstructionSession:
-        return self._reconstruction_manager.session
 
     @property
     def reconstruction_name(self) -> Optional[str]:
@@ -348,14 +346,24 @@ class ReconstructionCoordinator:
         self._tab.close_reconstruction()
         self._session_manager.set_current_reconstruction(None)
 
-    def _on_updated(self) -> None:
+    def _on_updated(self, outcome: RegeneratedInstrument) -> None:
+        """Applies a regenerated reconstruction across the open document and project.
+
+        The owning-sample hook runs first, while the manager still holds the prior
+        reconstruction, so it can locate the owned sample by identity and record the
+        edit against the project history, tagged with the channel and feature the
+        ``outcome`` names. The open document then rebinds to the new reconstruction,
+        keeping the editor and any owned sample sharing one object.
+        """
+        self._on_reconstruction_updated_callback(outcome)
+        self._reconstruction_manager.apply_regenerated(outcome.reconstruction)
         self._tab.update_reconstruction()
         self._reconstruction_manager.mark_updated()
 
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:
-            case ServiceSuccess():
-                self._on_updated()
+            case ServiceSuccess(value=outcome):
+                self._on_updated(outcome)
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Regeneration failed")
                 self._dialogs.show_error(exception)

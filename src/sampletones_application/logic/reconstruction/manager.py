@@ -104,6 +104,20 @@ class ReconstructionManager(CallbackMixin):
         name = self._current_reconstruction.name
         self._current_reconstruction = ReconstructionData.from_reconstruction(reconstruction, name=name)
 
+    def apply_regenerated(self, reconstruction: Reconstruction) -> None:
+        """Adopts an edited reconstruction produced by regeneration.
+
+        The open document rebinds to the fresh reconstruction object so the editor
+        and any owning project sample continue to share one identity, while the
+        previous object is left untouched for the history to retain.
+        """
+        if self._current_reconstruction is None:
+            return
+
+        self._current_reconstruction = self._current_reconstruction.with_reconstruction(reconstruction)
+        self._coefficient = reconstruction.coefficient
+        self._load_reconstruction_features()
+
     def mark_updated(self) -> None:
         self._session.mark_updated()
 

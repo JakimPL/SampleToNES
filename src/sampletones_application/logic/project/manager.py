@@ -59,3 +59,17 @@ class ProjectManager:
 
     def mark_updated(self) -> None:
         self._session.mark_updated()
+
+    def install(self, project: Project, *, clean: bool) -> None:
+        """Swaps in a project restored from history, updating the session's dirty state.
+
+        ``clean`` is true when the restored state is exactly the one last saved to
+        disk; the session then reports no unsaved changes. Every other restored
+        state differs from the file until the user saves again, so the session
+        stays marked as having unsaved changes.
+        """
+        self._current = project
+        if clean:
+            self._session.mark_saved()
+        else:
+            self._session.mark_updated()

@@ -29,6 +29,11 @@ class Logger(metaclass=SingletonMeta):
         handler.setLevel(level)
         self._logger.addHandler(handler)
 
+    def set_level(self, level: int) -> None:
+        self._logger.setLevel(level)
+        for handler in self._logger.handlers:
+            handler.setLevel(level)
+
     def debug(self, message: str) -> None:
         self._logger.debug(message)
 

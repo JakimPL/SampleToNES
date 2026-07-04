@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -6,27 +6,21 @@ from sampletones_application.categories.elements.global_ import PlayerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.player import (
-    SUF_PLAYER_CONTROLS_GROUP,
-    SUF_PLAYER_ERROR_POPUP,
-    SUF_PLAYER_NO_AUDIO_POPUP,
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
     SUF_PLAYER_POSITION,
     SUF_PLAYER_STOP,
 )
 from sampletones_application.layout.player import PlayerLayout
-from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_item_label,
     dpg_set_value,
 )
-from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.player import PlayerViewModel
-from sampletones_shared.exceptions import PlaybackError
+from sampletones_shared.types.callback import VoidCallback
 
 
 class GUIAudioPlayerPanel(GUIPanel):
@@ -34,27 +28,19 @@ class GUIAudioPlayerPanel(GUIPanel):
         self,
         tag: str,
         parent: str,
-        player_logic: PlayerLogic,
-        on_position_changed: Optional[Callable[[int], None]] = None,
         *,
         layout: PlayerLayout,
         language_manager: LanguageManager,
-        dialogs: DialogsRenderer,
-    ):
+    ) -> None:
         self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
         self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
         self.stop_button_tag = f"{tag}{SUF_PLAYER_STOP}"
         self.position_text_tag = f"{tag}{SUF_PLAYER_POSITION}"
-        self.controls_group_tag = f"{tag}{SUF_PLAYER_CONTROLS_GROUP}"
 
-        self.no_audio_popup_tag = f"{tag}{SUF_PLAYER_NO_AUDIO_POPUP}"
-        self.error_popup_tag = f"{tag}{SUF_PLAYER_ERROR_POPUP}"
+        self.on_play: Optional[VoidCallback] = None
+        self.on_pause_or_resume: Optional[VoidCallback] = None
+        self.on_stop: Optional[VoidCallback] = None
 
-        self.player_logic = player_logic
-        self.player_logic.on_view_changed = self.update_view
-        self.player_logic.on_position_changed = on_position_changed
-
-        self._dialogs = dialogs
         self._layout = layout
         self._lbl_play = language_manager[
             Page.GLOBAL,
@@ -98,25 +84,12 @@ class GUIAudioPlayerPanel(GUIPanel):
             TextType.MESSAGE,
             PlayerElements.NO_AUDIO_LOADED,
         ]
-        self._msg_playback_error = language_manager[
-            Page.GLOBAL,
-            Panel.PLAYER,
-            TextType.MESSAGE,
-            PlayerElements.AUDIO_PLAYBACK_ERROR,
-        ]
-        self._ttl_no_audio = language_manager[
-            Page.GLOBAL,
-            Panel.PLAYER,
-            TextType.TITLE,
-            PlayerElements.NO_AUDIO_DIALOG_TITLE,
-        ]
 
         super().__init__(
             tag=tag,
             parent=parent,
             width=layout.panel.width,
             height=layout.panel.height,
-            init=True,
         )
 
     def create_panel(self) -> None:
@@ -146,21 +119,21 @@ class GUIAudioPlayerPanel(GUIPanel):
                 GUIButton(
                     tag=self.play_button_tag,
                     label=self._lbl_play,
-                    callback=self.play,
+                    callback=self._on_play_clicked,
                     enabled=False,
                     width=-1,
                 )
                 GUIButton(
                     tag=self.pause_button_tag,
                     label=self._lbl_pause,
-                    callback=self.pause_or_resume,
+                    callback=self._on_pause_or_resume_clicked,
                     enabled=False,
                     width=-1,
                 )
                 GUIButton(
                     tag=self.stop_button_tag,
                     label=self._lbl_stop,
-                    callback=self.stop,
+                    callback=self._on_stop_clicked,
                     enabled=False,
                     width=-1,
                 )
@@ -190,59 +163,11 @@ class GUIAudioPlayerPanel(GUIPanel):
         )
         dpg_set_value(self.position_text_tag, position_text)
 
-    def disable(self) -> None:
-        dpg_configure_item(self.controls_group_tag, enabled=False)
+    def _on_play_clicked(self) -> None:
+        self.call(self.on_play)
 
-    def enable(self) -> None:
-        dpg_configure_item(self.controls_group_tag, enabled=True)
+    def _on_pause_or_resume_clicked(self) -> None:
+        self.call(self.on_pause_or_resume)
 
-    def load(self, audio_data: AudioData) -> None:
-        self.disable()
-        self.player_logic.load_audio_data(audio_data)
-        self.enable()
-
-    def load_audio_data(self, audio_data: AudioData) -> None:
-        self.player_logic.load_audio_data(audio_data)
-
-    def clear_audio(self) -> None:
-        self.player_logic.clear_audio()
-
-    def play(self) -> None:
-        try:
-            self.player_logic.play()
-        except PlaybackError as exception:
-            self._dialogs.show_error(exception, self._msg_playback_error)
-
-    def pause_or_resume(self) -> None:
-        try:
-            self.player_logic.pause_or_resume()
-        except PlaybackError as exception:
-            self._dialogs.show_error(exception, self._msg_playback_error)
-
-    def pause(self) -> None:
-        self.player_logic.pause()
-
-    def resume(self) -> None:
-        self.player_logic.resume()
-
-    def stop(self) -> None:
-        self.player_logic.stop()
-
-    def is_loaded(self) -> bool:
-        return self.player_logic.is_loaded()
-
-    def is_playing(self) -> bool:
-        return self.player_logic.is_playing()
-
-    def is_paused(self) -> bool:
-        return self.player_logic.is_paused()
-
-    def _show_no_audio_dialog(self) -> None:
-        def content(parent: str) -> None:
-            dpg.add_text(self._msg_no_audio, parent=parent)
-
-        self._dialogs.show_modal(
-            tag=self.no_audio_popup_tag,
-            title=self._ttl_no_audio,
-            content=content,
-        )
+    def _on_stop_clicked(self) -> None:
+        self.call(self.on_stop)

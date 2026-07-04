@@ -1,13 +1,16 @@
-from typing import Callable, FrozenSet, Optional
+from typing import Callable, Dict, FrozenSet, Optional
 
 import numpy as np
 
 from sampletones_application.layout.behavior import SchedulingBehavior
-from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.view_model.reconstruction.details import ReconstructionDetailsViewModel
-from sampletones_application.view_model.reconstruction.update import ReconstructionUpdate
+from sampletones_application.view_model.reconstruction.details import (
+    ReconstructionDetailsViewModel,
+)
+from sampletones_application.view_model.reconstruction.update import (
+    ReconstructionUpdate,
+)
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.types.feature import FeatureValue
@@ -32,7 +35,7 @@ class ReconstructionDetailsLogic(CallbackMixin):
         self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
 
         self.on_view_changed: Optional[Callable[[ReconstructionDetailsViewModel], None]] = None
-        self.on_feature_data_changed: Optional[Callable[[Optional[FeatureData]], None]] = None
+        self.on_feature_data_changed: Optional[Callable[[Optional[Dict[GeneratorName, Features]]], None]] = None
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
 
     def update_display(self) -> None:
@@ -58,7 +61,7 @@ class ReconstructionDetailsLogic(CallbackMixin):
                 buttons_enabled=True,
             ),
         )
-        self.call(self.on_feature_data_changed, feature_data)
+        self.call(self.on_feature_data_changed, feature_data.generators)
 
     def handle_pitch_value_changed(self, generator_name: GeneratorName, value: int) -> None:
         self._schedule_reconstruction_update(

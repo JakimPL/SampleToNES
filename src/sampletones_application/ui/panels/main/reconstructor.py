@@ -9,7 +9,6 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ReconstructorElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.updates import GenerationSettingsUpdate
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
 )
@@ -30,6 +29,7 @@ from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
+from sampletones_application.view_model.main.updates import GenerationSettingsUpdate
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_DRIVE
 from sampletones_shared.types.application import Sender
@@ -44,10 +44,12 @@ class GUIReconstructorPanel(GUIPanel):
         input_width: int,
         panel_height: int,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
     ) -> None:
         self._view = initial_view
         self._layout = layout
         self._input_width = input_width
+        self._status_bar = status_bar
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
         self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
 
@@ -178,7 +180,7 @@ class GUIReconstructorPanel(GUIPanel):
         )
 
         dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._item_handler_tag)
-        GUIStatusBar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._msg_status_input)
+        self._status_bar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._msg_status_input)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._tooltip_drive)

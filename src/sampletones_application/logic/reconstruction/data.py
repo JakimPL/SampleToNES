@@ -1,10 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import List, Optional, Self
 
 import numpy as np
 
 from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import load_audio
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
@@ -41,6 +42,20 @@ class ReconstructionData:
             reconstruction,
             filepath=None,
             name=name,
+        )
+
+    def with_reconstruction(self, reconstruction: Reconstruction) -> Self:
+        """Rebinds this data to an edited reconstruction, keeping name and origin.
+
+        A regeneration produces a fresh reconstruction object; the display name,
+        file location and source audio are unchanged, so only the reconstruction
+        and its derived features are refreshed.
+        """
+        return replace(
+            self,
+            reconstruction=reconstruction,
+            config=reconstruction.config,
+            feature_data=FeatureData.load(reconstruction),
         )
 
     @classmethod
@@ -93,18 +108,15 @@ class ReconstructionData:
             logger.warning(f"Could not load original audio from '{audio_filepath}'. Using silent audio instead")
             return np.zeros_like(reconstruction.approximation)
 
+    def waveform_data(self) -> WaveformData:
+        """Projects the slice of this data the waveform display renders."""
+        return WaveformData(
+            original_audio=self.original_audio,
+            approximation=self.reconstruction.approximation,
+            approximations=dict(self.reconstruction.approximations),
+            coefficient=self.reconstruction.coefficient,
+            frame_length=self.reconstruction.config.frame_length,
+        )
+
     def get_partials(self, generator_names: List[GeneratorName]) -> np.ndarray:
-        if not generator_names:
-            return np.zeros_like(self.original_audio)
-
-        selected_approximations = [
-            self.reconstruction.approximations[generator_name]
-            for generator_name in generator_names
-            if generator_name in self.reconstruction.approximations
-        ]
-
-        if not selected_approximations:
-            return np.zeros_like(self.original_audio)
-
-        partials: np.ndarray = np.sum(selected_approximations, axis=0)
-        return partials
+        return self.waveform_data().partials(generator_names)

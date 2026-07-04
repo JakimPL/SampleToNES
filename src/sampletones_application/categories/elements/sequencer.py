@@ -86,3 +86,43 @@ class SequencerInstrumentsElements(AbstractElement):
     CONTEXT_MOVE_DOWN = "context_move_down"
     CONTEXT_MOVE_TOP = "context_move_top"
     CONTEXT_MOVE_BOTTOM = "context_move_bottom"
+
+
+class SequencerHistoryElements(AbstractElement):
+    HISTORY_TEXT = "history_text"
+    UNDO = "undo"
+    REDO = "redo"
+    EMPTY = "empty"
+    LOOP_ON = "loop_on"
+    LOOP_OFF = "loop_off"
+
+
+class SequencerHistoryActionElements(AbstractElement):
+    """Display labels for history entries; values mirror ``HistoryAction`` members."""
+
+    INITIAL = "initial"
+    EDIT_ROW = "edit_row"
+    NOTE_OFF = "note_off"
+    CLEAR_ROW = "clear_row"
+    CLEAR_SUBCOLUMN = "clear_subcolumn"
+    ADJUST_TRANSPOSE = "adjust_transpose"
+    ADJUST_VOLUME = "adjust_volume"
+    ADD_FRAME = "add_frame"
+    REMOVE_FRAME = "remove_frame"
+    DUPLICATE_FRAME = "duplicate_frame"
+    CLEAR_FRAME = "clear_frame"
+    MOVE_FRAME = "move_frame"
+    SET_ORDER_ENTRY = "set_order_entry"
+    ADD_SAMPLE = "add_sample"
+    REMOVE_SAMPLE = "remove_sample"
+    RENAME_SAMPLE = "rename_sample"
+    MOVE_SAMPLE = "move_sample"
+    DUPLICATE_SAMPLE = "duplicate_sample"
+    SET_SAMPLE_LOOP = "set_sample_loop"
+    SET_TEMPO = "set_tempo"
+    SET_SPEED = "set_speed"
+    SET_NES_FREQUENCY = "set_nes_frequency"
+    SET_ROWS_PER_PATTERN = "set_rows_per_pattern"
+    EDIT_RECONSTRUCTION = "edit_reconstruction"
+    EDIT_PROJECT_PROPERTIES = "edit_project_properties"
+    UNTRACKED = "untracked"

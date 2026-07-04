@@ -1,21 +1,38 @@
 from pathlib import Path
-from typing import Callable, FrozenSet, List, Optional, Tuple
+from typing import Callable, FrozenSet, List, Optional, Protocol, Tuple
+
+import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.services.export import ExportService
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
     ReconstructionPathViewModel,
     ReconstructionViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
+from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILE_INSTRUMENT
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+
+
+class ExportServiceProtocol(Protocol):
+    """The slice of the export service the reconstruction panel logic drives.
+
+    Typing the collaborator structurally keeps the logic layer independent of
+    the service implementation; the composition root supplies the real service.
+    """
+
+    def export_wav(self, filepath: Path, sample_rate: int, audio: np.ndarray) -> None: ...
+
+    def export_instrument(self, filepath: Path, instrument_name: str, feature: Features) -> None: ...
+
+    def export_instruments(self, directory: Path, exports: List[Tuple[Path, str, Features]]) -> None: ...
 
 
 class ReconstructionPanelLogic(CallbackMixin):
@@ -23,7 +40,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self,
         session_manager: SessionManager,
         reconstruction_manager: ReconstructionManager,
-        export_service: ExportService,
+        export_service: ExportServiceProtocol,
     ) -> None:
         self._session_manager = session_manager
         self._reconstruction_manager = reconstruction_manager
@@ -35,8 +52,8 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
-        self.on_waveform_load_changed: Optional[Callable[[ReconstructionData, List[GeneratorName]], None]] = None
-        self.on_waveform_update_changed: Optional[Callable[[ReconstructionData, List[GeneratorName]], None]] = None
+        self.on_waveform_load_changed: Optional[Callable[[WaveformData, List[GeneratorName]], None]] = None
+        self.on_waveform_update_changed: Optional[Callable[[WaveformData, List[GeneratorName]], None]] = None
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
@@ -72,7 +89,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data,
+            reconstruction_data.waveform_data(),
             self._selected_generators,
         )
         self._emit_audio_data()
@@ -84,7 +101,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.call(
             self.on_waveform_update_changed,
-            reconstruction_data,
+            reconstruction_data.waveform_data(),
             self._selected_generators,
         )
         if self._current_audio_source != AudioSourceType.ORIGINAL:
@@ -119,7 +136,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             return
 
-        self.call(self.on_waveform_load_changed, reconstruction_data, generators)
+        self.call(self.on_waveform_load_changed, reconstruction_data.waveform_data(), generators)
         self._emit_audio_data()
 
     def request_export_instrument_dialog(self, generator_name: GeneratorName) -> None:

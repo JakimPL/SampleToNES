@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -13,6 +13,7 @@ from sampletones_shared.types.callback import Callback
 class ShortcutManager:
     def __init__(self) -> None:
         self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, Callback]] = {}
+        self._aliases: Dict[ShortcutId, List[Shortcut]] = {}
         self._focused_input: Optional[Sender] = None
 
         self._handler_registry: Optional[int] = None
@@ -25,6 +26,15 @@ class ShortcutManager:
         callback: Callback,
     ) -> None:
         self._shortcuts[shortcut_id] = (shortcut, callback)
+
+    def register_alias(self, shortcut_id: ShortcutId, shortcut: Shortcut) -> None:
+        """Binds an additional key combination to an already registered action.
+
+        The primary shortcut keeps the action's display string in menus and
+        tooltips; an alias extends only the key handling, so one action honours
+        several conventional combinations.
+        """
+        self._aliases.setdefault(shortcut_id, []).append(shortcut)
 
     @property
     def is_input_focused(self) -> bool:
@@ -53,23 +63,22 @@ class ShortcutManager:
 
     def bind_all(self) -> None:
         with dpg.handler_registry() as self._handler_registry:
-            for shortcut, callback in self._shortcuts.values():
-                if not shortcut.is_bindable:
-                    continue
+            for shortcut_id, (shortcut, callback) in self._shortcuts.items():
+                self._bind(shortcut, callback)
+                for alias in self._aliases.get(shortcut_id, []):
+                    self._bind(alias, callback)
 
-                def handler(
-                    shortcut: Shortcut,
-                    callback: Callback,
-                ) -> Callable[[Sender, Any, Any], None]:
-                    def inner(sender: Sender, app_data: Any, user_data: Any) -> None:
-                        self._handle_key(shortcut, callback)
+    def _bind(self, shortcut: Shortcut, callback: Callback) -> None:
+        if not shortcut.is_bindable:
+            return
 
-                    return inner
+        def inner(sender: Sender, app_data: Any, user_data: Any) -> None:
+            self._handle_key(shortcut, callback)
 
-                dpg.add_key_press_handler(
-                    key=shortcut.key,
-                    callback=handler(shortcut, callback),
-                )
+        dpg.add_key_press_handler(
+            key=shortcut.key,
+            callback=inner,
+        )
 
     def _handle_key(self, shortcut: Shortcut, callback: Callback) -> None:
         if not self.is_input_focused and self._modifiers_match(shortcut.modifiers):

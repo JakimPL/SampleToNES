@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -12,7 +12,6 @@ from sampletones_application.categories.elements.reconstructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
@@ -29,49 +28,51 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_TREE,
     TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
 )
-from sampletones_application.layout.behavior import (
-    SchedulingBehavior,
-    TreeBehavior,
-)
-from sampletones_application.logic.reconstruction.browser import BrowserLogic
+from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
+from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.utils.thread import concurrent
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
+    Tree,
     TreeNode,
     TreeTraversal,
     traverse,
 )
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 
 class GUIBrowserPanel(GUITreePanel):
     def __init__(
         self,
-        browser_logic: BrowserLogic,
-        session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        tree: Tree,
+        tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        scheduling: SchedulingBehavior,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         colors: TreeColors,
         is_operation_active: Callable[[], bool],
     ) -> None:
-        self.browser_logic = browser_logic
+        self.on_refresh_tree: Optional[VoidCallback] = None
+        self.on_reconstruct_file: Optional[VoidCallback] = None
+        self.on_reconstruct_directory: Optional[VoidCallback] = None
+        self.on_load_reconstruction: Optional[PathCallback] = None
+
         self._tree_behavior = tree_behavior
 
         self._is_operation_active = is_operation_active
@@ -116,14 +117,12 @@ class GUIBrowserPanel(GUITreePanel):
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         super().__init__(
-            tree=self.browser_logic.tree,
+            tree=tree,
             tag=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
             parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_RECONSTRUCTIONS_BROWSER_TREE,
-            session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
-            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -131,6 +130,7 @@ class GUIBrowserPanel(GUITreePanel):
                 TreeElements.SEARCH,
             ],
             language_manager=language_manager,
+            status_bar=status_bar,
             colors=colors,
         )
 
@@ -147,7 +147,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._create_buttons()
             self._create_tree_window()
 
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     def _setup_handlers(self) -> None:
         self._node_handlers = {
@@ -179,7 +179,7 @@ class GUIBrowserPanel(GUITreePanel):
                 tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
                 label=self._lbl_refresh,
                 width=-1,
-                callback=self._rebuild_tree,
+                callback=self.rebuild_tree,
             )
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT):
                 GUIButton(
@@ -215,16 +215,16 @@ class GUIBrowserPanel(GUITreePanel):
                     pass
 
     def refresh(self) -> None:
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     @concurrent(wait=False, method_bound=True)
-    def _rebuild_tree(self) -> None:
+    def rebuild_tree(self) -> None:
         if self.locked:
             return
 
         self.lock()
         try:
-            self.browser_logic.refresh_tree()
+            self.call(self.on_refresh_tree)
             self.build_tree()
         finally:
             self.unlock()
@@ -249,7 +249,7 @@ class GUIBrowserPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self.logic.is_node_favorite(node)
+        is_favorite = self._logic.is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
@@ -275,7 +275,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         state.parent = node_tag
 
-    def _set_tree_enabled(self, enabled: bool) -> None:
+    def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE, enabled=enabled)
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS, enabled=enabled)
         self._apply_action_button_states()
@@ -296,10 +296,10 @@ class GUIBrowserPanel(GUITreePanel):
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT, show=operation_active)
 
     def _reconstruct_file(self) -> None:
-        self.call(self.browser_logic.on_reconstruct_file)
+        self.call(self.on_reconstruct_file)
 
     def _reconstruct_directory(self) -> None:
-        self.call(self.browser_logic.on_reconstruct_directory)
+        self.call(self.on_reconstruct_directory)
 
     def _on_directory_node_clicked(
         self,
@@ -323,7 +323,7 @@ class GUIBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, node_tag = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.logic.request_autoplay(node)
+            self._logic.request_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             self._show_reconstruction_context_menu(node, node_tag)
@@ -337,7 +337,7 @@ class GUIBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.logic.cancel_autoplay()
+            self._logic.cancel_autoplay()
             self._load_reconstruction(node)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
@@ -374,8 +374,8 @@ class GUIBrowserPanel(GUITreePanel):
         self._load_reconstruction(user_data)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
-        self.logic.cancel_autoplay()
+        self._logic.cancel_autoplay()
         self.call(
-            self.browser_logic.load_reconstruction_with_confirmation,
+            self.on_load_reconstruction,
             node.filepath,
         )

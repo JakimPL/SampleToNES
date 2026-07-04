@@ -1,10 +1,8 @@
-from typing import Callable, FrozenSet, Optional
+from typing import Callable, FrozenSet, Optional, Protocol
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
-from sampletones_application.services.song_player.player import SongPlayerService
 from sampletones_application.services.song_player.result import (
     SongPlaybackError,
     SongPlaybackStopped,
@@ -13,32 +11,67 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
-class SongPlayerLogic(CallbackMixin):
-    """Bridges SongPlayerService results to the coordinator.
+class SongPlayerServiceProtocol(Protocol):
+    """The slice of the song-player service the playback logic drives.
 
-    Owns the RowSynthesizer and SongPlayerService. All playback controls are
-    forwarded here from the UI panel. Position updates are forwarded to the
-    coordinator via callbacks.
+    Typing the collaborator structurally keeps the logic layer bound to the
+    service's result contract alone; the coordinator supplies the real service.
+    """
+
+    @property
+    def alive(self) -> bool: ...
+
+    @property
+    def is_playing(self) -> bool: ...
+
+    @property
+    def is_paused(self) -> bool: ...
+
+    def subscribe(self, handler: Callable[[SongPlayerResult], None]) -> None: ...
+
+    def start(
+        self,
+        *,
+        order_position: int,
+        row_index: int,
+        active_channels: FrozenSet[GeneratorName],
+    ) -> None: ...
+
+    def stop(self) -> None: ...
+
+    def pause(self) -> None: ...
+
+    def resume(self) -> None: ...
+
+    def seek(self, order_position: int) -> None: ...
+
+    def relocate(self, order_position: int) -> None: ...
+
+
+class SongPlayerLogic(CallbackMixin):
+    """Bridges song-player service results to the coordinator.
+
+    All playback controls are forwarded here from the UI panel. Position
+    updates are forwarded to the coordinator via callbacks.
     """
 
     def __init__(
         self,
         audio_device_manager: AudioDeviceManager,
         project_controller: ProjectController,
-        config: Config,
         session_manager: SessionManager,
+        *,
+        service: SongPlayerServiceProtocol,
     ) -> None:
         self._audio_device_manager = audio_device_manager
         self._project_controller = project_controller
         self._session_manager = session_manager
-        self._synthesizer = RowSynthesizer(project_controller, config)
-        self._service = SongPlayerService(audio_device_manager, self._synthesizer)
+        self._service = service
         self._service.subscribe(self._on_service_result)
         self._audio_device_manager.on_acquire_output = self.stop
         self._audio_device_manager.external_output_priority = self._external_output_priority
@@ -127,6 +160,9 @@ class SongPlayerLogic(CallbackMixin):
 
     def set_follow_playback(self, value: bool) -> None:
         self._session_manager.set_follow_playback(value)
+        self._emit_view()
+
+    def refresh_view(self) -> None:
         self._emit_view()
 
     def _external_output_priority(self) -> Optional[int]:

@@ -161,3 +161,7 @@ class SessionManager:
     @property
     def favorites(self) -> Set[Path]:
         return self._config_manager.favorites
+
+    @property
+    def history_budget(self) -> int:
+        return self._config_manager.config.history.budget
