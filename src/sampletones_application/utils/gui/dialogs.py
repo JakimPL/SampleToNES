@@ -42,7 +42,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.trace import GUITraceback
-from sampletones_application.utils.gui.align import table_wrapper
+from sampletones_application.utils.gui.align import center_item, table_wrapper
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_item,
@@ -51,21 +51,6 @@ from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.callback import Callback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
-
-
-def get_center(width: int, height: int) -> tuple[int, int]:
-    x = (dpg.get_viewport_width() - width) / 2
-    y = (dpg.get_viewport_height() - height) / 2
-    return round(x), round(y)
-
-
-def center_item(tag: str, width: int, height: int) -> None:
-    if not dpg.does_item_exist(tag):
-        return
-
-    width, height = dpg.get_item_rect_size(tag)
-    x, y = get_center(width, height)
-    dpg.set_item_pos(tag, [x, y])
 
 
 def get_dialog_tag(base_tag: str) -> str:

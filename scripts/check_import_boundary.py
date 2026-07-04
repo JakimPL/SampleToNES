@@ -95,6 +95,7 @@ RULES: list[BoundaryRule] = [
             "sampletones_application.config",
             "sampletones_application.application",
             "sampletones_application.shell",
+            "sampletones_application.utils.gui.dialogs",
         ],
     ),
 ]
