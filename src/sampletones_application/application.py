@@ -12,7 +12,10 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.deployment import DeploymentConfig, load_deployment_config
+from sampletones_application.config.deployment import (
+    DeploymentConfig,
+    load_deployment_config,
+)
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
@@ -44,7 +47,10 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.project.title.document import ReconstructionTitlePart, document_title
+from sampletones_application.logic.project.title.document import (
+    ReconstructionTitlePart,
+    document_title,
+)
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import (
@@ -65,7 +71,9 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.menu import MenuBar
-from sampletones_application.ui.panels.project_properties import GUIProjectPropertiesWindow
+from sampletones_application.ui.panels.project_properties import (
+    GUIProjectPropertiesWindow,
+)
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
@@ -75,10 +83,16 @@ from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
-from sampletones_application.view_model.shared.audio_settings import AudioSettingsViewModel
+from sampletones_application.view_model.reconstruction.add_to_sequencer import (
+    AddToSequencerViewModel,
+)
+from sampletones_application.view_model.shared.audio_settings import (
+    AudioSettingsViewModel,
+)
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
-from sampletones_application.view_model.shared.project_properties import ProjectPropertiesViewModel
+from sampletones_application.view_model.shared.project_properties import (
+    ProjectPropertiesViewModel,
+)
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import BufferSize, SampleRate
@@ -238,7 +252,7 @@ class Application:
             on_audio_state_changed=self._update_menu,
             on_generation_state_changed=self._on_library_operation_changed,
             is_operation_active=self._is_operation_active,
-            is_converter_visible=lambda: self._main_tab.is_converter_panel_visible(),
+            is_converter_visible=self._is_converter_panel_visible,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -514,6 +528,12 @@ class Application:
             default_path=str(self.session_manager.get_reconstruction_path()),
             show=True,
         )
+
+    def _is_converter_panel_visible(self) -> bool:
+        if self._main_tab is None:
+            return False
+
+        return self._main_tab.is_converter_panel_visible()
 
     def _is_operation_active(self) -> bool:
         return self._main_tab.is_converter_active() or self._instructions_tab.is_library_generating()
