@@ -90,7 +90,7 @@ class ConfigCoordinator:
                     GlobalMessageElements.CONFIGURATION_SAVED_SUCCESSFULLY,
                 ]
             )
-        except Exception as exception:  # TODO: specify exception type
+        except (OSError, ValueError) as exception:
             logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
             self._dialogs.show_error(
                 exception,

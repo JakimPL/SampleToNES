@@ -1,11 +1,15 @@
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_core import paths
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
+from sampletones_shared.exceptions import InvalidReconstructionError
 
 
 def _tree(
@@ -274,3 +278,43 @@ class TestTreeLogicSearch:
         tree.on_search_update_needed = lambda: None
         tree.schedule_search_update("test")
         assert tree._pending_search_query is None
+
+
+class TestReconstructionAutoplayFailure:
+    """A reconstruction file under the cursor is untrusted input: any load or playback failure in
+    the domain (``SampleToNESError``) or I/O (``OSError``) families reports through
+    ``on_autoplay_error``; a failure outside those families is a bug and propagates."""
+
+    @pytest.mark.parametrize(
+        "error",
+        [InvalidReconstructionError("corrupt"), PermissionError("denied")],
+        ids=["domain", "io"],
+    )
+    def test_load_failure_reports_autoplay_error(self, tmp_path: Path, error: Exception) -> None:
+        audio_device_manager = MagicMock()
+        tree = _tree(audio_device_manager=audio_device_manager)
+        tree.on_autoplay_error = MagicMock()
+        node = _file_node(tmp_path / f"sample{paths.EXT_FILE_RECONSTRUCTION}")
+
+        with patch(
+            "sampletones_application.logic.shared.tree.Reconstruction.load",
+            side_effect=error,
+        ):
+            tree.request_autoplay(node)
+
+        tree.on_autoplay_error.assert_called_once_with(error)
+        audio_device_manager.play.assert_not_called()
+
+    def test_unexpected_failure_propagates(self, tmp_path: Path) -> None:
+        tree = _tree()
+        tree.on_autoplay_error = MagicMock()
+        node = _file_node(tmp_path / f"sample{paths.EXT_FILE_RECONSTRUCTION}")
+
+        with patch(
+            "sampletones_application.logic.shared.tree.Reconstruction.load",
+            side_effect=RuntimeError("bug"),
+        ):
+            with pytest.raises(RuntimeError):
+                tree.request_autoplay(node)
+
+        tree.on_autoplay_error.assert_not_called()

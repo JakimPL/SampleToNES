@@ -126,7 +126,7 @@ class GUIInstructionPanel(GUIPanel):
                 config.sample_rate,
                 config.window_size,
             )
-        except Exception as exception:
+        except (KeyError, IndexError, ValueError) as exception:
             logger.error_with_traceback(exception, "Error while plotting library data")
             raise LibraryDisplayError("Could not display library data") from exception
 

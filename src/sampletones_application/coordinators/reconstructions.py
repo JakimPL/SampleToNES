@@ -58,6 +58,7 @@ from sampletones_shared.exceptions import (
     InvalidMetadataError,
     InvalidReconstructionError,
     InvalidReconstructionValuesError,
+    LoadReconstructionError,
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -535,10 +536,10 @@ class ReconstructionsTabCoordinator:
                 f"Deserialization error while loading reconstruction from {filepath}",
             )
             self._dialogs.show_error(exception, self._msg_deserialization_error)
-        except Exception as exception:  # pylint: disable=broad-exception-caught
+        except LoadReconstructionError as exception:
             logger.error_with_traceback(
                 exception,
-                f"Unexpected error while loading reconstruction data from {filepath}",
+                f"Unhandled load error while loading reconstruction data from {filepath}",
             )
             self._dialogs.show_error(exception, self._msg_load_error)
         finally:

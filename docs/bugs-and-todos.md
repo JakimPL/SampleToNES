@@ -37,11 +37,6 @@
 
 * Per-tab undo routing (analogous to `PlaybackRouter`) once standalone
   reconstruction documents gain their own history
-* Broad `except Exception` sites pending narrowing to specific types:
-  `coordinators/config.py` (`_handle_save`), `coordinators/reconstructions.py`
-  (`load_reconstruction` tail), `logic/instruction/library.py` (load ladder),
-  `logic/main/converter.py` (`_assign_paths`), `logic/shared/tree.py`
-  (`_play_file`), `ui/panels/instruction/instruction.py` (`display_instruction`)
 * `LibraryLogic` holds mutable presentation state (status text, progress
   value/overlay) and hardcodes two display strings; the projection belongs in
   the view model with text from `LanguageManager`

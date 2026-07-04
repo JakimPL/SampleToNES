@@ -279,10 +279,6 @@ class ConverterLogic(CallbackMixin):
             logger.error("Invalid path")
             self.call(self.on_error, exception)
             return False
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to determine output path")
-            self.call(self.on_error, exception)
-            return False
         return True
 
     def _wait_for_library_and_start(self) -> None:

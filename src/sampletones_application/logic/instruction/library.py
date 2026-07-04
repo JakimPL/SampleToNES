@@ -42,6 +42,7 @@ from sampletones_shared.exceptions import (
     InvalidLibraryDataError,
     InvalidLibraryDataValuesError,
     InvalidMetadataError,
+    LoadLibraryError,
     WindowNotAvailableError,
 )
 from sampletones_shared.logger import logger
@@ -425,7 +426,7 @@ class LibraryLogic(CallbackMixin):
                 f"Deserialization error loading library for key {library_key}",
             )
             self.call(self.on_load_error, exception, self._msg_deserialization_error)
-        except Exception as exception:  # TODO: narrow down exception types
+        except LoadLibraryError as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
             self.call(self.on_load_error, exception, self._msg_load_error)
         finally:

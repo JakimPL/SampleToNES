@@ -145,3 +145,42 @@ class TestStartConversionGate:
 
         converter_logic.generate_library.assert_called_once()
         assert converter_logic._phase == ConversionPhase.WAITING
+
+
+class TestAssignPaths:
+    """``get_output_path``'s contract is the ``OSError`` family: those failures abort the
+    conversion and report through ``on_error``; a failure outside the contract is a bug and
+    propagates."""
+
+    @pytest.mark.parametrize(
+        "error",
+        [FileNotFoundError("missing"), OSError("invalid path")],
+        ids=["missing", "invalid"],
+    )
+    def test_path_failure_reports_error_and_aborts(
+        self,
+        converter_logic: ConverterLogic,
+        error: Exception,
+    ) -> None:
+        converter_logic.on_error = MagicMock()
+
+        with patch(
+            "sampletones_application.logic.main.converter.get_output_path",
+            side_effect=error,
+        ):
+            result = converter_logic._assign_paths(Path("/tmp/input.wav"), MagicMock())
+
+        assert result is False
+        converter_logic.on_error.assert_called_once_with(error)
+
+    def test_unexpected_failure_propagates(self, converter_logic: ConverterLogic) -> None:
+        converter_logic.on_error = MagicMock()
+
+        with patch(
+            "sampletones_application.logic.main.converter.get_output_path",
+            side_effect=KeyError("drive"),
+        ):
+            with pytest.raises(KeyError):
+                converter_logic._assign_paths(Path("/tmp/input.wav"), MagicMock())
+
+        converter_logic.on_error.assert_not_called()
