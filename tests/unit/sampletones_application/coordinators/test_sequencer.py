@@ -518,7 +518,7 @@ def wired_history_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCo
     instance._project_controller = controller
     instance._history = history
     monkeypatch.setattr(instance, "refresh", MagicMock())
-    history.reset()
+    controller.new()
     return instance
 
 
@@ -536,6 +536,20 @@ class TestHistoryResetWiring:
 
         assert len(coordinator._history.entries) == 1
         assert coordinator._history.entries[0].action is HistoryAction.INITIAL
+
+    def test_closing_the_project_empties_history(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+
+        controller.close()
+
+        assert len(coordinator._history.entries) == 0
+        assert coordinator._history.can_undo is False
 
     def test_undo_keeps_the_stack_it_navigates(
         self,

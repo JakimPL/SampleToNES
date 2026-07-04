@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -31,17 +31,29 @@ from sampletones_application.view_model.shared.history import HistoryDetailRole,
 from sampletones_shared.types.application import Sender
 
 EntryWindow = Tuple[HistoryEntryViewModel, ...]
-WindowStructure = Tuple[Tuple[int, str, Tuple[HistoryDetailSegment, ...]], ...]
+
+APPEND_TO_TABLE: Final[int] = 0
 
 
 @dataclass
 class _EntryRow:
-    """The widgets and cursor-relative state of one rendered history row."""
+    """The widgets and rendered state of one history row."""
 
+    row: int
     selectable: int
     group: int
+    label: str
+    segments: Tuple[HistoryDetailSegment, ...]
     is_current: bool
     is_future: bool
+
+    def matches(self, entry: HistoryEntryViewModel) -> bool:
+        return (self.label, self.segments, self.is_current, self.is_future) == (
+            entry.label,
+            entry.detail_segments,
+            entry.is_current,
+            entry.is_future,
+        )
 
 
 class GUISequencerHistoryPanel(GUIPanel):
@@ -60,7 +72,7 @@ class GUISequencerHistoryPanel(GUIPanel):
     ) -> None:
         self._layout = layout
         self._rows: Dict[int, _EntryRow] = {}
-        self._rendered_structure: Optional[WindowStructure] = None
+        self._table: Optional[int] = None
 
         self.on_undo: Optional[Callable[[], None]] = None
         self.on_redo: Optional[Callable[[], None]] = None
@@ -141,12 +153,10 @@ class GUISequencerHistoryPanel(GUIPanel):
     def update_view(self, view_model: HistoryViewModel) -> None:
         self._update_actions(view_model)
         window = self._window(view_model)
-        structure = self._structure(window)
-        if structure == self._rendered_structure:
-            self._restyle(window)
+        if window and self._table is not None:
+            self._sync(window)
             return
 
-        self._rendered_structure = structure
         self._rebuild(window)
 
     def _update_actions(self, view_model: HistoryViewModel) -> None:
@@ -169,31 +179,52 @@ class GUISequencerHistoryPanel(GUIPanel):
         start = min(max(view_model.cursor - limit // 2, 0), len(entries) - limit)
         return entries[start : start + limit]
 
-    @staticmethod
-    def _structure(window: EntryWindow) -> WindowStructure:
-        return tuple((entry.index, entry.label, entry.detail_segments) for entry in window)
+    def _sync(self, window: EntryWindow) -> None:
+        """Aligns the rendered rows with the window, touching only what changed.
 
-    def _restyle(self, window: EntryWindow) -> None:
-        """Repaints only the rows whose cursor-relative state changed.
-
-        Undo, redo and jumps keep the rendered structure identical — only the
-        current marker and the redo-branch dimming move — so stepping through
-        history repaints the affected rows in place instead of recreating the
-        whole table.
+        Rows are keyed by entry index: rows leaving the window are removed, rows
+        the window gains are inserted at their display position, and rows whose
+        text or cursor-relative state changed are repainted in place. Appends,
+        coalesced replacements, window slides, and undo/redo therefore each cost
+        a handful of rows rather than a table rebuild.
         """
-        for entry in window:
-            row = self._rows[entry.index]
-            if (row.is_current, row.is_future) == (entry.is_current, entry.is_future):
-                continue
+        desired = {entry.index for entry in window}
+        for index in list(self._rows):
+            if index not in desired:
+                dpg.delete_item(self._rows.pop(index).row)
 
-            row.is_current = entry.is_current
-            row.is_future = entry.is_future
-            dpg.set_value(row.selectable, entry.is_current)
-            dpg.delete_item(row.group, children_only=True)
-            self._fill_entry_texts(row.group, entry)
+        for entry in window:
+            row = self._rows.get(entry.index)
+            if row is None:
+                self._insert_row(entry)
+            elif not row.matches(entry):
+                self._repaint_row(row, entry)
+
+    def _insert_row(self, entry: HistoryEntryViewModel) -> None:
+        """Places a new row at the position its index dictates.
+
+        The table displays entries newest-first, so a row belongs directly above
+        the rendered row with the closest smaller index; an entry older than
+        every rendered one lands at the bottom.
+        """
+        assert self._table is not None
+
+        older = [index for index in self._rows if index < entry.index]
+        before = self._rows[max(older)].row if older else APPEND_TO_TABLE
+        self._create_entry(self._table, entry, before=before)
+
+    def _repaint_row(self, row: _EntryRow, entry: HistoryEntryViewModel) -> None:
+        row.label = entry.label
+        row.segments = entry.detail_segments
+        row.is_current = entry.is_current
+        row.is_future = entry.is_future
+        dpg.set_value(row.selectable, entry.is_current)
+        dpg.delete_item(row.group, children_only=True)
+        self._fill_entry_texts(row.group, entry)
 
     def _rebuild(self, window: EntryWindow) -> None:
         self._rows = {}
+        self._table = None
         dpg.delete_item(TAG_SEQUENCER_HISTORY_WINDOW_LIST, children_only=True)
         if window:
             self._create_entry_list(window)
@@ -214,17 +245,18 @@ class GUISequencerHistoryPanel(GUIPanel):
             borders_innerV=False,
             borders_outerV=False,
         )
+        self._table = table
         dpg.add_table_column(
             parent=table,
             init_width_or_weight=self._layout.history.selectable_column_weight,
         )
         dpg.add_table_column(parent=table)
         for entry in reversed(window):
-            self._create_entry(table, entry)
+            self._create_entry(table, entry, before=APPEND_TO_TABLE)
 
         ThemeRegistry.get(TAG_SEQUENCER_HISTORY_THEME_LIST).bind_to_item(table)
 
-    def _create_entry(self, table: int, entry: HistoryEntryViewModel) -> None:
+    def _create_entry(self, table: int, entry: HistoryEntryViewModel, *, before: int) -> None:
         """Renders one entry as a full-width selectable with coloured text on top.
 
         A ``span_columns`` selectable backs the whole row, so clicking anywhere
@@ -234,7 +266,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         the non-interactive text passes clicks through to the selectable beneath.
         A future (redo) entry greys every token.
         """
-        with dpg.table_row(parent=table):
+        with dpg.table_row(parent=table, before=before) as row:
             selectable = dpg.add_selectable(
                 label="",
                 span_columns=True,
@@ -247,8 +279,11 @@ class GUISequencerHistoryPanel(GUIPanel):
 
         self._fill_entry_texts(group, entry)
         self._rows[entry.index] = _EntryRow(
+            row=row,
             selectable=selectable,
             group=group,
+            label=entry.label,
+            segments=entry.detail_segments,
             is_current=entry.is_current,
             is_future=entry.is_future,
         )

@@ -33,6 +33,7 @@ def history_factory() -> HistoryFactory:
         controller = ProjectController(ProjectManager())
         history = HistoryManager(controller, budget=budget, strict=strict)
         controller.on_mutation = history.handle_mutation
+        controller.new()
         history.reset()
         return controller, history
 

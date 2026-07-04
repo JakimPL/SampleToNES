@@ -18,6 +18,18 @@ class TestBaseline:
         assert history.can_undo is False
         assert history.can_redo is False
 
+    def test_reset_without_a_project_empties_the_stack(self, history_factory: HistoryFactory) -> None:
+        controller, history = history_factory()
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+
+        controller.close()
+        history.reset()
+
+        assert len(history.entries) == 0
+        assert history.can_undo is False
+        assert history.can_redo is False
+
 
 class TestGrouping:
     def test_single_edit_commits_one_entry(self, history_factory: HistoryFactory) -> None:

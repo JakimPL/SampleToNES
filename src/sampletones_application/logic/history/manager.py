@@ -72,21 +72,29 @@ class HistoryManager(CallbackMixin):
         return self._cursor < len(self._entries) - 1
 
     def reset(self) -> None:
-        """Discards the stack and seeds a fresh baseline from the current project.
+        """Aligns the stack with the project lifecycle.
 
-        Called on project lifecycle transitions (new, open, close). Restores driven
-        by undo/redo are excluded so they never clear the stack they navigate. A
-        clean session makes the baseline the save point: undoing back to it later
-        reinstates the on-disk content.
+        Called on project transitions (new, open, close). An open project seeds a
+        fresh baseline entry — the state undo can always return to — and a clean
+        session makes that baseline the save point: undoing back to it later
+        reinstates the on-disk content. With every project closed the stack
+        empties, so the panel reports no history. Restores driven by undo/redo
+        are excluded so they never clear the stack they navigate.
         """
         if self._restoring:
             return
 
         self._pending = None
         self._last_commit_key = None
-        self._entries = [self._capture(HistoryAction.INITIAL, ())]
-        self._cursor = 0
-        self._saved_cursor = 0 if not self._controller.is_dirty else None
+        if self._controller.is_open:
+            self._entries = [self._capture(HistoryAction.INITIAL, ())]
+            self._cursor = 0
+            self._saved_cursor = 0 if not self._controller.is_dirty else None
+        else:
+            self._entries = []
+            self._cursor = -1
+            self._saved_cursor = None
+
         self._prune_hash_cache()
         self._notify()
 

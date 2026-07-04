@@ -16,6 +16,7 @@ def _application() -> Application:
     controller = ProjectController(ProjectManager())
     history = HistoryManager(controller, budget=HISTORY_BUDGET, strict=True)
     controller.on_mutation = history.handle_mutation
+    controller.new()
     history.reset()
     application.project_controller = controller
     application.history = history
