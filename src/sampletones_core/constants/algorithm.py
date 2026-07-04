@@ -41,7 +41,7 @@ TEMPORAL_LOSS_WEIGHT: Final[float] = 0.20
 
 SPECTRAL_DISTANCE: Final[SpectralDistance] = SpectralDistance.BETA_DIVERGENCE
 DIVERGENCE_BETA: Final[float] = 1.0
-PERCEPTUAL_EXPONENT: Final[float] = 0.5
+PERCEPTUAL_EXPONENT: Final[float] = 1.0
 
 # Selection and continuity decoding
 

@@ -55,7 +55,11 @@ class Criterion:
             divergence_beta=self.divergence_beta,
         )
 
-    def temporal_loss(self, audio: xp.ndarray, approximation: xp.ndarray) -> xp.ndarray:
+    def temporal_loss(
+        self,
+        audio: xp.ndarray,
+        approximation: xp.ndarray,
+    ) -> xp.ndarray:
         """
         Level-normalized RMS difference between the target and candidate waveforms.
 
@@ -70,7 +74,11 @@ class Criterion:
         Returns:
             One loss per candidate.
         """
-        return calculate_temporal_loss(audio, approximation, level_floor=self.temporal_level_floor)
+        return calculate_temporal_loss(
+            audio,
+            approximation,
+            level_floor=self.temporal_level_floor,
+        )
 
     def combine_losses(
         self,

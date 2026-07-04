@@ -145,7 +145,9 @@ class TestOctaveWeightAllocation:
         """
         The criterion weighting allocates the same share of attention to each octave
         for every spectrum method: the density term converts each method's axis to a
-        common log-frequency measure before the perceptual curve applies.
+        common auditory measure before the perceptual curve applies. The tolerance
+        leaves room for bin-granularity effects where the perceptual curve changes
+        fastest (the K-weighting shelf knee around 2 kHz).
         """
         shares_per_method = []
         for method in (SpectrumMethod.FFT, SpectrumMethod.LOG_SPACED_FFT, SpectrumMethod.CQT):
@@ -156,7 +158,7 @@ class TestOctaveWeightAllocation:
             shares_per_method.append(shares / shares.sum())
 
         for shares in shares_per_method[1:]:
-            assert np.max(np.abs(shares - shares_per_method[0])) < 0.02
+            assert np.max(np.abs(shares - shares_per_method[0])) < 0.03
 
     def test_weight_shares_are_stable_across_window_sizes(self) -> None:
         shares_per_window = []

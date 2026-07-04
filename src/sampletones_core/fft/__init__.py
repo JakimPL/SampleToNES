@@ -2,11 +2,11 @@ from .cqt.frequencies import calculate_cqt_frequencies, convert_midpoints_to_edg
 from .cqt.normalization import normalize_cqt_energy
 from .cqt.transform import calculate_cqt
 from .fft import (
-    a_weighting,
     calculate_fft,
     calculate_fft_frequencies,
-    calculate_weights,
     calculate_weights_from_edges,
+    erb_bandwidth,
+    k_weighting,
 )
 from .fragment.audio import FragmentedAudio
 from .fragment.fragment import Fragment
@@ -20,9 +20,9 @@ __all__ = [
     "CyclicArray",
     "calculate_fft",
     "calculate_fft_frequencies",
-    "a_weighting",
-    "calculate_weights",
     "calculate_weights_from_edges",
+    "erb_bandwidth",
+    "k_weighting",
     "calculate_cqt",
     "calculate_cqt_frequencies",
     "convert_midpoints_to_edges",

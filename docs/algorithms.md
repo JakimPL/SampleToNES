@@ -151,8 +151,9 @@ cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
   per-bin distance is configurable — squared error, absolute error, or (the default)
   a **β-divergence** (a Kullback–Leibler-style measure that, for partials above the
   spectral floor, penalizes leaving target energy uncovered more strongly than adding
-  energy beyond it). Bins are weighted by a combination of log-frequency density and
-  an A-weighting perceptual curve.
+  energy beyond it). Bins are weighted by their span in auditory critical bands (the
+  ERB scale) times the K-weighting loudness curve (ITU-R BS.1770), so each bin counts
+  in proportion to the hearing resolution and loudness contribution it represents.
 - **temporal** is the RMS difference between the target *waveform* and the candidate
   rendered at its best phase against the target, normalized by the target frame's own
   level. Evaluating it at the aligned phase makes it measure waveform *shape* — a

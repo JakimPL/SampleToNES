@@ -11,8 +11,6 @@ from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.data.model import DataModel
 from sampletones_shared.utils.arrays import pad
 
-from ..fft import calculate_weights
-
 
 class Window(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
@@ -59,10 +57,6 @@ class Window(DataModel):
     @cached_property
     def forward_frames(self) -> int:
         return -(-(self.size + self.left_offset) // self.config.frame_length)
-
-    @cached_property
-    def weights(self) -> np.ndarray:
-        return calculate_weights(self.size, self.config.sample_rate)
 
     @classmethod
     def from_config(

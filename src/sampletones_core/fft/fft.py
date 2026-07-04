@@ -1,8 +1,15 @@
-from functools import lru_cache
-from typing import Optional, cast
+from typing import Final, Optional, Tuple, cast
 
 import numpy as np
 from scipy.fft import rfft, rfftfreq
+
+from sampletones_core.constants.spectrum import ERB_FREQUENCY_FACTOR, ERB_MINIMUM_BANDWIDTH
+
+K_WEIGHTING_SAMPLE_RATE: Final[float] = 48000.0
+K_SHELF_NUMERATOR: Final[Tuple[float, float, float]] = (1.53512485958697, -2.69169618940638, 1.19839281085285)
+K_SHELF_DENOMINATOR: Final[Tuple[float, float, float]] = (1.0, -1.69065929318241, 0.73248077421585)
+K_HIGHPASS_NUMERATOR: Final[Tuple[float, float, float]] = (1.0, -2.0, 1.0)
+K_HIGHPASS_DENOMINATOR: Final[Tuple[float, float, float]] = (1.0, -1.99004745483398, 0.99007225036621)
 
 
 def calculate_fft(audio: np.ndarray, fft_size: Optional[int] = None) -> np.ndarray:
@@ -59,100 +66,87 @@ def calculate_fft_frequencies(fragment_length: int, sample_rate: int) -> np.ndar
     return frequencies
 
 
-def a_weighting(frequencies: np.ndarray) -> np.ndarray:
+def erb_bandwidth(frequencies: np.ndarray) -> np.ndarray:
     """
-    Apply A-weighting perceptual filter to frequency values.
+    Equivalent rectangular bandwidth of the auditory filter centered at each frequency.
 
-    A-weighting approximates the frequency response of human hearing,
-    emphasizing mid-range frequencies while attenuating very low and very high frequencies.
-    Implements the standard A-weighting curve defined in IEC 61672-1.
-
-    The weights are normalized such that the maximum weight is 1.0.
-    Frequencies below 1e-6 Hz are clamped to that floor, keeping the division well-defined.
+    Follows the Glasberg-Moore formula `24.7 * (1 + 4.37 * f / 1000)`: the bandwidth
+    stays near 25 Hz in the bass and grows proportionally to frequency above roughly
+    500 Hz, matching how the ear allocates spectral resolution.
 
     Args:
         frequencies: Array of frequency values in Hz.
 
     Returns:
-        Normalized A-weighting values, shape matching input.
-        Values are in [0, 1] with maximum at ~1kHz-4kHz range.
+        Auditory filter bandwidth in Hz, shape matching the input.
 
     Examples:
-        >>> freqs = np.array([100.0, 1000.0, 10000.0])
-        >>> weights = a_weighting(freqs)
-        >>> weights.shape
-        (3,)
+        >>> bandwidths = erb_bandwidth(np.array([100.0, 1000.0]))
+        >>> bandwidths.shape
+        (2,)
     """
-    frequencies = np.maximum(frequencies, 1e-6)
-    squares = frequencies**2
-    numerator = 12194**2 * squares**2
-    denominator = (squares + 20.6**2) * np.sqrt((squares + 107.7**2) * (squares + 737.9**2)) * (squares + 12194**2)
-
-    a_weight: np.ndarray = numerator / denominator
-    normalized_a_weight: np.ndarray = a_weight / np.max(a_weight)
-    return normalized_a_weight
+    return ERB_MINIMUM_BANDWIDTH * (1.0 + ERB_FREQUENCY_FACTOR * np.asarray(frequencies, dtype=np.float64))
 
 
-@lru_cache(maxsize=128)
-def calculate_weights(
-    fragment_length: int,
-    sample_rate: int,
-    perceptual_exponent: float = 1.0,
+def _biquad_power_response(
+    omega: np.ndarray,
+    numerator: Tuple[float, float, float],
+    denominator: Tuple[float, float, float],
 ) -> np.ndarray:
+    delay = np.exp(-1j * omega)
+    response_numerator = numerator[0] + numerator[1] * delay + numerator[2] * delay**2
+    response_denominator = denominator[0] + denominator[1] * delay + denominator[2] * delay**2
+    response: np.ndarray = (np.abs(response_numerator) / np.abs(response_denominator)) ** 2
+    return response
+
+
+def k_weighting(frequencies: np.ndarray) -> np.ndarray:
     """
-    Calculate combined frequency weights for spectrum analysis.
+    K-weighting power response (ITU-R BS.1770) at the given frequencies.
 
-    Computes weights that combine frequency density compensation with
-    A-weighting perceptual filtering. The density weights (1/f) compensate
-    for the logarithmic spacing of frequencies, while A-weighting emphasizes
-    perceptually important frequencies.
-
-    The perceptual exponent controls how strongly A-weighting is applied:
-    1.0 applies the full A-weighting curve, 0.0 relies on density weights
-    alone, and intermediate values preserve more low-frequency energy where
-    the A-weighting curve falls off as f**4.
-
-    The result is normalized to sum to 1.0.
+    Evaluates the standard's two pre-filter stages - the high-frequency shelf and
+    the RLB high-pass - at their 48 kHz design rate and returns the combined power
+    gain, normalized to a maximum of one. The curve models loudness at typical
+    music listening levels: a gentle roll-off below roughly 100 Hz and a +4 dB
+    shelf above 2 kHz. Frequencies at or beyond the design Nyquist hold the
+    response at its plateau.
 
     Args:
-        fragment_length: Length of the audio fragment (FFT size).
-        sample_rate: Sampling rate in Hz.
-        perceptual_exponent: Power applied to the A-weighting curve.
+        frequencies: Array of frequency values in Hz.
 
     Returns:
-        Normalized combined weights, shape (fragment_length//2,).
-        Sum of weights equals 1.0.
+        Normalized K-weighting power gains in [0, 1], shape matching the input.
 
     Examples:
-        >>> weights = calculate_weights(1024, 44100)
-        >>> weights.shape
-        (512,)
-        >>> bool(np.isclose(weights.sum(), 1.0))
-        True
+        >>> gains = k_weighting(np.array([100.0, 1000.0, 10000.0]))
+        >>> gains.shape
+        (3,)
     """
-    frequencies = calculate_fft_frequencies(fragment_length, sample_rate)[1:]
-    density_weights = 1.0 / frequencies
-    perceptual_weights = a_weighting(frequencies) ** perceptual_exponent
-
-    weights: np.ndarray = density_weights * perceptual_weights
-    normalized_weights: np.ndarray = weights / np.sum(weights)
-    return normalized_weights
+    omega = np.minimum(np.pi, 2.0 * np.pi * np.asarray(frequencies, dtype=np.float64) / K_WEIGHTING_SAMPLE_RATE)
+    power = _biquad_power_response(omega, K_SHELF_NUMERATOR, K_SHELF_DENOMINATOR) * _biquad_power_response(
+        omega, K_HIGHPASS_NUMERATOR, K_HIGHPASS_DENOMINATOR
+    )
+    normalized_power: np.ndarray = power / np.max(power)
+    return normalized_power
 
 
 def calculate_weights_from_edges(edges: np.ndarray, perceptual_exponent: float = 1.0) -> np.ndarray:
     """
     Calculate perceptual frequency weights for arbitrary histogram bin edges.
 
-    Works for any frequency axis (linear FFT or logarithmic CQT). Each bin is weighted by its
-    span on a logarithmic-frequency scale, `width / upper_edge` (which approximates `d(log f)`),
-    times the A-weighting perceptual curve raised to `perceptual_exponent`. On a linear FFT axis
-    the density term reduces to `1 / f`; on a constant-Q axis the per-octave span is uniform.
+    Works for any frequency axis (linear FFT or logarithmic CQT). Each bin is
+    weighted by its span in auditory critical bands, `width / erb_bandwidth(f)`
+    (the number of ERBs the bin covers), times the K-weighting power response
+    raised to `perceptual_exponent`. The ERB measure follows a logarithmic axis
+    above roughly 500 Hz and a linear one below, matching the ear's resolution;
+    the K curve weights each band by its contribution to loudness at typical
+    music listening levels.
 
     The result is normalized to sum to 1.0.
 
     Args:
         edges: Strictly increasing bin edges, shape (n_bins + 1,).
-        perceptual_exponent: Power applied to the A-weighting curve.
+        perceptual_exponent: Power applied to the K-weighting curve.
 
     Returns:
         Normalized weights, shape (n_bins,). Sum of weights equals 1.0.
@@ -167,8 +161,8 @@ def calculate_weights_from_edges(edges: np.ndarray, perceptual_exponent: float =
     """
     frequencies = edges[1:]
     widths = np.diff(edges)
-    density_weights = widths / frequencies
-    perceptual_weights = a_weighting(frequencies) ** perceptual_exponent
+    density_weights = widths / erb_bandwidth(frequencies)
+    perceptual_weights = k_weighting(frequencies) ** perceptual_exponent
 
     weights: np.ndarray = density_weights * perceptual_weights
     normalized_weights: np.ndarray = weights / np.sum(weights)
