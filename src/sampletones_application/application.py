@@ -217,7 +217,6 @@ class Application:
             browser_manager=self.browser_manager,
             export_service=self.export_service,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
-            on_reconstruction_loaded=self._reconstruction_coordinator.on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,

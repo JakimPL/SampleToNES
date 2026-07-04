@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, Optional, Tuple
+from pathlib import Path
+from typing import Any, Callable, Dict, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -21,7 +22,6 @@ from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_WINDOW_TREE,
 )
 from sampletones_application.layout.behavior import TreeBehavior
-from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
@@ -42,6 +42,7 @@ from sampletones_core import paths
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
+    Tree,
     TreeNode,
     TreeTraversal,
     traverse,
@@ -51,10 +52,33 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
 
 
+class ExplorerLogicProtocol(Protocol):
+    """The filesystem-exploration contract ``GUIExplorerPanel`` drives.
+
+    Typing the collaborator structurally keeps the panel bound to the exact
+    query surface its tree rendering needs — per-directory expansion and
+    content checks run synchronously during node construction — while the
+    owning coordinator constructs the real logic object and injects it.
+    """
+
+    @property
+    def tree(self) -> Tree: ...
+
+    def refresh_tree(self) -> None: ...
+
+    def collapse_all(self) -> None: ...
+
+    def expand_directory(self, node: FileSystemNode) -> None: ...
+
+    def is_directory_expanded(self, filepath: Path) -> bool: ...
+
+    def has_relevant_content(self, filepath: Path) -> bool: ...
+
+
 class GUIExplorerPanel(GUITreePanel):
     def __init__(
         self,
-        explorer_logic: ExplorerLogic,
+        explorer_logic: ExplorerLogicProtocol,
         tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
@@ -63,7 +87,7 @@ class GUIExplorerPanel(GUITreePanel):
         dialogs: DialogsRenderer,
         colors: TreeColors,
     ) -> None:
-        self.explorer_logic = explorer_logic
+        self._explorer_logic = explorer_logic
         self.shortcut_manager = shortcut_manager
         self._tree_behavior = tree_behavior
         self._dialogs = dialogs
@@ -160,7 +184,7 @@ class GUIExplorerPanel(GUITreePanel):
         self.is_converter_running: Optional[Callable[[], bool]] = None
 
         super().__init__(
-            tree=self.explorer_logic.tree,
+            tree=self._explorer_logic.tree,
             tag=TAG_MAIN_EXPLORER_PANEL,
             parent=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_MAIN_EXPLORER_TREE,
@@ -245,7 +269,7 @@ class GUIExplorerPanel(GUITreePanel):
                     pass
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
-        self.explorer_logic.collapse_all()
+        self._explorer_logic.collapse_all()
         children = dpg.get_item_children(self.tree_tag, 1)
         assert children is not None, "Explorer tree has no children."
         for node_tag in children:
@@ -261,7 +285,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         self.lock()
         try:
-            self.explorer_logic.refresh_tree()
+            self._explorer_logic.refresh_tree()
             self.build_tree()
         finally:
             self.unlock()
@@ -282,7 +306,7 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         dpg_delete_children(node_tag)
-        if self.explorer_logic.is_directory_expanded(node.filepath):
+        if self._explorer_logic.is_directory_expanded(node.filepath):
             for child in node.children:
                 has_favorite_ancestor = self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(child)
                 self._build_tree_node(
@@ -311,8 +335,8 @@ class GUIExplorerPanel(GUITreePanel):
         state.has_favorite_ancestor |= is_favorite
 
         if node.node_type == NodeType.DIRECTORY:
-            should_expand = self._should_expand_node(node) or self.explorer_logic.is_directory_expanded(node.filepath)
-            is_directory_expanded = self.explorer_logic.is_directory_expanded(node.filepath)
+            should_expand = self._should_expand_node(node) or self._explorer_logic.is_directory_expanded(node.filepath)
+            is_directory_expanded = self._explorer_logic.is_directory_expanded(node.filepath)
             self._queue_node(
                 node,
                 node_tag,
@@ -428,7 +452,7 @@ class GUIExplorerPanel(GUITreePanel):
         return self._create_status_bar_message_function(message_function)
 
     def _directory_node_clicked(self, node: FileSystemNode, node_tag: str) -> None:
-        has_content = self.explorer_logic.has_relevant_content(node.filepath)
+        has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
             return
 
@@ -447,7 +471,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if isinstance(node, FileSystemNode):
-            return self.explorer_logic.has_relevant_content(node.filepath)
+            return self._explorer_logic.has_relevant_content(node.filepath)
 
         return True
 
@@ -471,10 +495,10 @@ class GUIExplorerPanel(GUITreePanel):
         if not dpg.does_item_exist(node_tag):
             return
 
-        is_directory_expanded = self.explorer_logic.is_directory_expanded(node.filepath)
+        is_directory_expanded = self._explorer_logic.is_directory_expanded(node.filepath)
         state = dpg.get_value(node_tag)
         if not is_directory_expanded:
-            self.explorer_logic.expand_directory(node)
+            self._explorer_logic.expand_directory(node)
             self._rebuild_directory_node(node, node_tag)
 
         dpg.set_value(node_tag, not state)

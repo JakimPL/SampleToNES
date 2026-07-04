@@ -208,7 +208,7 @@ class SequencerTabCoordinator:
             scheduling=layout.behavior.scheduling,
         )
         self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
-            self._sequencer_browser_logic,
+            self._sequencer_browser_logic.tree,
             self._sequencer_tree_logic,
             shortcut_manager,
             tree_behavior=layout.behavior.sequencer,
@@ -400,6 +400,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
+        self._sequencer_browser_panel.on_refresh_tree = self._sequencer_browser_logic.refresh_tree
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
         self._sequencer_tree_logic.on_favorite_changed = self._sequencer_browser_panel.update_favorite_indicator
         self._sequencer_tree_logic.on_search_update_needed = self._sequencer_browser_panel.update_tree_visibility

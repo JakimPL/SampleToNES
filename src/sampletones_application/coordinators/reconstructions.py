@@ -68,7 +68,6 @@ class ReconstructionsTabCoordinator:
         browser_manager: BrowserManager,
         export_service: ExportService,
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
-        on_reconstruction_loaded: VoidCallback,
         on_reconstruct_file: VoidCallback,
         on_reconstruct_directory: VoidCallback,
         on_change_audio_state: VoidCallback,
@@ -212,7 +211,7 @@ class ReconstructionsTabCoordinator:
             scheduling=layout.behavior.scheduling,
         )
         self._browser_panel: GUIBrowserPanel = GUIBrowserPanel(
-            self._browser_logic,
+            self._browser_logic.tree,
             self._browser_tree_logic,
             shortcut_manager,
             tree_behavior=layout.behavior.reconstructions,
@@ -259,12 +258,10 @@ class ReconstructionsTabCoordinator:
             scheduling=layout.behavior.scheduling,
         )
 
-        self._browser_logic.set_callbacks(
-            load_reconstruction_with_confirmation=on_load_reconstruction_with_confirmation,
-            on_reconstruction_loaded=on_reconstruction_loaded,
-            on_reconstruct_file=on_reconstruct_file,
-            on_reconstruct_directory=on_reconstruct_directory,
-        )
+        self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
+        self._browser_panel.on_reconstruct_file = on_reconstruct_file
+        self._browser_panel.on_reconstruct_directory = on_reconstruct_directory
+        self._browser_panel.on_load_reconstruction = on_load_reconstruction_with_confirmation
 
         self._reconstruction_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators

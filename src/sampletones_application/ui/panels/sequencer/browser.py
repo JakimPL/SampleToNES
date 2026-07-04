@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -19,7 +19,6 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_WINDOW_TREE,
 )
 from sampletones_application.layout.behavior import TreeBehavior
-from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
@@ -35,17 +34,19 @@ from sampletones_application.utils.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
+    Tree,
     TreeNode,
     TreeTraversal,
     traverse,
 )
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 
 
 class GUISequencerBrowserPanel(GUITreePanel):
     def __init__(
         self,
-        sequencer_browser_logic: SequencerBrowserLogic,
+        tree: Tree,
         tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
@@ -53,7 +54,8 @@ class GUISequencerBrowserPanel(GUITreePanel):
         language_manager: LanguageManager,
         colors: TreeColors,
     ) -> None:
-        self.sequencer_browser_logic = sequencer_browser_logic
+        self.on_refresh_tree: Optional[VoidCallback] = None
+
         self._tree_behavior = tree_behavior
         self._lbl_refresh = language_manager[
             Page.SEQUENCER,
@@ -71,7 +73,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         super().__init__(
-            tree=self.sequencer_browser_logic.tree,
+            tree=tree,
             tag=TAG_SEQUENCER_BROWSER_PANEL,
             parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
             tree_tag=TAG_SEQUENCER_BROWSER_TREE,
@@ -157,7 +159,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
         self.lock()
         try:
-            self.sequencer_browser_logic.refresh_tree()
+            self.call(self.on_refresh_tree)
             self.build_tree()
         finally:
             self.unlock()
