@@ -42,9 +42,6 @@ from sampletones_application.constants.reconstructions import (
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
-from sampletones_application.logic.reconstruction.feature import (
-    FeatureData,
-)
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -70,6 +67,7 @@ from sampletones_application.view_model.reconstruction.details import (
 )
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
+from sampletones_core.exporters import Features
 from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
@@ -408,15 +406,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             is_available = generator_name in view_model.available_generators
             dpg_configure_item(tab_tag, show=is_available)
 
-    def update_feature_data(self, feature_data: Optional[FeatureData]) -> None:
-        if feature_data is None:
+    def update_feature_data(self, generators: Optional[Dict[GeneratorName, Features]]) -> None:
+        if generators is None:
             return
 
         for generator_name in GeneratorName.items():
-            if generator_name not in feature_data.generators:
-                continue
-
-            generator_features = feature_data.get_generator_features(generator_name)
+            generator_features = generators.get(generator_name)
             if generator_features is None:
                 continue
 

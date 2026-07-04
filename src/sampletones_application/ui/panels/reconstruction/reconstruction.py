@@ -38,9 +38,6 @@ from sampletones_application.constants.reconstructions import (
 )
 from sampletones_application.layout.general import PathColors
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.logic.reconstruction.data import (
-    ReconstructionData,
-)
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -61,6 +58,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathViewModel,
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender
@@ -301,11 +299,11 @@ class GUIReconstructionPanel(GUIPanel):
 
     def load_waveform_data(
         self,
-        reconstruction_data: ReconstructionData,
+        waveform_data: WaveformData,
         generators: List[GeneratorName],
     ) -> None:
-        self._frame_length = reconstruction_data.reconstruction.config.frame_length
-        self.waveform_display.load_reconstruction_data(reconstruction_data, generators)
+        self._frame_length = waveform_data.frame_length
+        self.waveform_display.load_waveform_data(waveform_data, generators)
 
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
@@ -333,10 +331,10 @@ class GUIReconstructionPanel(GUIPanel):
 
     def update_waveform_data(
         self,
-        reconstruction_data: ReconstructionData,
+        waveform_data: WaveformData,
         generators: List[GeneratorName],
     ) -> None:
-        self.waveform_display.update_reconstruction_data(reconstruction_data, generators)
+        self.waveform_display.update_waveform_data(waveform_data, generators)
 
     def clear_waveform(self) -> None:
         self._frame_length = None

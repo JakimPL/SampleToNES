@@ -77,6 +77,23 @@ class TestReconstructionDataLoad:
         assert np.all(data.original_audio == 0.0)
 
 
+class TestWaveformData:
+    def test_projects_the_render_relevant_fields(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        waveform_data = data.waveform_data()
+
+        assert waveform_data.original_audio is data.original_audio
+        assert waveform_data.approximation is reconstruction.approximation
+        assert waveform_data.approximations == dict(reconstruction.approximations)
+        assert waveform_data.coefficient == reconstruction.coefficient
+        assert waveform_data.frame_length == reconstruction.config.frame_length
+
+
 class TestReconstructionDataGetPartials:
     def test_empty_generator_list_returns_zeros(
         self,

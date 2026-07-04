@@ -15,9 +15,6 @@ from sampletones_application.constants.graphs import (
     TAG_GLOBAL_GRAPH_THEME_OVERLAY,
 )
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.logic.reconstruction.data import (
-    ReconstructionData,
-)
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
 from sampletones_application.ui.elements.graphs.layers.instruction import (
@@ -31,6 +28,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Sender
@@ -111,7 +109,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.indicator_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_INDICATOR)
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
 
-        self.current_data: Optional[Union[InstructionLibraryFragment[Any], ReconstructionData]] = None
+        self.current_data: Optional[Union[InstructionLibraryFragment[Any], WaveformData]] = None
         self.current_position: int = 0
 
         _min_x = layout.graph.min_x
@@ -135,8 +133,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         if isinstance(self.current_data, InstructionLibraryFragment):
             return len(self.current_data.data)
 
-        if isinstance(self.current_data, ReconstructionData):
-            return len(self.current_data.reconstruction.approximation)
+        if isinstance(self.current_data, WaveformData):
+            return len(self.current_data.approximation)
 
         return 0
 
@@ -230,20 +228,20 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def _extract_reconstruction_layer_data(
         self,
-        reconstruction_data: ReconstructionData,
+        waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
     ) -> Tuple[np.ndarray, np.ndarray, float]:
         if selected_generators is None:
-            selected_generators = list(reconstruction_data.reconstruction.approximations.keys())
+            selected_generators = list(waveform_data.approximations.keys())
 
-        original_audio = reconstruction_data.original_audio
-        approximation = reconstruction_data.get_partials(selected_generators)
-        full_approximation = reconstruction_data.reconstruction.approximation
+        original_audio = waveform_data.original_audio
+        approximation = waveform_data.partials(selected_generators)
+        full_approximation = waveform_data.approximation
 
         if not self.reconstruction_autoscale:
             return original_audio, approximation, 1.0
 
-        original_audio_coefficient = reconstruction_data.reconstruction.coefficient
+        original_audio_coefficient = waveform_data.coefficient
         original_audio = original_audio / original_audio_coefficient
 
         coefficient = max(
@@ -255,11 +253,11 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def _extract_layers(
         self,
-        reconstruction_data: ReconstructionData,
+        waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
     ) -> Tuple[ArrayLayer, ArrayLayer]:
         original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(
-            reconstruction_data,
+            waveform_data,
             selected_generators,
         )
 
@@ -267,17 +265,17 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         return sample_layer, reconstruction_layer
 
-    def update_reconstruction_data(
+    def update_waveform_data(
         self,
-        reconstruction_data: ReconstructionData,
+        waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
     ) -> None:
-        if not isinstance(self.current_data, ReconstructionData):
+        if not isinstance(self.current_data, WaveformData):
             return
 
-        self.current_data = reconstruction_data
+        self.current_data = waveform_data
         sample_layer, reconstruction_layer = self._extract_layers(
-            reconstruction_data,
+            waveform_data,
             selected_generators,
         )
 
@@ -285,15 +283,15 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self.layers[layer.name] = layer
         self._update_display()
 
-    def load_reconstruction_data(
+    def load_waveform_data(
         self,
-        reconstruction_data: ReconstructionData,
+        waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
     ) -> None:
         self.clear_layers()
-        self.current_data = reconstruction_data
+        self.current_data = waveform_data
         sample_layer, reconstruction_layer = self._extract_layers(
-            reconstruction_data,
+            waveform_data,
             selected_generators,
         )
 
@@ -347,7 +345,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             return
 
         self._top_source = audio_source
-        if isinstance(self.current_data, ReconstructionData):
+        if isinstance(self.current_data, WaveformData):
             self._reorder_series()
 
     def _reorder_series(self) -> None:
@@ -369,8 +367,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def set_autoscale(self, autoscale: bool) -> None:
         self.reconstruction_autoscale = autoscale
-        if isinstance(self.current_data, ReconstructionData):
-            self.load_reconstruction_data(self.current_data)
+        if isinstance(self.current_data, WaveformData):
+            self.load_waveform_data(self.current_data)
             self._update_ranges()
 
     def _series_tag(self, layer_name: str) -> str:

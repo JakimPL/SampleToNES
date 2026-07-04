@@ -12,6 +12,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILE_INSTRUMENT
@@ -51,8 +52,8 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
-        self.on_waveform_load_changed: Optional[Callable[[ReconstructionData, List[GeneratorName]], None]] = None
-        self.on_waveform_update_changed: Optional[Callable[[ReconstructionData, List[GeneratorName]], None]] = None
+        self.on_waveform_load_changed: Optional[Callable[[WaveformData, List[GeneratorName]], None]] = None
+        self.on_waveform_update_changed: Optional[Callable[[WaveformData, List[GeneratorName]], None]] = None
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
@@ -88,7 +89,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data,
+            reconstruction_data.waveform_data(),
             self._selected_generators,
         )
         self._emit_audio_data()
@@ -100,7 +101,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.call(
             self.on_waveform_update_changed,
-            reconstruction_data,
+            reconstruction_data.waveform_data(),
             self._selected_generators,
         )
         if self._current_audio_source != AudioSourceType.ORIGINAL:
@@ -135,7 +136,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             return
 
-        self.call(self.on_waveform_load_changed, reconstruction_data, generators)
+        self.call(self.on_waveform_load_changed, reconstruction_data.waveform_data(), generators)
         self._emit_audio_data()
 
     def request_export_instrument_dialog(self, generator_name: GeneratorName) -> None:
