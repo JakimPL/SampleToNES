@@ -88,11 +88,22 @@ def _show_modal_dialog(
             width=-1,
         )
 
-        FrameCallbackManager.set_frame_callback(lambda: center_item(tag, width, height))
+        FrameCallbackManager.set_frame_callback(
+            lambda: center_item(
+                tag,
+                width,
+                height,
+            )
+        )
 
 
 class DialogsRenderer:
-    def __init__(self, *, layout: GeneralLayout, language_manager: LanguageManager) -> None:
+    def __init__(
+        self,
+        *,
+        layout: GeneralLayout,
+        language_manager: LanguageManager,
+    ) -> None:
         self._language_manager = language_manager
         self._default_width = layout.dialogs.default.width
         self._default_height = layout.dialogs.default.height
@@ -221,7 +232,14 @@ class DialogsRenderer:
             modal=modal,
         )
 
-    def show_info(self, tag: str, message: str, title: str) -> None:
+    def show_info(
+        self,
+        tag: str,
+        message: str,
+        title: str,
+        *,
+        modal: bool = False,
+    ) -> None:
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._error_wrap)
 
@@ -234,7 +252,7 @@ class DialogsRenderer:
             ok_label=self._lbl_ok,
             width=self._default_width,
             height=self._default_height,
-            modal=False,
+            modal=modal,
         )
 
     def show_config_recovery(
@@ -262,7 +280,11 @@ class DialogsRenderer:
                 {"source": source, "target": target_version},
             )
 
-            dpg.add_text(self._msg_config_recovery_list_header, parent=parent, wrap=self._recovery_wrap)
+            dpg.add_text(
+                self._msg_config_recovery_list_header,
+                parent=parent,
+                wrap=self._recovery_wrap,
+            )
             for property_name in properties:
                 dpg.add_text(
                     f"- {property_name}",
@@ -271,7 +293,11 @@ class DialogsRenderer:
                     color=self._col_text_highlight,
                 )
 
-            dpg.add_text(self._msg_config_recovery_path_prefix, parent=parent, wrap=self._recovery_wrap)
+            dpg.add_text(
+                self._msg_config_recovery_path_prefix,
+                parent=parent,
+                wrap=self._recovery_wrap,
+            )
             GUIPathText(
                 tag=f"{parent}{SUF_PATH}",
                 path=config_path,
@@ -302,14 +328,22 @@ class DialogsRenderer:
         literal spans carry their own spacing, so the row abuts its runs without extra gaps.
         """
         group_tag = f"{parent}{SUF_GROUP}"
-        with dpg.group(horizontal=True, horizontal_spacing=0, tag=group_tag, parent=parent):
+        with dpg.group(
+            horizontal=True,
+            horizontal_spacing=0,
+            tag=group_tag,
+            parent=parent,
+        ):
             position = 0
             for match in _TEMPLATE_PLACEHOLDER.finditer(template):
                 literal = template[position : match.start()]
                 if literal:
                     dpg.add_text(literal, parent=group_tag)
 
-                value_item = dpg.add_text(substitutions[match.group(1)], parent=group_tag)
+                value_item = dpg.add_text(
+                    substitutions[match.group(1)],
+                    parent=group_tag,
+                )
                 FontRegistry.bind_to_item(value_item, Font.BOLD)
                 position = match.end()
 
@@ -317,7 +351,11 @@ class DialogsRenderer:
             if trailing:
                 dpg.add_text(trailing, parent=group_tag)
 
-    def show_error(self, exception: Exception, message: Optional[str] = None) -> None:
+    def show_error(
+        self,
+        exception: Exception,
+        message: Optional[str] = None,
+    ) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)
 
         with dpg.window(

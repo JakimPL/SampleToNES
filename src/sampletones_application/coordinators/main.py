@@ -322,6 +322,7 @@ class MainTabCoordinator:
             self._converter_panel.tag,
             self._msg_success,
             self._ttl_progress,
+            modal=True,
         )
 
     def _update_config_panel_view(self) -> None:
