@@ -4,7 +4,10 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import MenuElements
-from sampletones_application.categories.elements.main import ConverterElements
+from sampletones_application.categories.elements.main import (
+    ConverterElements,
+    ExplorerElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -14,6 +17,9 @@ from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_MAIN,
     TAG_GLOBAL_TABS,
+)
+from sampletones_application.constants.main import (
+    TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.library_manager import (
@@ -27,9 +33,6 @@ from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
-from sampletones_application.ui.panels.main.converter.success_dialog import (
-    ConverterSuccessDialog,
-)
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
@@ -45,6 +48,7 @@ from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 
@@ -121,11 +125,29 @@ class MainTabCoordinator:
             TextType.MESSAGE,
             ConverterElements.STATUS_NO_GENERATORS,
         ]
-        _title_progress = language_manager[
+        self._msg_success = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_SUCCESS,
+        ]
+        self._ttl_progress = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
             TextType.TITLE,
             ConverterElements.PROGRESS_DIALOG,
+        ]
+        self._msg_converter_running = language_manager[
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.MESSAGE,
+            ExplorerElements.CONVERTER_RUNNING_MSG,
+        ]
+        self._ttl_converter_running = language_manager[
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.TITLE,
+            ExplorerElements.CONVERTER_RUNNING_DIALOG,
         ]
 
         self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager, language_manager=language_manager)
@@ -140,7 +162,6 @@ class MainTabCoordinator:
             shortcut_manager,
             tree_behavior=layout.behavior.main.explorer,
             language_manager=language_manager,
-            dialogs=dialogs,
             colors=TreeColors.create(
                 layout.general.colors,
                 accent=layout.general.colors.paths.hover,
@@ -201,10 +222,6 @@ class MainTabCoordinator:
             path_colors=layout.general.colors.paths,
             language_manager=language_manager,
         )
-        self._converter_success_dialog: ConverterSuccessDialog = ConverterSuccessDialog(
-            language_manager=language_manager,
-            dialogs=dialogs,
-        )
         self._main_panel: GUIMainPanel = GUIMainPanel(
             self._config_panel,
             self._reconstructor_panel,
@@ -226,27 +243,26 @@ class MainTabCoordinator:
         self._explorer_panel.set_callbacks(
             on_wave_file_clicked=self._on_wave_file_clicked,
             on_directory_clicked=self._on_directory_clicked,
-            on_reconstruct_file=on_reconstruct_file,
-            on_reconstruct_directory=on_reconstruct_directory,
+            on_reconstruct_file=self._request_reconstruct_file,
+            on_reconstruct_directory=self._request_reconstruct_directory,
             on_load_reconstruction=on_load_reconstruction,
             on_load_library=on_load_library,
             on_set_as_library_directory=self._advanced_settings_panel.change_library_directory,
             on_set_as_reconstructions_directory=self._advanced_settings_panel.change_reconstructions_directory,
-            is_converter_running=is_operation_active,
         )
 
         self._converter_logic.on_view_changed = self._on_converter_view_changed
-        self._converter_logic.on_success = self._converter_success_dialog.show
+        self._converter_logic.on_success = self._on_conversion_success
         self._converter_logic.on_error = lambda error: dialogs.show_error(error, _msg_converter_error)
         self._converter_logic.on_no_files_to_process = lambda: dialogs.show_info(
             self._converter_panel.tag,
             _msg_no_files,
-            _title_progress,
+            self._ttl_progress,
         )
         self._converter_logic.on_no_generators = lambda: dialogs.show_info(
             self._converter_panel.tag,
             _msg_no_generators,
-            _title_progress,
+            self._ttl_progress,
         )
         self._converter_logic.is_library_available = library_manager.is_library_available_for_config
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
@@ -275,6 +291,38 @@ class MainTabCoordinator:
     def _on_directory_clicked(self, directory_path: Path) -> None:
         if not self._is_operation_active():
             self._converter_logic.set_input_path(directory_path, convert=False)
+
+    def _request_reconstruct_file(self, filepath: Path) -> None:
+        if self._notify_converter_running():
+            return
+
+        self._on_reconstruct_file(filepath)
+
+    def _request_reconstruct_directory(self, directory_path: Path) -> None:
+        if self._notify_converter_running():
+            return
+
+        self._on_reconstruct_directory(directory_path)
+
+    def _notify_converter_running(self) -> bool:
+        if not self._is_operation_active():
+            return False
+
+        logger.warning("Conversion is already running. Wait or cancel the current operation.")
+        self._dialogs.show_info(
+            TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
+            self._msg_converter_running,
+            self._ttl_converter_running,
+        )
+
+        return True
+
+    def _on_conversion_success(self) -> None:
+        self._dialogs.show_info(
+            self._converter_panel.tag,
+            self._msg_success,
+            self._ttl_progress,
+        )
 
     def _update_config_panel_view(self) -> None:
         config = self._config_manager.config

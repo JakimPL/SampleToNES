@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Protocol, Tuple
+from typing import Any, Dict, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -14,7 +14,6 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
     TAG_MAIN_EXPLORER_BUTTON_REFRESH,
-    TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
     TAG_MAIN_EXPLORER_GROUP_CONTROLS,
     TAG_MAIN_EXPLORER_GROUP_TREE,
     TAG_MAIN_EXPLORER_PANEL,
@@ -31,7 +30,6 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
@@ -47,7 +45,6 @@ from sampletones_core.structures.tree import (
     TreeTraversal,
     traverse,
 )
-from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
 
@@ -84,13 +81,11 @@ class GUIExplorerPanel(GUITreePanel):
         *,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
-        dialogs: DialogsRenderer,
         colors: TreeColors,
     ) -> None:
         self._explorer_logic = explorer_logic
         self.shortcut_manager = shortcut_manager
         self._tree_behavior = tree_behavior
-        self._dialogs = dialogs
 
         self._lbl_section = language_manager[
             Page.MAIN,
@@ -146,12 +141,6 @@ class GUIExplorerPanel(GUITreePanel):
             TextType.LABEL,
             ExplorerElements.CONTEXT_SET_OUTPUT_DIRECTORY,
         ]
-        self._msg_converter_running = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.MESSAGE,
-            ExplorerElements.CONVERTER_RUNNING_MSG,
-        ]
         self._msg_status_audio_no_autoplay = language_manager[
             Page.MAIN,
             Panel.EXPLORER,
@@ -164,13 +153,6 @@ class GUIExplorerPanel(GUITreePanel):
             TextType.MESSAGE,
             ExplorerElements.STATUS_NODE_AUDIO,
         ]
-        self._ttl_converter_running = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.TITLE,
-            ExplorerElements.CONVERTER_RUNNING_DIALOG,
-        ]
-
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
@@ -181,7 +163,6 @@ class GUIExplorerPanel(GUITreePanel):
         self.on_load_library: Optional[PathCallback] = None
         self.on_set_as_reconstructions_directory: Optional[PathCallback] = None
         self.on_set_as_library_directory: Optional[PathCallback] = None
-        self.is_converter_running: Optional[Callable[[], bool]] = None
 
         super().__init__(
             tree=self._explorer_logic.tree,
@@ -483,9 +464,6 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
-        if self._check_if_converter_running():
-            return
-
         self.call(self.on_reconstruct_file, node.filepath)
 
     def _toggle_directory_expansion(self, node: FileSystemNode, node_tag: str) -> None:
@@ -571,29 +549,10 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_context_menu_favorite_item(node)
             self._add_context_menu_set_directory_items(node)
 
-    def _check_if_converter_running(self) -> bool:
-        is_running = self.call(self.is_converter_running)
-        if is_running:
-            logger.warning("Conversion is already running. Wait or cancel the current operation.")
-            self._dialogs.show_info(
-                tag=TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
-                message=self._msg_converter_running,
-                title=self._ttl_converter_running,
-            )
-            return True
-
-        return False
-
     def _context_reconstruct_file(self, node: FileSystemNode) -> None:
-        if self._check_if_converter_running():
-            return
-
         self.call(self.on_reconstruct_file, node.filepath)
 
     def _context_reconstruct_directory(self, node: FileSystemNode) -> None:
-        if self._check_if_converter_running():
-            return
-
         self.call(self.on_reconstruct_directory, node.filepath)
 
     def _context_set_as_output_directory(self, node: FileSystemNode) -> None:
