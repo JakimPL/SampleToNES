@@ -600,12 +600,8 @@ class SequencerTabCoordinator:
 
         try:
             reconstruction = self._sequencer_browser_logic.load_reconstruction(filepath)
-        except (SampleToNESError, OSError, ValueError) as exception:
+        except (SampleToNESError, OSError) as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction from {filepath}")
-            self._dialogs.show_error(exception)
-            return
-        except Exception as exception:
-            logger.error_with_traceback(exception, f"Unexpected error while loading reconstruction from {filepath}")
             self._dialogs.show_error(exception)
             return
 

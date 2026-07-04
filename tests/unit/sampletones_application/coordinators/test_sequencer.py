@@ -12,6 +12,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_shared.exceptions import InvalidReconstructionValuesError
 
 
 @pytest.fixture
@@ -432,7 +433,10 @@ class TestImportReconstruction:
         self,
         coordinator: SequencerTabCoordinator,
     ) -> None:
-        coordinator._sequencer_browser_logic.load_reconstruction.side_effect = ValueError("invalid")
+        coordinator._sequencer_browser_logic.load_reconstruction.side_effect = InvalidReconstructionValuesError(
+            "invalid",
+            ValueError("inner"),
+        )
 
         coordinator.import_reconstruction(Path("reconstruction.stn"))
 

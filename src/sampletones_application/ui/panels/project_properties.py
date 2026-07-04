@@ -125,7 +125,7 @@ class GUIProjectPropertiesWindow(GUIWindow):
         self._modified_text = view_model.modified_text
         self.show()
 
-    def prepare(self, *args: Any, **kwargs: Any) -> None:
+    def prepare(self, *_args: Any, **_kwargs: Any) -> None:
         """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
 
     def create_panel(self) -> None:
