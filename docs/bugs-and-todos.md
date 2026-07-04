@@ -14,8 +14,6 @@
 
 ### Tracker
 
-* Selecting pattern's cells
-* Replacing cursor's underscore symbol
 * Selection: copy, cut, delete and paste
 
 ### Workflow
@@ -27,7 +25,6 @@
 * API documentation
 * Code documentation (docstrings)
 * Backward compatibility: library/reconstruction upgrade scheme
-* Improved library file managing
 * Release-build deployment config: `behavior/deployment.yaml` ships development
   values (`log_level: DEBUG`, `strict_history: true`) and PyInstaller bundles the
   same file; packaging needs a step that swaps in a release variant
@@ -53,6 +50,5 @@
 
 ## Bugs
 
-* No error message while loading a corrupt library
 * No refreshing after library generation
 * Finished unclosed reconstruction prompts before exiting

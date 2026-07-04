@@ -86,6 +86,17 @@ RULES: list[BoundaryRule] = [
             "sampletones_application.services",
         ],
     ),
+    BoundaryRule(
+        "ui/**/*.py",
+        [
+            "sampletones_application.coordinators",
+            "sampletones_application.logic",
+            "sampletones_application.services",
+            "sampletones_application.config",
+            "sampletones_application.application",
+            "sampletones_application.shell",
+        ],
+    ),
 ]
 
 
