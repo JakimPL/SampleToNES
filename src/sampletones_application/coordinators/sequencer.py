@@ -47,7 +47,9 @@ from sampletones_application.logic.sequencer.playback.playhead import (
     remap_after_remove,
 )
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
+from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
+from sampletones_application.services.song_player.player import SongPlayerService
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.sequencer.actions import GUISequencerActionsPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
@@ -223,8 +225,11 @@ class SequencerTabCoordinator:
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
             audio_device_manager,
             project_controller,
-            config_manager.config,
             session_manager,
+            service=SongPlayerService(
+                audio_device_manager,
+                RowSynthesizer(project_controller, config_manager.config),
+            ),
         )
         self._player_panel: GUISongPlayerPanel
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(

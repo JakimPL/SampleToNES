@@ -168,8 +168,8 @@ A new exclusive operation joins by contributing its `is_active` to the authority
 - Callbacks are declared as optional attributes and invoked via `CallbackMixin.call()`.
 - Session objects are simple state machines; they fire `on_state_changed` when they transition, but do not know who is listening.
 
-**May import:** `sampletones_core`, `sampletones_shared`, `view_model/` (to produce snapshots), `utils/`, `categories/`, `layout/`, `config/`.
-**Must not import:** `ui/`, `coordinators/`, `services/` (logic objects subscribe to services via callbacks injected by coordinators).
+**May import:** `sampletones_core`, `sampletones_shared`, `view_model/` (to produce snapshots), `utils/`, `categories/`, `layout/`, `config/`, and the service **result contract modules** (`services/result.py`, `services/*/result.py`) so handlers can type the tagged unions they match on.
+**Must not import:** `ui/`, `coordinators/`, service implementation modules. A logic object that drives a service declares a logic-side `Protocol` of the calls it needs (`ConversionServiceProtocol`, `SongPlayerServiceProtocol`, …) and receives the real service from the composition root or its coordinator; structural typing keeps the dependency inverted.
 
 ---
 
@@ -359,12 +359,26 @@ the regeneration worker's background thread.
   verification always hashes fresh, so an in-place mutation of shared state is
   caught rather than masked by the memo.
 
+### Save point and lifecycle
+
+The manager records the cursor of the last successful save (wired from
+`ProjectController.on_saved`); a restore that lands exactly on that index
+reinstates the on-disk content, so the session reports the document clean
+again. A commit that truncates the saved entry away — or budget eviction that
+drops it — invalidates the save point, and the session stays dirty until the
+next save. Coalescing always preserves the saved entry by appending. The stack
+follows the project lifecycle: an open project seeds a baseline entry, and
+closing every project empties the stack, so the panel reports no history.
+
 ### Configuration
 
-The entry budget is an application knob (`behavior.history.budget`, default 500).
-Strict checking and log level are deployment knobs
-(`behavior/deployment.yaml` → `DeploymentConfig`). Both models are authoritative
-from YAML with no field defaults.
+The entry budget is a persisted user preference
+(`ApplicationConfig.history.budget`, default 500, lower bound 1). Strict
+checking and log level are deployment knobs
+(`behavior/deployment.yaml` → `DeploymentConfig`); the deployment model is
+authoritative from YAML with no field defaults. The history panel renders a
+window of `layout.sequencer.history.max_rendered_entries` rows around the
+cursor and repaints rows in place via an index-keyed diff.
 
 Standalone reconstruction documents (a reconstruction loaded from disk that is not
 a project sample) will gain their own history later, reusing the same engine.

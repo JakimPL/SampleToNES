@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Protocol
 
 from sampletones_application.categories.elements.global_ import GlobalTemplateElements
 from sampletones_application.categories.elements.main import ConverterElements
@@ -7,11 +7,8 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.layout.behavior import SchedulingBehavior
-from sampletones_application.services.conversion import (
-    ConversionResult,
-    ConversionService,
-)
 from sampletones_application.services.result import (
+    ConversionResult,
     ServiceCancelled,
     ServiceError,
     ServiceIntermediate,
@@ -36,11 +33,30 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
 
 
+class ConversionServiceProtocol(Protocol):
+    """The slice of the conversion service the converter logic drives.
+
+    Typing the collaborator structurally keeps the logic layer bound to the
+    service's result contract alone; the composition root supplies the real
+    service.
+    """
+
+    def subscribe(self, handler: Callable[[ConversionResult], None]) -> None: ...
+
+    def start(self, config: Config, input_path: Path) -> None: ...
+
+    def cancel(self) -> None: ...
+
+    def cleanup(self) -> None: ...
+
+    def is_running(self) -> bool: ...
+
+
 class ConverterLogic(CallbackMixin):
     def __init__(
         self,
         config_manager: ConfigManager,
-        conversion_service: ConversionService,
+        conversion_service: ConversionServiceProtocol,
         *,
         scheduling: SchedulingBehavior,
         language_manager: LanguageManager,

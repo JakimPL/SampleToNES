@@ -32,12 +32,14 @@ class DeploymentConfig(BaseModel, frozen=True):
     """Environment-level knobs decided at deployment time, not by the end user.
 
     ``strict_history`` turns an untracked domain mutation into an immediate
-    ``UntrackedMutationError`` so development and test builds surface completeness
-    gaps at once; production builds leave it off and let the history self-heal.
+    ``UntrackedMutationError``, surfacing completeness gaps at once; with it off
+    the history self-heals by recording the mutation as its own entry.
     ``log_level`` sets the verbosity of the application logger at startup.
 
-    Every field is required: the shipped YAML is the authoritative source, so the
-    model declares no defaults for the loader to silently fall back on.
+    Every field is required: the shipped ``deployment.yaml`` is the single
+    authoritative source, so the model declares no defaults for the loader to
+    silently fall back on. Swapping the file is what distinguishes one build
+    flavour from another.
     """
 
     log_level: LogLevel

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.result import (
+    ConversionResult,
     ServiceCancelled,
     ServiceError,
     ServiceIntermediate,
@@ -17,15 +18,6 @@ from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskSta
 from sampletones_core.reconstructions.converter import ReconstructionConverter
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.system.paths import to_path
-
-ConversionResult = Union[
-    ServiceStarted,
-    ServiceProgress[Path],
-    ServiceIntermediate[TaskProgress],
-    ServiceSuccess[Path],
-    ServiceError,
-    ServiceCancelled,
-]
 
 
 class ConversionService(ServiceBase[ConversionResult]):
