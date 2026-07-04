@@ -19,10 +19,12 @@ def calculate_fft_spectrum(
     fft_size: Optional[int] = None,
 ) -> Histogram:
     """
-    Calculate the power spectrum of a wave using FFT.
+    Calculate the one-sided power spectrum of a wave using FFT.
 
-    Computes the real FFT and returns the power spectrum (squared magnitude)
-    as a histogram with linearly-spaced frequency bins.
+    Computes the real FFT and returns the one-sided power spectrum as a histogram
+    with linearly-spaced frequency bins. Each bin holds the mean-square power of
+    its content: a bin-centered tone of amplitude `A` reports `A**2 / 2`, matching
+    the constant-Q convention.
 
     DC component is excluded.
 
@@ -37,7 +39,7 @@ def calculate_fft_spectrum(
     validate_audio_array(audio)
     fft_size = fft_size or len(audio)
     fft: np.ndarray = calculate_fft(audio, fft_size)
-    energy: np.ndarray = np.square(np.abs(fft) / fft_size)
+    energy: np.ndarray = 2.0 * np.square(np.abs(fft) / fft_size)
     bands: np.ndarray = calculate_fft_frequencies(fft_size, sample_rate)
     return Histogram(edges=bands.astype(np.float32), values=energy.astype(np.float32))
 

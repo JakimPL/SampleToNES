@@ -7,7 +7,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sampletones_core.constants.general import SPECTRUM_FLOOR
+from sampletones_core.constants.algorithm import SPECTRUM_FLOOR
 from sampletones_core.fft.transformer import FFTTransformer
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.array import (

@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
+from sampletones_core.constants.algorithm import RESET_PHASE
 from sampletones_core.constants.general import (
     APU_CLOCK,
     MAX_LFSR,
@@ -11,7 +12,6 @@ from sampletones_core.constants.general import (
     NOISE_LONG_PERIOD,
     NOISE_PERIODS,
     NOISE_SHORT_PERIOD,
-    RESET_PHASE,
 )
 from sampletones_shared.types.data import Initials
 

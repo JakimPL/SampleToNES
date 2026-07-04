@@ -5,7 +5,7 @@ import numpy as np
 from scipy.io import wavfile
 from soundfile import read as sf_read
 
-from sampletones_core.constants.general import QUANTIZATION_LEVELS
+from sampletones_core.constants.algorithm import QUANTIZATION_LEVELS
 from sampletones_shared.types.path import Pathlike
 
 from .processing import clip_audio
@@ -69,6 +69,7 @@ def load_audio(
     target_sample_rate: Optional[int] = None,
     normalize: bool = True,
     quantize: bool = True,
+    quantization_levels: int = QUANTIZATION_LEVELS,
 ) -> np.ndarray:
     """
     Load audio from file with optional processing (mono conversion, normalization, resampling, quantization).
@@ -85,6 +86,7 @@ def load_audio(
         target_sample_rate: Target sample rate in Hz. If None, uses original sample rate.
         normalize: Whether to normalize audio to peak amplitude of 1.0.
         quantize: Whether to quantize audio to discrete levels.
+        quantization_levels: Number of amplitude levels used when quantization is enabled.
 
     Returns:
         Processed mono audio array as float32.
@@ -113,6 +115,6 @@ def load_audio(
     )
 
     if quantize:
-        audio = quantize_audio(audio, levels=QUANTIZATION_LEVELS)
+        audio = quantize_audio(audio, levels=quantization_levels)
 
     return audio

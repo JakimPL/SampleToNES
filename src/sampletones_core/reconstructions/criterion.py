@@ -4,8 +4,8 @@ from typing import Tuple, Union
 import numpy as np
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import SPECTRUM_FLOOR
 from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
-from sampletones_core.constants.general import SPECTRUM_FLOOR
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.fft import (
     FFTTransformer,
@@ -40,6 +40,7 @@ class Criterion:
     no_weights: xp.ndarray = field(init=False)
     spectral_distance: SpectralDistance = field(init=False)
     divergence_beta: float = field(init=False)
+    temporal_level_floor: float = field(init=False)
 
     def __post_init__(self) -> None:
         alpha, beta = self.get_loss_weights()
@@ -49,6 +50,7 @@ class Criterion:
         metric = self.config.generation.metric
         object.__setattr__(self, "spectral_distance", SpectralDistance(metric.spectral_distance))
         object.__setattr__(self, "divergence_beta", float(metric.beta))
+        object.__setattr__(self, "temporal_level_floor", float(metric.temporal_level_floor))
 
         no_weights = xp.ones(self.config.frame_length, dtype=xp.float32)
         weights = calculate_weights_from_edges(self._reference_edges(), metric.perceptual_exponent)
@@ -137,7 +139,18 @@ class Criterion:
         return xp.sqrt(mean)
 
     def temporal_loss(self, audio: xp.ndarray, approximation: xp.ndarray) -> xp.ndarray:
-        return self.rmse(audio, approximation, with_weights=False)
+        """
+        RMS difference between waveforms, normalized by the target's own level.
+
+        The normalization makes the temporal term relative, matching the spectral
+        term, so the configured loss blend holds at every frame loudness. Frames
+        quieter than the configured temporal level floor (by default the quietest
+        playable volume relative to the working level) normalize as if at that
+        floor, keeping costs bounded for near-silent frames.
+        """
+        rmse = self.rmse(audio, approximation, with_weights=False)
+        level = xp.sqrt(xp.mean(xp.square(audio)))
+        return rmse / xp.maximum(level, self.temporal_level_floor)
 
     def spectral_loss(
         self,

@@ -192,9 +192,11 @@ class SpectrumProbe:
         """
         Spectrum of one frame of audio under this probe's method.
 
-        The windowed methods analyze one envelope-weighted window; the constant-Q
-        method transforms the whole signal and reports its central column, matching
-        how the feature extractors position a frame within its context.
+        The windowed methods analyze one envelope-weighted window and normalize the
+        spectrum by ``Window.energy_gain``, mirroring the production feature
+        extractor; the constant-Q method transforms the whole signal and reports its
+        central column, matching how the feature extractors position a frame within
+        its context.
 
         Args:
             audio: Input audio of ``signal_length`` samples.
@@ -205,15 +207,18 @@ class SpectrumProbe:
         Raises:
             ValueError: If the spectrum method is unsupported.
         """
+        gain = float(self.window.energy_gain)
         match self.method:
             case SpectrumMethod.FFT:
-                return calculate_fft_spectrum(audio * self.window.envelope, self.sample_rate, self.window.size)
+                spectrum = calculate_fft_spectrum(audio * self.window.envelope, self.sample_rate, self.window.size)
+                return spectrum.apply_with(lambda values: values / gain)
             case SpectrumMethod.LOG_SPACED_FFT:
-                return calculate_log_spaced_fft_spectrum(
+                spectrum = calculate_log_spaced_fft_spectrum(
                     audio * self.window.envelope,
                     self.sample_rate,
                     self.window.size,
                 )
+                return spectrum.apply_with(lambda values: values / gain)
             case SpectrumMethod.CQT:
                 columns = calculate_cqt_spectrum_columns(audio, self.sample_rate, self.config.frame_length)
                 return columns[len(columns) // 2]

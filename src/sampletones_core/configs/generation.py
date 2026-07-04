@@ -2,14 +2,7 @@ from typing import List
 
 from pydantic import AliasChoices, ConfigDict, Field
 
-from sampletones_core.constants.enums import (
-    DEFAULT_GENERATORS,
-    GeneratorName,
-    PhaseAlignerName,
-    SelectorName,
-    SpectralDistance,
-)
-from sampletones_core.constants.general import (
+from sampletones_core.constants.algorithm import (
     DECODER_TOP_K,
     DIVERGENCE_BETA,
     DRIVE,
@@ -23,11 +16,19 @@ from sampletones_core.constants.general import (
     SELECTOR,
     SPECTRAL_DISTANCE,
     SPECTRAL_LOSS_WEIGHT,
+    TEMPORAL_LEVEL_FLOOR,
     TEMPORAL_LOSS_WEIGHT,
     TRANSITION_ON_OFF_WEIGHT,
     TRANSITION_PITCH_WEIGHT,
     TRANSITION_TIMBRE_WEIGHT,
     TRANSITION_VOLUME_WEIGHT,
+)
+from sampletones_core.constants.enums import (
+    DEFAULT_GENERATORS,
+    GeneratorName,
+    PhaseAlignerName,
+    SelectorName,
+    SpectralDistance,
 )
 from sampletones_core.data import DataModel
 
@@ -53,6 +54,7 @@ class MetricConfig(DataModel):
     spectral_distance: SpectralDistance = Field(default=SPECTRAL_DISTANCE)
     beta: float = Field(default=DIVERGENCE_BETA, ge=0.0)
     perceptual_exponent: float = Field(default=PERCEPTUAL_EXPONENT, ge=0.0)
+    temporal_level_floor: float = Field(default=TEMPORAL_LEVEL_FLOOR, gt=0.0)
 
 
 class DecoderConfig(DataModel):

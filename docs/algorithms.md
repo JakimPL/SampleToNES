@@ -92,13 +92,14 @@ sharper frequency resolution requires a longer time window, and vice versa):
 
 - **FFT** uses a window only slightly larger than one frame, so it localizes events
   sharply in time but resolves low frequencies coarsely — the lowest octave spans
-  only a couple of bins. It is the simplest and the default.
+  only a couple of bins. It is the simplest of the three.
 - **log-FFT** takes the same FFT and *re-bins* its linear bins onto a logarithmic
   (musical) axis. This is useful when a log/perceptual axis is wanted, but it adds
   **no** low-frequency information — the resolution is still the FFT's `Δf`. Like the
   FFT it keeps a short window, so it localizes events sharply in time.
-- **CQT** (constant-Q transform, via `librosa`) places bins geometrically and gives
+- **CQT** (constant-Q transform) places bins geometrically and gives
   every musical interval the same number of bins, so it resolves low pitches finely.
+  It is the default.
   The price is time support: its low-frequency basis functions are long (hundreds of
   milliseconds), so brief events are smeared in time at the low end. SampleToNES
   computes the CQT **once over the whole signal** with a hop of one frame
@@ -106,7 +107,10 @@ sharper frequency resolution requires a longer time window, and vice versa):
   time position and the per-frame columns line up with the FFT path's frame centres.
 
 The target and the library candidates are always described by the *same* method, so
-their features are directly comparable bin by bin.
+their features are directly comparable bin by bin. All three methods share one scale
+convention: a bin-centered tone of amplitude `A` contributes `A²/2` — its mean-square
+power — to its bin, at every frame length (the analysis-window taper is compensated
+by its energy gain).
 
 ### 3.3 The gamma transform
 
@@ -145,11 +149,14 @@ cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
 - **spectral** compares the two frequency features with a perceptually-weighted
   distance, normalized by the target's own energy so the score is about *shape*. The
   per-bin distance is configurable — squared error, absolute error, or (the default)
-  a **β-divergence** (a Kullback–Leibler-style measure that penalizes adding energy
-  where the target has none slightly more than leaving energy out). Bins are weighted
-  by a combination of log-frequency density and an A-weighting perceptual curve.
+  a **β-divergence** (a Kullback–Leibler-style measure that, for partials above the
+  spectral floor, penalizes leaving target energy uncovered more strongly than adding
+  energy beyond it). Bins are weighted by a combination of log-frequency density and
+  an A-weighting perceptual curve.
 - **temporal** is the RMS difference between the candidate and target *waveforms*,
-  capturing alignment that a magnitude spectrum discards.
+  normalized by the target frame's own level, capturing alignment that a magnitude
+  spectrum discards while keeping the spectral/temporal blend stable across frame
+  loudness.
 
 A lower cost is a better match. The criterion evaluates many candidates at once and,
 on machines with a GPU, runs on the array backend in `sampletones_shared`.
@@ -227,7 +234,7 @@ noise):
 | parameter                | default | notes                                              |
 |--------------------------|---------|----------------------------------------------------|
 | frame length             | 1470    | `sample_rate / nes_frequency`, ~33 ms              |
-| spectrum method          | `fft`   | `fft` / `logfft` / `cqt`                            |
+| spectrum method          | `cqt`   | `fft` / `logfft` / `cqt`                            |
 | `transformation_gamma`   | 0       | 0 = power spectrum, 100 = log                       |
 | spectral / temporal weight | 0.8 / 0.2 | criterion blend                                 |
 | spectral distance        | β-divergence | also `squared`, `absolute`                     |

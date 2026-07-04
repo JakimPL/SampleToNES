@@ -5,8 +5,8 @@ from typing import List, Optional, Self, Sequence, Union, overload
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
+from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA, SPECTRUM_FLOOR
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
-from sampletones_core.constants.general import MAX_TRANSFORMATION_GAMMA, SPECTRUM_FLOOR
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.array import (
     Array,

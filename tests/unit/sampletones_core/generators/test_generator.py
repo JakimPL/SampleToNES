@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import MIN_SAMPLE_LENGTH
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.general import MIN_SAMPLE_LENGTH
 from sampletones_core.fft import CyclicArray
 from sampletones_core.generators.implementation.pulse import PulseGenerator
 from sampletones_core.instructions import PulseInstruction

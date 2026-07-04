@@ -41,6 +41,18 @@ class Window(DataModel):
         return self.create_window()
 
     @cached_property
+    def energy_gain(self) -> float:
+        """
+        Mean squared value of the analysis envelope.
+
+        The raw power spectrum of a windowed frame scales with this gain, so dividing
+        the spectrum by it makes a given signal report the same spectral energy at
+        every taper share, and therefore at every NES frequency. A uniform envelope
+        has a gain of one.
+        """
+        return float(np.mean(np.square(self.envelope)))
+
+    @cached_property
     def backward_frames(self) -> int:
         return -(self.left_offset // self.config.frame_length)
 

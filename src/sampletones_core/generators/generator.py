@@ -4,8 +4,8 @@ from typing import Any, Dict, Generic, List, Optional, Tuple
 import numpy as np
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import MIN_SAMPLE_LENGTH
 from sampletones_core.constants.enums import GeneratorClassName
-from sampletones_core.constants.general import MIN_SAMPLE_LENGTH
 from sampletones_core.fft import CyclicArray
 from sampletones_core.instructions import InstructionT, InstructionTypeUnion
 from sampletones_core.timers import TimerT, get_frequency_table

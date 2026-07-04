@@ -78,6 +78,40 @@ class TestCriterionRmse:
             criterion.rmse(reference, candidates)
 
 
+class TestCriterionTemporalLoss:
+    def test_temporal_loss_is_invariant_under_common_scaling(
+        self,
+        criterion: Criterion,
+        config: Config,
+    ) -> None:
+        """
+        Normalizing by the target level makes the temporal term relative: scaling
+        the target and the candidates together leaves the loss unchanged, so the
+        spectral/temporal blend holds at every frame loudness.
+        """
+        generator = np.random.default_rng(0)
+        audio = generator.standard_normal(config.frame_length).astype(np.float32)
+        candidates = generator.standard_normal((2, config.frame_length)).astype(np.float32)
+
+        base = to_numpy(criterion.temporal_loss(audio, candidates))
+        scaled = to_numpy(criterion.temporal_loss(4.0 * audio, 4.0 * candidates))
+        np.testing.assert_allclose(scaled, base, rtol=1e-5)
+
+    def test_near_silent_target_normalizes_at_the_level_floor(
+        self,
+        criterion: Criterion,
+        config: Config,
+    ) -> None:
+        """
+        A silent target frame normalizes at the configured temporal level floor, so
+        a candidate's cost equals its RMS divided by the floor and stays bounded.
+        """
+        audio = np.zeros(config.frame_length, dtype=np.float32)
+        candidate = np.full((1, config.frame_length), 0.1, dtype=np.float32)
+        loss = float(to_numpy(criterion.temporal_loss(audio, candidate))[0])
+        assert loss == pytest.approx(0.1 / criterion.temporal_level_floor, rel=1e-5)
+
+
 class TestCriterionGetLossWeights:
     def test_negative_weight_raises_value_error(self, window: Window) -> None:
         mock_config = MagicMock()

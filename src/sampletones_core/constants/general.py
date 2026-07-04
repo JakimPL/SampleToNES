@@ -1,10 +1,8 @@
 from typing import Final, Tuple
 
-from .enums import PhaseAlignerName, SelectorName, SpectralDistance
-
 # NES limits
 
-DEFAULT_NES_FREQUENCY: Final[int] = 30  # half of NTSC frame rate
+DEFAULT_NES_FREQUENCY: Final[int] = 30
 MIN_NES_FREQUENCY: Final[int] = 15
 MAX_NES_FREQUENCY: Final[int] = 300
 
@@ -46,61 +44,6 @@ MIN_VOLUME: Final[int] = 1
 MAX_VOLUME: Final[int] = 15
 VOLUME_RANGE: Final[range] = range(0, MAX_VOLUME + 1)
 MAX_DUTY_CYCLE: Final[int] = 3
-SPECTRUM_FLOOR: Final[float] = (MIN_VOLUME / MAX_VOLUME) ** 2
-
-# Audio import
-
-NORMALIZE: Final[bool] = True
-# Quantizing the input to QUANTIZATION_LEVELS is applied after peak-normalization,
-# so it acts as a peak-relative gate that zeros everything below half a level
-# (~-29.5 dB of the loudest sample). It does not improve matching, so it is off by
-# default; the user can re-enable it for a deliberate lo-fi effect.
-QUANTIZE: Final[bool] = False
-QUANTIZATION_LEVELS: Final[int] = 32
-
-# Matching input level: the normalization coefficient anchors to a robust level
-# (a percentile of the per-frame peak amplitudes over frames audible relative to
-# the global peak) rather than the single loudest sample, so a lone transient does
-# not push the rest of the signal below the NES's matchable range.
-COEFFICIENT_PERCENTILE: Final[float] = 90.0
-COEFFICIENT_AUDIBILITY_FLOOR: Final[float] = 1e-3
-# Floor on the reference level so a fully silent input does not divide by zero.
-MINIMUM_AUDIO_LEVEL: Final[float] = 1e-12
-
-# Library creation
-
-MIN_SAMPLE_LENGTH: Final[float] = 0.05
-MAX_SAMPLE_LENGTH: Final[float] = 1.0
-LIBRARY_PHASES_PER_SAMPLE: Final[int] = 100
-
-# Calculation methods
-
-TRANSFORMATION_GAMMA: Final[int] = 0
-MAX_TRANSFORMATION_GAMMA: Final[int] = 100
-FIND_BEST_PHASE: Final[bool] = True
-FAST_DIFFERENCE: Final[bool] = False
-PHASE_ALIGNER: Final[PhaseAlignerName] = PhaseAlignerName.CROSS_CORRELATION
-
-RESET_PHASE: Final[bool] = False
-FINAL_REGENERATION: Final[bool] = True
-SPECTRAL_LOSS_WEIGHT: Final[float] = 0.80
-TEMPORAL_LOSS_WEIGHT: Final[float] = 0.20
-
-SPECTRAL_DISTANCE: Final[SpectralDistance] = SpectralDistance.BETA_DIVERGENCE
-DIVERGENCE_BETA: Final[float] = 1.0
-PERCEPTUAL_EXPONENT: Final[float] = 0.5
-
-# Selection and continuity decoding
-
-SELECTOR: Final[SelectorName] = SelectorName.VITERBI
-DECODER_TOP_K: Final[int] = 8
-TRANSITION_PITCH_WEIGHT: Final[float] = 0.03
-TRANSITION_VOLUME_WEIGHT: Final[float] = 0.02
-TRANSITION_TIMBRE_WEIGHT: Final[float] = 0.10
-TRANSITION_ON_OFF_WEIGHT: Final[float] = 0.20
-
-BATCH_SIZE: Final[int] = 512
-MAX_WORKERS: Final[int] = 6
 
 # Channel-specific constants
 
@@ -143,8 +86,6 @@ MAX_LFSR_SHORT: Final[int] = 0x5D
 
 # Mixer constants
 
-DRIVE: Final[float] = 1.0
-MAX_DRIVE: Final[float] = 5.0
 MIXER_PULSE: Final[float] = 0.26395226395226395
 MIXER_TRIANGLE: Final[float] = 0.2987012987012987
 MIXER_NOISE: Final[float] = 0.1733941733941734

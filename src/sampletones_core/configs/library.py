@@ -1,6 +1,7 @@
 import numpy as np
 from pydantic import AliasChoices, ConfigDict, Field
 
+from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA, TRANSFORMATION_GAMMA
 from sampletones_core.constants.audio import (
     DEFAULT_SAMPLE_RATE,
     MAX_SAMPLE_RATE,
@@ -13,10 +14,8 @@ from sampletones_core.constants.general import (
     DEFAULT_NES_FREQUENCY,
     LIMIT_MAX_PITCH,
     MAX_NES_FREQUENCY,
-    MAX_TRANSFORMATION_GAMMA,
     MIN_FREQUENCY,
     MIN_NES_FREQUENCY,
-    TRANSFORMATION_GAMMA,
 )
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.data import DataModel
@@ -29,6 +28,7 @@ class InstructionsLibraryConfig(DataModel):
         default=DEFAULT_NES_FREQUENCY,
         ge=MIN_NES_FREQUENCY,
         le=MAX_NES_FREQUENCY,
+        description="Instruction change rate in Hz; the default equals half of the NTSC frame rate.",
         validation_alias=AliasChoices(
             "change_rate",
             "nes_frequency",

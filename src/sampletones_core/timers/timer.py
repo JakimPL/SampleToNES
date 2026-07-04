@@ -3,11 +3,7 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.general import (
-    MAX_SAMPLE_LENGTH,
-    MIN_SAMPLE_LENGTH,
-    RESET_PHASE,
-)
+from sampletones_core.constants.algorithm import MAX_SAMPLE_LENGTH, MIN_SAMPLE_LENGTH, RESET_PHASE
 from sampletones_core.fft import CyclicArray, Window
 from sampletones_shared.types.data import Initials
 

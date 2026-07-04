@@ -3,12 +3,12 @@ from typing import Tuple, cast
 import librosa
 import numpy as np
 
-from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.constants.general import (
+from sampletones_core.constants.algorithm import (
     COEFFICIENT_AUDIBILITY_FLOOR,
     COEFFICIENT_PERCENTILE,
     QUANTIZATION_LEVELS,
 )
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 
 from .validation import validate_audio_array
 
@@ -254,6 +254,10 @@ def quantize(audio: np.ndarray, levels: int = QUANTIZATION_LEVELS) -> np.ndarray
     Reduces audio bit depth by rounding to discrete levels, simulating
     lower bit-depth audio. Automatically adjusts even level counts to odd
     to ensure zero is included as a level.
+
+    Applied after peak normalization, quantization also acts as a peak-relative
+    gate: samples within half a level of zero (about -29.5 dB of the loudest
+    sample at 32 levels) round to silence, giving a deliberate lo-fi character.
 
     Args:
         audio: Audio array to quantize.

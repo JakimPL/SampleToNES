@@ -5,8 +5,8 @@ import numpy as np
 
 from sampletones_core.audio import active_frame_level, load_audio
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.general import MINIMUM_AUDIO_LEVEL
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
     MIXER_LEVELS,
@@ -77,11 +77,28 @@ class Reconstructor:
             target_sample_rate=self.config.library.sample_rate,
             normalize=self.config.general.normalize,
             quantize=self.config.general.quantize,
+            quantization_levels=self.config.general.quantization_levels,
         )
 
     def get_coefficient(self, audio: np.ndarray) -> float:
+        """
+        Working-level coefficient that scales the input into the range the enabled
+        channels span.
+
+        The reference anchors to the robust active-frame level using the configured
+        percentile and audibility floor, and is floored at `MINIMUM_AUDIO_LEVEL` so
+        a fully silent input yields a finite coefficient.
+        """
         total = sum(MIXER_LEVELS[generator.class_name()] for generator in self.generators.values())
-        level = max(active_frame_level(audio, self.config.library.frame_length), MINIMUM_AUDIO_LEVEL)
+        level = max(
+            active_frame_level(
+                audio,
+                self.config.library.frame_length,
+                percentile=self.config.general.coefficient_percentile,
+                audibility_floor=self.config.general.coefficient_audibility_floor,
+            ),
+            MINIMUM_AUDIO_LEVEL,
+        )
         return float(level / total)
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:

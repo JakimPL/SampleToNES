@@ -4,8 +4,8 @@ from typing import Final, Tuple
 import numpy as np
 import pytest
 
+from sampletones_core.constants.algorithm import PERCEPTUAL_EXPONENT
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_core.constants.general import PERCEPTUAL_EXPONENT
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
 from sampletones_core.fft.utils import calculate_n_bins
@@ -183,46 +183,44 @@ class TestWindowScaling:
         ]
         assert max(responses) / min(responses) < 1.2
 
-    def test_fft_tone_response_follows_the_envelope_energy_gain(self) -> None:
+    def test_fft_tone_response_is_frame_length_invariant(self) -> None:
         """
-        The analysis window keeps a fixed size while the flat region shrinks with the
-        frame length, so the windowed methods scale a frame's spectrum by the
-        envelope energy gain ``mean(envelope**2)``. The tone band energy across NES
-        frequencies tracks that gain.
+        The envelope energy-gain normalization makes the windowed methods report the
+        same tone energy at every NES frequency, matching the constant-Q behavior.
         """
-        reference_probe = probe(SpectrumMethod.FFT, 30)
-        shorter_frame_probe = probe(SpectrumMethod.FFT, 300)
+        responses = [
+            band_energy(probe(SpectrumMethod.FFT, nes_frequency).tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
+            for nes_frequency in (30, 60, 300)
+        ]
+        assert max(responses) / min(responses) < 1.2
 
-        reference_gain = float(np.mean(reference_probe.window.envelope**2))
-        shorter_frame_gain = float(np.mean(shorter_frame_probe.window.envelope**2))
-
-        reference_response = band_energy(reference_probe.tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
-        shorter_frame_response = band_energy(shorter_frame_probe.tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
-
-        measured_ratio = shorter_frame_response / reference_response
-        expected_ratio = shorter_frame_gain / reference_gain
-        assert measured_ratio == pytest.approx(expected_ratio, rel=0.2)
+    def test_uniform_envelope_has_unit_energy_gain(self) -> None:
+        """
+        At an NES frequency whose frame fills the whole window, the envelope is
+        uniform and the normalization leaves the spectrum unchanged.
+        """
+        assert probe(SpectrumMethod.FFT, 15).window.energy_gain == pytest.approx(1.0)
 
 
 class TestScaleConventions:
-    def test_fft_bin_centered_tone_reports_a_quarter_of_the_squared_amplitude(self) -> None:
+    def test_fft_bin_centered_tone_reports_half_of_the_squared_amplitude(self) -> None:
         """
-        At an NES frequency whose frame fills the whole window, the envelope is
-        uniform and a bin-centered tone of amplitude ``A`` lands entirely in one bin
-        of value ``(A / 2) ** 2``.
+        The one-sided power spectrum reports a bin-centered tone of amplitude ``A``
+        as a single bin of value ``A ** 2 / 2`` — the tone's mean-square power —
+        matching the constant-Q convention.
         """
         spectrum_probe = probe(SpectrumMethod.FFT, 15)
         bin_width = SAMPLE_RATE / spectrum_probe.window.size
         frequency = 30 * bin_width
         spectrum = spectrum_probe.tone_spectrum(frequency)
-        expected = (PROBE_TONE_AMPLITUDE / 2.0) ** 2
+        expected = PROBE_TONE_AMPLITUDE**2 / 2.0
         assert bin_value_at(spectrum, frequency) == pytest.approx(expected, rel=0.05)
 
     def test_cqt_bin_centered_tone_reports_half_of_the_squared_amplitude(self) -> None:
         """
         The constant-Q normalization reports a bin-centered tone of amplitude ``A``
-        as ``A ** 2 / 2``, twice the linear-FFT convention, because the one-sided
-        factor is folded into the energy normalization.
+        as ``A ** 2 / 2`` — the tone's mean-square power — matching the linear-FFT
+        convention.
         """
         n_bins = calculate_n_bins(SAMPLE_RATE, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
         frequencies = calculate_cqt_frequencies(n_bins, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
