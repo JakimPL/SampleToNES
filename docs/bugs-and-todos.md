@@ -37,9 +37,6 @@
 
 * Per-tab undo routing (analogous to `PlaybackRouter`) once standalone
   reconstruction documents gain their own history
-* `GUIAudioSettingsWindow` stores raw `AudioDevice`/`CurrentDevice` objects and
-  formats their display itself; `AudioSettingsViewModel` should carry
-  pre-projected display items
 * `GUIStatusBar` is a singleton reached from panels via class methods,
   bypassing constructor injection
 
