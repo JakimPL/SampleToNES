@@ -20,7 +20,6 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_PANEL,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -38,14 +37,14 @@ from sampletones_shared.types.application import Sender
 class GUISequencerModulePanel(GUIPanel):
     def __init__(
         self,
-        sequencer_grid_logic: SequencerGridLogic,
+        initial_settings: SequencerSettingsViewModel,
         *,
         layout: SequencerLayout,
         input_width: int,
         language_manager: LanguageManager,
         shortcut_manager: ShortcutManager,
     ) -> None:
-        self._sequencer_grid_logic = sequencer_grid_logic
+        self._initial_settings = initial_settings
         self._layout = layout
         self._input_width = input_width
         self._shortcut_manager = shortcut_manager
@@ -117,7 +116,7 @@ class GUISequencerModulePanel(GUIPanel):
         FontRegistry.bind_to_item(section_text, Font.BOLD)
         dpg.add_separator()
 
-        settings = self._sequencer_grid_logic.settings
+        settings = self._initial_settings
         with dpg.group(tag=TAG_SEQUENCER_MODULE_GROUP_OPTIONS):
             dpg.add_input_int(
                 label=self._lbl_nes_frequency,

@@ -235,14 +235,19 @@ class SequencerTabCoordinator:
                 RowSynthesizer(project_controller, config_manager.config),
             ),
         )
-        self._player_panel: GUISongPlayerPanel
+        self._player_panel: GUISongPlayerPanel = GUISongPlayerPanel(
+            tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
+            parent=TAG_SEQUENCER_GRID_PANEL,
+            layout=layout.player,
+            language_manager=language_manager,
+        )
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
-            self._sequencer_grid_logic,
+            self._sequencer_grid_logic.settings,
             layout=layout.sequencer,
             input_width=layout.general.inputs.default_width,
             language_manager=language_manager,
@@ -407,6 +412,11 @@ class SequencerTabCoordinator:
         self._sequencer_tree_logic.on_autoplay_error = self._on_preview_error
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
+        self._song_player_logic.on_view_changed = self._on_player_view_changed
+        self._player_panel.on_play = self._song_player_logic.play
+        self._player_panel.on_pause_or_resume = self._song_player_logic.pause_or_resume
+        self._player_panel.on_stop = self._song_player_logic.stop
+        self._player_panel.on_follow_changed = self._song_player_logic.set_follow_playback
         self._song_player_logic.on_error = self._on_player_error
 
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
@@ -1025,14 +1035,8 @@ class SequencerTabCoordinator:
                         no_scroll_with_mouse=True,
                     ):
                         self._sequencer_grid_panel.create_panel()
-                        self._player_panel = GUISongPlayerPanel(
-                            tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
-                            parent=TAG_SEQUENCER_GRID_PANEL,
-                            song_player_logic=self._song_player_logic,
-                            layout=self._layout.player,
-                            language_manager=self._language_manager,
-                        )
-                        self._song_player_logic.on_view_changed = self._on_player_view_changed
+                        self._player_panel.create_panel()
+                        self._song_player_logic.refresh_view()
                         self._sequencer_actions_panel.create_panel()
                         self._sequencer_order_panel.create_panel()
                         self._sequencer_grid_panel.create_tracker()

@@ -162,6 +162,9 @@ class SongPlayerLogic(CallbackMixin):
         self._session_manager.set_follow_playback(value)
         self._emit_view()
 
+    def refresh_view(self) -> None:
+        self._emit_view()
+
     def _external_output_priority(self) -> Optional[int]:
         """The song holds the shared output device while its stream is alive (playing or paused)."""
         return PlaybackPriority.NORMAL if self._service.alive else None
