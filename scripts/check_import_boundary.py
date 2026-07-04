@@ -3,9 +3,11 @@
 """
 Enforces layer-boundary import rules across the sampletones_application package.
 
-Each rule is a (glob_pattern, forbidden_prefixes) pair. The script checks every
-Python source file matched by the glob and reports any import that begins with
-one of the forbidden prefixes.
+Each rule names a file glob, the import prefixes forbidden there, and the
+contract modules exempt from those prefixes: a layer may consume another
+layer's data contract (e.g. a service's result types) while its implementation
+modules stay out of reach. The script checks every Python source file matched
+by the glob and reports any import that begins with a forbidden prefix.
 
 Usage:
     python check_import_boundary.py [files...]   # check specific files
@@ -15,6 +17,7 @@ Usage:
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 APP_ROOT = Path(__file__).parent.parent / "src" / "sampletones_application"
 
@@ -26,8 +29,20 @@ VISUAL = [
     "sampletones_application.utils.gui",
 ]
 
-RULES: list[tuple[str, list[str]]] = [
-    (
+SERVICE_CONTRACTS = [
+    "sampletones_application.services.result",
+    "sampletones_application.services.song_player.result",
+]
+
+
+class BoundaryRule(NamedTuple):
+    pattern: str
+    forbidden: list[str]
+    contracts: list[str] = []
+
+
+RULES: list[BoundaryRule] = [
+    BoundaryRule(
         "config/**/*.py",
         [
             *VISUAL,
@@ -35,14 +50,16 @@ RULES: list[tuple[str, list[str]]] = [
             "sampletones_application.application",
         ],
     ),
-    (
+    BoundaryRule(
         "logic/**/*.py",
         [
             *VISUAL,
             "sampletones_application.coordinators",
+            "sampletones_application.services",
         ],
+        contracts=SERVICE_CONTRACTS,
     ),
-    (
+    BoundaryRule(
         "view_model/**/*.py",
         [
             *VISUAL,
@@ -52,7 +69,7 @@ RULES: list[tuple[str, list[str]]] = [
             "sampletones_application.services",
         ],
     ),
-    (
+    BoundaryRule(
         "services/**/*.py",
         [
             *VISUAL,
@@ -62,19 +79,42 @@ RULES: list[tuple[str, list[str]]] = [
             "sampletones_application.logic",
         ],
     ),
-    (
+    BoundaryRule(
         "shell.py",
         [
             "sampletones_application.logic",
             "sampletones_application.services",
         ],
     ),
+    BoundaryRule(
+        "coordinators/**/*.py",
+        [
+            "sampletones_application.application",
+            "sampletones_application.shell",
+        ],
+    ),
+    BoundaryRule(
+        "ui/**/*.py",
+        [
+            "sampletones_application.coordinators",
+            "sampletones_application.logic",
+            "sampletones_application.services",
+            "sampletones_application.config",
+            "sampletones_application.application",
+            "sampletones_application.shell",
+            "sampletones_application.utils.gui.dialogs",
+        ],
+    ),
 ]
+
+
+def _matches_prefix(module: str, prefix: str) -> bool:
+    return module == prefix or module.startswith(prefix + ".")
 
 
 def find_violations(
     filepath: Path,
-    forbidden_prefixes: list[str],
+    rule: BoundaryRule,
 ) -> list[tuple[str, str]]:
     violations: list[tuple[str, str]] = []
     for line_number, line in enumerate(
@@ -86,8 +126,11 @@ def find_violations(
             continue
 
         module = match.group(2)
-        for prefix in forbidden_prefixes:
-            if module == prefix or module.startswith(prefix + "."):
+        if any(_matches_prefix(module, contract) for contract in rule.contracts):
+            continue
+
+        for prefix in rule.forbidden:
+            if _matches_prefix(module, prefix):
                 location = f"{filepath}:{line_number}"
                 violations.append((prefix, f"{location}: {line.strip()}"))
                 break
@@ -97,19 +140,19 @@ def find_violations(
 
 def run_all_rules() -> list[tuple[str, str]]:
     all_violations: list[tuple[str, str]] = []
-    for glob_pattern, forbidden_prefixes in RULES:
-        for filepath in sorted(APP_ROOT.glob(glob_pattern)):
-            all_violations.extend(find_violations(filepath, forbidden_prefixes))
+    for rule in RULES:
+        for filepath in sorted(APP_ROOT.glob(rule.pattern)):
+            all_violations.extend(find_violations(filepath, rule))
 
     return all_violations
 
 
 def run_on_files(filepaths: list[Path]) -> list[tuple[str, str]]:
     all_violations: list[tuple[str, str]] = []
-    for rule_glob, forbidden_prefixes in RULES:
-        matched = {path for path in filepaths if path.match(rule_glob)}
+    for rule in RULES:
+        matched = {path for path in filepaths if path.match(rule.pattern)}
         for filepath in sorted(matched):
-            all_violations.extend(find_violations(filepath, forbidden_prefixes))
+            all_violations.extend(find_violations(filepath, rule))
 
     return all_violations
 
@@ -128,6 +171,7 @@ def main() -> None:
         for kind, location in all_violations:
             print(f"  [forbidden: {kind}] {location}", file=sys.stderr)
 
+        print(f"\nFound {len(all_violations)} violation(s) in total.", file=sys.stderr)
         sys.exit(1)
 
 

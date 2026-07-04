@@ -202,7 +202,6 @@ global.player.label.position_prefix: "Position: "
 global.player.label.samples_suffix: " samples"
 global.player.message.no_audio_loaded: "No audio loaded."
 global.player.message.audio_playback_error: "Audio playback error."
-global.player.title.no_audio_dialog_title: "No audio"
 
 # =============================================================================
 # Global — Graph

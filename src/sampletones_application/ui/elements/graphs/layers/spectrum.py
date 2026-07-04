@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Final, Generator, Tuple
+from typing import Any, Generator, Tuple
 
 import numpy as np
 
@@ -8,16 +8,14 @@ from sampletones_core.library import InstructionLibraryFragment
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.application import Color
 
-_DEFAULT_MAX_DISPLAY_BINS: Final[int] = 128
-
 
 @dataclass(frozen=True)
 class SpectrumLayer(Layer):
     data: InstructionLibraryFragment[Any]
     name: str
-    color_dim: Color = (0, 0, 0)
-    color_bright: Color = (255, 255, 255)
-    max_display_bins: int = _DEFAULT_MAX_DISPLAY_BINS
+    color_dim: Color
+    color_bright: Color
+    max_display_bins: int
 
     spectrum: Histogram = field(init=False)
     frequencies: np.ndarray = field(init=False)

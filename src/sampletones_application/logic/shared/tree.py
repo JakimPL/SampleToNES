@@ -9,6 +9,7 @@ from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
+from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -107,7 +108,7 @@ class TreeLogic(CallbackMixin):
                         update=False,
                         priority=priority,
                     )
-                except Exception as exception:
+                except (OSError, SampleToNESError) as exception:
                     logger.error_with_traceback(exception, f"Failed to play reconstruction file: {node.filepath}")
                     self.call(self.on_autoplay_error, exception)
             case suffix if suffix in paths.EXT_FILES_AUDIO:

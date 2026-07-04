@@ -15,5 +15,6 @@ class HistoryConfig(BaseModel):
 
     budget: int = Field(
         default=DEFAULT_HISTORY_BUDGET,
+        ge=1,
         description="Maximum number of undo entries retained per session.",
     )

@@ -139,7 +139,12 @@ class ThemeLoader:
         )
 
     @classmethod
-    def _entry_key(cls, item_type: int, enabled: bool, entry: ThemeEntrySpec) -> ThemeEntryKey:
+    def _entry_key(
+        cls,
+        item_type: int,
+        enabled: bool,
+        entry: ThemeEntrySpec,
+    ) -> ThemeEntryKey:
         if isinstance(entry, ThemeColorEntrySpec):
             key = cls._resolve_color_key(entry.key, entry.category)
         else:

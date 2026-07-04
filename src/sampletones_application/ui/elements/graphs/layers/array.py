@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -6,18 +6,14 @@ from sampletones_application.ui.elements.graphs.layers.layer import Layer
 from sampletones_core.audio import minmax_decimate
 from sampletones_shared.types.application import Color
 
-_DEFAULT_COLOR: Color = (255, 255, 255, 255)
-_DEFAULT_LINE_THICKNESS: float = 1.5
-_DEFAULT_MAX_DISPLAY_POINTS: int = 4096
-
 
 @dataclass(frozen=True)
 class ArrayLayer(Layer):
     data: np.ndarray
     name: str
-    color: Color = field(default_factory=lambda: _DEFAULT_COLOR)
-    line_thickness: float = _DEFAULT_LINE_THICKNESS
-    max_display_points: int = _DEFAULT_MAX_DISPLAY_POINTS
+    color: Color
+    line_thickness: float
+    max_display_points: int
 
     def __post_init__(self) -> None:
         y_data = self.data.astype(np.float32)

@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
@@ -22,7 +21,6 @@ from sampletones_application.constants.settings import (
     TAG_SETTINGS_PROPERTIES_WINDOW,
 )
 from sampletones_application.layout.project_properties import ProjectPropertiesLayout
-from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -30,6 +28,7 @@ from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.shared.project_properties import ProjectPropertiesViewModel
 from sampletones_shared.constants.project import (
     MAX_PROJECT_AUTHOR_LENGTH,
     MAX_PROJECT_COMMENT_LENGTH,
@@ -40,20 +39,19 @@ from sampletones_shared.constants.project import (
 class GUIProjectPropertiesWindow(GUIWindow):
     """Modal form to view and edit the project's title, author, and comment.
 
-    The fields are captured from the current project on each appearance and handed to
-    the ``on_commit`` hook on confirmation, so the owner applies them as one undoable
-    gesture. The title/author/comment feed the exported ``.ftm`` INFO block.
+    Each appearance renders the view model handed to :meth:`open`, and the edited
+    values reach the ``on_commit`` hook on confirmation, so the owner applies
+    them as one undoable gesture. The title/author/comment feed the exported
+    ``.ftm`` INFO block.
     """
 
     def __init__(
         self,
-        project_controller: ProjectController,
         *,
         layout: ProjectPropertiesLayout,
         language_manager: LanguageManager,
         shortcut_manager: ShortcutManager,
     ) -> None:
-        self._project_controller = project_controller
         self._layout = layout
         self._shortcut_manager = shortcut_manager
         self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
@@ -118,19 +116,17 @@ class GUIProjectPropertiesWindow(GUIWindow):
             height=layout.window.height,
         )
 
-    def show(self, *args: Any, **kwargs: Any) -> None:
-        if not self._project_controller.is_open:
-            return
+    def open(self, view_model: ProjectPropertiesViewModel) -> None:
+        """Shows the dialog seeded with the given project info."""
+        self._title_value = view_model.title
+        self._author_value = view_model.author
+        self._comment_value = view_model.comment
+        self._created_text = view_model.created_text
+        self._modified_text = view_model.modified_text
+        self.show()
 
-        super().show(*args, **kwargs)
-
-    def prepare(self, *args: Any, **kwargs: Any) -> None:
-        info = self._project_controller.project.info
-        self._title_value = info.title
-        self._author_value = info.author
-        self._comment_value = info.comment
-        self._created_text = self._format_timestamp(info.created)
-        self._modified_text = self._format_timestamp(info.modified)
+    def prepare(self, *_args: Any, **_kwargs: Any) -> None:
+        """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
 
     def create_panel(self) -> None:
         with dpg.window(
@@ -216,7 +212,3 @@ class GUIProjectPropertiesWindow(GUIWindow):
     @staticmethod
     def _label(language_manager: LanguageManager, element: ProjectPropertiesElements) -> str:
         return language_manager[Page.SETTINGS, Panel.PROPERTIES, TextType.LABEL, element]
-
-    @staticmethod
-    def _format_timestamp(value: datetime) -> str:
-        return value.strftime("%Y-%m-%d %H:%M")

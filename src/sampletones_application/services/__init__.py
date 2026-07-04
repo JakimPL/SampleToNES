@@ -1,5 +1,5 @@
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.services.conversion import ConversionResult, ConversionService
+from sampletones_application.services.conversion import ConversionService
 from sampletones_application.services.export import ExportError, ExportKind, ExportResult, ExportService, ExportSuccess
 from sampletones_application.services.regeneration import (
     RegeneratedInstrument,
@@ -7,6 +7,7 @@ from sampletones_application.services.regeneration import (
     RegenerationService,
 )
 from sampletones_application.services.result import (
+    ConversionResult,
     ServiceCancelled,
     ServiceError,
     ServiceIntermediate,

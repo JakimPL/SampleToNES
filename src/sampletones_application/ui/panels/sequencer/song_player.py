@@ -1,3 +1,5 @@
+from typing import Callable, Optional
+
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import PlayerElements
@@ -5,7 +7,6 @@ from sampletones_application.categories.elements.sequencer import SequencerPlaye
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.player import (
-    SUF_PLAYER_CONTROLS_GROUP,
     SUF_PLAYER_FOLLOW,
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
@@ -13,7 +14,6 @@ from sampletones_application.constants.player import (
     SUF_PLAYER_STOP,
 )
 from sampletones_application.layout.player import PlayerLayout
-from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.utils.gui.dpg import (
@@ -22,6 +22,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_set_value,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
+from sampletones_shared.types.callback import VoidCallback
 
 
 class GUISongPlayerPanel(GUIPanel):
@@ -29,7 +30,6 @@ class GUISongPlayerPanel(GUIPanel):
         self,
         tag: str,
         parent: str,
-        song_player_logic: SongPlayerLogic,
         *,
         layout: PlayerLayout,
         language_manager: LanguageManager,
@@ -39,9 +39,11 @@ class GUISongPlayerPanel(GUIPanel):
         self.stop_button_tag = f"{tag}{SUF_PLAYER_STOP}"
         self.position_text_tag = f"{tag}{SUF_PLAYER_POSITION}"
         self.follow_checkbox_tag = f"{tag}{SUF_PLAYER_FOLLOW}"
-        self.controls_group_tag = f"{tag}{SUF_PLAYER_CONTROLS_GROUP}"
 
-        self._song_player_logic = song_player_logic
+        self.on_play: Optional[VoidCallback] = None
+        self.on_pause_or_resume: Optional[VoidCallback] = None
+        self.on_stop: Optional[VoidCallback] = None
+        self.on_follow_changed: Optional[Callable[[bool], None]] = None
 
         self._layout = layout
         self._lbl_play = language_manager[
@@ -98,7 +100,6 @@ class GUISongPlayerPanel(GUIPanel):
             parent=parent,
             width=layout.panel.width,
             height=layout.panel.height,
-            init=True,
         )
 
     def create_panel(self) -> None:
@@ -115,7 +116,7 @@ class GUISongPlayerPanel(GUIPanel):
             dpg.add_checkbox(
                 tag=self.follow_checkbox_tag,
                 label=self._lbl_follow,
-                default_value=self._song_player_logic.follow_playback,
+                default_value=False,
                 callback=self._on_follow_toggled,
             )
             dpg.add_text(self._msg_no_song, tag=self.position_text_tag)
@@ -134,21 +135,21 @@ class GUISongPlayerPanel(GUIPanel):
                 GUIButton(
                     tag=self.play_button_tag,
                     label=self._lbl_play,
-                    callback=self.play,
+                    callback=self._on_play_clicked,
                     enabled=False,
                     width=-1,
                 )
                 GUIButton(
                     tag=self.pause_button_tag,
                     label=self._lbl_pause,
-                    callback=self.pause_or_resume,
+                    callback=self._on_pause_or_resume_clicked,
                     enabled=False,
                     width=-1,
                 )
                 GUIButton(
                     tag=self.stop_button_tag,
                     label=self._lbl_stop,
-                    callback=self.stop,
+                    callback=self._on_stop_clicked,
                     enabled=False,
                     width=-1,
                 )
@@ -193,22 +194,13 @@ class GUISongPlayerPanel(GUIPanel):
             )
 
     def _on_follow_toggled(self, sender: str, app_data: bool) -> None:
-        self._song_player_logic.set_follow_playback(app_data)
+        self.call(self.on_follow_changed, app_data)
 
-    def play(self) -> None:
-        self._song_player_logic.play()
+    def _on_play_clicked(self) -> None:
+        self.call(self.on_play)
 
-    def pause_or_resume(self) -> None:
-        self._song_player_logic.pause_or_resume()
+    def _on_pause_or_resume_clicked(self) -> None:
+        self.call(self.on_pause_or_resume)
 
-    def stop(self) -> None:
-        self._song_player_logic.stop()
-
-    def is_playing(self) -> bool:
-        return self._song_player_logic.is_playing()
-
-    def is_paused(self) -> bool:
-        return self._song_player_logic.is_paused()
-
-    def is_loaded(self) -> bool:
-        return self._song_player_logic.is_loaded()
+    def _on_stop_clicked(self) -> None:
+        self.call(self.on_stop)

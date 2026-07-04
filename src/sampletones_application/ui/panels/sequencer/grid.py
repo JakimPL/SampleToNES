@@ -41,7 +41,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
     EditAction,
 )
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
-from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
+from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
@@ -53,6 +53,7 @@ from sampletones_application.view_model.sequencer.grid import (
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id
@@ -232,24 +233,9 @@ class GUISequencerGridPanel(GUIPanel):
             SubColumn.VOLUME: subcolumn_colors.volume,
         }
         for subcolumn, color in theme_colors.items():
-            with dpg.theme() as theme:
-                with dpg.theme_component(dpg.mvSelectable):
-                    dpg.add_theme_color(
-                        dpg.mvThemeCol_Text,
-                        color,
-                        category=dpg.mvThemeCat_Core,
-                    )
+            self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color)
 
-            self._subcolumn_themes[subcolumn] = theme
-
-        with dpg.theme() as row_number_theme:
-            with dpg.theme_component(dpg.mvSelectable):
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_Text,
-                    self._layout.colors.text.row,
-                    category=dpg.mvThemeCat_Core,
-                )
-        self._row_number_theme = row_number_theme
+        self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
 
     def _create_tracker_view(self) -> None:
         dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=self.tag)

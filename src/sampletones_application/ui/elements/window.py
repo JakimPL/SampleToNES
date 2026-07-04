@@ -4,7 +4,7 @@ from typing import Any
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.utils.gui.dialogs import center_item
+from sampletones_application.utils.gui.align import center_item
 from sampletones_application.utils.gui.dpg import dpg_delete_item
 
 

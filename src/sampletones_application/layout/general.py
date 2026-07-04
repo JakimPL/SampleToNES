@@ -40,7 +40,6 @@ class FontsLayout(BaseModel, frozen=True):
     size_small: int
     size_large: int
     scale: int
-    icon_chars: tuple[int, ...]
 
 
 class DialogSizeLayout(BaseModel, frozen=True):
@@ -161,6 +160,20 @@ class HeaderColors(BaseModel, frozen=True):
     reconstruction: RGBA
 
 
+class FeatureColors(BaseModel, frozen=True):
+    """The per-feature palette shared by every view that names a feature.
+
+    The details tab's bar plots and the history panel's detail segments both
+    paint from this block, so a feature keeps one colour across the
+    application.
+    """
+
+    volume: RGBA
+    arpeggio: RGBA
+    pitch: RGBA
+    duty_cycle: RGBA
+
+
 class GeneralColors(BaseModel, frozen=True):
     text: TextColors
     files: FileColors
@@ -170,6 +183,7 @@ class GeneralColors(BaseModel, frozen=True):
     tables: TableColors
     paths: PathColors
     headers: HeaderColors
+    features: FeatureColors
 
 
 class GeneralLayout(BaseModel, frozen=True):

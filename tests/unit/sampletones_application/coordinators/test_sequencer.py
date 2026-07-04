@@ -1,13 +1,27 @@
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.coordinators.playback import GuardedPlayer
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.logic.history.manager import HistoryManager
+from sampletones_application.logic.history.snapshot import HistoryEntry, snapshot_project
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.paths import LANG_EN
+from sampletones_application.view_model.shared.history import (
+    HistoryDetailRole,
+    HistoryDetailSegment,
+    HistoryDetailWord,
+    HistoryDetailWordSegment,
+)
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_shared.exceptions import InvalidReconstructionValuesError
 
 
 @pytest.fixture
@@ -428,7 +442,10 @@ class TestImportReconstruction:
         self,
         coordinator: SequencerTabCoordinator,
     ) -> None:
-        coordinator._sequencer_browser_logic.load_reconstruction.side_effect = ValueError("invalid")
+        coordinator._sequencer_browser_logic.load_reconstruction.side_effect = InvalidReconstructionValuesError(
+            "invalid",
+            ValueError("inner"),
+        )
 
         coordinator.import_reconstruction(Path("reconstruction.stn"))
 
@@ -497,6 +514,74 @@ def history_coordinator() -> SequencerTabCoordinator:
     return instance
 
 
+@pytest.fixture
+def wired_history_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
+    """A coordinator whose history wiring matches production.
+
+    A real manager observes a real controller, and every project replacement —
+    including the ones undo/redo drive — routes back through
+    ``_on_project_replaced``, exactly as ``_wire_callbacks`` sets it up. The
+    panel-refreshing ``refresh`` is stubbed since no GUI subtree exists here.
+    """
+    instance = object.__new__(SequencerTabCoordinator)
+    controller = ProjectController(ProjectManager())
+    history = HistoryManager(controller, budget=10, strict=True)
+    controller.on_mutation = history.handle_mutation
+    controller.on_project_replaced = instance._on_project_replaced
+    instance._project_controller = controller
+    instance._history = history
+    monkeypatch.setattr(instance, "refresh", MagicMock())
+    controller.new()
+    return instance
+
+
+class TestHistoryResetWiring:
+    def test_project_replacement_reseeds_history(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+
+        controller.replace_project(snapshot_project(controller.project), clean=False)
+
+        assert len(coordinator._history.entries) == 1
+        assert coordinator._history.entries[0].action is HistoryAction.INITIAL
+
+    def test_closing_the_project_empties_history(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+
+        controller.close()
+
+        assert len(coordinator._history.entries) == 0
+        assert coordinator._history.can_undo is False
+
+    def test_undo_keeps_the_stack_it_navigates(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        with coordinator._history.transaction(HistoryAction.SET_SPEED):
+            controller.set_speed(4)
+
+        coordinator.undo()
+
+        assert len(coordinator._history.entries) == 3
+        assert coordinator._history.can_redo is True
+        assert controller.project.settings.tempo == 150
+
+
 class TestHistoryDelegation:
     def test_undo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:
         history_coordinator.undo()
@@ -521,14 +606,95 @@ class TestUndoableWrapper:
         wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target)
         wrapped(150)
 
-        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail=())
+        history_coordinator._history.transaction.assert_called_once_with(
+            HistoryAction.SET_TEMPO,
+            detail=(),
+            coalesce=None,
+        )
         target.assert_called_once_with(150)
 
     def test_wrapped_call_passes_computed_detail(self, history_coordinator: SequencerTabCoordinator) -> None:
         target = MagicMock()
         segments = (HistoryDetailSegment(text="v150", role=HistoryDetailRole.VALUE),)
 
-        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda value: segments)
+        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda _: segments)
         wrapped(150)
 
-        history_coordinator._history.transaction.assert_called_once_with(HistoryAction.SET_TEMPO, detail=segments)
+        history_coordinator._history.transaction.assert_called_once_with(
+            HistoryAction.SET_TEMPO,
+            detail=segments,
+            coalesce=None,
+        )
+
+    def test_wrapped_call_passes_computed_coalesce_key(self, history_coordinator: SequencerTabCoordinator) -> None:
+        target = MagicMock()
+
+        wrapped = history_coordinator._undoable(
+            HistoryAction.SET_TEMPO,
+            target,
+            coalesce=lambda _: ("tempo",),
+        )
+        wrapped(150)
+
+        history_coordinator._history.transaction.assert_called_once_with(
+            HistoryAction.SET_TEMPO,
+            detail=(),
+            coalesce=("tempo",),
+        )
+
+
+@pytest.fixture
+def view_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators the history view build touches."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
+    instance._language_manager = LanguageManager(LANG_EN)
+    return instance
+
+
+def _loop_entry(loop: bool) -> HistoryEntry:
+    word = HistoryDetailWord.LOOP_ON if loop else HistoryDetailWord.LOOP_OFF
+    return HistoryEntry(
+        project=MagicMock(),
+        action=HistoryAction.SET_SAMPLE_LOOP,
+        created=datetime.now(),
+        detail=(
+            HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
+            HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),
+        ),
+    )
+
+
+class TestHistoryViewModelBuild:
+    def test_word_segments_resolve_to_language_text(self, view_coordinator: SequencerTabCoordinator) -> None:
+        view_coordinator._history.cursor = 1
+        view_coordinator._history.entries = (_loop_entry(True), _loop_entry(False))
+
+        view_model = view_coordinator._build_history_view_model()
+
+        assert view_model.entries[0].detail_segments == (
+            HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
+            HistoryDetailSegment(text="on", role=HistoryDetailRole.VALUE),
+        )
+        assert view_model.entries[1].detail_segments == (
+            HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
+            HistoryDetailSegment(text="off", role=HistoryDetailRole.VALUE),
+        )
+
+
+@pytest.fixture
+def exposure_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the playback collaborators the ``player`` property touches."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._song_player_logic = MagicMock()
+    instance._guarded_player = GuardedPlayer(
+        instance._song_player_logic,
+        dialogs=MagicMock(),
+        error_message="playback failed",
+    )
+    return instance
+
+
+class TestPlayerExposure:
+    def test_player_returns_the_guarded_wrapper(self, exposure_coordinator: SequencerTabCoordinator) -> None:
+        assert isinstance(exposure_coordinator.player, GuardedPlayer)

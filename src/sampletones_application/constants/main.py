@@ -223,12 +223,6 @@ TAG_MAIN_CONVERTER_BUTTON_CANCEL = TagName(
     Widget.BUTTON,
     "cancel",
 )
-TAG_MAIN_CONVERTER_DIALOG_SUCCESS = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.DIALOG,
-    "success",
-)
 TAG_MAIN_CONVERTER_BUTTON_CONVERT = TagName(
     Page.MAIN,
     Panel.CONVERTER,

@@ -11,9 +11,3 @@ bar_plots:
   duty_cycle:
     min_y: 0.0
     max_y: 3.0
-
-colors:
-  pitch: "#64c8ff"
-  volume: "#64ff64"
-  arpeggio: "#ff9664"
-  duty_cycle: "#ffc864"

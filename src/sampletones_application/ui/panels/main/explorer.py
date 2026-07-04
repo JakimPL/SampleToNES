@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -6,7 +7,6 @@ from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.main import ExplorerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_MAIN,
@@ -14,68 +14,80 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
     TAG_MAIN_EXPLORER_BUTTON_REFRESH,
-    TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
     TAG_MAIN_EXPLORER_GROUP_CONTROLS,
     TAG_MAIN_EXPLORER_GROUP_TREE,
     TAG_MAIN_EXPLORER_PANEL,
     TAG_MAIN_EXPLORER_TREE,
     TAG_MAIN_EXPLORER_WINDOW_TREE,
 )
-from sampletones_application.layout.behavior import (
-    SchedulingBehavior,
-    TreeBehavior,
-)
-from sampletones_application.logic.main.explorer import ExplorerLogic
+from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
+from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
 )
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
 from sampletones_core import paths
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
+    Tree,
     TreeNode,
     TreeTraversal,
     traverse,
 )
-from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
+
+
+class ExplorerLogicProtocol(Protocol):
+    """The filesystem-exploration contract ``GUIExplorerPanel`` drives.
+
+    Typing the collaborator structurally keeps the panel bound to the exact
+    query surface its tree rendering needs — per-directory expansion and
+    content checks run synchronously during node construction — while the
+    owning coordinator constructs the real logic object and injects it.
+    """
+
+    @property
+    def tree(self) -> Tree: ...
+
+    def refresh_tree(self) -> None: ...
+
+    def collapse_all(self) -> None: ...
+
+    def expand_directory(self, node: FileSystemNode) -> None: ...
+
+    def is_directory_expanded(self, filepath: Path) -> bool: ...
+
+    def has_relevant_content(self, filepath: Path) -> bool: ...
 
 
 class GUIExplorerPanel(GUITreePanel):
     def __init__(
         self,
-        explorer_logic: ExplorerLogic,
-        session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        explorer_logic: ExplorerLogicProtocol,
+        tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        scheduling: SchedulingBehavior,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
-        dialogs: DialogsRenderer,
+        status_bar: GUIStatusBar,
         colors: TreeColors,
     ) -> None:
-        self.explorer_logic = explorer_logic
-        self.audio_device_manager = audio_device_manager
-        self.session_manager = session_manager
+        self._explorer_logic = explorer_logic
         self.shortcut_manager = shortcut_manager
         self._tree_behavior = tree_behavior
-        self._dialogs = dialogs
 
         self._lbl_section = language_manager[
             Page.MAIN,
@@ -131,12 +143,6 @@ class GUIExplorerPanel(GUITreePanel):
             TextType.LABEL,
             ExplorerElements.CONTEXT_SET_OUTPUT_DIRECTORY,
         ]
-        self._msg_converter_running = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.MESSAGE,
-            ExplorerElements.CONVERTER_RUNNING_MSG,
-        ]
         self._msg_status_audio_no_autoplay = language_manager[
             Page.MAIN,
             Panel.EXPLORER,
@@ -149,13 +155,6 @@ class GUIExplorerPanel(GUITreePanel):
             TextType.MESSAGE,
             ExplorerElements.STATUS_NODE_AUDIO,
         ]
-        self._ttl_converter_running = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.TITLE,
-            ExplorerElements.CONVERTER_RUNNING_DIALOG,
-        ]
-
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
@@ -166,17 +165,14 @@ class GUIExplorerPanel(GUITreePanel):
         self.on_load_library: Optional[PathCallback] = None
         self.on_set_as_reconstructions_directory: Optional[PathCallback] = None
         self.on_set_as_library_directory: Optional[PathCallback] = None
-        self.is_converter_running: Optional[Callable[[], bool]] = None
 
         super().__init__(
-            tree=self.explorer_logic.tree,
+            tree=self._explorer_logic.tree,
             tag=TAG_MAIN_EXPLORER_PANEL,
             parent=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_MAIN_EXPLORER_TREE,
-            session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
-            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -184,13 +180,9 @@ class GUIExplorerPanel(GUITreePanel):
                 TreeElements.FILTER,
             ],
             language_manager=language_manager,
+            status_bar=status_bar,
             colors=colors,
         )
-
-        self.logic.on_autoplay_error = self._on_autoplay_error
-
-    def _on_autoplay_error(self, exception: Exception) -> None:
-        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def create_panel(self) -> None:
         self._setup_handlers()
@@ -205,7 +197,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._create_buttons()
             self._create_tree_window()
 
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     def _setup_handlers(self) -> None:
         self._node_handlers = {
@@ -261,23 +253,23 @@ class GUIExplorerPanel(GUITreePanel):
                     pass
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
-        self.explorer_logic.collapse_all()
+        self._explorer_logic.collapse_all()
         children = dpg.get_item_children(self.tree_tag, 1)
         assert children is not None, "Explorer tree has no children."
         for node_tag in children:
             dpg.set_value(node_tag, False)
 
     def refresh(self) -> None:
-        self._rebuild_tree()
+        self.rebuild_tree()
 
     @concurrent(wait=False, method_bound=True)
-    def _rebuild_tree(self) -> None:
+    def rebuild_tree(self) -> None:
         if self.locked:
             return
 
         self.lock()
         try:
-            self.explorer_logic.refresh_tree()
+            self._explorer_logic.refresh_tree()
             self.build_tree()
         finally:
             self.unlock()
@@ -298,9 +290,9 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         dpg_delete_children(node_tag)
-        if self.explorer_logic.is_directory_expanded(node.filepath):
+        if self._explorer_logic.is_directory_expanded(node.filepath):
             for child in node.children:
-                has_favorite_ancestor = self.logic.is_node_favorite(node) or self.logic.has_favorite_ancestor(child)
+                has_favorite_ancestor = self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(child)
                 self._build_tree_node(
                     child,
                     TreeNodeState(
@@ -323,12 +315,12 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self.logic.is_node_favorite(node)
+        is_favorite = self._logic.is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
 
         if node.node_type == NodeType.DIRECTORY:
-            should_expand = self._should_expand_node(node) or self.explorer_logic.is_directory_expanded(node.filepath)
-            is_directory_expanded = self.explorer_logic.is_directory_expanded(node.filepath)
+            should_expand = self._should_expand_node(node) or self._explorer_logic.is_directory_expanded(node.filepath)
+            is_directory_expanded = self._explorer_logic.is_directory_expanded(node.filepath)
             self._queue_node(
                 node,
                 node_tag,
@@ -386,10 +378,10 @@ class GUIExplorerPanel(GUITreePanel):
         if mouse_button == dpg.mvMouseButton_Left:
             match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
-                    return self.logic.request_autoplay(node)
+                    return self._logic.request_autoplay(node)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
                     self.call(self.on_wave_file_clicked, node.filepath)
-                    return self.logic.request_autoplay(node)
+                    return self._logic.request_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(node)
@@ -409,7 +401,7 @@ class GUIExplorerPanel(GUITreePanel):
                 case paths.EXT_FILE_RECONSTRUCTION:
                     self._load_reconstruction(node)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self.logic.cancel_autoplay()
+                    self._logic.cancel_autoplay()
                     return self._reconstruct_file(node)
                 case paths.EXT_FILE_LIBRARY:
                     return self._load_library(node)
@@ -436,7 +428,7 @@ class GUIExplorerPanel(GUITreePanel):
         self,
     ) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
-            if self.session_manager.autoplay:
+            if self._logic.autoplay_enabled:
                 return self._msg_status_audio
 
             return self._msg_status_audio_no_autoplay
@@ -444,7 +436,7 @@ class GUIExplorerPanel(GUITreePanel):
         return self._create_status_bar_message_function(message_function)
 
     def _directory_node_clicked(self, node: FileSystemNode, node_tag: str) -> None:
-        has_content = self.explorer_logic.has_relevant_content(node.filepath)
+        has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
             return
 
@@ -463,19 +455,16 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if isinstance(node, FileSystemNode):
-            return self.explorer_logic.has_relevant_content(node.filepath)
+            return self._explorer_logic.has_relevant_content(node.filepath)
 
         return True
 
-    def _set_tree_enabled(self, enabled: bool) -> None:
+    def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_MAIN_EXPLORER_GROUP_TREE, enabled=enabled)
         dpg_configure_item(TAG_MAIN_EXPLORER_GROUP_CONTROLS, enabled=enabled)
 
     def _reconstruct_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
-            return
-
-        if self._check_if_converter_running():
             return
 
         self.call(self.on_reconstruct_file, node.filepath)
@@ -487,10 +476,10 @@ class GUIExplorerPanel(GUITreePanel):
         if not dpg.does_item_exist(node_tag):
             return
 
-        is_directory_expanded = self.explorer_logic.is_directory_expanded(node.filepath)
+        is_directory_expanded = self._explorer_logic.is_directory_expanded(node.filepath)
         state = dpg.get_value(node_tag)
         if not is_directory_expanded:
-            self.explorer_logic.expand_directory(node)
+            self._explorer_logic.expand_directory(node)
             self._rebuild_directory_node(node, node_tag)
 
         dpg.set_value(node_tag, not state)
@@ -563,29 +552,10 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_context_menu_favorite_item(node)
             self._add_context_menu_set_directory_items(node)
 
-    def _check_if_converter_running(self) -> bool:
-        is_running = self.call(self.is_converter_running)
-        if is_running:
-            logger.warning("Conversion is already running. Wait or cancel the current operation.")
-            self._dialogs.show_info(
-                tag=TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
-                message=self._msg_converter_running,
-                title=self._ttl_converter_running,
-            )
-            return True
-
-        return False
-
     def _context_reconstruct_file(self, node: FileSystemNode) -> None:
-        if self._check_if_converter_running():
-            return
-
         self.call(self.on_reconstruct_file, node.filepath)
 
     def _context_reconstruct_directory(self, node: FileSystemNode) -> None:
-        if self._check_if_converter_running():
-            return
-
         self.call(self.on_reconstruct_directory, node.filepath)
 
     def _context_set_as_output_directory(self, node: FileSystemNode) -> None:

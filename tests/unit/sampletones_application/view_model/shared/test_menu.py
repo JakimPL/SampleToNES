@@ -1,0 +1,71 @@
+from dataclasses import dataclass
+
+import pytest
+
+from sampletones_application.view_model.shared.menu import MenuBarViewModel
+
+
+@dataclass(frozen=True, kw_only=True)
+class EnablementCase:
+    label: str
+    project_open: bool
+    can_undo: bool
+    can_redo: bool
+    undo_enabled: bool
+    redo_enabled: bool
+
+
+ENABLEMENT_CASES = [
+    EnablementCase(
+        label="closed_project_disables_both",
+        project_open=False,
+        can_undo=True,
+        can_redo=True,
+        undo_enabled=False,
+        redo_enabled=False,
+    ),
+    EnablementCase(
+        label="baseline_history_disables_both",
+        project_open=True,
+        can_undo=False,
+        can_redo=False,
+        undo_enabled=False,
+        redo_enabled=False,
+    ),
+    EnablementCase(
+        label="undoable_edit_enables_undo",
+        project_open=True,
+        can_undo=True,
+        can_redo=False,
+        undo_enabled=True,
+        redo_enabled=False,
+    ),
+    EnablementCase(
+        label="undone_edit_enables_redo",
+        project_open=True,
+        can_undo=False,
+        can_redo=True,
+        undo_enabled=False,
+        redo_enabled=True,
+    ),
+]
+
+
+class TestUndoRedoEnablement:
+    @pytest.mark.parametrize("case", ENABLEMENT_CASES, ids=lambda case: case.label)
+    def test_enablement_follows_project_and_history_state(self, case: EnablementCase) -> None:
+        view_model = MenuBarViewModel(
+            project_open=case.project_open,
+            reconstruction_loaded=False,
+            can_undo=case.can_undo,
+            can_redo=case.can_redo,
+            play_label="Play",
+            play_or_pause_enabled=False,
+            stop_enabled=False,
+            autoplay=False,
+            fullscreen=False,
+            advanced_settings=False,
+        )
+
+        assert view_model.undo_enabled is case.undo_enabled
+        assert view_model.redo_enabled is case.redo_enabled

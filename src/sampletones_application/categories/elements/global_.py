@@ -117,7 +117,6 @@ class PlayerElements(AbstractElement):
     SAMPLES_SUFFIX = "samples_suffix"
     NO_AUDIO_LOADED = "no_audio_loaded"
     AUDIO_PLAYBACK_ERROR = "audio_playback_error"
-    NO_AUDIO_DIALOG_TITLE = "no_audio_dialog_title"
 
 
 class GraphElements(AbstractElement):

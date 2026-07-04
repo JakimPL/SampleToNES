@@ -15,7 +15,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
 )
-from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_shared.constants.symbols import MINUS, PLUS, PLUS_MINUS, SIGNS
 

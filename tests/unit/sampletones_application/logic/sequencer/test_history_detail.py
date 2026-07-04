@@ -3,17 +3,22 @@ from typing import List, Tuple
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 
-from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
-from sampletones_application.paths import LANG_EN
-from sampletones_application.view_model.sequencer.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.shared.history import (
+    HistoryDetailRole,
+    HistoryDetailSegment,
+    HistoryDetailWord,
+    HistoryDetailWordSegment,
+)
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 
@@ -49,11 +54,7 @@ def _formatter(controller: ProjectController) -> SequencerHistoryDetail:
         MagicMock(),
         scheduling=MagicMock(),
     )
-    return SequencerHistoryDetail(
-        grid_logic,
-        samples_logic,
-        language_manager=LanguageManager(LANG_EN),
-    )
+    return SequencerHistoryDetail(grid_logic, samples_logic)
 
 
 def _pairs(segments: Tuple[HistoryDetailSegment, ...]) -> List[Pair]:
@@ -125,7 +126,7 @@ class TestGridDetails:
         controller = _controller()
         formatter = _formatter(controller)
 
-        segments = formatter.clear_subcolumn(0, GeneratorName.NOISE, "volume")
+        segments = formatter.clear_subcolumn(0, GeneratorName.NOISE, SubColumn.VOLUME)
 
         assert _pairs(segments) == [
             ("00", HistoryDetailRole.FRAME),
@@ -229,20 +230,65 @@ class TestSampleDetails:
             ("05", HistoryDetailRole.VALUE),
         ]
 
-    def test_set_sample_loop_shows_resulting_state(self) -> None:
+    def test_set_sample_loop_stores_the_state_as_a_word_key(self) -> None:
         controller = _controller()
         sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
-        on_segments = _pairs(formatter.set_sample_loop(sample.id, True))
-        off_segments = _pairs(formatter.set_sample_loop(sample.id, False))
+        on_segments = formatter.set_sample_loop(sample.id, True)
+        off_segments = formatter.set_sample_loop(sample.id, False)
 
-        assert on_segments[0] == ("00:", HistoryDetailRole.SAMPLE)
-        assert on_segments[1][1] is HistoryDetailRole.VALUE
-        assert off_segments[1][1] is HistoryDetailRole.VALUE
-        assert on_segments[1][0] != off_segments[1][0]
+        assert on_segments[0] == HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE)
+        assert on_segments[1] == HistoryDetailWordSegment(
+            word=HistoryDetailWord.LOOP_ON,
+            role=HistoryDetailRole.VALUE,
+        )
+        assert off_segments[1] == HistoryDetailWordSegment(
+            word=HistoryDetailWord.LOOP_OFF,
+            role=HistoryDetailRole.VALUE,
+        )
 
     def test_value_wraps_a_number(self) -> None:
         formatter = _formatter(_controller())
 
         assert _pairs(formatter.value(150)) == [("150", HistoryDetailRole.VALUE)]
+
+
+class TestReconstructionDetails:
+    def test_edit_reconstruction_names_position_channel_and_feature(self) -> None:
+        controller = _controller()
+        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_reconstruction(sample.id, GeneratorName.PULSE1, FeatureKey.VOLUME)
+
+        assert _pairs(segments) == [
+            ("00:", HistoryDetailRole.SAMPLE),
+            ("P", HistoryDetailRole.CHANNEL),
+            ("v", HistoryDetailRole.FEATURE_VOLUME),
+        ]
+
+    @pytest.mark.parametrize(
+        ("feature_key", "letter", "role"),
+        [
+            (FeatureKey.INITIAL_PITCH, "i", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.VOLUME, "v", HistoryDetailRole.FEATURE_VOLUME),
+            (FeatureKey.ARPEGGIO, "a", HistoryDetailRole.FEATURE_ARPEGGIO),
+            (FeatureKey.PITCH, "p", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.HI_PITCH, "h", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.DUTY_CYCLE, "d", HistoryDetailRole.FEATURE_DUTY_CYCLE),
+        ],
+    )
+    def test_every_feature_has_a_letter_and_a_colour_role(
+        self,
+        feature_key: FeatureKey,
+        letter: str,
+        role: HistoryDetailRole,
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_reconstruction(sample.id, GeneratorName.PULSE1, feature_key)
+
+        assert (segments[-1].text, segments[-1].role) == (letter, role)

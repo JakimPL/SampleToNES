@@ -25,7 +25,7 @@ from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_MODULE, EXT_FILE_PROJECT
 from sampletones_shared.constants.project import DEFAULT_MODULE_FILENAME, DEFAULT_PROJECT_FILENAME
-from sampletones_shared.exceptions import SampleToNESError
+from sampletones_shared.exceptions import LoadProjectError, SampleToNESError, SerializationError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
 from sampletones_shared.utils.system.paths import get_directory
@@ -210,7 +210,7 @@ class ProjectCoordinator:
     def _load(self, filepath: Path) -> None:
         try:
             self._project_controller.load(filepath)
-        except Exception as exception:  # TODO: specify exception type
+        except (LoadProjectError, OSError) as exception:
             logger.error_with_traceback(exception, f"Failed to load project from {filepath}")
             self._dialogs.show_error(exception)
             return
@@ -221,7 +221,7 @@ class ProjectCoordinator:
     def _save(self, filepath: Path) -> None:
         try:
             self._project_controller.save(filepath)
-        except Exception as exception:  # TODO: specify exception type
+        except (SerializationError, OSError) as exception:
             logger.error_with_traceback(exception, f"Failed to save project to {filepath}")
             self._dialogs.show_error(
                 exception,
@@ -239,7 +239,7 @@ class ProjectCoordinator:
     def _export_module(self, filepath: Path) -> None:
         try:
             self._project_controller.export_module(filepath)
-        except Exception as exception:  # TODO: specify exception type
+        except (ValueError, OSError) as exception:
             logger.error_with_traceback(exception, f"Failed to export FamiTracker module to {filepath}")
             self._dialogs.show_error(
                 exception,

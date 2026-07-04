@@ -30,6 +30,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -48,9 +49,11 @@ class GUIConverterPanel(GUIPanel):
         layout: ConverterLayout,
         path_colors: PathColors,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
     ) -> None:
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
+        self._status_bar = status_bar
 
         self.on_convert_requested: Optional[VoidCallback] = None
         self.on_cancel_requested: Optional[VoidCallback] = None
@@ -145,6 +148,9 @@ class GUIConverterPanel(GUIPanel):
             self._create_paths()
             self._create_conversion_status()
 
+    def is_visible(self) -> bool:
+        return bool(dpg.get_item_configuration(self.tag)["show"])
+
     def update_view(self, view_model: ConverterViewModel) -> None:
         dpg.configure_item(TAG_MAIN_CONVERTER_GROUP, show=view_model.subpanel_visible)
         dpg_set_value(TAG_MAIN_CONVERTER_TEXT_STATUS, view_model.status_text)
@@ -222,6 +228,7 @@ class GUIConverterPanel(GUIPanel):
             hover_color=self._path_colors.hover,
             status_message=self._msg_path,
             font=Font.REGULAR_SMALL,
+            status_bar=self._status_bar,
         )
         self.output_path_text = GUIPathText(
             path=None,
@@ -232,6 +239,7 @@ class GUIConverterPanel(GUIPanel):
             hover_color=self._path_colors.hover,
             status_message=self._msg_path,
             font=Font.REGULAR_SMALL,
+            status_bar=self._status_bar,
         )
 
     def _create_conversion_status(self) -> None:

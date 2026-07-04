@@ -7,7 +7,6 @@ from sampletones_application.services.song_player.result import (
     SongPositionUpdate,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import make_controller
@@ -18,9 +17,12 @@ def _make_logic(*, is_open: bool = True) -> SongPlayerLogic:
     if is_open:
         controller._project_manager.new()
 
-    logic = SongPlayerLogic(MagicMock(), controller, Config(), MagicMock(follow_playback=True))
-    logic._service = MagicMock(is_playing=False, is_paused=False)
-    return logic
+    return SongPlayerLogic(
+        MagicMock(),
+        controller,
+        MagicMock(follow_playback=True),
+        service=MagicMock(is_playing=False, is_paused=False),
+    )
 
 
 def _capture_views(logic: SongPlayerLogic) -> list[SongPlayerViewModel]:
