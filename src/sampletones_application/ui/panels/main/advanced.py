@@ -7,7 +7,6 @@ from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import AdvancedElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.updates import AdvancedSettingsUpdate
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
 )
@@ -35,6 +34,7 @@ from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.main.advanced import (
     AdvancedSettingsPanelViewModel,
 )
+from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 

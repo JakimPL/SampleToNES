@@ -163,6 +163,7 @@ def main() -> None:
         for kind, location in all_violations:
             print(f"  [forbidden: {kind}] {location}", file=sys.stderr)
 
+        print(f"\nFound {len(all_violations)} violation(s) in total.", file=sys.stderr)
         sys.exit(1)
 
 

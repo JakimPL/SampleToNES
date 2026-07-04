@@ -4,10 +4,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.config.managers.config import ConfigManager
-from sampletones_application.config.updates import LibrarySettingsUpdate
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
+from sampletones_application.view_model.main.updates import LibrarySettingsUpdate
 from sampletones_core.library import InstructionLibraryKey
 
 

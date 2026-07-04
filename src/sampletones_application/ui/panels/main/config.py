@@ -6,10 +6,6 @@ from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import ConfigPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.updates import (
-    AudioSettingsUpdate,
-    LibrarySettingsUpdate,
-)
 from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
     TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
@@ -28,6 +24,10 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
+from sampletones_application.view_model.main.updates import (
+    AudioSettingsUpdate,
+    LibrarySettingsUpdate,
+)
 from sampletones_core.configs.display import (
     SPECTRUM_METHOD_BY_LABEL,
     format_spectrum_method,
