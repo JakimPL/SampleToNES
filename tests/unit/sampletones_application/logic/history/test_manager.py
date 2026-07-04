@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 
 import pytest
@@ -226,6 +227,112 @@ class TestReversibility:
         assert history.cursor == 1
         assert controller.project.settings.tempo == 150
         assert notifications == []
+
+
+class TestSavedCursor:
+    def test_undo_to_clean_baseline_clears_dirty(self, history_factory: HistoryFactory) -> None:
+        controller, history = history_factory()
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        assert controller.is_dirty is True
+
+        history.undo()
+        assert controller.is_dirty is False
+
+    def test_undo_to_save_point_clears_dirty(self, history_factory: HistoryFactory) -> None:
+        controller, history = history_factory()
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        history.mark_saved()
+        with history.transaction(HistoryAction.SET_SPEED):
+            controller.set_speed(4)
+        assert controller.is_dirty is True
+
+        history.undo()
+        assert controller.is_dirty is False
+
+        history.redo()
+        assert controller.is_dirty is True
+
+    def test_save_hook_marks_the_current_cursor(
+        self,
+        history_factory: HistoryFactory,
+        tmp_path: Path,
+    ) -> None:
+        controller, history = history_factory()
+        controller.on_saved = history.mark_saved
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        controller.save(tmp_path / "song.zip")
+        with history.transaction(HistoryAction.SET_SPEED):
+            controller.set_speed(4)
+
+        history.undo()
+        assert controller.is_dirty is False
+
+    def test_truncating_the_saved_branch_keeps_dirty(self, history_factory: HistoryFactory) -> None:
+        controller, history = history_factory()
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        history.mark_saved()
+        history.undo()
+        with history.transaction(HistoryAction.SET_SPEED):
+            controller.set_speed(4)
+
+        history.undo()
+        assert controller.is_dirty is True
+        history.redo()
+        assert controller.is_dirty is True
+
+    def test_eviction_shifts_the_saved_cursor(self, history_factory: HistoryFactory) -> None:
+        controller, history = history_factory(budget=3)
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(100)
+        history.mark_saved()
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(101)
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(102)
+
+        history.undo()
+        history.undo()
+
+        assert controller.project.settings.tempo == 100
+        assert controller.is_dirty is False
+
+    def test_evicting_the_saved_entry_keeps_dirty(self, history_factory: HistoryFactory) -> None:
+        controller, history = history_factory(budget=2)
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(100)
+        history.mark_saved()
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(101)
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(102)
+
+        history.undo()
+        assert controller.is_dirty is True
+
+    def test_coalescing_never_replaces_the_saved_entry(self, history_factory: HistoryFactory) -> None:
+        controller, history = history_factory()
+
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(150)
+        history.mark_saved()
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=()):
+            controller.set_tempo(160)
+
+        assert len(history.entries) == 3
+
+        history.undo()
+        assert controller.project.settings.tempo == 150
+        assert controller.is_dirty is False
 
 
 class TestCompleteness:

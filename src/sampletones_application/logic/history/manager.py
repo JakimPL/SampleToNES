@@ -48,6 +48,7 @@ class HistoryManager(CallbackMixin):
         )
         self._entries: List[HistoryEntry] = []
         self._cursor: int = -1
+        self._saved_cursor: Optional[int] = None
         self._pending: Optional[PendingTransaction] = None
         self._restoring: bool = False
         self._last_commit_key: Optional[Tuple[HistoryAction, CoalesceKey]] = None
@@ -74,7 +75,9 @@ class HistoryManager(CallbackMixin):
         """Discards the stack and seeds a fresh baseline from the current project.
 
         Called on project lifecycle transitions (new, open, close). Restores driven
-        by undo/redo are excluded so they never clear the stack they navigate.
+        by undo/redo are excluded so they never clear the stack they navigate. A
+        clean session makes the baseline the save point: undoing back to it later
+        reinstates the on-disk content.
         """
         if self._restoring:
             return
@@ -83,8 +86,17 @@ class HistoryManager(CallbackMixin):
         self._last_commit_key = None
         self._entries = [self._capture(HistoryAction.INITIAL, ())]
         self._cursor = 0
+        self._saved_cursor = 0 if not self._controller.is_dirty else None
         self._prune_hash_cache()
         self._notify()
+
+    def mark_saved(self) -> None:
+        """Records the current cursor as the last saved state.
+
+        Restoring this exact index later reinstates the on-disk content, so the
+        session reports the document clean again.
+        """
+        self._saved_cursor = self._cursor
 
     @contextmanager
     def transaction(
@@ -186,6 +198,9 @@ class HistoryManager(CallbackMixin):
         if self._coalesces_with_last(action, coalesce):
             self._entries[self._cursor] = self._capture(action, detail)
         else:
+            if self._saved_cursor is not None and self._saved_cursor > self._cursor:
+                self._saved_cursor = None
+
             del self._entries[self._cursor + 1 :]
             self._entries.append(self._capture(action, detail))
             self._cursor = len(self._entries) - 1
@@ -205,14 +220,17 @@ class HistoryManager(CallbackMixin):
         A run continues only while the previous commit carried the same action
         and target and the history has stayed on that commit since: every
         restore and reset clears the recorded key, so a state the user
-        deliberately navigated to is always preserved by appending. The cursor
-        check restates the resulting invariant — replacement only ever rewrites
-        the top of the stack.
+        deliberately navigated to is always preserved by appending. The save
+        point is likewise preserved by appending, keeping the saved snapshot
+        reachable for the dirty-state comparison. The cursor check restates the
+        resulting invariant — replacement only ever rewrites the top of the
+        stack.
         """
         return (
             coalesce is not None
             and self._last_commit_key == (action, coalesce)
             and self._cursor == len(self._entries) - 1
+            and self._cursor != self._saved_cursor
         )
 
     def _capture(
@@ -246,13 +264,19 @@ class HistoryManager(CallbackMixin):
         if overflow > 0:
             del self._entries[:overflow]
             self._cursor -= overflow
+            if self._saved_cursor is not None:
+                shifted = self._saved_cursor - overflow
+                self._saved_cursor = shifted if shifted >= 0 else None
 
     def _restore(self) -> None:
         entry = self._entries[self._cursor]
         self._last_commit_key = None
         self._restoring = True
         try:
-            self._controller.replace_project(snapshot_project(entry.project))
+            self._controller.replace_project(
+                snapshot_project(entry.project),
+                clean=self._cursor == self._saved_cursor,
+            )
         finally:
             self._restoring = False
 

@@ -532,7 +532,7 @@ class TestHistoryResetWiring:
         with coordinator._history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
 
-        controller.replace_project(snapshot_project(controller.project))
+        controller.replace_project(snapshot_project(controller.project), clean=False)
 
         assert len(coordinator._history.entries) == 1
         assert coordinator._history.entries[0].action is HistoryAction.INITIAL

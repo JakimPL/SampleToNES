@@ -145,6 +145,7 @@ class Application:
             strict=self.deployment.strict_history,
         )
         self.project_controller.on_mutation = self.history.handle_mutation
+        self.project_controller.on_saved = self.history.mark_saved
         self.history.on_history_changed = self._on_history_changed
 
         self.fps_timer: FPSTimer = FPSTimer()

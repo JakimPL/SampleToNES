@@ -35,6 +35,7 @@ class ProjectController(CallbackMixin):
         self.on_samples_changed: Optional[VoidCallback] = None
         self.on_song_changed: Optional[VoidCallback] = None
         self.on_mutation: Optional[VoidCallback] = None
+        self.on_saved: Optional[VoidCallback] = None
 
     @property
     def project(self) -> Project:
@@ -74,17 +75,20 @@ class ProjectController(CallbackMixin):
 
     def save(self, path: Path) -> None:
         self._project_manager.save(path)
+        self.call(self.on_saved)
 
-    def replace_project(self, project: Project) -> None:
+    def replace_project(self, project: Project, *, clean: bool) -> None:
         """Installs a project restored from history and rebuilds every dependent view.
 
         Undo and redo route through here rather than the fine-grained mutators: the
         whole project is swapped at once, so ``on_project_replaced`` fires to rebuild
         the tabs wholesale, mirroring how loading a project refreshes them. The
         fine-grained ``on_mutation`` signal stays silent because a restore is not a
-        new user edit to record.
+        new user edit to record. ``clean`` reports whether the restored state is the
+        one last saved to disk, letting the session drop the unsaved-changes flag
+        when undo returns exactly to the save point.
         """
-        self._project_manager.install(project)
+        self._project_manager.install(project, clean=clean)
         self.call(self.on_project_replaced)
 
     def export_module(self, path: Path) -> None:
