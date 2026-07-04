@@ -37,9 +37,6 @@
 
 * Per-tab undo routing (analogous to `PlaybackRouter`) once standalone
   reconstruction documents gain their own history
-* `LibraryLogic` holds mutable presentation state (status text, progress
-  value/overlay) and hardcodes two display strings; the projection belongs in
-  the view model with text from `LanguageManager`
 * `GUIAudioSettingsWindow` stores raw `AudioDevice`/`CurrentDevice` objects and
   formats their display itself; `AudioSettingsViewModel` should carry
   pre-projected display items
