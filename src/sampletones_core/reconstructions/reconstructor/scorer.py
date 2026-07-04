@@ -1,5 +1,3 @@
-from dataclasses import dataclass, field
-
 import numpy as np
 
 from sampletones_core.configs import Config
@@ -9,7 +7,6 @@ from sampletones_shared.array import CUPY_AVAILABLE, to_numpy, xp
 from ..criterion import Criterion
 
 
-@dataclass(frozen=True)
 class Scorer:
     """
     Scores candidate approximations against a target fragment in two stages.
@@ -20,22 +17,8 @@ class Scorer:
     phase-aligned waveform so it measures shape rather than the accident of phase.
     """
 
-    config: Config
-    window: Window
-    signal_length: int
-
-    criterion: Criterion = field(init=False)
-
-    def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "criterion",
-            Criterion(
-                self.config,
-                self.window,
-                self.signal_length,
-            ),
-        )
+    def __init__(self, config: Config, window: Window, signal_length: int) -> None:
+        self.criterion = Criterion(config, window, signal_length)
 
     def spectral_costs(self, target: Fragment, candidates: Fragment) -> np.ndarray:
         """

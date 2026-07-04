@@ -46,7 +46,7 @@ def criterion(config: Config, window: Window) -> Criterion:
     return Criterion(config, window, LONG_SIGNAL_LENGTH)
 
 
-class TestCriterionRmse:
+class TestCriterionTemporalLoss:
     def test_2d_reference_raises_value_error(
         self,
         criterion: Criterion,
@@ -55,7 +55,7 @@ class TestCriterionRmse:
         reference = np.zeros((2, config.frame_length), dtype=np.float32)
         candidates = np.zeros((3, config.frame_length), dtype=np.float32)
         with pytest.raises(ValueError):
-            criterion.rmse(reference, candidates)
+            criterion.temporal_loss(reference, candidates)
 
     def test_1d_candidate_is_accepted(
         self,
@@ -64,7 +64,7 @@ class TestCriterionRmse:
     ) -> None:
         reference = np.zeros(config.frame_length, dtype=np.float32)
         candidate = np.zeros(config.frame_length, dtype=np.float32)
-        result = criterion.rmse(reference, candidate, with_weights=False)
+        result = criterion.temporal_loss(reference, candidate)
         assert result.shape == (1,)
 
     def test_candidates_width_mismatch_raises_value_error(
@@ -75,10 +75,8 @@ class TestCriterionRmse:
         reference = np.zeros(config.frame_length, dtype=np.float32)
         candidates = np.zeros((3, config.frame_length + 1), dtype=np.float32)
         with pytest.raises(ValueError):
-            criterion.rmse(reference, candidates)
+            criterion.temporal_loss(reference, candidates)
 
-
-class TestCriterionTemporalLoss:
     def test_temporal_loss_is_invariant_under_common_scaling(
         self,
         criterion: Criterion,
