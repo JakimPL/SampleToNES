@@ -1,6 +1,7 @@
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
@@ -12,14 +13,20 @@ from sampletones_application.view_model.sequencer.history import (
 
 
 @pytest.fixture
-def sequencer_layout() -> SequencerLayout:
-    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY).sequencer
+def layout_config() -> LayoutConfig:
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
 
 
 @pytest.fixture
-def panel(sequencer_layout: SequencerLayout) -> GUISequencerHistoryPanel:
+def sequencer_layout(layout_config: LayoutConfig) -> SequencerLayout:
+    return layout_config.sequencer
+
+
+@pytest.fixture
+def panel(layout_config: LayoutConfig) -> GUISequencerHistoryPanel:
     return GUISequencerHistoryPanel(
-        layout=sequencer_layout,
+        layout=layout_config.sequencer,
+        feature_colors=layout_config.general.colors.features,
         language_manager=LanguageManager(LANG_EN),
     )
 

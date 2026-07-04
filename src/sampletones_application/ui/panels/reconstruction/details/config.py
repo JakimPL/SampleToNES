@@ -6,6 +6,7 @@ from sampletones_application.categories.elements.reconstructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general import FeatureColors
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_shared.types.application import Color
@@ -24,6 +25,7 @@ class FeaturePlotConfig:
 
 def make_feature_plot_configs(
     layout: ReconstructionsLayout,
+    feature_colors: FeatureColors,
     language_manager: LanguageManager,
 ) -> Dict[FeatureKey, FeaturePlotConfig]:
     lbl_volume = language_manager[
@@ -61,7 +63,7 @@ def make_feature_plot_configs(
         FeatureKey.VOLUME: FeaturePlotConfig(
             feature_key=FeatureKey.VOLUME,
             label=lbl_volume,
-            color=layout.colors.volume,
+            color=feature_colors.volume,
             y_min=layout.bar_plots.volume.min_y,
             y_max=layout.bar_plots.volume.max_y,
             y_ticks=(0, 4, 8, 12, 16),
@@ -70,7 +72,7 @@ def make_feature_plot_configs(
         FeatureKey.ARPEGGIO: FeaturePlotConfig(
             feature_key=FeatureKey.ARPEGGIO,
             label=lbl_arpeggio,
-            color=layout.colors.arpeggio,
+            color=feature_colors.arpeggio,
             y_min=layout.bar_plots.arpeggio.min_y,
             y_max=layout.bar_plots.arpeggio.max_y,
             y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
@@ -79,7 +81,7 @@ def make_feature_plot_configs(
         FeatureKey.PITCH: FeaturePlotConfig(
             feature_key=FeatureKey.PITCH,
             label=lbl_pitch,
-            color=layout.colors.pitch,
+            color=feature_colors.pitch,
             y_min=layout.bar_plots.pitch.min_y,
             y_max=layout.bar_plots.pitch.max_y,
             y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
@@ -88,7 +90,7 @@ def make_feature_plot_configs(
         FeatureKey.HI_PITCH: FeaturePlotConfig(
             feature_key=FeatureKey.HI_PITCH,
             label=lbl_hi_pitch,
-            color=layout.colors.pitch,
+            color=feature_colors.pitch,
             y_min=layout.bar_plots.pitch.min_y,
             y_max=layout.bar_plots.pitch.max_y,
             y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
@@ -97,7 +99,7 @@ def make_feature_plot_configs(
         FeatureKey.DUTY_CYCLE: FeaturePlotConfig(
             feature_key=FeatureKey.DUTY_CYCLE,
             label=lbl_duty_cycle,
-            color=layout.colors.duty_cycle,
+            color=feature_colors.duty_cycle,
             y_min=layout.bar_plots.duty_cycle.min_y,
             y_max=layout.bar_plots.duty_cycle.max_y,
             y_ticks=(0, 1, 2, 3),

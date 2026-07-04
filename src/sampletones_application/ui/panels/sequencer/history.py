@@ -15,6 +15,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_HISTORY_THEME_LIST,
     TAG_SEQUENCER_HISTORY_WINDOW_LIST,
 )
+from sampletones_application.layout.general import FeatureColors
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -68,9 +69,11 @@ class GUISequencerHistoryPanel(GUIPanel):
         self,
         *,
         layout: SequencerLayout,
+        feature_colors: FeatureColors,
         language_manager: LanguageManager,
     ) -> None:
         self._layout = layout
+        self._feature_colors = feature_colors
         self._rows: Dict[int, _EntryRow] = {}
         self._table: Optional[int] = None
 
@@ -321,8 +324,16 @@ class GUISequencerHistoryPanel(GUIPanel):
                 return text.volume
             case HistoryDetailRole.VALUE:
                 return roles.value
-            case HistoryDetailRole.SAMPLE | HistoryDetailRole.NAME | HistoryDetailRole.FEATURE:
+            case HistoryDetailRole.SAMPLE | HistoryDetailRole.NAME:
                 return text.sample
+            case HistoryDetailRole.FEATURE_VOLUME:
+                return self._feature_colors.volume
+            case HistoryDetailRole.FEATURE_ARPEGGIO:
+                return self._feature_colors.arpeggio
+            case HistoryDetailRole.FEATURE_PITCH:
+                return self._feature_colors.pitch
+            case HistoryDetailRole.FEATURE_DUTY_CYCLE:
+                return self._feature_colors.duty_cycle
             case HistoryDetailRole.SEPARATOR:
                 return roles.separator
 

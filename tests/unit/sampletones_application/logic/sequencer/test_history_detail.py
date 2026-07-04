@@ -3,6 +3,7 @@ from typing import List, Tuple
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.project.controller import ProjectController
@@ -259,6 +260,31 @@ class TestReconstructionDetails:
 
         assert _pairs(segments) == [
             ("00:", HistoryDetailRole.SAMPLE),
-            ("Pulse 1", HistoryDetailRole.CHANNEL),
-            ("Volume", HistoryDetailRole.FEATURE),
+            ("P", HistoryDetailRole.CHANNEL),
+            ("v", HistoryDetailRole.FEATURE_VOLUME),
         ]
+
+    @pytest.mark.parametrize(
+        ("feature_key", "letter", "role"),
+        [
+            (FeatureKey.INITIAL_PITCH, "i", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.VOLUME, "v", HistoryDetailRole.FEATURE_VOLUME),
+            (FeatureKey.ARPEGGIO, "a", HistoryDetailRole.FEATURE_ARPEGGIO),
+            (FeatureKey.PITCH, "p", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.HI_PITCH, "h", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.DUTY_CYCLE, "d", HistoryDetailRole.FEATURE_DUTY_CYCLE),
+        ],
+    )
+    def test_every_feature_has_a_letter_and_a_colour_role(
+        self,
+        feature_key: FeatureKey,
+        letter: str,
+        role: HistoryDetailRole,
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_reconstruction(sample.id, GeneratorName.PULSE1, feature_key)
+
+        assert (segments[-1].text, segments[-1].role) == (letter, role)

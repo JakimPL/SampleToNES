@@ -124,3 +124,8 @@ colors:
   headers:
     library: "#96d2a0"
     reconstruction: "#c8a0ff"
+  features:
+    volume: "#64ff64"
+    arpeggio: "#ff9664"
+    pitch: "#64c8ff"
+    duty_cycle: "#ffc864"

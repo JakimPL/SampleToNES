@@ -102,7 +102,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._layout_general = layout_general
         self._layout_graphs = layout_graphs
         self._layout_reconstructions = layout_reconstructions
-        self._feature_plot_configs = make_feature_plot_configs(layout_reconstructions, language_manager)
+        self._feature_plot_configs = make_feature_plot_configs(
+            layout_reconstructions,
+            layout_general.colors.features,
+            language_manager,
+        )
 
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
         self.invalid_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_INVALID)

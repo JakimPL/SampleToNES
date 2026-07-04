@@ -268,6 +268,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_history_panel: GUISequencerHistoryPanel = GUISequencerHistoryPanel(
             layout=layout.sequencer,
+            feature_colors=layout.general.colors.features,
             language_manager=language_manager,
         )
         self._history_detail: SequencerHistoryDetail = SequencerHistoryDetail(

@@ -26,6 +26,22 @@ _SUBCOLUMN_ROLES: Final[Dict[SubColumn, HistoryDetailRole]] = {
     SubColumn.TRANSPOSE: HistoryDetailRole.TRANSPOSE,
     SubColumn.VOLUME: HistoryDetailRole.VOLUME,
 }
+_FEATURE_LETTERS: Final[Dict[FeatureKey, str]] = {
+    FeatureKey.INITIAL_PITCH: "i",
+    FeatureKey.VOLUME: "v",
+    FeatureKey.ARPEGGIO: "a",
+    FeatureKey.PITCH: "p",
+    FeatureKey.HI_PITCH: "h",
+    FeatureKey.DUTY_CYCLE: "d",
+}
+_FEATURE_ROLES: Final[Dict[FeatureKey, HistoryDetailRole]] = {
+    FeatureKey.INITIAL_PITCH: HistoryDetailRole.FEATURE_PITCH,
+    FeatureKey.VOLUME: HistoryDetailRole.FEATURE_VOLUME,
+    FeatureKey.ARPEGGIO: HistoryDetailRole.FEATURE_ARPEGGIO,
+    FeatureKey.PITCH: HistoryDetailRole.FEATURE_PITCH,
+    FeatureKey.HI_PITCH: HistoryDetailRole.FEATURE_PITCH,
+    FeatureKey.DUTY_CYCLE: HistoryDetailRole.FEATURE_DUTY_CYCLE,
+}
 
 
 class SequencerHistoryDetail:
@@ -179,11 +195,16 @@ class SequencerHistoryDetail:
         generator_name: GeneratorName,
         feature_key: FeatureKey,
     ) -> Segments:
-        """Describes a regenerated sample: its position, channel, and edited feature."""
+        """Describes a regenerated sample: its position, channel, and edited feature.
+
+        The channel and the feature both render abbreviated — the ``P``/``p``/``T``/``N``
+        channel letter and the feature's one-letter code in the same colour the details
+        tab plots it with — mirroring the tracker rows.
+        """
         return (
             self._sample(sample_id, colon=True),
-            self._segment(generator_name.capitalized, HistoryDetailRole.CHANNEL),
-            self._segment(feature_key.capitalized, HistoryDetailRole.FEATURE),
+            self._channel([generator_name]),
+            self._segment(_FEATURE_LETTERS[feature_key], _FEATURE_ROLES[feature_key]),
         )
 
     def value(self, number: int) -> Segments:

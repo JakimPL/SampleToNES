@@ -20,7 +20,10 @@ class HistoryDetailRole(StrEnum):
     VALUE = "value"
     SAMPLE = "sample"
     NAME = "name"
-    FEATURE = "feature"
+    FEATURE_VOLUME = "feature_volume"
+    FEATURE_ARPEGGIO = "feature_arpeggio"
+    FEATURE_PITCH = "feature_pitch"
+    FEATURE_DUTY_CYCLE = "feature_duty_cycle"
     SEPARATOR = "separator"
 
 
