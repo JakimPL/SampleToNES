@@ -1,16 +1,24 @@
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
-from sampletones_application.logic.history.snapshot import snapshot_project
+from sampletones_application.logic.history.snapshot import HistoryEntry, snapshot_project
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.paths import LANG_EN
+from sampletones_application.view_model.shared.history import (
+    HistoryDetailRole,
+    HistoryDetailSegment,
+    HistoryDetailWord,
+    HistoryDetailWordSegment,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.exceptions import InvalidReconstructionValuesError
 
@@ -631,4 +639,43 @@ class TestUndoableWrapper:
             HistoryAction.SET_TEMPO,
             detail=(),
             coalesce=("tempo",),
+        )
+
+
+@pytest.fixture
+def view_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators the history view build touches."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
+    instance._language_manager = LanguageManager(LANG_EN)
+    return instance
+
+
+def _loop_entry(loop: bool) -> HistoryEntry:
+    word = HistoryDetailWord.LOOP_ON if loop else HistoryDetailWord.LOOP_OFF
+    return HistoryEntry(
+        project=MagicMock(),
+        action=HistoryAction.SET_SAMPLE_LOOP,
+        created=datetime.now(),
+        detail=(
+            HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
+            HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),
+        ),
+    )
+
+
+class TestHistoryViewModelBuild:
+    def test_word_segments_resolve_to_language_text(self, view_coordinator: SequencerTabCoordinator) -> None:
+        view_coordinator._history.cursor = 1
+        view_coordinator._history.entries = (_loop_entry(True), _loop_entry(False))
+
+        view_model = view_coordinator._build_history_view_model()
+
+        assert view_model.entries[0].detail_segments == (
+            HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
+            HistoryDetailSegment(text="on", role=HistoryDetailRole.VALUE),
+        )
+        assert view_model.entries[1].detail_segments == (
+            HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
+            HistoryDetailSegment(text="off", role=HistoryDetailRole.VALUE),
         )

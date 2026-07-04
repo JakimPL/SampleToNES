@@ -5,15 +5,18 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
-from sampletones_application.paths import LANG_EN
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.view_model.shared.history import (
+    HistoryDetailRole,
+    HistoryDetailSegment,
+    HistoryDetailWord,
+    HistoryDetailWordSegment,
+)
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.instructions import PulseInstruction
@@ -51,11 +54,7 @@ def _formatter(controller: ProjectController) -> SequencerHistoryDetail:
         MagicMock(),
         scheduling=MagicMock(),
     )
-    return SequencerHistoryDetail(
-        grid_logic,
-        samples_logic,
-        language_manager=LanguageManager(LANG_EN),
-    )
+    return SequencerHistoryDetail(grid_logic, samples_logic)
 
 
 def _pairs(segments: Tuple[HistoryDetailSegment, ...]) -> List[Pair]:
@@ -231,18 +230,23 @@ class TestSampleDetails:
             ("05", HistoryDetailRole.VALUE),
         ]
 
-    def test_set_sample_loop_shows_resulting_state(self) -> None:
+    def test_set_sample_loop_stores_the_state_as_a_word_key(self) -> None:
         controller = _controller()
         sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
-        on_segments = _pairs(formatter.set_sample_loop(sample.id, True))
-        off_segments = _pairs(formatter.set_sample_loop(sample.id, False))
+        on_segments = formatter.set_sample_loop(sample.id, True)
+        off_segments = formatter.set_sample_loop(sample.id, False)
 
-        assert on_segments[0] == ("00:", HistoryDetailRole.SAMPLE)
-        assert on_segments[1][1] is HistoryDetailRole.VALUE
-        assert off_segments[1][1] is HistoryDetailRole.VALUE
-        assert on_segments[1][0] != off_segments[1][0]
+        assert on_segments[0] == HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE)
+        assert on_segments[1] == HistoryDetailWordSegment(
+            word=HistoryDetailWord.LOOP_ON,
+            role=HistoryDetailRole.VALUE,
+        )
+        assert off_segments[1] == HistoryDetailWordSegment(
+            word=HistoryDetailWord.LOOP_OFF,
+            role=HistoryDetailRole.VALUE,
+        )
 
     def test_value_wraps_a_number(self) -> None:
         formatter = _formatter(_controller())

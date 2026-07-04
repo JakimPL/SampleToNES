@@ -1,19 +1,19 @@
-from typing import Dict, Final, List, Optional, Tuple
+from typing import Dict, Final, List, Optional
 
-from sampletones_application.categories.elements.sequencer import SequencerHistoryElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
+    HistoryDetail,
     HistoryDetailRole,
     HistoryDetailSegment,
+    HistoryDetailWord,
+    HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import FeatureKey, GeneratorName, abbreviate_generator_names
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
 
-Segments = Tuple[HistoryDetailSegment, ...]
+Segments = HistoryDetail
 
 _ARROW: Final[str] = ">"
 _SUBCOLUMN_LETTERS: Final[Dict[SubColumn, str]] = {
@@ -53,29 +53,18 @@ class SequencerHistoryDetail:
     semantic role that the panel later paints. Positions, rows and pattern indices
     read as two-digit hex; channels use the ``P``/``p``/``T``/``N`` abbreviations,
     concatenated when a sample-column gesture spans several channels.
+    Language-managed words — the loop on/off states — are emitted as
+    :class:`HistoryDetailWordSegment` keys and translated when the history view is
+    built, keeping committed entries language-independent.
     """
 
     def __init__(
         self,
         grid_logic: SequencerGridLogic,
         samples_logic: SequencerSamplesLogic,
-        *,
-        language_manager: LanguageManager,
     ) -> None:
         self._grid_logic = grid_logic
         self._samples_logic = samples_logic
-        self._loop_on = language_manager[
-            Page.SEQUENCER,
-            Panel.HISTORY,
-            TextType.LABEL,
-            SequencerHistoryElements.LOOP_ON,
-        ]
-        self._loop_off = language_manager[
-            Page.SEQUENCER,
-            Panel.HISTORY,
-            TextType.LABEL,
-            SequencerHistoryElements.LOOP_OFF,
-        ]
 
     def edit_row(
         self,
@@ -186,8 +175,11 @@ class SequencerHistoryDetail:
         return (self._sample(sample_id, colon=True), self._name(self._samples_logic.sample_name(sample_id)))
 
     def set_sample_loop(self, sample_id: str, loop: bool) -> Segments:
-        state = self._loop_on if loop else self._loop_off
-        return (self._sample(sample_id, colon=True), self._value(state))
+        word = HistoryDetailWord.LOOP_ON if loop else HistoryDetailWord.LOOP_OFF
+        return (
+            self._sample(sample_id, colon=True),
+            HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),
+        )
 
     def edit_reconstruction(
         self,

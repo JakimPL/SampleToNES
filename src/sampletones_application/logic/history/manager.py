@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Iterator, List, Optional, Tuple
 
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.view_model.shared.history import HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetail
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.serialization import hash_model
@@ -111,7 +111,7 @@ class HistoryManager(CallbackMixin):
         self,
         action: HistoryAction,
         *,
-        detail: Tuple[HistoryDetailSegment, ...] = (),
+        detail: HistoryDetail = (),
         coalesce: Optional[CoalesceKey] = None,
     ) -> Iterator[None]:
         """Groups every mutation of one user gesture into a single history entry.
@@ -174,7 +174,7 @@ class HistoryManager(CallbackMixin):
     def _begin(
         self,
         action: HistoryAction,
-        detail: Tuple[HistoryDetailSegment, ...],
+        detail: HistoryDetail,
         coalesce: Optional[CoalesceKey],
     ) -> None:
         if self._pending is None:
@@ -199,7 +199,7 @@ class HistoryManager(CallbackMixin):
     def _commit(
         self,
         action: HistoryAction,
-        detail: Tuple[HistoryDetailSegment, ...],
+        detail: HistoryDetail,
         *,
         coalesce: Optional[CoalesceKey],
     ) -> None:
@@ -244,7 +244,7 @@ class HistoryManager(CallbackMixin):
     def _capture(
         self,
         action: HistoryAction,
-        detail: Tuple[HistoryDetailSegment, ...],
+        detail: HistoryDetail,
     ) -> HistoryEntry:
         """Snapshots the live project, fingerprinting it under strict deployment.
 

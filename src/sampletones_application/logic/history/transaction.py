@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
-from sampletones_application.view_model.shared.history import HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetail
 
 from .action import HistoryAction
 
@@ -22,7 +22,7 @@ class PendingTransaction:
     """
 
     action: HistoryAction
-    detail: Tuple[HistoryDetailSegment, ...]
+    detail: HistoryDetail
     coalesce: Optional[CoalesceKey]
     depth: int = 1
     mutations: int = 0

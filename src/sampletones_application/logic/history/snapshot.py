@@ -3,9 +3,9 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
-from sampletones_application.view_model.shared.history import HistoryDetailSegment
+from sampletones_application.view_model.shared.history import HistoryDetail
 from sampletones_core.project import Project
 
 from .action import HistoryAction
@@ -39,5 +39,5 @@ class HistoryEntry:
     project: Project
     action: HistoryAction
     created: datetime
-    detail: Tuple[HistoryDetailSegment, ...] = field(default_factory=tuple)
+    detail: HistoryDetail = field(default_factory=tuple)
     fingerprint: Optional[str] = None

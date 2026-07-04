@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec, Tuple
+from typing import Callable, Optional, ParamSpec, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -9,7 +9,10 @@ from sampletones_application.categories.elements.global_ import (
     GlobalMessageElements,
     MenuElements,
 )
-from sampletones_application.categories.elements.sequencer import SequencerHistoryActionElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerHistoryActionElements,
+    SequencerHistoryElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -39,7 +42,9 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
-from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
+from sampletones_application.logic.sequencer.history_detail import (
+    SequencerHistoryDetail,
+)
 from sampletones_application.logic.sequencer.order import SequencerOrderLogic
 from sampletones_application.logic.sequencer.playback.playhead import (
     remap_after_insert,
@@ -72,7 +77,11 @@ from sampletones_application.view_model.sequencer.samples import (
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_application.view_model.shared.history import HistoryDetailSegment
+from sampletones_application.view_model.shared.history import (
+    HistoryDetail,
+    HistoryDetailSegment,
+    HistoryDetailWordSegment,
+)
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
@@ -274,7 +283,6 @@ class SequencerTabCoordinator:
         self._history_detail: SequencerHistoryDetail = SequencerHistoryDetail(
             self._sequencer_grid_logic,
             self._sequencer_samples_logic,
-            language_manager=language_manager,
         )
 
         self._wire_callbacks()
@@ -436,7 +444,7 @@ class SequencerTabCoordinator:
         action: HistoryAction,
         callback: Callable[_UndoableParams, None],
         *,
-        detail: Optional[Callable[_UndoableParams, Tuple[HistoryDetailSegment, ...]]] = None,
+        detail: Optional[Callable[_UndoableParams, HistoryDetail]] = None,
         coalesce: Optional[Callable[_UndoableParams, CoalesceKey]] = None,
     ) -> Callable[_UndoableParams, None]:
         """Wraps a state-changing hook so its whole gesture becomes one undo entry.
@@ -526,7 +534,7 @@ class SequencerTabCoordinator:
         sample_id: str,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
-    ) -> Tuple[HistoryDetailSegment, ...]:
+    ) -> HistoryDetail:
         """Describes a reconstruction edit for the project history's detail line."""
         return self._history_detail.edit_reconstruction(sample_id, generator_name, feature_key)
 
@@ -536,7 +544,7 @@ class SequencerTabCoordinator:
             HistoryEntryViewModel(
                 index=index,
                 label=self._history_action_label(entry),
-                detail_segments=entry.detail,
+                detail_segments=tuple(self._resolve_detail_segment(segment) for segment in entry.detail),
                 is_current=index == cursor,
                 is_future=index > cursor,
             )
@@ -551,6 +559,21 @@ class SequencerTabCoordinator:
             TextType.LABEL,
             SequencerHistoryActionElements(entry.action.value),
         ]
+
+    def _resolve_detail_segment(
+        self,
+        segment: Union[HistoryDetailSegment, HistoryDetailWordSegment],
+    ) -> HistoryDetailSegment:
+        if isinstance(segment, HistoryDetailWordSegment):
+            text = self._language_manager[
+                Page.SEQUENCER,
+                Panel.HISTORY,
+                TextType.LABEL,
+                SequencerHistoryElements(segment.word.value),
+            ]
+            return HistoryDetailSegment(text=text, role=segment.role)
+
+        return segment
 
     def initialize(self) -> None:
         """Pushes the current project into every sequencer panel.
