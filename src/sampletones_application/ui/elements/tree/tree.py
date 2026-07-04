@@ -89,9 +89,11 @@ class GUITreePanel(GUIPanel):
         *,
         search_label: str,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         colors: TreeColors,
     ) -> None:
         self._logic = tree_logic
+        self._status_bar = status_bar
         self.tree = tree
         self.tree_tag = tree_tag
         self.shortcut_manager = shortcut_manager
@@ -287,7 +289,7 @@ class GUITreePanel(GUIPanel):
             )
 
         self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
-        GUIStatusBar.bind_to_item(self._search_input_tag, self._msg_tree_search)
+        self._status_bar.bind_to_item(self._search_input_tag, self._msg_tree_search)
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
         return f"{self.tag}{TAG_SEPARATOR}{node_type.value}{SUF_HANDLER_NODE}"
@@ -374,7 +376,7 @@ class GUITreePanel(GUIPanel):
         ) -> None:
             user_data = dpg.get_item_user_data(app_data)
             if status_bar_callback is not None:
-                GUIStatusBar.set(status_bar_callback, user_data=user_data)
+                self._status_bar.set(status_bar_callback, user_data=user_data)
 
         return hover_callback
 
@@ -391,7 +393,7 @@ class GUITreePanel(GUIPanel):
             if item_click_callback is not None:
                 item_click_callback(sender, app_data, user_data=user_data)
             if status_bar_callback is not None:
-                GUIStatusBar.set(status_bar_callback, user_data=user_data)
+                self._status_bar.set(status_bar_callback, user_data=user_data)
 
         return single_click_callback
 

@@ -41,6 +41,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIPathText
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.trace import GUITraceback
 from sampletones_application.utils.gui.align import center_item, table_wrapper
 from sampletones_application.utils.gui.dpg import (
@@ -103,8 +104,10 @@ class DialogsRenderer:
         *,
         layout: GeneralLayout,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
     ) -> None:
         self._language_manager = language_manager
+        self._status_bar = status_bar
         self._default_width = layout.dialogs.default.width
         self._default_height = layout.dialogs.default.height
         self._error_width = layout.dialogs.error.width
@@ -305,6 +308,7 @@ class DialogsRenderer:
                 color=self._col_path,
                 hover_color=self._col_path_hover,
                 status_message=self._msg_path,
+                status_bar=self._status_bar,
             )
 
         dpg_delete_item(tag)
@@ -736,6 +740,7 @@ class DialogsRenderer:
                     color=self._col_path,
                     hover_color=self._col_path_hover,
                     status_message=self._msg_path,
+                    status_bar=self._status_bar,
                 )
 
         _show_modal_dialog(

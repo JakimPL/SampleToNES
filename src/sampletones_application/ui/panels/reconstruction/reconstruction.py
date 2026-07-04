@@ -80,9 +80,11 @@ class GUIReconstructionPanel(GUIPanel):
         file_dialog_width: int,
         file_dialog_height: int,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
     ) -> None:
         self._player_panel = player_panel
         self._layout_graphs = layout_graphs
+        self._status_bar = status_bar
         self._path_colors = path_colors
         self._path_status_color = path_status_color
         self._file_dialog_width = file_dialog_width
@@ -434,6 +436,7 @@ class GUIReconstructionPanel(GUIPanel):
             status_message=self._msg_path_status,
             prefix=self._lbl_reconstruction_file,
             font=Font.REGULAR_SMALL,
+            status_bar=self._status_bar,
         )
         self._original_audio_path = GUIPathText(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_ORIGINAL_AUDIO,
@@ -444,6 +447,7 @@ class GUIReconstructionPanel(GUIPanel):
             status_message=self._msg_path_status,
             prefix=self._lbl_original_audio,
             font=Font.REGULAR_SMALL,
+            status_bar=self._status_bar,
         )
 
         self._reconstruction_file_path.set_status("", self._path_status_color)
@@ -528,6 +532,7 @@ class GUIReconstructionPanel(GUIPanel):
             parent=self.plot_tag,
             layout=self._layout_graphs,
             language_manager=self._language_manager,
+            status_bar=self._status_bar,
             label=self._lbl_waveform,
         )
 
@@ -554,7 +559,7 @@ class GUIReconstructionPanel(GUIPanel):
                     callback=self._on_generator_checkbox_changed,
                 )
 
-                GUIStatusBar.bind_to_item(
+                self._status_bar.bind_to_item(
                     tag,
                     self._create_message_function_for_generator_checkbox(generator_name),
                 )

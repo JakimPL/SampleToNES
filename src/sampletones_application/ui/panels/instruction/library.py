@@ -37,6 +37,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
@@ -94,6 +95,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         *,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         colors: TreeColors,
         is_operation_active: Callable[[], bool],
     ) -> None:
@@ -185,6 +187,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 TreeElements.SEARCH,
             ],
             language_manager=language_manager,
+            status_bar=status_bar,
             colors=colors,
         )
 

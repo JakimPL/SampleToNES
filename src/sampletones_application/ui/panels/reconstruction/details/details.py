@@ -87,8 +87,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         layout_graphs: GraphsLayout,
         layout_reconstructions: ReconstructionsLayout,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
     ) -> None:
         self.shortcut_manager = shortcut_manager
+        self._status_bar = status_bar
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
         self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
@@ -447,6 +449,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             label=self._lbl_initial_period if is_noise else self._lbl_initial_pitch,
             tooltip=self._period_tooltip if is_noise else self._pitch_tooltip,
             status_message=self._msg_input_period if is_noise else self._msg_input_pitch,
+            status_bar=self._status_bar,
             layout=self._layout_general.pitch_stepper,
             value_color=self._layout_general.colors.text.disabled,
             shortcut_manager=self.shortcut_manager,
@@ -567,7 +570,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _on_bar_point_hovered(self, label: Optional[str], index: Optional[int]) -> None:
         self.call(self.on_reconstruction_instrument_hovered, index)
         if label is not None:
-            GUIStatusBar.set(self._msg_bar.format(instrument_feature=label))
+            self._status_bar.set(self._msg_bar.format(instrument_feature=label))
 
     def _add_raw_data_text(
         self,
@@ -608,8 +611,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
         self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
-        GUIStatusBar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
-        GUIStatusBar.bind_to_item(
+        self._status_bar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
+        self._status_bar.bind_to_item(
             raw_data_tag,
             self._msg_sequence.format(
                 instrument_feature=feature_key.capitalized,

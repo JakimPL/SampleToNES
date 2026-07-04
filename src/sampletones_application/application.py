@@ -128,12 +128,16 @@ class Application:
         logger.set_level(self.deployment.log_level.to_logging_level())
         self.layout: LayoutConfig = load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
         self.language_manager: LanguageManager = LanguageManager(LANG_EN)
+        FontRegistry.setup(self.layout.general.fonts)
+        setup_themes(THEME_DIRECTORY)
+        self.status_bar = GUIStatusBar(
+            display_time=self.layout.behavior.ui.status_bar_display_time,
+        )
         self.dialogs: DialogsRenderer = DialogsRenderer(
             layout=self.layout.general,
             language_manager=self.language_manager,
+            status_bar=self.status_bar,
         )
-        FontRegistry.setup(self.layout.general.fonts)
-        setup_themes(THEME_DIRECTORY)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
         self.session_manager = SessionManager()
@@ -179,9 +183,6 @@ class Application:
             shortcut_manager=self.shortcut_manager,
         )
         self.project_properties_window.on_commit = self._commit_project_properties
-        self.status_bar = GUIStatusBar(
-            display_time=self.layout.behavior.ui.status_bar_display_time,
-        )
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
         self.fps_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_MENU_FPS)
 
@@ -239,6 +240,7 @@ class Application:
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            status_bar=self.status_bar,
         )
 
         self._reconstruction_coordinator.set_reconstructions_tab(self._reconstructions_tab)
@@ -256,6 +258,7 @@ class Application:
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            status_bar=self.status_bar,
         )
 
         self._main_tab = MainTabCoordinator(
@@ -274,6 +277,7 @@ class Application:
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            status_bar=self.status_bar,
             on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self._reconstructions_tab.refresh_browser,
             on_cancelled=self._reconstructions_tab.refresh_browser,
@@ -291,6 +295,7 @@ class Application:
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
             on_tab_switch=self._set_current_tab,
             on_export_module=self._project_coordinator.export_module_dialog,

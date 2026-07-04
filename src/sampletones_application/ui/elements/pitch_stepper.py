@@ -47,11 +47,13 @@ class GUIPitchStepper(CallbackMixin):
         label: str,
         tooltip: str,
         status_message: str,
+        status_bar: GUIStatusBar,
         layout: PitchStepperLayout,
         value_color: Color,
         shortcut_manager: ShortcutManager,
     ) -> None:
         self.on_value_changed: Optional[Callable[[int], None]] = None
+        self._status_bar = status_bar
 
         self._tag = tag
         self._parent = parent
@@ -158,7 +160,7 @@ class GUIPitchStepper(CallbackMixin):
 
         ThemeRegistry.get(TAG_GLOBAL_THEME_PITCH_STEPPER).bind_to_item(self._table_tag)
         show_tooltip(self._input_tag, self._tooltip, tag=self._tooltip_tag)
-        GUIStatusBar.bind_to_item(self._input_tag, self._status_message)
+        self._status_bar.bind_to_item(self._input_tag, self._status_message)
         self._shortcut_manager.setup_input_focus_handlers(self._input_tag)
         self._setup_input_handler()
         self._setup_button_hold_handlers()
@@ -175,6 +177,7 @@ class GUIPitchStepper(CallbackMixin):
     def _setup_input_handler(self) -> None:
         with dpg.item_handler_registry(tag=self._input_handler_tag):
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_input_committed)
+
         dpg.bind_item_handler_registry(self._input_tag, self._input_handler_tag)
 
     def _setup_button_hold_handlers(self) -> None:

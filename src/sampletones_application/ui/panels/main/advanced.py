@@ -27,6 +27,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -50,6 +51,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         file_dialog_height: int,
         max_workers_minimum: int,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         path_colors: PathColors,
     ) -> None:
         self.on_advanced_settings_changed: Optional[Callable[[AdvancedSettingsUpdate], None]] = None
@@ -64,6 +66,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._file_dialog_width = file_dialog_width
         self._file_dialog_height = file_dialog_height
         self._max_workers_minimum = max_workers_minimum
+        self._status_bar = status_bar
         self._path_colors = path_colors
         self._msg_path = language_manager[
             Page.GLOBAL,
@@ -201,6 +204,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 hover_color=self._path_colors.hover,
                 status_message=self._msg_path,
                 font=Font.REGULAR_SMALL,
+                status_bar=self._status_bar,
             )
 
     def _create_output_directory_selection(self) -> None:
@@ -226,6 +230,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 hover_color=self._path_colors.hover,
                 status_message=self._msg_path,
                 font=Font.REGULAR_SMALL,
+                status_bar=self._status_bar,
             )
 
     def _create_tooltips(self) -> None:

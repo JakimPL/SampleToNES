@@ -57,6 +57,7 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.song_player.player import SongPlayerService
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.sequencer.actions import GUISequencerActionsPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
@@ -107,6 +108,7 @@ class SequencerTabCoordinator:
         layout: LayoutConfig,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        status_bar: GUIStatusBar,
         on_edit_sample_requested: Callable[[str], None],
         on_tab_switch: Callable[[Tab], None],
         on_export_module: Callable[[], None],
@@ -223,6 +225,7 @@ class SequencerTabCoordinator:
             shortcut_manager,
             tree_behavior=layout.behavior.sequencer,
             language_manager=language_manager,
+            status_bar=status_bar,
             colors=TreeColors.create(
                 layout.general.colors,
                 accent=layout.general.colors.headers.reconstruction,
@@ -271,6 +274,7 @@ class SequencerTabCoordinator:
             layout=layout.sequencer,
             input_width=layout.general.inputs.default_width,
             language_manager=language_manager,
+            status_bar=status_bar,
             shortcut_manager=shortcut_manager,
         )
         self._sequencer_actions_panel: GUISequencerActionsPanel = GUISequencerActionsPanel(

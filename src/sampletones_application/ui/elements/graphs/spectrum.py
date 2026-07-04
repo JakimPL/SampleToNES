@@ -36,9 +36,11 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         *,
         layout: GraphsLayout,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         label: str = "",
     ) -> None:
         self._layout = layout
+        self._status_bar = status_bar
 
         self._lbl_axis_x = language_manager[
             Page.GLOBAL,
@@ -147,7 +149,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         self._update_ranges()
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
-        GUIStatusBar.set(self._msg_navigation)
+        self._status_bar.set(self._msg_navigation)
 
     def _update_ranges(self) -> None:
         if not self.layers:

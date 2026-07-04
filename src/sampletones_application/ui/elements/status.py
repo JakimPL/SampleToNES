@@ -17,12 +17,11 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
     dpg_is_item_hovered,
 )
-from sampletones_shared.meta import SingletonMeta
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback
 
 
-class GUIStatusBar(metaclass=SingletonMeta):
+class GUIStatusBar:
     def __init__(
         self,
         tag: str = TAG_GLOBAL_STATUS_BAR,
@@ -50,9 +49,8 @@ class GUIStatusBar(metaclass=SingletonMeta):
 
         self.theme.bind_to_item(TAG_GLOBAL_STATUS_WINDOW)
 
-    @classmethod
+    @staticmethod
     def get_message(
-        cls,
         message_or_function: Union[str, MessageCallback],
         *args: Any,
         **kwargs: Any,
@@ -83,25 +81,21 @@ class GUIStatusBar(metaclass=SingletonMeta):
             self.message = ""
             self.timer = 0.0
 
-    @classmethod
     def set(
-        cls,
+        self,
         message_or_function: Union[str, MessageCallback],
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        instance = cls.get_instance()
-        if instance is not None:
-            instance.update(
-                message_or_function=message_or_function,
-                delta_time=0.0,
-                *args,
-                **kwargs,
-            )
+        self.update(
+            *args,
+            message_or_function=message_or_function,
+            delta_time=0.0,
+            **kwargs,
+        )
 
-    @classmethod
+    @staticmethod
     def create_message_function(
-        cls,
         message_or_function: Union[str, MessageCallback],
     ) -> MessageCallback:
         if isinstance(message_or_function, str):
@@ -117,26 +111,21 @@ class GUIStatusBar(metaclass=SingletonMeta):
 
         return message_function
 
-    @classmethod
     def bind_to_item(
-        cls,
+        self,
         tag: str,
         message_or_function: Union[str, MessageCallback],
-    ) -> Optional[str]:
-        message_function = cls.create_message_function(message_or_function)
-        instance = cls.get_instance()
-        if instance is not None:
-            handler_tag = f"{tag}{SUF_HANDLER_STATUS}"
+    ) -> str:
+        message_function = self.create_message_function(message_or_function)
+        handler_tag = f"{tag}{SUF_HANDLER_STATUS}"
 
-            def on_mouse_action(sender: Sender, app_data: Any, user_data: str) -> None:
-                if dpg_is_item_hovered(tag):
-                    message = message_function(sender, app_data, user_data)
-                    cls.set(message)
+        def on_mouse_action(sender: Sender, app_data: Any, user_data: str) -> None:
+            if dpg_is_item_hovered(tag):
+                message = message_function(sender, app_data, user_data)
+                self.set(message)
 
-            dpg_delete_item(handler_tag)
-            with dpg.handler_registry(tag=handler_tag):
-                dpg.add_mouse_move_handler(callback=on_mouse_action)
+        dpg_delete_item(handler_tag)
+        with dpg.handler_registry(tag=handler_tag):
+            dpg.add_mouse_move_handler(callback=on_mouse_action)
 
-            return handler_tag
-
-        return None
+        return handler_tag

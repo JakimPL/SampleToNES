@@ -48,9 +48,11 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         *,
         layout: GraphsLayout,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         label: str = "",
     ):
         self._layout = layout
+        self._status_bar = status_bar
 
         self._lbl_waveform_original = language_manager[
             Page.GLOBAL,
@@ -185,7 +187,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)
-        GUIStatusBar.set(self._msg_navigation)
+        self._status_bar.set(self._msg_navigation)
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
         _min_y = self._layout.graph.min_y

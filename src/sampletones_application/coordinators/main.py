@@ -29,6 +29,7 @@ from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.conversion import ConversionService
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
@@ -83,6 +84,7 @@ class MainTabCoordinator:
         layout: LayoutConfig,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        status_bar: GUIStatusBar,
         on_load_file: PathCallback,
         on_load_directory: VoidCallback,
         on_cancelled: VoidCallback,
@@ -162,6 +164,7 @@ class MainTabCoordinator:
             shortcut_manager,
             tree_behavior=layout.behavior.main.explorer,
             language_manager=language_manager,
+            status_bar=status_bar,
             colors=TreeColors.create(
                 layout.general.colors,
                 accent=layout.general.colors.paths.hover,
@@ -185,6 +188,7 @@ class MainTabCoordinator:
             input_width=layout.general.inputs.default_width,
             panel_height=layout.main.config.height,
             language_manager=language_manager,
+            status_bar=status_bar,
         )
         self._reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
             ReconstructorPanelViewModel(
@@ -195,6 +199,7 @@ class MainTabCoordinator:
             input_width=layout.general.inputs.default_width,
             panel_height=layout.main.config.height,
             language_manager=language_manager,
+            status_bar=status_bar,
         )
         self._advanced_settings_panel: GUIAdvancedSettingsPanel = GUIAdvancedSettingsPanel(
             AdvancedSettingsPanelViewModel(
@@ -208,6 +213,7 @@ class MainTabCoordinator:
             file_dialog_height=layout.general.dialogs.file.height,
             max_workers_minimum=layout.behavior.main.max_workers_minimum,
             language_manager=language_manager,
+            status_bar=status_bar,
             path_colors=layout.general.colors.paths,
         )
         self._converter_logic: ConverterLogic = ConverterLogic(
@@ -221,6 +227,7 @@ class MainTabCoordinator:
             layout=layout.main.converter,
             path_colors=layout.general.colors.paths,
             language_manager=language_manager,
+            status_bar=status_bar,
         )
         self._main_panel: GUIMainPanel = GUIMainPanel(
             self._config_panel,

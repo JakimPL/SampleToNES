@@ -50,9 +50,11 @@ class GUIConfigPanel(GUIPanel):
         input_width: int,
         panel_height: int,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
     ) -> None:
         self._view = initial_view
         self._input_width = input_width
+        self._status_bar = status_bar
         self.on_audio_settings_changed: Optional[Callable[[AudioSettingsUpdate], None]] = None
         self.on_library_settings_changed: Optional[Callable[[LibrarySettingsUpdate], None]] = None
         self._item_handler_tag = f"{TAG_MAIN_CONFIG_PANEL}{SUF_HANDLER_REGISTRY}"
@@ -263,8 +265,8 @@ class GUIConfigPanel(GUIPanel):
         ]:
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
 
-        GUIStatusBar.bind_to_item(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD, self._msg_status_combo)
-        GUIStatusBar.bind_to_item(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._msg_status_input)
+        self._status_bar.bind_to_item(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD, self._msg_status_combo)
+        self._status_bar.bind_to_item(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._msg_status_input)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE, self._tooltip_normalize)

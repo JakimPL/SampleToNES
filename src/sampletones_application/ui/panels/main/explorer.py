@@ -25,6 +25,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
@@ -81,6 +82,7 @@ class GUIExplorerPanel(GUITreePanel):
         *,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         colors: TreeColors,
     ) -> None:
         self._explorer_logic = explorer_logic
@@ -178,6 +180,7 @@ class GUIExplorerPanel(GUITreePanel):
                 TreeElements.FILTER,
             ],
             language_manager=language_manager,
+            status_bar=status_bar,
             colors=colors,
         )
 

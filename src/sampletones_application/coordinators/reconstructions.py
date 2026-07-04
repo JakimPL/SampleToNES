@@ -41,6 +41,7 @@ from sampletones_application.logic.reconstruction.reconstruction import Reconstr
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.export import ExportError, ExportKind, ExportResult, ExportService, ExportSuccess
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
@@ -84,6 +85,7 @@ class ReconstructionsTabCoordinator:
         layout: LayoutConfig,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        status_bar: GUIStatusBar,
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._dialogs = dialogs
@@ -223,6 +225,7 @@ class ReconstructionsTabCoordinator:
             shortcut_manager,
             tree_behavior=layout.behavior.reconstructions,
             language_manager=language_manager,
+            status_bar=status_bar,
             colors=TreeColors.create(
                 layout.general.colors,
                 accent=layout.general.colors.headers.reconstruction,
@@ -261,6 +264,7 @@ class ReconstructionsTabCoordinator:
             file_dialog_width=layout.general.dialogs.file.width,
             file_dialog_height=layout.general.dialogs.file.height,
             language_manager=language_manager,
+            status_bar=status_bar,
         )
         self._reconstruction_player_panel.on_play = self._guarded_player.play
         self._reconstruction_player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
@@ -278,6 +282,7 @@ class ReconstructionsTabCoordinator:
             layout_graphs=layout.graphs,
             layout_reconstructions=layout.reconstructions,
             language_manager=language_manager,
+            status_bar=status_bar,
         )
         self._reconstruction_details_logic: ReconstructionDetailsLogic = ReconstructionDetailsLogic(
             reconstruction_manager,

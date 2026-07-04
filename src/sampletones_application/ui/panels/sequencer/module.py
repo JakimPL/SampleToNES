@@ -42,11 +42,13 @@ class GUISequencerModulePanel(GUIPanel):
         layout: SequencerLayout,
         input_width: int,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         shortcut_manager: ShortcutManager,
     ) -> None:
         self._initial_settings = initial_settings
         self._layout = layout
         self._input_width = input_width
+        self._status_bar = status_bar
         self._shortcut_manager = shortcut_manager
         self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
         self._rows_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_ROWS}{SUF_HANDLER_REGISTRY}"
@@ -174,10 +176,10 @@ class GUISequencerModulePanel(GUIPanel):
         self._shortcut_manager.setup_input_focus_handlers(TAG_SEQUENCER_MODULE_INPUT_TEMPO)
         self._shortcut_manager.setup_input_focus_handlers(TAG_SEQUENCER_MODULE_INPUT_SPEED)
         show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._tpl_rows_tooltip)
-        GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._msg_status_input)
-        GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
-        GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_TEMPO, self._msg_status_input)
-        GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_SPEED, self._msg_status_input)
+        self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._msg_status_input)
+        self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
+        self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_TEMPO, self._msg_status_input)
+        self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_SPEED, self._msg_status_input)
 
     def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, view_model.nes_frequency)

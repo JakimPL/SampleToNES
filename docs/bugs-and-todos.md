@@ -37,8 +37,6 @@
 
 * Per-tab undo routing (analogous to `PlaybackRouter`) once standalone
   reconstruction documents gain their own history
-* `GUIStatusBar` is a singleton reached from panels via class methods,
-  bypassing constructor injection
 
 ## Bugs
 

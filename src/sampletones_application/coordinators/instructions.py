@@ -34,6 +34,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.instruction.details import (
     GUIInstructionDetailsPanel,
@@ -73,6 +74,7 @@ class InstructionsTabCoordinator:
         layout: LayoutConfig,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        status_bar: GUIStatusBar,
     ) -> None:
         self._config_manager = config_manager
         self._session_manager = session_manager
@@ -159,6 +161,7 @@ class InstructionsTabCoordinator:
             shortcut_manager,
             tree_behavior=layout.behavior.instructions,
             language_manager=language_manager,
+            status_bar=status_bar,
             colors=TreeColors.create(
                 layout.general.colors,
                 accent=layout.general.colors.headers.library,
@@ -211,6 +214,7 @@ class InstructionsTabCoordinator:
             self._instruction_player_panel,
             layout=layout.graphs,
             language_manager=language_manager,
+            status_bar=status_bar,
         )
         self._instruction_player_panel.on_play = self._guarded_player.play
         self._instruction_player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
@@ -229,6 +233,7 @@ class InstructionsTabCoordinator:
             table_colors=layout.general.colors.tables,
             table_layout=layout.general.tables,
             language_manager=language_manager,
+            status_bar=status_bar,
         )
 
         config_manager.add_config_change_callback(self._library_logic.update_status)
