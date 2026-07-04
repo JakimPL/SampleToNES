@@ -40,7 +40,6 @@ class FontsLayout(BaseModel, frozen=True):
     size_small: int
     size_large: int
     scale: int
-    icon_chars: tuple[int, ...]
 
 
 class DialogSizeLayout(BaseModel, frozen=True):

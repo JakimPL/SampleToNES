@@ -27,8 +27,6 @@ fonts:
   size_small: 19
   size_large: 26
   scale: 1
-  icon_chars:
-    - 0x2605
 
 dialogs:
   default:

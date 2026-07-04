@@ -437,9 +437,9 @@ class SequencerTabCoordinator:
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_view_changed = self._on_player_view_changed
-        self._player_panel.on_play = self._song_player_logic.play
-        self._player_panel.on_pause_or_resume = self._song_player_logic.pause_or_resume
-        self._player_panel.on_stop = self._song_player_logic.stop
+        self._player_panel.on_play = self._guarded_player.play
+        self._player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
+        self._player_panel.on_stop = self._guarded_player.stop
         self._player_panel.on_follow_changed = self._song_player_logic.set_follow_playback
         self._song_player_logic.on_error = self._on_player_error
 
