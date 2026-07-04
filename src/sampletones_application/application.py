@@ -76,10 +76,12 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
+from sampletones_application.view_model.shared.audio_settings import AudioSettingsViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.view_model.shared.project_properties import ProjectPropertiesViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
@@ -152,10 +154,11 @@ class Application:
         self.fps_timer: FPSTimer = FPSTimer()
 
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
-            self.audio_device_manager,
             layout=self.layout.settings,
             language_manager=self.language_manager,
         )
+        self.audio_settings_window.on_commit = self._apply_audio_settings
+        self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
@@ -303,7 +306,6 @@ class Application:
             menu_bar=self._menu_bar,
             status_bar=self.status_bar,
             fps_timer=self.fps_timer,
-            audio_settings_window=self.audio_settings_window,
             main_tab=self._main_tab,
             reconstructions_tab=self._reconstructions_tab,
             sequencer_tab=self._sequencer_tab,
@@ -353,7 +355,7 @@ class Application:
             close_reconstruction=self._reconstruction_coordinator.close_with_confirmation,
             save_config=self._config_coordinator.save_dialog,
             load_config=self._config_coordinator.load_dialog,
-            audio_settings=self._shell.open_audio_settings,
+            audio_settings=self._open_audio_settings,
             exit=self._on_close,
             reconstruct_file=self._reconstruct_file_dialog,
             reconstruct_directory=self._reconstruct_directory_dialog,
@@ -659,6 +661,24 @@ class Application:
                 self.project_controller.set_author(author)
             if comment != info.comment:
                 self.project_controller.set_comment(comment)
+
+    def _open_audio_settings(self) -> None:
+        """Opens the audio settings dialog seeded with the device manager's state."""
+        self.audio_settings_window.open(
+            AudioSettingsViewModel.from_device_manager(self.audio_device_manager),
+        )
+
+    def _refresh_audio_devices(self) -> None:
+        """Re-enumerates the output devices and repaints the open dialog in place."""
+        self.audio_device_manager.refresh_devices()
+        self.audio_settings_window.update_view(
+            AudioSettingsViewModel.from_device_manager(self.audio_device_manager),
+        )
+
+    def _apply_audio_settings(self, device_index: int, sample_rate: SampleRate, buffer_size: BufferSize) -> None:
+        """Applies the dialog's committed device, sample rate, and buffer size."""
+        self.audio_device_manager.configure_device(device_index, sample_rate)
+        self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _owning_project_sample(self) -> Optional[Sample]:
         reconstruction = self.reconstruction_manager.reconstruction

@@ -29,7 +29,6 @@ from sampletones_application.layout import LayoutConfig
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
-from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
@@ -107,7 +106,6 @@ class ApplicationShell:
         menu_bar: MenuBar,
         status_bar: GUIStatusBar,
         fps_timer: FPSTimer,
-        audio_settings_window: GUIAudioSettingsWindow,
         main_tab: MainTabCoordinator,
         reconstructions_tab: ReconstructionsTabCoordinator,
         sequencer_tab: SequencerTabCoordinator,
@@ -122,7 +120,6 @@ class ApplicationShell:
         self._menu_bar = menu_bar
         self._status_bar = status_bar
         self._fps_timer = fps_timer
-        self._audio_settings_window = audio_settings_window
         self._main_tab = main_tab
         self._reconstructions_tab = reconstructions_tab
         self._sequencer_tab = sequencer_tab
@@ -376,9 +373,6 @@ class ApplicationShell:
             return
 
         on_load_reconstruction(current_reconstruction_path)
-
-    def open_audio_settings(self) -> None:
-        self._audio_settings_window.show()
 
     def set_current_tab(self, tab: Tab) -> None:
         try:
