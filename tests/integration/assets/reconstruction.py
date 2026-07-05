@@ -4,6 +4,7 @@ from typing import Any, Dict, Final, FrozenSet, List
 import numpy as np
 
 from sampletones_core.audio import write_wave
+from sampletones_core.audio.processing import normalize
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.configs.generation import GenerationConfig
 from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
@@ -20,8 +21,7 @@ from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_yaml
-from tests.integration.assets.synth import SYNTHS
-from tests.integration.assets.synth_config import SynthConfig, SynthKind
+from tests.integration.assets.synth_config import SynthConfig
 
 INSTRUCTIONS_PER_GENERATOR: Final[int] = 48
 LIBRARY_GENERATORS: Final[List[GeneratorName]] = [
@@ -67,6 +67,7 @@ def reconstruct_sample(
     reconstruction = Reconstructor(config, library=library)(path)
     if reconstruction is None:
         raise AssertionError(f"Reconstruction of '{name}' produced no result")
+
     return reconstruction
 
 
@@ -85,6 +86,7 @@ def make_sample(
     covered = frozenset(reconstruction.instructions)
     if covered != expected_slices:
         raise AssertionError(f"Sample '{name}' covers {set(covered)}, expected {set(expected_slices)}")
+
     return Sample(name=name, reconstruction=reconstruction, loop=loop)
 
 
@@ -114,7 +116,7 @@ def load_instrument_catalog(
     for entry in spec["instruments"]:
         generators = [GeneratorName(name) for name in entry["generators"]]
         config = Config(library=library_config, generation=GenerationConfig(generators=generators))
-        audio = SYNTHS[SynthKind(entry["synth"])](synth_config, sample_rate=sample_rate)
+        audio = _render_instrument(synth_config, entry["synth"], sample_rate=sample_rate)
         catalog[entry["name"]] = make_sample(
             entry["name"],
             audio,
@@ -123,4 +125,28 @@ def load_instrument_catalog(
             tmp_dir=tmp_dir,
             expected_slices=frozenset(generators),
         )
+
     return catalog
+
+
+def _render_instrument(
+    synth_config: SynthConfig,
+    name: str,
+    *,
+    sample_rate: int,
+) -> np.ndarray:
+    """
+    Render a named voice at peak level 1.0.
+
+    A fresh generator seeded from the synth configuration keeps every instrument
+    reproducible independently of catalog order.
+    """
+    voice = synth_config.voices[name]
+    generator = np.random.default_rng(synth_config.seed)
+    instrument: np.ndarray = normalize(
+        voice.render(
+            sample_rate=sample_rate,
+            generator=generator,
+        )
+    )
+    return instrument

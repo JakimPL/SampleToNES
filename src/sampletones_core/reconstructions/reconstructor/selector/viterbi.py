@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -14,18 +13,10 @@ from ..approximation import ApproximationData
 from ..candidates import CandidateProvider
 from ..phase import PhaseAligner
 from ..scorer import Scorer
-from .base import Selector
+from .base import ScoredCandidate, Selector
 
-
-@dataclass(frozen=True)
-class CandidateState:
-    instruction: InstructionUnion
-    emission: float
-    approximation: Fragment
-
-
-ChannelLattice = List[List[CandidateState]]
-FrameCandidates = Dict[GeneratorName, List[CandidateState]]
+ChannelLattice = List[List[ScoredCandidate]]
+FrameCandidates = Dict[GeneratorName, List[ScoredCandidate]]
 
 
 class ViterbiSelector(Selector):
@@ -49,7 +40,6 @@ class ViterbiSelector(Selector):
             feature_extractor,
         )
         decoder = config.generation.decoder
-        self.top_k = decoder.top_k
         self.pitch_weight = decoder.pitch_weight
         self.volume_weight = decoder.volume_weight
         self.timbre_weight = decoder.timbre_weight
@@ -103,21 +93,8 @@ class ViterbiSelector(Selector):
 
         return candidates
 
-    def _channel_candidates(self, residual: Fragment, generator: GeneratorUnion) -> List[CandidateState]:
-        valid_instructions, candidate_approximations = self.candidate_provider.candidates(
-            {generator.class_name(): generator}
-        )
-        costs = self.scorer.costs(residual, candidate_approximations)
-        top_indices = self.scorer.top_k(costs, self.top_k)
-
-        return [
-            CandidateState(
-                instruction=valid_instructions[index],
-                emission=float(costs[index]),
-                approximation=self._build_approximation(residual, valid_instructions[index], generator),
-            )
-            for index in top_indices
-        ]
+    def _channel_candidates(self, residual: Fragment, generator: GeneratorUnion) -> List[ScoredCandidate]:
+        return self._score_candidates(residual, {generator.class_name(): generator})
 
     def _decode(self, frames: ChannelLattice) -> List[int]:
         if not frames:
@@ -127,7 +104,7 @@ class ViterbiSelector(Selector):
         return self._backtrack(backpointers, final_costs)
 
     def _forward_pass(self, frames: ChannelLattice) -> Tuple[List[List[int]], List[float]]:
-        costs = [state.emission for state in frames[0]]
+        costs = [state.cost for state in frames[0]]
         backpointers: List[List[int]] = []
 
         for previous_states, current_states in zip(frames, frames[1:]):
@@ -135,7 +112,7 @@ class ViterbiSelector(Selector):
             layer_backpointers: List[int] = []
             for state in current_states:
                 predecessor, accumulated = self._best_predecessor(costs, previous_states, state.instruction)
-                layer_costs.append(accumulated + state.emission)
+                layer_costs.append(accumulated + state.cost)
                 layer_backpointers.append(predecessor)
 
             costs = layer_costs
@@ -146,7 +123,7 @@ class ViterbiSelector(Selector):
     def _best_predecessor(
         self,
         previous_costs: List[float],
-        previous_states: List[CandidateState],
+        previous_states: List[ScoredCandidate],
         instruction: InstructionUnion,
     ) -> Tuple[int, float]:
         best_index = 0

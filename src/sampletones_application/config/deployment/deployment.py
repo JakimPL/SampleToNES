@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from sampletones_application.config.deployment.logs import LogLevel
-from sampletones_shared.utils.serialization import load_yaml
+from sampletones_shared.utils.serialization import load_yaml_model
 
 
 class DeploymentConfig(BaseModel, frozen=True):
@@ -27,8 +27,4 @@ class DeploymentConfig(BaseModel, frozen=True):
 
     @classmethod
     def load(cls, deployment_path: Path) -> DeploymentConfig:
-        raw = load_yaml(deployment_path)
-        if not isinstance(raw, dict):
-            raise TypeError(f"Deployment config file {deployment_path} must contain a mapping, got {type(raw)}")
-
-        return cls.model_validate(raw)
+        return load_yaml_model(deployment_path, cls)

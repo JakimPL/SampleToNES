@@ -53,6 +53,9 @@ ftm-samples:
 check-import-boundary:
 	uv run scripts/check_import_boundary.py --all
 
+calibration:
+	uv run scripts/calibration.py --all
+
 lint:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/lint$(SCRIPT_EXT)
 

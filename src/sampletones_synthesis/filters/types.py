@@ -1,0 +1,3 @@
+from .butterworth_highpass import ButterworthHighpassFilter
+
+FilterUnion = ButterworthHighpassFilter

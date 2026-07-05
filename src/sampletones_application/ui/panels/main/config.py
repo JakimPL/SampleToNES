@@ -32,13 +32,10 @@ from sampletones_core.configs.display import (
     SPECTRUM_METHOD_BY_LABEL,
     format_spectrum_method,
 )
+from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_core.constants.general import (
-    MAX_NES_FREQUENCY,
-    MAX_TRANSFORMATION_GAMMA,
-    MIN_NES_FREQUENCY,
-)
+from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.types.application import Sender
 
 

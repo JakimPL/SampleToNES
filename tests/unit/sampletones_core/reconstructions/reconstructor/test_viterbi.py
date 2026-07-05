@@ -7,10 +7,8 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import Window
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import PulseInstruction
-from sampletones_core.reconstructions.reconstructor.selector.viterbi import (
-    CandidateState,
-    ViterbiSelector,
-)
+from sampletones_core.reconstructions.reconstructor.selector.base import ScoredCandidate
+from sampletones_core.reconstructions.reconstructor.selector.viterbi import ViterbiSelector
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 
@@ -34,19 +32,19 @@ def _selector(
     )
 
 
-def _state(instruction: PulseInstruction, emission: float) -> CandidateState:
-    return CandidateState(instruction=instruction, emission=emission, approximation=None)  # type: ignore[arg-type]
+def _state(instruction: PulseInstruction, cost: float) -> ScoredCandidate:
+    return ScoredCandidate(instruction=instruction, cost=cost, approximation=None)  # type: ignore[arg-type]
 
 
-def _per_frame_best(frames: List[List[CandidateState]]) -> List[PulseInstruction]:
-    return [min(frame, key=lambda state: state.emission).instruction for frame in frames]
+def _per_frame_best(frames: List[List[ScoredCandidate]]) -> List[PulseInstruction]:
+    return [min(frame, key=lambda state: state.cost).instruction for frame in frames]
 
 
 STEADY = PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=0)
 JUMPED = PulseInstruction(on=True, pitch=72, volume=10, duty_cycle=0)
 
 
-def _flickering_frames() -> List[List[CandidateState]]:
+def _flickering_frames() -> List[List[ScoredCandidate]]:
     return [
         [_state(STEADY, 0.00), _state(JUMPED, 0.05)],
         [_state(STEADY, 0.05), _state(JUMPED, 0.00)],

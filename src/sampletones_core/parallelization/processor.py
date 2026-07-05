@@ -6,7 +6,7 @@ from typing import Any, Callable, Final, Generic, List, Optional, TypeVar, Union
 
 from pebble import ProcessMapFuture, ProcessPool
 
-from sampletones_core.constants.general import MAX_WORKERS
+from sampletones_core.constants.algorithm import MAX_WORKERS
 from sampletones_core.parallelization.task import (
     TaskProgress,
     TaskStatus,

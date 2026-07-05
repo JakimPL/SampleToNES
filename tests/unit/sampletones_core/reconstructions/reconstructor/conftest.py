@@ -67,6 +67,15 @@ def worker(
     )
 
 
+@pytest.fixture(scope="module")
+def audible_instruction(library_data: InstructionLibraryData) -> InstructionUnion:
+    return next(
+        instruction
+        for instruction in library_data.keys()
+        if instruction.on and bool(np.any(library_data[instruction].sample.array))
+    )
+
+
 @pytest.fixture
 def synthetic_fragment(
     library_data: InstructionLibraryData,

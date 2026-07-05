@@ -4,7 +4,7 @@ import json
 from collections.abc import Hashable
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Final, List, Union
+from typing import Any, Final, List, Type, TypeVar, Union
 
 import numpy as np
 import yaml
@@ -17,6 +17,8 @@ from sampletones_shared.types.path import Pathlike
 JSON_INDENT: Final[int] = 2
 HASH_LENGTH: Final[int] = 32
 HASH_PATTERN: Final[str] = rf"^[0-9a-f]{{{HASH_LENGTH}}}$"
+
+ModelTypeT = TypeVar("ModelTypeT", bound=BaseModel)
 
 
 def dump(data: Any) -> str:
@@ -102,6 +104,27 @@ def load_yaml(filepath: Pathlike) -> Union[List[Any], SerializedData]:
     with open(filepath, "r", encoding="utf-8") as file:
         data: SerializedData = yaml.safe_load(file)
         return data
+
+
+def load_yaml_model(filepath: Pathlike, model_type: Type[ModelTypeT]) -> ModelTypeT:
+    """
+    Loads and validates a Pydantic model from a YAML file holding a mapping.
+
+    Args:
+        filepath (Pathlike): Path to the YAML file to load.
+        model_type (Type[ModelTypeT]): Model class validating the mapping.
+
+    Returns:
+        ModelTypeT: The validated model instance.
+
+    Raises:
+        TypeError: If the file holds anything other than a mapping.
+    """
+    raw = load_yaml(filepath)
+    if not isinstance(raw, dict):
+        raise TypeError(f"YAML file {filepath} must contain a mapping, got {type(raw)}")
+
+    return model_type.model_validate(raw)
 
 
 def save_binary(filepath: Pathlike, data: bytes) -> None:

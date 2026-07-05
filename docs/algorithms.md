@@ -84,7 +84,7 @@ configurable via `library.spectrum_method`):
 | method   | frequency axis            | resolution                              | time support              |
 |----------|---------------------------|-----------------------------------------|---------------------------|
 | `fft`    | linear                    | uniform, `Δf ≈ sample_rate / N ≈ 27 Hz` | one short window (~37 ms) |
-| `logfft` | logarithmic (rebinned FFT)| inherited from the FFT (coarse low end) | one short window (~37 ms) |
+| `logfft` | logarithmic, floored at `Δf` | the FFT's `Δf`, on a musical axis     | one short window (~37 ms) |
 | `cqt`    | logarithmic (constant-Q)  | constant *relative* (fine low end)      | long for low notes (~300 ms) |
 
 They sit at different points of the **time–frequency trade-off** (the Gabor limit:
@@ -92,13 +92,17 @@ sharper frequency resolution requires a longer time window, and vice versa):
 
 - **FFT** uses a window only slightly larger than one frame, so it localizes events
   sharply in time but resolves low frequencies coarsely — the lowest octave spans
-  only a couple of bins. It is the simplest and the default.
+  only a couple of bins. It is the simplest of the three.
 - **log-FFT** takes the same FFT and *re-bins* its linear bins onto a logarithmic
-  (musical) axis. This is useful when a log/perceptual axis is wanted, but it adds
-  **no** low-frequency information — the resolution is still the FFT's `Δf`. Like the
-  FFT it keeps a short window, so it localizes events sharply in time.
-- **CQT** (constant-Q transform, via `librosa`) places bins geometrically and gives
+  (musical) axis whose bin widths are floored at the FFT's `Δf`: the axis is linear
+  where a musical interval falls below the resolution (roughly under 500 Hz at the
+  defaults) and logarithmic above. Low tones therefore stay compact and every log
+  bin aggregates whole FFT bins — the resolution is still the FFT's `Δf`, presented
+  on a perceptual axis. Like the FFT it keeps a short window, so it localizes events
+  sharply in time.
+- **CQT** (constant-Q transform) places bins geometrically and gives
   every musical interval the same number of bins, so it resolves low pitches finely.
+  It is the default.
   The price is time support: its low-frequency basis functions are long (hundreds of
   milliseconds), so brief events are smeared in time at the low end. SampleToNES
   computes the CQT **once over the whole signal** with a hop of one frame
@@ -106,7 +110,10 @@ sharper frequency resolution requires a longer time window, and vice versa):
   time position and the per-frame columns line up with the FFT path's frame centres.
 
 The target and the library candidates are always described by the *same* method, so
-their features are directly comparable bin by bin.
+their features are directly comparable bin by bin. All three methods share one scale
+convention: a bin-centered tone of amplitude `A` contributes `A²/2` — its mean-square
+power — to its bin, at every frame length (the analysis-window taper is compensated
+by its energy gain).
 
 ### 3.3 The gamma transform
 
@@ -145,11 +152,16 @@ cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
 - **spectral** compares the two frequency features with a perceptually-weighted
   distance, normalized by the target's own energy so the score is about *shape*. The
   per-bin distance is configurable — squared error, absolute error, or (the default)
-  a **β-divergence** (a Kullback–Leibler-style measure that penalizes adding energy
-  where the target has none slightly more than leaving energy out). Bins are weighted
-  by a combination of log-frequency density and an A-weighting perceptual curve.
-- **temporal** is the RMS difference between the candidate and target *waveforms*,
-  capturing alignment that a magnitude spectrum discards.
+  a **β-divergence** (a Kullback–Leibler-style measure that, for partials above the
+  spectral floor, penalizes leaving target energy uncovered more strongly than adding
+  energy beyond it). Bins are weighted by their span in auditory critical bands (the
+  ERB scale) times the K-weighting loudness curve (ITU-R BS.1770), so each bin counts
+  in proportion to the hearing resolution and loudness contribution it represents.
+- **temporal** is the RMS difference between the target *waveform* and the candidate
+  rendered at its best phase against the target, normalized by the target frame's own
+  level. Evaluating it at the aligned phase makes it measure waveform *shape* — a
+  property the magnitude spectrum discards — while keeping the spectral/temporal
+  blend stable across frame loudness.
 
 A lower cost is a better match. The criterion evaluates many candidates at once and,
 on machines with a GPU, runs on the array backend in `sampletones_shared`.
@@ -159,6 +171,12 @@ on machines with a GPU, runs on the array backend in `sampletones_shared`.
 Both selectors live in `sampletones_core.reconstructions.reconstructor.selector` and
 are chosen with `generation.decoder.selector`. They share the criterion and the
 library; they differ only in how they search.
+
+Both score candidates in two stages: every candidate is first ranked by the
+phase-independent spectral term, and the best `top_k` are then re-scored with the
+full criterion, whose temporal term is evaluated on the candidate aligned to the
+target (`find_best_phase`). The aligned phase stands in for the rendered phase,
+which keeps each oscillator continuous across frames.
 
 ### 5.1 Greedy (per-frame)
 
@@ -206,7 +224,74 @@ per-channel instruction streams (which can be exported to a tracker format via
 `sampletones_core.exporters`). The coefficient from §3.4 is stored so the
 reconstruction and the original can be shown and played on a common scale.
 
-## 7. Limitations
+## 7. Calibration
+
+The criterion is full of tunable choices — the spectrum method, gamma, the
+perceptual exponent on the loudness curve, the spectral/temporal blend, the
+Viterbi transition weights — and their best values are an empirical question.
+**Calibration** answers it with a repeatable experiment: reconstruct a fixed
+probe corpus under several candidate configurations and let independent judges
+score the results, so configuration decisions rest on measured quality and
+targeted listening. The harness lives in `sampletones_core.calibration` and runs
+as a script:
+
+```
+python scripts/calibration.py [--config <base>] [--methods fft,cqt]
+    [--perceptual-exponents 0.5,1.0] [--temporal-weights 0.1,0.3]
+    [--generators pulse1,triangle,noise]
+```
+
+The base configuration comes from `--config` when given; otherwise the saved
+application configuration is used, so a run inherits the current app settings —
+sample rate, gamma, selector and the rest. The channel set is the exception:
+calibration pins the generators itself (`--generators`, by default pulse 1 +
+triangle + noise), so every run reconstructs with an explicitly chosen channel
+set and results stay comparable across machines.
+
+It has three moving parts:
+
+- **A synthetic corpus** (`calibration.corpus`) of short, deterministic probe
+  signals in six categories: steady tones across the pitch range, pulse timbres
+  of several duty cycles, white and dark noise, tone-plus-noise mixes,
+  percussive transients (snare, kick, pluck) and a crescendo probing the dynamic
+  range. Each probe is a `sampletones_synthesis` voice — oscillators, envelopes
+  and filters composed from one shared, exactly-rendered configuration
+  vocabulary — built from the probe families in
+  `sampletones_config/calibration/corpus.yaml`. Each category isolates one kind of decision the criterion must get
+  right — pitch, timbre, noise balance, attack sharpness, level tracking — and
+  the fixed seed makes every run bit-identical, so scores are comparable across
+  runs and code changes.
+- **Variants** (`calibration.runner`): the requested knob values are swept as a
+  cartesian product over a base configuration, each combination becoming a
+  labeled, complete configuration. Missing instruction libraries are generated
+  on the fly. Every corpus item is reconstructed under every variant, and the
+  approximation is compared against the preprocessed original on the common
+  scale set by the working level (§3.4).
+- **Referees** (`calibration.referee`): a referee is a full-reference audio
+  distance — zero for identical signals, growing with audible difference.
+  Referees judge in their own representation, independent of the criterion under
+  test; an outside yardstick keeps the comparison honest when the criterion
+  itself is what changes between variants. The built-in referee measures
+  log-spectral distance over ERB-spaced bands at three STFT resolutions
+  simultaneously, covering the time–frequency trade-off that the criterion
+  resolves with a single frame length. Band energies are floored at a fixed
+  audibility range below the reference's loudest band, so the score reflects
+  audible content and holds steady under a common gain. Its tuning is a
+  `RefereeConfig` loaded from `sampletones_config/calibration/referee.yaml`.
+  When the [zimtohrli](https://github.com/google/zimtohrli) binary is installed
+  it joins automatically as a second, psychoacoustic referee.
+
+Each run writes a timestamped directory containing the corpus WAVs, `report.csv`
+(one row per variant × item × referee) and `report.md` — a per-referee pivot
+with one row per variant and one column per corpus category, plus the overall
+mean. Lower scores mean closer reconstructions, and the numbers rank variants
+relative to one another within a run. The built-in referee measures per-band
+energy agreement, which makes it most reliable for timbre, noise-balance and
+level questions; pitch accuracy is best arbitrated by the external referee or by
+ear. The intended workflow is therefore: sweep, read the pivot, shortlist the
+contenders, and listen to those.
+
+## 8. Limitations
 
 - **Dynamic range.** A single NES tonal channel spans roughly 25 dB from its
   quietest to its loudest note, and the coefficient is one global scalar. Material
@@ -227,7 +312,7 @@ noise):
 | parameter                | default | notes                                              |
 |--------------------------|---------|----------------------------------------------------|
 | frame length             | 1470    | `sample_rate / nes_frequency`, ~33 ms              |
-| spectrum method          | `fft`   | `fft` / `logfft` / `cqt`                            |
+| spectrum method          | `cqt`   | `fft` / `logfft` / `cqt`                            |
 | `transformation_gamma`   | 0       | 0 = power spectrum, 100 = log                       |
 | spectral / temporal weight | 0.8 / 0.2 | criterion blend                                 |
 | spectral distance        | β-divergence | also `squared`, `absolute`                     |
@@ -246,3 +331,5 @@ Package map:
 | selection + assembly            | `sampletones_core.reconstructions.reconstructor`     |
 | audio I/O and level             | `sampletones_core.audio`                             |
 | tracker export                  | `sampletones_core.exporters`                         |
+| criterion calibration           | `sampletones_core.calibration`                       |
+| analytic waveform synthesis     | `sampletones_synthesis`                              |

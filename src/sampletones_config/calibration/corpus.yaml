@@ -1,0 +1,19 @@
+seed: 420
+item_seconds: 1.5
+amplitude: 0.5
+reference_frequency: 440.0
+tone:
+  frequencies: [55.0, 110.0, 220.0, 440.0, 880.0, 1760.0]
+timbre:
+  duty_cycles: [0.125, 0.25, 0.5]
+  frequency: 220.0
+noise:
+  white_level: 0.5
+mix:
+  noise_levels: [0.05, 0.15]
+transient:
+  snare_decay_seconds: 0.15
+  kick_decay_seconds: 0.25
+  kick_sweep_frequencies: [150.0, 50.0]
+  attack_seconds: 0.005
+  attack_tone_decay_seconds: 0.3

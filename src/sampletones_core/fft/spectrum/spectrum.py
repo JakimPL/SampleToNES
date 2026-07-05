@@ -33,7 +33,7 @@ def calculate_spectrum(
         fft_size: Size of the FFT to be used. If None, uses the length of the audio array.
         cutoff: Cutoff frequency. All frequencies below this value will be discarded.
         bins_per_octave: Number of bins per octave. Only used if n_bins is None.
-        n_bins: Number of logarithmically spaced components.
+        n_bins: Number of constant-Q components. Only used by the constant-Q method.
 
     Returns:
         Histogram: Computed spectrum.
@@ -57,7 +57,6 @@ def calculate_spectrum(
                 fft_size,
                 cutoff,
                 bins_per_octave,
-                n_bins,
             )
         case SpectrumMethod.CQT:
             spectrum = calculate_cqt_spectrum(

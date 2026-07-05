@@ -10,7 +10,6 @@ from sampletones_core.fft import (
     FFTTransformer,
     Window,
     calculate_fft_frequencies,
-    calculate_weights,
     calculate_weights_from_edges,
 )
 from sampletones_core.fft.features import get_feature_extractor
@@ -65,12 +64,13 @@ class TestFragmentAxis:
 
 
 class TestEdgeWeights:
-    def test_reproduces_linear_fft_weights(self) -> None:
+    def test_linear_fft_edges_give_positive_normalized_weights(self) -> None:
         sample_rate, length = 44100, 1024
         edges = calculate_fft_frequencies(length, sample_rate)
-        from_edges = calculate_weights_from_edges(edges, perceptual_exponent=1.0)
-        linear = calculate_weights(length, sample_rate, 1.0)
-        assert np.allclose(from_edges, linear, atol=1e-6)
+        weights = calculate_weights_from_edges(edges, perceptual_exponent=1.0)
+        assert weights.shape[0] == length // 2
+        assert bool(np.all(weights > 0.0))
+        assert float(weights.sum()) == pytest.approx(1.0)
 
     def test_cqt_edges_give_positive_normalized_weights(self) -> None:
         config = _config(SpectrumMethod.CQT)

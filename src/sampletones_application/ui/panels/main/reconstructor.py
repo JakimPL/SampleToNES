@@ -30,8 +30,8 @@ from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
 from sampletones_application.view_model.main.updates import GenerationSettingsUpdate
+from sampletones_core.constants.algorithm import MAX_DRIVE
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.general import MAX_DRIVE
 from sampletones_shared.types.application import Sender
 
 

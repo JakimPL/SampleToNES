@@ -28,20 +28,37 @@ class PhaseAligner(ABC):
 
 
 class SlidingRmsePhaseAligner(PhaseAligner):
+    """
+    Finds the cyclic shift minimizing the RMSE between the target and the
+    drive-scaled candidate waveform, and returns the candidate at that shift,
+    scaled by the drive to match the amplitude the candidate competes at.
+    """
+
     def align(self, fragment: Fragment, instruction: InstructionUnion) -> Fragment:
+        drive = self.config.generation.drive
         library_fragment = self.library_data[instruction]
         array = library_fragment.sample.get_fragment(length=2 * library_fragment.sample.length)
 
         windows = sliding_window_view(array, self.config.library.frame_length)
-        remainder = fragment.audio - windows
+        remainder = fragment.audio - drive * windows
 
         rmse = np.sqrt((remainder**2).mean(axis=1))
         best_shift = int(np.argmin(rmse))
-        return library_fragment.get_fragment(best_shift, self.config, self.window)
+        return library_fragment.get_fragment(best_shift, self.config, self.window) * drive
 
 
 class CrossCorrelationPhaseAligner(PhaseAligner):
+    """
+    Finds the cyclic shift minimizing the squared error between the target and the
+    drive-scaled candidate via FFT cross-correlation, expanding
+    `||target - drive * candidate||^2` into a per-shift cost of
+    `drive * energy - 2 * correlation` (the constant target energy and the positive
+    drive factor drop out of the argmin). Returns the candidate at that shift,
+    scaled by the drive to match the amplitude the candidate competes at.
+    """
+
     def align(self, fragment: Fragment, instruction: InstructionUnion) -> Fragment:
+        drive = self.config.generation.drive
         library_fragment = self.library_data[instruction]
         frame_length = self.config.library.frame_length
         array = library_fragment.sample.get_fragment(length=2 * library_fragment.sample.length)
@@ -49,9 +66,9 @@ class CrossCorrelationPhaseAligner(PhaseAligner):
 
         correlation = fftconvolve(array.astype(np.float64), target[::-1], mode="valid")
         window_energy = self._sliding_energy(array, frame_length)
-        cost = window_energy - 2.0 * correlation
+        cost = drive * window_energy - 2.0 * correlation
         best_shift = int(np.argmin(cost))
-        return library_fragment.get_fragment(best_shift, self.config, self.window)
+        return library_fragment.get_fragment(best_shift, self.config, self.window) * drive
 
     @staticmethod
     def _sliding_energy(array: np.ndarray, frame_length: int) -> np.ndarray:

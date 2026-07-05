@@ -61,6 +61,7 @@ packages = [
     "src/sampletones_config",
     "src/sampletones_core",
     "src/sampletones_shared",
+    "src/sampletones_synthesis",
 ]
 
 [tool.black]
@@ -77,13 +78,19 @@ known_first_party = [
     "sampletones_config",
     "sampletones_core",
     "sampletones_shared",
+    "sampletones_synthesis",
 ]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
 
 [tool.coverage.run]
-source = ["sampletones_application", "sampletones_core", "sampletones_shared"]
+source = [
+    "sampletones_application",
+    "sampletones_core",
+    "sampletones_shared",
+    "sampletones_synthesis",
+]
 
 [tool.coverage.report]
 show_missing = true
@@ -96,6 +103,7 @@ files = [
     "src/sampletones_application",
     "src/sampletones_core",
     "src/sampletones_shared",
+    "src/sampletones_synthesis",
 ]
 exclude = ["tests"]
 disallow_subclassing_any = true
