@@ -77,6 +77,69 @@ class TestReconstructionDataLoad:
         assert np.all(data.original_audio == 0.0)
 
 
+class TestDetachedCopy:
+    def test_produces_a_distinct_reconstruction_object(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        copy = data.detached_copy(tmp_path / "lead.stn")
+
+        assert copy.reconstruction is not reconstruction
+
+    def test_is_file_backed_at_the_target_path(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+        target = tmp_path / "lead.stn"
+
+        copy = data.detached_copy(target)
+
+        assert copy.filepath == target
+
+    def test_names_after_the_file_when_audio_is_detached(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction.detach_source()
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        copy = data.detached_copy(tmp_path / "lead.stn")
+
+        assert copy.name == "lead"
+
+    def test_names_after_the_source_audio_when_present(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        copy = data.detached_copy(tmp_path / "lead.stn")
+
+        assert reconstruction.audio_filepath is not None
+        assert copy.name == reconstruction.audio_filepath.stem
+
+    def test_reuses_the_already_loaded_original_audio(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+
+        copy = data.detached_copy(tmp_path / "lead.stn")
+
+        assert copy.original_audio is data.original_audio
+
+
 class TestWaveformData:
     def test_projects_the_render_relevant_fields(
         self,

@@ -41,9 +41,8 @@ class ReconstructionManager(CallbackMixin):
         return self._session
 
     def load_reconstruction(self, path: Path) -> None:
-        logger.info(f"Loading project: {logger.format_path(path)}")
-        self._load_reconstruction_data(path)
-        self._load_reconstruction_features()
+        logger.info(f"Loading reconstruction: {logger.format_path(path)}")
+        self._adopt_reconstruction(ReconstructionData.load(path))
         self._session.mark_loaded(path.name)
         self.call(self.on_reconstruction_loaded)
         logger.info(f"Reconstruction {logger.format_path(path)} loaded successfully")
@@ -56,15 +55,19 @@ class ReconstructionManager(CallbackMixin):
         display name is supplied by the caller, since a detached reconstruction has no
         source path to derive it from.
         """
-        self._current_reconstruction = ReconstructionData.from_reconstruction(reconstruction, name=name)
-        self._coefficient = reconstruction.coefficient
-        self._load_reconstruction_features()
+        self._adopt_reconstruction(ReconstructionData.from_reconstruction(reconstruction, name=name))
         self._session.mark_loaded(name)
         self.call(self.on_reconstruction_loaded)
 
-    def _load_reconstruction_data(self, filepath: Path) -> None:
-        self._current_reconstruction = ReconstructionData.load(filepath)
-        self._coefficient = self._current_reconstruction.reconstruction.coefficient
+    def _adopt_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
+        """Makes ``reconstruction_data`` the open document and refreshes its derived state.
+
+        The coefficient and cached features track whichever reconstruction is open, so every
+        rebinding funnels through here to recompute them in one place rather than at each site.
+        """
+        self._current_reconstruction = reconstruction_data
+        self._coefficient = reconstruction_data.reconstruction.coefficient
+        self._load_reconstruction_features()
 
     def _load_reconstruction_features(self) -> None:
         if self._current_reconstruction is None:
@@ -79,15 +82,33 @@ class ReconstructionManager(CallbackMixin):
         if not self._current_reconstruction:
             return
 
-        reconstruction = self._current_reconstruction.reconstruction
         target_path = filepath or self._current_reconstruction.filepath
         if target_path is None:
             logger.warning("Reconstruction has no file path; use 'Save as' to choose one")
             return
 
-        reconstruction.save(target_path)
-        logger.info(f"Saved reconstruction to: {logger.format_path(target_path)}")
+        self._write_to_file(self._current_reconstruction.reconstruction, target_path)
         self._session.mark_saved(filepath.name if filepath is not None else None)
+
+    def save_reconstruction_as(self, filepath: Path) -> None:
+        """Saves the open reconstruction to a chosen file and adopts it as a standalone document.
+
+        The write happens first; on success the open document rebinds to an independent,
+        file-backed copy anchored at ``filepath``. A reconstruction that was a project sample is
+        thereby severed from the project: the copy is a distinct object, so later edits reach only
+        the saved file and leave the sample intact. A failed write leaves the open document as is.
+        """
+        if self._current_reconstruction is None:
+            return
+
+        self._write_to_file(self._current_reconstruction.reconstruction, filepath)
+        self._adopt_reconstruction(self._current_reconstruction.detached_copy(filepath))
+        self._session.mark_saved(self._current_reconstruction.name)
+
+    @staticmethod
+    def _write_to_file(reconstruction: Reconstruction, filepath: Path) -> None:
+        reconstruction.save(filepath)
+        logger.info(f"Saved reconstruction to: {logger.format_path(filepath)}")
 
     def detach_current_reconstruction(self) -> None:
         """Re-binds the open reconstruction to its detached, in-memory form.
@@ -114,9 +135,7 @@ class ReconstructionManager(CallbackMixin):
         if self._current_reconstruction is None:
             return
 
-        self._current_reconstruction = self._current_reconstruction.with_reconstruction(reconstruction)
-        self._coefficient = reconstruction.coefficient
-        self._load_reconstruction_features()
+        self._adopt_reconstruction(self._current_reconstruction.with_reconstruction(reconstruction))
 
     def mark_updated(self) -> None:
         self._session.mark_updated()
@@ -164,6 +183,10 @@ class ReconstructionManager(CallbackMixin):
             return None
 
         return self._current_reconstruction.filepath
+
+    @property
+    def is_file_backed(self) -> bool:
+        return self.filepath is not None
 
     @property
     def audio_filepath(self) -> Optional[Path]:

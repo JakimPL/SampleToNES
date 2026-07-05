@@ -1,13 +1,15 @@
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any, Callable, Generator
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.application import Application
+from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.utils.background import stop_background_workers
+from sampletones_core.reconstructions import Reconstruction
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -84,3 +86,64 @@ class TestStartupRestoreDelegation:
             app._try_load_library(Path("last.ins"))
 
         load_library_safely.assert_called_once_with(Path("last.ins"))
+
+
+class TestReconstructionSaveAsDetachment:
+    """End-to-end proof that Save As severs a project sample from the open document.
+
+    Exercises the fully wired application: an embedded reconstruction reports as owned and
+    not saveable, and after Save As the open document becomes a standalone file-backed entity
+    while the project's sample keeps its original reconstruction object.
+    """
+
+    def _embed_sample(
+        self,
+        app: Application,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> Any:
+        app.project_controller.new()
+        reconstruction = reconstruction_factory()
+        with app.history.transaction(HistoryAction.ADD_SAMPLE):
+            sample = app.project_controller.add_sample(reconstruction, "Lead")
+        app._edit_project_sample(sample.id)
+        return sample
+
+    def test_embedded_reconstruction_is_owned_and_not_saveable(
+        self,
+        app: Application,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        sample = self._embed_sample(app, reconstruction_factory)
+
+        assert app._owning_project_sample() is sample
+        assert not app._reconstruction_coordinator.is_saveable()
+        assert not app._build_menu_bar_viewmodel().reconstruction_saveable
+
+    def test_embedded_reconstruction_needs_no_save_prompt_when_edited(
+        self,
+        app: Application,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        self._embed_sample(app, reconstruction_factory)
+        app.reconstruction_manager.mark_updated()
+
+        assert app._reconstruction_coordinator.is_unsaved()
+        assert not app._reconstruction_coordinator._requires_save_confirmation()
+
+    def test_save_as_detaches_open_document_from_the_project(
+        self,
+        app: Application,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        sample = self._embed_sample(app, reconstruction_factory)
+        original = sample.reconstruction
+
+        app.reconstruction_manager.save_reconstruction_as(tmp_path / "lead.stn")
+
+        assert app._owning_project_sample() is None
+        assert app._reconstruction_coordinator.is_saveable()
+        assert app._build_menu_bar_viewmodel().reconstruction_saveable
+        assert app.reconstruction_manager.reconstruction is not original
+        assert sample.reconstruction is original
+        assert original in [sample.reconstruction for sample in app.project_manager.current.samples]

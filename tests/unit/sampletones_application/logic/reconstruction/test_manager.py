@@ -99,6 +99,89 @@ class TestReconstructionManagerSaveReconstruction:
         reconstruction_manager.save_reconstruction(tmp_path / "out.stn")
 
 
+class TestReconstructionManagerIsFileBacked:
+    def test_false_when_nothing_loaded(
+        self,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        assert not reconstruction_manager.is_file_backed
+
+    def test_false_for_in_memory_object(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        assert not reconstruction_manager.is_file_backed
+
+    def test_true_after_file_load(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        save_path = tmp_path / "song.stn"
+        reconstruction_factory().save(save_path)
+        reconstruction_manager.load_reconstruction(save_path)
+        assert reconstruction_manager.is_file_backed
+
+
+class TestReconstructionManagerSaveReconstructionAs:
+    def test_writes_the_file(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        target = tmp_path / "detached.stn"
+        reconstruction_manager.save_reconstruction_as(target)
+        assert target.exists()
+
+    def test_rebinds_to_a_file_backed_document(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        target = tmp_path / "detached.stn"
+        reconstruction_manager.save_reconstruction_as(target)
+        assert reconstruction_manager.is_file_backed
+        assert reconstruction_manager.filepath == target
+
+    def test_severs_reconstruction_identity_from_the_original(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        original = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(original, name="Sample")
+        reconstruction_manager.save_reconstruction_as(tmp_path / "detached.stn")
+        assert reconstruction_manager.reconstruction is not original
+
+    def test_marks_session_saved(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.mark_updated()
+        reconstruction_manager.save_reconstruction_as(tmp_path / "detached.stn")
+        assert not reconstruction_manager.session.unsaved_changes
+        assert reconstruction_manager.session.is_loaded
+
+    def test_no_op_when_nothing_loaded(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        tmp_path: Path,
+    ) -> None:
+        reconstruction_manager.save_reconstruction_as(tmp_path / "detached.stn")
+        assert reconstruction_manager.current_reconstruction is None
+
+
 class TestReconstructionManagerLoadObject:
     def test_load_object_marks_session_loaded(
         self,

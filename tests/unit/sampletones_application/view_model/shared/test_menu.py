@@ -57,6 +57,7 @@ class TestUndoRedoEnablement:
         view_model = MenuBarViewModel(
             project_open=case.project_open,
             reconstruction_loaded=False,
+            reconstruction_saveable=False,
             can_undo=case.can_undo,
             can_redo=case.can_redo,
             play_label="Play",
@@ -69,3 +70,29 @@ class TestUndoRedoEnablement:
 
         assert view_model.undo_enabled is case.undo_enabled
         assert view_model.redo_enabled is case.redo_enabled
+
+
+class TestSaveEnablementIndependentOfLoaded:
+    @pytest.mark.parametrize("reconstruction_loaded", [True, False])
+    @pytest.mark.parametrize("reconstruction_saveable", [True, False])
+    def test_save_flag_is_carried_verbatim(
+        self,
+        reconstruction_loaded: bool,
+        reconstruction_saveable: bool,
+    ) -> None:
+        view_model = MenuBarViewModel(
+            project_open=True,
+            reconstruction_loaded=reconstruction_loaded,
+            reconstruction_saveable=reconstruction_saveable,
+            can_undo=False,
+            can_redo=False,
+            play_label="Play",
+            play_or_pause_enabled=False,
+            stop_enabled=False,
+            autoplay=False,
+            fullscreen=False,
+            advanced_settings=False,
+        )
+
+        assert view_model.reconstruction_saveable is reconstruction_saveable
+        assert view_model.reconstruction_loaded is reconstruction_loaded

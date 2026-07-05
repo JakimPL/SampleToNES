@@ -237,6 +237,7 @@ class Application:
             on_tab_switch=self._set_current_tab,
             on_session_state_changed=self._on_reconstruction_state_changed,
             on_reconstruction_updated=self._on_reconstruction_updated,
+            is_reconstruction_embedded=self._editing_project_sample,
         )
 
         self._reconstructions_tab = ReconstructionsTabCoordinator(
@@ -465,6 +466,7 @@ class Application:
         return MenuBarViewModel(
             project_open=self.project_manager.is_open,
             reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+            reconstruction_saveable=self._reconstruction_coordinator.is_saveable(),
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
             play_label=self.language_manager[Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_PLAY],
@@ -479,6 +481,7 @@ class Application:
         return MenuBarViewModel(
             project_open=self.project_manager.is_open,
             reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+            reconstruction_saveable=self._reconstruction_coordinator.is_saveable(),
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
             play_label=self._playback_router.play_label,
@@ -956,7 +959,7 @@ class Application:
         if self.project_manager.is_dirty:
             self._project_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
 
-        elif self._reconstruction_coordinator.is_unsaved():
+        elif self._reconstruction_coordinator.is_unsaved() and not self._editing_project_sample():
             self._reconstruction_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
 
         elif self._is_converter_active():

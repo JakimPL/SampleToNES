@@ -25,9 +25,11 @@ class ReconstructionData:
     @classmethod
     def load(cls, path: Path) -> Self:
         reconstruction = Reconstruction.load(path)
-        audio_filepath = reconstruction.audio_filepath
-        name = audio_filepath.stem if audio_filepath is not None else path.stem
-        return cls._assemble(reconstruction, filepath=path, name=name)
+        return cls._assemble(
+            reconstruction,
+            filepath=path,
+            name=cls._derive_name(reconstruction, path),
+        )
 
     @classmethod
     def from_reconstruction(cls, reconstruction: Reconstruction, *, name: str) -> Self:
@@ -42,6 +44,25 @@ class ReconstructionData:
             reconstruction,
             filepath=None,
             name=name,
+        )
+
+    def detached_copy(self, filepath: Path) -> Self:
+        """Builds an independent, file-backed copy of this data anchored at ``filepath``.
+
+        Save As writes the reconstruction to its own file and adopts this copy as the open
+        document. The copy owns a fresh reconstruction object, so a document that was a project
+        sample becomes a standalone entity: later edits reach only the saved file, leaving the
+        project's sample unchanged. The already-loaded original audio is reused, since the copy
+        shares the same source.
+        """
+        reconstruction = self.reconstruction.model_copy(deep=True)
+        return replace(
+            self,
+            reconstruction=reconstruction,
+            config=reconstruction.config,
+            feature_data=FeatureData.load(reconstruction),
+            filepath=filepath,
+            name=self._derive_name(reconstruction, filepath),
         )
 
     def with_reconstruction(self, reconstruction: Reconstruction) -> Self:
@@ -77,6 +98,16 @@ class ReconstructionData:
             filepath=filepath,
             name=name,
         )
+
+    @staticmethod
+    def _derive_name(reconstruction: Reconstruction, filepath: Path) -> str:
+        """Names the document after its source audio when present, otherwise after the file.
+
+        A file-backed reconstruction keeps the audio's name for display and export; a detached
+        reconstruction (no source audio) falls back to the ``.stn`` filename.
+        """
+        audio_filepath = reconstruction.audio_filepath
+        return audio_filepath.stem if audio_filepath is not None else filepath.stem
 
     @staticmethod
     def _load_original_audio(reconstruction: Reconstruction) -> np.ndarray:

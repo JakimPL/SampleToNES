@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class MenuBarViewModel(BaseModel, frozen=True):
     project_open: bool
     reconstruction_loaded: bool
+    reconstruction_saveable: bool
     can_undo: bool
     can_redo: bool
     play_label: str

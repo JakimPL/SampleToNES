@@ -48,7 +48,6 @@ PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
     TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
 )
 RECONSTRUCTION_ITEM_TAGS: Final[Tuple[str, ...]] = (
-    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV,
@@ -184,7 +183,7 @@ class MenuBar:
                 ShortcutId.SAVE_RECONSTRUCTION,
                 tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
                 label=self._label(MenuElements.ITEM_RECONSTRUCTION_SAVE),
-                enabled=state.reconstruction_loaded,
+                enabled=state.reconstruction_saveable,
             )
             self._shortcut_manager.add_menu_item(
                 ShortcutId.SAVE_RECONSTRUCTION_AS,
@@ -282,6 +281,8 @@ class MenuBar:
 
         dpg_configure_item(TAG_GLOBAL_MENU_ITEM_EDIT_UNDO, enabled=state.undo_enabled)
         dpg_configure_item(TAG_GLOBAL_MENU_ITEM_EDIT_REDO, enabled=state.redo_enabled)
+
+        dpg_configure_item(TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE, enabled=state.reconstruction_saveable)
 
         for reconstruction_item_tag in RECONSTRUCTION_ITEM_TAGS:
             dpg_configure_item(reconstruction_item_tag, enabled=state.reconstruction_loaded)
