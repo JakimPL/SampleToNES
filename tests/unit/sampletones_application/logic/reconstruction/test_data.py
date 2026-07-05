@@ -5,6 +5,8 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_core.audio import write_wave
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.reconstructions import Reconstruction
 
@@ -36,7 +38,7 @@ class TestFromReconstruction:
         data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Kick drum")
         assert data.name == "Kick drum"
 
-    def test_detached_reconstruction_yields_silent_original_audio(
+    def test_detached_reconstruction_has_no_original_audio(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
@@ -46,7 +48,20 @@ class TestFromReconstruction:
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         assert reconstruction.audio_filepath is None
-        assert np.all(data.original_audio == 0.0)
+        assert data.original_audio is None
+
+    def test_loads_original_audio_when_source_file_is_available(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        source_audio = tmp_path / "source.wav"
+        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        assert data.original_audio is not None
 
 
 class TestReconstructionDataLoad:
@@ -63,7 +78,7 @@ class TestReconstructionDataLoad:
 
         assert data.filepath == save_path
 
-    def test_load_falls_back_to_silent_audio_when_audio_file_missing(
+    def test_load_has_no_original_audio_when_source_file_missing(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
@@ -74,7 +89,7 @@ class TestReconstructionDataLoad:
 
         data = ReconstructionData.load(save_path)
 
-        assert np.all(data.original_audio == 0.0)
+        assert data.original_audio is None
 
 
 class TestDetachedCopy:
@@ -133,10 +148,14 @@ class TestDetachedCopy:
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+        source_audio = tmp_path / "source.wav"
+        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
+        assert data.original_audio is not None
         assert copy.original_audio is data.original_audio
 
 

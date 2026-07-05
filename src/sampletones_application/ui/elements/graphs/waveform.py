@@ -232,7 +232,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self,
         waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
-    ) -> Tuple[np.ndarray, np.ndarray, float]:
+    ) -> Tuple[Optional[np.ndarray], np.ndarray, float]:
         if selected_generators is None:
             selected_generators = list(waveform_data.approximations.keys())
 
@@ -240,11 +240,10 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         approximation = waveform_data.partials(selected_generators)
         full_approximation = waveform_data.approximation
 
-        if not self.reconstruction_autoscale:
+        if not self.reconstruction_autoscale or original_audio is None:
             return original_audio, approximation, 1.0
 
-        original_audio_coefficient = waveform_data.coefficient
-        original_audio = original_audio / original_audio_coefficient
+        original_audio = original_audio / waveform_data.coefficient
 
         coefficient = max(
             np.max(np.abs(full_approximation)),
@@ -253,19 +252,27 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         return original_audio, approximation, coefficient
 
-    def _extract_layers(
+    def _display_layers(
         self,
         waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
-    ) -> Tuple[ArrayLayer, ArrayLayer]:
+    ) -> List[Union[ArrayLayer, InstructionLayer]]:
+        """Builds the ordered waveform layers for the current data.
+
+        The original-audio layer joins the reconstruction layer only when the source audio is
+        present, so a detached reconstruction or one whose source file is missing shows the
+        approximation on its own.
+        """
         original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(
             waveform_data,
             selected_generators,
         )
+        reconstruction_layer = self.reconstruction_layer(approximation_data)
+        if original_audio is None:
+            return [reconstruction_layer]
 
         sample_layer = self.sample_layer(original_audio)
-        reconstruction_layer = self.reconstruction_layer(approximation_data)
-        return sample_layer, reconstruction_layer
+        return self._ordered_layers(sample_layer, reconstruction_layer)
 
     def update_waveform_data(
         self,
@@ -276,12 +283,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             return
 
         self.current_data = waveform_data
-        sample_layer, reconstruction_layer = self._extract_layers(
-            waveform_data,
-            selected_generators,
-        )
-
-        for layer in self._ordered_layers(sample_layer, reconstruction_layer):
+        for layer in self._display_layers(waveform_data, selected_generators):
             self.layers[layer.name] = layer
         self._update_display()
 
@@ -292,12 +294,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     ) -> None:
         self.clear_layers()
         self.current_data = waveform_data
-        sample_layer, reconstruction_layer = self._extract_layers(
-            waveform_data,
-            selected_generators,
-        )
-
-        self._add_reconstruction_layers(reconstruction_layer, sample_layer)
+        for layer in self._display_layers(waveform_data, selected_generators):
+            self.add_layer(layer)
 
     def reconstruction_layer(self, data: np.ndarray) -> ArrayLayer:
         return ArrayLayer(
@@ -316,15 +314,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             line_thickness=self._layout.waveform.sample_thickness,
             max_display_points=self._layout.waveform.max_display_points,
         )
-
-    def _add_reconstruction_layers(
-        self,
-        reconstruction_layer: ArrayLayer,
-        sample_layer: ArrayLayer,
-    ) -> None:
-        for layer in self._ordered_layers(sample_layer, reconstruction_layer):
-            self.add_layer(layer)
-        self._update_display()
 
     def _ordered_layers(
         self,
@@ -351,6 +340,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._reorder_series()
 
     def _reorder_series(self) -> None:
+        if self._lbl_waveform_original not in self.layers:
+            return
+
         sample_layer = self.layers[self._lbl_waveform_original]
         reconstruction_layer = self.layers[self._lbl_waveform_reconstruction]
         for layer in (sample_layer, reconstruction_layer):

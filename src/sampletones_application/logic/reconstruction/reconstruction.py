@@ -249,7 +249,11 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         if self._current_audio_source == AudioSourceType.ORIGINAL:
-            return AudioData.from_array(reconstruction_data.original_audio, sample_rate)
+            original_audio = reconstruction_data.original_audio
+            if original_audio is None:
+                return None
+
+            return AudioData.from_array(original_audio, sample_rate)
 
         partial_approximation = reconstruction_data.get_partials(self._selected_generators)
         return AudioData.from_array(partial_approximation, sample_rate)
@@ -262,11 +266,14 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         Each location is reported independently. A file-backed reconstruction knows its own file;
         a detached one (a project sample) reports not-applicable. Its source audio is available when
-        it exists on this machine, not-found when the path is set but missing, and not-applicable
-        when the reconstruction has been detached from its origin.
+        the recorded file loaded, not-found when a path is recorded yet its content is unavailable,
+        and not-applicable when the reconstruction has been detached from its origin.
         """
         reconstruction_file = self._build_file_path_view_model(reconstruction_data.filepath)
-        original_audio = self._build_audio_path_view_model(reconstruction_data.reconstruction.audio_filepath)
+        original_audio = self._build_audio_path_view_model(
+            reconstruction_data.reconstruction.audio_filepath,
+            reconstruction_data.original_audio,
+        )
         return reconstruction_file, original_audio
 
     @staticmethod
@@ -277,14 +284,19 @@ class ReconstructionPanelLogic(CallbackMixin):
         return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(filepath))
 
     @staticmethod
-    def _build_audio_path_view_model(audio_filepath: Optional[Path]) -> ReconstructionPathViewModel:
+    def _build_audio_path_view_model(
+        audio_filepath: Optional[Path],
+        original_audio: Optional[np.ndarray],
+    ) -> ReconstructionPathViewModel:
+        """Reports the original-audio location, treating a recorded path with unusable content
+        the same as a missing one, so the source toggle and waveform agree with what actually loaded."""
         if audio_filepath is None:
             return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
 
-        if audio_filepath.exists():
-            return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(audio_filepath))
+        if original_audio is None:
+            return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_FOUND, path="")
 
-        return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_FOUND, path="")
+        return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(audio_filepath))
 
     @property
     def _reconstruction_data(self) -> Optional[ReconstructionData]:

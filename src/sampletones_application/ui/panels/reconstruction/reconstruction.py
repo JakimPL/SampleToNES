@@ -299,7 +299,7 @@ class GUIReconstructionPanel(GUIPanel):
             dpg_set_value(tag, is_available)
 
         dpg_configure_item(
-            TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, enabled=view_model.audio_source_enabled
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE, enabled=view_model.audio_source_enabled
         )
         if not view_model.audio_source_enabled:
             dpg_set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, self._lbl_reconstruction_radio)
@@ -475,12 +475,11 @@ class GUIReconstructionPanel(GUIPanel):
         self._player_panel.create_panel()
 
     def _create_audio_source_radio_buttons(self) -> None:
-        dpg.add_text(self._lbl_audio_source)
         with dpg.group(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
             parent=self.audio_tag,
-            horizontal=True,
         ):
+            dpg.add_text(self._lbl_audio_source)
             dpg.add_radio_button(
                 items=[
                     self._lbl_reconstruction_radio,
@@ -490,9 +489,10 @@ class GUIReconstructionPanel(GUIPanel):
                 default_value=self._lbl_reconstruction_radio,
                 callback=self._on_audio_source_changed,
                 horizontal=True,
-                enabled=False,
             )
             FontRegistry.bind_to_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, Font.REGULAR_SMALL)
+
+        dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE, enabled=False)
 
     def _create_add_to_sequencer_button(self) -> None:
         with dpg.group(

@@ -105,6 +105,18 @@ class Exporter(ABC, Generic[InstructionT]):
         return True
 
     @classmethod
+    def _handle_special_attributes(
+        cls,
+        attribute: InstructionFields,
+        value: int,
+        initial_value: int,
+    ) -> int:
+        if attribute == "pitch":
+            value -= initial_value
+
+        return value
+
+    @classmethod
     def get_value(
         cls,
         attribute: InstructionFields,
@@ -122,12 +134,7 @@ class Exporter(ABC, Generic[InstructionT]):
         if last_instruction is not None:
             if hasattr(last_instruction, attribute):
                 value = int(getattr(last_instruction, attribute))
-                if attribute == "pitch":
-                    value -= initial_value
-
-                return value
-
-            raise AttributeError(f"{last_instruction.__class__.__name__} does not have attribute '{attribute}'")
+                return cls._handle_special_attributes(attribute, value, initial_value)
 
         return initial_value
 
