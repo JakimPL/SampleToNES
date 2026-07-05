@@ -14,7 +14,7 @@ from sampletones_application.categories.elements.global_ import (
     TracebackElements,
 )
 from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsDetailsElements,
+    ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TAG_SEPARATOR
@@ -174,9 +174,9 @@ class DialogsRenderer:
         ]
         self._ttl_reconstruction_not_loaded = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.TITLE,
-            ReconstructionsDetailsElements.NOT_LOADED_DIALOG,
+            ReconstructionsInstrumentsElements.NOT_LOADED_DIALOG,
         ]
         self._msg_reconstruction_no_data = language_manager[
             Page.GLOBAL,

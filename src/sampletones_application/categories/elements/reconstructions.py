@@ -37,8 +37,8 @@ class ReconstructionPanelElements(AbstractElement):
     EXPORT_WAV_FAILED = "export_wav_failed"
 
 
-class ReconstructionsDetailsElements(AbstractElement):
-    RECONSTRUCTION_DETAILS = "reconstruction_details"
+class ReconstructionsInstrumentsElements(AbstractElement):
+    SECTION = "section"
     EXPORT_INSTRUMENT_BUTTON = "export_instrument_button"
     EXPORT_INSTRUMENTS_BUTTON = "export_instruments_button"
     COPY_BUTTON = "copy_button"
@@ -47,7 +47,6 @@ class ReconstructionsDetailsElements(AbstractElement):
     VOLUME_LABEL = "volume_label"
     ARPEGGIO_LABEL = "arpeggio_label"
     DUTY_CYCLE_LABEL = "duty_cycle_label"
-    GENERATORS_TEXT = "generators_text"
     INITIAL_PERIOD = "initial_period"
     INITIAL_PITCH = "initial_pitch"
     STATUS_INPUT_PITCH = "status_input_pitch"
@@ -66,6 +65,4 @@ class ReconstructionsDetailsElements(AbstractElement):
     EXPORT_WAV_DIALOG = "export_wav_dialog"
     EXPORT_INSTRUMENT_DIALOG = "export_instrument_dialog"
     EXPORT_INSTRUMENTS_DIALOG = "export_instruments_dialog"
-    LOAD_RECONSTRUCTION_DIALOG = "load_reconstruction_dialog"
-    INITIAL_PITCH_TEMPLATE = "initial_pitch_template"
     INITIAL_PITCH_TOOLTIP_TEMPLATE = "initial_pitch_tooltip_template"

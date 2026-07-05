@@ -11,7 +11,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.reconstructions import (
     ReconstructionPanelElements,
     ReconstructionsBrowserElements,
-    ReconstructionsDetailsElements,
+    ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -31,9 +31,9 @@ from sampletones_application.coordinators.playback import AudioPlayerProtocol, G
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
-from sampletones_application.logic.reconstruction.details import (
+from sampletones_application.logic.reconstruction.instruments import (
     OnReconstructionInstrumentUpdatedCallback,
-    ReconstructionDetailsLogic,
+    ReconstructionInstrumentsLogic,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
@@ -44,7 +44,7 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
-from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
+from sampletones_application.ui.panels.reconstruction.instruments.instruments import GUIReconstructionInstrumentsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -97,7 +97,7 @@ class ReconstructionsTabCoordinator:
         ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
-        self._details_width = layout.general.panels.reconstructions_details.width
+        self._instruments_width = layout.general.panels.reconstructions_instruments.width
         self._right_height = layout.general.panels.right.height
 
         self._msg_file_not_found = language_manager[
@@ -144,39 +144,39 @@ class ReconstructionsTabCoordinator:
         ]
         _ttl_export_status = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.TITLE,
-            ReconstructionsDetailsElements.EXPORT_STATUS_DIALOG,
+            ReconstructionsInstrumentsElements.EXPORT_STATUS_DIALOG,
         ]
         _msg_export_instrument_success = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.EXPORT_INSTRUMENT_SUCCESS,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_SUCCESS,
         ]
         _msg_export_instrument_failed = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.EXPORT_INSTRUMENT_FAILED,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_FAILED,
         ]
         _msg_export_instruments_success = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.EXPORT_INSTRUMENTS_SUCCESS,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_SUCCESS,
         ]
         _msg_export_instruments_failed = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.EXPORT_INSTRUMENTS_FAILED,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_FAILED,
         ]
         _ttl_export_wav = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.TITLE,
-            ReconstructionsDetailsElements.EXPORT_WAV_DIALOG,
+            ReconstructionsInstrumentsElements.EXPORT_WAV_DIALOG,
         ]
         _msg_export_wav_success = language_manager[
             Page.RECONSTRUCTIONS,
@@ -263,7 +263,7 @@ class ReconstructionsTabCoordinator:
             reconstruction_manager,
             export_service,
         )
-        self._reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(
+        self._reconstruction_instruments_panel: GUIReconstructionInstrumentsPanel = GUIReconstructionInstrumentsPanel(
             shortcut_manager,
             layout_general=layout.general,
             layout_graphs=layout.graphs,
@@ -271,7 +271,7 @@ class ReconstructionsTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
         )
-        self._reconstruction_details_logic: ReconstructionDetailsLogic = ReconstructionDetailsLogic(
+        self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
             reconstruction_manager,
             scheduling=layout.behavior.scheduling,
         )
@@ -284,6 +284,9 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
         self._reconstruction_panel.on_export_wav_requested = self.request_export_wav_dialog
+        self._reconstruction_panel.on_export_instruments_requested = (
+            self._reconstruction_panel_logic.request_export_instruments_dialog
+        )
         self._reconstruction_panel.on_export_instrument_confirmed = (
             self._reconstruction_panel_logic.handle_export_instrument_confirmed
         )
@@ -328,27 +331,28 @@ class ReconstructionsTabCoordinator:
             )
         )
 
-        self._reconstruction_details_logic.on_view_changed = self._reconstruction_details_panel.update_view
-        self._reconstruction_details_logic.on_feature_data_changed = (
-            self._reconstruction_details_panel.update_feature_data
+        self._reconstruction_instruments_logic.on_view_changed = self._reconstruction_instruments_panel.update_view
+        self._reconstruction_instruments_logic.on_feature_data_changed = (
+            self._reconstruction_instruments_panel.update_feature_data
         )
-        self._reconstruction_details_logic.on_reconstruction_instrument_updated = on_reconstruction_instrument_updated
+        self._reconstruction_instruments_logic.on_reconstruction_instrument_updated = (
+            on_reconstruction_instrument_updated
+        )
 
-        self._reconstruction_details_panel.on_instrument_export = (
+        self._reconstruction_instruments_panel.on_instrument_export = (
             self._reconstruction_panel_logic.request_export_instrument_dialog
         )
-        self._reconstruction_details_panel.on_instruments_export = (
-            self._reconstruction_panel_logic.request_export_instruments_dialog
+        self._reconstruction_instruments_panel.on_reconstruction_instrument_hovered = (
+            self._reconstruction_panel.set_overlay
         )
-        self._reconstruction_details_panel.on_reconstruction_instrument_hovered = self._reconstruction_panel.set_overlay
-        self._reconstruction_details_panel.on_pitch_value_changed = (
-            self._reconstruction_details_logic.handle_pitch_value_changed
+        self._reconstruction_instruments_panel.on_pitch_value_changed = (
+            self._reconstruction_instruments_logic.handle_pitch_value_changed
         )
-        self._reconstruction_details_panel.on_bar_data_changed = (
-            self._reconstruction_details_logic.handle_bar_point_clicked
+        self._reconstruction_instruments_panel.on_bar_data_changed = (
+            self._reconstruction_instruments_logic.handle_bar_point_clicked
         )
-        self._reconstruction_details_panel.on_raw_data_changed = (
-            self._reconstruction_details_logic.handle_raw_data_changed
+        self._reconstruction_instruments_panel.on_raw_data_changed = (
+            self._reconstruction_instruments_logic.handle_raw_data_changed
         )
 
     def _on_export_result(
@@ -412,12 +416,12 @@ class ReconstructionsTabCoordinator:
 
                     with dpg.child_window(
                         tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
-                        width=self._details_width,
+                        width=self._instruments_width,
                         height=self._right_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):
-                        self._reconstruction_details_panel.create_panel()
+                        self._reconstruction_instruments_panel.create_panel()
 
     def lock(self) -> None:
         self._browser_panel.lock()
@@ -433,11 +437,11 @@ class ReconstructionsTabCoordinator:
 
     def display_reconstruction(self) -> None:
         self._reconstruction_panel_logic.display_reconstruction()
-        self._reconstruction_details_logic.update_display()
+        self._reconstruction_instruments_logic.update_display()
 
     def close_reconstruction(self) -> None:
         self._reconstruction_panel_logic.close_reconstruction()
-        self._reconstruction_details_logic.update_display()
+        self._reconstruction_instruments_logic.update_display()
 
     def update_reconstruction(self) -> None:
         self._reconstruction_panel_logic.update_reconstruction()

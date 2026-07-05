@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, List
 
 if TYPE_CHECKING:
     from sampletones_core.configs import Config
-    from sampletones_core.constants.application import SAMPLETONES_VERSION as __version__
     from sampletones_core.constants.enums import GeneratorName
     from sampletones_core.fft import Window
     from sampletones_core.generators import (
@@ -20,6 +19,7 @@ if TYPE_CHECKING:
     )
     from sampletones_core.library import InstructionLibrary
     from sampletones_core.reconstructions import Reconstruction, Reconstructor
+    from sampletones_shared.constants.application import SAMPLETONES_VERSION as __version__
 
 
 def __getattr__(name: str) -> Any:
@@ -29,7 +29,7 @@ def __getattr__(name: str) -> Any:
         return Config
 
     if name == "__version__":
-        from sampletones_core.constants.application import SAMPLETONES_VERSION
+        from sampletones_shared.constants.application import SAMPLETONES_VERSION
 
         return SAMPLETONES_VERSION
 

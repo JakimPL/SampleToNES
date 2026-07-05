@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsDetailsElements,
+    ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -30,33 +30,33 @@ def make_feature_plot_configs(
 ) -> Dict[FeatureKey, FeaturePlotConfig]:
     lbl_volume = language_manager[
         Page.RECONSTRUCTIONS,
-        Panel.DETAILS,
+        Panel.INSTRUMENTS,
         TextType.LABEL,
-        ReconstructionsDetailsElements.VOLUME_LABEL,
+        ReconstructionsInstrumentsElements.VOLUME_LABEL,
     ]
     lbl_arpeggio = language_manager[
         Page.RECONSTRUCTIONS,
-        Panel.DETAILS,
+        Panel.INSTRUMENTS,
         TextType.LABEL,
-        ReconstructionsDetailsElements.ARPEGGIO_LABEL,
+        ReconstructionsInstrumentsElements.ARPEGGIO_LABEL,
     ]
     lbl_pitch = language_manager[
         Page.RECONSTRUCTIONS,
-        Panel.DETAILS,
+        Panel.INSTRUMENTS,
         TextType.LABEL,
-        ReconstructionsDetailsElements.PITCH_LABEL,
+        ReconstructionsInstrumentsElements.PITCH_LABEL,
     ]
     lbl_hi_pitch = language_manager[
         Page.RECONSTRUCTIONS,
-        Panel.DETAILS,
+        Panel.INSTRUMENTS,
         TextType.LABEL,
-        ReconstructionsDetailsElements.HI_PITCH_LABEL,
+        ReconstructionsInstrumentsElements.HI_PITCH_LABEL,
     ]
     lbl_duty_cycle = language_manager[
         Page.RECONSTRUCTIONS,
-        Panel.DETAILS,
+        Panel.INSTRUMENTS,
         TextType.LABEL,
-        ReconstructionsDetailsElements.DUTY_CYCLE_LABEL,
+        ReconstructionsInstrumentsElements.DUTY_CYCLE_LABEL,
     ]
 
     return {

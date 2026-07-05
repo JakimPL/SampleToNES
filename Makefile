@@ -32,6 +32,10 @@ setup:
 	uv sync --group dev $(if $(filter 1,$(GPU)),--extra gpu,)
 	uv tool install --force $(if $(filter 1,$(GPU)),".[gpu]",.)
 
+install:
+	make setup
+	make build
+
 build:
 	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv
 

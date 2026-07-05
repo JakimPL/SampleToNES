@@ -9,7 +9,7 @@ from sampletones_application.categories.elements.global_ import (
     GlobalMessageElements,
 )
 from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsDetailsElements,
+    ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TAG_SEPARATOR
@@ -30,14 +30,12 @@ from sampletones_application.constants.graphs import (
     SUF_GRAPH_RAW_DATA,
 )
 from sampletones_application.constants.reconstructions import (
-    SUF_RECONSTRUCTIONS_DETAILS_WINDOW,
-    SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE,
-    SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR,
-    TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENT,
-    TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENTS,
-    TAG_RECONSTRUCTIONS_DETAILS_PANEL,
-    TAG_RECONSTRUCTIONS_DETAILS_TABS_BAR,
-    TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS,
+    SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE,
+    SUF_RECONSTRUCTIONS_INSTRUMENTS_SEPARATOR,
+    SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
@@ -50,7 +48,7 @@ from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.panels.reconstruction.details.config import (
+from sampletones_application.ui.panels.reconstruction.instruments.config import (
     FEATURE_DISPLAY_ORDER,
     FeaturePlotConfig,
     make_feature_plot_configs,
@@ -62,8 +60,8 @@ from sampletones_application.utils.gui.dpg import (
     dpg_set_value,
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.view_model.reconstruction.details import (
-    ReconstructionDetailsViewModel,
+from sampletones_application.view_model.reconstruction.instruments import (
+    ReconstructionInstrumentsViewModel,
 )
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
@@ -71,14 +69,13 @@ from sampletones_core.exporters import Features
 from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
-class GUIReconstructionDetailsPanel(GUIPanel):
+class GUIReconstructionInstrumentsPanel(GUIPanel):
     def __init__(
         self,
         shortcut_manager: ShortcutManager,
@@ -95,10 +92,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
         self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
 
-        self.tab_bar_tag = TAG_RECONSTRUCTIONS_DETAILS_TABS_BAR
-        self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
-        self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
-        self.mouse_item_handler_tag = f"{TAG_RECONSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
+        self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
+        self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE}"
+        self.header_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_INSTRUMENTS_SEPARATOR}"
+        self.mouse_item_handler_tag = f"{TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._layout_general = layout_general
@@ -114,7 +111,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.invalid_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_INVALID)
 
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
-        self.on_instruments_export: Optional[VoidCallback] = None
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
         self.on_pitch_value_changed: Optional[Callable[[GeneratorName, int], None]] = None
@@ -123,81 +119,69 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         self._lbl_section = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.LABEL,
-            ReconstructionsDetailsElements.RECONSTRUCTION_DETAILS,
+            ReconstructionsInstrumentsElements.SECTION,
         ]
         self._lbl_export_instrument = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.LABEL,
-            ReconstructionsDetailsElements.EXPORT_INSTRUMENT_BUTTON,
-        ]
-        self._lbl_export_instruments = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            ReconstructionsDetailsElements.EXPORT_INSTRUMENTS_BUTTON,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_BUTTON,
         ]
         self._lbl_copy = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.LABEL,
-            ReconstructionsDetailsElements.COPY_BUTTON,
-        ]
-        self._lbl_generators = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            ReconstructionsDetailsElements.GENERATORS_TEXT,
+            ReconstructionsInstrumentsElements.COPY_BUTTON,
         ]
         self._lbl_initial_period = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.LABEL,
-            ReconstructionsDetailsElements.INITIAL_PERIOD,
+            ReconstructionsInstrumentsElements.INITIAL_PERIOD,
         ]
         self._lbl_initial_pitch = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.LABEL,
-            ReconstructionsDetailsElements.INITIAL_PITCH,
+            ReconstructionsInstrumentsElements.INITIAL_PITCH,
         ]
         self._msg_input_pitch = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.STATUS_INPUT_PITCH,
+            ReconstructionsInstrumentsElements.STATUS_INPUT_PITCH,
         ]
         self._msg_input_period = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.STATUS_INPUT_PERIOD,
+            ReconstructionsInstrumentsElements.STATUS_INPUT_PERIOD,
         ]
         self._msg_bar = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.STATUS_BAR,
+            ReconstructionsInstrumentsElements.STATUS_BAR,
         ]
         self._msg_sequence = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.STATUS_SEQUENCE,
+            ReconstructionsInstrumentsElements.STATUS_SEQUENCE,
         ]
         self._msg_copy_sequence = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.STATUS_COPY_SEQUENCE,
+            ReconstructionsInstrumentsElements.STATUS_COPY_SEQUENCE,
         ]
         tooltip_template = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.TEMPLATE,
-            ReconstructionsDetailsElements.INITIAL_PITCH_TOOLTIP_TEMPLATE,
+            ReconstructionsInstrumentsElements.INITIAL_PITCH_TOOLTIP_TEMPLATE,
         ]
         self._pitch_tooltip = build_pitch_tooltip(language_manager, PITCH_VALUE_KIND, tooltip_template)
         self._period_tooltip = build_pitch_tooltip(language_manager, PERIOD_VALUE_KIND, tooltip_template)
@@ -215,7 +199,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_RECONSTRUCTIONS_DETAILS_PANEL,
+            tag=TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
             parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
@@ -228,8 +212,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             border=False,
         ):
             self._create_section_text()
-            self._create_export_button()
-            self._create_details_panel()
+            self._create_content()
 
         self._setup_mouse_event_handler()
 
@@ -237,32 +220,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         section_text = dpg.add_text(self._lbl_section)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-    def _create_export_button(self) -> None:
-        dpg.add_separator()
-        GUIButton(
-            tag=TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENTS,
-            label=self._lbl_export_instruments,
-            width=-1,
-            callback=self._export_instruments,
-            enabled=False,
-            show=False,
-            font=Font.BOLD,
-        )
-
-    def _create_details_panel(self) -> None:
-        dpg.add_separator(tag=self.export_button_separator_tag, parent=self.tag, show=False)
+    def _create_content(self) -> None:
+        dpg.add_separator(tag=self.header_separator_tag, parent=self.tag, show=False)
         dpg.add_text(
             tag=self.no_data_message_tag,
             parent=self.tag,
             default_value=self._msg_reconstruction_no_data,
             show=True,
-        )
-
-        dpg.add_text(
-            self._lbl_generators,
-            tag=TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS,
-            parent=self.tag,
-            show=False,
         )
 
         with dpg.tab_bar(tag=self.tab_bar_tag, parent=self.tag, show=False):
@@ -272,7 +236,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}"
 
     def _get_window_tag(self, tab_tag: str) -> str:
-        return f"{tab_tag}{SUF_RECONSTRUCTIONS_DETAILS_WINDOW}"
+        return f"{tab_tag}{SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW}"
 
     def _get_feature_group_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
         return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GROUP}"
@@ -289,9 +253,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _setup_mouse_event_handler(self) -> None:
         with dpg.handler_registry(tag=self.mouse_item_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_move)
-
-    def _export_instruments(self) -> None:
-        self.call(self.on_instruments_export)
 
     def _handle_export_button_clicked(self, sender: Sender, app_data: Any, user_data: GeneratorName) -> None:
         self.call(self.on_instrument_export, user_data)
@@ -311,7 +272,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             show=False,
         ):
             self.generator_plots[generator_name] = {}
-            button_tag = f"{TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENT}{TAG_SEPARATOR}{tab_tag}"
+            button_tag = f"{TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT}{TAG_SEPARATOR}{tab_tag}"
             GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
@@ -395,17 +356,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         raw_data_text = self._format_data(data)
         dpg_set_value(raw_data_tag, raw_data_text)
 
-    def update_view(self, view_model: ReconstructionDetailsViewModel) -> None:
+    def update_view(self, view_model: ReconstructionInstrumentsViewModel) -> None:
         is_loaded = view_model.reconstruction_loaded
-        dpg_configure_item(self.export_button_separator_tag, show=is_loaded)
+        dpg_configure_item(self.header_separator_tag, show=is_loaded)
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
-        dpg_configure_item(
-            TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENTS,
-            show=is_loaded,
-            enabled=is_loaded,
-        )
-        dpg_configure_item(TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS, show=is_loaded)
 
         for generator_name in GeneratorName.items():
             tab_tag = self._get_generator_tab_tag(generator_name)

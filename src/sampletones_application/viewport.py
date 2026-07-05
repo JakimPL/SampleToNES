@@ -10,6 +10,7 @@ from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.resources.items import IconResource
 from sampletones_application.ui.resources.resources import get_icon_path
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_shared.constants.application import SAMPLETONES_NAME
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -43,7 +44,7 @@ class ViewportManager:
         )
 
         dpg.create_viewport(
-            title="SampleToNES",
+            title=SAMPLETONES_NAME,
             width=self._layout.window.width,
             height=self._layout.window.height,
             small_icon=str(icon_file_path),

@@ -5,8 +5,8 @@ import numpy as np
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.view_model.reconstruction.details import (
-    ReconstructionDetailsViewModel,
+from sampletones_application.view_model.reconstruction.instruments import (
+    ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.reconstruction.update import (
     ReconstructionUpdate,
@@ -22,7 +22,7 @@ OnReconstructionInstrumentUpdatedCallback = Callable[
 ]
 
 
-class ReconstructionDetailsLogic(CallbackMixin):
+class ReconstructionInstrumentsLogic(CallbackMixin):
     def __init__(
         self,
         reconstruction_manager: ReconstructionManager,
@@ -34,7 +34,7 @@ class ReconstructionDetailsLogic(CallbackMixin):
 
         self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
 
-        self.on_view_changed: Optional[Callable[[ReconstructionDetailsViewModel], None]] = None
+        self.on_view_changed: Optional[Callable[[ReconstructionInstrumentsViewModel], None]] = None
         self.on_feature_data_changed: Optional[Callable[[Optional[Dict[GeneratorName, Features]]], None]] = None
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
 
@@ -43,10 +43,9 @@ class ReconstructionDetailsLogic(CallbackMixin):
         if feature_data is None:
             self.call(
                 self.on_view_changed,
-                ReconstructionDetailsViewModel(
+                ReconstructionInstrumentsViewModel(
                     reconstruction_loaded=False,
                     available_generators=frozenset(),
-                    buttons_enabled=False,
                 ),
             )
             self.call(self.on_feature_data_changed, None)
@@ -55,10 +54,9 @@ class ReconstructionDetailsLogic(CallbackMixin):
         available_generators: FrozenSet[GeneratorName] = frozenset(feature_data.generators.keys())
         self.call(
             self.on_view_changed,
-            ReconstructionDetailsViewModel(
+            ReconstructionInstrumentsViewModel(
                 reconstruction_loaded=True,
                 available_generators=available_generators,
-                buttons_enabled=True,
             ),
         )
         self.call(self.on_feature_data_changed, feature_data.generators)

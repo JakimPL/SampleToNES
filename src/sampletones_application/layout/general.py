@@ -26,7 +26,7 @@ class PanelsLayout(BaseModel, frozen=True):
     left: SidePanelLayout
     right: SidePanelLayout
     instructions_details: AuxPanelLayout
-    reconstructions_details: AuxPanelLayout
+    reconstructions_instruments: AuxPanelLayout
 
 
 class StatusBarLayout(BaseModel, frozen=True):

@@ -14,7 +14,7 @@ panels:
     height: -1
   instructions_details:
     width: 360
-  reconstructions_details:
+  reconstructions_instruments:
     width: 420
 
 status_bar:

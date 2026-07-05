@@ -3,14 +3,12 @@
 ### Features
 
 * Delete library/reconstruction (with confirmation)
-* Reconstruction action history
 
 ### Navigation
 
 * Interface scale
 * Tree navigation using keys
 * Waveform LOD for zooming
-* About panel
 * Gray out reconstruction when in progress
 
 ### Tracker

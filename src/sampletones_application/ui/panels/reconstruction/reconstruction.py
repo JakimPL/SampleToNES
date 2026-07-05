@@ -10,7 +10,7 @@ from sampletones_application.categories.elements.global_ import (
 )
 from sampletones_application.categories.elements.reconstructions import (
     ReconstructionPanelElements,
-    ReconstructionsDetailsElements,
+    ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -24,6 +24,7 @@ from sampletones_application.constants.reconstructions import (
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_ADD_TO_SEQUENCER,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_INSTRUMENTS,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
@@ -101,6 +102,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.on_audio_source_changed: Optional[Callable[[AudioSourceType], None]] = None
         self.on_generators_changed: Optional[Callable[[List[GeneratorName]], None]] = None
         self.on_export_wav_requested: Optional[VoidCallback] = None
+        self.on_export_instruments_requested: Optional[VoidCallback] = None
         self.on_export_instrument_confirmed: Optional[PathCallback] = None
         self.on_export_instruments_confirmed: Optional[PathCallback] = None
         self.on_export_wav_confirmed: Optional[PathCallback] = None
@@ -128,6 +130,12 @@ class GUIReconstructionPanel(GUIPanel):
             Panel.RECONSTRUCTION,
             TextType.LABEL,
             ReconstructionPanelElements.EXPORT_WAV_BUTTON,
+        ]
+        self._lbl_export_instruments = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_BUTTON,
         ]
         self._lbl_locate_audio = language_manager[
             Page.RECONSTRUCTIONS,
@@ -180,33 +188,33 @@ class GUIReconstructionPanel(GUIPanel):
         ]
         self._msg_generator_toggle = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.STATUS_GENERATOR_TOGGLE,
+            ReconstructionsInstrumentsElements.STATUS_GENERATOR_TOGGLE,
         ]
         self._msg_generator_not_available = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.STATUS_GENERATOR_NOT_AVAILABLE,
+            ReconstructionsInstrumentsElements.STATUS_GENERATOR_NOT_AVAILABLE,
         ]
         self._ttl_export_wav = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.TITLE,
-            ReconstructionsDetailsElements.EXPORT_WAV_DIALOG,
+            ReconstructionsInstrumentsElements.EXPORT_WAV_DIALOG,
         ]
         self._ttl_export_instrument = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.TITLE,
-            ReconstructionsDetailsElements.EXPORT_INSTRUMENT_DIALOG,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_DIALOG,
         ]
         self._ttl_export_instruments = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.TITLE,
-            ReconstructionsDetailsElements.EXPORT_INSTRUMENTS_DIALOG,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_DIALOG,
         ]
         self._lbl_pulse_1 = language_manager[
             Page.GLOBAL,
@@ -304,6 +312,10 @@ class GUIReconstructionPanel(GUIPanel):
         if not view_model.audio_source_enabled:
             dpg_set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, self._lbl_reconstruction_radio)
 
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_INSTRUMENTS,
+            enabled=view_model.reconstruction_loaded,
+        )
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
             enabled=view_model.reconstruction_loaded,
@@ -422,6 +434,7 @@ class GUIReconstructionPanel(GUIPanel):
             self._create_path_display()
             self._create_add_to_sequencer_button()
             self._create_locate_original_audio_button()
+            self._create_export_instruments_button()
             self._create_export_wav_button()
 
     def _create_plot_panel(self) -> None:
@@ -438,6 +451,7 @@ class GUIReconstructionPanel(GUIPanel):
             self._create_generator_checkboxes()
             self._create_tooltips()
 
+        dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_INSTRUMENTS, enabled=False)
         dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV, enabled=False)
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
@@ -532,6 +546,16 @@ class GUIReconstructionPanel(GUIPanel):
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_LOCATE_ORIGINAL_AUDIO,
             self._tooltip_locate_audio,
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_LOCATE_ORIGINAL_AUDIO,
+        )
+
+    def _create_export_instruments_button(self) -> None:
+        GUIButton(
+            label=self._lbl_export_instruments,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_INSTRUMENTS,
+            parent=self.audio_tag,
+            callback=self._handle_export_instruments_button_click,
+            width=-1,
+            enabled=True,
         )
 
     def _create_export_wav_button(self) -> None:
@@ -639,6 +663,9 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _handle_add_to_sequencer_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self.call(self.on_add_to_sequencer_requested)
+
+    def _handle_export_instruments_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+        self.call(self.on_export_instruments_requested)
 
     def _handle_export_wav_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self.call(self.on_export_wav_requested)
