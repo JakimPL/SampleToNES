@@ -1,6 +1,6 @@
 [MAIN]
 fail-under=9.9
-ignore-paths=^tests/.*$,^src/schemas/.*$
+ignore-paths=^tests/.*$
 load-plugins=pylint_pydantic
 
 [MESSAGES CONTROL]

@@ -1,0 +1,9 @@
+name: node_file_wave
+tag: global.theme.file_wave
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: "#64c8ff"

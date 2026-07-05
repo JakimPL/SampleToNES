@@ -1,0 +1,14 @@
+name: graph_zero_line
+tag: global.graph.theme.zero_line
+
+components:
+  - item_type: InfLineSeries
+    entries:
+      - type: color
+        key: Line
+        category: Plots
+        value: "#c8c8c8"
+      - type: style
+        key: LineWeight
+        category: Plots
+        x: 1.0

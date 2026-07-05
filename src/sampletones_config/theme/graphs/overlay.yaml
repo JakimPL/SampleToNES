@@ -1,0 +1,10 @@
+name: graph_overlay
+tag: global.graph.theme.overlay
+
+components:
+  - item_type: ShadeSeries
+    entries:
+      - type: color
+        key: Fill
+        category: Plots
+        value: "#ffffff20"

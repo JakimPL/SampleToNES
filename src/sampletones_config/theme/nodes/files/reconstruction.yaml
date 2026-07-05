@@ -1,0 +1,9 @@
+name: node_file_reconstruction
+tag: global.theme.file_reconstruction
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: "#b4b4ff"

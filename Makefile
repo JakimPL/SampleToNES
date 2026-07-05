@@ -1,16 +1,14 @@
-.PHONY: pre_commit build install test clean help
+.PHONY: pre-commit build setup test ftm-samples clean help
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
 ifeq ($(UNAME_S),Windows)
-	PYTHON := python
 	SCRIPTS_DIR := scripts\windows
 	SCRIPT_EXT := .bat
 	RUN_SCRIPT :=
 	BUILD_SCRIPT := install.bat
 	EXECUTABLE := sampletones.exe
 else
-	PYTHON := python3
 	SCRIPTS_DIR := scripts/linux
 	SCRIPT_EXT := .sh
 	RUN_SCRIPT := bash
@@ -20,35 +18,53 @@ endif
 
 help:
 	@echo "Available targets:"
-	@echo "  make pre_commit  - Install pre-commit hooks"
+	@echo "  make setup       - Set up development environment (uv; append GPU=1 for CUDA support)"
+	@echo "  make pre-commit  - Install pre-commit hooks"
 	@echo "  make build       - Compile standalone executable"
-	@echo "  make install     - Install Python package locally"
 	@echo "  make test        - Run unit tests with coverage"
+	@echo "  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite"
 	@echo "  make clean       - Remove build artifacts and cache files"
 	@echo "  make lint        - Run linting (pylint, mypy)"
 	@echo "  make format      - Auto-format code (isort, black)"
 	@echo "  make run         - Run SampleToNES application"
 
-pre_commit:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/pre_commit$(SCRIPT_EXT)
+setup:
+	uv sync --group dev $(if $(filter 1,$(GPU)),--extra gpu,)
+	uv tool install --force $(if $(filter 1,$(GPU)),".[gpu]",.)
 
 build:
 	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv
 
-install:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/install$(SCRIPT_EXT) --dev
-
-test:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/tests$(SCRIPT_EXT)
+run:
+	uv run sampletones
 
 clean:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/clean$(SCRIPT_EXT)
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/build/clean$(SCRIPT_EXT)
+
+pre-commit:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/pre_commit$(SCRIPT_EXT)
+
+test:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/tests$(SCRIPT_EXT)
+
+ftm-samples:
+	SAMPLETONES_FTM_OUTPUT_DIR=build/ftm uv run python -m pytest tests/integration/famitracker
+
+check-import-boundary:
+	uv run scripts/check_import_boundary.py --all
+
+calibration:
+	uv run scripts/calibration.py --all
 
 lint:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/lint$(SCRIPT_EXT)
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/lint$(SCRIPT_EXT)
+
+pylint:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/pylint$(SCRIPT_EXT)
+
+mypy:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/mypy$(SCRIPT_EXT)
 
 format:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/format$(SCRIPT_EXT)
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/format$(SCRIPT_EXT)
 
-run:
-	$(PYTHON) -m sampletones

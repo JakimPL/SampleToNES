@@ -1,0 +1,57 @@
+name: status
+tag: global.theme.status
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdc"
+      - type: color
+        key: TextDisabled
+        value: "#dcdcdc"
+      - type: style
+        key: ButtonTextAlign
+        x: 0.0
+      - type: color
+        key: Button
+        value: "#323232"
+      - type: color
+        key: ButtonHovered
+        value: "#323232"
+      - type: color
+        key: ButtonActive
+        value: "#323232"
+      - type: color
+        key: FrameBg
+        value: "#323232"
+      - type: color
+        key: WindowBg
+        value: "#323232"
+  - item_type: Button
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdc"
+      - type: color
+        key: TextDisabled
+        value: "#dcdcdc"
+  - item_type: Button
+    enabled: false
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdc"
+      - type: color
+        key: TextDisabled
+        value: "#dcdcdc"
+      - type: style
+        key: ButtonTextAlign
+        x: 0.0
+      - type: style
+        key: FrameRounding
+        x: 0
+      - type: style
+        key: FramePadding
+        x: 0
+        y: 0

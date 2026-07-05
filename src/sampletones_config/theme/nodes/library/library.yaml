@@ -1,0 +1,9 @@
+name: node_library_library
+tag: instructions.library.theme
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdc"

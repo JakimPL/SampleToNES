@@ -1,0 +1,9 @@
+name: node_library_instruction
+tag: instructions.library.theme.instruction
+
+components:
+  - item_type: Selectable
+    entries:
+      - type: color
+        key: Text
+        value: "#d2d2d2"

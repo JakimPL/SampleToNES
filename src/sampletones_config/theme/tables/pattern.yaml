@@ -1,0 +1,16 @@
+name: table_pattern
+tag: sequencer.theme.table_pattern
+
+components:
+  - item_type: Table
+    entries:
+      - type: style
+        key: CellPadding
+        x: 3
+        y: 4
+      - type: color
+        key: HeaderHovered
+        value: "#ffffff40"
+      - type: color
+        key: HeaderActive
+        value: "#00000000"

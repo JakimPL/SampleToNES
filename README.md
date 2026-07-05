@@ -2,39 +2,44 @@
 
 ## Overview
 
-_SampleToNES_ (`sampletones`) is a WAV converter that transforms audio signals into basic oscillator instructions for the 2A03 NES audio chip:
-* 2x pulse
-* triangle
-* noise
+_SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/).
 
-without using any DPCM samples.
+The core idea is to approximate an audio sample using only the chip's basic oscillators — two pulse channels, a triangle, and noise — **without any DPCM samples**.
 
-_SampleToNES_ allows exporting reconstructed audio as [_FamiTracker_](http://famitracker.com/) `.fti` instruments
+A built-in sequencer lets you arrange the reconstructed samples into patterns and play them back inside the application, so you can experiment with the results before exporting the instruments into FamiTracker.
 
-It also supports:
+It supports:
 
+* loading common audio formats: WAV, MP3, FLAC, OGG, AIFF, and AU
 * a wide range of NES frequencies, from 15 Hz to 600 Hz, including the two most common standards:
     * NTSC (60 Hz)
     * PAL (50 Hz)
 * various sample rates, from 8000 Hz to 192,000 Hz
-* reconstruction limited to a selected oscillator:
+* restricting the reconstruction to a chosen subset of oscillators:
     * `pulse1`
     * `pulse2`
     * `triangle`
     * `noise`
+* exporting reconstructed audio as FamiTracker `.fti` instruments or as `.wav`
 
 ## Installation
 
 ### Requirements
-- Python 3.12 (https://www.python.org/downloads/)
-- Windows, macOS, or Linux
 
-### Windows
+- Windows, macOS, or Linux
+- Python 3.12 (https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/), recommended for development and running from source
+
+### Standalone executable
+
+The quickest way to get a ready-to-run build. Python 3.12 is the only prerequisite.
+
+#### Windows
 1. Make sure Python 3.12 is installed and available as `python` in your PATH.
 2. Double-click `install.bat` in this folder. It will build a standalone `sampletones.exe` in the same directory.
 3. Run `sampletones.exe` to start the application.
 
-### Linux
+#### Linux
 1. Make sure Python 3.12 is installed and available as `python3` in your PATH.
 2. Open a terminal in this folder and run:
 	```sh
@@ -43,27 +48,53 @@ It also supports:
 	This will build a standalone `sampletones` executable in the same directory.
 3. Run `./sampletones` to start the application.
 
-For now, the installation script is adjusted to Debian-based distrubtions only.
+For now, the installation script is adjusted to Debian-based distributions only.
 
-### Alternative: Install as a Python Package
+### Run from source
 
-If you already have a Python 3.12 environment set up (for example, using `venv` or another virtual environment tool), you can install and run _SampleToNES_ directly as a package:
+Requires [uv](https://docs.astral.sh/uv/). `make` is recommended (included with most Linux and macOS systems); without it, run the equivalent `uv` commands directly.
 
-1. Open a terminal in this folder.
-2. Activate your Python 3.12 environment.
-3. Install the package:
+1. Set up everything — creates the virtual environment, installs all dependencies (including dev tools), and installs `sampletones` as a global command:
     ```sh
-    pip install .
+    make setup
     ```
-4. Run the application:
+2. Run the application:
     ```sh
-    sampletones
+    make run        # from the project directory
+    sampletones     # from any folder, thanks to the global install
     ```
+    On Windows without `make`, use `run.bat` in place of `make run`.
 
-_SampleToNES_ supports CUDA. To install with the GPU mode, run:
+`make setup` is the recommended entry point. To do the same steps manually with `uv`:
 ```sh
-pip install ".[gpu]"
+uv sync --group dev     # create the environment with dev tools
+uv tool install .       # install the global `sampletones` command
+uv run sampletones      # run from the project without the global install
 ```
+
+To update the global command after pulling new changes, re-run `make setup` (or `uv tool install --force .`).
+
+### GPU support (CUDA)
+
+_SampleToNES_ can use CUDA for acceleration via [_CuPy_](https://cupy.dev/). GPU mode is enabled by the `gpu` extra.
+
+#### Linux
+
+On Linux, the `gpu` extra installs CuPy alongside the CUDA 12 libraries it needs (`libcudart` and `libnvrtc` for the elementwise kernels, `libcublas` for the constant-Q transform's matmul) as Python wheels. A compatible NVIDIA driver on the host is sufficient — no system CUDA toolkit required, regardless of which CUDA version (if any) is installed system-wide.
+
+```sh
+make setup GPU=1      # environment and global command, both with GPU support
+```
+
+Or with uv directly:
+```sh
+uv sync --group dev --extra gpu     # environment with GPU support and dev tooling
+uv tool install ".[gpu]"            # global `sampletones` command with GPU support
+```
+
+#### Windows
+
+On Windows, the `gpu` extra installs CuPy. GPU mode additionally requires the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (version 12.x), which provides `cudart64_12.dll`, `nvrtc64_120_0.dll`, and `cublas64_12.dll` (the last backs the constant-Q transform's matmul).
 
 ## Data structures
 
@@ -72,7 +103,7 @@ pip install ".[gpu]"
 To optimize sample reconstruction, all single-oscillator instructions are prerendered as samples with spectral information.
 
 The instruction data depends on the following configuration properties:
-* `change_rate` (NES frequency, usually NTSC or PAL)
+* `nes_frequency` (NES frequency, usually NTSC or PAL)
 * `sample_rate` (in Hz)
 * `transformation_gamma`, which determines the transformation of the spectral information:
     * `0` - raw absolute values of Fourier Transform
@@ -117,12 +148,12 @@ Within each waveform, each instruction data contains spectral information on the
 Instructions libraries are stored as `.ins` files in the user's documents folder, e.g.:
 
 ```
-sr_44100_cr_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.ins
+sr_44100_nf_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.ins
 ```
 
 The configuration is embedded in the file name:
 * `sr_44100` corresponds to the sample rate 44100 Hz
-* `cr_30` describes change rate of 30 Hz
+* `nf_30` describes NES frequency of 30 Hz
 * `ws_1615` is the size of the FFT transformation (1615 samples)
 * `tg_0` encodes `transformation_gamma = 0`
 * `ch_283a31a50176c14faf36949913117e49` is the config hash.
@@ -173,7 +204,7 @@ For now, only `mixer` is present in the main application. Other values are exper
 All local files, that is:
 * configuration (`config.json`)
 * instruction libraries (`.ins`)
-* reconstructions (`.json`)
+* reconstructions (`.stn`)
 
 are stored in the default documents directory. The path depends on the operating system.
 
@@ -257,7 +288,7 @@ SampleToNES exposes a variety of classes:
 from sampletones import (
     Config,  # generation configuration
     Window,  # FFT window
-    InstructionsLibrary,  # library
+    InstructionLibrary,  # library
     Reconstruction,  # reconstruction data
     Reconstructor,  # object reconstructing an audio
     # Generators
@@ -278,7 +309,7 @@ Currently, the API is not well documented. I hope that this will change in time.
 
 ```python
 from sampletones import Config, PulseGenerator, PulseInstruction
-from sampletones.audio import write_wave
+from sampletones_core.audio.io import write_wave
 
 # Load configuration
 config = Config.load("config.json")
@@ -306,7 +337,7 @@ audio = generator(instruction, save=False)  # doesn't change the generator state
 
 ```python
 from sampletones import Config, Reconstructor
-from sampletones.audio import write_wave
+from sampletones_core.audio.io import write_wave
 
 # Load configuration
 config = Config.load("config.json")
@@ -316,7 +347,7 @@ reconstructor = Reconstructor(config)
 
 # Reconstruct an audio file and save the reconstruction to a file
 reconstruction = reconstructor("sample.wav")
-reconstruction.save("reconstruction.json")
+reconstruction.save("reconstruction.stn")
 
 # Save the reconstruction waveform
 sample_rate = config.sample_rate
@@ -333,22 +364,15 @@ The graphical user interface is implemented with _DearPyGui_, a Python wrapper f
 
 The core depends on common Python packages:
 * `numpy`
+* `scipy`
+* `librosa`
 * `cupy` (optional; required for GPU mode)
 
-If you have CUDA and want GPU acceleration, install the package with the GPU extras:
-```sh
-pip install ".[gpu]"
-```
+See the [_GPU support (CUDA)_](#gpu-support-cuda) section for enabling GPU acceleration.
 
 ### Serialization
 
-Serialization uses _FlatBuffers_. You do not need the `flatc` compiler to run the application; the compiler is required only for development. On Debian/Ubuntu, install it with:
-
-```sh
-sudo apt-get install flatbuffers-compiler
-```
-
-Alternatively, build the compiler from source: https://github.com/google/flatbuffers
+Instruction libraries and reconstructions are serialized with [_MessagePack_](https://msgpack.org/) (the `msgpack` package). No external compiler or system dependency is required — it is installed automatically with the package.
 
 ### Linux (standalone executable)
 

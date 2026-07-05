@@ -1,0 +1,33 @@
+rows_per_pattern: 8
+order:
+  - { pulse1: 0, pulse2: 0, triangle: 0, noise: 0 }
+  - { pulse1: 0, pulse2: 0, triangle: 1, noise: 1 }
+channels:
+  pulse1:
+    patterns:
+      0:
+        - { row: 0, sample: kick, transpose: 0, volume: 15 }
+        - { row: 2, "off": true }
+        - { row: 4, sample: kick, transpose: 12, volume: 12 }
+        - { row: 6, volume: 8 }
+  pulse2:
+    patterns:
+      0:
+        - { row: 0, sample: lead, transpose: 0, volume: 12 }
+        - { row: 4, sample: lead, transpose: 7, volume: 10 }
+  triangle:
+    patterns:
+      0:
+        - { row: 0, sample: kick, transpose: -12, volume: 15 }
+      1:
+        - { row: 0, sample: kick, transpose: 7, volume: 10 }
+        - { row: 4, sample: kick, transpose: 0, volume: 10 }
+  noise:
+    patterns:
+      0:
+        - { row: 0, sample: hihat, volume: 15 }
+        - { row: 2, sample: hihat, volume: 10 }
+        - { row: 4, sample: hihat, volume: 15 }
+        - { row: 6, sample: hihat, volume: 8 }
+      1:
+        - { row: 0, sample: hihat, transpose: 3, volume: 12 }

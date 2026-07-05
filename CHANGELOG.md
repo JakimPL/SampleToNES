@@ -2,6 +2,12 @@
 
 ## v0.2.4
 
+* Added a _Sequencer_ view with FamiTracker-style patterns.
+* Added project export in a FamiTracker-compatible format.
+* Improved matching algorithms and extended availalbe methods (`LogFFT`, `CQT`).
+* Changed the internal file formats (`.stn`, `.ins`).
+* Switched to `uv` as the package manager.
+
 ## v0.2.3 [2026-01-09]
 
 * Improved the application's graphical interface.

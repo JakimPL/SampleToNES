@@ -1,0 +1,13 @@
+bar_plots:
+  arpeggio:
+    min_y: -128.0
+    max_y: 127.0
+  pitch:
+    min_y: -128.0
+    max_y: 127.0
+  volume:
+    min_y: 0.0
+    max_y: 15.0
+  duty_cycle:
+    min_y: 0.0
+    max_y: 3.0

@@ -1,0 +1,9 @@
+name: node_file_not_expanded_directory
+tag: global.theme.file_not_expanded_directory
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: "#b4b4b4"

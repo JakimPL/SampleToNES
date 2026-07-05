@@ -1,0 +1,10 @@
+name: pitch_stepper
+tag: global.theme.pitch_stepper
+
+components:
+  - item_type: Table
+    entries:
+      - type: style
+        key: CellPadding
+        x: 2
+        y: 2

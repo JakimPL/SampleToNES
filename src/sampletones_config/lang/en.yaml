@@ -1,0 +1,613 @@
+# =============================================================================
+# Global — Dialog buttons
+# =============================================================================
+global.dialog.label.ok: "OK"
+global.dialog.label.exit: "Exit"
+global.dialog.label.discard: "Discard"
+global.dialog.label.close: "Close"
+global.dialog.label.save: "Save"
+global.dialog.label.cancel: "Cancel"
+global.dialog.label.copied: "Copied!"
+global.dialog.label.yes: "Yes"
+global.dialog.label.no: "No"
+global.dialog.label.untitled: "Untitled"
+global.dialog.label.remove: "Remove"
+global.dialog.label.change: "Change"
+global.dialog.label.dont_ask_again: "Don't ask again"
+global.dialog.label.add_anyway: "Add anyway"
+
+# Global — Dialog titles
+global.dialog.title.main_window: "SampleToNES"
+global.dialog.title.save_config: "Save configuration"
+global.dialog.title.load_config: "Load configuration"
+global.dialog.title.configuration_recovery: "Configuration updated"
+global.dialog.title.error: "Error"
+global.dialog.title.config_status: "Configuration status"
+global.dialog.title.file_not_found: "File not found"
+global.dialog.title.reconstruct_file: "Reconstruct file"
+global.dialog.title.reconstruct_directory: "Reconstruct directory"
+global.dialog.title.exit_confirmation: "Exit"
+global.dialog.title.save_reconstruction: "Save reconstruction"
+global.dialog.title.reconstruction_saved: "Reconstruction saved"
+global.dialog.title.close_unsaved_reconstruction: "Close reconstruction"
+global.dialog.title.load_unsaved_reconstruction: "Load reconstruction"
+global.dialog.title.save_project: "Save project"
+global.dialog.title.project_saved: "Project saved"
+global.dialog.title.export_module: "Export FamiTracker module"
+global.dialog.title.module_exported: "Module exported"
+global.dialog.title.new_unsaved_project: "New project"
+global.dialog.title.open_unsaved_project: "Open project"
+global.dialog.title.close_unsaved_project: "Close project"
+global.dialog.title.no_project_open: "No project open"
+global.dialog.title.remove_sample: "Remove sample"
+global.dialog.title.change_nes_frequency: "Change NES frequency"
+global.dialog.title.frequency_mismatch: "Different NES frequency"
+
+# Global — Dialog messages
+global.dialog.message.tree_no_results: "No results found."
+global.dialog.message.invalid_metadata_error: "Invalid file metadata."
+global.dialog.message.reconstruction_no_data: "No reconstruction loaded."
+global.dialog.message.reconstruction_saved_successfully: "Reconstruction saved successfully."
+global.dialog.message.reconstruction_save_failed: "Failed to save reconstruction."
+global.dialog.message.config_save_failed: "Failed to save configuration."
+global.dialog.message.exit_conversion_in_progress: "A conversion is currently in progress. Are you sure you want to exit?"
+global.dialog.message.exit_library_generation_in_progress: "Library generation is currently in progress. Are you sure you want to exit?"
+global.dialog.message.exit_unsaved_reconstruction: "The current reconstruction has unsaved changes. Are you sure you want to exit?"
+global.dialog.message.close_unsaved_reconstruction: "The current reconstruction has unsaved changes. Are you sure you want to close it?"
+global.dialog.message.load_unsaved_reconstruction: "The current reconstruction has unsaved changes. Do you want to save it before loading a new one?"
+global.dialog.message.project_saved_successfully: "Project saved successfully."
+global.dialog.message.project_save_failed: "Failed to save project."
+global.dialog.message.project_exported_successfully: "FamiTracker module exported successfully."
+global.dialog.message.project_export_failed: "Failed to export FamiTracker module."
+global.dialog.message.new_unsaved_project: "The current project has unsaved changes. Do you want to save it before starting a new one?"
+global.dialog.message.open_unsaved_project: "The current project has unsaved changes. Do you want to save it before opening another?"
+global.dialog.message.close_unsaved_project: "The current project has unsaved changes. Do you want to save it before closing?"
+global.dialog.message.new_open_project: "Opening a new project will replace the current one. Continue?"
+global.dialog.message.open_open_project: "Opening another project will replace the current one. Continue?"
+global.dialog.message.exit_unsaved_project: "The current project has unsaved changes. Do you want to save it before exiting?"
+global.dialog.message.configuration_saved_successfully: "Configuration saved successfully."
+global.dialog.message.configuration_loaded_successfully: "Configuration loaded successfully."
+global.dialog.message.configuration_save_error: "Error saving configuration."
+global.dialog.message.configuration_load_error: "Error loading configuration."
+global.dialog.message.configuration_invalid_error: "Invalid configuration file."
+global.dialog.message.configuration_parse_error: "The configuration file could not be read and was reset to defaults."
+global.dialog.message.configuration_recovery_earlier_version: "an earlier version"
+global.dialog.message.configuration_recovery_list_header: "The following settings could not be carried over and were discarded:"
+global.dialog.message.configuration_recovery_path_prefix: "You can edit the configuration file directly:"
+global.dialog.message.audio_playback_error: "Audio playback error"
+global.dialog.message.all_audio_formats: "All supported audio formats"
+global.dialog.message.no_project_open: "No project is open. Create or open a project before adding a reconstruction."
+global.dialog.message.remove_sample: "The sample \"{name}\" is used by one or more patterns. Removing it will clear every row that references it. Remove it anyway?"
+global.dialog.message.change_nes_frequency: "Changing the NES frequency re-times how all existing samples play back, since each was reconstructed at a specific rate. Continue?"
+global.dialog.message.frequency_mismatch: "This reconstruction was generated at {reconstruction} Hz, but the project runs at {project} Hz, so it won't play back as intended. Add it anyway?"
+global.dialog.message.operation_in_progress: "An operation is in progress. Please wait until the running operation finishes."
+
+# Global — Dialog templates
+global.dialog.template.time_estimation: " (ETA: {eta_string})"
+global.dialog.template.configuration_recovery_intro: "Your configuration was updated from {source} to version {target}."
+global.dialog.template.fps: "{fps:.0f} FPS"
+global.dialog.template.expand: "expand"
+global.dialog.template.collapse: "collapse"
+global.dialog.template.on: "on"
+global.dialog.template.off: "off"
+
+# =============================================================================
+# Global — Pitch / period (shared by every pitch stepper)
+# =============================================================================
+global.pitch.label.pitch_name: "pitch"
+global.pitch.label.period_name: "period"
+global.pitch.label.pitch_example: "C-4"
+global.pitch.label.period_example: "4-#"
+
+# =============================================================================
+# Global — Traceback
+# =============================================================================
+global.traceback.label.copy: "Copy to clipboard"
+global.traceback.label.show: "Show traceback"
+global.traceback.label.hide: "Hide traceback"
+
+# =============================================================================
+# Global — Tree
+# =============================================================================
+global.browser.label.root: "Root"
+global.browser.label.search: "Search"
+global.browser.label.filter: "Filter"
+global.browser.label.clear_search: "Clear"
+
+# =============================================================================
+# Global — Context menu
+# =============================================================================
+global.context.label.play: "Play"
+global.context.label.mark_as_favorite: "Mark as favorite"
+global.context.label.unmark_as_favorite: "Unmark as favorite"
+global.context.label.copy_filename: "Copy filename to clipboard"
+global.context.label.copy_path: "Copy path to clipboard"
+global.context.label.open_in_explorer: "Open in explorer"
+global.context.label.add_to_sequencer: "Add to Sequencer"
+global.context.label.triangle: "Triangle"
+global.context.label.pulse_1: "Pulse 1"
+global.context.label.pulse_2: "Pulse 2"
+global.context.label.noise: "Noise"
+global.context.label.detail_sample_rate: "Sample rate"
+global.context.label.detail_nes_frequency: "NES frequency"
+global.context.label.detail_generators: "Generators"
+global.context.label.detail_spectrum_method: "Generation method"
+global.context.label.detail_transformation_gamma: "Transformation gamma"
+global.context.label.detail_window_size: "Window size"
+global.context.label.detail_configuration: "Configuration"
+
+# =============================================================================
+# Global — Menu
+# =============================================================================
+global.menu.label.group_general: "General"
+global.menu.label.item_audio_settings: "Audio settings"
+global.menu.label.item_exit: "Exit"
+global.menu.label.group_project: "Project"
+global.menu.label.item_project_new: "New"
+global.menu.label.item_project_open: "Open"
+global.menu.label.item_project_save: "Save"
+global.menu.label.item_project_save_as: "Save as"
+global.menu.label.item_project_export_module: "Export as FamiTracker module"
+global.menu.label.item_project_properties: "Properties"
+global.menu.label.item_project_close: "Close"
+global.menu.label.group_edit: "Edit"
+global.menu.label.item_edit_undo: "Undo"
+global.menu.label.item_edit_redo: "Redo"
+global.menu.label.group_reconstruction: "Reconstruction"
+global.menu.label.item_reconstruction_reconstruct_file: "Reconstruct file"
+global.menu.label.item_reconstruction_reconstruct_directory: "Reconstruct directory"
+global.menu.label.item_reconstruction_save: "Save"
+global.menu.label.item_reconstruction_save_as: "Save as"
+global.menu.label.item_reconstruction_load: "Load"
+global.menu.label.item_reconstruction_close: "Close"
+global.menu.label.item_reconstruction_export_wav: "Export to WAV"
+global.menu.label.item_reconstruction_export_ftis: "Export to FTIs"
+global.menu.label.item_reconstruction_save_generation_settings: "Save generation settings"
+global.menu.label.item_reconstruction_load_generation_settings: "Load generation settings"
+global.menu.label.group_playback: "Playback"
+global.menu.label.item_playback_play_from_start: "Play from start"
+global.menu.label.item_playback_play: "Play"
+global.menu.label.item_playback_pause: "Pause"
+global.menu.label.item_playback_resume: "Resume"
+global.menu.label.item_playback_stop: "Stop"
+global.menu.label.item_playback_autoplay: "Autoplay"
+global.menu.label.group_view: "View"
+global.menu.label.item_view_fullscreen: "Fullscreen"
+global.menu.label.item_view_show_advanced_settings: "Show advanced settings"
+global.menu.label.tab_main: "Main"
+global.menu.label.tab_instructions: "Instructions"
+global.menu.label.tab_reconstructions: "Reconstructions"
+global.menu.label.tab_sequencer: "Sequencer"
+
+# =============================================================================
+# Global — Status bar messages
+# =============================================================================
+global.status.message.path: "Click to open path in file explorer."
+global.status.message.node_reconstruction_no_autoplay: "Double-click to open reconstruction. Right-click to open context menu."
+global.status.message.node_reconstruction: "Click to play reconstruction. Double-click to open reconstruction. Right-click to open context menu."
+global.status.message.node_library: "Double-click to open instructions library. Right-click to open context menu."
+global.status.message.tree_search: "Type query to filter nodes."
+global.status.message.input: "CTRL + click to type value."
+global.status.message.combo: "Click to select a value from the list."
+global.status.message.node_directory: "Click to {expand_or_collapse}. Right-click to open context menu."
+
+# =============================================================================
+# Global — Player
+# =============================================================================
+global.player.label.play: "Play"
+global.player.label.pause: "Pause"
+global.player.label.resume: "Resume"
+global.player.label.stop: "Stop"
+global.player.label.position_prefix: "Position: "
+global.player.label.samples_suffix: " samples"
+global.player.message.no_audio_loaded: "No audio loaded."
+global.player.message.audio_playback_error: "Audio playback error."
+
+# =============================================================================
+# Global — Graph
+# =============================================================================
+global.graph.label.waveform_original: "Original"
+global.graph.label.waveform_reconstruction: "Reconstruction"
+global.graph.label.waveform_display: "Waveform display"
+global.graph.label.waveform_time_axis: "Time (samples)"
+global.graph.label.waveform_amplitude_axis: "Amplitude"
+global.graph.label.waveform_sample_name: "Sample"
+global.graph.label.spectrum_display: "Spectrum display"
+global.graph.label.spectrum_x_axis: ""
+global.graph.label.spectrum_frequency_axis: "Frequency"
+global.graph.label.spectrum_name: "Spectrum"
+global.graph.label.bar_display: "Bar plot display"
+global.graph.message.spectrum_navigation: "Right-click for more options."
+global.graph.message.waveform_navigation: "Drag to navigate waveform. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically. Right-click for more options."
+
+# =============================================================================
+# Main tab — Explorer
+# =============================================================================
+main.explorer.label.section: "Filesystem"
+main.explorer.label.refresh_button: "Refresh"
+main.explorer.label.collapse_all_button: "Collapse all"
+main.explorer.label.context_load_reconstruction: "Load reconstruction"
+main.explorer.label.context_load_library: "Load instructions library"
+main.explorer.label.context_reconstruct_file: "Reconstruct file"
+main.explorer.label.context_reconstruct_directory: "Reconstruct directory"
+main.explorer.label.context_set_library_directory: "Set as instructions library directory"
+main.explorer.label.context_set_output_directory: "Set as output directory"
+main.explorer.label.node_dummy: "loading..."
+main.explorer.message.status_node_audio_no_autoplay: "Double-click to reconstruct audio. Right-click to open context menu."
+main.explorer.message.status_node_audio: "Click to play audio. Double-click to reconstruct audio. Right-click to open context menu."
+main.explorer.message.status_node_library: "Double-click to open instructions library. Right-click to open context menu."
+main.explorer.message.converter_running_msg: "A conversion is already running. Please wait for it to complete or cancel the current operation before starting a new one."
+main.explorer.title.converter_running_dialog: "Conversion in progress"
+
+# =============================================================================
+# Main tab — Config panel
+# =============================================================================
+main.config_panel.label.section: "General settings"
+main.config_panel.label.section_library: "Instructions library settings"
+main.config_panel.label.checkbox_normalize: "Normalize audio"
+main.config_panel.label.checkbox_quantize: "Quantize audio"
+main.config_panel.label.input_sample_rate: "Sample rate"
+main.config_panel.label.input_nes_frequency: "NES frequency"
+main.config_panel.label.combo_spectrum_method: "Generation method"
+main.config_panel.label.slider_transformation_gamma: "Feature scaling"
+main.config_panel.tooltip.tooltip_normalize: "Normalize audio to ensure consistent volume levels."
+main.config_panel.tooltip.tooltip_quantize: "Quantize audio samples to 5-bit resolution."
+main.config_panel.tooltip.tooltip_sample_rate: "Set the sample rate (in Hz) for audio processing."
+main.config_panel.tooltip.tooltip_nes_frequency: "Set the NES refresh rate (in Hz) for audio processing.\n  • NTSC = 60 Hz,\n  • PAL = 50 Hz."
+main.config_panel.tooltip.tooltip_spectrum_method: "Chooses how the sample is analysed into a spectrum:\n  • FFT uses evenly spaced frequency bins\n  • Log-spaced FFT regroups those bins onto a logarithmic frequency axis\n  • CQT spaces bins per musical octave"
+main.config_panel.tooltip.tooltip_transformation_gamma: "Scales spectral magnitudes before matching:\n  • at 0 the raw linear spectrum is used\n  • at 100 a logarithmic scaling is applied\n  • and values in between blend the two"
+
+# =============================================================================
+# Main tab — Reconstructor panel
+# =============================================================================
+main.reconstructor.label.section_generators: "Generators"
+main.reconstructor.label.section_settings: "Reconstructor settings"
+main.reconstructor.label.slider_drive: "Drive"
+main.reconstructor.tooltip.tooltip_drive: "Amplify NES audio during instruction selection and output.\nAt 1.0 amplitudes are calibrated, higher values push the selection harder, introducing a distortion-like effect."
+
+# =============================================================================
+# Main tab — Converter
+# =============================================================================
+main.converter.label.section: "Converter"
+main.converter.label.close_button: "Close"
+main.converter.label.cancel_button: "Cancel"
+main.converter.label.load_button: "Load"
+main.converter.label.convert_sample_button: "Convert sample"
+main.converter.label.convert_directory_button: "Convert directory"
+main.converter.message.status_error: "Reconstruction failed."
+main.converter.message.status_success: "Reconstruction completed successfully!"
+main.converter.message.status_config_not_available: "Configuration not available"
+main.converter.message.status_reconstruction_completed: "Reconstruction completed!"
+main.converter.message.status_no_files: "No WAV files found to process."
+main.converter.message.status_no_generators: "No generators are enabled. Enable at least one generator to reconstruct."
+main.converter.message.status_idle: "No tasks in progress."
+main.converter.message.status_waiting: "Waiting to start..."
+main.converter.message.status_generating_library: "Generating instructions library... (this may take a while)"
+main.converter.message.status_cancelling: "Aborting the conversion..."
+main.converter.message.status_cancelled: "Conversion cancelled."
+main.converter.message.status_input_label: "Input:"
+main.converter.message.status_output_label: "Output:"
+main.converter.title.progress_dialog: "Reconstruction progress"
+main.converter.template.progress_template: "Progress: {}/{} files"
+main.converter.template.complete_template: "Reconstruction complete. Total error: {:.4f}"
+
+# =============================================================================
+# Main tab — Advanced
+# =============================================================================
+main.advanced.label.section: "Advanced settings"
+main.advanced.label.select_output_directory: "Select output directory"
+main.advanced.label.select_library_directory: "Select instructions data directory"
+main.advanced.label.input_max_workers: "Workers"
+main.advanced.tooltip.tooltip_max_workers: "Set the number parallel workers for audio processing tasks."
+main.advanced.title.select_library_directory: "Select library directory"
+main.advanced.title.select_output_directory: "Select output directory"
+
+# =============================================================================
+# Reconstructions tab — Browser
+# =============================================================================
+reconstructions.browser.label.reconstruct_file_button: "Reconstruct file"
+reconstructions.browser.label.reconstruct_directory_button: "Reconstruct directory"
+reconstructions.browser.label.refresh_button: "Refresh reconstructions"
+reconstructions.browser.label.reconstructions_tree: "Reconstructions"
+reconstructions.browser.label.context_load_reconstruction: "Load reconstruction"
+reconstructions.browser.message.file_not_found: "The reconstruction file could not be found."
+reconstructions.browser.message.audio_file_not_found: "The audio file of this reconstruction could not be found."
+reconstructions.browser.message.load_error: "Failed to load reconstruction."
+reconstructions.browser.message.invalid_values: "Reconstruction contains invalid values."
+reconstructions.browser.message.invalid_file: "Invalid reconstruction file."
+reconstructions.browser.message.deserialization_error: "Failed to deserialize reconstruction data."
+reconstructions.browser.title.load_reconstruction_dialog: "Load reconstruction"
+reconstructions.browser.template.incompatible_version_template: "Incompatible reconstruction version: {}, expected {}."
+
+# =============================================================================
+# Reconstructions tab — Reconstruction panel
+# =============================================================================
+reconstructions.reconstruction.label.audio_source_label: "Play audio source:"
+reconstructions.reconstruction.label.autoscale_checkbox: "Autoscale"
+reconstructions.reconstruction.label.export_wav_button: "Export reconstruction to WAV"
+reconstructions.reconstruction.label.locate_audio_button: "Locate original audio"
+reconstructions.reconstruction.label.reconstruction_file_label: "Reconstruction file:"
+reconstructions.reconstruction.label.original_audio_label: "Original audio:"
+reconstructions.reconstruction.label.path_not_found: "not found"
+reconstructions.reconstruction.label.path_not_applicable: "N/A"
+reconstructions.reconstruction.label.original_audio_radio: "Original audio"
+reconstructions.reconstruction.label.reconstruction_radio: "Reconstruction"
+reconstructions.reconstruction.label.waveform_label: "Reconstruction waveform"
+reconstructions.reconstruction.tooltip.autoscale_tooltip: "Include reconstruction's amplification coefficient and auto-scale waveforms accordingly."
+reconstructions.reconstruction.tooltip.already_in_sequencer_tooltip: "This reconstruction is already part of the Sequencer as a sample. Edits here update that sample directly."
+reconstructions.reconstruction.message.locate_audio_failed: "Original audio file could not be found."
+reconstructions.reconstruction.message.audio_missing: "Original audio filepath is missing in the reconstruction."
+reconstructions.reconstruction.message.export_wav_success: "Reconstruction rendered successfully."
+reconstructions.reconstruction.message.export_wav_failed: "Reconstruction failed to save."
+reconstructions.reconstruction.title.audio_missing_dialog: "Original audio missing"
+
+# =============================================================================
+# Reconstructions tab — Details
+# =============================================================================
+reconstructions.details.label.reconstruction_details: "Reconstruction details"
+reconstructions.details.label.export_fti_button: "Export instrument to FTI"
+reconstructions.details.label.export_ftis_button: "Export reconstruction as FTIs"
+reconstructions.details.label.copy_button: "Copy"
+reconstructions.details.label.pitch_label: "Pitch"
+reconstructions.details.label.hi_pitch_label: "Hi-pitch"
+reconstructions.details.label.volume_label: "Volume"
+reconstructions.details.label.arpeggio_label: "Arpeggio"
+reconstructions.details.label.duty_cycle_label: "Duty cycle"
+reconstructions.details.label.generators_text: "Generators"
+reconstructions.details.label.initial_period: "Initial period:"
+reconstructions.details.label.initial_pitch: "Initial pitch: "
+reconstructions.details.message.status_input_pitch: "CTRL + click to type value. Enter note name (e.g. \"C-4\") or MIDI value (72)."
+reconstructions.details.message.status_input_period: "CTRL + click to type value. Enter period name (e.g. \"4-#\") or integer value (4)."
+reconstructions.details.message.status_bar: "Click to change {instrument_feature}. Scroll to zoom horizontally. Right-click for more options."
+reconstructions.details.message.status_sequence: "Edit and press ENTER to change {instrument_feature}."
+reconstructions.details.message.status_copy_sequence: "Copy sequence to clipboard."
+reconstructions.details.message.status_generator_toggle: "Click to turn {on_or_off} {generator_name}."
+reconstructions.details.message.status_generator_not_available: "{generator_name} is not available."
+reconstructions.details.message.export_fti_success: "Instrument saved successfully."
+reconstructions.details.message.export_ftis_success: "Reconstruction instruments saved successfully."
+reconstructions.details.message.export_fti_failed: "Failed to export instrument as FTI."
+reconstructions.details.message.export_ftis_failed: "Failed to export reconstruction as FTIs."
+reconstructions.details.title.export_status_dialog: "Export status"
+reconstructions.details.title.not_loaded_dialog: "Reconstruction not loaded"
+reconstructions.details.title.export_wav_dialog: "Export WAV"
+reconstructions.details.title.export_fti_dialog: "Export FTI"
+reconstructions.details.title.load_reconstruction_dialog: "Load reconstruction"
+reconstructions.details.template.initial_pitch_template: "Initial pitch: {} ({})"
+reconstructions.details.template.initial_pitch_tooltip_template: "Enter the initial {} by name (e.g. {}) or value ({})."
+
+# =============================================================================
+# Sequencer tab — Browser
+# =============================================================================
+sequencer.browser.label.refresh_button: "Refresh reconstructions"
+sequencer.browser.label.reconstructions_tree: "Reconstructions"
+sequencer.browser.message.file_not_found: "The reconstruction file could not be found."
+sequencer.browser.message.load_error: "Failed to load reconstruction."
+sequencer.browser.message.status_search: "Search reconstructions"
+sequencer.browser.title.load_reconstruction_dialog: "Load reconstruction as instrument"
+
+# =============================================================================
+# Sequencer tab — Player
+# =============================================================================
+sequencer.player.message.no_song_loaded: "No song loaded."
+sequencer.player.message.playback_error: "Playback error: {error}"
+sequencer.player.template.position: "Frame {frame} | Row {row}"
+sequencer.player.label.follow_playback: "Follow playback"
+
+# =============================================================================
+# Sequencer tab — Module
+# =============================================================================
+sequencer.module.label.module_options: "Module options"
+sequencer.module.label.nes_frequency: "NES frequency"
+sequencer.module.label.rows: "Rows"
+sequencer.module.tooltip.rows: "Press Enter to apply the new row count."
+sequencer.module.label.tempo: "Tempo"
+sequencer.module.label.speed: "Speed"
+sequencer.module.label.properties: "Project properties"
+sequencer.module.label.export_module: "Export as FamiTracker module"
+sequencer.module.title.export_module: "Export FamiTracker module"
+
+# =============================================================================
+# Sequencer tab — Grid
+# =============================================================================
+sequencer.grid.label.tracker_text: "Tracker"
+sequencer.grid.label.column_row: "Row"
+sequencer.grid.label.column_sample: "Sample"
+sequencer.grid.label.column_pulse_1: "Pulse 1"
+sequencer.grid.label.column_pulse_2: "Pulse 2"
+sequencer.grid.label.column_triangle: "Triangle"
+sequencer.grid.label.column_noise: "Noise"
+sequencer.grid.label.column_note: "Note"
+sequencer.grid.label.column_volume: "Vol"
+sequencer.grid.label.column_transpose: "Transpose"
+sequencer.grid.label.context_play: "Play from here"
+sequencer.grid.label.context_note_off: "Note off"
+sequencer.grid.label.context_set_instrument: "Set instrument"
+sequencer.grid.label.context_no_samples: "No samples"
+sequencer.grid.label.context_clear_subcolumn: "Clear subcolumn"
+sequencer.grid.label.context_clear_cell: "Clear cell"
+sequencer.grid.label.context_clear_row: "Clear row"
+sequencer.grid.label.context_transpose_up: "Transpose up"
+sequencer.grid.label.context_transpose_down: "Transpose down"
+sequencer.grid.label.context_transpose_octave_up: "Transpose octave up"
+sequencer.grid.label.context_transpose_octave_down: "Transpose octave down"
+sequencer.grid.label.context_volume_up: "Volume up"
+sequencer.grid.label.context_volume_down: "Volume down"
+sequencer.grid.label.context_volume_up_coarse: "Volume up (coarse)"
+sequencer.grid.label.context_volume_down_coarse: "Volume down (coarse)"
+
+# =============================================================================
+# Sequencer tab — Order
+# =============================================================================
+sequencer.order.label.order_text: "Order"
+sequencer.order.label.row_master: "Master"
+sequencer.order.label.row_pulse_1: "Pulse 1"
+sequencer.order.label.row_pulse_2: "Pulse 2"
+sequencer.order.label.row_triangle: "Triangle"
+sequencer.order.label.row_noise: "Noise"
+sequencer.order.label.context_play: "Play from here"
+sequencer.order.label.context_duplicate: "Duplicate"
+sequencer.order.label.context_insert: "Insert frame"
+sequencer.order.label.context_clear: "Clear frame"
+sequencer.order.label.context_remove: "Remove"
+sequencer.order.label.context_move_left: "Move left"
+sequencer.order.label.context_move_right: "Move right"
+sequencer.order.label.context_move_start: "Move to start"
+sequencer.order.label.context_move_end: "Move to end"
+
+# =============================================================================
+# Sequencer tab — Instruments
+# =============================================================================
+sequencer.instruments.label.instruments_text: "Samples"
+sequencer.instruments.label.column_id: "ID"
+sequencer.instruments.label.column_name: "Name"
+sequencer.instruments.label.column_loop: "Loop"
+sequencer.instruments.label.context_edit: "Edit"
+sequencer.instruments.label.context_rename: "Rename"
+sequencer.instruments.label.context_duplicate: "Duplicate"
+sequencer.instruments.label.context_remove: "Remove"
+sequencer.instruments.label.context_move_up: "Move up"
+sequencer.instruments.label.context_move_down: "Move down"
+sequencer.instruments.label.context_move_top: "Move to top"
+sequencer.instruments.label.context_move_bottom: "Move to bottom"
+
+sequencer.history.label.history_text: "History"
+sequencer.history.label.undo: "Undo"
+sequencer.history.label.redo: "Redo"
+sequencer.history.label.empty: "No actions yet."
+sequencer.history.label.initial: "Project opened"
+sequencer.history.label.edit_row: "Edit row"
+sequencer.history.label.note_off: "Note off"
+sequencer.history.label.clear_row: "Clear row"
+sequencer.history.label.clear_subcolumn: "Clear column"
+sequencer.history.label.adjust_transpose: "Adjust transpose"
+sequencer.history.label.adjust_volume: "Adjust volume"
+sequencer.history.label.add_frame: "Add frame"
+sequencer.history.label.remove_frame: "Remove frame"
+sequencer.history.label.duplicate_frame: "Duplicate frame"
+sequencer.history.label.clear_frame: "Clear frame"
+sequencer.history.label.move_frame: "Move frame"
+sequencer.history.label.set_order_entry: "Set order entry"
+sequencer.history.label.add_sample: "Add sample"
+sequencer.history.label.remove_sample: "Remove sample"
+sequencer.history.label.rename_sample: "Rename sample"
+sequencer.history.label.move_sample: "Move sample"
+sequencer.history.label.duplicate_sample: "Duplicate sample"
+sequencer.history.label.set_sample_loop: "Toggle sample loop"
+sequencer.history.label.loop_on: "on"
+sequencer.history.label.loop_off: "off"
+sequencer.history.label.set_tempo: "Set tempo"
+sequencer.history.label.set_speed: "Set speed"
+sequencer.history.label.set_nes_frequency: "Set NES frequency"
+sequencer.history.label.set_rows_per_pattern: "Set rows per pattern"
+sequencer.history.label.edit_reconstruction: "Edit reconstruction"
+sequencer.history.label.edit_project_properties: "Edit project properties"
+sequencer.history.label.untracked: "Edit"
+
+# =============================================================================
+# Instructions tab — Library
+# =============================================================================
+instructions.library.label.generate_library_button: "Generate library"
+instructions.library.label.regenerate_library_button: "Regenerate instructions"
+instructions.library.label.refresh_libraries_button: "Refresh instructions data"
+instructions.library.label.cancel_generation_button: "Cancel generation"
+instructions.library.label.libraries_text: "Instructions data"
+instructions.library.label.available_libraries_text: "Instructions data"
+instructions.library.label.load_library_node: "Click to load the library"
+instructions.library.label.libraries_node: "Libraries"
+instructions.library.label.context_load_generator: "Load generator instructions"
+instructions.library.label.context_load_library: "Load library"
+instructions.library.message.status_display_error: "Error while displaying data."
+instructions.library.message.status_generating: "Generating library..."
+instructions.library.message.status_saving: "Saving generated library..."
+instructions.library.message.status_generation_success: "Library generated successfully."
+instructions.library.message.status_loading: "Library is loading..."
+instructions.library.message.status_window_not_available: "Window not available."
+instructions.library.message.status_generation_cancelled: "Library generation cancelled."
+instructions.library.message.status_generation_failed: "Error generating library."
+instructions.library.message.status_file_not_found: "The library file could not be found."
+instructions.library.message.status_file_load_error: "Error while loading the library file."
+instructions.library.message.status_load_error: "Error while loading library data."
+instructions.library.message.status_invalid_data: "Invalid library data file."
+instructions.library.message.status_invalid_data_values: "Library data contains invalid values."
+instructions.library.message.status_deserialization_error: "Failed to deserialize library data."
+instructions.library.message.status_node_generator: "Click to load {generator} instructions for {library_key}."
+instructions.library.message.status_node_library: "Click to load instructions library."
+instructions.library.title.library_not_loaded_dialog: "Library not loaded"
+instructions.library.title.generation_status_dialog: "Library generation status"
+instructions.library.template.generation_progress_template: "Generating: {}/{} "
+instructions.library.template.library_not_exists_template: "{} doesn't exist."
+instructions.library.template.library_exists_template: "{} exists."
+instructions.library.template.library_loaded_template: "{} loaded."
+instructions.library.template.incompatible_version_template: "Incompatible library data version: {}, expected {}."
+instructions.library.title.regenerate_confirmation_dialog: "Regenerate library?"
+instructions.library.message.regenerate_confirmation_message: "A library for the current configuration already exists. Regenerate it?"
+instructions.library.label.regenerate_confirmation_ok: "Regenerate"
+
+# =============================================================================
+# Instructions tab — Instruction panel
+# =============================================================================
+instructions.instruction.label.waveform_label: "Instruction waveform"
+instructions.instruction.label.spectrum_label: "Instruction spectrum"
+
+# =============================================================================
+# Instructions tab — Details
+# =============================================================================
+instructions.details.label.details_text: "Instruction details"
+instructions.details.label.parameters_text: "Parameters"
+instructions.details.label.general_text: "General"
+instructions.details.label.cell_nes_frequency: "NES frequency"
+instructions.details.label.cell_generator: "Generator"
+instructions.details.label.cell_name: "Instruction"
+instructions.details.label.cell_frequency: "Frequency"
+instructions.details.label.cell_duty_cycle: "{:.1f}% ({})"
+instructions.details.label.cell_no_frequency: "N/A"
+instructions.details.label.cell_sample_length: "Sample length"
+instructions.details.label.cell_samples_suffix: " samples"
+instructions.details.label.window_pulse_pitch: "Pitch"
+instructions.details.label.window_pulse_volume: "Volume"
+instructions.details.label.window_pulse_duty_cycle: "Duty cycle"
+instructions.details.label.window_noise_period: "Period"
+instructions.details.label.window_noise_volume: "Volume"
+instructions.details.label.window_noise_short: "Short"
+instructions.details.label.window_triangle_pitch: "Pitch"
+instructions.details.message.no_instruction_selected: "No instruction selected."
+instructions.details.message.status_input_pitch: "CTRL + click to type value. Enter note name (e.g. \"C-4\") or MIDI value (72)."
+instructions.details.message.status_input_period: "CTRL + click to type value. Enter period name (e.g. \"4-#\") or integer value (4)."
+instructions.details.template.frequency_template: "{:.2f} Hz"
+instructions.details.template.pitch_template: "{} ({})"
+instructions.details.template.period_template: "p{} ({})"
+instructions.details.template.duty_cycle_template: "{:.1f}% ({})"
+instructions.details.template.pitch_tooltip_template: "Enter the {} by name (e.g. {}) or value ({})."
+
+# =============================================================================
+# Settings — Audio
+# =============================================================================
+settings.audio.label.output_device: "Output device"
+settings.audio.label.sample_rate: "Sample rate"
+settings.audio.label.buffer_size: "Buffer size"
+settings.audio.label.apply_button: "Apply"
+settings.audio.label.refresh_devices_button: "Refresh devices"
+settings.audio.title.window_title: "Audio settings"
+settings.properties.title.window_title: "Project properties"
+settings.properties.label.title: "Title"
+settings.properties.label.author: "Author"
+settings.properties.label.comment: "Comment"
+settings.properties.label.created: "Created"
+settings.properties.label.modified: "Modified"
+
+# =============================================================================
+# Prototype (unchanged)
+# =============================================================================
+prototype.page.title.window_title: "SampleToNES — Architecture Prototype"
+
+prototype.label_input.label.section_header: "Label"
+prototype.label_input.hint.input: "Enter label"
+prototype.label_input.feedback.validation_empty: "Label cannot be empty"
+prototype.label_input.feedback.validation_too_long: "Label too long (max {} chars)"
+
+prototype.multiplier.label.section_header: "Multiplier"
+prototype.multiplier.label.slider: "Value"
+
+prototype.result.label.section_header: "Result"
+prototype.result.message.no_result: "Enter a label and adjust the multiplier."
+prototype.result.message.score: "Score: {}"

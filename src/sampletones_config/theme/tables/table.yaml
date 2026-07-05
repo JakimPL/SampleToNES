@@ -1,0 +1,13 @@
+name: table
+tag: global.theme.table
+
+components:
+  - item_type: Table
+    entries:
+      - type: style
+        key: CellPadding
+        x: 8
+        y: 4
+      - type: style
+        key: FrameRounding
+        x: 4

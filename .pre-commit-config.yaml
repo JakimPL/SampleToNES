@@ -1,12 +1,12 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         types: [text]
 
   - repo: https://github.com/timothycrosley/isort
-    rev: 6.0.1
+    rev: 9.0.0a3
     hooks:
       - id: isort
         language_version: python3
@@ -15,8 +15,8 @@ repos:
           "-l", "120"
         ]
 
-  - repo: https://github.com/ambv/black
-    rev: 25.1.0
+  - repo: https://github.com/psf/black
+    rev: 26.5.1
     hooks:
       - id: black
         language_version: python3
@@ -26,25 +26,35 @@ repos:
 
   - repo: local
     hooks:
+      - id: import-boundary
+        name: import boundary
+        entry: uv run scripts/check_import_boundary.py --all
+        language: system
+        types: [python]
+        pass_filenames: false
+        verbose: true
+
+  - repo: local
+    hooks:
       - id: mypy
         name: mypy
-        entry: mypy
+        entry: uv run mypy
         language: system
         types: [python]
         verbose: True
         require_serial: true
-        exclude: ^src/schemas/
+        exclude: ^(tests/)
 
   - repo: local
     hooks:
       - id: pylint
         name: pylint
-        entry: pylint
+        entry: uv run pylint
         language: system
         types: [python]
         verbose: True
         require_serial: true
-        exclude: ^src/schemas/
+        exclude: ^(tests/)
 
   - repo: local
     hooks:

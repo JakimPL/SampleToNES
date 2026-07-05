@@ -1,0 +1,9 @@
+name: node_library_generator
+tag: instructions.library.theme.generator
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: "#d2e8d2"

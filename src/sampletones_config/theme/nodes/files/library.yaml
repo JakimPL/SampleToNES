@@ -1,0 +1,9 @@
+name: node_file_library
+tag: global.theme.file_library
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: "#96ff96"
