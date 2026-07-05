@@ -17,8 +17,10 @@ from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_SEARCH,
+    SUF_HANDLER_DETAIL_TOOLTIP,
     SUF_HANDLER_NODE,
     SUF_INPUT_SEARCH,
+    SUF_TOOLTIP_DETAIL,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_FAVORITE,
     TAG_GLOBAL_THEME_FAVORITE_CHILD,
@@ -47,9 +49,17 @@ from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.gui.dpg import dpg_delete_children, dpg_get_value
+from sampletones_application.utils.gui.dpg import (
+    dpg_configure_item,
+    dpg_delete_children,
+    dpg_get_value,
+    dpg_is_item_hovered,
+)
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.gui.tooltip import show_detail_tooltip
+from sampletones_application.utils.gui.tooltip import (
+    create_detail_tooltip,
+    populate_detail_tooltip,
+)
 from sampletones_core import paths
 from sampletones_core.configs.display import (
     format_nes_frequency,
@@ -101,6 +111,10 @@ class GUITreePanel(GUIPanel):
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
+
+        self._detail_tooltip_tag = f"{tag}{SUF_TOOLTIP_DETAIL}"
+        self._detail_tooltip_handler_tag = f"{tag}{SUF_HANDLER_DETAIL_TOOLTIP}"
+        self._detail_tooltip_owner_tag: Optional[str] = None
 
         self._node_handlers: Dict[NodeType, NodeHandler] = {}
 
@@ -327,10 +341,6 @@ class GUITreePanel(GUIPanel):
                 is_node_expanded=is_node_expanded,
             )
 
-        detail_items = self._node_detail_items(node)
-        if detail_items:
-            show_detail_tooltip(node_tag, detail_items)
-
     def _queue_node(
         self,
         node: TreeNode,
@@ -377,8 +387,56 @@ class GUITreePanel(GUIPanel):
             user_data = dpg.get_item_user_data(app_data)
             if status_bar_callback is not None:
                 self._status_bar.set(status_bar_callback, user_data=user_data)
+            self._update_detail_tooltip(user_data)
 
         return hover_callback
+
+    def _create_detail_tooltip(self, tree_window_tag: str) -> None:
+        """Builds the reusable detail tooltip and the mouse handler that dismisses it.
+
+        Binding the tooltip to the tree window keeps it visible while the pointer stays over the tree,
+        and the handler clears it once the owning node's row is left, so the details track the hovered
+        main node and disappear over the tree's blank space.
+        """
+        create_detail_tooltip(tree_window_tag, tag=self._detail_tooltip_tag)
+        with dpg.handler_registry(tag=self._detail_tooltip_handler_tag):
+            dpg.add_mouse_move_handler(callback=self._on_detail_tooltip_mouse_move)
+
+    def _update_detail_tooltip(self, user_data: Any) -> None:
+        """Reveals the detail tooltip for a hovered node that carries details, hiding it otherwise.
+
+        The reveal is gated on a change of owning node so the tooltip content is rebuilt once per node
+        rather than on every hover frame.
+        """
+        if not isinstance(user_data, tuple):
+            return
+
+        node, node_tag = user_data
+        detail_items = self._node_detail_items(node)
+        if detail_items:
+            if self._detail_tooltip_owner_tag != node_tag:
+                populate_detail_tooltip(self._detail_tooltip_tag, detail_items)
+                self._detail_tooltip_owner_tag = node_tag
+                dpg_configure_item(self._detail_tooltip_tag, show=True)
+
+            return
+
+        self._hide_detail_tooltip()
+
+    def _hide_detail_tooltip(self) -> None:
+        if self._detail_tooltip_owner_tag is None:
+            return
+
+        self._detail_tooltip_owner_tag = None
+        dpg_configure_item(self._detail_tooltip_tag, show=False)
+
+    def _on_detail_tooltip_mouse_move(self, sender: Sender, app_data: Any) -> None:
+        owner_tag = self._detail_tooltip_owner_tag
+        if owner_tag is None:
+            return
+
+        if not dpg.does_item_exist(owner_tag) or not dpg_is_item_hovered(owner_tag):
+            self._hide_detail_tooltip()
 
     def _create_single_click_callback(
         self,

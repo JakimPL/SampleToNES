@@ -37,31 +37,42 @@ def attach_disabled_tooltip(parent: str, message: str, *, tag: str) -> None:
         FontRegistry.bind_to_item(tooltip_text, Font.REGULAR_SMALL)
 
 
-def show_detail_tooltip(parent: str, items: List[Tuple[str, str]]) -> None:
-    """Attaches a hover tooltip rendering ``label``/``value`` pairs in two aligned columns.
+def create_detail_tooltip(parent: str, *, tag: str) -> None:
+    """Creates a hidden detail tooltip bound to ``parent``.
+
+    The tooltip starts hidden and the tree reveals it by toggling its ``show`` from the precise
+    per-node hover handler, so the details stay tied to the owning node's own row while the pointer
+    explores that node's expanded descendants.
+    """
+    with dpg.tooltip(parent, tag=tag, show=False):
+        ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP).bind_to_item(tag)
+
+
+def populate_detail_tooltip(tag: str, items: List[Tuple[str, str]]) -> None:
+    """Replaces the tooltip's content with ``label``/``value`` pairs in two aligned columns.
 
     ``mvTable_SizingFixedFit`` sizes each column to its own content, so the label column tracks its
     own text width independently of the value column. A compact theme tightens the row padding.
     """
-    with dpg.tooltip(parent, hide_on_activity=True) as tooltip:
-        ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP).bind_to_item(tooltip)
-        with dpg.table(
-            header_row=False,
-            policy=dpg.mvTable_SizingFixedFit,
-            borders_innerH=False,
-            borders_innerV=False,
-            borders_outerH=False,
-            borders_outerV=False,
-        ) as table:
-            ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP_TABLE).bind_to_item(table)
-            dpg.add_table_column()
-            dpg.add_table_column()
-            for label, value in items:
-                with dpg.table_row():
-                    label_text = dpg.add_text(label)
-                    FontRegistry.bind_to_item(label_text, Font.REGULAR_SMALL)
-                    value_text = dpg.add_text(value)
-                    FontRegistry.bind_to_item(value_text, Font.REGULAR_SMALL)
+    dpg.delete_item(tag, children_only=True)
+    with dpg.table(
+        parent=tag,
+        header_row=False,
+        policy=dpg.mvTable_SizingFixedFit,
+        borders_innerH=False,
+        borders_innerV=False,
+        borders_outerH=False,
+        borders_outerV=False,
+    ) as table:
+        ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP_TABLE).bind_to_item(table)
+        dpg.add_table_column()
+        dpg.add_table_column()
+        for label, value in items:
+            with dpg.table_row():
+                label_text = dpg.add_text(label)
+                FontRegistry.bind_to_item(label_text, Font.REGULAR_SMALL)
+                value_text = dpg.add_text(value)
+                FontRegistry.bind_to_item(value_text, Font.REGULAR_SMALL)
 
 
 def show_status(message: str) -> None:

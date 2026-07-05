@@ -105,6 +105,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
             self._create_buttons()
             self._create_tree_window()
 
+        self._create_detail_tooltip(TAG_SEQUENCER_BROWSER_WINDOW_TREE)
         self.rebuild_tree()
 
     def _setup_handlers(self) -> None:
