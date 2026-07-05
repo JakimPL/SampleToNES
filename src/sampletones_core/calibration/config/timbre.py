@@ -1,8 +1,8 @@
-from typing import Annotated, Tuple
+from typing import Tuple
 
 from pydantic import BaseModel, Field
 
-DutyCycle = Annotated[float, Field(gt=0.0, lt=1.0)]
+from sampletones_synthesis.oscillators.pulse import DutyCycle
 
 
 class TimbreConfig(BaseModel, frozen=True):

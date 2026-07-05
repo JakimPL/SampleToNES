@@ -1,12 +1,29 @@
-from typing import List
+from typing import Final, List, Tuple
 
 import numpy as np
 
 from sampletones_core.audio.processing import clip_audio
 from sampletones_core.calibration.config.corpus import CorpusConfig
-from sampletones_core.calibration.config.transient import TransientConfig
+from sampletones_synthesis.envelopes.exponential_decay import ExponentialDecayEnvelope
+from sampletones_synthesis.envelopes.linear_attack import LinearAttackEnvelope
+from sampletones_synthesis.envelopes.linear_ramp import LinearRampEnvelope
+from sampletones_synthesis.envelopes.types import EnvelopeUnion
+from sampletones_synthesis.oscillators.exponential_glide import (
+    ExponentialGlideOscillator,
+)
+from sampletones_synthesis.oscillators.pulse import PulseOscillator
+from sampletones_synthesis.oscillators.sine import SineOscillator
+from sampletones_synthesis.oscillators.types import OscillatorUnion
+from sampletones_synthesis.oscillators.walk_noise import WalkNoiseOscillator
+from sampletones_synthesis.oscillators.white_noise import WhiteNoiseOscillator
+from sampletones_synthesis.voice.layer import Layer
+from sampletones_synthesis.voice.voice import Voice
 
 from .item import CorpusItem
+
+Probe = Tuple[str, str, Voice]
+
+UNIT_GAIN: Final[float] = 1.0
 
 
 def build_corpus(
@@ -20,9 +37,9 @@ def build_corpus(
     The corpus spans the signal classes the criterion must arbitrate between:
     steady tones across the pitch range, pulse timbres of several duty cycles,
     broadband noise, tone-plus-noise mixes, percussive transients, and a
-    crescendo probing the dynamic range. Every item is deterministic for a
-    fixed sample rate and configuration, so referee scores are reproducible
-    across runs.
+    crescendo probing the dynamic range. Probes render in a fixed order from
+    one seeded generator, so every item is deterministic for a fixed sample
+    rate and configuration and referee scores are reproducible across runs.
 
     Args:
         sample_rate: Sampling rate of the synthesized items in Hz.
@@ -32,116 +49,183 @@ def build_corpus(
         The corpus items, each carrying its category for per-class reporting.
     """
     generator = np.random.default_rng(config.seed)
-    time = np.arange(int(config.item_seconds * sample_rate)) / sample_rate
-
-    items: List[CorpusItem] = []
-    items.extend(_tones(time, config))
-    items.extend(_pulse_timbres(time, config))
-    items.extend(_noises(generator, time.shape[0], config))
-    items.extend(_tone_noise_mixes(generator, time, config))
-    items.extend(_transients(generator, time, sample_rate, config))
-    items.append(_crescendo(time, config))
-
-    return items
-
-
-def _tones(time: np.ndarray, config: CorpusConfig) -> List[CorpusItem]:
+    probes: List[Probe] = [
+        *_tone_probes(config),
+        *_timbre_probes(config),
+        *_noise_probes(config),
+        *_mix_probes(config),
+        *_transient_probes(config),
+        _crescendo_probe(config),
+    ]
     return [
         _item(
+            name,
+            category,
+            voice.render(sample_rate=sample_rate, generator=generator),
+            config,
+        )
+        for name, category, voice in probes
+    ]
+
+
+def _tone_probes(config: CorpusConfig) -> List[Probe]:
+    return [
+        (
             f"tone-{frequency:g}hz",
             "tone",
-            _sine(frequency, time),
-            config,
+            _voice(
+                config,
+                _layer(
+                    SineOscillator(
+                        kind="sine",
+                        frequency=frequency,
+                    )
+                ),
+            ),
         )
         for frequency in config.tone.frequencies
     ]
 
 
-def _pulse_timbres(time: np.ndarray, config: CorpusConfig) -> List[CorpusItem]:
-    phase = (config.timbre.frequency * time) % 1.0
+def _timbre_probes(config: CorpusConfig) -> List[Probe]:
     return [
-        _item(
+        (
             f"pulse-duty{duty_cycle:g}",
             "timbre",
-            np.where(phase < duty_cycle, 1.0, -1.0),
-            config,
+            _voice(
+                config,
+                _layer(
+                    PulseOscillator(
+                        kind="pulse",
+                        frequency=config.timbre.frequency,
+                        duty_cycle=duty_cycle,
+                    )
+                ),
+            ),
         )
         for duty_cycle in config.timbre.duty_cycles
     ]
 
 
-def _noises(generator: np.random.Generator, length: int, config: CorpusConfig) -> List[CorpusItem]:
-    """
-    White and dark noise probes.
-
-    The dark probe is a mean-centered random walk normalized to unit peak: its
-    spectrum falls off towards high frequencies, probing the opposite end of
-    the noise-color axis from the white probe.
-    """
-    white = config.noise.white_level * generator.standard_normal(length)
-    dark = np.cumsum(generator.standard_normal(length))
-    dark = dark - np.mean(dark)
-    dark = dark / np.max(np.abs(dark))
+def _noise_probes(config: CorpusConfig) -> List[Probe]:
     return [
-        _item("noise-white", "noise", white, config),
-        _item("noise-dark", "noise", dark, config),
+        (
+            "noise-white",
+            "noise",
+            _voice(
+                config,
+                _layer(
+                    WhiteNoiseOscillator(kind="white_noise"),
+                    gain=config.noise.white_level,
+                ),
+            ),
+        ),
+        (
+            "noise-dark",
+            "noise",
+            _voice(
+                config,
+                _layer(
+                    WalkNoiseOscillator(
+                        kind="walk_noise",
+                    )
+                ),
+            ),
+        ),
     ]
 
 
-def _tone_noise_mixes(generator: np.random.Generator, time: np.ndarray, config: CorpusConfig) -> List[CorpusItem]:
-    tone = _sine(config.reference_frequency, time)
+def _mix_probes(config: CorpusConfig) -> List[Probe]:
     return [
-        _item(
+        (
             f"mix-noise{noise_level:g}",
             "mix",
-            tone + noise_level * generator.standard_normal(time.shape[0]),
-            config,
+            _voice(
+                config,
+                _layer(
+                    SineOscillator(
+                        kind="sine",
+                        frequency=config.reference_frequency,
+                    )
+                ),
+                _layer(
+                    WhiteNoiseOscillator(kind="white_noise"),
+                    gain=noise_level,
+                ),
+            ),
         )
         for noise_level in config.mix.noise_levels
     ]
 
 
-def _transients(
-    generator: np.random.Generator,
-    time: np.ndarray,
-    sample_rate: int,
-    config: CorpusConfig,
-) -> List[CorpusItem]:
+def _transient_probes(config: CorpusConfig) -> List[Probe]:
+    transient = config.transient
+    sweep_start, sweep_end = transient.kick_sweep_frequencies
+    snare_decay = ExponentialDecayEnvelope(
+        kind="exponential_decay",
+        time_constant_seconds=transient.snare_decay_seconds,
+    )
+    kick_decay = ExponentialDecayEnvelope(
+        kind="exponential_decay",
+        time_constant_seconds=transient.kick_decay_seconds,
+    )
+    pluck_attack = LinearAttackEnvelope(
+        kind="linear_attack",
+        attack_seconds=transient.attack_seconds,
+    )
+    pluck_decay = ExponentialDecayEnvelope(
+        kind="exponential_decay",
+        time_constant_seconds=transient.attack_tone_decay_seconds,
+    )
+    kick_glide = ExponentialGlideOscillator(
+        kind="exponential_glide",
+        frequency_start=sweep_start,
+        frequency_end=sweep_end,
+        time_constant_seconds=transient.kick_decay_seconds,
+    )
+    reference_tone = SineOscillator(
+        kind="sine",
+        frequency=config.reference_frequency,
+    )
     return [
-        _item("transient-snare", "transient", _snare(generator, time, config.transient), config),
-        _item("transient-kick", "transient", _kick(time, sample_rate, config.transient), config),
-        _item("transient-pluck", "transient", _pluck(time, config), config),
+        (
+            "transient-snare",
+            "transient",
+            _voice(config, _layer(WhiteNoiseOscillator(kind="white_noise"), snare_decay)),
+        ),
+        ("transient-kick", "transient", _voice(config, _layer(kick_glide, kick_decay))),
+        ("transient-pluck", "transient", _voice(config, _layer(reference_tone, pluck_attack, pluck_decay))),
     ]
 
 
-def _snare(generator: np.random.Generator, time: np.ndarray, transient: TransientConfig) -> np.ndarray:
-    return generator.standard_normal(time.shape[0]) * np.exp(-time / transient.snare_decay_seconds)
+def _crescendo_probe(config: CorpusConfig) -> Probe:
+    return (
+        "dynamics-crescendo",
+        "dynamics",
+        _voice(
+            config,
+            _layer(
+                SineOscillator(kind="sine", frequency=config.reference_frequency),
+                LinearRampEnvelope(kind="linear_ramp"),
+            ),
+        ),
+    )
 
 
-def _kick(time: np.ndarray, sample_rate: int, transient: TransientConfig) -> np.ndarray:
-    """Sine glide between the sweep frequencies, decaying together with its pitch."""
-    sweep_start, sweep_end = transient.kick_sweep_frequencies
-    decay = np.exp(-time / transient.kick_decay_seconds)
-    sweep = sweep_end + (sweep_start - sweep_end) * decay
-    phase = 2.0 * np.pi * np.cumsum(sweep) / sample_rate
-    kick: np.ndarray = np.sin(phase) * decay
-    return kick
+def _layer(
+    oscillator: OscillatorUnion,
+    *envelopes: EnvelopeUnion,
+    gain: float = UNIT_GAIN,
+) -> Layer:
+    return Layer(oscillator=oscillator, envelopes=envelopes, gain=gain)
 
 
-def _pluck(time: np.ndarray, config: CorpusConfig) -> np.ndarray:
-    attack = np.minimum(time / config.transient.attack_seconds, 1.0)
-    envelope = attack * np.exp(-time / config.transient.attack_tone_decay_seconds)
-    pluck: np.ndarray = _sine(config.reference_frequency, time) * envelope
-    return pluck
-
-
-def _crescendo(time: np.ndarray, config: CorpusConfig) -> CorpusItem:
-    ramp = time / time[-1]
-    return _item("dynamics-crescendo", "dynamics", _sine(config.reference_frequency, time) * ramp, config)
-
-
-def _sine(frequency: float, time: np.ndarray) -> np.ndarray:
-    return np.sin(2.0 * np.pi * frequency * time)
+def _voice(config: CorpusConfig, *layers: Layer) -> Voice:
+    return Voice(
+        duration_seconds=config.item_seconds,
+        layers=layers,
+        filters=(),
+    )
 
 
 def _item(name: str, category: str, audio: np.ndarray, config: CorpusConfig) -> CorpusItem:
@@ -152,4 +236,8 @@ def _item(name: str, category: str, audio: np.ndarray, config: CorpusConfig) -> 
     range, and stored as float32, so every item shares one loudness convention.
     """
     scaled = clip_audio(config.amplitude * audio)
-    return CorpusItem(name=name, category=category, audio=scaled.astype(np.float32))
+    return CorpusItem(
+        name=name,
+        category=category,
+        audio=scaled.astype(np.float32),
+    )
