@@ -40,7 +40,7 @@ class TestReconstructionRestoreSuccess:
     def test_loads_and_keeps_session_pointer(self, reconstruction_coordinator: ReconstructionCoordinator) -> None:
         path = Path("lead.stn")
 
-        reconstruction_coordinator.restore(path)
+        reconstruction_coordinator.load_reconstruction_safely(path)
 
         reconstruction_coordinator._reconstruction_manager.load_reconstruction.assert_called_once_with(path)
         reconstruction_coordinator._session_manager.set_current_reconstruction.assert_not_called()
@@ -77,7 +77,7 @@ class TestReconstructionRestoreAbsorbsFailures(BaseTestSuite):
     ) -> None:
         reconstruction_coordinator._reconstruction_manager.load_reconstruction.side_effect = test_case.failure
 
-        reconstruction_coordinator.restore(Path("lead.stn"))
+        reconstruction_coordinator.load_reconstruction_safely(Path("lead.stn"))
 
         reconstruction_coordinator._session_manager.set_current_reconstruction.assert_called_once_with(
             test_case.expected
@@ -131,6 +131,6 @@ class TestReconstructionRestorePropagatesUnexpected:
         reconstruction_coordinator._reconstruction_manager.load_reconstruction.side_effect = RuntimeError("boom")
 
         with pytest.raises(RuntimeError):
-            reconstruction_coordinator.restore(Path("lead.stn"))
+            reconstruction_coordinator.load_reconstruction_safely(Path("lead.stn"))
 
         reconstruction_coordinator._session_manager.set_current_reconstruction.assert_not_called()

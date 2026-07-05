@@ -226,7 +226,7 @@ class ReconstructionCoordinator:
         else:
             load_reconstruction()
 
-    def restore(self, path: Path) -> None:
+    def load_reconstruction_safely(self, path: Path) -> None:
         """Loads the persisted reconstruction when the application starts.
 
         Startup restore happens automatically, so a failed load is recovered silently:

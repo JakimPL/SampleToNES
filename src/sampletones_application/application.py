@@ -356,11 +356,11 @@ class Application:
         self.audio_device_manager.set_current_device(audio_device)
         self.audio_device_manager.set_buffer_size(buffer_size)
 
-    def _try_load_current_reconstruction(self, path: Path) -> None:
-        self._reconstruction_coordinator.restore(path)
+    def _try_load_reconstruction(self, path: Path) -> None:
+        self._reconstruction_coordinator.load_reconstruction_safely(path)
 
     def _try_load_project(self, path: Path) -> None:
-        self._project_coordinator.restore(path)
+        self._project_coordinator.load_project_safely(path)
 
     def _try_load_library(self, path: Path) -> None:
         self._instructions_tab.load_library_safely(path)
@@ -438,7 +438,7 @@ class Application:
             project_path=project_path,
             on_load_library=self._try_load_library,
             on_load_project=self._try_load_project,
-            on_load_reconstruction=self._try_load_current_reconstruction,
+            on_load_reconstruction=self._try_load_reconstruction,
         )
 
     def _set_callbacks(self) -> None:

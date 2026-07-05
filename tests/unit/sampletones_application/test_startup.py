@@ -68,13 +68,19 @@ class TestStartupRestoreDelegation:
     """
 
     def test_project_restore_delegates_to_coordinator(self, app: Application) -> None:
-        with patch.object(app._project_coordinator, "restore") as restore:
-            app._try_load_current_project(Path("last.stp"))
+        with patch.object(app._project_coordinator, "load_project_safely") as load_project_safely:
+            app._try_load_project(Path("last.stp"))
 
-        restore.assert_called_once_with(Path("last.stp"))
+        load_project_safely.assert_called_once_with(Path("last.stp"))
 
     def test_reconstruction_restore_delegates_to_coordinator(self, app: Application) -> None:
-        with patch.object(app._reconstruction_coordinator, "restore") as restore:
-            app._try_load_current_reconstruction(Path("last.stn"))
+        with patch.object(app._reconstruction_coordinator, "load_reconstruction_safely") as load_reconstruction_safely:
+            app._try_load_reconstruction(Path("last.stn"))
 
-        restore.assert_called_once_with(Path("last.stn"))
+        load_reconstruction_safely.assert_called_once_with(Path("last.stn"))
+
+    def test_library_load_delegates_to_coordinator(self, app: Application) -> None:
+        with patch.object(app._instructions_tab, "load_library_safely") as load_library_safely:
+            app._try_load_library(Path("last.ins"))
+
+        load_library_safely.assert_called_once_with(Path("last.ins"))

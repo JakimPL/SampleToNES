@@ -28,7 +28,7 @@ class TestProjectRestoreSuccess:
     def test_loads_and_keeps_session_pointer(self, project_coordinator: ProjectCoordinator) -> None:
         path = Path("song.stp")
 
-        project_coordinator.restore(path)
+        project_coordinator.load_project_safely(path)
 
         project_coordinator._project_controller.load.assert_called_once_with(path)
         project_coordinator._session_manager.set_current_project.assert_not_called()
@@ -52,7 +52,7 @@ class TestProjectRestoreAbsorbsFailures(BaseTestSuite):
     ) -> None:
         project_coordinator._project_controller.load.side_effect = test_case.failure
 
-        project_coordinator.restore(Path("song.stp"))
+        project_coordinator.load_project_safely(Path("song.stp"))
 
         project_coordinator._session_manager.set_current_project.assert_called_once_with(test_case.expected)
 
@@ -62,6 +62,6 @@ class TestProjectRestorePropagatesUnexpected:
         project_coordinator._project_controller.load.side_effect = RuntimeError("boom")
 
         with pytest.raises(RuntimeError):
-            project_coordinator.restore(Path("song.stp"))
+            project_coordinator.load_project_safely(Path("song.stp"))
 
         project_coordinator._session_manager.set_current_project.assert_not_called()
