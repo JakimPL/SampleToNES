@@ -14,7 +14,6 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.constants.application import (
     SAMPLETONES_LIBRARY_DATA_VERSION,
     SAMPLETONES_NAME,
-    compare_versions,
 )
 from sampletones_shared.exceptions import (
     IncompatibleLibraryDataVersionError,
@@ -25,6 +24,7 @@ from sampletones_shared.exceptions import (
 )
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_binary
+from sampletones_shared.utils.version import compare_versions
 
 from .fragment import InstructionLibraryFragment
 from .item import LibraryItem
