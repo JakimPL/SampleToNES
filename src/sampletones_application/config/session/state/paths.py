@@ -20,7 +20,7 @@ class LastPaths(BaseModel):
     )
     instrument: Path = Field(
         default=Path.cwd(),
-        description="The last used FTI instrument file path.",
+        description="The last used FamiTracker instrument file path.",
     )
     audio: Path = Field(
         default=Path.cwd(),

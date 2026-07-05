@@ -61,7 +61,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_open_export_instruments_dialog: Optional[Callable[[str, str], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
 
-        self.on_locate_audio_missing: Optional[VoidCallback] = None
         self.on_locate_audio_not_found: Optional[PathCallback] = None
 
     def display_reconstruction(self) -> None:
@@ -75,17 +74,16 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._selected_generators = list(available_generators)
 
         reconstruction_file, original_audio = self._build_path_view_models(reconstruction_data)
-        self.call(
-            self.on_view_changed,
-            ReconstructionViewModel(
-                reconstruction_loaded=True,
-                available_generators=available_generators,
-                audio_source_enabled=True,
-                buttons_enabled=True,
-                reconstruction_file=reconstruction_file,
-                original_audio=original_audio,
-            ),
+        view_model = ReconstructionViewModel(
+            reconstruction_loaded=True,
+            available_generators=available_generators,
+            reconstruction_file=reconstruction_file,
+            original_audio=original_audio,
         )
+        if not view_model.audio_source_enabled:
+            self._current_audio_source = AudioSourceType.RECONSTRUCTION
+
+        self.call(self.on_view_changed, view_model)
         self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
@@ -118,8 +116,6 @@ class ReconstructionPanelLogic(CallbackMixin):
             ReconstructionViewModel(
                 reconstruction_loaded=False,
                 available_generators=frozenset(),
-                audio_source_enabled=False,
-                buttons_enabled=False,
                 reconstruction_file=empty_path,
                 original_audio=empty_path,
             ),
@@ -142,7 +138,7 @@ class ReconstructionPanelLogic(CallbackMixin):
     def request_export_instrument_dialog(self, generator_name: GeneratorName) -> None:
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
+            raise AssertionError("Expected reconstruction data to be loaded before exporting an instrument")
 
         feature_data = reconstruction_data.feature_data
         if generator_name not in feature_data.generators:
@@ -157,7 +153,7 @@ class ReconstructionPanelLogic(CallbackMixin):
     def request_export_instruments_dialog(self) -> None:
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting FTIs")
+            raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
 
         default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_instrument_path())
@@ -180,7 +176,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     def handle_export_instrument_confirmed(self, filepath: Path) -> None:
         if not self._reconstruction_data or not self._pending_generator_name:
-            logger.warning("No reconstruction data available for FTI export")
+            logger.warning("No reconstruction data available for instrument export")
             self._pending_generator_name = None
             return
 
@@ -195,7 +191,7 @@ class ReconstructionPanelLogic(CallbackMixin):
     def handle_export_instruments_confirmed(self, directory: Path) -> None:
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
-            logger.warning("No reconstruction data available for FTIs export")
+            logger.warning("No reconstruction data available for instruments export")
             return
 
         exports = [
@@ -223,7 +219,6 @@ class ReconstructionPanelLogic(CallbackMixin):
     def handle_locate_original_audio(self) -> None:
         path = self._reconstruction_manager.audio_filepath
         if path is None:
-            self.call(self.on_locate_audio_missing)
             return
 
         try:

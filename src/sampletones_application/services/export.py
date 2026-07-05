@@ -66,7 +66,7 @@ class ExportService(ServiceBase[ExportResult]):
         def task() -> None:
             try:
                 feature.save(filepath, instrument_name)
-                logger.info(f"Exported instrument feature to FTI: {logger.format_path(filepath)}")
+                logger.info(f"Exported FamiTracker instrument: {logger.format_path(filepath)}")
                 self._emit(ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=filepath))
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
@@ -84,7 +84,7 @@ class ExportService(ServiceBase[ExportResult]):
                 directory.mkdir(parents=True, exist_ok=True)
                 for filepath, instrument_name, feature in exports:
                     feature.save(filepath, instrument_name)
-                    logger.info(f"Exported instrument to FTI: {logger.format_path(filepath)}")
+                    logger.info(f"Exported FamiTracker instrument: {logger.format_path(filepath)}")
                 self._emit(ExportSuccess(kind=ExportKind.INSTRUMENTS, filepath=directory))
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error_with_traceback(exception, f"Failed to export instruments to: {directory}")

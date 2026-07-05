@@ -25,7 +25,6 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TABS,
 )
 from sampletones_application.constants.reconstructions import (
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_AUDIO_MISSING,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
 )
 from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
@@ -149,29 +148,29 @@ class ReconstructionsTabCoordinator:
             TextType.TITLE,
             ReconstructionsDetailsElements.EXPORT_STATUS_DIALOG,
         ]
-        _msg_export_fti_success = language_manager[
+        _msg_export_instrument_success = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.DETAILS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.EXPORT_FTI_SUCCESS,
+            ReconstructionsDetailsElements.EXPORT_INSTRUMENT_SUCCESS,
         ]
-        _msg_export_fti_failed = language_manager[
+        _msg_export_instrument_failed = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.DETAILS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.EXPORT_FTI_FAILED,
+            ReconstructionsDetailsElements.EXPORT_INSTRUMENT_FAILED,
         ]
-        _msg_export_ftis_success = language_manager[
+        _msg_export_instruments_success = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.DETAILS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.EXPORT_FTIS_SUCCESS,
+            ReconstructionsDetailsElements.EXPORT_INSTRUMENTS_SUCCESS,
         ]
-        _msg_export_ftis_failed = language_manager[
+        _msg_export_instruments_failed = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.DETAILS,
             TextType.MESSAGE,
-            ReconstructionsDetailsElements.EXPORT_FTIS_FAILED,
+            ReconstructionsDetailsElements.EXPORT_INSTRUMENTS_FAILED,
         ]
         _ttl_export_wav = language_manager[
             Page.RECONSTRUCTIONS,
@@ -190,18 +189,6 @@ class ReconstructionsTabCoordinator:
             Panel.RECONSTRUCTION,
             TextType.MESSAGE,
             ReconstructionPanelElements.EXPORT_WAV_FAILED,
-        ]
-        _msg_audio_missing = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.MESSAGE,
-            ReconstructionPanelElements.AUDIO_MISSING,
-        ]
-        _ttl_audio_missing = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.TITLE,
-            ReconstructionPanelElements.AUDIO_MISSING_DIALOG,
         ]
         _msg_locate_audio_failed = language_manager[
             Page.RECONSTRUCTIONS,
@@ -323,11 +310,6 @@ class ReconstructionsTabCoordinator:
             self._reconstruction_panel.open_export_instruments_dialog
         )
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._reconstruction_panel.open_export_wav_dialog
-        self._reconstruction_panel_logic.on_locate_audio_missing = lambda: dialogs.show_info(
-            TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_AUDIO_MISSING,
-            _msg_audio_missing,
-            _ttl_audio_missing,
-        )
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
             path, _msg_locate_audio_failed
         )
@@ -337,10 +319,10 @@ class ReconstructionsTabCoordinator:
                 result,
                 ttl_export_status=_ttl_export_status,
                 ttl_export_wav=_ttl_export_wav,
-                msg_export_fti_success=_msg_export_fti_success,
-                msg_export_fti_failed=_msg_export_fti_failed,
-                msg_export_ftis_success=_msg_export_ftis_success,
-                msg_export_ftis_failed=_msg_export_ftis_failed,
+                msg_export_instrument_success=_msg_export_instrument_success,
+                msg_export_instrument_failed=_msg_export_instrument_failed,
+                msg_export_instruments_success=_msg_export_instruments_success,
+                msg_export_instruments_failed=_msg_export_instruments_failed,
                 msg_export_wav_success=_msg_export_wav_success,
                 msg_export_wav_failed=_msg_export_wav_failed,
             )
@@ -375,10 +357,10 @@ class ReconstructionsTabCoordinator:
         *,
         ttl_export_status: str,
         ttl_export_wav: str,
-        msg_export_fti_success: str,
-        msg_export_fti_failed: str,
-        msg_export_ftis_success: str,
-        msg_export_ftis_failed: str,
+        msg_export_instrument_success: str,
+        msg_export_instrument_failed: str,
+        msg_export_instruments_success: str,
+        msg_export_instruments_failed: str,
         msg_export_wav_success: str,
         msg_export_wav_failed: str,
     ) -> None:
@@ -386,15 +368,15 @@ class ReconstructionsTabCoordinator:
             case ExportSuccess(kind=ExportKind.WAV, filepath=fp):
                 self._dialogs.show_message_with_path(ttl_export_wav, msg_export_wav_success, fp)
             case ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=fp):
-                self._dialogs.show_message_with_path(ttl_export_status, msg_export_fti_success, fp)
+                self._dialogs.show_message_with_path(ttl_export_status, msg_export_instrument_success, fp)
             case ExportSuccess(kind=ExportKind.INSTRUMENTS, filepath=fp):
-                self._dialogs.show_message_with_path(ttl_export_status, msg_export_ftis_success, fp)
+                self._dialogs.show_message_with_path(ttl_export_status, msg_export_instruments_success, fp)
             case ExportError(kind=ExportKind.WAV, exception=exception):
                 self._dialogs.show_error(exception, msg_export_wav_failed)
             case ExportError(kind=ExportKind.INSTRUMENT, exception=exception):
-                self._dialogs.show_error(exception, msg_export_fti_failed)
+                self._dialogs.show_error(exception, msg_export_instrument_failed)
             case ExportError(kind=ExportKind.INSTRUMENTS, exception=exception):
-                self._dialogs.show_error(exception, msg_export_ftis_failed)
+                self._dialogs.show_error(exception, msg_export_instruments_failed)
 
     def create_tab(self) -> None:
         with dpg.tab(

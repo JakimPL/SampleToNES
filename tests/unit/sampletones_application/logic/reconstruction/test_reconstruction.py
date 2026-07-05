@@ -221,6 +221,40 @@ class TestReconstructionPanelLogicClose:
 
 
 class TestReconstructionPanelLogicAudioSource:
+    def test_display_without_original_audio_switches_source_to_reconstruction(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction.detach_source()
+        mock_reconstruction_manager.current_reconstruction = ReconstructionData.from_reconstruction(
+            reconstruction, name="Sample"
+        )
+        panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
+        received: list[AudioSourceType] = []
+        panel_logic.on_waveform_source_changed = received.append
+
+        panel_logic.display_reconstruction()
+
+        assert received == [AudioSourceType.RECONSTRUCTION]
+
+    def test_display_with_original_audio_keeps_selected_source(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
+        received: list[AudioSourceType] = []
+        panel_logic.on_waveform_source_changed = received.append
+
+        panel_logic.display_reconstruction()
+
+        assert received == [AudioSourceType.ORIGINAL]
+
     def test_set_audio_source_changes_to_original(
         self,
         panel_logic: ReconstructionPanelLogic,
@@ -435,16 +469,14 @@ class TestReconstructionPanelLogicComputeAudio:
 
 
 class TestReconstructionPanelLogicLocateAudio:
-    def test_no_audio_filepath_fires_on_locate_audio_missing(
+    def test_no_audio_filepath_skips_locating(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
     ) -> None:
         mock_reconstruction_manager.audio_filepath = None
-        callback = MagicMock()
-        panel_logic.on_locate_audio_missing = callback
         panel_logic.handle_locate_original_audio()
-        callback.assert_called_once()
+        mock_reconstruction_manager.locate_original_audio.assert_not_called()
 
     def test_missing_audio_file_fires_on_locate_audio_not_found(
         self,

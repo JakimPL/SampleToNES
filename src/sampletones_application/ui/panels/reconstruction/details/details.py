@@ -33,8 +33,8 @@ from sampletones_application.constants.reconstructions import (
     SUF_RECONSTRUCTIONS_DETAILS_WINDOW,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR,
-    TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTI,
-    TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTIS,
+    TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENT,
+    TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENTS,
     TAG_RECONSTRUCTIONS_DETAILS_PANEL,
     TAG_RECONSTRUCTIONS_DETAILS_TABS_BAR,
     TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS,
@@ -127,17 +127,17 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             TextType.LABEL,
             ReconstructionsDetailsElements.RECONSTRUCTION_DETAILS,
         ]
-        self._lbl_export_fti = language_manager[
+        self._lbl_export_instrument = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.DETAILS,
             TextType.LABEL,
-            ReconstructionsDetailsElements.EXPORT_FTI_BUTTON,
+            ReconstructionsDetailsElements.EXPORT_INSTRUMENT_BUTTON,
         ]
-        self._lbl_export_ftis = language_manager[
+        self._lbl_export_instruments = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.DETAILS,
             TextType.LABEL,
-            ReconstructionsDetailsElements.EXPORT_FTIS_BUTTON,
+            ReconstructionsDetailsElements.EXPORT_INSTRUMENTS_BUTTON,
         ]
         self._lbl_copy = language_manager[
             Page.RECONSTRUCTIONS,
@@ -240,8 +240,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _create_export_button(self) -> None:
         dpg.add_separator()
         GUIButton(
-            tag=TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTIS,
-            label=self._lbl_export_ftis,
+            tag=TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENTS,
+            label=self._lbl_export_instruments,
             width=-1,
             callback=self._export_instruments,
             enabled=False,
@@ -311,11 +311,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             show=False,
         ):
             self.generator_plots[generator_name] = {}
-            button_tag = f"{TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTI}{TAG_SEPARATOR}{tab_tag}"
+            button_tag = f"{TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENT}{TAG_SEPARATOR}{tab_tag}"
             GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
-                label=self._lbl_export_fti,
+                label=self._lbl_export_instrument,
                 width=-1,
                 callback=self._handle_export_button_clicked,
                 user_data=generator_name,
@@ -401,7 +401,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
         dpg_configure_item(
-            TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTIS,
+            TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_INSTRUMENTS,
             show=is_loaded,
             enabled=is_loaded,
         )

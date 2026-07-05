@@ -29,12 +29,14 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_ADD_TO_SEQUENCER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_LOCATE_ORIGINAL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_ORIGINAL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_ADD_TO_SEQUENCER,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_LOCATE_ORIGINAL_AUDIO,
 )
 from sampletones_application.layout.general import PathColors
 from sampletones_application.layout.graphs import GraphsLayout
@@ -133,6 +135,12 @@ class GUIReconstructionPanel(GUIPanel):
             TextType.LABEL,
             ReconstructionPanelElements.LOCATE_AUDIO_BUTTON,
         ]
+        self._tooltip_locate_audio = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.TOOLTIP,
+            ReconstructionPanelElements.LOCATE_AUDIO_TOOLTIP,
+        ]
         self._lbl_add_to_sequencer = language_manager[
             Page.GLOBAL,
             Panel.CONTEXT,
@@ -146,7 +154,7 @@ class GUIReconstructionPanel(GUIPanel):
             TextType.TOOLTIP,
             ReconstructionPanelElements.ALREADY_IN_SEQUENCER_TOOLTIP,
         ]
-        self._lbl_original_audio = language_manager[
+        self._lbl_original_audio_radio = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.RECONSTRUCTION,
             TextType.LABEL,
@@ -188,11 +196,17 @@ class GUIReconstructionPanel(GUIPanel):
             TextType.TITLE,
             ReconstructionsDetailsElements.EXPORT_WAV_DIALOG,
         ]
-        self._ttl_export_fti = language_manager[
+        self._ttl_export_instrument = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.DETAILS,
             TextType.TITLE,
-            ReconstructionsDetailsElements.EXPORT_FTI_DIALOG,
+            ReconstructionsDetailsElements.EXPORT_INSTRUMENT_DIALOG,
+        ]
+        self._ttl_export_instruments = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TITLE,
+            ReconstructionsDetailsElements.EXPORT_INSTRUMENTS_DIALOG,
         ]
         self._lbl_pulse_1 = language_manager[
             Page.GLOBAL,
@@ -292,11 +306,15 @@ class GUIReconstructionPanel(GUIPanel):
 
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
-            enabled=view_model.buttons_enabled,
+            enabled=view_model.reconstruction_loaded,
         )
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
-            enabled=view_model.buttons_enabled,
+            enabled=view_model.locate_audio_enabled,
+        )
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_LOCATE_ORIGINAL_AUDIO,
+            show=view_model.show_locate_audio_hint,
         )
 
     def load_waveform_data(
@@ -344,7 +362,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def open_export_instrument_dialog(self, default_filename: str, default_path: str) -> None:
         with dpg.file_dialog(
-            label=self._ttl_export_fti,
+            label=self._ttl_export_instrument,
             width=self._file_dialog_width,
             height=self._file_dialog_height,
             callback=self._handle_export_instrument,
@@ -356,7 +374,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def open_export_instruments_dialog(self, default_filename: str, default_path: str) -> None:
         with dpg.file_dialog(
-            label=self._ttl_export_fti,
+            label=self._ttl_export_instruments,
             width=self._file_dialog_width,
             height=self._file_dialog_height,
             callback=self._handle_export_instruments,
@@ -466,7 +484,7 @@ class GUIReconstructionPanel(GUIPanel):
             dpg.add_radio_button(
                 items=[
                     self._lbl_reconstruction_radio,
-                    self._lbl_original_audio,
+                    self._lbl_original_audio_radio,
                 ],
                 tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
                 default_value=self._lbl_reconstruction_radio,
@@ -497,13 +515,23 @@ class GUIReconstructionPanel(GUIPanel):
         )
 
     def _create_locate_original_audio_button(self) -> None:
-        GUIButton(
-            label=self._lbl_locate_audio,
-            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
+        with dpg.group(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_LOCATE_ORIGINAL_AUDIO,
             parent=self.audio_tag,
-            callback=self._handle_locate_original_audio_button_click,
-            width=-1,
-            enabled=True,
+        ):
+            GUIButton(
+                label=self._lbl_locate_audio,
+                tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
+                parent=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_LOCATE_ORIGINAL_AUDIO,
+                callback=self._handle_locate_original_audio_button_click,
+                width=-1,
+                enabled=True,
+            )
+
+        attach_disabled_tooltip(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_LOCATE_ORIGINAL_AUDIO,
+            self._tooltip_locate_audio,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_LOCATE_ORIGINAL_AUDIO,
         )
 
     def _create_export_wav_button(self) -> None:
@@ -599,7 +627,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.call(self.on_generators_changed, selected_generators)
 
     def _on_audio_source_changed(self, sender: Sender, app_data: str) -> None:
-        if app_data == self._lbl_original_audio:
+        if app_data == self._lbl_original_audio_radio:
             audio_source = AudioSourceType.ORIGINAL
         else:
             audio_source = AudioSourceType.RECONSTRUCTION
