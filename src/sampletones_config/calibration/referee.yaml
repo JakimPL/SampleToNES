@@ -1,0 +1,6 @@
+window_sizes: [512, 2048, 8192]
+hop_divisor: 4
+band_count: 40
+low_frequency: 30.0
+energy_floor: 1.0e-10
+audibility_range_decibels: 60.0
