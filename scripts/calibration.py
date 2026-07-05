@@ -3,8 +3,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Final
 
-from sampletones_core.calibration.corpus import build_corpus, write_corpus
-from sampletones_core.calibration.referee import build_referees
+from sampletones_core.calibration.config.corpus import CorpusConfig
+from sampletones_core.calibration.corpus.synthesis import build_corpus
+from sampletones_core.calibration.corpus.writer import write_corpus
+from sampletones_core.calibration.referee.factory import build_referees
 from sampletones_core.calibration.report import write_csv, write_markdown
 from sampletones_core.calibration.runner import build_variants, evaluate_variants
 from sampletones_core.configs import Config
@@ -43,7 +45,7 @@ def main() -> None:
     temporal_weights = [float(value) for value in arguments.temporal_weights.split(",") if value.strip()]
 
     sample_rate = base.library.sample_rate
-    items = build_corpus(sample_rate)
+    items = build_corpus(sample_rate, config=CorpusConfig.load())
     item_paths = write_corpus(items, output / "corpus", sample_rate)
     referees = build_referees(sample_rate)
     variants = build_variants(base, methods, exponents, temporal_weights)

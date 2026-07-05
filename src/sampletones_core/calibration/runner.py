@@ -11,8 +11,8 @@ from sampletones_core.reconstructions import Reconstructor
 from sampletones_core.scripts.library import generate_library
 from sampletones_shared.logger import logger
 
-from .corpus import CorpusItem
-from .referee import Referee
+from .corpus.item import CorpusItem
+from .referee.protocol import Referee
 
 
 @dataclass(frozen=True)

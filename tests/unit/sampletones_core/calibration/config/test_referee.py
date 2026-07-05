@@ -1,12 +1,10 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any, Dict, Final, Tuple
 
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.calibration.config import RefereeConfig, load_referee_config
+from sampletones_core.calibration.config.referee import RefereeConfig
 
 VALID_FIELDS: Final[Dict[str, Any]] = {
     "window_sizes": (512, 2048),
@@ -38,11 +36,17 @@ INVALID_FIELD_CASES: Final[Tuple[InvalidFieldCase, ...]] = (
 
 class TestRefereeConfig:
     def test_packaged_configuration_loads(self) -> None:
-        config = load_referee_config()
+        config = RefereeConfig.load()
         assert isinstance(config, RefereeConfig)
 
     @pytest.mark.parametrize("case", INVALID_FIELD_CASES, ids=lambda case: case.name)
     def test_out_of_bounds_field_is_rejected(self, case: InvalidFieldCase) -> None:
         fields = {**VALID_FIELDS, case.field: case.value}
+        with pytest.raises(ValidationError):
+            RefereeConfig.model_validate(fields)
+
+    @pytest.mark.parametrize("field", sorted(VALID_FIELDS))
+    def test_missing_field_is_rejected(self, field: str) -> None:
+        fields = {key: value for key, value in VALID_FIELDS.items() if key != field}
         with pytest.raises(ValidationError):
             RefereeConfig.model_validate(fields)

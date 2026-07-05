@@ -1,13 +1,9 @@
-from pathlib import Path
-from typing import Final, Tuple
+from typing import Self, Tuple
 
 from pydantic import BaseModel, Field, PositiveInt
 
-import sampletones_config
-from sampletones_shared.utils.serialization import load_yaml
-
-CALIBRATION_CONFIG_DIRECTORY: Final[Path] = Path(sampletones_config.__file__).parent / "calibration"
-REFEREE_CONFIG_PATH: Final[Path] = CALIBRATION_CONFIG_DIRECTORY / "referee.yaml"
+from sampletones_core.calibration.paths import REFEREE_CONFIG_PATH
+from sampletones_shared.utils.serialization import load_yaml_model
 
 
 class RefereeConfig(BaseModel, frozen=True):
@@ -32,19 +28,15 @@ class RefereeConfig(BaseModel, frozen=True):
         description="Audible range below the reference's loudest band; quieter content saturates.",
     )
 
+    @classmethod
+    def load(cls) -> Self:
+        """
+        Load the packaged referee tuning.
 
-def load_referee_config() -> RefereeConfig:
-    """
-    Load the packaged referee tuning.
+        Returns:
+            The referee configuration validated from `sampletones_config/calibration/referee.yaml`.
 
-    Returns:
-        The referee configuration validated from `sampletones_config/calibration/referee.yaml`.
-
-    Raises:
-        TypeError: If the configuration file holds anything other than a mapping.
-    """
-    raw = load_yaml(REFEREE_CONFIG_PATH)
-    if not isinstance(raw, dict):
-        raise TypeError(f"Referee configuration {REFEREE_CONFIG_PATH} must contain a mapping, got {type(raw)}")
-
-    return RefereeConfig.model_validate(raw)
+        Raises:
+            TypeError: If the configuration file holds anything other than a mapping.
+        """
+        return load_yaml_model(REFEREE_CONFIG_PATH, cls)

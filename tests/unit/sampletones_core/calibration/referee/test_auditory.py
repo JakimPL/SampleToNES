@@ -1,12 +1,10 @@
-from __future__ import annotations
-
 from typing import Final
 
 import numpy as np
 import pytest
 
-from sampletones_core.calibration.config import load_referee_config
-from sampletones_core.calibration.referee import MultiResolutionAuditoryReferee
+from sampletones_core.calibration.config.referee import RefereeConfig
+from sampletones_core.calibration.referee.auditory import MultiResolutionAuditoryReferee
 
 SAMPLE_RATE: Final[int] = 22050
 SIGNAL_SECONDS: Final[float] = 1.0
@@ -17,11 +15,12 @@ def _tone(frequency: float, amplitude: float = 0.5) -> np.ndarray:
     return (amplitude * np.sin(2.0 * np.pi * frequency * time)).astype(np.float32)
 
 
-class TestMultiResolutionAuditoryReferee:
-    @pytest.fixture(scope="class")
-    def referee(self) -> MultiResolutionAuditoryReferee:
-        return MultiResolutionAuditoryReferee(SAMPLE_RATE, config=load_referee_config())
+@pytest.fixture(scope="module")
+def referee() -> MultiResolutionAuditoryReferee:
+    return MultiResolutionAuditoryReferee(SAMPLE_RATE, config=RefereeConfig.load())
 
+
+class TestMultiResolutionAuditoryReferee:
     def test_identical_signals_score_zero(self, referee: MultiResolutionAuditoryReferee) -> None:
         tone = _tone(440.0)
         assert referee.score(tone, tone) == pytest.approx(0.0, abs=1e-9)
