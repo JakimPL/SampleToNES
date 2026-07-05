@@ -8,11 +8,12 @@ from sampletones_core.calibration.referee.auditory import MultiResolutionAuditor
 
 SAMPLE_RATE: Final[int] = 22050
 SIGNAL_SECONDS: Final[float] = 1.0
+AMPLITUDE: Final[float] = 0.5
 
 
-def _tone(frequency: float, amplitude: float = 0.5) -> np.ndarray:
+def _tone(frequency: float) -> np.ndarray:
     time = np.arange(int(SIGNAL_SECONDS * SAMPLE_RATE)) / SAMPLE_RATE
-    return (amplitude * np.sin(2.0 * np.pi * frequency * time)).astype(np.float32)
+    return (AMPLITUDE * np.sin(2.0 * np.pi * frequency * time)).astype(np.float32)
 
 
 @pytest.fixture(scope="module")

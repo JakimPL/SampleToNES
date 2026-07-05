@@ -238,7 +238,15 @@ as a script:
 ```
 python scripts/calibration.py [--config <base>] [--methods fft,cqt]
     [--perceptual-exponents 0.5,1.0] [--temporal-weights 0.1,0.3]
+    [--generators pulse1,triangle,noise]
 ```
+
+The base configuration comes from `--config` when given; otherwise the saved
+application configuration is used, so a run inherits the current app settings —
+sample rate, gamma, selector and the rest. The channel set is the exception:
+calibration pins the generators itself (`--generators`, by default pulse 1 +
+triangle + noise), so every run reconstructs with an explicitly chosen channel
+set and results stay comparable across machines.
 
 It has three moving parts:
 
@@ -246,7 +254,10 @@ It has three moving parts:
   signals in six categories: steady tones across the pitch range, pulse timbres
   of several duty cycles, white and dark noise, tone-plus-noise mixes,
   percussive transients (snare, kick, pluck) and a crescendo probing the dynamic
-  range. Each category isolates one kind of decision the criterion must get
+  range. Each probe is a `sampletones_synthesis` voice — oscillators, envelopes
+  and filters composed from one shared, exactly-rendered configuration
+  vocabulary — built from the probe families in
+  `sampletones_config/calibration/corpus.yaml`. Each category isolates one kind of decision the criterion must get
   right — pitch, timbre, noise balance, attack sharpness, level tracking — and
   the fixed seed makes every run bit-identical, so scores are comparable across
   runs and code changes.
@@ -321,3 +332,4 @@ Package map:
 | audio I/O and level             | `sampletones_core.audio`                             |
 | tracker export                  | `sampletones_core.exporters`                         |
 | criterion calibration           | `sampletones_core.calibration`                       |
+| analytic waveform synthesis     | `sampletones_synthesis`                              |
