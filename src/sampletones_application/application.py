@@ -7,6 +7,7 @@ from sampletones_application.categories.elements.global_ import (
     DialogElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
+    GlobalTemplateElements,
     MenuElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
@@ -18,6 +19,7 @@ from sampletones_application.config.deployment.deployment import (
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
+    TAG_GLOBAL_DIALOG_ABOUT,
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
@@ -66,6 +68,7 @@ from sampletones_application.services import (
     RegenerationService,
 )
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
+from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.caret import CaretOverlay
@@ -80,7 +83,7 @@ from sampletones_application.utils.background import stop_background_workers
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
-from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.add_to_sequencer import (
     AddToSequencerViewModel,
@@ -100,6 +103,11 @@ from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.types.feature import FeatureValue
+from sampletones_shared.constants.application import (
+    SAMPLETONES_AUTHOR,
+    SAMPLETONES_GROUP,
+    SAMPLETONES_NAME_VERSION,
+)
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -177,6 +185,7 @@ class Application:
         self.history.on_history_changed = self._on_history_changed
 
         self.fps_timer: FPSTimer = FPSTimer()
+        self._audio_was_playing: bool = False
 
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
             layout=self.layout.settings,
@@ -387,29 +396,30 @@ class Application:
             open_project=self._project_coordinator.open_with_confirmation,
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
-            export_project_module=self._project_coordinator.export_module_dialog,
             project_properties=self._open_project_properties,
+            export_project_module=self._project_coordinator.export_module_dialog,
             close_project=self._project_coordinator.close_with_confirmation,
-            save_reconstruction=self._reconstruction_coordinator.save,
-            save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,
-            load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
-            close_reconstruction=self._reconstruction_coordinator.close_with_confirmation,
-            save_config=self._config_coordinator.save_dialog,
-            load_config=self._config_coordinator.load_dialog,
-            audio_settings=self._open_audio_settings,
             exit=self._on_close,
+            undo=self._sequencer_tab.undo,
+            redo=self._sequencer_tab.redo,
             reconstruct_file=self._reconstruct_file_dialog,
             reconstruct_directory=self._reconstruct_directory_dialog,
+            load_generation_settings=self._config_coordinator.load_dialog,
+            save_generation_settings=self._config_coordinator.save_dialog,
+            open_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
+            save_reconstruction=self._reconstruction_coordinator.save,
+            save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,
+            close_reconstruction=self._reconstruction_coordinator.close_with_confirmation,
             export_wav=self._export_reconstruction_wav_dialog,
-            export_ftis=self._export_reconstruction_ftis_dialog,
-            toggle_fullscreen=self._shell.toggle_fullscreen,
-            toggle_advanced_settings=self._toggle_advanced_settings,
+            export_instruments=self._export_reconstruction_instruments_dialog,
             play=self._play,
             play_from_start=self._play_from_start,
             stop=self._stop,
             toggle_autoplay=self._toggle_autoplay,
-            undo=self._sequencer_tab.undo,
-            redo=self._sequencer_tab.redo,
+            audio_settings=self._open_audio_settings,
+            toggle_advanced_settings=self._toggle_advanced_settings,
+            toggle_fullscreen=self._shell.toggle_fullscreen,
+            about=self._open_about_dialog,
         )
 
     def _setup_shell(self, bindings: ShortcutBindings) -> None:
@@ -594,7 +604,7 @@ class Application:
         if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_wav_dialog()
 
-    def _export_reconstruction_ftis_dialog(self) -> None:
+    def _export_reconstruction_instruments_dialog(self) -> None:
         if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_instruments_dialog()
 
@@ -646,7 +656,10 @@ class Application:
             logger.warning(f"Cannot edit unknown project sample: {sample_id}")
             return
 
-        self.reconstruction_manager.load_reconstruction_object(sample.reconstruction, name=sample.name)
+        self.reconstruction_manager.load_reconstruction_object(
+            sample.reconstruction,
+            name=sample.name,
+        )
 
     def _regenerate_instrument(
         self,
@@ -655,7 +668,12 @@ class Application:
         feature_key: FeatureKey,
         feature_value: FeatureValue,
     ) -> None:
-        self._reconstruction_coordinator.regenerate_instrument(generator_name, features, feature_key, feature_value)
+        self._reconstruction_coordinator.regenerate_instrument(
+            generator_name,
+            features,
+            feature_key,
+            feature_value,
+        )
 
     def _on_reconstruction_updated(self, outcome: RegeneratedInstrument) -> None:
         """Records a reconstruction edit against the project when it owns the sample.
@@ -681,7 +699,10 @@ class Application:
             ),
             coalesce=(sample.id,),
         ):
-            self.project_controller.replace_sample_reconstruction(sample.id, outcome.reconstruction)
+            self.project_controller.replace_sample_reconstruction(
+                sample.id,
+                outcome.reconstruction,
+            )
 
     def _open_project_properties(self) -> None:
         """Opens the properties dialog seeded with the current project's info.
@@ -724,6 +745,43 @@ class Application:
             AudioSettingsViewModel.from_device_manager(self.audio_device_manager),
         )
 
+    def _open_about_dialog(self) -> None:
+        """Presents the application name, version, description, and authorship in a modal notice."""
+        description = self.language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.ABOUT_DESCRIPTION,
+        ]
+        author_line = self.language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TEMPLATE,
+            GlobalTemplateElements.ABOUT_AUTHOR,
+        ].format(
+            author=SAMPLETONES_AUTHOR,
+            group=SAMPLETONES_GROUP,
+        )
+
+        def content(parent: str) -> None:
+            name_text = dpg.add_text(SAMPLETONES_NAME_VERSION, parent=parent)
+            dpg.add_separator(parent=parent)
+            FontRegistry.bind_to_item(name_text, Font.BOLD_LARGE)
+            dpg.add_text(description, parent=parent, wrap=self.dialogs.default_wrap)
+            author_text = dpg.add_text(author_line, parent=parent)
+            FontRegistry.bind_to_item(author_text, Font.ITALIC)
+
+        self.dialogs.show_modal(
+            get_dialog_tag(TAG_GLOBAL_DIALOG_ABOUT),
+            self.language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.ABOUT,
+            ],
+            content,
+        )
+
     def _refresh_audio_devices(self) -> None:
         """Re-enumerates the output devices and repaints the open dialog in place."""
         self.audio_device_manager.refresh_devices()
@@ -731,7 +789,12 @@ class Application:
             AudioSettingsViewModel.from_device_manager(self.audio_device_manager),
         )
 
-    def _apply_audio_settings(self, device_index: int, sample_rate: SampleRate, buffer_size: BufferSize) -> None:
+    def _apply_audio_settings(
+        self,
+        device_index: int,
+        sample_rate: SampleRate,
+        buffer_size: BufferSize,
+    ) -> None:
         """Applies the dialog's committed device, sample rate, and buffer size."""
         self.audio_device_manager.configure_device(device_index, sample_rate)
         self.audio_device_manager.set_buffer_size(buffer_size)
@@ -782,9 +845,17 @@ class Application:
                 ordinal=format(ordinal, SEQUENCER_SAMPLE_ORDINAL_FORMAT),
                 name=sample.name,
             )
-            return ReconstructionTitlePart(name=name, unsaved_changes=unsaved_changes, included=True)
+            return ReconstructionTitlePart(
+                name=name,
+                unsaved_changes=unsaved_changes,
+                included=True,
+            )
 
-        return ReconstructionTitlePart(name=reconstruction_name, unsaved_changes=unsaved_changes, included=False)
+        return ReconstructionTitlePart(
+            name=reconstruction_name,
+            unsaved_changes=unsaved_changes,
+            included=False,
+        )
 
     def _update_title(self) -> None:
         untitled = self.language_manager[
@@ -841,7 +912,7 @@ class Application:
     def _set_current_tab(self, tab: Tab) -> None:
         self._shell.set_current_tab(tab)
 
-    def _get_current_player(self) -> Optional[AudioPlayerProtocol]:
+    def _get_current_player(self) -> AudioPlayerProtocol:
         return self._shell.get_current_player()
 
     def _persist_application_state(self) -> None:
@@ -884,8 +955,10 @@ class Application:
     def _on_close(self) -> None:
         if self.project_manager.is_dirty:
             self._project_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
+
         elif self._reconstruction_coordinator.is_unsaved():
             self._reconstruction_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
+
         elif self._is_converter_active():
             self._show_confirmation_dialog(
                 self.language_manager[
@@ -901,6 +974,7 @@ class Application:
                     DialogElements.EXIT,
                 ],
             )
+
         elif self._is_library_generating():
             self._show_confirmation_dialog(
                 self.language_manager[
@@ -916,6 +990,7 @@ class Application:
                     DialogElements.EXIT,
                 ],
             )
+
         else:
             self._exit_application()
 
@@ -939,6 +1014,21 @@ class Application:
         delta_time = dpg.get_delta_time()
         self._shell.update_fps(delta_time)
         self._shell.update_status_bar(delta_time)
+        self._refresh_playback_menu_state()
+
+    def _refresh_playback_menu_state(self) -> None:
+        """Keeps the playback menu entries in step with the output device.
+
+        Tree previews drive the output device directly, so the menu learns about
+        preview playback starting or finishing by sampling the device once per
+        frame and refreshing when the playing state flips.
+        """
+        playing = self.audio_device_manager.is_playing()
+        if playing == self._audio_was_playing:
+            return
+
+        self._audio_was_playing = playing
+        self._update_menu()
 
     def frame(self) -> None:
         dpg.render_dearpygui_frame()
@@ -962,11 +1052,13 @@ class Application:
             stop_background_workers()
             self._main_tab.cleanup()
             save_failed = False
+
             try:
                 self.config_manager.save_config()
             except OSError as exception:
                 logger.error_with_traceback(exception, "Failed to save configuration on exit")
                 save_failed = True
+
             self._persist_application_state()
             self.audio_device_manager.terminate()
             dpg.destroy_context()

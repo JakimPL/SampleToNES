@@ -247,47 +247,53 @@ TAG_GLOBAL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION = TagName(
     Widget.DIALOG,
     "load_unsaved_reconstruction",
 )
-TAG_GLOBAL_MENU_ITEM_PROJECT_NEW = TagName(
+TAG_GLOBAL_DIALOG_ABOUT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
-    Widget.MENU,
-    "item_project_new",
+    Widget.DIALOG,
+    "about",
 )
-TAG_GLOBAL_MENU_ITEM_PROJECT_OPEN = TagName(
+TAG_GLOBAL_MENU_ITEM_FILE_NEW_PROJECT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_project_open",
+    "item_file_new_project",
 )
-TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE = TagName(
+TAG_GLOBAL_MENU_ITEM_FILE_OPEN_PROJECT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_project_save",
+    "item_file_open_project",
 )
-TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS = TagName(
+TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_project_save_as",
+    "item_file_save_project",
 )
-TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE = TagName(
+TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_project_export_module",
+    "item_file_save_project_as",
 )
-TAG_GLOBAL_MENU_ITEM_PROJECT_PROPERTIES = TagName(
+TAG_GLOBAL_MENU_ITEM_FILE_PROJECT_PROPERTIES = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_project_properties",
+    "item_file_project_properties",
 )
-TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE = TagName(
+TAG_GLOBAL_MENU_ITEM_FILE_EXPORT_MODULE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_project_close",
+    "item_file_export_module",
+)
+TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_file_close_project",
 )
 TAG_GLOBAL_MENU_ITEM_EDIT_UNDO = TagName(
     Page.GLOBAL,
@@ -343,11 +349,11 @@ TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS = TagName(
     Widget.MENU,
     "item_reconstruction_save_as",
 )
-TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOAD = TagName(
+TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_reconstruction_load",
+    "item_reconstruction_open",
 )
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE = TagName(
     Page.GLOBAL,
@@ -355,17 +361,17 @@ TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE = TagName(
     Widget.MENU,
     "item_reconstruction_close",
 )
-TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV = TagName(
+TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_reconstruction_export_to_wav",
+    "item_reconstruction_export_wav",
 )
-TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS = TagName(
+TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_reconstruction_export_to_ftis",
+    "item_reconstruction_export_instruments",
 )
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = TagName(
     Page.GLOBAL,

@@ -21,6 +21,10 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
+from sampletones_application.coordinators.playback import (
+    AudioPlayerProtocol,
+    PreviewPlayer,
+)
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
@@ -152,6 +156,7 @@ class MainTabCoordinator:
             ExplorerElements.CONVERTER_RUNNING_DIALOG,
         ]
 
+        self._preview_player: PreviewPlayer = PreviewPlayer(audio_device_manager)
         self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager, language_manager=language_manager)
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
@@ -392,6 +397,10 @@ class MainTabCoordinator:
                         no_scroll_with_mouse=True,
                     ):
                         self._main_panel.create_panel()
+
+    @property
+    def player(self) -> AudioPlayerProtocol:
+        return self._preview_player
 
     def is_converter_active(self) -> bool:
         return self._converter_logic.is_active

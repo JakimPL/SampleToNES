@@ -57,29 +57,30 @@ class ShortcutBindings:
     open_project: Callback
     save_project: Callback
     save_project_as: Callback
-    export_project_module: Callback
     project_properties: Callback
+    export_project_module: Callback
     close_project: Callback
-    save_reconstruction: Callback
-    save_reconstruction_as: Callback
-    load_reconstruction: Callback
-    close_reconstruction: Callback
-    save_config: Callback
-    load_config: Callback
-    audio_settings: Callback
     exit: Callback
+    undo: Callback
+    redo: Callback
     reconstruct_file: Callback
     reconstruct_directory: Callback
+    load_generation_settings: Callback
+    save_generation_settings: Callback
+    open_reconstruction: Callback
+    save_reconstruction: Callback
+    save_reconstruction_as: Callback
+    close_reconstruction: Callback
     export_wav: Callback
-    export_ftis: Callback
-    toggle_fullscreen: Callback
-    toggle_advanced_settings: Callback
+    export_instruments: Callback
     play: Callback
     play_from_start: Callback
     stop: Callback
     toggle_autoplay: Callback
-    undo: Callback
-    redo: Callback
+    audio_settings: Callback
+    toggle_advanced_settings: Callback
+    toggle_fullscreen: Callback
+    about: Callback
 
 
 class ApplicationShell:
@@ -206,9 +207,9 @@ class ApplicationShell:
             bindings.save_reconstruction_as,
         )
         self._shortcut_manager.register(
-            ShortcutId.LOAD_RECONSTRUCTION,
+            ShortcutId.OPEN_RECONSTRUCTION,
             Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.ALT)),
-            bindings.load_reconstruction,
+            bindings.open_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.CLOSE_RECONSTRUCTION,
@@ -218,12 +219,12 @@ class ApplicationShell:
         self._shortcut_manager.register(
             ShortcutId.SAVE_GENERATION_SETTINGS,
             Shortcut(),
-            bindings.save_config,
+            bindings.save_generation_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.LOAD_GENERATION_SETTINGS,
             Shortcut(),
-            bindings.load_config,
+            bindings.load_generation_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.AUDIO_SETTINGS,
@@ -251,9 +252,9 @@ class ApplicationShell:
             bindings.export_wav,
         )
         self._shortcut_manager.register(
-            ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
+            ShortcutId.EXPORT_RECONSTRUCTION_INSTRUMENTS,
             Shortcut(dpg.mvKey_I, (Modifier.CTRL,)),
-            bindings.export_ftis,
+            bindings.export_instruments,
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_FULLSCREEN,
@@ -298,6 +299,11 @@ class ApplicationShell:
         self._shortcut_manager.register_alias(
             ShortcutId.REDO,
             Shortcut(dpg.mvKey_Z, (Modifier.CTRL, Modifier.SHIFT)),
+        )
+        self._shortcut_manager.register(
+            ShortcutId.ABOUT_DIALOG,
+            Shortcut(),
+            bindings.about,
         )
 
         self._shortcut_manager.bind_all()
@@ -411,16 +417,16 @@ class ApplicationShell:
         except KeyError as exception:
             raise SystemError(f"Current tab alias {alias} does not correspond to any known Tab.") from exception
 
-    def get_current_player(self) -> Optional[AudioPlayerProtocol]:
+    def get_current_player(self) -> AudioPlayerProtocol:
         match self.get_current_tab():
+            case Tab.MAIN:
+                return self._main_tab.player
             case Tab.RECONSTRUCTIONS:
                 return self._reconstructions_tab.player
             case Tab.INSTRUCTIONS:
                 return self._instructions_tab.player
             case Tab.SEQUENCER:
                 return self._sequencer_tab.player
-            case _:
-                return None
 
     def update_fps(self, delta_time: float) -> None:
         fps = self._fps_timer.update(delta_time)

@@ -215,6 +215,11 @@ class DialogsRenderer:
             GlobalMessageElements.CONFIGURATION_RECOVERY_PATH_PREFIX,
         ]
 
+    @property
+    def default_wrap(self) -> int:
+        """Text wrap width matching the default dialog width, for caller-built content."""
+        return self._default_wrap
+
     def show_modal(
         self,
         tag: str,
