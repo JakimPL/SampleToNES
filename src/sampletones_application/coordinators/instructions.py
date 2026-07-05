@@ -54,7 +54,8 @@ from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey
-from sampletones_shared.exceptions import LibraryDisplayError
+from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
+from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -378,6 +379,12 @@ class InstructionsTabCoordinator:
     def load_library_file(self, filepath: Path) -> None:
         self._instruction_panel.close_instruction()
         self._library_logic.load_library_file(filepath)
+
+    def load_library_safely(self, filepath: Path) -> None:
+        try:
+            self.load_library_file(filepath)
+        except (SampleToNESError, OSError) as exception:
+            logger.warning(f"Could not load library from {logger.format_path(filepath)}: {exception}")
 
     def close_instruction(self) -> None:
         self._instruction_panel.close_instruction()

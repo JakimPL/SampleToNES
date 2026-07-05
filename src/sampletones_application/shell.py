@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
@@ -352,13 +353,29 @@ class ApplicationShell:
 
     def restore_current_items(
         self,
+        library_path: Optional[Path] = None,
+        reconstruction_path: Optional[Path] = None,
+        project_path: Optional[Path] = None,
+        *,
+        on_load_library: PathCallback,
         on_load_project: PathCallback,
         on_load_reconstruction: PathCallback,
     ) -> None:
         current_tab = self._session_manager.load_current_tab()
         self.set_current_tab(current_tab)
-        self._restore_current_project(on_load_project)
-        self._restore_current_reconstruction(on_load_reconstruction)
+
+        if library_path is not None:
+            on_load_library(library_path)
+
+        if reconstruction_path is not None:
+            on_load_reconstruction(reconstruction_path)
+        else:
+            self._restore_current_reconstruction(on_load_reconstruction)
+
+        if project_path is not None:
+            on_load_project(project_path)
+        else:
+            self._restore_current_project(on_load_project)
 
     def _restore_current_project(self, on_load_project: PathCallback) -> None:
         current_project_path = self._session_manager.current_project

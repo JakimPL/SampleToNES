@@ -3,9 +3,12 @@ import multiprocessing
 from argparse import RawTextHelpFormatter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sampletones_core.paths import EXT_FILES_AUDIO
+
+if TYPE_CHECKING:
+    from sampletones_core.configs import Config
 
 HELP_PATH = """Path to either:
     * audio file path/directory to reconstruct
@@ -19,9 +22,6 @@ HELP_CONFIG = """Path to a configuration .json file
 
 HELP_GENERATE = """Generate library data for given configuration
     (using default one if not provided)"""
-
-HELP_GENERATE_LIBRARY = """Generate library data using the given reconstruction config path.
-    If no path is provided, the default configuration is used."""
 
 HELP_HELP = """Show this help message and exit"""
 
@@ -37,7 +37,12 @@ class ProgramArguments:
     help: bool = False
     version: bool = False
     generate: bool = False
-    generate_library: Optional[str] = None
+
+
+def _load_config(config_path: Optional[Path]) -> "Config":
+    from sampletones_core.configs import Config
+
+    return Config.load(config_path) if config_path else Config.default()
 
 
 def main() -> None:
@@ -73,15 +78,6 @@ def main() -> None:
         help=HELP_GENERATE,
     )
     parser.add_argument(
-        "--generate-library",
-        "-G",
-        nargs="?",
-        default=None,
-        const="",
-        metavar="CONFIG",
-        help=HELP_GENERATE_LIBRARY,
-    )
-    parser.add_argument(
         "--help",
         "-h",
         action="store_true",
@@ -106,86 +102,72 @@ def main() -> None:
 
         return print(SAMPLETONES_NAME_VERSION)
 
-    exclusive_actions = sum(
-        [
-            bool(args.path),
-            args.generate,
-            args.generate_library is not None,
-        ]
-    )
-    if exclusive_actions > 1:
-        raise RuntimeError("Only one action can be called at once.")
-
     config_path = Path(args.config) if args.config else None
     output_path = Path(args.output) if args.output else None
 
-    from sampletones_core.configs import Config
     from sampletones_core.paths import (
         EXT_FILE_LIBRARY,
+        EXT_FILE_PROJECT,
         EXT_FILE_RECONSTRUCTION,
     )
-    from sampletones_shared.logger import logger
-
-    if args.generate_library is not None:
-        from sampletones_core.scripts.library import generate_library
-
-        library_config_path = Path(args.generate_library) if args.generate_library else None
-        config = Config.load(library_config_path) if library_config_path else Config.default()
-        return generate_library(config)
-
-    config = Config.load(config_path) if config_path else Config.default()
 
     if args.generate:
         from sampletones_core.scripts.library import generate_library
 
-        if output_path is not None:
-            logger.warning("Output path is ignored when generating a library")
-
+        config = _load_config(config_path)
         return generate_library(config)
+
+    project_path: Optional[Path] = None
+    library_path: Optional[Path] = None
+    reconstruction_path: Optional[Path] = None
 
     if args.path:
         path = Path(args.path)
         if path.is_file():
             suffix = path.suffix.lower()
-            if suffix in EXT_FILES_AUDIO:
+            if suffix == EXT_FILE_PROJECT:
+                project_path = path
+
+            elif suffix == EXT_FILE_RECONSTRUCTION:
+                reconstruction_path = path
+
+            elif suffix == EXT_FILE_LIBRARY:
+                library_path = path
+
+            elif suffix in EXT_FILES_AUDIO:
                 from sampletones_core.scripts.reconstruction import (
                     reconstruct_file,
                 )
 
+                config = _load_config(config_path)
                 return reconstruct_file(path, config, output_path)
 
-            if suffix == EXT_FILE_RECONSTRUCTION:
-                from sampletones_core.scripts.reconstruction import (
-                    load_reconstruction,
+            else:
+                raise RuntimeError(
+                    f"Unsupported file extension, only audio ({', '.join(EXT_FILES_AUDIO)}),"
+                    f"{EXT_FILE_RECONSTRUCTION} reconstruction, "
+                    f"and {EXT_FILE_LIBRARY} library files are supported."
                 )
 
-                return load_reconstruction(path, config_path)
-
-            if suffix == EXT_FILE_LIBRARY:
-                if output_path is not None:
-                    logger.warning("Output path is ignored when loading a library")
-                from sampletones_core.scripts.library import load_library
-
-                return load_library(path, config_path)
-
-            raise RuntimeError(
-                f"Unsupported file extension, only audio ({', '.join(EXT_FILES_AUDIO)}),"
-                f"{EXT_FILE_RECONSTRUCTION} reconstruction, "
-                f"and {EXT_FILE_LIBRARY} library files are supported."
-            )
-
-        if path.is_dir():
+        elif path.is_dir():
             from sampletones_core.scripts.reconstruction import (
                 reconstruct_directory,
             )
 
+            config = _load_config(config_path)
             return reconstruct_directory(path, config)
 
-        raise RuntimeError("Unsupported path type or file extension.")
+        else:
+            raise RuntimeError("Unsupported path type or file extension.")
 
     from sampletones.run import run_application
 
-    return run_application(config_path)
+    return run_application(
+        config_path,
+        library_path=library_path,
+        reconstruction_path=reconstruction_path,
+        project_path=project_path,
+    )
 
 
 if __name__ == "__main__":

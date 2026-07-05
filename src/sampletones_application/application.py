@@ -12,9 +12,8 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.deployment import (
+from sampletones_application.config.deployment.deployment import (
     DeploymentConfig,
-    load_deployment_config,
 )
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
@@ -123,13 +122,21 @@ class Application:
     - It persists session state on exit.
     """
 
-    def __init__(self, config_path: Optional[Path] = None) -> None:
-        self.deployment: DeploymentConfig = load_deployment_config(DEPLOYMENT_CONFIG_PATH)
-        logger.set_level(self.deployment.log_level.to_logging_level())
+    def __init__(
+        self,
+        config_path: Optional[Path] = None,
+        library_path: Optional[Path] = None,
+        reconstruction_path: Optional[Path] = None,
+        project_path: Optional[Path] = None,
+    ) -> None:
+        self.deployment: DeploymentConfig = DeploymentConfig.load(DEPLOYMENT_CONFIG_PATH)
+        self._set_logging_level()
+
         self.layout: LayoutConfig = load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
+        self._setup_gui_elements()
+
         self.language_manager: LanguageManager = LanguageManager(LANG_EN)
-        FontRegistry.setup(self.layout.general.fonts)
-        setup_themes(THEME_DIRECTORY)
+
         self.status_bar = GUIStatusBar(
             display_time=self.layout.behavior.ui.status_bar_display_time,
         )
@@ -331,8 +338,17 @@ class Application:
             instructions_tab=self._instructions_tab,
         )
         self._setup_gui()
+        self._restore_current_items(
+            library_path=library_path,
+            reconstruction_path=reconstruction_path,
+            project_path=project_path,
+        )
+
         self._config_coordinator.present_pending_load_outcomes()
         self._load_settings()
+
+    def _set_logging_level(self) -> None:
+        logger.set_level(self.deployment.log_level.to_logging_level())
 
     def _load_settings(self) -> None:
         audio_device = self.session_manager.current_audio_device
@@ -343,8 +359,15 @@ class Application:
     def _try_load_current_reconstruction(self, path: Path) -> None:
         self._reconstruction_coordinator.restore(path)
 
-    def _try_load_current_project(self, path: Path) -> None:
+    def _try_load_project(self, path: Path) -> None:
         self._project_coordinator.restore(path)
+
+    def _try_load_library(self, path: Path) -> None:
+        self._instructions_tab.load_library_safely(path)
+
+    def _setup_gui_elements(self) -> None:
+        FontRegistry.setup(self.layout.general.fonts)
+        setup_themes(THEME_DIRECTORY)
 
     def _setup_gui(self) -> None:
         bindings = self._create_shortcut_bindings()
@@ -357,7 +380,6 @@ class Application:
         self.config_manager.update_gui()
         self._update_menu()
         self._update_add_to_sequencer_state()
-        self._restore_current_items()
 
     def _create_shortcut_bindings(self) -> ShortcutBindings:
         return ShortcutBindings(
@@ -404,10 +426,19 @@ class Application:
             root_window_tag=TAG_GLOBAL_WINDOW_MAIN,
         )
 
-    def _restore_current_items(self) -> None:
+    def _restore_current_items(
+        self,
+        library_path: Optional[Path],
+        reconstruction_path: Optional[Path],
+        project_path: Optional[Path],
+    ) -> None:
         self._shell.restore_current_items(
-            self._try_load_current_project,
-            self._try_load_current_reconstruction,
+            library_path=library_path,
+            reconstruction_path=reconstruction_path,
+            project_path=project_path,
+            on_load_library=self._try_load_library,
+            on_load_project=self._try_load_project,
+            on_load_reconstruction=self._try_load_current_reconstruction,
         )
 
     def _set_callbacks(self) -> None:
