@@ -218,3 +218,41 @@ TAG_SEQUENCER_THEME_TABLE_PATTERN = TagName(
     Widget.THEME,
     "table_pattern",
 )
+
+
+TAG_SEQUENCER_HISTORY_PANEL = TagName(
+    Page.SEQUENCER,
+    Panel.HISTORY,
+    Widget.PANEL,
+    "history",
+)
+TAG_SEQUENCER_HISTORY_GROUP_ACTIONS = TagName(
+    Page.SEQUENCER,
+    Panel.HISTORY,
+    Widget.GROUP,
+    "actions",
+)
+TAG_SEQUENCER_HISTORY_BUTTON_UNDO = TagName(
+    Page.SEQUENCER,
+    Panel.HISTORY,
+    Widget.BUTTON,
+    "undo",
+)
+TAG_SEQUENCER_HISTORY_BUTTON_REDO = TagName(
+    Page.SEQUENCER,
+    Panel.HISTORY,
+    Widget.BUTTON,
+    "redo",
+)
+TAG_SEQUENCER_HISTORY_WINDOW_LIST = TagName(
+    Page.SEQUENCER,
+    Panel.HISTORY,
+    Widget.WINDOW,
+    "list",
+)
+TAG_SEQUENCER_HISTORY_THEME_LIST = TagName(
+    Page.SEQUENCER,
+    Panel.HISTORY,
+    Widget.THEME,
+    "list",
+)

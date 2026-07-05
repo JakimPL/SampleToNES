@@ -7,6 +7,8 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
+    TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
+    TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
@@ -101,6 +103,24 @@ class MenuBar:
             Panel.MENU,
             TextType.LABEL,
             MenuElements.ITEM_PROJECT_CLOSE,
+        ]
+        self._lbl_group_edit = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.GROUP_EDIT,
+        ]
+        self._lbl_item_edit_undo = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_EDIT_UNDO,
+        ]
+        self._lbl_item_edit_redo = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_EDIT_REDO,
         ]
         self._lbl_group_reconstruction = language_manager[
             Page.GLOBAL,
@@ -285,6 +305,19 @@ class MenuBar:
                     label=self._lbl_item_project_close,
                     enabled=state.project_open,
                 )
+            with dpg.menu(label=self._lbl_group_edit):
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.UNDO,
+                    tag=TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
+                    label=self._lbl_item_edit_undo,
+                    enabled=state.undo_enabled,
+                )
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.REDO,
+                    tag=TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
+                    label=self._lbl_item_edit_redo,
+                    enabled=state.redo_enabled,
+                )
             with dpg.menu(label=self._lbl_group_reconstruction):
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_RECONSTRUCTION,
@@ -411,6 +444,14 @@ class MenuBar:
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
             enabled=state.project_open,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
+            enabled=state.undo_enabled,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
+            enabled=state.redo_enabled,
         )
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,

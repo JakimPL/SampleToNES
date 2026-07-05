@@ -74,7 +74,7 @@ class AudioPlayer(CallbackMixin):
                 audio,
                 priority=PlaybackPriority.NORMAL,
             )
-        except Exception as exception:
+        except ValueError as exception:
             raise PlaybackError(f"Audio playback failed: {exception}") from exception
 
         self._notify_audio_state_changed()

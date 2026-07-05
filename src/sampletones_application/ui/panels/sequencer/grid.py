@@ -41,7 +41,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
     EditAction,
 )
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
-from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
+from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
@@ -53,6 +53,7 @@ from sampletones_application.view_model.sequencer.grid import (
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id
@@ -102,6 +103,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._playing_row: Optional[int] = None
         self._input_state: TrackerInputState = TrackerInputState()
         self._subcolumn_themes: Dict[SubColumn, int] = {}
+        self._row_number_theme: int = 0
         self._current_samples: Optional[SequencerSamplesViewModel] = None
 
         self.on_clear_row: Optional[OnClearRowCallback] = None
@@ -224,22 +226,16 @@ class GUISequencerGridPanel(GUIPanel):
             )
 
     def _create_subcolumn_themes(self) -> None:
-        subcolumn_colors = self._layout.colors.subcolumns
+        subcolumn_colors = self._layout.colors.text
         theme_colors = {
             SubColumn.INSTRUMENT: subcolumn_colors.instrument,
             SubColumn.TRANSPOSE: subcolumn_colors.transpose,
             SubColumn.VOLUME: subcolumn_colors.volume,
         }
         for subcolumn, color in theme_colors.items():
-            with dpg.theme() as theme:
-                with dpg.theme_component(dpg.mvSelectable):
-                    dpg.add_theme_color(
-                        dpg.mvThemeCol_Text,
-                        color,
-                        category=dpg.mvThemeCat_Core,
-                    )
+            self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color)
 
-            self._subcolumn_themes[subcolumn] = theme
+        self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
 
     def _create_tracker_view(self) -> None:
         dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=self.tag)
@@ -428,6 +424,7 @@ class GUISequencerGridPanel(GUIPanel):
             callback=self._on_row_number_clicked,
         )
         FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
+        dpg.bind_item_theme(selectable, self._row_number_theme)
         dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
         self._rows[row_index] = selectable
 

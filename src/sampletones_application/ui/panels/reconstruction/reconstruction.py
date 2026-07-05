@@ -30,7 +30,6 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL,
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_ORIGINAL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE,
@@ -39,11 +38,6 @@ from sampletones_application.constants.reconstructions import (
 )
 from sampletones_application.layout.general import PathColors
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.layout.player import PlayerLayout
-from sampletones_application.logic.reconstruction.data import (
-    ReconstructionData,
-)
-from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -54,7 +48,6 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.file import file_dialog_handler
-from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip, show_tooltip
 from sampletones_application.view_model.reconstruction.add_to_sequencer import (
@@ -65,7 +58,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathViewModel,
     ReconstructionViewModel,
 )
-from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender
@@ -79,28 +72,25 @@ from sampletones_shared.types.callback import (
 class GUIReconstructionPanel(GUIPanel):
     def __init__(
         self,
-        player_logic: PlayerLogic,
+        player_panel: GUIAudioPlayerPanel,
         *,
         layout_graphs: GraphsLayout,
-        layout_player: PlayerLayout,
         path_colors: PathColors,
         path_status_color: RGBA,
         file_dialog_width: int,
         file_dialog_height: int,
         language_manager: LanguageManager,
-        dialogs: DialogsRenderer,
+        status_bar: GUIStatusBar,
     ) -> None:
-        self._player_logic = player_logic
+        self._player_panel = player_panel
         self._layout_graphs = layout_graphs
+        self._status_bar = status_bar
         self._path_colors = path_colors
         self._path_status_color = path_status_color
         self._file_dialog_width = file_dialog_width
         self._file_dialog_height = file_dialog_height
-        self._layout_player = layout_player
-        self._dialogs = dialogs
 
         self.waveform_display: GUIWaveformGraph
-        self.player_panel: GUIAudioPlayerPanel
         self._reconstruction_file_path: GUIPathText
         self._original_audio_path: GUIPathText
 
@@ -311,11 +301,11 @@ class GUIReconstructionPanel(GUIPanel):
 
     def load_waveform_data(
         self,
-        reconstruction_data: ReconstructionData,
+        waveform_data: WaveformData,
         generators: List[GeneratorName],
     ) -> None:
-        self._frame_length = reconstruction_data.reconstruction.config.frame_length
-        self.waveform_display.load_reconstruction_data(reconstruction_data, generators)
+        self._frame_length = waveform_data.frame_length
+        self.waveform_display.load_waveform_data(waveform_data, generators)
 
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
@@ -343,16 +333,10 @@ class GUIReconstructionPanel(GUIPanel):
 
     def update_waveform_data(
         self,
-        reconstruction_data: ReconstructionData,
+        waveform_data: WaveformData,
         generators: List[GeneratorName],
     ) -> None:
-        self.waveform_display.update_reconstruction_data(reconstruction_data, generators)
-
-    def update_audio_data(self, audio_data: Optional[AudioData]) -> None:
-        if audio_data is None:
-            self.player_panel.clear_audio()
-        else:
-            self.player_panel.load_audio_data(audio_data)
+        self.waveform_display.update_waveform_data(waveform_data, generators)
 
     def clear_waveform(self) -> None:
         self._frame_length = None
@@ -407,24 +391,6 @@ class GUIReconstructionPanel(GUIPanel):
         end = start + self._frame_length
         self.waveform_display.set_overlay_range(start, end)
 
-    def play(self) -> None:
-        self.player_panel.play()
-
-    def pause_or_resume(self) -> None:
-        self.player_panel.pause_or_resume()
-
-    def stop(self) -> None:
-        self.player_panel.stop()
-
-    def is_playing(self) -> bool:
-        return self.player_panel.is_playing()
-
-    def is_paused(self) -> bool:
-        return self.player_panel.is_paused()
-
-    def is_loaded(self) -> bool:
-        return self.player_panel.is_loaded()
-
     def _create_audio_panel(self) -> None:
         dpg.add_separator()
         with dpg.child_window(
@@ -470,6 +436,7 @@ class GUIReconstructionPanel(GUIPanel):
             status_message=self._msg_path_status,
             prefix=self._lbl_reconstruction_file,
             font=Font.REGULAR_SMALL,
+            status_bar=self._status_bar,
         )
         self._original_audio_path = GUIPathText(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_ORIGINAL_AUDIO,
@@ -480,21 +447,14 @@ class GUIReconstructionPanel(GUIPanel):
             status_message=self._msg_path_status,
             prefix=self._lbl_original_audio,
             font=Font.REGULAR_SMALL,
+            status_bar=self._status_bar,
         )
 
         self._reconstruction_file_path.set_status("", self._path_status_color)
         self._original_audio_path.set_status("", self._path_status_color)
 
     def _create_player_panel(self) -> None:
-        self.player_panel = GUIAudioPlayerPanel(
-            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
-            parent=self.parent,
-            player_logic=self._player_logic,
-            on_position_changed=self._on_player_position_changed,
-            layout=self._layout_player,
-            language_manager=self._language_manager,
-            dialogs=self._dialogs,
-        )
+        self._player_panel.create_panel()
 
     def _create_audio_source_radio_buttons(self) -> None:
         dpg.add_text(self._lbl_audio_source)
@@ -572,6 +532,7 @@ class GUIReconstructionPanel(GUIPanel):
             parent=self.plot_tag,
             layout=self._layout_graphs,
             language_manager=self._language_manager,
+            status_bar=self._status_bar,
             label=self._lbl_waveform,
         )
 
@@ -598,7 +559,7 @@ class GUIReconstructionPanel(GUIPanel):
                     callback=self._on_generator_checkbox_changed,
                 )
 
-                GUIStatusBar.bind_to_item(
+                self._status_bar.bind_to_item(
                     tag,
                     self._create_message_function_for_generator_checkbox(generator_name),
                 )
@@ -666,7 +627,7 @@ class GUIReconstructionPanel(GUIPanel):
     def _handle_wav_export(self, filepath: Path) -> None:
         self.call(self.on_export_wav_confirmed, filepath)
 
-    def _on_player_position_changed(self, position: int) -> None:
+    def set_playback_position(self, position: int) -> None:
         self.waveform_display.set_position(position)
 
     def _on_autoscale_changed(self, sender: Sender, app_data: bool) -> None:

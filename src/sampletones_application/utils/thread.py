@@ -1,23 +1,21 @@
 from __future__ import annotations
 
 import threading
-import weakref
+import time
 from functools import wraps
-from typing import Any, Callable, Optional, cast
+from typing import Any, Callable, List, Optional, Set, cast
 
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import CallbackT, VoidCallback
 
 
 class SingleThreadExecutor:
-    _instances: weakref.WeakSet[SingleThreadExecutor] = weakref.WeakSet()
-    _instances_lock = threading.Lock()
+    _live_threads: Set[threading.Thread] = set()
+    _live_threads_lock = threading.Lock()
 
     def __init__(self) -> None:
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
-        with SingleThreadExecutor._instances_lock:
-            SingleThreadExecutor._instances.add(self)
 
     def execute(self, target: VoidCallback, wait: bool = True) -> bool:
         with self._lock:
@@ -29,34 +27,60 @@ class SingleThreadExecutor:
             else:
                 return False
 
+        def run_and_release() -> None:
+            try:
+                target()
+            finally:
+                with SingleThreadExecutor._live_threads_lock:
+                    SingleThreadExecutor._live_threads.discard(threading.current_thread())
+
         with self._lock:
-            self._thread = threading.Thread(
-                target=target,
+            thread = threading.Thread(
+                target=run_and_release,
                 daemon=True,
                 name="ExecutorWorker",
             )
-            self._thread.start()
+            self._thread = thread
+            with SingleThreadExecutor._live_threads_lock:
+                SingleThreadExecutor._live_threads.add(thread)
+            thread.start()
             return True
-
-    def join(self, timeout: Optional[float] = None) -> None:
-        with self._lock:
-            thread = self._thread
-
-        if thread is not None and thread.is_alive():
-            thread.join(timeout)
 
     @classmethod
     def join_all(cls, timeout: Optional[float] = None) -> None:
-        """Wait for every executor's in-flight task to finish.
+        """Wait until every executor worker thread has finished.
 
         Background tasks touch non-thread-safe resources (e.g. dearpygui), so
-        they must be awaited before the GUI context is torn down.
+        teardown must reach full quiescence before those resources are
+        destroyed. Workers are tracked in a class-level registry of live
+        threads, which keeps them joinable for as long as they run even when
+        their owning executor has already been garbage collected. Joining
+        proceeds in rounds until the registry drains, so workers spawned while
+        a round is in progress are still awaited. With a timeout, joining
+        stops at the deadline and the surviving workers are logged.
         """
-        with cls._instances_lock:
-            instances = list(cls._instances)
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while True:
+            with cls._live_threads_lock:
+                live_threads = [thread for thread in cls._live_threads if thread.is_alive()]
 
-        for instance in instances:
-            instance.join(timeout)
+            if not live_threads:
+                return
+
+            for thread in live_threads:
+                remaining: Optional[float] = None
+                if deadline is not None:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0.0:
+                        cls._report_surviving_workers(live_threads)
+                        return
+                thread.join(remaining)
+
+    @classmethod
+    def _report_surviving_workers(cls, threads: List[threading.Thread]) -> None:
+        names = ", ".join(thread.name for thread in threads if thread.is_alive())
+        if names:
+            logger.warning(f"Background workers still running after the shutdown deadline: {names}")
 
 
 def concurrent(
@@ -81,7 +105,7 @@ def concurrent(
             def task() -> None:
                 try:
                     function(self, *args, **kwargs)
-                except Exception as exception:
+                except Exception as exception:  # pylint: disable=broad-exception-caught
                     logger.error_with_traceback(
                         exception,
                         f"Error in background task {function.__qualname__}",

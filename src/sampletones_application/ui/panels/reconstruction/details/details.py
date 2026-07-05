@@ -42,9 +42,6 @@ from sampletones_application.constants.reconstructions import (
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
-from sampletones_application.logic.reconstruction.feature import (
-    FeatureData,
-)
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -70,6 +67,7 @@ from sampletones_application.view_model.reconstruction.details import (
 )
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
+from sampletones_core.exporters import Features
 from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
@@ -89,8 +87,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         layout_graphs: GraphsLayout,
         layout_reconstructions: ReconstructionsLayout,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
     ) -> None:
         self.shortcut_manager = shortcut_manager
+        self._status_bar = status_bar
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
         self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
@@ -104,7 +104,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._layout_general = layout_general
         self._layout_graphs = layout_graphs
         self._layout_reconstructions = layout_reconstructions
-        self._feature_plot_configs = make_feature_plot_configs(layout_reconstructions, language_manager)
+        self._feature_plot_configs = make_feature_plot_configs(
+            layout_reconstructions,
+            layout_general.colors.features,
+            language_manager,
+        )
 
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
         self.invalid_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_INVALID)
@@ -408,15 +412,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             is_available = generator_name in view_model.available_generators
             dpg_configure_item(tab_tag, show=is_available)
 
-    def update_feature_data(self, feature_data: Optional[FeatureData]) -> None:
-        if feature_data is None:
+    def update_feature_data(self, generators: Optional[Dict[GeneratorName, Features]]) -> None:
+        if generators is None:
             return
 
         for generator_name in GeneratorName.items():
-            if generator_name not in feature_data.generators:
-                continue
-
-            generator_features = feature_data.get_generator_features(generator_name)
+            generator_features = generators.get(generator_name)
             if generator_features is None:
                 continue
 
@@ -448,6 +449,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             label=self._lbl_initial_period if is_noise else self._lbl_initial_pitch,
             tooltip=self._period_tooltip if is_noise else self._pitch_tooltip,
             status_message=self._msg_input_period if is_noise else self._msg_input_pitch,
+            status_bar=self._status_bar,
             layout=self._layout_general.pitch_stepper,
             value_color=self._layout_general.colors.text.disabled,
             shortcut_manager=self.shortcut_manager,
@@ -568,7 +570,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _on_bar_point_hovered(self, label: Optional[str], index: Optional[int]) -> None:
         self.call(self.on_reconstruction_instrument_hovered, index)
         if label is not None:
-            GUIStatusBar.set(self._msg_bar.format(instrument_feature=label))
+            self._status_bar.set(self._msg_bar.format(instrument_feature=label))
 
     def _add_raw_data_text(
         self,
@@ -609,8 +611,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
         self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
-        GUIStatusBar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
-        GUIStatusBar.bind_to_item(
+        self._status_bar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
+        self._status_bar.bind_to_item(
             raw_data_tag,
             self._msg_sequence.format(
                 instrument_feature=feature_key.capitalized,

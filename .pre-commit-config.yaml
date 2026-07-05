@@ -28,10 +28,10 @@ repos:
     hooks:
       - id: import-boundary
         name: import boundary
-        entry: uv run scripts/check_import_boundary.py
+        entry: uv run scripts/check_import_boundary.py --all
         language: system
         types: [python]
-        files: ^src/sampletones_application/(config/|logic/|view_model/|services/|shell\.py$)
+        pass_filenames: false
         verbose: true
 
   - repo: local

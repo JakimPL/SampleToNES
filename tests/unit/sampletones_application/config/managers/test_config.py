@@ -9,7 +9,7 @@ from sampletones_application.config.managers.outcome import (
     ConfigLoadFailureReason,
     ConfigRecovered,
 )
-from sampletones_application.config.updates import (
+from sampletones_application.view_model.main.updates import (
     AdvancedSettingsUpdate,
     AudioSettingsUpdate,
     GenerationSettingsUpdate,

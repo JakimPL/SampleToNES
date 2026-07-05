@@ -4,6 +4,8 @@ from typing import Final, FrozenSet, Optional
 
 from pydantic import BaseModel
 
+from sampletones_application.view_model.shared.percent import format_percent
+
 
 class ConversionPhase(StrEnum):
     IDLE = "idle"
@@ -36,11 +38,15 @@ class ConverterViewModel(BaseModel, frozen=True):
     phase: ConversionPhase
     status_text: str
     progress: float
-    progress_overlay: str
     input_path: Optional[Path]
     output_path: Optional[Path]
     is_file: bool
     other_operation_active: bool
+
+    @property
+    def progress_overlay(self) -> str:
+        """The percentage label rendered over the progress bar, derived from the fraction."""
+        return format_percent(self.progress)
 
     @property
     def is_active(self) -> bool:

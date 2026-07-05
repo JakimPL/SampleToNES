@@ -92,7 +92,6 @@ class FontRegistry:
                     tag=font_data.tag,
                 )
 
-            dpg.add_font_chars(list(cls._LAYOUT.icon_chars), parent=TAG_GLOBAL_FONT_ICON)
             dpg.bind_font(TAG_GLOBAL_FONT_REGULAR)
 
         dpg.set_global_font_scale(scale)

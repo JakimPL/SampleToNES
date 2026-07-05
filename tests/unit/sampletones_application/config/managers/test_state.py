@@ -1,6 +1,8 @@
 from pathlib import Path
+from typing import Type
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 from sampletones_application.categories.hierarchy import Tab
@@ -184,3 +186,34 @@ class TestApplicationStateManagerSave:
             reloaded = ApplicationStateManager()
 
         assert reloaded.advanced_settings == manager.advanced_settings
+
+    @pytest.mark.parametrize("exception_type", [PermissionError, IsADirectoryError, OSError])
+    def test_save_recovers_from_file_error(self, tmp_path: Path, exception_type: Type[OSError]) -> None:
+        """State persistence degrades to logging when the disk rejects the write."""
+        state_path = tmp_path / "state.yaml"
+        with patch(
+            "sampletones_application.config.managers.state.APPLICATION_STATE_PATH",
+            state_path,
+        ):
+            manager = ApplicationStateManager()
+            with patch(
+                "sampletones_application.config.managers.state.save_yaml_atomic",
+                side_effect=exception_type("save failed"),
+            ):
+                manager.save()
+
+        assert not state_path.exists()
+
+    def test_save_propagates_unexpected_error(self, tmp_path: Path) -> None:
+        state_path = tmp_path / "state.yaml"
+        with patch(
+            "sampletones_application.config.managers.state.APPLICATION_STATE_PATH",
+            state_path,
+        ):
+            manager = ApplicationStateManager()
+            with patch(
+                "sampletones_application.config.managers.state.save_yaml_atomic",
+                side_effect=RuntimeError("unexpected"),
+            ):
+                with pytest.raises(RuntimeError):
+                    manager.save()

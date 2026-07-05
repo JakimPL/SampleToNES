@@ -36,8 +36,11 @@ class GUIPathText(CallbackMixin):
         status_message: str,
         prefix: Optional[str] = None,
         font: Optional[Font] = None,
+        *,
+        status_bar: GUIStatusBar,
     ) -> None:
         self.tag = tag
+        self._status_bar = status_bar
         self.path = path or Path()
         self.display_text = shorten_path(self.path)
         self.label = prefix
@@ -96,7 +99,7 @@ class GUIPathText(CallbackMixin):
     def _on_hover(self) -> None:
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
-                GUIStatusBar.set(self._status_message)
+                self._status_bar.set(self._status_message)
                 dpg.configure_item(self.tag, color=self.hover_color)
                 FrameCallbackManager.set_frame_callback(
                     self._on_hover,

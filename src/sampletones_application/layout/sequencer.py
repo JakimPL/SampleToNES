@@ -38,10 +38,36 @@ class SubcolumnWidths(BaseModel, frozen=True):
     volume: int
 
 
-class SubcolumnColors(BaseModel, frozen=True):
+class TrackerColors(BaseModel, frozen=True):
+    """The semantic text colours shared across every tracker view.
+
+    One palette feeds the pattern grid, the order table, and the history detail so a
+    concept keeps its colour everywhere: ``instrument`` (the note/sample reference,
+    yellow like ``sample``), ``transpose``, ``volume``, ``sample``, the ``frame`` and
+    ``row`` indices, and the ``order`` entries. Defining them once keeps the panels in
+    step instead of each carrying its own copy.
+    """
+
     instrument: RGBA
     transpose: RGBA
     volume: RGBA
+    sample: RGBA
+    frame: RGBA
+    row: RGBA
+    order: RGBA
+
+
+class HistoryRoleColors(BaseModel, frozen=True):
+    """Colours for the history-detail token roles that the tracker does not already own.
+
+    The instrument/transpose/volume, frame, row, and sample tokens draw from the
+    shared :class:`TrackerColors` palette; only the roles unique to the detail line
+    live here.
+    """
+
+    channel: RGBA
+    value: RGBA
+    separator: RGBA
 
 
 class TrackerLayout(BaseModel, frozen=True):
@@ -65,7 +91,16 @@ class SequencerColors(BaseModel, frozen=True):
     order_column_current: RGBA
     order_column_playing: RGBA
     playback_row: RGBA
-    subcolumns: SubcolumnColors
+    history_future: RGBA
+    history_roles: HistoryRoleColors
+    text: TrackerColors
+
+
+class HistoryLayout(BaseModel, frozen=True):
+    height: int
+    margin: int
+    selectable_column_weight: float
+    max_rendered_entries: int
 
 
 class SequencerLayout(BaseModel, frozen=True):
@@ -76,4 +111,5 @@ class SequencerLayout(BaseModel, frozen=True):
     tempo: TempoLayout
     speed: SpeedLayout
     tracker: TrackerLayout
+    history: HistoryLayout
     colors: SequencerColors

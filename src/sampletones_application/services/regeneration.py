@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import List, cast
 
 import numpy as np
@@ -13,10 +14,33 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
 
-RegenerationResult = ServiceSuccess[Reconstruction] | ServiceError | ServiceCancelled
+
+@dataclass(frozen=True)
+class RegeneratedInstrument:
+    """A regeneration result paired with the generator and feature that changed.
+
+    Carrying the request context alongside the fresh reconstruction lets the
+    history record which channel and feature an edit touched, which the finished
+    reconstruction alone no longer reveals.
+    """
+
+    reconstruction: Reconstruction
+    generator_name: GeneratorName
+    feature_key: FeatureKey
+
+
+RegenerationResult = ServiceSuccess[RegeneratedInstrument] | ServiceError | ServiceCancelled
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
+    """Recomputes one generator's instructions and audio for a reconstruction.
+
+    The result is a fresh reconstruction carrying the updated generator data; the
+    source reconstruction is left intact. Producing a new object lets callers swap
+    the edited reconstruction in while any history snapshot that shares the prior
+    object stays valid.
+    """
+
     def __init__(self, priority: int = 0) -> None:
         super().__init__(priority)
         self._executor = SingleThreadExecutor()
@@ -66,11 +90,20 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 [generator(instruction, save=True) for instruction in instructions],  # type: ignore[arg-type]
             )
 
-            reconstruction.update_generator_data(
+            updated = reconstruction.model_copy(deep=True)
+            updated.update_generator_data(
                 generator_name,
                 instructions,
                 audio,
             )
-            self._emit(ServiceSuccess(value=reconstruction))
+            self._emit(
+                ServiceSuccess(
+                    value=RegeneratedInstrument(
+                        reconstruction=updated,
+                        generator_name=generator_name,
+                        feature_key=feature_key,
+                    )
+                )
+            )
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self._emit(ServiceError(exception=exception))

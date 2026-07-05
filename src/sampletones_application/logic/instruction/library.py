@@ -42,6 +42,7 @@ from sampletones_shared.exceptions import (
     InvalidLibraryDataError,
     InvalidLibraryDataValuesError,
     InvalidMetadataError,
+    LoadLibraryError,
     WindowNotAvailableError,
 )
 from sampletones_shared.logger import logger
@@ -66,10 +67,6 @@ class LibraryLogic(CallbackMixin):
         self._eta_estimator: Optional[ETAEstimator] = None
         self._status_lock = threading.Lock()
 
-        self._status_text: str = ""
-        self._progress_value: float = 0.0
-        self._progress_overlay: str = ""
-
         self._lock_function: Optional[Callable[[], None]] = None
         self._unlock_function: Optional[Callable[[], None]] = None
         self._is_locked_function: Optional[Callable[[], bool]] = None
@@ -79,9 +76,9 @@ class LibraryLogic(CallbackMixin):
         self.on_view_changed: Optional[Callable[[LibraryPanelViewModel], None]] = None
         self.on_instruction_loaded: Optional[OnLoadInstructionCallback] = None
         self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
-        self.on_generation_completed_dialog: Optional[Callable[[], None]] = None
-        self.on_generation_error_dialog: Optional[Callable[[Exception], None]] = None
-        self.on_generation_cancelled_dialog: Optional[Callable[[], None]] = None
+        self.on_generation_completed: Optional[Callable[[], None]] = None
+        self.on_generation_error: Optional[Callable[[Exception], None]] = None
+        self.on_generation_cancelled: Optional[Callable[[], None]] = None
         self.on_load_file_not_found: Optional[Callable[[Path, str], None]] = None
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
@@ -120,6 +117,12 @@ class LibraryLogic(CallbackMixin):
             Panel.LIBRARY,
             TextType.MESSAGE,
             InstructionsLibraryElements.STATUS_GENERATION_FAILED,
+        ]
+        self._msg_generation_cancelled = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATION_CANCELLED,
         ]
         self._msg_window_not_available = language_manager[
             Page.INSTRUCTIONS,
@@ -270,6 +273,11 @@ class LibraryLogic(CallbackMixin):
         self.call(self.on_rebuild_tree_needed)
 
     def update_status(self) -> None:
+        """Repaints the idle library status; during a generation the progress handlers own the
+        emission stream, so this call yields to them."""
+        if self._library_manager.is_generating():
+            return
+
         self._emit_view()
 
     def load_library_file(self, filepath: Path) -> None:
@@ -333,9 +341,8 @@ class LibraryLogic(CallbackMixin):
             self.call(self.on_load_error, exception, self._msg_window_not_available)
             return
 
-        self._progress_value = 0.0
         self._library_manager.generate_library(config, window)
-        self._emit_view(status_text_override=self._msg_generating)
+        self._emit_view(self._msg_generating)
 
     def cancel_generation(self) -> None:
         self._library_manager.cancel_generation()
@@ -425,7 +432,7 @@ class LibraryLogic(CallbackMixin):
                 f"Deserialization error loading library for key {library_key}",
             )
             self.call(self.on_load_error, exception, self._msg_deserialization_error)
-        except Exception as exception:  # TODO: narrow down exception types
+        except LoadLibraryError as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
             self.call(self.on_load_error, exception, self._msg_load_error)
         finally:
@@ -441,12 +448,11 @@ class LibraryLogic(CallbackMixin):
         with self._status_lock:
             match task_status:
                 case TaskStatus.COMPLETED:
-                    self._progress_value = 1.0
-                    self._emit_view(status_text_override=self._msg_generation_saving)
+                    self._emit_view(self._msg_generation_saving, progress=1.0)
                 case TaskStatus.FAILED:
-                    self._emit_view(status_text_override=self._msg_generation_failed)
+                    self._emit_view(self._msg_generation_failed)
                 case TaskStatus.CANCELLED:
-                    self._emit_view(status_text_override="Library generation cancelled.")
+                    self._emit_view(self._msg_generation_cancelled)
                 case TaskStatus.RUNNING:
                     self._update_progress_state(task_progress)
 
@@ -455,10 +461,8 @@ class LibraryLogic(CallbackMixin):
         assert creator is not None, "Library manager creator is not initialized"
         assert self._eta_estimator is not None, "ETA Estimator is not initialized"
 
-        self._progress_value = task_progress.get_progress()
         eta_seconds = self._eta_estimator.update(creator.completed_instructions)
         eta_string = ETAEstimator.format_duration(eta_seconds)
-        self._progress_overlay = self._eta_estimator.get_percent_string()
 
         status_text = self._tpl_generation_progress.format(
             creator.completed_instructions,
@@ -467,20 +471,18 @@ class LibraryLogic(CallbackMixin):
         if eta_string:
             status_text += self._tpl_time_estimation.format(eta_string=eta_string)
 
-        self._emit_view(status_text_override=status_text)
+        self._emit_view(status_text, progress=task_progress.get_progress())
 
     def _on_generation_completed(self) -> None:
-        self._progress_overlay = "100%"
-        self._emit_view()
-        self.call(self.on_generation_completed_dialog)
+        self.call(self.on_generation_completed)
         self._finalize_generation()
 
     def _on_generation_error(self, exception: Exception) -> None:
-        self.call(self.on_generation_error_dialog, exception)
-        self._finalize_generation_error(exception)
+        self.call(self.on_generation_error, exception)
+        self._finalize_generation_error()
 
     def _on_generation_cancelled(self) -> None:
-        self.call(self.on_generation_cancelled_dialog)
+        self.call(self.on_generation_cancelled)
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:
@@ -496,29 +498,31 @@ class LibraryLogic(CallbackMixin):
             self._do_unlock()
             self.call(self.on_generation_state_changed)
 
-    def _finalize_generation_error(self, exception: Exception) -> None:
+    def _finalize_generation_error(self) -> None:
         try:
-            self.call(self.on_generation_error_dialog, exception)
             self._library_manager.cleanup_creator()
             self.update_status()
         finally:
             self._do_unlock()
             self.call(self.on_generation_state_changed)
 
-    def _emit_view(self, status_text_override: Optional[str] = None) -> None:
+    def _emit_view(self, status_text: Optional[str] = None, *, progress: float = 0.0) -> None:
+        """Builds and emits the panel view model from freshly computed values.
+
+        ``status_text`` of ``None`` renders the idle status derived from the manager state;
+        generation emits pass their status and progress explicitly.
+        """
         key = self._config_manager.key
-        library_name = get_display_name_from_key(key)
         is_generating = self._library_manager.is_generating()
 
-        if status_text_override is not None:
-            self._status_text = status_text_override
-        elif not is_generating:
+        if status_text is None:
+            library_name = get_display_name_from_key(key)
             if self._library_manager.is_library_loaded(key):
-                self._status_text = self._tpl_library_loaded.format(library_name)
+                status_text = self._tpl_library_loaded.format(library_name)
             elif self._library_manager.library_exists_for_key(key):
-                self._status_text = self._tpl_library_exists.format(library_name)
+                status_text = self._tpl_library_exists.format(library_name)
             else:
-                self._status_text = self._tpl_not_exists.format(library_name)
+                status_text = self._tpl_not_exists.format(library_name)
 
         if self._library_manager.is_library_loaded(key):
             generate_button_label = self._lbl_regenerate_library
@@ -526,10 +530,9 @@ class LibraryLogic(CallbackMixin):
             generate_button_label = self._lbl_generate_library
 
         view_model = LibraryPanelViewModel(
-            status_text=self._status_text,
+            status_text=status_text,
             generate_button_label=generate_button_label,
             is_generating=is_generating,
-            progress_value=self._progress_value,
-            progress_overlay=self._progress_overlay,
+            progress_value=progress,
         )
         self.call(self.on_view_changed, view_model)

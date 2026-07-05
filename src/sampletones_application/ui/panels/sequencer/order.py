@@ -31,6 +31,7 @@ from sampletones_application.ui.panels.sequencer.order_input import (
     OrderCursor,
     OrderInputState,
 )
+from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -85,6 +86,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._current_position: Optional[int] = None
         self._playing_position: Optional[int] = None
         self._cell_handler_tag = f"{TAG_SEQUENCER_ORDER_TABLE}{SUF_HANDLER_REGISTRY}"
+        self._entry_theme: int = 0
 
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
         self.on_remove_requested: Optional[OnRemoveCallback] = None
@@ -159,6 +161,7 @@ class GUISequencerOrderPanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
+        self._create_entry_themes()
         with dpg.group(tag=self.tag, parent=self.parent):
             dpg.add_separator(parent=self.tag)
             header_text = dpg.add_text(self._lbl_order, parent=self.tag)
@@ -166,6 +169,14 @@ class GUISequencerOrderPanel(GUIPanel):
             self._create_button_row()
             self._create_order_window()
             self._register_handlers()
+
+    def _create_entry_themes(self) -> None:
+        """Colours every pattern entry with one readable colour.
+
+        The theme targets only the selectable text, so it leaves every other colour to
+        the global theme rather than shadowing it.
+        """
+        self._entry_theme = create_selectable_text_theme(self._layout.colors.text.order)
 
     def _create_button_row(self) -> None:
         with dpg.group(horizontal=True, parent=self.tag):
@@ -387,6 +398,7 @@ class GUISequencerOrderPanel(GUIPanel):
         label_text = dpg.add_text(
             self._row_labels[generator],
             parent=label_cell,
+            color=self._layout.colors.text.order,
         )
         FontRegistry.bind_to_item(label_text, Font.BOLD_SMALL)
 
@@ -400,6 +412,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 callback=self._on_cell_clicked,
             )
             FontRegistry.bind_to_item(selectable, font)
+            dpg.bind_item_theme(selectable, self._entry_theme)
             dpg.bind_item_handler_registry(selectable, self._cell_handler_tag)
             self._order.register(key, selectable)
 

@@ -106,7 +106,3 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
         logger.info("Reconstruction interrupted by user")
     finally:
         progress_bar.close()
-
-
-def load_reconstruction(reconstruction_path: Path, config_path: Optional[Path] = None) -> None:
-    raise NotImplementedError("Library reconstruction is not yet implemented")

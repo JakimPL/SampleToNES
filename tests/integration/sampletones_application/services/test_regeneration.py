@@ -32,7 +32,7 @@ class TestRegenerationServicePipeline:
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
 
-    def test_run_emitted_value_is_same_reconstruction_object(self, reconstruction_data, pulse_features) -> None:
+    def test_run_emits_new_reconstruction_carrying_the_edit(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
@@ -45,7 +45,11 @@ class TestRegenerationServicePipeline:
             pulse_features.volume,
         )
 
-        assert results[0].value is reconstruction_data.reconstruction
+        emitted = results[0].value
+        assert emitted.reconstruction is not reconstruction_data.reconstruction
+        assert len(emitted.reconstruction.get_generator_approximation(GeneratorName.PULSE1)) > 0
+        assert emitted.generator_name is GeneratorName.PULSE1
+        assert emitted.feature_key is FeatureKey.VOLUME
 
     def test_run_updates_reconstruction_approximation(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()

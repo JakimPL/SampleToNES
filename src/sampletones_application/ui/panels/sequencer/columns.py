@@ -1,7 +1,7 @@
 from typing import Final, Optional, Tuple
 
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 
 COLUMNS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())

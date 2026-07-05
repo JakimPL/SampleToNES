@@ -1,0 +1,39 @@
+from typing import Protocol
+
+from sampletones_core.structures.tree import FileSystemNode, TreeNode
+
+
+class TreeLogicProtocol(Protocol):
+    """The tree-interaction contract ``GUITreePanel`` drives.
+
+    Typing the collaborator structurally keeps the panel bound to the exact
+    query and command surface it renders with — per-node favorite and
+    playability checks run synchronously during tree construction — while the
+    owning coordinator constructs the real logic object and injects it.
+    """
+
+    @property
+    def autoplay_enabled(self) -> bool: ...
+
+    @property
+    def locked(self) -> bool: ...
+
+    def lock(self) -> None: ...
+
+    def unlock(self) -> None: ...
+
+    def is_node_favorite(self, node: TreeNode) -> bool: ...
+
+    def has_favorite_ancestor(self, node: FileSystemNode) -> bool: ...
+
+    def toggle_favorite(self, node: FileSystemNode) -> None: ...
+
+    def is_playable_file(self, node: TreeNode) -> bool: ...
+
+    def play_node(self, node: FileSystemNode) -> None: ...
+
+    def request_autoplay(self, node: FileSystemNode) -> None: ...
+
+    def cancel_autoplay(self) -> None: ...
+
+    def schedule_search_update(self, query: str) -> None: ...

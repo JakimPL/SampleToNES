@@ -67,6 +67,9 @@ class MenuElements(AbstractElement):
     ITEM_PROJECT_EXPORT_MODULE = "item_project_export_module"
     ITEM_PROJECT_PROPERTIES = "item_project_properties"
     ITEM_PROJECT_CLOSE = "item_project_close"
+    GROUP_EDIT = "group_edit"
+    ITEM_EDIT_UNDO = "item_edit_undo"
+    ITEM_EDIT_REDO = "item_edit_redo"
     GROUP_RECONSTRUCTION = "group_reconstruction"
     ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = "item_reconstruction_reconstruct_file"
     ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY = "item_reconstruction_reconstruct_directory"
@@ -114,7 +117,6 @@ class PlayerElements(AbstractElement):
     SAMPLES_SUFFIX = "samples_suffix"
     NO_AUDIO_LOADED = "no_audio_loaded"
     AUDIO_PLAYBACK_ERROR = "audio_playback_error"
-    NO_AUDIO_DIALOG_TITLE = "no_audio_dialog_title"
 
 
 class GraphElements(AbstractElement):

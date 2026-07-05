@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
 from tqdm import tqdm
 
@@ -13,10 +12,6 @@ from sampletones_core.library import (
 from sampletones_core.library.creator import InstructionsLibraryCreator
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_shared.logger import logger, null_logger
-
-
-def load_library(library_path: Path, config_path: Optional[Path] = None) -> None:
-    raise NotImplementedError("Library loading is not yet implemented")
 
 
 def generate_library(config: Config) -> None:

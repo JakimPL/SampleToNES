@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
@@ -20,7 +21,7 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
-from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
+from sampletones_application.coordinators.playback import AudioPlayerProtocol
 from sampletones_application.coordinators.reconstructions import (
     ReconstructionsTabCoordinator,
 )
@@ -29,8 +30,6 @@ from sampletones_application.layout import LayoutConfig
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
-from sampletones_application.ui.panels.project_properties import GUIProjectPropertiesWindow
-from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
@@ -79,6 +78,8 @@ class ShortcutBindings:
     play_from_start: Callback
     stop: Callback
     toggle_autoplay: Callback
+    undo: Callback
+    redo: Callback
 
 
 class ApplicationShell:
@@ -106,8 +107,6 @@ class ApplicationShell:
         menu_bar: MenuBar,
         status_bar: GUIStatusBar,
         fps_timer: FPSTimer,
-        audio_settings_window: GUIAudioSettingsWindow,
-        project_properties_window: GUIProjectPropertiesWindow,
         main_tab: MainTabCoordinator,
         reconstructions_tab: ReconstructionsTabCoordinator,
         sequencer_tab: SequencerTabCoordinator,
@@ -122,8 +121,6 @@ class ApplicationShell:
         self._menu_bar = menu_bar
         self._status_bar = status_bar
         self._fps_timer = fps_timer
-        self._audio_settings_window = audio_settings_window
-        self._project_properties_window = project_properties_window
         self._main_tab = main_tab
         self._reconstructions_tab = reconstructions_tab
         self._sequencer_tab = sequencer_tab
@@ -288,6 +285,20 @@ class ApplicationShell:
             Shortcut(dpg.mvKey_P, (Modifier.CTRL,)),
             bindings.toggle_autoplay,
         )
+        self._shortcut_manager.register(
+            ShortcutId.UNDO,
+            Shortcut(dpg.mvKey_Z, (Modifier.CTRL,)),
+            bindings.undo,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.REDO,
+            Shortcut(dpg.mvKey_Y, (Modifier.CTRL,)),
+            bindings.redo,
+        )
+        self._shortcut_manager.register_alias(
+            ShortcutId.REDO,
+            Shortcut(dpg.mvKey_Z, (Modifier.CTRL, Modifier.SHIFT)),
+        )
 
         self._shortcut_manager.bind_all()
 
@@ -342,13 +353,29 @@ class ApplicationShell:
 
     def restore_current_items(
         self,
+        library_path: Optional[Path] = None,
+        reconstruction_path: Optional[Path] = None,
+        project_path: Optional[Path] = None,
+        *,
+        on_load_library: PathCallback,
         on_load_project: PathCallback,
         on_load_reconstruction: PathCallback,
     ) -> None:
         current_tab = self._session_manager.load_current_tab()
         self.set_current_tab(current_tab)
-        self._restore_current_project(on_load_project)
-        self._restore_current_reconstruction(on_load_reconstruction)
+
+        if library_path is not None:
+            on_load_library(library_path)
+
+        if reconstruction_path is not None:
+            on_load_reconstruction(reconstruction_path)
+        else:
+            self._restore_current_reconstruction(on_load_reconstruction)
+
+        if project_path is not None:
+            on_load_project(project_path)
+        else:
+            self._restore_current_project(on_load_project)
 
     def _restore_current_project(self, on_load_project: PathCallback) -> None:
         current_project_path = self._session_manager.current_project
@@ -363,12 +390,6 @@ class ApplicationShell:
             return
 
         on_load_reconstruction(current_reconstruction_path)
-
-    def open_audio_settings(self) -> None:
-        self._audio_settings_window.show()
-
-    def open_project_properties(self) -> None:
-        self._project_properties_window.show()
 
     def set_current_tab(self, tab: Tab) -> None:
         try:
@@ -390,14 +411,14 @@ class ApplicationShell:
         except KeyError as exception:
             raise SystemError(f"Current tab alias {alias} does not correspond to any known Tab.") from exception
 
-    def get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
+    def get_current_player(self) -> Optional[AudioPlayerProtocol]:
         match self.get_current_tab():
             case Tab.RECONSTRUCTIONS:
-                return self._reconstructions_tab.player_panel
+                return self._reconstructions_tab.player
             case Tab.INSTRUCTIONS:
-                return self._instructions_tab.player_panel
+                return self._instructions_tab.player
             case Tab.SEQUENCER:
-                return self._sequencer_tab.player_panel
+                return self._sequencer_tab.player
             case _:
                 return None
 
@@ -410,8 +431,8 @@ class ApplicationShell:
 
     def toggle_fullscreen(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self._viewport_manager.toggle_fullscreen()
