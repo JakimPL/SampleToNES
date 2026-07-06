@@ -2,7 +2,7 @@
 
 This document describes the design of `sampletones_application` — the GUI front-end of SampleToNES. It is prescriptive: it states the contracts each layer must honour, in the form they are enforced, and the rationale behind them. Use it as the reference when deciding where new code belongs.
 
-Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/bugs-and-todos.md § Architecture`. Coding-level rules live in `docs/guidelines.md`; the undo subsystem has its own design document, `docs/history.md`.
+Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/development/bugs-and-todos.md § Architecture`. Coding-level rules live in `docs/development/guidelines.md`; the undo subsystem has its own design document, `docs/development/undo.md`.
 
 ---
 
@@ -104,7 +104,7 @@ Two mechanisms keep the codebase aligned with this document.
 
 **Import-expressible contracts are enforced by script.** `scripts/check_import_boundary.py` (a pre-commit hook, also run via `make check-import-boundary`) encodes one rule per layer, mirroring the **Must not import** lists in the Layer Reference; the Layer Reference is the source of truth, and a divergence between it and the script is itself a defect. Where a layer may consume another layer's data contract while its implementation stays out of reach (logic and the service result types), the rule carries an explicit contract exemption. The hook audits the entire source tree on every commit (`--all`), so strengthening a rule surfaces violations in files a commit never touched. That property sets the working idiom for structural refactors: turn the stricter rule on first, and let the failing hook enumerate the remaining work.
 
-**Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. Deviations that survive review are recorded in `docs/bugs-and-todos.md § Architecture` until they are paid off; the ledger, not the codebase, is the memory of what is currently out of line.
+**Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. Deviations that survive review are recorded in `docs/development/bugs-and-todos.md § Architecture` until they are paid off; the ledger, not the codebase, is the memory of what is currently out of line.
 
 ---
 
@@ -167,7 +167,7 @@ Two mechanisms keep the codebase aligned with this document.
 
 *Logic objects* (e.g. `ConverterLogic`) orchestrate multi-step workflows within a feature area. They subscribe to services and translate service results into view model updates.
 
-`logic/history/` implements the session-scoped undo engine (`HistoryManager`); its invariants and mechanics are documented in `docs/history.md`.
+`logic/history/` implements the session-scoped undo engine (`HistoryManager`); its invariants and mechanics are documented in `docs/development/undo.md`.
 
 **Contracts:**
 - Logic classes produce view models and may therefore import `view_model/`; they import neither `ui/` nor `coordinators/`.

@@ -1,6 +1,6 @@
 # History & Undo
 
-This document describes the undo/redo subsystem of `sampletones_application`. The engine lives in `logic/history/` and is owned by `HistoryManager`; coordinators integrate with it as described in `docs/architecture.md`. Undo/redo is session-scoped and upholds two invariants:
+This document describes the undo/redo subsystem of `sampletones_application`. The engine lives in `logic/history/` and is owned by `HistoryManager`; coordinators integrate with it as described in `docs/development/architecture.md`. Undo/redo is session-scoped and upholds two invariants:
 
 1. **Completeness** — every mutation of project state belongs to the history.
 2. **Reversibility determinism** — any composition of undos and redos that returns

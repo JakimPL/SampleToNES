@@ -90,4 +90,4 @@ Run `sampletones --help` for all options.
 
 ## Documentation
 
-Internals — data formats, the reconstruction pipeline, and the Python API — live in [`docs/`](docs/), starting with [`docs/reference.md`](docs/reference.md).
+Internals — the reconstruction algorithms, file formats, the Python API, and developer notes — live in [`docs/`](docs/).

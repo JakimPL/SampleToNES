@@ -65,7 +65,7 @@ def app() -> Generator[Any, Application, Any]:
 
 class TestStartupRestoreDelegation:
     """Application only forwards the startup restore to the domain coordinators, which
-    are the recovery boundary (docs/architecture.md § Error Handling Policy). The
+    are the recovery boundary (docs/development/architecture.md § Error Handling Policy). The
     recovery behaviour itself is covered by the coordinator tests.
     """
 
