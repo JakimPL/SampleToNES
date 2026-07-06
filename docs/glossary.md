@@ -8,7 +8,7 @@ link here rather than redefining a term in place.
 ### 2A03 (APU)
 
 The NES's sound chip (Ricoh 2A03). Its audio portion, the APU (Audio Processing
-Unit), generates all of the console's sound. SampleToNES emulates its four
+Unit), generates all of the console's sound. _SampleToNES_ emulates its four
 melodic/percussive channels and no sampled-audio (DPCM) playback.
 
 ### Channel / oscillator
@@ -45,7 +45,7 @@ its character.
 ### NES frequency
 
 How many times per second a program updates the channels — for example 60 Hz on
-NTSC or 50 Hz on PAL. SampleToNES supports 15–600 Hz, and this rate sets the
+NTSC or 50 Hz on PAL. _SampleToNES_ supports 15–600 Hz, and this rate sets the
 reconstruction's frame rate.
 
 ### NTSC / PAL
@@ -148,12 +148,12 @@ synthetic test sounds every configuration is run against.
 ### FamiTracker
 
 A [_tracker application_](http://famitracker.com/) for composing music for the
-NES 2A03. SampleToNES exports instruments and modules that it (and its forks)
+NES 2A03. _SampleToNES_ exports instruments and modules that it (and its forks)
 can load.
 
 ### Tracker / sequencer
 
-A pattern-based music editor. SampleToNES's built-in sequencer arranges
+A pattern-based music editor. _SampleToNES_'s built-in sequencer arranges
 reconstructed samples into a song.
 
 ### Sequence

@@ -1,6 +1,6 @@
 # Application Architecture
 
-This document describes the design of `sampletones_application` — the GUI front-end of SampleToNES. It is prescriptive: it states the contracts each layer must honour, in the form they are enforced, and the rationale behind them. Use it as the reference when deciding where new code belongs.
+This document describes the design of `sampletones_application` — the GUI front-end of _SampleToNES_. It is prescriptive: it states the contracts each layer must honour, in the form they are enforced, and the rationale behind them. Use it as the reference when deciding where new code belongs.
 
 Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/development/bugs-and-todos.md § Architecture`. Coding-level rules live in `docs/development/guidelines.md`; the undo subsystem has its own design document, `docs/development/undo.md`.
 

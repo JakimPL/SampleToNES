@@ -2,7 +2,7 @@
 
 Single elements of the `sampletones` Python package can be used as well.
 
-SampleToNES exposes a variety of classes:
+_SampleToNES_ exposes a variety of classes:
 
 ```python
 from sampletones import (

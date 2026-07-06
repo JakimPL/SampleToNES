@@ -1,40 +1,55 @@
 # Reconstructions
 
-## Generators
+A reconstruction is one converted audio sample: the NES
+[approximation](../glossary.md#approximation) of an original recording together
+with the per-channel instruction streams that produce it. It is stored as a
+`.stn` file. [Reconstruction algorithms](../concepts/reconstruction.md) explains
+how one is produced; this page documents the file.
 
-Generators are responsible for producing waveforms and keeping the internal state of the generators (phase and clock).
+## Contents
 
-As in 2A03, there are four generators of three types:
-* `pulse1`
-* `pulse2`
-* `triangle`
-* `noise`
+A `.stn` file holds:
 
-For the most part, generators are not used during the reconstruction: each single instruction is precalculated with spectral information.
+* **metadata** — the application name and version, and the reconstruction
+  data-version used to check compatibility on load (see [Versioning](#versioning));
+* **id** — a unique identifier for the reconstruction;
+* **source audio** — the path to the original recording, or empty when the
+  reconstruction is [detached](#detached-reconstructions);
+* **configuration** — a frozen snapshot of the
+  [generation configuration](../guide/configuration.md) used, so the file records
+  exactly how it was made: sample rate, NES frequency, enabled channels, spectrum
+  method, gamma, and the rest;
+* **coefficient** — the [working level](../glossary.md#working-level-coefficient),
+  the single scale factor applied to the input so its loudness fit the NES
+  channels' range. Storing it lets the reconstruction and the original be shown
+  and played on a common scale;
+* **approximation** — the rendered NES audio: the sum of every channel's output,
+  the closest match to the original;
+* **per-channel approximations** — the audio each channel contributes on its own,
+  one waveform per enabled channel (`pulse1`, `pulse2`, `triangle`, `noise`);
+* **per-channel instructions** — the instruction stream each channel plays, one
+  [instruction](../glossary.md#instruction) per frame. This is the data a
+  FamiTracker export is built from.
 
-## Reconstructor
+## Detached reconstructions
 
-Reconstructor is the main object responsible for sample conversion. It uses generators defined in the generation configuration. You can use any combination of generators to reconstruct your samples.
+A reconstruction normally remembers the path to its source audio. Embedding one
+in a [project](projects.md) makes it part of a shareable artifact, where an
+absolute path on the author's machine means nothing to anyone else. Detaching
+clears that path while keeping the approximation and instructions intact, so the
+reconstruction stays self-contained and a saved project stays portable.
 
-By default, `pulse1`, `triangle`, and `noise` are turned on.
+## Versioning
 
-## Reconstruction
+Each file records the reconstruction data-version it was written with. On load,
+_SampleToNES_ requires that version to match the one it supports and declines a
+file written by an incompatible version rather than misreading it. The
+application version is stored alongside it, for reference.
 
-Reconstruction is an object containing all conversion information. The most important ones are:
+## Storage and export
 
-* `approximation`: The sum of all generator waveforms approximating the input wave.
-* `approximations`: Partial approximations from all generators
-* `instructions`: A dictionary of all FamiTracker instructions per each generator.
-* `config`: A snapshot of the configuration used to reconstruct the audio
-* `audio_filepath`: The path to the original audio file.
-
-## Generation options
-
-_SampleToNES_ offers additional generation settings:
-
-* `mixer`: For amplifying the NES waveforms. Too low values may result in clamped dynamics; too high values may cause quiet samples to be lost.
-* `find_best_phase`: Tries to find the best phase for a sample to fit the frame. `True` by default. Allows ignoring phase shifts while searching for the best approximation.
-* `fast_difference`: Instead of calculating the FFT of the audio remainder after finding partial approximations in a frame, it calculates the difference between spectral features only. Disabled by default, as it may lead to inaccurate approximations.
-* `reset_phase`: Resets phases within each instruction. Not recommended.
-
-For now, only `mixer` is present in the main application. Other values are experimental and may be edited in the JSON configuration file.
+`.stn` files live in the documents folder. They are binary
+([MessagePack](https://msgpack.org/)) with the audio arrays embedded, so a file
+is self-contained. The instruction streams can be exported to FamiTracker — one
+instrument per channel, or a whole module — as described in
+[FamiTracker export](famitracker.md).

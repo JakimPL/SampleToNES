@@ -1,6 +1,6 @@
 # Reconstruction algorithms
 
-This document explains how SampleToNES turns an arbitrary audio sample into a
+This document explains how _SampleToNES_ turns an arbitrary audio sample into a
 *reconstruction* — a sequence of NES instructions that, when played back on the
 console's sound hardware, approximates the original. It is written to be readable
 without prior knowledge of the codebase, while pointing at the packages that
@@ -108,7 +108,7 @@ sharper frequency resolution requires a longer time window, and vice versa):
   every musical interval the same number of bins, so it resolves low pitches finely.
   It is the default.
   The price is time support: its low-frequency basis functions are long (hundreds of
-  milliseconds), so brief events are smeared in time at the low end. SampleToNES
+  milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
   computes the CQT **once over the whole signal** with a hop of one frame
   (`calculate_cqt_spectrum_columns`), so each frame's energy is reported at its own
   time position and the per-frame columns line up with the FFT path's frame centres.

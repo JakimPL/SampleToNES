@@ -1,6 +1,6 @@
 # FamiTracker export format
 
-This document is the reference for how SampleToNES writes FamiTracker files. It
+This document is the reference for how _SampleToNES_ writes FamiTracker files. It
 describes the two binary formats the `sampletones_core.famitracker` package
 produces — the `.fti` instrument file and the `.ftm` module file — and lists the
 FamiTracker capacity limits that the project domain model will grow to respect.
@@ -144,7 +144,7 @@ sequence, so its envelopes repeat from the start while the note is held; a one-s
 instrument leaves every loop point at `-1`. A sample's `loop` flag drives this when
 the sample is exported into a module.
 
-**How SampleToNES fills an instrument.** Each generator slice of a sample's
+**How _SampleToNES_ fills an instrument.** Each generator slice of a sample's
 reconstruction becomes one instrument, so a sample yields one to four instruments.
 The arpeggio sequence is the reconstruction's pitch contour expressed as
 `pitch − initial_pitch`; triggering the instrument at the note `initial_pitch`
@@ -153,7 +153,7 @@ carry across directly. The DPCM key-assignment table is empty by design.
 
 ## C. FamiTracker capacity limits
 
-FamiTracker bounds several quantities that the SampleToNES `Project` currently
+FamiTracker bounds several quantities that the _SampleToNES_ `Project` currently
 leaves looser. The exporter guards these limits and raises when a project exceeds
 them, so it never writes a corrupt file. Enforcing them on the domain model — so the
 editor prevents reaching an unexportable state — is planned as a follow-up phase; this

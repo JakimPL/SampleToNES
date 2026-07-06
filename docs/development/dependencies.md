@@ -2,7 +2,7 @@
 
 ## Graphical interface
 
-The graphical user interface is implemented with _DearPyGui_, a Python wrapper for _ImGui_ (https://www.dearimgui.com/).
+The graphical user interface is implemented with DearPyGui, a Python wrapper for ImGui (https://www.dearimgui.com/).
 
 ## Core
 
@@ -16,7 +16,7 @@ See the README's _GPU acceleration_ section for enabling GPU acceleration.
 
 ## Serialization
 
-Instruction libraries and reconstructions are serialized with [_MessagePack_](https://msgpack.org/) (the `msgpack` package). No external compiler or system dependency is required — it is installed automatically with the package.
+Instruction libraries and reconstructions are serialized with [MessagePack](https://msgpack.org/) (the `msgpack` package). No external compiler or system dependency is required — it is installed automatically with the package.
 
 ## Linux (standalone executable)
 
