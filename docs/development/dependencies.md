@@ -12,7 +12,7 @@ The core depends on common Python packages:
 * `librosa`
 * `cupy` (optional; required for GPU mode)
 
-See the README's _GPU acceleration_ section for enabling GPU acceleration.
+See [GPU acceleration](../guide/installation.md#gpu-acceleration) for enabling it.
 
 ## Serialization
 

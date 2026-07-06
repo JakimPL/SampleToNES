@@ -16,8 +16,9 @@ sections are written for programmers.
 The [**guide**](guide/) walks through the application from installation onward.
 
 - [Installation](guide/installation.md) — the standalone build, running from source, and GPU acceleration.
-- [The interface](guide/interface.md) — a tour of the four tabs and the settings windows.
-- [Workflows](guide/workflows.md) — generating a library, reconstructing a sample, and exporting to FamiTracker.
+- [Getting started](guide/getting-started.md) — your first reconstruction and your first song.
+- [The interface](guide/interface.md) — the Main, Reconstructions, and Instructions tabs, and the menus.
+- [The sequencer](guide/sequencer.md) — the tracker: arranging samples into a song and exporting a module.
 - [Command line](guide/command-line.md) — running without the graphical interface.
 - [Where your files live](guide/files.md) — the folders and file types _SampleToNES_ uses.
 - [Configuration](guide/configuration.md) — the settings you can change, and where.
@@ -39,6 +40,7 @@ The [**formats**](formats/) section documents the files _SampleToNES_ reads and 
 - [Reconstructions](formats/reconstructions.md) — the `.stn` reconstruction data.
 - [Projects](formats/projects.md) — the `.stp` project bundle.
 - [FamiTracker export](formats/famitracker.md) — the `.fti` instrument and `.ftm` module formats.
+- [Configuration file](formats/configuration.md) — the `config.json` structure.
 
 ## Programming with SampleToNES
 
