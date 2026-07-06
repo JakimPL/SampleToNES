@@ -1,4 +1,4 @@
-.PHONY: pre-commit build release setup test ftm-samples clean help
+.PHONY: pre-commit build release system-deps setup test ftm-samples clean help
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
@@ -20,6 +20,7 @@ help:
 	@echo "Available targets:"
 	@echo "  make setup       - Set up development environment (uv; append GPU=1 for CUDA support)"
 	@echo "  make pre-commit  - Install pre-commit hooks"
+	@echo "  make system-deps - Install system packages required to build and run (Debian-based)"
 	@echo "  make build       - Compile standalone executable (respects current deployment config)"
 	@echo "  make release     - Compile standalone executable with the release deployment config"
 	@echo "  make test        - Run unit tests with coverage"
@@ -38,10 +39,13 @@ install:
 	make build
 
 build:
-	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv
+	$(RUN_SCRIPT) $(BUILD_SCRIPT)
 
 release:
-	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv --release
+	$(RUN_SCRIPT) $(BUILD_SCRIPT) --release
+
+system-deps:
+	bash scripts/linux/build/dependencies.sh
 
 run:
 	uv run sampletones
