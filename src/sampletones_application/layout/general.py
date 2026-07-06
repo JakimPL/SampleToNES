@@ -31,6 +31,7 @@ class PanelsLayout(BaseModel, frozen=True):
 
 class StatusBarLayout(BaseModel, frozen=True):
     height: int
+    reserved_margin: int
     frame_rounding: int
     frame_padding: Padding
 

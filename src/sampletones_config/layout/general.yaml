@@ -19,6 +19,7 @@ panels:
 
 status_bar:
   height: 32
+  reserved_margin: 8
   frame_rounding: 0
   frame_padding: [0, 0]
 

@@ -44,6 +44,15 @@ components:
         key: FrameBgActive
         value: .frame_active
       - type: color
+        key: Button
+        value: .button
+      - type: color
+        key: ButtonHovered
+        value: .button_hovered
+      - type: color
+        key: ButtonActive
+        value: .button_active
+      - type: color
         key: CheckMark
         value: .accent
       - type: color
@@ -112,18 +121,6 @@ components:
       - type: style
         key: FrameRounding
         x: 6
-      - type: style
-        key: FramePadding
-        x: 8
-        y: 4
-      - type: style
-        key: ItemSpacing
-        x: 8
-        y: 6
-      - type: style
-        key: ItemInnerSpacing
-        x: 6
-        y: 4
       - type: style
         key: ScrollbarSize
         x: 13

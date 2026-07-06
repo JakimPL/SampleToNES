@@ -6,10 +6,10 @@ components:
     entries:
       - type: color
         key: PopupBg
-        value: "#323232"
+        value: .popup
       - type: color
         key: WindowBg
-        value: "#323232"
+        value: .popup
       - type: color
         key: ChildBg
-        value: "#323232"
+        value: .popup

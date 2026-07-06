@@ -6,4 +6,4 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#828282"
+        value: .text_muted

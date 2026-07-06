@@ -7,7 +7,7 @@ components:
       - type: color
         key: Line
         category: Plots
-        value: "#c8c8c8"
+        value: .plot_zero_line
       - type: style
         key: LineWeight
         category: Plots

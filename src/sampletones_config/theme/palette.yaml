@@ -2,22 +2,22 @@ name: studio
 
 colors:
   # surfaces and neutrals
-  ground: "#1c1a22"
-  surface: "#2a2833"
-  surface_alt: "#2a2733"
-  menu: "#26242e"
+  ground: "#16141c"
+  surface: "#2c2a38"
+  surface_alt: "#322f3e"
+  menu: "#201e28"
   popup: "#2c2a37"
-  frame: "#34323f"
-  frame_hovered: "#3d3a4a"
-  frame_active: "#464254"
-  border: "#3b3947"
-  separator: "#34313f"
-  plot_background: "#242130"
+  frame: "#383544"
+  frame_hovered: "#424050"
+  frame_active: "#4b475b"
+  border: "#484556"
+  separator: "#3e3b4c"
+  plot_background: "#201d2a"
 
   # tables
-  table_header: "#322e42"
-  table_row: "#232029"
-  table_border: "#423d52"
+  table_header: "#37324a"
+  table_row: "#201e27"
+  table_border: "#494560"
 
   # accent
   accent: "#a97fe3"
@@ -38,12 +38,37 @@ colors:
   scrollbar_hovered: "#4a4759"
 
   # buttons
-  button: "#3f3f55"
-  button_hovered: "#52526e"
-  button_active: "#64648a"
-  button_disabled: "#33313f"
+  button: "#43435c"
+  button_hovered: "#565676"
+  button_active: "#686892"
+  button_disabled: "#3d3a4a"
 
   # text
-  text: "#dcdcdc"
-  text_muted: "#828282"
+  text: "#e8e6ef"
+  text_muted: "#948f9f"
   text_disabled: "#79768a"
+  text_trace: "#c0c0c0"
+
+  # emphasis and overlays
+  white: "#ffffff"
+  transparent: "#00000000"
+  border_strong: "#50556b"
+  input_invalid: "#c0202064"
+
+  # plot lines
+  plot_zero_line: "#c8c8c8"
+
+  # file-tree nodes
+  file_wave: "#64c8ff"
+  file_library: "#96ff96"
+  file_reconstruction: "#b4b4ff"
+  file_muted: "#b4b4b4"
+
+  # favourites
+  favorite: "#ffd76e"
+  favorite_child: "#e7dbb7"
+
+  # instruction-library nodes
+  library_generator: "#d2e8d2"
+  library_group: "#d2e8e8"
+  library_instruction: "#d2d2d2"

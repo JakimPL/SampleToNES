@@ -6,4 +6,4 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#c0c0c0"
+        value: .text_trace

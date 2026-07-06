@@ -3,7 +3,7 @@ explorer:
   height: -1
 
 config:
-  height: 330
+  height: 276
 
 reconstructor:
   drive_format: "%.2f"
@@ -14,4 +14,4 @@ converter:
   button_height: 45
 
 advanced:
-  height: 182
+  height: 148

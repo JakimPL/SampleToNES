@@ -6,16 +6,16 @@ components:
     entries:
       - type: color
         key: FrameBg
-        value: "#2a2a3a"
+        value: .frame
       - type: color
         key: FrameBgHovered
-        value: "#26262c"
+        value: .frame_hovered
       - type: color
         key: FrameBgActive
-        value: "#30303c"
+        value: .frame_active
       - type: color
         key: Border
-        value: "#50556b"
+        value: .border_strong
       - type: style
         key: FrameBorderSize
         x: 1

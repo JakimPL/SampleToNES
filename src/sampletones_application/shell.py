@@ -334,9 +334,12 @@ class ApplicationShell:
         self._menu_bar.update(state)
 
     def _create_tabs(self, on_tab_changed: Callback) -> None:
+        status_bar_layout = self._layout.general.status_bar
         with dpg.child_window(
-            height=-self._layout.general.status_bar.height,
+            height=-(status_bar_layout.height + status_bar_layout.reserved_margin),
             border=False,
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
         ):
             with dpg.tab_bar(
                 tag=TAG_GLOBAL_TABS,
@@ -352,10 +355,12 @@ class ApplicationShell:
             tag=TAG_GLOBAL_STATUS_WINDOW,
             parent=TAG_GLOBAL_WINDOW_MAIN,
             width=-1,
-            height=-1,
+            height=self._layout.general.status_bar.height,
             indent=0,
             border=False,
             menubar=True,
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
         ):
             self._status_bar.create()
 

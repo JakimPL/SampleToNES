@@ -10,7 +10,7 @@ components:
         y: 4
       - type: color
         key: HeaderHovered
-        value: "#ffffff40"
+        value: .white/0.25
       - type: color
         key: HeaderActive
-        value: "#00000000"
+        value: .transparent
