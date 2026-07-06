@@ -1,5 +1,6 @@
 from .base import SampleToNESError
 from .validation import InvalidDataError, InvalidValuesError
+from .version import IncompatibleVersionError
 
 
 class ProjectError(SampleToNESError):
@@ -8,6 +9,10 @@ class ProjectError(SampleToNESError):
 
 class LoadProjectError(ProjectError):
     """Exception raised when there is an error loading the project."""
+
+
+class IncompatibleProjectVersionError(IncompatibleVersionError, LoadProjectError):
+    """Raised when the project file format version differs from the supported version."""
 
 
 class NotAValidArchiveError(LoadProjectError):

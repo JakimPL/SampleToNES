@@ -34,7 +34,7 @@ class DeploymentConfig(BaseModel, frozen=True):
         return {
             field: value
             for field in DeploymentConfig.model_fields.keys()
-            if (value := os.getenv(f"{SAMPLETONES_ENV_PREFIX}_{field.upper()}"))
+            if (value := os.getenv(f"{SAMPLETONES_ENV_PREFIX}{field.upper()}"))
         }
 
     @classmethod

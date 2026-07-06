@@ -4,12 +4,11 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from sampletones_application.config.deployment.deployment import (
-    LOG_LEVEL_ENV,
-    STRICT_HISTORY_ENV,
-    DeploymentConfig,
-)
+from sampletones_application.config.deployment.deployment import DeploymentConfig
 from sampletones_application.config.deployment.logs import LogLevel
+
+LOG_LEVEL_ENV = "SAMPLETONES_LOG_LEVEL"
+STRICT_HISTORY_ENV = "SAMPLETONES_STRICT_HISTORY"
 
 
 def _write_deployment(path: Path, *, log_level: str, strict_history: bool) -> Path:
@@ -55,6 +54,15 @@ class TestDeploymentConfigEnvironmentOverride:
         assert config.strict_history is False
         assert config.log_level is LogLevel.WARNING
 
+    def test_empty_override_falls_back_to_file(self, deployment_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(LOG_LEVEL_ENV, "")
+        monkeypatch.setenv(STRICT_HISTORY_ENV, "")
+
+        config = DeploymentConfig.load(deployment_path)
+
+        assert config.log_level is LogLevel.WARNING
+        assert config.strict_history is True
+
     @pytest.mark.parametrize(
         "value, expected",
         [
@@ -86,7 +94,7 @@ class TestDeploymentConfigValidation:
         with pytest.raises(ValidationError):
             DeploymentConfig.load(deployment_path)
 
-    @pytest.mark.parametrize("value", ["", "maybe", "2"])
+    @pytest.mark.parametrize("value", ["maybe", "2"])
     def test_invalid_override_strict_history_raises(
         self, deployment_path: Path, monkeypatch: pytest.MonkeyPatch, value: str
     ) -> None:

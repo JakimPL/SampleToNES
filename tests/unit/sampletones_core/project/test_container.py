@@ -17,6 +17,7 @@ from sampletones_shared.constants.project import (
     RECONSTRUCTIONS_DIRECTORY,
 )
 from sampletones_shared.exceptions import (
+    IncompatibleProjectVersionError,
     IncorrectReconstructionDataError,
     InvalidProjectDataValuesError,
     MissingProjectDataFileError,
@@ -24,6 +25,23 @@ from sampletones_shared.exceptions import (
     UnhandledProjectError,
 )
 from tests.conftest import ReconstructionFactory
+
+_RECONSTRUCTION_VERSION_CONSTANT = (
+    "sampletones_core.reconstructions.reconstruction.reconstruction.SAMPLETONES_RECONSTRUCTION_DATA_VERSION"
+)
+
+
+def _rewrite_format_version(source: Path, target: Path, *, format_version: str) -> None:
+    with zipfile.ZipFile(source, "r") as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+
+    document = json.loads(members[PROJECT_DOCUMENT_NAME].decode("utf-8"))
+    document["format_version"] = format_version
+    members[PROJECT_DOCUMENT_NAME] = json.dumps(document).encode("utf-8")
+
+    with zipfile.ZipFile(target, "w") as archive:
+        for name, data in members.items():
+            archive.writestr(name, data)
 
 
 def _populated_project(
@@ -241,4 +259,36 @@ class TestLoadRejectsInvalidArchives:
 
         with patch.object(ProjectContainer, "_build_project", side_effect=RuntimeError("runtime_error")):
             with pytest.raises(UnhandledProjectError):
+                ProjectContainer.load(path)
+
+
+class TestVersionCompatibility:
+    def test_incompatible_format_version_raises(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        project = _populated_project(reconstruction_factory)
+        original = tmp_path / "demo.stp"
+        ProjectContainer.save(project, original)
+        bumped = tmp_path / "bumped.stp"
+        _rewrite_format_version(original, bumped, format_version="9.0")
+
+        with pytest.raises(IncompatibleProjectVersionError) as exc_info:
+            ProjectContainer.load(bumped)
+
+        assert exc_info.value.expected_version == SAMPLETONES_PROJECT_DATA_VERSION
+        assert exc_info.value.actual_version == "9.0"
+
+    def test_incompatible_embedded_reconstruction_version_rejected(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        project = _populated_project(reconstruction_factory)
+        path = tmp_path / "demo.stp"
+        ProjectContainer.save(project, path)
+
+        with patch(_RECONSTRUCTION_VERSION_CONSTANT, "9.0"):
+            with pytest.raises(IncorrectReconstructionDataError):
                 ProjectContainer.load(path)

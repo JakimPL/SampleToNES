@@ -9,7 +9,15 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.paths import LANG_EN
 from sampletones_core.parallelization import TaskStatus
-from sampletones_shared.exceptions import UnhandledLibraryError
+from sampletones_shared.exceptions import (
+    DeserializationError,
+    IncompatibleLibraryDataVersionError,
+    InvalidLibraryDataError,
+    InvalidLibraryDataValuesError,
+    InvalidMetadataError,
+    LoadLibraryError,
+    UnhandledLibraryError,
+)
 
 
 def _logic(*, operation_active: bool) -> LibraryLogic:
@@ -72,6 +80,75 @@ class TestLoadLibraryTail:
             logic._load_library(MagicMock())
 
         logic.on_load_error.assert_not_called()
+        logic._unlock_function.assert_called_once_with()
+
+
+def _surfacing_load_logic(*, load_error: Exception) -> LibraryLogic:
+    """A library logic wired with every callback and message the ``_load_library`` ladder reports
+    through, so a concrete failure can be observed reaching the user-facing callbacks."""
+    logic = _load_logic(load_error=load_error)
+    logic.on_load_file_not_found = MagicMock()
+    logic._msg_file_not_found = "file not found"
+    logic._msg_file_load_error = "file load error"
+    logic._msg_invalid_metadata_error = "invalid metadata"
+    logic._msg_invalid_data_values_error = "invalid values"
+    logic._msg_invalid_data_error = "invalid data"
+    logic._msg_deserialization_error = "deserialization error"
+    logic._tpl_incompatible_version_error = "got {} expected {}"
+    return logic
+
+
+class TestLoadLibrarySurfacesConcreteErrors:
+    """Each concrete load failure reaches the user through ``on_load_error`` with a populated
+    message, so a bad library file is reported rather than swallowed. The library unlocks in
+    every case."""
+
+    @pytest.mark.parametrize(
+        "error, expected_message",
+        [
+            (OSError("io"), "file load error"),
+            (InvalidMetadataError("bad metadata"), "invalid metadata"),
+            (InvalidLibraryDataValuesError("bad values", ValueError("v")), "invalid values"),
+            (InvalidLibraryDataError("bad data"), "invalid data"),
+            (DeserializationError("bad bytes"), "deserialization error"),
+            (LoadLibraryError("unclassified"), "load error"),
+        ],
+    )
+    def test_concrete_error_reports_populated_message(
+        self,
+        error: Exception,
+        expected_message: str,
+    ) -> None:
+        logic = _surfacing_load_logic(load_error=error)
+
+        logic._load_library(MagicMock())
+
+        logic.on_load_error.assert_called_once_with(error, expected_message)
+        logic._unlock_function.assert_called_once_with()
+
+    def test_missing_file_reports_through_file_not_found_callback(self) -> None:
+        logic = _surfacing_load_logic(load_error=FileNotFoundError("gone"))
+
+        logic._load_library(MagicMock())
+
+        logic.on_load_file_not_found.assert_called_once_with(
+            logic._library_manager.get_path.return_value,
+            "file not found",
+        )
+        logic.on_load_error.assert_not_called()
+        logic._unlock_function.assert_called_once_with()
+
+    def test_incompatible_version_reports_both_versions(self) -> None:
+        error = IncompatibleLibraryDataVersionError(
+            "mismatch",
+            expected_version="2.0",
+            actual_version="9.0",
+        )
+        logic = _surfacing_load_logic(load_error=error)
+
+        logic._load_library(MagicMock())
+
+        logic.on_load_error.assert_called_once_with(error, "got 9.0 expected 2.0")
         logic._unlock_function.assert_called_once_with()
 
 

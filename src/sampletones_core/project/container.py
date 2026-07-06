@@ -11,12 +11,15 @@ from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
+from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
 )
+from sampletones_shared.deployment.version import compare_versions
 from sampletones_shared.exceptions import (
     DeserializationError,
+    IncompatibleProjectVersionError,
     IncorrectReconstructionDataError,
     InvalidProjectDataValuesError,
     LoadReconstructionError,
@@ -59,6 +62,7 @@ class ProjectContainer:
         try:
             with zipfile.ZipFile(path, "r") as archive:
                 document = ProjectDocument.model_validate_json(archive.read(PROJECT_DOCUMENT_NAME))
+                ProjectContainer._validate_document(document)
                 reconstructions = ProjectContainer._read_reconstructions(archive)
             return ProjectContainer._build_project(document, reconstructions)
         except zipfile.BadZipFile as exception:
@@ -76,12 +80,25 @@ class ProjectContainer:
                 f'Failed to load project data from "{Path(path)}" due to validation error: {exception}',
                 exception,
             ) from exception
+        except IncompatibleProjectVersionError:
+            raise
         except OSError:
             raise
         except Exception as exception:
             raise UnhandledProjectError(
                 f'Unhandled project error while loading "{Path(path)}": {exception}'
             ) from exception
+
+    @staticmethod
+    def _validate_document(document: ProjectDocument) -> None:
+        format_version = document.format_version
+        if compare_versions(format_version, SAMPLETONES_PROJECT_DATA_VERSION) != 0:
+            raise IncompatibleProjectVersionError(
+                f"Project data version mismatch: expected "
+                f"{SAMPLETONES_PROJECT_DATA_VERSION}, got {format_version}.",
+                expected_version=SAMPLETONES_PROJECT_DATA_VERSION,
+                actual_version=format_version,
+            )
 
     @staticmethod
     def _build_document(project: Project) -> ProjectDocument:
@@ -139,6 +156,10 @@ class ProjectContainer:
         for name in archive.namelist():
             if name.startswith(prefix) and name.endswith(EXT_FILE_RECONSTRUCTION):
                 reconstruction_id = Path(name).stem
-                reconstructions[reconstruction_id] = Reconstruction.deserialize_data(archive.read(name), source=name)
+                reconstructions[reconstruction_id] = Reconstruction.deserialize_data(
+                    archive.read(name),
+                    source=name,
+                    validation=Reconstruction.validate_metadata,
+                )
 
         return reconstructions

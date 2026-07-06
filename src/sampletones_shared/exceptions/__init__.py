@@ -14,6 +14,7 @@ from .library import (
     UnhandledLibraryError,
 )
 from .project import (
+    IncompatibleProjectVersionError,
     IncorrectReconstructionDataError,
     InvalidProjectDataValuesError,
     LoadProjectError,
@@ -64,6 +65,7 @@ __all__ = [
     "DeserializationError",
     "InvalidMetadataError",
     "LoadProjectError",
+    "IncompatibleProjectVersionError",
     "NotAValidArchiveError",
     "IncorrectReconstructionDataError",
     "InvalidProjectDataValuesError",

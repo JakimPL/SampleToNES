@@ -4,7 +4,15 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
-from sampletones_shared.exceptions import UnhandledReconstructionError
+from sampletones_shared.exceptions import (
+    DeserializationError,
+    IncompatibleReconstructionVersionError,
+    InvalidMetadataError,
+    InvalidReconstructionError,
+    InvalidReconstructionValuesError,
+    LoadReconstructionError,
+    UnhandledReconstructionError,
+)
 
 
 @pytest.fixture
@@ -15,8 +23,72 @@ def coordinator() -> ReconstructionsTabCoordinator:
     instance._browser_panel = MagicMock()
     instance._reconstruction_manager = MagicMock()
     instance._dialogs = MagicMock()
+    instance._msg_file_not_found = "file not found"
     instance._msg_load_error = "load error"
+    instance._msg_invalid_metadata = "invalid metadata"
+    instance._msg_invalid_values = "invalid values"
+    instance._msg_invalid_file = "invalid file"
+    instance._msg_deserialization_error = "deserialization error"
+    instance._tpl_incompatible_version = "got {} expected {}"
     return instance
+
+
+class TestLoadReconstructionSurfacesConcreteErrors:
+    """Each concrete load failure reaches the user through a populated error dialog, so a bad
+    reconstruction file is reported rather than swallowed. The browser unlocks in every case."""
+
+    @pytest.mark.parametrize(
+        "error, expected_message",
+        [
+            (InvalidMetadataError("bad metadata"), "invalid metadata"),
+            (InvalidReconstructionValuesError("bad values", ValueError("v")), "invalid values"),
+            (InvalidReconstructionError("bad file"), "invalid file"),
+            (DeserializationError("bad bytes"), "deserialization error"),
+            (LoadReconstructionError("unclassified"), "load error"),
+            (OSError("io"), "load error"),
+        ],
+    )
+    def test_concrete_error_shows_populated_dialog(
+        self,
+        coordinator: ReconstructionsTabCoordinator,
+        error: Exception,
+        expected_message: str,
+    ) -> None:
+        coordinator._reconstruction_manager.load_reconstruction.side_effect = error
+
+        coordinator.load_reconstruction(Path("sample.stn"))
+
+        coordinator._dialogs.show_error.assert_called_once_with(error, expected_message)
+        coordinator._browser_panel.unlock.assert_called_once_with()
+
+    def test_missing_file_shows_file_not_found_dialog(
+        self,
+        coordinator: ReconstructionsTabCoordinator,
+    ) -> None:
+        error = FileNotFoundError("gone")
+        coordinator._reconstruction_manager.load_reconstruction.side_effect = error
+        path = Path("sample.stn")
+
+        coordinator.load_reconstruction(path)
+
+        coordinator._dialogs.show_file_not_found.assert_called_once_with(path, "file not found")
+        coordinator._browser_panel.unlock.assert_called_once_with()
+
+    def test_incompatible_version_dialog_reports_both_versions(
+        self,
+        coordinator: ReconstructionsTabCoordinator,
+    ) -> None:
+        error = IncompatibleReconstructionVersionError(
+            "mismatch",
+            expected_version="2.0",
+            actual_version="9.0",
+        )
+        coordinator._reconstruction_manager.load_reconstruction.side_effect = error
+
+        coordinator.load_reconstruction(Path("sample.stn"))
+
+        coordinator._dialogs.show_error.assert_called_once_with(error, "got 9.0 expected 2.0")
+        coordinator._browser_panel.unlock.assert_called_once_with()
 
 
 class TestLoadReconstructionTail:
