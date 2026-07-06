@@ -1,4 +1,4 @@
-.PHONY: pre-commit build setup test ftm-samples clean help
+.PHONY: pre-commit build release setup test ftm-samples clean help
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
@@ -20,7 +20,8 @@ help:
 	@echo "Available targets:"
 	@echo "  make setup       - Set up development environment (uv; append GPU=1 for CUDA support)"
 	@echo "  make pre-commit  - Install pre-commit hooks"
-	@echo "  make build       - Compile standalone executable"
+	@echo "  make build       - Compile standalone executable (respects current deployment config)"
+	@echo "  make release     - Compile standalone executable with the release deployment config"
 	@echo "  make test        - Run unit tests with coverage"
 	@echo "  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite"
 	@echo "  make clean       - Remove build artifacts and cache files"
@@ -38,6 +39,9 @@ install:
 
 build:
 	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv
+
+release:
+	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv --release
 
 run:
 	uv run sampletones

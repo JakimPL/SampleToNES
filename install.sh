@@ -22,4 +22,4 @@ fi
 
 source "${SCRIPT_DIR}/scripts/linux/build/dependencies.sh"
 bash "${SCRIPT_DIR}/scripts/linux/build/sampletones.sh" "${PASS_ARGS[@]}"
-bash "${SCRIPT_DIR}/scripts/linux/build/build.sh"
+bash "${SCRIPT_DIR}/scripts/linux/build/build.sh" "${PASS_ARGS[@]}"

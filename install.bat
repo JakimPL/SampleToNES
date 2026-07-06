@@ -22,6 +22,6 @@ if "%NO_VENV%"=="false" (
 )
 
 call "%SCRIPT_DIR%scripts\windows\build\install.bat" %PASS_ARGS% || exit /b
-call "%SCRIPT_DIR%scripts\windows\build\build.bat" || exit /b
+call "%SCRIPT_DIR%scripts\windows\build\build.bat" %PASS_ARGS% || exit /b
 
 pause
