@@ -7,7 +7,7 @@ import pytest
 
 from sampletones_core.data import Metadata
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_shared.constants.application import (
+from sampletones_shared.application import (
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
 from sampletones_shared.exceptions import (

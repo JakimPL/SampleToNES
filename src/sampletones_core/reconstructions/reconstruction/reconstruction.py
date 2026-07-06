@@ -22,10 +22,11 @@ from sampletones_core.instructions import (
     InstructionUnion,
     get_instruction_by_type,
 )
-from sampletones_shared.constants.application import (
+from sampletones_shared.application import (
     SAMPLETONES_NAME,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
+from sampletones_shared.deployment.version import compare_versions
 from sampletones_shared.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
@@ -39,7 +40,6 @@ from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.arrays import pad
 from sampletones_shared.utils.serialization import load_binary, serialize_array
-from sampletones_shared.utils.version import compare_versions
 
 from ..reconstructor.state import ReconstructionState
 from .approximations import ApproximationsItem

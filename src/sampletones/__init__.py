@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     )
     from sampletones_core.library import InstructionLibrary
     from sampletones_core.reconstructions import Reconstruction, Reconstructor
-    from sampletones_shared.constants.application import SAMPLETONES_VERSION as __version__
+    from sampletones_shared.application import SAMPLETONES_VERSION as __version__
 
 
 def __getattr__(name: str) -> Any:
@@ -29,7 +29,7 @@ def __getattr__(name: str) -> Any:
         return Config
 
     if name == "__version__":
-        from sampletones_shared.constants.application import SAMPLETONES_VERSION
+        from sampletones_shared.application import SAMPLETONES_VERSION
 
         return SAMPLETONES_VERSION
 

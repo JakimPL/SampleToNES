@@ -96,7 +96,7 @@ def main() -> None:
         return None
 
     if args.version:
-        from sampletones_shared.constants.application import (
+        from sampletones_shared.application import (
             SAMPLETONES_NAME_VERSION,
         )
 

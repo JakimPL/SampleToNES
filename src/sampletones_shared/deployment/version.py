@@ -1,6 +1,16 @@
+from typing import List
+
+
+def _split_version(version: str) -> List[int]:
+    try:
+        return list(map(int, version.split(".")))
+    except ValueError as exception:
+        raise SystemError(f"Invalid version format: {exception}") from exception
+
+
 def compare_versions(version1: str, version2: str) -> int:
-    v1_parts = list(map(int, version1.split(".")))
-    v2_parts = list(map(int, version2.split(".")))
+    v1_parts = _split_version(version1)
+    v2_parts = _split_version(version2)
 
     length_difference = len(v1_parts) - len(v2_parts)
     if length_difference > 0:

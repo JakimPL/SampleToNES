@@ -103,7 +103,7 @@ from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.types.feature import FeatureValue
-from sampletones_shared.constants.application import (
+from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
     SAMPLETONES_NAME_VERSION,

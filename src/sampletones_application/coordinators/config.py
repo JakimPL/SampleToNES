@@ -26,7 +26,7 @@ from sampletones_application.layout import LayoutConfig
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_JSON
-from sampletones_shared.constants.application import SAMPLETONES_VERSION
+from sampletones_shared.application import SAMPLETONES_VERSION
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.validation import flatten_location
 

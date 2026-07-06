@@ -3,7 +3,7 @@ from typing import Final, Tuple
 
 from platformdirs import user_config_dir, user_data_dir, user_documents_path
 
-from sampletones_shared.constants.application import (
+from sampletones_shared.application import (
     SAMPLETONES_GROUP,
     SAMPLETONES_NAME,
 )

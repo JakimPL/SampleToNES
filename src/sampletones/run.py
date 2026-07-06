@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from sampletones_application.application import Application
-from sampletones_shared.constants.application import SAMPLETONES_NAME_VERSION
+from sampletones_shared.application import SAMPLETONES_NAME_VERSION
 from sampletones_shared.logger import logger
 
 

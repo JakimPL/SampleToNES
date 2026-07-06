@@ -11,7 +11,7 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
-from sampletones_shared.constants.application import SAMPLETONES_PROJECT_DATA_VERSION
+from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,

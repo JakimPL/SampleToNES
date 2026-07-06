@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import Final
 
-from sampletones_shared.constants.application import SAMPLETONES_NAME
+from sampletones_shared.application import SAMPLETONES_NAME
 
 
 class Machine(IntEnum):
