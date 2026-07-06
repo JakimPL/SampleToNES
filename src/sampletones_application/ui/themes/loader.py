@@ -145,6 +145,7 @@ class ThemeLoader:
         enabled: bool,
         entry: ThemeEntrySpec,
     ) -> ThemeEntryKey:
+        is_style = not isinstance(entry, ThemeColorEntrySpec)
         if isinstance(entry, ThemeColorEntrySpec):
             key = cls._resolve_color_key(entry.key, entry.category)
         else:
@@ -155,6 +156,7 @@ class ThemeLoader:
             enabled=enabled,
             key=key,
             category=cls._resolve_category(entry.category),
+            is_style=is_style,
         )
 
     @classmethod
@@ -201,6 +203,7 @@ class ThemeLoader:
                 enabled=False,
                 key=entry_key.key,
                 category=entry_key.category,
+                is_style=entry_key.is_style,
             )
             if target in entries:
                 continue
