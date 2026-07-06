@@ -15,7 +15,13 @@ from sampletones_application.ui.themes.items import (
     ThemeEntryKey,
     ThemeItems,
 )
+from sampletones_application.ui.themes.palette import (
+    PALETTE_FILENAME,
+    PaletteReference,
+    load_palette,
+)
 from sampletones_application.ui.themes.spec import (
+    ColorSource,
     ThemeColorEntrySpec,
     ThemeEntrySpec,
     ThemeSpec,
@@ -28,6 +34,7 @@ from sampletones_application.ui.themes.style import (
 )
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_core.paths import EXT_FILE_YAML
+from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.serialization import load_yaml
 
 _BASE_THEME_NAME: Final[str] = "default"
@@ -43,6 +50,7 @@ class ThemeLoader:
 
     def __init__(self, theme_directory: Path) -> None:
         self._directory = theme_directory
+        self._palette = load_palette(theme_directory)
 
     def load_all(self) -> List[Theme]:
         specs = self._load_specs()
@@ -65,6 +73,9 @@ class ThemeLoader:
     def _load_specs(self) -> List[ThemeSpec]:
         specs: List[ThemeSpec] = []
         for path in sorted(self._directory.rglob(f"*{EXT_FILE_YAML}")):
+            if path.name == PALETTE_FILENAME:
+                continue
+
             raw = load_yaml(path)
             if not isinstance(raw, dict):
                 raise TypeError(f"Theme file {path} must contain a mapping, got {type(raw)}")
@@ -121,22 +132,26 @@ class ThemeLoader:
 
         return CATEGORY_MAP[category]
 
-    @classmethod
-    def _entry_to_runtime(cls, entry: ThemeEntrySpec) -> ThemeValue:
-        category = cls._resolve_category(entry.category)
+    def _entry_to_runtime(self, entry: ThemeEntrySpec) -> ThemeValue:
+        category = self._resolve_category(entry.category)
         if isinstance(entry, ThemeColorEntrySpec):
             return ThemeColor(
-                key=cls._resolve_color_key(entry.key, entry.category),
-                color=entry.value,
+                key=self._resolve_color_key(entry.key, entry.category),
+                color=self._resolve_color(entry.value),
                 category=category,
             )
 
         return ThemeStyle(
-            key=cls._resolve_style_key(entry.key, entry.category),
+            key=self._resolve_style_key(entry.key, entry.category),
             x=entry.x,
             y=entry.y,
             category=category,
         )
+
+    def _resolve_color(self, value: ColorSource) -> ColorRGBA:
+        if isinstance(value, PaletteReference):
+            return self._palette.resolve(value)
+        return value
 
     @classmethod
     def _entry_key(
@@ -159,20 +174,19 @@ class ThemeLoader:
             is_style=is_style,
         )
 
-    @classmethod
-    def _spec_to_entries(cls, spec: ThemeSpec) -> ThemeEntries:
+    def _spec_to_entries(self, spec: ThemeSpec) -> ThemeEntries:
         entries: ThemeEntries = {}
         for component in spec.components:
-            item_type = cls._resolve_item_type(component.item_type)
+            item_type = self._resolve_item_type(component.item_type)
             parameter = ThemeParameter(
                 item_type=item_type,
                 enabled_state=component.enabled,
             )
             for entry in component.entries:
-                entry_key = cls._entry_key(item_type, component.enabled, entry)
+                entry_key = self._entry_key(item_type, component.enabled, entry)
                 entries[entry_key] = ResolvedThemeEntry(
                     parameter=parameter,
-                    value=cls._entry_to_runtime(entry),
+                    value=self._entry_to_runtime(entry),
                 )
 
         return entries

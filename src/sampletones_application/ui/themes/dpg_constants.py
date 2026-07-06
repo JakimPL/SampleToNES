@@ -60,7 +60,9 @@ CORE_COLOR_MAP: Final[dict[str, int]] = {
 
 PLOTS_COLOR_MAP: Final[dict[str, int]] = {
     "Fill": dpg.mvPlotCol_Fill,
+    "FrameBg": dpg.mvPlotCol_FrameBg,
     "Line": dpg.mvPlotCol_Line,
+    "PlotBg": dpg.mvPlotCol_PlotBg,
 }
 
 CORE_STYLE_MAP: Final[dict[str, int]] = {

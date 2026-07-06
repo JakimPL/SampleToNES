@@ -35,7 +35,7 @@ class Theme:
                     enabled_state=parameter.enabled_state,
                 ):
                     for item in values:
-                        dictionary[parameter, item.key, isinstance(item, ThemeStyle)] = item
+                        dictionary[parameter, item.key, item.category, isinstance(item, ThemeStyle)] = item
                         if isinstance(item, ThemeColor):
                             dpg.add_theme_color(
                                 item.key,
@@ -66,13 +66,14 @@ class Theme:
         key: int,
         *,
         enabled_state: bool = True,
+        category: int = dpg.mvThemeCat_Core,
         is_style: bool,
     ) -> Optional[ThemeValue]:
         parameter = ThemeParameter(
             item_type=item_type,
             enabled_state=enabled_state,
         )
-        return self._dictionary.get((parameter, key, is_style))
+        return self._dictionary.get((parameter, key, category, is_style))
 
     def get_color(
         self,
@@ -80,8 +81,9 @@ class Theme:
         key: int,
         *,
         enabled_state: bool = True,
+        category: int = dpg.mvThemeCat_Core,
     ) -> Optional[Color]:
-        theme_item = self.get(item_type, key, enabled_state=enabled_state, is_style=False)
+        theme_item = self.get(item_type, key, enabled_state=enabled_state, category=category, is_style=False)
         if isinstance(theme_item, ThemeColor):
             return theme_item.color
         return None
@@ -92,8 +94,9 @@ class Theme:
         key: int,
         *,
         enabled_state: bool = True,
+        category: int = dpg.mvThemeCat_Core,
     ) -> Optional[Tuple[float, float]]:
-        theme_item = self.get(item_type, key, enabled_state=enabled_state, is_style=True)
+        theme_item = self.get(item_type, key, enabled_state=enabled_state, category=category, is_style=True)
         if isinstance(theme_item, ThemeStyle):
             return theme_item.x, theme_item.y
         return None
@@ -105,8 +108,15 @@ class Theme:
         *,
         enabled_state: bool = True,
     ) -> Optional[int]:
-        for is_style in (False, True):
-            theme_item = self.get(item_type, key, enabled_state=enabled_state, is_style=is_style)
-            if theme_item is not None:
-                return theme_item.category
+        for category in (dpg.mvThemeCat_Core, dpg.mvThemeCat_Plots):
+            for is_style in (False, True):
+                theme_item = self.get(
+                    item_type,
+                    key,
+                    enabled_state=enabled_state,
+                    category=category,
+                    is_style=is_style,
+                )
+                if theme_item is not None:
+                    return theme_item.category
         return None

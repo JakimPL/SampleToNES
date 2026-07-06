@@ -6,7 +6,7 @@ from sampletones_application.ui.themes.style import ThemeParameter, ThemeValue
 
 ThemeValues = Union[List[ThemeValue]]
 ThemeItemsDictionary = Dict[ThemeParameter, ThemeValues]
-ThemeDictionary = Dict[Tuple[ThemeParameter, int, bool], ThemeValue]
+ThemeDictionary = Dict[Tuple[ThemeParameter, int, int, bool], ThemeValue]
 
 
 class ThemeEntryKey(NamedTuple):

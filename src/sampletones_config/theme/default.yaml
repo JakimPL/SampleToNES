@@ -6,92 +6,100 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#dcdcdc"
+        value: .text
       - type: color
         key: TextDisabled
-        value: "#828282"
+        value: .text_muted
       - type: color
         key: WindowBg
-        value: "#1c1a22"
+        value: .ground
       - type: color
         key: ChildBg
-        value: "#2a2833"
+        value: .surface
       - type: color
         key: PopupBg
-        value: "#2c2a37"
+        value: .popup
       - type: color
         key: MenuBarBg
-        value: "#26242e"
+        value: .menu
       - type: color
         key: TitleBg
-        value: "#1c1a22"
+        value: .ground
       - type: color
         key: TitleBgActive
-        value: "#26242e"
+        value: .menu
       - type: color
         key: Border
-        value: "#3b3947"
+        value: .border
       - type: color
         key: Separator
-        value: "#34313f"
+        value: .separator
       - type: color
         key: FrameBg
-        value: "#211f29"
+        value: .frame
       - type: color
         key: FrameBgHovered
-        value: "#2a2836"
+        value: .frame_hovered
       - type: color
         key: FrameBgActive
-        value: "#302d40"
+        value: .frame_active
       - type: color
         key: CheckMark
-        value: "#a97fe3"
+        value: .accent
       - type: color
         key: SliderGrab
-        value: "#a97fe3"
+        value: .accent
       - type: color
         key: SliderGrabActive
-        value: "#ba97ec"
+        value: .accent_hover
       - type: color
         key: Header
-        value: "#332e46"
+        value: .selection
       - type: color
         key: HeaderHovered
-        value: "#3e3757"
+        value: .selection_hovered
       - type: color
         key: HeaderActive
-        value: "#48406a"
+        value: .selection_active
       - type: color
         key: Tab
-        value: "#242230"
+        value: .tab
       - type: color
         key: TabHovered
-        value: "#3a3550"
+        value: .tab_hovered
       - type: color
         key: TabActive
-        value: "#4a3f6e"
+        value: .tab_active
       - type: color
         key: ScrollbarBg
-        value: "#1c1a22"
+        value: .ground
       - type: color
         key: ScrollbarGrab
-        value: "#3b3947"
+        value: .border
       - type: color
         key: ScrollbarGrabHovered
-        value: "#4a4759"
+        value: .scrollbar_hovered
       - type: color
         key: ScrollbarGrabActive
-        value: "#6b5a8f"
+        value: .accent_muted
+      - type: color
+        key: FrameBg
+        category: Plots
+        value: .plot_background
+      - type: color
+        key: PlotBg
+        category: Plots
+        value: .plot_background
       - type: style
         key: WindowPadding
-        x: 12
-        y: 10
+        x: 8
+        y: 8
       - type: style
         key: WindowRounding
         x: 6
       - type: style
         key: WindowBorderSize
-        x: 1
+        x: 0
       - type: style
         key: ChildRounding
         x: 8
@@ -132,18 +140,18 @@ components:
     entries:
       - type: color
         key: MenuBarBg
-        value: "#26242e"
+        value: .menu
   - item_type: Button
     entries:
       - type: color
         key: Button
-        value: "#363648"
+        value: .button
       - type: color
         key: ButtonHovered
-        value: "#48486c"
+        value: .button_hovered
       - type: color
         key: ButtonActive
-        value: "#5a5a78"
+        value: .button_active
       - type: style
         key: FrameRounding
         x: 6
@@ -156,16 +164,16 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#828282"
+        value: .text_disabled
       - type: color
         key: Button
-        value: "#2e2e3c"
+        value: .button_disabled
       - type: color
         key: ButtonHovered
-        value: "#2e2e3c"
+        value: .button_disabled
       - type: color
         key: ButtonActive
-        value: "#2e2e3c"
+        value: .button_disabled
       - type: style
         key: FrameRounding
         x: 6
@@ -177,38 +185,38 @@ components:
     entries:
       - type: color
         key: TableHeaderBg
-        value: "#2d3241"
+        value: .table_header
       - type: color
         key: TableRowBg
-        value: "#1e2028"
+        value: .table_row
       - type: color
         key: TableRowBgAlt
-        value: "#262834"
+        value: .surface_alt
       - type: color
         key: TableBorderStrong
-        value: "#3c4155"
+        value: .table_border
       - type: color
         key: TableBorderLight
-        value: "#3c4155"
+        value: .table_border
   - item_type: RadioButton
     entries:
       - type: color
         key: Text
-        value: "#dcdcdc"
+        value: .text
   - item_type: RadioButton
     enabled: false
     entries:
       - type: color
         key: Text
-        value: "#828282"
+        value: .text_muted
   - item_type: Checkbox
     entries:
       - type: color
         key: Text
-        value: "#dcdcdc"
+        value: .text
   - item_type: Checkbox
     enabled: false
     entries:
       - type: color
         key: Text
-        value: "#828282"
+        value: .text_muted

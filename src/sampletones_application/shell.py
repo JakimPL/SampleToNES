@@ -320,6 +320,8 @@ class ApplicationShell:
                 GlobalDialogTitleElements.MAIN_WINDOW,
             ],
             tag=TAG_GLOBAL_WINDOW_MAIN,
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
         ):
             self._menu_bar.create(initial_menu_state)
             self._create_tabs(on_tab_changed)

@@ -1,0 +1,49 @@
+name: studio
+
+colors:
+  # surfaces and neutrals
+  ground: "#1c1a22"
+  surface: "#2a2833"
+  surface_alt: "#2a2733"
+  menu: "#26242e"
+  popup: "#2c2a37"
+  frame: "#34323f"
+  frame_hovered: "#3d3a4a"
+  frame_active: "#464254"
+  border: "#3b3947"
+  separator: "#34313f"
+  plot_background: "#242130"
+
+  # tables
+  table_header: "#322e42"
+  table_row: "#232029"
+  table_border: "#423d52"
+
+  # accent
+  accent: "#a97fe3"
+  accent_hover: "#ba97ec"
+  accent_muted: "#6b5a8f"
+
+  # tabs
+  tab: "#242230"
+  tab_hovered: "#3a3550"
+  tab_active: "#4a3f6e"
+
+  # selection (tree, list, menu highlight)
+  selection: "#332e46"
+  selection_hovered: "#3e3757"
+  selection_active: "#48406a"
+
+  # scrollbar
+  scrollbar_hovered: "#4a4759"
+
+  # buttons
+  button: "#3f3f55"
+  button_hovered: "#52526e"
+  button_active: "#64648a"
+  button_disabled: "#33313f"
+
+  # text
+  text: "#dcdcdc"
+  text_muted: "#828282"
+  text_disabled: "#79768a"
