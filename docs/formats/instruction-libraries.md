@@ -1,59 +1,58 @@
 # Instruction libraries
 
-To optimize sample reconstruction, all single-oscillator instructions are prerendered as samples with spectral information.
+An instruction library is stored as a single `.ins` file holding, for every
+possible instruction, the waveform its channel produces and that waveform's
+[spectrum](../glossary.md#spectrum-feature-histogram). It is the catalogue the
+reconstruction search draws its candidates from. For what a library is and how
+it is built, see [Instruction library](../concepts/instruction-library.md); this
+page documents the file.
 
-The instruction data depends on the following configuration properties:
-* `nes_frequency` (NES frequency, usually NTSC or PAL)
-* `sample_rate` (in Hz)
-* `transformation_gamma`, which determines the transformation of the spectral information:
-    * `0` - raw absolute values of Fourier Transform
-    * `100` - absolute values transformed via $\log\left(1 + x\right)$ operation
+Libraries are generated from the _Instructions_ tab (or with
+`sampletones --generate`) and stored in the documents folder.
 
-    Intermediate values interpolate between these two.
+## Contents
 
-Each set of parameters corresponds to a different instructions data, encoded by a configuration key.
+A library is keyed by the configuration that produces it and holds one entry per
+instruction.
 
-Libraries are generated using the generator included in the application. They can be generated from the _Instructions_ tab of the application and explored using the application.
+### Per-instruction data
 
-## Data content
+Each entry contains:
 
-For each key, the data consists of single instructions. Each instruction contains:
-* metadata
-* instruction data
-* a single waveform frame
-* spectrum
+* **metadata** — the generator class (`pulse` / `triangle` / `noise`) and the
+  instruction values below;
+* **instruction values** — the channel command:
+    * **on** (0–1) — whether the channel sounds;
+    * **pitch** (33–119) for pulse and triangle, or **period** (0–15) for noise;
+    * **volume** (0–15) for pulse and noise;
+    * **duty_cycle** (0–3) for pulse, or the **short** (0–1) flag for noise;
+* **waveform** — one full period of the rendered wave (the longest noise samples
+  are trimmed to one second);
+* **spectrum** — the waveform's precomputed frequency content.
 
-### Instructions
+### Configuration key
 
-Prerendered instructions contain the following data:
-* generator class (`pulse`/`triangle`/`noise`)
-* instruction data (`on`/`pitch`/`period`/`volume`/`duty_cycle`/`short`)
-
-Instructions contain basic information for all 2A03 oscillators:
-* **on** (0-1): whether a generator is on (1) or off (0)
-* **pitch** (33-119) for pulse and triangle generators, and **period** (0-15) for the noise generator
-* **volume** (0-15) for pulse and noise generators
-* **duty_cycle** (0-3) for pulse generators, and the **short** (0-1) flag for the noise generator
-
-### Waveform
-
-Each instruction is prerendered as a sample containing the entire period of a wave (excluding the longest noise samples, which are trimmed to 1 second).
-
-### Spectrum
-
-Within each waveform, each instruction data contains spectral information on the frequency distribution in the waveform, precalculated using Fast Fourier Transform.
+Each library corresponds to one configuration. The parameters that change the
+rendered waveforms or their spectra — sample rate, NES frequency, FFT window
+size, transformation gamma, and spectrum method — form its key, so changing any
+of them selects (or generates) a different library. What gamma and the spectrum
+method mean is covered in [Reconstruction algorithms](../concepts/reconstruction.md)
+(§3.2–3.3).
 
 ## File format
 
-Instructions libraries are stored as `.ins` files in the user's documents folder, e.g.:
+Libraries are stored as `.ins` files in the documents folder, with the
+configuration embedded in the file name:
 
 ```
-sr_44100_nf_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.ins
+sr_44100_nf_30_ws_13579_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
 ```
 
-The configuration is embedded in the file name:
-* `sr_44100` corresponds to the sample rate 44100 Hz
-* `nf_30` describes NES frequency of 30 Hz
-* `ws_1615` is the size of the FFT transformation (1615 samples)
-* `tg_0` encodes `transformation_gamma = 0`
-* `ch_283a31a50176c14faf36949913117e49` is the config hash.
+| Fragment | Meaning |
+| --- | --- |
+| `sr_44100` | sample rate 44100 Hz |
+| `nf_30` | NES frequency 30 Hz |
+| `ws_13579` | FFT window size (samples) |
+| `tg_0` | transformation gamma 0 |
+| `sm_cqt` | spectrum method (`fft` / `logfft` / `cqt`) |
+| `ch_384e…` | a hash of the full configuration |

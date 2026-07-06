@@ -76,7 +76,8 @@ candidate's feature is computed as an average over many phase offsets, which mak
 it essentially phase-independent — matching then compares spectral *shape* rather
 than an accident of alignment. The library is keyed by the parameters that affect
 it (sample rate, frame size, spectrum method, gamma, …) so a configuration change
-produces a fresh library.
+produces a fresh library. See [Instruction library](instruction-library.md) for
+the library as an artifact — how it is generated, explored and keyed.
 
 ### 3.2 Spectrum methods: FFT, log-FFT and CQT
 

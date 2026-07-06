@@ -11,16 +11,21 @@ from sampletones import (
     InstructionLibrary,  # library
     Reconstruction,  # reconstruction data
     Reconstructor,  # object reconstructing an audio
-    # Generators
+    GeneratorName,  # enum naming the four channels
+    # Generators (Generator is their shared base class)
+    Generator,
     PulseGenerator,
     TriangleGenerator,
     NoiseGenerator,
-    # Instructions
+    # Instructions (Instruction is their shared base class)
+    Instruction,
     PulseInstruction,
     TriangleInstruction,
     NoiseInstruction,
 )
 ```
+The package version is available as `sampletones.__version__`.
+
 Currently, the API is not well documented. I hope that this will change in time.
 
 ## Code examples

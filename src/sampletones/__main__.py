@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 HELP_PATH = """Path to either:
     * audio file path/directory to reconstruct
-    * reconstruction .json file to load a reconstruction
+    * reconstruction .stn file to load a reconstruction
     * instructions library .ins file to load a library"""
 
 HELP_OUTPUT = """Output path for reconstruction."""
