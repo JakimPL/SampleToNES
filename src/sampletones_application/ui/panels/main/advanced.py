@@ -19,7 +19,7 @@ from sampletones_application.constants.main import (
     TAG_MAIN_ADVANCED_PANEL,
     TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
     TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
-    TAG_MAIN_PANEL_SETTINGS,
+    TAG_MAIN_PANEL,
 )
 from sampletones_application.layout.general import PathColors
 from sampletones_application.ui.elements.button import GUIButton
@@ -124,7 +124,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_ADVANCED_PANEL,
-            parent=TAG_MAIN_PANEL_SETTINGS,
+            parent=TAG_MAIN_PANEL,
             height=panel_height,
         )
 

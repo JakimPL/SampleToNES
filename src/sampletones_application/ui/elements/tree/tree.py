@@ -29,6 +29,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY,
     TAG_GLOBAL_THEME_FILE_RECONSTRUCTION,
     TAG_GLOBAL_THEME_FILE_WAVE,
+    TAG_GLOBAL_THEME_TREE_WINDOW,
 )
 from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
@@ -398,6 +399,7 @@ class GUITreePanel(GUIPanel):
         and the handler clears it once the owning node's row is left, so the details track the hovered
         main node and disappear over the tree's blank space.
         """
+        ThemeRegistry.get(TAG_GLOBAL_THEME_TREE_WINDOW).bind_to_item(tree_window_tag)
         create_detail_tooltip(tree_window_tag, tag=self._detail_tooltip_tag)
         with dpg.handler_registry(tag=self._detail_tooltip_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_detail_tooltip_mouse_move)

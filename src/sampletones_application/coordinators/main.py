@@ -17,6 +17,8 @@ from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_MAIN,
     TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
@@ -41,6 +43,7 @@ from sampletones_application.ui.panels.main.converter.converter import GUIConver
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -113,6 +116,7 @@ class MainTabCoordinator:
         ]
         self._explorer_width = layout.main.explorer.width
         self._explorer_height = layout.main.explorer.height
+        self._panel_gap = layout.main.panel_gap
         _msg_converter_error = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -374,29 +378,45 @@ class MainTabCoordinator:
             tag=TAG_GLOBAL_TAB_MAIN,
             parent=TAG_GLOBAL_TABS,
         ):
-            with dpg.table(
-                header_row=False,
-                resizable=False,
-                policy=dpg.mvTable_SizingStretchProp,
-            ):
-                dpg.add_table_column(width_fixed=True)
-                dpg.add_table_column()
+            with dpg.child_window(
+                width=-1,
+                height=-1,
+                border=False,
+                no_scrollbar=True,
+                no_scroll_with_mouse=True,
+            ) as ground_wrapper:
+                dpg.add_spacer(height=self._panel_gap)
+                with dpg.table(
+                    header_row=False,
+                    resizable=False,
+                    policy=dpg.mvTable_SizingStretchProp,
+                ):
+                    dpg.add_table_column(width_fixed=True)
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
+                    dpg.add_table_column()
 
-                with dpg.table_row():
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
-                        width=self._explorer_width,
-                        height=self._explorer_height,
-                        no_scrollbar=True,
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._explorer_panel.create_panel()
+                    with dpg.table_row():
+                        with dpg.child_window(
+                            tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
+                            width=self._explorer_width,
+                            height=self._explorer_height,
+                            no_scrollbar=True,
+                            no_scroll_with_mouse=True,
+                        ):
+                            self._explorer_panel.create_panel()
 
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}",
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._main_panel.create_panel()
+                        dpg.add_spacer()
+
+                        with dpg.child_window(
+                            tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}",
+                            border=False,
+                            no_scroll_with_mouse=True,
+                        ):
+                            self._main_panel.create_panel()
+
+            ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(ground_wrapper)
+            ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE).bind_to_item(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}")
+            ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}")
 
     @property
     def player(self) -> AudioPlayerProtocol:

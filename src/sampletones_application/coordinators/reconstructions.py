@@ -23,6 +23,7 @@ from sampletones_application.constants.general import (
     SUF_PANEL_RIGHT,
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
@@ -46,6 +47,7 @@ from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.instruments.instruments import GUIReconstructionInstrumentsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -422,6 +424,10 @@ class ReconstructionsTabCoordinator:
                         no_scroll_with_mouse=True,
                     ):
                         self._reconstruction_instruments_panel.create_panel()
+
+            surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
+            for suffix in (SUF_PANEL_LEFT, SUF_PANEL_CENTER, SUF_PANEL_RIGHT):
+                surface.bind_to_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{suffix}")
 
     def lock(self) -> None:
         self._browser_panel.lock()

@@ -25,6 +25,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
@@ -67,6 +68,7 @@ from sampletones_application.ui.panels.sequencer.module import GUISequencerModul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.song_player import GUISongPlayerPanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -1090,6 +1092,10 @@ class SequencerTabCoordinator:
                         self._sequencer_module_panel.create_panel()
                         self._sequencer_samples_panel.create_panel()
                         self._sequencer_history_panel.create_panel()
+
+            surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
+            for suffix in (SUF_PANEL_LEFT, SUF_PANEL_CENTER, SUF_PANEL_RIGHT):
+                surface.bind_to_item(f"{TAG_GLOBAL_TAB_SEQUENCER}{suffix}")
 
     @property
     def player(self) -> AudioPlayerProtocol:

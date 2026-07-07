@@ -17,6 +17,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
     TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
@@ -30,6 +31,7 @@ from sampletones_application.layout import LayoutConfig
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
@@ -340,7 +342,7 @@ class ApplicationShell:
             border=False,
             no_scrollbar=True,
             no_scroll_with_mouse=True,
-        ):
+        ) as tab_container:
             with dpg.tab_bar(
                 tag=TAG_GLOBAL_TABS,
                 callback=on_tab_changed,
@@ -349,6 +351,8 @@ class ApplicationShell:
                 self._reconstructions_tab.create_tab()
                 self._sequencer_tab.create_tab()
                 self._instructions_tab.create_tab()
+
+        ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(tab_container)
 
     def _create_status_bar(self) -> None:
         with dpg.child_window(

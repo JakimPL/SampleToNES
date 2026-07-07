@@ -7,12 +7,6 @@ TAG_MAIN_PANEL = TagName(
     Widget.PANEL,
     "",
 )
-TAG_MAIN_PANEL_SETTINGS = TagName(
-    Page.MAIN,
-    Panel.IMPLICIT,
-    Widget.PANEL,
-    "settings",
-)
 TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,

@@ -99,6 +99,30 @@ TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
     Widget.THEME,
     "section_header",
 )
+TAG_GLOBAL_THEME_TREE_WINDOW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "tree_window",
+)
+TAG_GLOBAL_THEME_PANEL_GROUND = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "panel_ground",
+)
+TAG_GLOBAL_THEME_PANEL_SURFACE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "panel_surface",
+)
+TAG_GLOBAL_THEME_PLAYER_TOOLBAR = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "player_toolbar",
+)
 TAG_GLOBAL_THEME_CHANNEL_PULSE1 = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

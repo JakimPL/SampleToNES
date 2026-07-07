@@ -152,7 +152,7 @@ class GUIConverterPanel(GUIPanel):
             parent=self.parent,
             width=self.width,
             height=self.height,
-            border=False,
+            border=True,
         ):
             self._create_section_text()
             self._create_export_button()
@@ -241,7 +241,7 @@ class GUIConverterPanel(GUIPanel):
             parent=self.tag,
             width=-1,
             height=-1,
-            border=True,
+            border=False,
         ):
             hint = dpg.add_text(self._msg_empty_hint, tag=TAG_MAIN_CONVERTER_HINT_SUMMARY)
             FontRegistry.bind_to_item(hint, Font.REGULAR_SMALL)

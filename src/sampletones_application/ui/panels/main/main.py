@@ -1,9 +1,13 @@
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.constants.general import (
+    SUF_PANEL_CENTER,
+    TAG_GLOBAL_TAB_MAIN,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
+)
 from sampletones_application.constants.main import (
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_PANEL,
-    TAG_MAIN_PANEL_SETTINGS,
     TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
 )
 from sampletones_application.layout.main import MainLayout
@@ -18,6 +22,7 @@ from sampletones_application.ui.panels.main.converter.converter import (
 from sampletones_application.ui.panels.main.reconstructor import (
     GUIReconstructorPanel,
 )
+from sampletones_application.ui.themes.registry import ThemeRegistry
 
 
 class GUIMainPanel(GUIPanel):
@@ -38,7 +43,7 @@ class GUIMainPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_PANEL,
-            parent=TAG_MAIN_PANEL_SETTINGS,
+            parent=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}",
         )
 
     def create_panel(self) -> None:
@@ -47,31 +52,39 @@ class GUIMainPanel(GUIPanel):
             parent=self.parent,
             border=False,
         ):
-            with dpg.child_window(
-                tag=TAG_MAIN_PANEL_SETTINGS,
-                parent=self.tag,
-                width=-1,
-                height=-self._layout.converter.height - 8,
-                border=False,
-            ):
-                self._create_settings()
-                self._create_advanced_settings()
-
+            self._create_settings()
+            dpg.add_spacer(height=self._layout.panel_gap)
+            self._create_advanced_settings()
+            dpg.add_spacer(height=self._layout.panel_gap)
             self._create_converter()
+
+        self._bind_card_surfaces()
+
+    def _bind_card_surfaces(self) -> None:
+        surface_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
+        for panel in (
+            self.config_panel,
+            self.reconstructor_panel,
+            self.advanced_settings_panel,
+            self.converter_panel,
+        ):
+            surface_theme.bind_to_item(panel.tag)
 
     def _create_settings(self) -> None:
         with dpg.table(
             header_row=False,
-            policy=dpg.mvTable_SizingStretchSame,
+            policy=dpg.mvTable_SizingStretchProp,
             resizable=False,
             width=-1,
             height=self._layout.config.height,
         ):
             dpg.add_table_column()
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.panel_gap)
             dpg.add_table_column()
             with dpg.table_row():
                 with dpg.table_cell(tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL):
                     self.config_panel.create_panel()
+                dpg.add_spacer()
                 with dpg.table_cell(tag=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL):
                     self.reconstructor_panel.create_panel()
 

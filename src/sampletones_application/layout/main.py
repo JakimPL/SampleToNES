@@ -30,6 +30,7 @@ class AdvancedLayout(BaseModel, frozen=True):
 
 
 class MainLayout(BaseModel, frozen=True):
+    panel_gap: int
     explorer: ExplorerLayout
     config: ConfigLayout
     converter: ConverterLayout

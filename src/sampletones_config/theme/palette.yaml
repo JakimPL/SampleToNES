@@ -13,6 +13,7 @@ colors:
   border: "#484556"
   separator: "#3e3b4c"
   plot_background: "#201d2a"
+  well: "#1b1f2b"
 
   # tables
   table_header: "#37324a"

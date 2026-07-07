@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import PlayerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_PLAYER_TOOLBAR
 from sampletones_application.constants.player import (
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
@@ -14,6 +15,7 @@ from sampletones_application.constants.player import (
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_item_label,
@@ -104,6 +106,8 @@ class GUIAudioPlayerPanel(GUIPanel):
         ):
             self._create_controls()
             dpg.add_text(self._msg_no_audio, tag=self.position_text_tag)
+
+        ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_TOOLBAR).bind_to_item(self.tag)
 
     def _create_controls(self) -> None:
         with dpg.table(

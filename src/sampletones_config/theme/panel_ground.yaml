@@ -1,0 +1,9 @@
+name: panel_ground
+tag: global.theme.panel_ground
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .ground

@@ -1,0 +1,9 @@
+name: player_toolbar
+tag: global.theme.player_toolbar
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .menu

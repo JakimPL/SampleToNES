@@ -471,7 +471,12 @@ class Application:
             reconstruction_saveable=self._reconstruction_coordinator.is_saveable(),
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
-            play_label=self.language_manager[Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_PLAY],
+            play_label=self.language_manager[
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_PLAYBACK_PLAY,
+            ],
             play_or_pause_enabled=False,
             stop_enabled=False,
             autoplay=self.session_manager.autoplay,
