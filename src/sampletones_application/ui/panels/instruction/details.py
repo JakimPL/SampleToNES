@@ -216,8 +216,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             )
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_section)
 
     def _create_instruction_tables(self) -> None:
         with dpg.group(

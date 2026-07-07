@@ -17,8 +17,6 @@ from sampletones_application.constants.main import (
     TAG_MAIN_CONFIG_PANEL,
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
 )
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -198,8 +196,7 @@ class GUIConfigPanel(GUIPanel):
         return SPECTRUM_METHOD_BY_LABEL[label]
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_section)
 
     def _create_audio_options(self) -> None:
         dpg.add_separator()

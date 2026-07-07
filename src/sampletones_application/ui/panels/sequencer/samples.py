@@ -178,8 +178,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             dpg.add_key_press_handler(callback=self._on_key_pressed)
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_instruments)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_instruments)
 
     def _create_samples_table(self) -> None:
         dpg.add_separator()

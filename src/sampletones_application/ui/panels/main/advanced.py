@@ -24,7 +24,6 @@ from sampletones_application.constants.main import (
 from sampletones_application.layout.general import PathColors
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -158,8 +157,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.call(self.on_advanced_settings_changed, advanced_update)
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_section)
 
     @table_wrapper(columns=2, height=-1)
     def _create_path_settings(self) -> None:

@@ -21,8 +21,6 @@ from sampletones_application.constants.sequencer import (
 from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
@@ -128,8 +126,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_reconstructions)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_reconstructions)
 
     def _create_buttons(self) -> None:
         dpg.add_separator()

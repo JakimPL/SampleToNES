@@ -226,8 +226,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._create_detail_tooltip(TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE)
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_libraries)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_libraries)
 
     def _create_library_status(self) -> None:
         dpg.add_separator()

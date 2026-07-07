@@ -104,6 +104,9 @@ components:
         x: 8
         y: 8
       - type: style
+        key: IndentSpacing
+        x: 18
+      - type: style
         key: WindowRounding
         x: 6
       - type: style

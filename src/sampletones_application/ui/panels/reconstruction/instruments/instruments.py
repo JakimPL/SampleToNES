@@ -41,8 +41,6 @@ from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -217,8 +215,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._setup_mouse_event_handler()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_section)
 
     def _create_content(self) -> None:
         dpg.add_separator(tag=self.header_separator_tag, parent=self.tag, show=False)
