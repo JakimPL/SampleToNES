@@ -2,7 +2,7 @@ name: studio
 
 colors:
   # surfaces and neutrals
-  ground: "#16141c"
+  ground: "#1e1c28"
   surface: "#2c2a38"
   surface_alt: "#322f3e"
   menu: "#201e28"
@@ -13,7 +13,7 @@ colors:
   border: "#484556"
   separator: "#3e3b4c"
   plot_background: "#201d2a"
-  well: "#1b1f2b"
+  well: "#122234"
 
   # tables
   table_header: "#37324a"
@@ -51,7 +51,7 @@ colors:
   scrollbar_hovered: "#4a4759"
 
   # buttons
-  button: "#43435c"
+  button: "#454560"
   button_hovered: "#565676"
   button_active: "#686892"
   button_disabled: "#3d3a4a"

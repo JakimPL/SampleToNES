@@ -144,7 +144,7 @@ class GUIReconstructorPanel(GUIPanel):
         dpg.add_separator()
         dpg.add_text(self._lbl_section_generators)
 
-        with dpg.group(horizontal=True):
+        with dpg.group():
             for generator, label, theme_tag in self._generator_chips():
                 checkbox_tag = self._get_generator_checkbox_tag(generator)
                 dpg.add_checkbox(

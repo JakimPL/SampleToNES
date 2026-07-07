@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Final, Optional
 
 import dearpygui.dearpygui as dpg
+from pydantic import ValidationError
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
@@ -379,7 +380,10 @@ class Application:
     def _setup_gui_elements(self) -> None:
         FontRegistry.setup(self.layout.general.fonts)
         GUIPanel.configure_section_header(self.layout.general.section_header.tick)
-        setup_themes(THEME_DIRECTORY)
+        try:
+            setup_themes(THEME_DIRECTORY)
+        except ValidationError as exception:
+            raise SystemError(f"Invalid theme configuration: {exception}") from exception
 
     def _setup_gui(self) -> None:
         bindings = self._create_shortcut_bindings()

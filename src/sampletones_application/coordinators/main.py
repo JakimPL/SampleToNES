@@ -380,7 +380,7 @@ class MainTabCoordinator:
         ):
             with dpg.child_window(
                 width=-1,
-                height=-1,
+                height=-self._panel_gap,
                 border=False,
                 no_scrollbar=True,
                 no_scroll_with_mouse=True,
@@ -391,11 +391,15 @@ class MainTabCoordinator:
                     resizable=False,
                     policy=dpg.mvTable_SizingStretchProp,
                 ):
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
                     dpg.add_table_column(width_fixed=True)
                     dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
                     dpg.add_table_column()
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
 
                     with dpg.table_row():
+                        dpg.add_spacer()
+
                         with dpg.child_window(
                             tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
                             width=self._explorer_width,
@@ -413,6 +417,8 @@ class MainTabCoordinator:
                             no_scroll_with_mouse=True,
                         ):
                             self._main_panel.create_panel()
+
+                        dpg.add_spacer()
 
             ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(ground_wrapper)
             ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE).bind_to_item(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}")

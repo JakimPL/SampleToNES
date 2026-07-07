@@ -72,13 +72,19 @@ components:
         value: .selection_active
       - type: color
         key: Tab
-        value: .tab
+        value: .ground
       - type: color
         key: TabHovered
-        value: .tab_hovered
+        value: .accent/0.12
       - type: color
         key: TabActive
-        value: .tab_active
+        value: .accent/0.25
+      - type: color
+        key: TabSelected
+        value: .accent/0.25
+      - type: color
+        key: TabSelectedOverline
+        value: .accent
       - type: color
         key: ScrollbarBg
         value: .ground

@@ -28,6 +28,7 @@ from sampletones_application.coordinators.reconstructions import (
 )
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
+from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
@@ -353,6 +354,17 @@ class ApplicationShell:
                 self._instructions_tab.create_tab()
 
         ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(tab_container)
+        for tab_tag in (
+            TAG_GLOBAL_TAB_MAIN,
+            TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+            TAG_GLOBAL_TAB_SEQUENCER,
+            TAG_GLOBAL_TAB_INSTRUCTIONS,
+        ):
+            FontRegistry.bind_to_item(tab_tag, Font.REGULAR_LARGE)
+            label = dpg.get_item_configuration(tab_tag)["label"]
+            dpg.configure_item(tab_tag, label=f"  {label}  ")
+            for content in dpg.get_item_children(tab_tag, 1) or []:
+                FontRegistry.bind_to_item(content, Font.REGULAR)
 
     def _create_status_bar(self) -> None:
         with dpg.child_window(
