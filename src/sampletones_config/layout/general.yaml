@@ -5,6 +5,8 @@ window:
   position_y: 200
   fullscreen: false
 
+panel_gap: 14
+
 panels:
   left:
     width: 360

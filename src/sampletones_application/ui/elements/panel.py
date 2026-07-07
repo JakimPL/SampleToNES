@@ -52,6 +52,7 @@ class GUIPanel(CallbackMixin, ABC):
         label: str,
         *,
         parent: Sender = 0,
+        tag: Sender = 0,
     ) -> None:
         """Render this panel's section header: a compact accent-toned label with a leading tick.
 
@@ -60,7 +61,7 @@ class GUIPanel(CallbackMixin, ABC):
         ``parent`` targets a specific container for panels that build outside a ``with`` block.
         """
         theme = ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER)
-        with dpg.group(horizontal=True, parent=parent) as header:
+        with dpg.group(horizontal=True, parent=parent, tag=tag) as header:
             tick = dpg.add_text(self._section_header_tick)
             FontRegistry.bind_to_item(tick, Font.ICON)
             label_text = dpg.add_text(label.upper())

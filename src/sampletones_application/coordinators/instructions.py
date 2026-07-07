@@ -17,6 +17,7 @@ from sampletones_application.constants.general import (
     SUF_PANEL_RIGHT,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.instructions import (
@@ -216,6 +217,7 @@ class InstructionsTabCoordinator:
         self._instruction_panel = GUIInstructionPanel(
             self._instruction_player_panel,
             layout=layout.graphs,
+            general_layout=layout.general,
             language_manager=language_manager,
             status_bar=status_bar,
         )
@@ -354,6 +356,7 @@ class InstructionsTabCoordinator:
 
                     with dpg.child_window(
                         tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        border=False,
                         no_scroll_with_mouse=True,
                     ):
                         self._instruction_panel.create_panel()
@@ -362,14 +365,17 @@ class InstructionsTabCoordinator:
                         tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
                         width=self._details_width,
                         height=self._right_height,
+                        border=False,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):
                         self._instruction_details_panel.create_panel()
 
             surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-            for suffix in (SUF_PANEL_LEFT, SUF_PANEL_CENTER, SUF_PANEL_RIGHT):
-                surface.bind_to_item(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{suffix}")
+            ground = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND)
+            surface.bind_to_item(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}")
+            ground.bind_to_item(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}")
+            ground.bind_to_item(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}")
 
     def ensure_library_loaded(self) -> None:
         """Make sure a library matching the current configuration exists before reconstructing.

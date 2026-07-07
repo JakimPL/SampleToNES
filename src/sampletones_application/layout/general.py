@@ -193,6 +193,7 @@ class GeneralColors(BaseModel, frozen=True):
 
 class GeneralLayout(BaseModel, frozen=True):
     window: WindowLayout
+    panel_gap: int
     panels: PanelsLayout
     status_bar: StatusBarLayout
     fonts: FontsLayout

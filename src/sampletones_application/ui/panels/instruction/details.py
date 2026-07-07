@@ -13,6 +13,7 @@ from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_RIGHT,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
@@ -27,6 +28,7 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
     TAG_INSTRUCTIONS_DETAILS_PANEL,
+    TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
     TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
@@ -39,6 +41,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.table import GUITable
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
@@ -196,13 +199,15 @@ class GUIInstructionDetailsPanel(GUIPanel):
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
-            width=self.width,
-            height=self.height,
-            border=False,
+            width=-1,
+            auto_resize_y=True,
+            border=True,
         ):
             self._create_section_text()
             self._create_instructions_choice_inputs()
             self._create_instruction_tables()
+
+        ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE).bind_to_item(self.tag)
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
@@ -223,12 +228,18 @@ class GUIInstructionDetailsPanel(GUIPanel):
             tag=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
             parent=self.tag,
         ):
-            dpg.add_separator()
             dpg.add_text(
                 self._msg_no_instruction,
                 tag=TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
             )
+
+            self._create_section_header(
+                self._lbl_parameters,
+                parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
+                tag=TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
+            )
+            dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS, show=False)
 
             dpg.add_text(
                 self._lbl_general,
@@ -284,6 +295,10 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 show=True,
             )
             dpg_configure_item(
+                TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
+                show=False,
+            )
+            dpg_configure_item(
                 TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
                 show=False,
             )
@@ -294,6 +309,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             return
 
         dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_TEXT_INFO, show=False)
+        dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS, show=True)
         dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL, show=True)
         dpg_configure_item(
             TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
@@ -307,7 +323,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         with dpg.child_window(
             tag=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
             parent=self.tag,
-            height=self._layout.dimensions.instruction_choice_height,
+            auto_resize_y=True,
             border=False,
         ):
             pass
