@@ -119,8 +119,7 @@ class GUISequencerHistoryPanel(GUIPanel):
             border=False,
         ):
             dpg.add_separator()
-            header = dpg.add_text(self._lbl_history)
-            FontRegistry.bind_to_item(header, Font.BOLD)
+            self._create_section_header(self._lbl_history)
             self._create_actions()
             dpg.add_child_window(
                 tag=TAG_SEQUENCER_HISTORY_WINDOW_LIST,

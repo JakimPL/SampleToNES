@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
+from typing import Final, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.utils.callbacks import CallbackMixin
+
+SECTION_HEADER_TICK: Final[str] = "|"
 
 
 class GUIPanel(CallbackMixin, ABC):
@@ -37,14 +42,16 @@ class GUIPanel(CallbackMixin, ABC):
     @abstractmethod
     def create_panel(self) -> None: ...
 
-    def _create_section_header(self, label: str) -> None:
-        """Render this panel's section header: its title in the bold section font.
+    def _create_section_header(self, label: str, *, parent: Union[int, str] = 0) -> None:
+        """Render this panel's section header: a compact accent-toned label with a leading tick.
 
         Every panel opens with the same header treatment, so defining it on the base
         keeps the tabs consistent and gives one place to restyle every header at once.
+        ``parent`` targets a specific container for panels that build outside a ``with`` block.
         """
-        section_text = dpg.add_text(label)
+        section_text = dpg.add_text(f"{SECTION_HEADER_TICK}  {label.upper()}", parent=parent)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
+        ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(section_text)
 
     def set_visibility(self, visible: bool) -> None:
         dpg_configure_item(self.tag, show=visible)

@@ -20,8 +20,6 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_PANEL,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -114,8 +112,7 @@ class GUISequencerModulePanel(GUIPanel):
             self._create_module_options()
 
     def _create_module_options(self) -> None:
-        section_text = dpg.add_text(self._lbl_module_options)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_module_options)
         dpg.add_separator()
 
         settings = self._initial_settings

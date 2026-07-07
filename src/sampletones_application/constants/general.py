@@ -91,6 +91,14 @@ TAG_GLOBAL_THEME_ACCENT_BUTTON = TagName(
     Widget.THEME,
     "accent_button",
 )
+
+
+TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "section_header",
+)
 TAG_GLOBAL_THEME_CHANNEL_PULSE1 = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -242,11 +242,7 @@ class GUISequencerGridPanel(GUIPanel):
     def _create_tracker_view(self) -> None:
         dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=self.tag)
         dpg.add_separator(parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
-        section_text = dpg.add_text(
-            self._lbl_tracker,
-            parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
-        )
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(self._lbl_tracker, parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
 
         with dpg.child_window(
             tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,

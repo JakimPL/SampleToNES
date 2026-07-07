@@ -169,8 +169,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._create_entry_themes()
         with dpg.group(tag=self.tag, parent=self.parent):
             dpg.add_separator(parent=self.tag)
-            header_text = dpg.add_text(self._lbl_order, parent=self.tag)
-            FontRegistry.bind_to_item(header_text, Font.BOLD)
+            self._create_section_header(self._lbl_order, parent=self.tag)
             self._create_button_row()
             self._create_order_window()
             self._register_handlers()
