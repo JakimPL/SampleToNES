@@ -81,13 +81,13 @@ class GUIInstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
+            self._create_section_header(self._lbl_waveform)
             self.waveform_display = GUIWaveformGraph(
                 tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
                 parent=self.waveform_tag,
                 layout=self._layout,
                 language_manager=self._language_manager,
                 status_bar=self._status_bar,
-                label=self._lbl_waveform,
             )
 
     def _create_spectrum_display(self) -> None:
@@ -99,13 +99,13 @@ class GUIInstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
+            self._create_section_header(self._lbl_spectrum)
             self.spectrum_display = GUISpectrumGraph(
                 tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
                 parent=self.spectrum_tag,
                 layout=self._layout,
                 language_manager=self._language_manager,
                 status_bar=self._status_bar,
-                label=self._lbl_spectrum,
             )
 
     def _create_player_panel(self) -> None:

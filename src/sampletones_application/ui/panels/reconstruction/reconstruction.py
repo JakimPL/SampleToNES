@@ -446,6 +446,7 @@ class GUIReconstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
+            self._create_section_header(self._lbl_waveform)
             self._create_autoscale_checkbox()
             self._create_waveform_display()
             self._create_generator_checkboxes()
@@ -585,7 +586,6 @@ class GUIReconstructionPanel(GUIPanel):
             layout=self._layout_graphs,
             language_manager=self._language_manager,
             status_bar=self._status_bar,
-            label=self._lbl_waveform,
         )
 
     def _create_generator_checkboxes(self) -> None:

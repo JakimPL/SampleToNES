@@ -123,11 +123,9 @@ class PlayerElements(AbstractElement):
 class GraphElements(AbstractElement):
     WAVEFORM_ORIGINAL = "waveform_original"
     WAVEFORM_RECONSTRUCTION = "waveform_reconstruction"
-    WAVEFORM_DISPLAY = "waveform_display"
     WAVEFORM_TIME_AXIS = "waveform_time_axis"
     WAVEFORM_AMPLITUDE_AXIS = "waveform_amplitude_axis"
     WAVEFORM_SAMPLE_NAME = "waveform_sample_name"
-    SPECTRUM_DISPLAY = "spectrum_display"
     SPECTRUM_X_AXIS = "spectrum_x_axis"
     SPECTRUM_FREQUENCY_AXIS = "spectrum_frequency_axis"
     SPECTRUM_NAME = "spectrum_name"

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Union
 
 import dearpygui.dearpygui as dpg
 
@@ -8,6 +7,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -47,7 +47,12 @@ class GUIPanel(CallbackMixin, ABC):
         """Set the glyph that precedes every section header, sourced from layout config."""
         cls._section_header_tick = tick
 
-    def _create_section_header(self, label: str, *, parent: Union[int, str] = 0) -> None:
+    def _create_section_header(
+        self,
+        label: str,
+        *,
+        parent: Sender = 0,
+    ) -> None:
         """Render this panel's section header: a compact accent-toned label with a leading tick.
 
         Every panel opens with the same header treatment, so defining it on the base
@@ -60,6 +65,7 @@ class GUIPanel(CallbackMixin, ABC):
             FontRegistry.bind_to_item(tick, Font.ICON)
             label_text = dpg.add_text(label.upper())
             FontRegistry.bind_to_item(label_text, Font.BOLD)
+
         theme.bind_to_item(header)
 
     def set_visibility(self, visible: bool) -> None:

@@ -212,11 +212,9 @@ global.player.message.audio_playback_error: "Audio playback error."
 # =============================================================================
 global.graph.label.waveform_original: "Original"
 global.graph.label.waveform_reconstruction: "Reconstruction"
-global.graph.label.waveform_display: "Waveform display"
 global.graph.label.waveform_time_axis: "Time (samples)"
 global.graph.label.waveform_amplitude_axis: "Amplitude"
 global.graph.label.waveform_sample_name: "Sample"
-global.graph.label.spectrum_display: "Spectrum display"
 global.graph.label.spectrum_x_axis: ""
 global.graph.label.spectrum_frequency_axis: "Frequency"
 global.graph.label.spectrum_name: "Spectrum"
@@ -337,7 +335,7 @@ reconstructions.reconstruction.label.path_not_found: "not found"
 reconstructions.reconstruction.label.path_not_applicable: "N/A"
 reconstructions.reconstruction.label.original_audio_radio: "Original audio"
 reconstructions.reconstruction.label.reconstruction_radio: "Reconstruction"
-reconstructions.reconstruction.label.waveform_label: "Reconstruction waveform"
+reconstructions.reconstruction.label.waveform_label: "Waveform"
 reconstructions.reconstruction.tooltip.autoscale_tooltip: "Include reconstruction's amplification coefficient and auto-scale waveforms accordingly."
 reconstructions.reconstruction.tooltip.already_in_sequencer_tooltip: "This reconstruction is already part of the Sequencer as a sample. Edits here update that sample directly."
 reconstructions.reconstruction.tooltip.locate_audio_tooltip: "This reconstruction has no original audio path recorded."
@@ -548,8 +546,8 @@ instructions.library.label.regenerate_confirmation_ok: "Regenerate"
 # =============================================================================
 # Instructions tab — Instruction panel
 # =============================================================================
-instructions.instruction.label.waveform_label: "Instruction waveform"
-instructions.instruction.label.spectrum_label: "Instruction spectrum"
+instructions.instruction.label.waveform_label: "Waveform"
+instructions.instruction.label.spectrum_label: "Spectrum"
 
 # =============================================================================
 # Instructions tab — Details
