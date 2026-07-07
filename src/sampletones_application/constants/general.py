@@ -85,6 +85,12 @@ TAG_GLOBAL_THEME_CONVERTER = TagName(
     Widget.THEME,
     "converter",
 )
+TAG_GLOBAL_THEME_ACCENT_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "accent_button",
+)
 TAG_GLOBAL_THEME_DIALOG = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

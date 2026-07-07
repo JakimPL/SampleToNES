@@ -9,6 +9,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_ACCENT_BUTTON
 from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_BUTTON_CANCEL,
     TAG_MAIN_CONVERTER_BUTTON_CONVERT,
@@ -31,6 +32,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -211,6 +213,7 @@ class GUIConverterPanel(GUIPanel):
                 font=Font.BOLD_LARGE,
                 enabled=False,
                 callback=self._on_convert_clicked,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_ACCENT_BUTTON),
             )
         attach_disabled_tooltip(
             TAG_MAIN_CONVERTER_GROUP_CONVERT,

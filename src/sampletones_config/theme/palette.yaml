@@ -22,7 +22,9 @@ colors:
   # accent
   accent: "#a97fe3"
   accent_hover: "#ba97ec"
+  accent_active: "#9066c8"
   accent_muted: "#6b5a8f"
+  on_accent: "#17131f"
 
   # tabs
   tab: "#242230"
