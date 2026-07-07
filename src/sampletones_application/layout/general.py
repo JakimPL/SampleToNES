@@ -106,6 +106,10 @@ class CaretLayout(BaseModel, frozen=True):
     border: RGBA
 
 
+class SectionHeaderLayout(BaseModel, frozen=True):
+    tick: str
+
+
 class TextColors(BaseModel, frozen=True):
     white: RGBA
     default: RGBA
@@ -199,4 +203,5 @@ class GeneralLayout(BaseModel, frozen=True):
     pitch_stepper: PitchStepperLayout
     menu: MenuLayout
     caret: CaretLayout
+    section_header: SectionHeaderLayout
     colors: GeneralColors

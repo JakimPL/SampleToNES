@@ -70,6 +70,7 @@ from sampletones_application.services import (
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.menu import MenuBar
@@ -377,6 +378,7 @@ class Application:
 
     def _setup_gui_elements(self) -> None:
         FontRegistry.setup(self.layout.general.fonts)
+        GUIPanel.configure_section_header(self.layout.general.section_header.tick)
         setup_themes(THEME_DIRECTORY)
 
     def _setup_gui(self) -> None:

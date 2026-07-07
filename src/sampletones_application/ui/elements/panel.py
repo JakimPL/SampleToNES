@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Final, Union
+from typing import Union
 
 import dearpygui.dearpygui as dpg
 
@@ -9,8 +9,6 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.utils.callbacks import CallbackMixin
-
-SECTION_HEADER_TICK: Final[str] = "|"
 
 
 class GUIPanel(CallbackMixin, ABC):
@@ -22,6 +20,8 @@ class GUIPanel(CallbackMixin, ABC):
     - A panel owns its widget subtree and holds no domain state — it knows
       how to display data, not what it means.
     """
+
+    _section_header_tick: str
 
     def __init__(
         self,
@@ -42,6 +42,11 @@ class GUIPanel(CallbackMixin, ABC):
     @abstractmethod
     def create_panel(self) -> None: ...
 
+    @classmethod
+    def configure_section_header(cls, tick: str) -> None:
+        """Set the glyph that precedes every section header, sourced from layout config."""
+        cls._section_header_tick = tick
+
     def _create_section_header(self, label: str, *, parent: Union[int, str] = 0) -> None:
         """Render this panel's section header: a compact accent-toned label with a leading tick.
 
@@ -49,9 +54,13 @@ class GUIPanel(CallbackMixin, ABC):
         keeps the tabs consistent and gives one place to restyle every header at once.
         ``parent`` targets a specific container for panels that build outside a ``with`` block.
         """
-        section_text = dpg.add_text(f"{SECTION_HEADER_TICK}  {label.upper()}", parent=parent)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
-        ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(section_text)
+        theme = ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER)
+        with dpg.group(horizontal=True, parent=parent) as header:
+            tick = dpg.add_text(self._section_header_tick)
+            FontRegistry.bind_to_item(tick, Font.ICON)
+            label_text = dpg.add_text(label.upper())
+            FontRegistry.bind_to_item(label_text, Font.BOLD)
+        theme.bind_to_item(header)
 
     def set_visibility(self, visible: bool) -> None:
         dpg_configure_item(self.tag, show=visible)
