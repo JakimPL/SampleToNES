@@ -241,6 +241,24 @@ TAG_MAIN_CONVERTER_TOOLTIP_CONVERT = TagName(
     Widget.TOOLTIP,
     "convert",
 )
+TAG_MAIN_CONVERTER_WINDOW_SUMMARY = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "summary",
+)
+TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "summary",
+)
+TAG_MAIN_CONVERTER_HINT_SUMMARY = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TEXT,
+    "summary_hint",
+)
 
 PRE_MAIN_RECONSTRUCTOR_GENERATOR = "gen."
 SUF_MAIN_EXPLORER_NODE_DUMMY = ".node_dummy"
