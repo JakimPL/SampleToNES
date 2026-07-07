@@ -205,17 +205,17 @@ class GUISequencerSamplesPanel(GUIPanel):
                 dpg.add_table_column(
                     label=self._lbl_column_id,
                     width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.instrument_id,
+                    init_width_or_weight=self._layout.table_cells.instrument.id,
                 )
                 dpg.add_table_column(
                     label=self._lbl_column_name,
                     width_stretch=True,
-                    init_width_or_weight=self._layout.table_cells.instrument_name,
+                    init_width_or_weight=self._layout.table_cells.instrument.name,
                 )
                 dpg.add_table_column(
                     label=self._lbl_column_loop,
                     width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.instrument_loop,
+                    init_width_or_weight=self._layout.table_cells.instrument.loop,
                 )
         ThemeRegistry.get(TAG_SEQUENCER_INSTRUMENTS_THEME_ROW).bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
 

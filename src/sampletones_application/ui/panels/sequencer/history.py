@@ -295,10 +295,10 @@ class GUISequencerHistoryPanel(GUIPanel):
         self._add_text(
             entry.label,
             parent=group,
-            color=self._layout.colors.history_future if entry.is_future else None,
+            color=self._layout.colors.history.future if entry.is_future else None,
         )
         for segment in entry.detail_segments:
-            color = self._layout.colors.history_future if entry.is_future else self._role_color(segment.role)
+            color = self._layout.colors.history.future if entry.is_future else self._role_color(segment.role)
             self._add_text(segment.text, parent=group, color=color)
 
     def _add_text(self, value: str, *, parent: int, color: Optional[RGBA]) -> None:
@@ -307,7 +307,7 @@ class GUISequencerHistoryPanel(GUIPanel):
 
     def _role_color(self, role: HistoryDetailRole) -> RGBA:
         colors = self._layout.colors
-        roles = colors.history_roles
+        roles = colors.history.roles
         text = colors.text
         match role:
             case HistoryDetailRole.FRAME:

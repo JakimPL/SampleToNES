@@ -220,6 +220,14 @@ TAG_SEQUENCER_THEME_TABLE_PATTERN = TagName(
 )
 
 
+TAG_SEQUENCER_THEME_TABLE_ORDER = TagName(
+    Page.SEQUENCER,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "table_order",
+)
+
+
 TAG_SEQUENCER_HISTORY_PANEL = TagName(
     Page.SEQUENCER,
     Panel.HISTORY,

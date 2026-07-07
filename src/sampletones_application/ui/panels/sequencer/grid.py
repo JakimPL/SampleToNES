@@ -343,12 +343,12 @@ class GUISequencerGridPanel(GUIPanel):
         dpg.highlight_table_column(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             SAMPLE_TABLE_COLUMN,
-            self._layout.colors.sample_column,
+            self._layout.colors.sample.column,
         )
         dpg.highlight_table_column(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             DIVIDER_TABLE_COLUMN,
-            self._layout.colors.sample_divider,
+            self._layout.colors.sample.divider,
         )
 
     def _tint_channel_columns(self) -> None:

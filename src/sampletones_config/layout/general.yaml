@@ -80,7 +80,7 @@ menu:
 caret:
   offset: 3
   width_padding: 2
-  fill: "#4488ffb0"
+  fill: "#4488ff80"
   border: "#88bbffff"
 
 colors:

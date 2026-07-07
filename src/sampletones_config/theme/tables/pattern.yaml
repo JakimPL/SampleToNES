@@ -14,3 +14,8 @@ components:
       - type: color
         key: HeaderActive
         value: .transparent
+  - item_type: All
+    entries:
+      - type: color
+        key: Text
+        value: .white

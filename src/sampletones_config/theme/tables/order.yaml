@@ -1,0 +1,12 @@
+name: table_order
+tag: sequencer.theme.table_order
+
+components:
+  - item_type: Table
+    entries:
+      - type: color
+        key: HeaderHovered
+        value: .white/0.25
+      - type: color
+        key: HeaderActive
+        value: .transparent
