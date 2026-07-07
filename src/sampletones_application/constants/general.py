@@ -91,6 +91,30 @@ TAG_GLOBAL_THEME_ACCENT_BUTTON = TagName(
     Widget.THEME,
     "accent_button",
 )
+TAG_GLOBAL_THEME_CHANNEL_PULSE1 = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse1",
+)
+TAG_GLOBAL_THEME_CHANNEL_PULSE2 = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse2",
+)
+TAG_GLOBAL_THEME_CHANNEL_TRIANGLE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_triangle",
+)
+TAG_GLOBAL_THEME_CHANNEL_NOISE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_noise",
+)
 TAG_GLOBAL_THEME_DIALOG = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

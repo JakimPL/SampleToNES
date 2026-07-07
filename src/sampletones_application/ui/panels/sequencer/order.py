@@ -25,6 +25,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
+from sampletones_application.ui.panels.sequencer.columns import channel_color
 from sampletones_application.ui.panels.sequencer.order_input import (
     INDEX_DIGITS,
     ORDER_ROWS,
@@ -43,7 +44,7 @@ from sampletones_application.view_model.sequencer.order import (
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.constants.symbols import MINUS, PLUS
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import ColorRGBA, Sender
 
 OrderKey = Tuple[Optional[GeneratorName], int]
 
@@ -398,7 +399,7 @@ class GUISequencerOrderPanel(GUIPanel):
         label_text = dpg.add_text(
             self._row_labels[generator],
             parent=label_cell,
-            color=self._layout.colors.text.order,
+            color=self._row_label_color(generator),
         )
         FontRegistry.bind_to_item(label_text, Font.BOLD_SMALL)
 
@@ -415,6 +416,12 @@ class GUISequencerOrderPanel(GUIPanel):
             dpg.bind_item_theme(selectable, self._entry_theme)
             dpg.bind_item_handler_registry(selectable, self._cell_handler_tag)
             self._order.register(key, selectable)
+
+    def _row_label_color(self, generator: Optional[GeneratorName]) -> ColorRGBA:
+        if generator is None:
+            return self._layout.colors.text.order
+
+        return channel_color(self._layout.colors.channels, generator)
 
     def _build_divider_row(self, position_count: int) -> None:
         """Inserts the thin rule that sets the master row apart from the channel

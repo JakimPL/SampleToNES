@@ -29,6 +29,7 @@ tracker:
   rows: 64
   row_height: 20
   page_size: 16
+  channel_column_tint: 0.09
   subcolumn_widths:
     instrument: 26
     transpose: 30
@@ -67,3 +68,8 @@ colors:
     frame: "#22ccffff"
     row: "#a0a0a0ff"
     order: "#c8d0e0ff"
+  channels:
+    pulse1: "#f09256"
+    pulse2: "#f2d15f"
+    triangle: "#8cc1ed"
+    noise: "#bbb8c2"

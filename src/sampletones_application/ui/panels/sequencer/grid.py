@@ -32,6 +32,7 @@ from sampletones_application.ui.panels.sequencer import display as tracker_displ
 from sampletones_application.ui.panels.sequencer.columns import (
     DIVIDER_TABLE_COLUMN,
     SAMPLE_TABLE_COLUMN,
+    channel_color,
     tracker_table_column,
 )
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
@@ -43,6 +44,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.color import with_alpha_fraction
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -283,26 +285,12 @@ class GUISequencerGridPanel(GUIPanel):
                     init_width_or_weight=self._layout.table_cells.divider,
                     no_header_label=True,
                 )
-                dpg.add_table_column(
-                    label=self._lbl_col_pulse_1,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.generator,
-                )
-                dpg.add_table_column(
-                    label=self._lbl_col_pulse_2,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.generator,
-                )
-                dpg.add_table_column(
-                    label=self._lbl_col_triangle,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.generator,
-                )
-                dpg.add_table_column(
-                    label=self._lbl_col_noise,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.generator,
-                )
+                for generator in GeneratorName.items():
+                    dpg.add_table_column(
+                        label=self._column_labels[generator],
+                        width_fixed=True,
+                        init_width_or_weight=self._layout.table_cells.generator,
+                    )
                 dpg.add_table_column(width_stretch=True)
 
         self.pattern_theme.bind_to_item(TAG_SEQUENCER_GRID_TABLE_TRACKER)
@@ -330,6 +318,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self._highlight_sample_column()
+        self._tint_channel_columns()
         self._update_cursor()
         self._apply_playing_row_highlight()
 
@@ -361,6 +350,23 @@ class GUISequencerGridPanel(GUIPanel):
             DIVIDER_TABLE_COLUMN,
             self._layout.colors.sample_divider,
         )
+
+    def _tint_channel_columns(self) -> None:
+        """Washes each channel's column with a faint tint of its identity colour.
+
+        Reapplied after each rebuild alongside the sample column so the tint survives
+        row replacement, giving the tracker the same per-channel identity the order
+        table carries in its row labels.
+        """
+        channels = self._layout.colors.channels
+        fraction = self._layout.tracker.channel_column_tint
+        for generator in GeneratorName.items():
+            tint = with_alpha_fraction(channel_color(channels, generator), fraction)
+            dpg.highlight_table_column(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                tracker_table_column(generator),
+                tint,
+            )
 
     def _compute_cell_values(
         self,

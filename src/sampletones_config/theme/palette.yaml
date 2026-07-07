@@ -26,6 +26,16 @@ colors:
   accent_muted: "#6b5a8f"
   on_accent: "#17131f"
 
+  # channels: pulses orange, triangle blue, noise grey
+  channel_pulse1: "#f09256"
+  channel_pulse2: "#f2d15f"
+  channel_triangle: "#8cc1ed"
+  channel_noise: "#bbb8c2"
+  channel_pulse1_soft: "#e7c6aa"
+  channel_pulse2_soft: "#dfd6a8"
+  channel_triangle_soft: "#b9cedf"
+  channel_noise_soft: "#cbcace"
+
   # tabs
   tab: "#242230"
   tab_hovered: "#3a3550"

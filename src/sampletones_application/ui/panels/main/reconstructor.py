@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -11,6 +11,10 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
+    TAG_GLOBAL_THEME_CHANNEL_NOISE,
+    TAG_GLOBAL_THEME_CHANNEL_PULSE1,
+    TAG_GLOBAL_THEME_CHANNEL_PULSE2,
+    TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
 )
 from sampletones_application.constants.main import (
     PRE_MAIN_RECONSTRUCTOR_GENERATOR,
@@ -23,6 +27,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
@@ -142,30 +147,24 @@ class GUIReconstructorPanel(GUIPanel):
         dpg.add_separator()
         dpg.add_text(self._lbl_section_generators)
 
-        dpg.add_checkbox(
-            label=self._lbl_pulse_1,
-            default_value=GeneratorName.PULSE1 in self._view.generators,
-            tag=self._get_generator_checkbox_tag(GeneratorName.PULSE1),
-            callback=self._on_parameter_change,
-        )
-        dpg.add_checkbox(
-            label=self._lbl_pulse_2,
-            default_value=GeneratorName.PULSE2 in self._view.generators,
-            tag=self._get_generator_checkbox_tag(GeneratorName.PULSE2),
-            callback=self._on_parameter_change,
-        )
-        dpg.add_checkbox(
-            label=self._lbl_triangle,
-            default_value=GeneratorName.TRIANGLE in self._view.generators,
-            tag=self._get_generator_checkbox_tag(GeneratorName.TRIANGLE),
-            callback=self._on_parameter_change,
-        )
-        dpg.add_checkbox(
-            label=self._lbl_noise,
-            default_value=GeneratorName.NOISE in self._view.generators,
-            tag=self._get_generator_checkbox_tag(GeneratorName.NOISE),
-            callback=self._on_parameter_change,
-        )
+        with dpg.group(horizontal=True):
+            for generator, label, theme_tag in self._generator_chips():
+                checkbox_tag = self._get_generator_checkbox_tag(generator)
+                dpg.add_checkbox(
+                    label=label,
+                    default_value=generator in self._view.generators,
+                    tag=checkbox_tag,
+                    callback=self._on_parameter_change,
+                )
+                ThemeRegistry.get(theme_tag).bind_to_item(checkbox_tag)
+
+    def _generator_chips(self) -> List[Tuple[GeneratorName, str, str]]:
+        return [
+            (GeneratorName.PULSE1, self._lbl_pulse_1, TAG_GLOBAL_THEME_CHANNEL_PULSE1),
+            (GeneratorName.PULSE2, self._lbl_pulse_2, TAG_GLOBAL_THEME_CHANNEL_PULSE2),
+            (GeneratorName.TRIANGLE, self._lbl_triangle, TAG_GLOBAL_THEME_CHANNEL_TRIANGLE),
+            (GeneratorName.NOISE, self._lbl_noise, TAG_GLOBAL_THEME_CHANNEL_NOISE),
+        ]
 
     def _create_drive_slider(self) -> None:
         dpg.add_separator()

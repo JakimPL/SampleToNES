@@ -75,6 +75,21 @@ class TrackerLayout(BaseModel, frozen=True):
     row_height: int
     page_size: int
     subcolumn_widths: SubcolumnWidths
+    channel_column_tint: float
+
+
+class ChannelColors(BaseModel, frozen=True):
+    """Per-channel identity colours shared by the order table and the tracker grid.
+
+    The order table paints each channel's row label in its colour; the tracker grid
+    tints each channel's column background with the same colour at a low alpha, so a
+    channel keeps one identity across both views.
+    """
+
+    pulse1: RGBA
+    pulse2: RGBA
+    triangle: RGBA
+    noise: RGBA
 
 
 class SequencerColors(BaseModel, frozen=True):
@@ -94,6 +109,7 @@ class SequencerColors(BaseModel, frozen=True):
     history_future: RGBA
     history_roles: HistoryRoleColors
     text: TrackerColors
+    channels: ChannelColors
 
 
 class HistoryLayout(BaseModel, frozen=True):
