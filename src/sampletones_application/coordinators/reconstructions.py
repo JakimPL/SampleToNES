@@ -46,13 +46,15 @@ from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabCo
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.ui.panels.reconstruction.audio import GUIReconstructionAudioPanel
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.instruments.instruments import GUIReconstructionInstrumentsPanel
-from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
+from sampletones_application.ui.panels.reconstruction.plot import GUIReconstructionPlotPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
+from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import (
@@ -246,10 +248,7 @@ class ReconstructionsTabCoordinator:
                 PlayerElements.AUDIO_PLAYBACK_ERROR,
             ],
         )
-        self._reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
-            self._reconstruction_player_panel,
-            layout_graphs=layout.graphs,
-            general_layout=layout.general,
+        self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.general.colors.paths,
             path_status_color=layout.general.colors.text.disabled,
             file_dialog_width=layout.general.dialogs.file.width,
@@ -257,11 +256,16 @@ class ReconstructionsTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
         )
+        self._reconstruction_plot_panel: GUIReconstructionPlotPanel = GUIReconstructionPlotPanel(
+            layout_graphs=layout.graphs,
+            language_manager=language_manager,
+            status_bar=status_bar,
+        )
         self._reconstruction_player_panel.on_play = self._guarded_player.play
         self._reconstruction_player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
         self._reconstruction_player_panel.on_stop = self._guarded_player.stop
         self._reconstruction_player_logic.on_view_changed = self._reconstruction_player_panel.update_view
-        self._reconstruction_player_logic.on_position_changed = self._reconstruction_panel.set_playback_position
+        self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
             reconstruction_manager,
@@ -285,38 +289,44 @@ class ReconstructionsTabCoordinator:
         self._browser_panel.on_reconstruct_directory = on_reconstruct_directory
         self._browser_panel.on_load_reconstruction = on_load_reconstruction_with_confirmation
 
-        self._reconstruction_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
-        self._reconstruction_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
-        self._reconstruction_panel.on_export_wav_requested = self.request_export_wav_dialog
-        self._reconstruction_panel.on_export_instruments_requested = (
+        self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
+        self._reconstruction_plot_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
+        self._reconstruction_audio_panel.on_export_wav_requested = self.request_export_wav_dialog
+        self._reconstruction_audio_panel.on_export_instruments_requested = (
             self._reconstruction_panel_logic.request_export_instruments_dialog
         )
-        self._reconstruction_panel.on_export_instrument_confirmed = (
+        self._reconstruction_audio_panel.on_export_instrument_confirmed = (
             self._reconstruction_panel_logic.handle_export_instrument_confirmed
         )
-        self._reconstruction_panel.on_export_instruments_confirmed = (
+        self._reconstruction_audio_panel.on_export_instruments_confirmed = (
             self._reconstruction_panel_logic.handle_export_instruments_confirmed
         )
-        self._reconstruction_panel.on_export_wav_confirmed = (
+        self._reconstruction_audio_panel.on_export_wav_confirmed = (
             self._reconstruction_panel_logic.handle_export_wav_confirmed
         )
-        self._reconstruction_panel.on_locate_original_audio_requested = (
+        self._reconstruction_audio_panel.on_locate_original_audio_requested = (
             self._reconstruction_panel_logic.handle_locate_original_audio
         )
 
-        self._reconstruction_panel_logic.on_view_changed = self._reconstruction_panel.update_view
+        self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
-        self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_panel.load_waveform_data
-        self._reconstruction_panel_logic.on_waveform_update_changed = self._reconstruction_panel.update_waveform_data
-        self._reconstruction_panel_logic.on_waveform_cleared = self._reconstruction_panel.clear_waveform
-        self._reconstruction_panel_logic.on_waveform_source_changed = self._reconstruction_panel.set_waveform_top_source
+        self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_plot_panel.load_waveform_data
+        self._reconstruction_panel_logic.on_waveform_update_changed = (
+            self._reconstruction_plot_panel.update_waveform_data
+        )
+        self._reconstruction_panel_logic.on_waveform_cleared = self._reconstruction_plot_panel.clear_waveform
+        self._reconstruction_panel_logic.on_waveform_source_changed = (
+            self._reconstruction_plot_panel.set_waveform_top_source
+        )
         self._reconstruction_panel_logic.on_open_export_instrument_dialog = (
-            self._reconstruction_panel.open_export_instrument_dialog
+            self._reconstruction_audio_panel.open_export_instrument_dialog
         )
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = (
-            self._reconstruction_panel.open_export_instruments_dialog
+            self._reconstruction_audio_panel.open_export_instruments_dialog
         )
-        self._reconstruction_panel_logic.on_open_export_wav_dialog = self._reconstruction_panel.open_export_wav_dialog
+        self._reconstruction_panel_logic.on_open_export_wav_dialog = (
+            self._reconstruction_audio_panel.open_export_wav_dialog
+        )
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
             path, _msg_locate_audio_failed
         )
@@ -347,7 +357,7 @@ class ReconstructionsTabCoordinator:
             self._reconstruction_panel_logic.request_export_instrument_dialog
         )
         self._reconstruction_instruments_panel.on_reconstruction_instrument_hovered = (
-            self._reconstruction_panel.set_overlay
+            self._reconstruction_plot_panel.set_overlay
         )
         self._reconstruction_instruments_panel.on_pitch_value_changed = (
             self._reconstruction_instruments_logic.handle_pitch_value_changed
@@ -386,6 +396,11 @@ class ReconstructionsTabCoordinator:
             case ExportError(kind=ExportKind.INSTRUMENTS, exception=exception):
                 self._dialogs.show_error(exception, msg_export_instruments_failed)
 
+    def _update_reconstruction_view(self, view_model: ReconstructionViewModel) -> None:
+        """Fans the reconstruction view model out to the audio and plot cards."""
+        self._reconstruction_audio_panel.update_view(view_model)
+        self._reconstruction_plot_panel.update_view(view_model)
+
     def create_tab(self) -> None:
         with dpg.tab(
             tag=TAG_GLOBAL_TAB_RECONSTRUCTIONS,
@@ -405,7 +420,7 @@ class ReconstructionsTabCoordinator:
                     ),
                     ColumnSpec(
                         tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
-                        build=self._reconstruction_panel.create_panel,
+                        build=self._build_reconstruction_column,
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         border=False,
                     ),
@@ -419,6 +434,14 @@ class ReconstructionsTabCoordinator:
                     ),
                 ],
             )
+
+    def _build_reconstruction_column(self, parent: str) -> None:
+        """Stacks the player, audio, and plot cards down the centre column."""
+        self._reconstruction_player_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        self._reconstruction_audio_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        self._reconstruction_plot_panel.create_panel(parent)
 
     def lock(self) -> None:
         self._browser_panel.lock()
@@ -469,10 +492,10 @@ class ReconstructionsTabCoordinator:
         self._browser_panel.can_add_to_sequencer = predicate
 
     def set_on_add_current_reconstruction(self, callback: VoidCallback) -> None:
-        self._reconstruction_panel.on_add_to_sequencer_requested = callback
+        self._reconstruction_audio_panel.on_add_to_sequencer_requested = callback
 
     def update_add_to_sequencer(self, view_model: AddToSequencerViewModel) -> None:
-        self._reconstruction_panel.update_add_to_sequencer(view_model)
+        self._reconstruction_audio_panel.update_add_to_sequencer(view_model)
 
     def load_reconstruction(self, filepath: Path) -> None:
         self._browser_panel.lock()
