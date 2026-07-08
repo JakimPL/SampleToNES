@@ -40,12 +40,15 @@ tab-layout ownership refactor resolves the layout entries phase by phase; remove
 as its phase lands.
 
 * **Tab layout authored outside `create_tab()`.** Host panels build multi-card sub-layouts
-  and host other panels — `GUIInstructionPanel` (player + waveform + spectrum),
-  `GUIReconstructionPanel` (player + audio + plot), `GUIInstructionDetailsPanel` (two cards)
-  — and the sequencer coordinator fills the grid panel's empty child window through
+  and host other panels — `GUIReconstructionPanel` (player + audio + plot) — and the
+  sequencer coordinator fills the grid panel's empty child window through
   `parent=TAG_SEQUENCER_GRID_PANEL`. Tab layout belongs solely to `create_tab()`. The Main
   tab is paid off: `GUIMainPanel` is dissolved and `MainTabCoordinator._build_center` declares
-  the layout directly, composing the config|reconstructor pair through `TabColumns.row`.
+  the layout directly, composing the config|reconstructor pair through `TabColumns.row`. The
+  Instructions tab is paid off: `GUIInstructionPanel` and `GUIInstructionDetailsPanel` are
+  dissolved into one card per module (waveform, spectrum, choice, parameters), and
+  `InstructionsTabCoordinator` stacks the display and details columns directly, routing
+  `display`/`position`/`close` to the cards and owning the `LibraryDisplayError` guard.
 * **Structural depth bound outside `card()` in two remaining places.** The `card()` context
   manager (`ui/elements/layout/card.py`) binds the raised SURFACE theme for every bordered
   content card, replacing the host-panel self-binds and the sequencer coordinator's card loop.

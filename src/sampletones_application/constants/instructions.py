@@ -121,6 +121,18 @@ TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM = TagName(
     Widget.PANEL,
     "instruction_spectrum",
 )
+TAG_INSTRUCTIONS_WAVEFORM_PANEL = TagName(
+    Page.INSTRUCTIONS,
+    Panel.INSTRUCTION,
+    Widget.PANEL,
+    "waveform",
+)
+TAG_INSTRUCTIONS_SPECTRUM_PANEL = TagName(
+    Page.INSTRUCTIONS,
+    Panel.INSTRUCTION,
+    Widget.PANEL,
+    "spectrum",
+)
 TAG_INSTRUCTIONS_DETAILS_TEXT_INFO = TagName(
     Page.INSTRUCTIONS,
     Panel.DETAILS,

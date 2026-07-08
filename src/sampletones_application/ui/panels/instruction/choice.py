@@ -13,9 +13,6 @@ from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
     TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-    TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-    TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
-    TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
@@ -23,37 +20,20 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
     TAG_INSTRUCTIONS_DETAILS_PANEL,
-    TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
-    TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
-    TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
-    TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
 )
-from sampletones_application.layout.general import (
-    GeneralLayout,
-    TableColors,
-    TablesLayout,
-)
+from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.instructions import InstructionsLayout
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.elements.table.table import GUITable
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
-from sampletones_application.view_model.instruction.details import (
-    InstructionDetailsPanelViewModel,
-)
-from sampletones_application.view_model.instruction.table_data import (
-    InstructionTableData,
-)
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import (
     MAX_DUTY_CYCLE,
@@ -73,31 +53,24 @@ from sampletones_core.utils.pitch_kind import (
 from sampletones_shared.utils.arrays import clamp
 
 
-class GUIInstructionDetailsPanel(GUIPanel):
+class GUIInstructionChoicePanel(GUIPanel):
     def __init__(
         self,
         shortcut_manager: ShortcutManager,
         *,
         layout: InstructionsLayout,
         general_layout: GeneralLayout,
-        table_colors: TableColors,
-        table_layout: TablesLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ) -> None:
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
-        self.general_table: GUITable
-        self.parameters_table: GUITable
-
         self._status_bar = status_bar
         self._shortcut_manager = shortcut_manager
         self._layout = layout
         self._general_layout = general_layout
-        self._table_colors = table_colors
-        self._table_layout = table_layout
         self._item_handler_tag = f"{TAG_INSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
-        self._current_viewmodel: Optional[InstructionDetailsPanelViewModel] = None
+        self._current_instruction_data: Optional[InstructionPanelData] = None
         self._pitch_stepper: Optional[GUIPitchStepper] = None
 
         self._lbl_section = language_manager[
@@ -105,18 +78,6 @@ class GUIInstructionDetailsPanel(GUIPanel):
             Panel.DETAILS,
             TextType.LABEL,
             InstructionsDetailsElements.DETAILS_TEXT,
-        ]
-        self._lbl_parameters = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.PARAMETERS_TEXT,
-        ]
-        self._lbl_general = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.GENERAL_TEXT,
         ]
         self._lbl_window_pulse_pitch = language_manager[
             Page.INSTRUCTIONS,
@@ -204,10 +165,10 @@ class GUIInstructionDetailsPanel(GUIPanel):
             self._create_instructions_choice_inputs()
             self._create_no_instruction_text()
 
-        dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
-
-        with card(parent, TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD, width=-1, show=False):
-            self._create_instruction_tables()
+    def update_choice(self, instruction_data: Optional[InstructionPanelData]) -> None:
+        self._current_instruction_data = instruction_data
+        dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_TEXT_INFO, show=instruction_data is None)
+        self._update_instructions_choice_panel(instruction_data)
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
@@ -232,79 +193,6 @@ class GUIInstructionDetailsPanel(GUIPanel):
             tag=TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
             parent=self.tag,
         )
-
-    def _create_instruction_tables(self) -> None:
-        with dpg.group(
-            tag=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-            parent=TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
-        ):
-            self._create_section_header(
-                self._lbl_parameters,
-                glyph=self._glyphs.headers.parameters,
-                parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                tag=TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
-            )
-
-            dpg.add_text(
-                self._lbl_general,
-                tag=TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
-                parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-            )
-
-            self.general_table = GUITable(
-                tag=TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
-                parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                rows=tuple(),
-                label_column_width=self._table_layout.label_width,
-                label_color=self._table_colors.label,
-                value_color=self._table_colors.value,
-            )
-
-            dpg.add_text(
-                self._lbl_parameters,
-                tag=TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
-                parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                show=False,
-            )
-
-            self.parameters_table = GUITable(
-                tag=TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
-                parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                rows=tuple(),
-                label_column_width=self._table_layout.label_width,
-                label_color=self._table_colors.label,
-                value_color=self._table_colors.value,
-            )
-
-            FontRegistry.bind_to_item(
-                TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
-                Font.BOLD,
-            )
-            FontRegistry.bind_to_item(
-                TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
-                Font.BOLD,
-            )
-
-    def update_view(self, view_model: InstructionDetailsPanelViewModel) -> None:
-        self._current_viewmodel = view_model
-        self._update_tables(view_model.table_data)
-        self._update_instructions_choice_panel(view_model.instruction_data)
-
-    def _update_tables(self, table_data: Optional[InstructionTableData]) -> None:
-        if table_data is None:
-            dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_TEXT_INFO, show=True)
-            dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD, show=False)
-            return
-
-        dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_TEXT_INFO, show=False)
-        dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD, show=True)
-        dpg_configure_item(
-            TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
-            show=table_data.has_parameters,
-        )
-
-        self.parameters_table.update_rows(table_data.parameter_rows)
-        self.general_table.update_rows(table_data.general_rows)
 
     def _create_instructions_choice_inputs(self) -> None:
         with dpg.child_window(
@@ -433,12 +321,12 @@ class GUIInstructionDetailsPanel(GUIPanel):
         dpg.bind_item_handler_registry(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME, self._item_handler_tag)
 
     def _on_instruction_changed(self, *_arguments: Any) -> None:
-        if self._current_viewmodel is None or self._current_viewmodel.instruction_data is None:
+        if self._current_instruction_data is None:
             return
 
         assert self._pitch_stepper is not None, "Pitch stepper is built whenever an instruction is shown"
 
-        instruction_data = self._current_viewmodel.instruction_data
+        instruction_data = self._current_instruction_data
         tags: List[str] = []
         values: List[Union[int, bool]] = []
         generator_type = instruction_data.generator_class_name

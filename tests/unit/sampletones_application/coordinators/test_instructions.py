@@ -76,14 +76,17 @@ def _display_coordinator() -> InstructionsTabCoordinator:
     """A coordinator with only the collaborators ``_display_instruction`` touches, bypassing the
     heavy constructor."""
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
-    coordinator._instruction_panel = MagicMock()
+    coordinator._waveform_panel = MagicMock()
+    coordinator._spectrum_panel = MagicMock()
     coordinator._instruction_player_logic = MagicMock()
+    coordinator._instruction_details_logic = MagicMock()
     return coordinator
 
 
 class TestDisplayInstruction:
-    """The audible fragment always matches the displayed one: rendering an instruction reloads
-    the player from its fragment, and an empty selection renders while leaving the player alone."""
+    """The audible fragment always matches the displayed one: rendering an instruction loads both
+    displays and reloads the player from its fragment, while an empty selection clears the displays
+    and leaves the player alone."""
 
     def test_instruction_renders_and_reloads_the_player(self) -> None:
         coordinator = _display_coordinator()
@@ -92,7 +95,12 @@ class TestDisplayInstruction:
         with patch("sampletones_application.coordinators.instructions.AudioData") as audio_data_cls:
             coordinator._display_instruction(instruction_data)
 
-        coordinator._instruction_panel.display_instruction.assert_called_once_with(instruction_data)
+        coordinator._waveform_panel.load_library_fragment.assert_called_once_with(instruction_data.fragment)
+        coordinator._spectrum_panel.load_library_fragment.assert_called_once_with(
+            instruction_data.fragment,
+            instruction_data.config.sample_rate,
+            instruction_data.config.window_size,
+        )
         audio_data_cls.from_library_fragment.assert_called_once_with(
             instruction_data.fragment,
             instruction_data.config.sample_rate,
@@ -101,21 +109,59 @@ class TestDisplayInstruction:
             audio_data_cls.from_library_fragment.return_value
         )
 
-    def test_empty_selection_renders_and_leaves_the_player_alone(self) -> None:
+    def test_empty_selection_clears_the_displays_and_leaves_the_player_alone(self) -> None:
         coordinator = _display_coordinator()
 
         coordinator._display_instruction(None)
 
-        coordinator._instruction_panel.display_instruction.assert_called_once_with(None)
+        coordinator._waveform_panel.clear_layers.assert_called_once_with()
+        coordinator._spectrum_panel.clear_layers.assert_called_once_with()
+        coordinator._instruction_details_logic.clear_display.assert_called_once_with()
         coordinator._instruction_player_logic.load_audio_data.assert_not_called()
+
+
+def _render_coordinator(*, plot_error: Exception) -> InstructionsTabCoordinator:
+    """A coordinator with only the displays ``_render_instruction`` touches, bypassing the heavy
+    constructor."""
+    coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
+    coordinator._waveform_panel = MagicMock()
+    coordinator._waveform_panel.load_library_fragment.side_effect = plot_error
+    coordinator._spectrum_panel = MagicMock()
+    return coordinator
+
+
+class TestRenderInstructionClassification:
+    """Rendering classification guard: a data-shape failure that makes the fragment unplottable
+    re-raises as ``LibraryDisplayError`` for ``_on_instruction_loaded`` to catch; a failure outside
+    those types is a bug and propagates."""
+
+    @pytest.mark.parametrize(
+        "error",
+        [KeyError("generator"), IndexError("empty histogram"), ValueError("degenerate data")],
+        ids=["key", "index", "value"],
+    )
+    def test_data_shape_failure_raises_library_display_error(self, error: Exception) -> None:
+        coordinator = _render_coordinator(plot_error=error)
+
+        with pytest.raises(LibraryDisplayError) as excinfo:
+            coordinator._render_instruction(MagicMock())
+
+        assert excinfo.value.__cause__ is error
+
+    def test_unexpected_failure_propagates(self) -> None:
+        coordinator = _render_coordinator(plot_error=RuntimeError("bug"))
+
+        with pytest.raises(RuntimeError):
+            coordinator._render_instruction(MagicMock())
 
 
 def _loaded_coordinator(*, display_error: Exception) -> InstructionsTabCoordinator:
     """A coordinator with only the collaborators ``_on_instruction_loaded`` touches, bypassing
     the heavy constructor."""
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
-    coordinator._instruction_panel = MagicMock()
-    coordinator._instruction_panel.display_instruction.side_effect = display_error
+    coordinator._waveform_panel = MagicMock()
+    coordinator._waveform_panel.load_library_fragment.side_effect = display_error
+    coordinator._spectrum_panel = MagicMock()
     coordinator._instruction_player_logic = MagicMock()
     coordinator._instruction_details_logic = MagicMock()
     coordinator._dialogs = MagicMock()
