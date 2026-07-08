@@ -39,20 +39,15 @@ Behavioural-contract deviations from `architecture.md`, tracked until paid off. 
 tab-layout ownership refactor resolves the layout entries phase by phase; remove each entry
 as its phase lands.
 
-* **Panels encode their own placement.** Thirteen panels compose their column parent as
-  `f"{TAG_GLOBAL_TAB_*}{SUF_PANEL_*}"` in their constructors, so a panel knows which tab
-  column it lives in. The coordinator should inject the parent via `create_panel(parent)`.
 * **Tab layout authored outside `create_tab()`.** Host panels build multi-card sub-layouts
   and host other panels — `GUIMainPanel` (config + reconstructor + advanced + converter),
   `GUIInstructionPanel` (player + waveform + spectrum), `GUIReconstructionPanel`
   (player + audio + plot), `GUIInstructionDetailsPanel` (two cards) — and the sequencer
   coordinator fills the grid panel's empty child window through
   `parent=TAG_SEQUENCER_GRID_PANEL`. Tab layout belongs solely to `create_tab()`.
-* **Duplicated column scaffold.** All four `create_tab()` bodies inline a near-identical
-  ground-wrapper + gap-column table + column child-window scaffold. It belongs in one shared
-  `ui/elements/layout` primitive.
-* **Structural depth themes bound by several owners.** SURFACE is bound by host panels, by
-  panels themselves, and by the sequencer coordinator reaching into panel-owned card tags.
-  Each depth theme needs one owner: `TabColumns` for GROUND, `card()` for SURFACE.
-* **Initial view population runs inside `create_tab()`.** `refresh_libraries` and the
-  sequencer `refresh_view` execute mid-build; they belong in post-build initialisation.
+* **SURFACE bound by several owners.** `TabColumns` owns the columns' depth binding — the
+  recessed GROUND theme, and, until each side column's content moves into a card, the raised
+  SURFACE theme on the left (and reconstructions' right) columns. SURFACE is still bound
+  directly by the instruction and reconstruction host panels, by single-card panels
+  themselves, and by the sequencer coordinator's card loop. The `card()` context manager
+  becomes SURFACE's single owner.

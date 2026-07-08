@@ -403,6 +403,7 @@ class Application:
         self._initialize_caret()
         self._set_callbacks()
         self._main_tab.emit_initial_view()
+        self._instructions_tab.initialize()
         self._sequencer_tab.initialize()
         self.history.reset()
         self.config_manager.update_gui()

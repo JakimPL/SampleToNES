@@ -42,13 +42,13 @@ from sampletones_application.logic.reconstruction.reconstruction import Reconstr
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.export import ExportError, ExportKind, ExportResult, ExportService, ExportSuccess
+from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.instruments.instruments import GUIReconstructionInstrumentsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -98,10 +98,10 @@ class ReconstructionsTabCoordinator:
             TextType.LABEL,
             MenuElements.TAB_RECONSTRUCTIONS,
         ]
-        self._left_width = layout.general.panels.left.width
-        self._left_height = layout.general.panels.left.height
-        self._instruments_width = layout.general.panels.reconstructions_instruments.width
-        self._right_height = layout.general.panels.right.height
+        self._left_width = layout.general.columns.side.width
+        self._left_height = layout.general.columns.side.height
+        self._instruments_width = layout.general.columns.reconstructions_right.width
+        self._right_height = layout.general.columns.reconstructions_right.height
         self._panel_gap = layout.general.panel_gap
 
         self._msg_file_not_found = language_manager[
@@ -392,70 +392,33 @@ class ReconstructionsTabCoordinator:
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
-            with dpg.child_window(
-                width=-1,
-                height=-self._panel_gap,
-                border=False,
-                no_scrollbar=True,
-                no_scroll_with_mouse=True,
-            ) as ground_wrapper:
-                dpg.add_spacer(height=self._panel_gap)
-                with dpg.table(
-                    header_row=False,
-                    resizable=False,
-                    policy=dpg.mvTable_SizingStretchProp,
-                ):
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-                    dpg.add_table_column(width_fixed=True)
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-                    dpg.add_table_column()
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-                    dpg.add_table_column(width_fixed=True)
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-
-                    with dpg.table_row():
-                        dpg.add_spacer()
-                        with dpg.child_window(
-                            tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
-                            width=self._left_width,
-                            height=self._left_height,
-                            no_scrollbar=True,
-                            no_scroll_with_mouse=True,
-                        ):
-                            self._browser_panel.create_panel(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}")
-
-                        dpg.add_spacer()
-
-                        with dpg.child_window(
-                            tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
-                            border=False,
-                            no_scroll_with_mouse=True,
-                        ):
-                            self._reconstruction_panel.create_panel(
-                                f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}"
-                            )
-
-                        dpg.add_spacer()
-
-                        with dpg.child_window(
-                            tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
-                            width=self._instruments_width,
-                            height=self._right_height,
-                            no_scrollbar=True,
-                            no_scroll_with_mouse=True,
-                        ):
-                            self._reconstruction_instruments_panel.create_panel(
-                                f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}"
-                            )
-
-                        dpg.add_spacer()
-
-            surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-            ground = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND)
-            ground.bind_to_item(ground_wrapper)
-            surface.bind_to_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}")
-            ground.bind_to_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}")
-            surface.bind_to_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}")
+            TabColumns.build(
+                panel_gap=self._panel_gap,
+                columns=[
+                    ColumnSpec(
+                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
+                        build=self._browser_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
+                        width=self._left_width,
+                        height=self._left_height,
+                        no_scrollbar=True,
+                    ),
+                    ColumnSpec(
+                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        build=self._reconstruction_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_GROUND,
+                        border=False,
+                    ),
+                    ColumnSpec(
+                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                        build=self._reconstruction_instruments_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
+                        width=self._instruments_width,
+                        height=self._right_height,
+                        no_scrollbar=True,
+                    ),
+                ],
+            )
 
     def lock(self) -> None:
         self._browser_panel.lock()

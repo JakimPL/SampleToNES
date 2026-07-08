@@ -34,8 +34,6 @@ repos:
         pass_filenames: false
         verbose: true
 
-  - repo: local
-    hooks:
       - id: mypy
         name: mypy
         entry: uv run mypy
@@ -45,8 +43,6 @@ repos:
         require_serial: true
         exclude: ^(tests/)
 
-  - repo: local
-    hooks:
       - id: pylint
         name: pylint
         entry: uv run pylint
@@ -56,8 +52,6 @@ repos:
         require_serial: true
         exclude: ^(tests/)
 
-  - repo: local
-    hooks:
       - id: pytest
         name: pytest
         entry: make test

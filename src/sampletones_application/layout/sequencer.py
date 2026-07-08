@@ -150,7 +150,6 @@ class HistoryLayout(BaseModel, frozen=True):
 
 
 class SequencerLayout(BaseModel, frozen=True):
-    samples_panel_width: int
     cell_padding: Padding
     order: OrderLayout
     table_cells: SequencerTableCells

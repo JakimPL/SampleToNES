@@ -1,9 +1,3 @@
-panel_gap: 14
-
-explorer:
-  width: 360
-  height: -1
-
 config:
   height: 276
 

@@ -24,12 +24,14 @@ class GUIMainPanel(GUIPanel):
         converter_panel: GUIConverterPanel,
         *,
         layout: MainLayout,
+        panel_gap: int,
     ) -> None:
         self.config_panel = config_panel
         self.reconstructor_panel = reconstructor_panel
         self.advanced_settings_panel = advanced_settings_panel
         self.converter_panel = converter_panel
         self._layout = layout
+        self._panel_gap = panel_gap
 
         super().__init__(
             tag=TAG_MAIN_PANEL,
@@ -42,9 +44,9 @@ class GUIMainPanel(GUIPanel):
             border=False,
         ):
             self._create_settings()
-            dpg.add_spacer(height=self._layout.panel_gap)
+            dpg.add_spacer(height=self._panel_gap)
             self._create_advanced_settings()
-            dpg.add_spacer(height=self._layout.panel_gap)
+            dpg.add_spacer(height=self._panel_gap)
             self._create_converter()
 
         self._bind_card_surfaces()
@@ -68,7 +70,7 @@ class GUIMainPanel(GUIPanel):
             height=self._layout.config.height,
         ):
             dpg.add_table_column()
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.panel_gap)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
             dpg.add_table_column()
             with dpg.table_row():
                 with dpg.table_cell(tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL):

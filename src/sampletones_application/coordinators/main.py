@@ -35,6 +35,7 @@ from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.conversion import ConversionService
+from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
@@ -43,7 +44,6 @@ from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -114,9 +114,9 @@ class MainTabCoordinator:
             TextType.LABEL,
             MenuElements.TAB_MAIN,
         ]
-        self._explorer_width = layout.main.explorer.width
-        self._explorer_height = layout.main.explorer.height
-        self._panel_gap = layout.main.panel_gap
+        self._explorer_width = layout.general.columns.side.width
+        self._explorer_height = layout.general.columns.side.height
+        self._panel_gap = layout.general.panel_gap
         _msg_converter_error = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -244,6 +244,7 @@ class MainTabCoordinator:
             self._advanced_settings_panel,
             self._converter_panel,
             layout=layout.main,
+            panel_gap=self._panel_gap,
         )
 
         config_manager.add_config_change_callback(self._update_config_panel_view)
@@ -378,51 +379,25 @@ class MainTabCoordinator:
             tag=TAG_GLOBAL_TAB_MAIN,
             parent=TAG_GLOBAL_TABS,
         ):
-            with dpg.child_window(
-                width=-1,
-                height=-self._panel_gap,
-                border=False,
-                no_scrollbar=True,
-                no_scroll_with_mouse=True,
-            ) as ground_wrapper:
-                dpg.add_spacer(height=self._panel_gap)
-                with dpg.table(
-                    header_row=False,
-                    resizable=False,
-                    policy=dpg.mvTable_SizingStretchProp,
-                ):
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-                    dpg.add_table_column(width_fixed=True)
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-                    dpg.add_table_column()
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-
-                    with dpg.table_row():
-                        dpg.add_spacer()
-
-                        with dpg.child_window(
-                            tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
-                            width=self._explorer_width,
-                            height=self._explorer_height,
-                            no_scrollbar=True,
-                            no_scroll_with_mouse=True,
-                        ):
-                            self._explorer_panel.create_panel(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}")
-
-                        dpg.add_spacer()
-
-                        with dpg.child_window(
-                            tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}",
-                            border=False,
-                            no_scroll_with_mouse=True,
-                        ):
-                            self._main_panel.create_panel(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}")
-
-                        dpg.add_spacer()
-
-            ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(ground_wrapper)
-            ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE).bind_to_item(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}")
-            ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}")
+            TabColumns.build(
+                panel_gap=self._panel_gap,
+                columns=[
+                    ColumnSpec(
+                        tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
+                        build=self._explorer_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
+                        width=self._explorer_width,
+                        height=self._explorer_height,
+                        no_scrollbar=True,
+                    ),
+                    ColumnSpec(
+                        tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}",
+                        build=self._main_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_GROUND,
+                        border=False,
+                    ),
+                ],
+            )
 
     @property
     def player(self) -> AudioPlayerProtocol:

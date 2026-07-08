@@ -36,6 +36,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.instruction.details import (
@@ -48,7 +49,6 @@ from sampletones_application.ui.panels.instruction.library import (
     GUIInstructionsLibraryPanel,
 )
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -95,10 +95,10 @@ class InstructionsTabCoordinator:
             TextType.LABEL,
             MenuElements.TAB_INSTRUCTIONS,
         ]
-        self._left_width = layout.general.panels.left.width
-        self._left_height = layout.general.panels.left.height
-        self._details_width = layout.general.panels.instructions_details.width
-        self._right_height = layout.general.panels.right.height
+        self._left_width = layout.general.columns.side.width
+        self._left_height = layout.general.columns.side.height
+        self._details_width = layout.general.columns.instructions_right.width
+        self._right_height = layout.general.columns.instructions_right.height
         self._panel_gap = layout.general.panel_gap
         self._msg_display_error = language_manager[
             Page.INSTRUCTIONS,
@@ -333,70 +333,38 @@ class InstructionsTabCoordinator:
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
-            with dpg.child_window(
-                width=-1,
-                height=-self._panel_gap,
-                border=False,
-                no_scrollbar=True,
-                no_scroll_with_mouse=True,
-            ) as ground_wrapper:
-                dpg.add_spacer(height=self._panel_gap)
-                with dpg.table(
-                    header_row=False,
-                    resizable=False,
-                    policy=dpg.mvTable_SizingStretchProp,
-                ):
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-                    dpg.add_table_column(width_fixed=True)
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-                    dpg.add_table_column()
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
-                    dpg.add_table_column(width_fixed=True)
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
+            TabColumns.build(
+                panel_gap=self._panel_gap,
+                columns=[
+                    ColumnSpec(
+                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
+                        build=self._library_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
+                        width=self._left_width,
+                        height=self._left_height,
+                        no_scrollbar=True,
+                    ),
+                    ColumnSpec(
+                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        build=self._instruction_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_GROUND,
+                        border=False,
+                    ),
+                    ColumnSpec(
+                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                        build=self._instruction_details_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_GROUND,
+                        width=self._details_width,
+                        height=self._right_height,
+                        border=False,
+                        no_scrollbar=True,
+                    ),
+                ],
+            )
 
-                    with dpg.table_row():
-                        dpg.add_spacer()
-                        with dpg.child_window(
-                            tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
-                            width=self._left_width,
-                            height=self._left_height,
-                            no_scrollbar=True,
-                            no_scroll_with_mouse=True,
-                        ):
-                            self._library_panel.create_panel(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}")
-                            self._library_logic.refresh_libraries(load_if_needed=False)
-
-                        dpg.add_spacer()
-
-                        with dpg.child_window(
-                            tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
-                            border=False,
-                            no_scroll_with_mouse=True,
-                        ):
-                            self._instruction_panel.create_panel(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}")
-
-                        dpg.add_spacer()
-
-                        with dpg.child_window(
-                            tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
-                            width=self._details_width,
-                            height=self._right_height,
-                            border=False,
-                            no_scrollbar=True,
-                            no_scroll_with_mouse=True,
-                        ):
-                            self._instruction_details_panel.create_panel(
-                                f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}"
-                            )
-
-                        dpg.add_spacer()
-
-            surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-            ground = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND)
-            ground.bind_to_item(ground_wrapper)
-            surface.bind_to_item(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}")
-            ground.bind_to_item(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}")
-            ground.bind_to_item(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}")
+    def initialize(self) -> None:
+        """Populates the library tree once the tab's widgets exist."""
+        self._library_logic.refresh_libraries(load_if_needed=False)
 
     def ensure_library_loaded(self) -> None:
         """Make sure a library matching the current configuration exists before reconstructing.

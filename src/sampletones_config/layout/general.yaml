@@ -7,17 +7,19 @@ window:
 
 panel_gap: 14
 
-panels:
-  left:
+columns:
+  side:
     width: 360
     height: -1
-  right:
-    width: 460
-    height: -1
-  instructions_details:
+  instructions_right:
     width: 360
-  reconstructions_instruments:
+    height: -1
+  reconstructions_right:
     width: 420
+    height: -1
+  sequencer_right:
+    width: 360
+    height: -1
 
 status_bar:
   height: 32
