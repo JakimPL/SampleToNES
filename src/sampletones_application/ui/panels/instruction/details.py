@@ -28,6 +28,7 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
     TAG_INSTRUCTIONS_DETAILS_PANEL,
+    TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
     TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
     TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
@@ -213,9 +214,23 @@ class GUIInstructionDetailsPanel(GUIPanel):
         ):
             self._create_section_text()
             self._create_instructions_choice_inputs()
+            self._create_no_instruction_text()
+
+        dpg.add_spacer(height=self._general_layout.panel_gap, parent=self.parent)
+
+        with dpg.child_window(
+            tag=TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
+            parent=self.parent,
+            width=-1,
+            auto_resize_y=True,
+            border=True,
+            show=False,
+        ):
             self._create_instruction_tables()
 
-        ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE).bind_to_item(self.tag)
+        surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
+        surface.bind_to_item(self.tag)
+        surface.bind_to_item(TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD)
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
@@ -231,29 +246,28 @@ class GUIInstructionDetailsPanel(GUIPanel):
     def _create_section_text(self) -> None:
         self._create_section_header(self._lbl_section)
 
+    def _create_no_instruction_text(self) -> None:
+        dpg.add_text(
+            self._msg_no_instruction,
+            tag=TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
+            parent=self.tag,
+        )
+
     def _create_instruction_tables(self) -> None:
         with dpg.group(
             tag=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-            parent=self.tag,
+            parent=TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
         ):
-            dpg.add_text(
-                self._msg_no_instruction,
-                tag=TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
-                parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-            )
-
             self._create_section_header(
                 self._lbl_parameters,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
                 tag=TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
             )
-            dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS, show=False)
 
             dpg.add_text(
                 self._lbl_general,
                 tag=TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                show=False,
             )
 
             self.general_table = GUITable(
@@ -263,7 +277,6 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 label_column_width=self._table_layout.label_width,
                 label_color=self._table_colors.label,
                 value_color=self._table_colors.value,
-                before=TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
             )
 
             dpg.add_text(
@@ -298,27 +311,12 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def _update_tables(self, table_data: Optional[InstructionTableData]) -> None:
         if table_data is None:
-            dpg_configure_item(
-                TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
-                show=True,
-            )
-            dpg_configure_item(
-                TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
-                show=False,
-            )
-            dpg_configure_item(
-                TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
-                show=False,
-            )
-            dpg_configure_item(
-                TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
-                show=False,
-            )
+            dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_TEXT_INFO, show=True)
+            dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD, show=False)
             return
 
         dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_TEXT_INFO, show=False)
-        dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS, show=True)
-        dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL, show=True)
+        dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD, show=True)
         dpg_configure_item(
             TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
             show=table_data.has_parameters,

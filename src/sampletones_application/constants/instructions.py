@@ -133,6 +133,12 @@ TAG_INSTRUCTIONS_DETAILS_PANEL = TagName(
     Widget.PANEL,
     "details",
 )
+TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD = TagName(
+    Page.INSTRUCTIONS,
+    Panel.DETAILS,
+    Widget.WINDOW,
+    "parameters_card",
+)
 TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL = TagName(
     Page.INSTRUCTIONS,
     Panel.DETAILS,
