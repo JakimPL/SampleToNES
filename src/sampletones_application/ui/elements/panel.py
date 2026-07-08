@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECTION_HEADER
+from sampletones_application.layout.glyphs import GlyphsLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -21,7 +23,8 @@ class GUIPanel(CallbackMixin, ABC):
       how to display data, not what it means.
     """
 
-    _section_header_tick: str
+    _glyphs: GlyphsLayout
+    _section_header_glyph_width: int
 
     def __init__(
         self,
@@ -43,29 +46,39 @@ class GUIPanel(CallbackMixin, ABC):
     def create_panel(self) -> None: ...
 
     @classmethod
-    def configure_section_header(cls, tick: str) -> None:
-        """Set the glyph that precedes every section header, sourced from layout config."""
-        cls._section_header_tick = tick
+    def configure_section_header(cls, glyphs: GlyphsLayout, glyph_width: int) -> None:
+        """Set the shared glyph palette and the fixed marker width for every section header, from config."""
+        cls._glyphs = glyphs
+        cls._section_header_glyph_width = glyph_width
 
     def _create_section_header(
         self,
         label: str,
         *,
+        glyph: Optional[str] = None,
         parent: Sender = 0,
         tag: Sender = 0,
     ) -> None:
-        """Render this panel's section header: a compact accent-toned label with a leading tick.
+        """Render this panel's section header: a compact accent-toned label with a leading marker.
 
-        Every panel opens with the same header treatment, so defining it on the base
-        keeps the tabs consistent and gives one place to restyle every header at once.
-        ``parent`` targets a specific container for panels that build outside a ``with`` block.
+        The marker is a purpose glyph when ``glyph`` is given, otherwise the shared accent tick,
+        so a header can signal what its card is for while headers without a glyph stay uniform.
+        A fixed-width marker column keeps the label starting at the same offset regardless of the
+        glyph's own width. Every panel opens with the same header treatment, so defining it on the
+        base keeps the tabs consistent and gives one place to restyle every header at once. ``parent``
+        targets a specific container for panels that build outside a ``with`` block.
         """
         theme = ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER)
-        with dpg.group(horizontal=True, parent=parent, tag=tag) as header:
-            tick = dpg.add_text(self._section_header_tick)
-            FontRegistry.bind_to_item(tick, Font.ICON)
-            label_text = dpg.add_text(label.upper())
-            FontRegistry.bind_to_item(label_text, Font.BOLD)
+        marker_glyph = glyph if glyph is not None else self._glyphs.tick
+        with dpg.group(parent=parent, tag=tag) as header:
+            with dpg.table(header_row=False, policy=dpg.mvTable_SizingFixedFit, resizable=False):
+                dpg.add_table_column(width_fixed=True, init_width_or_weight=self._section_header_glyph_width)
+                dpg.add_table_column(width_fixed=True)
+                with dpg.table_row():
+                    marker = dpg.add_text(marker_glyph)
+                    FontRegistry.bind_to_item(marker, Font.ICON)
+                    label_text = dpg.add_text(label.upper())
+                    FontRegistry.bind_to_item(label_text, Font.BOLD)
 
         dpg.add_separator()
         theme.bind_to_item(header)

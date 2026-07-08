@@ -86,7 +86,7 @@ caret:
   border: "#88bbffff"
 
 section_header:
-  tick: "▍"
+  glyph_width: 22
 
 colors:
   text:

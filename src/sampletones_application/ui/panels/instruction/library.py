@@ -226,7 +226,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._create_detail_tooltip(TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE)
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_libraries)
+        self._create_section_header(self._lbl_libraries, glyph=self._glyphs.instruction_data)
 
     def _create_library_status(self) -> None:
         text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)

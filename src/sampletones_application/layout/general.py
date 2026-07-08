@@ -107,7 +107,7 @@ class CaretLayout(BaseModel, frozen=True):
 
 
 class SectionHeaderLayout(BaseModel, frozen=True):
-    tick: str
+    glyph_width: int
 
 
 class TextColors(BaseModel, frozen=True):

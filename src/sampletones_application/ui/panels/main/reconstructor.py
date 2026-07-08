@@ -139,7 +139,7 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section_settings)
+        self._create_section_header(self._lbl_section_settings, glyph=self._glyphs.reconstruction)
 
     def _create_generator_selection(self) -> None:
         dpg.add_text(self._lbl_section_generators)

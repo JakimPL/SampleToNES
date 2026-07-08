@@ -244,7 +244,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             )
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section)
+        self._create_section_header(self._lbl_section, glyph=self._glyphs.details)
 
     def _create_no_instruction_text(self) -> None:
         dpg.add_text(
@@ -260,6 +260,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         ):
             self._create_section_header(
                 self._lbl_parameters,
+                glyph=self._glyphs.parameters,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
                 tag=TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
             )

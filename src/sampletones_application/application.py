@@ -379,7 +379,10 @@ class Application:
 
     def _setup_gui_elements(self) -> None:
         FontRegistry.setup(self.layout.general.fonts)
-        GUIPanel.configure_section_header(self.layout.general.section_header.tick)
+        GUIPanel.configure_section_header(
+            self.layout.glyphs,
+            self.layout.general.section_header.glyph_width,
+        )
         try:
             setup_themes(THEME_DIRECTORY)
         except ValidationError as exception:

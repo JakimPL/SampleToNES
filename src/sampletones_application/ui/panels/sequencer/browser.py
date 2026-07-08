@@ -129,7 +129,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_reconstructions)
+        self._create_section_header(self._lbl_reconstructions, glyph=self._glyphs.reconstruction)
 
     def _create_buttons(self) -> None:
         with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS):

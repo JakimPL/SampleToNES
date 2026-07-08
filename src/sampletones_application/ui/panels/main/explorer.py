@@ -219,7 +219,7 @@ class GUIExplorerPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section)
+        self._create_section_header(self._lbl_section, glyph=self._glyphs.filesystem)
 
     def _create_buttons(self) -> None:
         with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_CONTROLS):

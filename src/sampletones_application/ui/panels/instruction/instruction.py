@@ -93,7 +93,7 @@ class GUIInstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
-            self._create_section_header(self._lbl_waveform)
+            self._create_section_header(self._lbl_waveform, glyph=self._glyphs.waveform)
             self.waveform_display = GUIWaveformGraph(
                 tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
                 parent=self.waveform_tag,
@@ -110,7 +110,7 @@ class GUIInstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
-            self._create_section_header(self._lbl_spectrum)
+            self._create_section_header(self._lbl_spectrum, glyph=self._glyphs.spectrum)
             self.spectrum_display = GUISpectrumGraph(
                 tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
                 parent=self.spectrum_tag,
