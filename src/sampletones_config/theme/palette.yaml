@@ -58,6 +58,10 @@ colors:
   button_active: "#686892"
   button_disabled: "#3d3a4a"
 
+  # player
+  player_surface: "#1b2333"
+  player_border: "#4a90d9"
+
   # text
   text: "#e8e6ef"
   text_muted: "#948f9f"

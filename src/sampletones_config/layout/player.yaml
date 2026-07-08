@@ -1,6 +1,7 @@
-panel:
-  width: -1
-  height: 65
+card:
+  width: 400
 
-controls_table:
-  height: 32
+button:
+  height: 34
+  width: 52
+  gap: 10

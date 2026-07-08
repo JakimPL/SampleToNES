@@ -6,16 +6,24 @@ from sampletones_application.categories.elements.global_ import PlayerElements
 from sampletones_application.categories.elements.sequencer import SequencerPlayerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_PLAYER_TOOLBAR
 from sampletones_application.constants.player import (
+    GLYPH_PLAYER_PAUSE,
+    GLYPH_PLAYER_PLAY,
+    SUF_PLAYER_CARD,
     SUF_PLAYER_FOLLOW,
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
     SUF_PLAYER_POSITION,
     SUF_PLAYER_STOP,
+    SUF_PLAYER_TOOLTIP,
 )
 from sampletones_application.layout.player import PlayerLayout
-from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.panels.player_controls import create_transport_controls
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_item_label,
@@ -34,11 +42,13 @@ class GUISongPlayerPanel(GUIPanel):
         layout: PlayerLayout,
         language_manager: LanguageManager,
     ) -> None:
+        self.card_tag = f"{tag}{SUF_PLAYER_CARD}"
         self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
         self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
         self.stop_button_tag = f"{tag}{SUF_PLAYER_STOP}"
         self.position_text_tag = f"{tag}{SUF_PLAYER_POSITION}"
         self.follow_checkbox_tag = f"{tag}{SUF_PLAYER_FOLLOW}"
+        self.pause_tooltip_tag = f"{self.pause_button_tag}{SUF_PLAYER_TOOLTIP}"
 
         self.on_play: Optional[VoidCallback] = None
         self.on_pause_or_resume: Optional[VoidCallback] = None
@@ -95,64 +105,61 @@ class GUISongPlayerPanel(GUIPanel):
             SequencerPlayerElements.FOLLOW_PLAYBACK,
         ]
 
-        super().__init__(
-            tag=tag,
-            parent=parent,
-            width=layout.panel.width,
-            height=layout.panel.height,
-        )
+        super().__init__(tag=tag, parent=parent)
 
     def create_panel(self) -> None:
-        with dpg.child_window(
+        with dpg.table(
             tag=self.tag,
             parent=self.parent,
-            width=self.width,
-            height=self.height,
-            no_scroll_with_mouse=True,
-            no_scrollbar=True,
-            border=False,
-        ):
-            self._create_controls()
-            dpg.add_checkbox(
-                tag=self.follow_checkbox_tag,
-                label=self._lbl_follow,
-                default_value=False,
-                callback=self._on_follow_toggled,
-            )
-            dpg.add_text(self._msg_no_song, tag=self.position_text_tag)
-
-    def _create_controls(self) -> None:
-        with dpg.table(
             header_row=False,
-            policy=dpg.mvTable_SizingStretchSame,
+            policy=dpg.mvTable_SizingStretchProp,
             resizable=False,
             width=-1,
-            height=self._layout.controls_table.height,
         ):
-            for _ in range(3):
-                dpg.add_table_column()
+            dpg.add_table_column()
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.card.width)
+            dpg.add_table_column()
+
             with dpg.table_row():
-                GUIButton(
-                    tag=self.play_button_tag,
-                    label=self._lbl_play,
-                    callback=self._on_play_clicked,
-                    enabled=False,
+                dpg.add_spacer()
+                with dpg.child_window(
+                    tag=self.card_tag,
                     width=-1,
-                )
-                GUIButton(
-                    tag=self.pause_button_tag,
-                    label=self._lbl_pause,
-                    callback=self._on_pause_or_resume_clicked,
-                    enabled=False,
-                    width=-1,
-                )
-                GUIButton(
-                    tag=self.stop_button_tag,
-                    label=self._lbl_stop,
-                    callback=self._on_stop_clicked,
-                    enabled=False,
-                    width=-1,
-                )
+                    auto_resize_y=True,
+                    border=True,
+                    no_scrollbar=True,
+                    no_scroll_with_mouse=True,
+                ):
+                    self._create_controls()
+                    dpg.add_text(self._msg_no_song, tag=self.position_text_tag)
+                    FontRegistry.bind_to_item(self.position_text_tag, Font.REGULAR_SMALL)
+                dpg.add_spacer()
+
+        ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_TOOLBAR).bind_to_item(self.card_tag)
+
+    def _create_controls(self) -> None:
+        create_transport_controls(
+            self.card_tag,
+            layout=self._layout,
+            play_tag=self.play_button_tag,
+            pause_tag=self.pause_button_tag,
+            stop_tag=self.stop_button_tag,
+            play_tooltip=self._lbl_play,
+            pause_tooltip=self._lbl_pause,
+            stop_tooltip=self._lbl_stop,
+            on_play=self._on_play_clicked,
+            on_pause_or_resume=self._on_pause_or_resume_clicked,
+            on_stop=self._on_stop_clicked,
+            trailing=self._create_follow_checkbox,
+        )
+
+    def _create_follow_checkbox(self) -> None:
+        dpg.add_checkbox(
+            tag=self.follow_checkbox_tag,
+            label=self._lbl_follow,
+            default_value=False,
+            callback=self._on_follow_toggled,
+        )
 
     def update_view(self, view_model: SongPlayerViewModel) -> None:
         dpg_set_value(self.follow_checkbox_tag, view_model.follow_playback)
@@ -175,9 +182,11 @@ class GUISongPlayerPanel(GUIPanel):
         )
 
         if view_model.is_paused:
-            dpg_set_item_label(self.pause_button_tag, self._lbl_resume)
+            dpg_set_item_label(self.pause_button_tag, GLYPH_PLAYER_PLAY)
+            dpg_set_value(self.pause_tooltip_tag, self._lbl_resume)
         else:
-            dpg_set_item_label(self.pause_button_tag, self._lbl_pause)
+            dpg_set_item_label(self.pause_button_tag, GLYPH_PLAYER_PAUSE)
+            dpg_set_value(self.pause_tooltip_tag, self._lbl_pause)
 
         if view_model.error is not None:
             dpg_set_value(
@@ -188,7 +197,7 @@ class GUISongPlayerPanel(GUIPanel):
             dpg_set_value(
                 self.position_text_tag,
                 self._tpl_position.format(
-                    frame=view_model.order_position,
+                    position=view_model.order_position,
                     row=view_model.row_index,
                 ),
             )

@@ -458,16 +458,13 @@ class GUIReconstructionPanel(GUIPanel):
             border=True,
         ):
             self._create_section_header(self._lbl_audio_source)
-            self._create_source_paths()
+            self._create_audio_source_radio_buttons()
+            dpg.add_separator()
+            self._create_path_display()
+            dpg.add_separator()
             self._create_buttons()
 
-    def _create_source_paths(self) -> None:
-        dpg.add_separator()
-        self._create_audio_source_radio_buttons()
-        self._create_path_display()
-
     def _create_buttons(self) -> None:
-        dpg.add_separator()
         self._create_add_to_sequencer_button()
         self._create_locate_original_audio_button()
         self._create_export_instruments_button()

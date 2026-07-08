@@ -1,15 +1,16 @@
 from pydantic import BaseModel
 
 
-class PlayerPanelLayout(BaseModel, frozen=True):
+class PlayerCardLayout(BaseModel, frozen=True):
     width: int
-    height: int
 
 
-class ControlsTableLayout(BaseModel, frozen=True):
+class PlayerButtonLayout(BaseModel, frozen=True):
     height: int
+    width: int
+    gap: int
 
 
 class PlayerLayout(BaseModel, frozen=True):
-    panel: PlayerPanelLayout
-    controls_table: ControlsTableLayout
+    card: PlayerCardLayout
+    button: PlayerButtonLayout

@@ -6,4 +6,10 @@ components:
     entries:
       - type: color
         key: ChildBg
-        value: .menu
+        value: .player_surface
+      - type: color
+        key: Border
+        value: .player_border
+      - type: style
+        key: ChildBorderSize
+        x: 2
