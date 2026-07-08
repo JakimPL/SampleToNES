@@ -343,7 +343,6 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
         generator_type = instruction_data.generator_class_name
         instruction = instruction_data.instruction
-        dpg.add_separator(parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE)
         match generator_type:
             case GeneratorClassName.PULSE_GENERATOR:
                 assert isinstance(instruction, PulseInstruction)

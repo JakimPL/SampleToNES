@@ -128,6 +128,7 @@ class GUIReconstructorPanel(GUIPanel):
         ):
             self._create_section_text()
             self._create_generator_selection()
+            dpg.add_separator()
             self._create_drive_slider()
             self._create_tooltips()
 
@@ -141,7 +142,6 @@ class GUIReconstructorPanel(GUIPanel):
         self._create_section_header(self._lbl_section_settings)
 
     def _create_generator_selection(self) -> None:
-        dpg.add_separator()
         dpg.add_text(self._lbl_section_generators)
 
         with dpg.group():
@@ -164,7 +164,6 @@ class GUIReconstructorPanel(GUIPanel):
         ]
 
     def _create_drive_slider(self) -> None:
-        dpg.add_separator()
         dpg.add_slider_float(
             label=self._lbl_drive,
             tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,

@@ -67,6 +67,7 @@ class GUIPanel(CallbackMixin, ABC):
             label_text = dpg.add_text(label.upper())
             FontRegistry.bind_to_item(label_text, Font.BOLD)
 
+        dpg.add_separator()
         theme.bind_to_item(header)
 
     def set_visibility(self, visible: bool) -> None:

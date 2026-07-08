@@ -3,7 +3,9 @@ from typing import Any, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import TreeElements
-from sampletones_application.categories.elements.sequencer import SequencerBrowserElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerBrowserElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
@@ -101,6 +103,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         ):
             self._create_section_text()
             self._create_buttons()
+            dpg.add_separator()
             self._create_tree_window()
 
         self._create_detail_tooltip(TAG_SEQUENCER_BROWSER_WINDOW_TREE)
@@ -129,7 +132,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
         self._create_section_header(self._lbl_reconstructions)
 
     def _create_buttons(self) -> None:
-        dpg.add_separator()
         with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
@@ -139,7 +141,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
             )
 
     def _create_tree_window(self) -> None:
-        dpg.add_separator()
         self.create_search(self.tag)
         with dpg.child_window(tag=TAG_SEQUENCER_BROWSER_WINDOW_TREE):
             with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_TREE):

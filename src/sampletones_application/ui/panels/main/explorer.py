@@ -193,6 +193,7 @@ class GUIExplorerPanel(GUITreePanel):
         ):
             self._create_section_text()
             self._create_buttons()
+            dpg.add_separator()
             self._create_tree_window()
 
         self._create_detail_tooltip(TAG_MAIN_EXPLORER_WINDOW_TREE)
@@ -221,7 +222,6 @@ class GUIExplorerPanel(GUITreePanel):
         self._create_section_header(self._lbl_section)
 
     def _create_buttons(self) -> None:
-        dpg.add_separator()
         with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_REFRESH,
@@ -239,7 +239,6 @@ class GUIExplorerPanel(GUITreePanel):
             )
 
     def _create_tree_window(self) -> None:
-        dpg.add_separator()
         self.create_search(self.tag)
         with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE):
             with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE):

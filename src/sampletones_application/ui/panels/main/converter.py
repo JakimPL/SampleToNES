@@ -156,6 +156,7 @@ class GUIConverterPanel(GUIPanel):
         ):
             self._create_section_text()
             self._create_export_button()
+            dpg.add_separator()
             self._create_summary()
             self._create_conversion_status()
 
@@ -217,7 +218,6 @@ class GUIConverterPanel(GUIPanel):
         self._create_section_header(self._lbl_section)
 
     def _create_export_button(self) -> None:
-        dpg.add_separator()
         with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_CONVERT):
             GUIButton(
                 label=self._lbl_convert_button,
@@ -275,7 +275,6 @@ class GUIConverterPanel(GUIPanel):
             parent=self.tag,
             show=False,
         ):
-            dpg.add_separator()
             dpg.add_text(
                 self._msg_waiting,
                 tag=TAG_MAIN_CONVERTER_TEXT_STATUS,

@@ -2,7 +2,9 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import SequencerModuleElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerModuleElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sequencer import (
@@ -57,20 +59,23 @@ class GUISequencerActionsPanel(GUIPanel):
             border=True,
         ):
             self._create_section_header(self._lbl_project)
-            GUIButton(
-                tag=TAG_SEQUENCER_MODULE_BUTTON_PROPERTIES,
-                label=self._lbl_properties,
-                parent=self.tag,
-                callback=self._on_properties_clicked,
-                width=-1,
-            )
-            GUIButton(
-                tag=TAG_SEQUENCER_MODULE_BUTTON_EXPORT,
-                label=self._lbl_export_module,
-                parent=self.tag,
-                callback=self._on_export_clicked,
-                width=-1,
-            )
+            self._create_buttons()
+
+    def _create_buttons(self) -> None:
+        GUIButton(
+            tag=TAG_SEQUENCER_MODULE_BUTTON_PROPERTIES,
+            label=self._lbl_properties,
+            parent=self.tag,
+            callback=self._on_properties_clicked,
+            width=-1,
+        )
+        GUIButton(
+            tag=TAG_SEQUENCER_MODULE_BUTTON_EXPORT,
+            label=self._lbl_export_module,
+            parent=self.tag,
+            callback=self._on_export_clicked,
+            width=-1,
+        )
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_MODULE_BUTTON_PROPERTIES, enabled=enabled)

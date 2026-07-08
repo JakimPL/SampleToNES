@@ -168,6 +168,7 @@ class GUIConfigPanel(GUIPanel):
         ):
             self._create_section_text()
             self._create_audio_options()
+            dpg.add_separator()
             self._create_library_settings()
             self._create_tooltips()
 
@@ -199,7 +200,6 @@ class GUIConfigPanel(GUIPanel):
         self._create_section_header(self._lbl_section)
 
     def _create_audio_options(self) -> None:
-        dpg.add_separator()
         dpg.add_checkbox(
             label=self._lbl_normalize,
             default_value=self._view.normalize,
@@ -214,7 +214,6 @@ class GUIConfigPanel(GUIPanel):
         )
 
     def _create_library_settings(self) -> None:
-        dpg.add_separator()
         dpg.add_text(self._lbl_section_library)
         dpg.add_input_int(
             label=self._lbl_sample_rate,

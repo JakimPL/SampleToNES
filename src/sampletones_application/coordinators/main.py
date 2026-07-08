@@ -39,7 +39,7 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
-from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
+from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel

@@ -128,12 +128,15 @@ class GUISequencerHistoryPanel(GUIPanel):
         ):
             self._create_section_header(self._lbl_history)
             self._create_actions()
-            dpg.add_child_window(
-                tag=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
-                width=-1,
-                height=-1,
-                border=True,
-            )
+            self._create_window_list()
+
+    def _create_window_list(self) -> None:
+        dpg.add_child_window(
+            tag=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
+            width=-1,
+            height=-1,
+            border=True,
+        )
 
     def _create_actions(self) -> None:
         with dpg.group(tag=TAG_SEQUENCER_HISTORY_GROUP_ACTIONS):

@@ -229,7 +229,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._create_section_header(self._lbl_libraries)
 
     def _create_library_status(self) -> None:
-        dpg.add_separator()
         text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
         FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
 

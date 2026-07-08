@@ -144,6 +144,7 @@ class GUIBrowserPanel(GUITreePanel):
         ):
             self._create_section_text()
             self._create_buttons()
+            dpg.add_separator()
             self._create_tree_window()
 
         self._create_detail_tooltip(TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE)
@@ -172,7 +173,6 @@ class GUIBrowserPanel(GUITreePanel):
         self._create_section_header(self._lbl_reconstructions)
 
     def _create_buttons(self) -> None:
-        dpg.add_separator()
         with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
@@ -202,7 +202,6 @@ class GUIBrowserPanel(GUITreePanel):
             )
 
     def _create_tree_window(self) -> None:
-        dpg.add_separator()
         self.create_search(self.tag)
         with dpg.child_window(tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE):
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE):

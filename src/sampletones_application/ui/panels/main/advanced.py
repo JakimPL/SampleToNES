@@ -165,7 +165,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._create_output_directory_selection()
 
     def _create_workers_settings(self) -> None:
-        dpg.add_separator()
         dpg.add_input_int(
             label=self._lbl_max_workers,
             default_value=self._max_workers,

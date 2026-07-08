@@ -12,16 +12,10 @@ from sampletones_application.constants.main import (
 )
 from sampletones_application.layout.main import MainLayout
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.main.advanced import (
-    GUIAdvancedSettingsPanel,
-)
+from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
-from sampletones_application.ui.panels.main.converter.converter import (
-    GUIConverterPanel,
-)
-from sampletones_application.ui.panels.main.reconstructor import (
-    GUIReconstructorPanel,
-)
+from sampletones_application.ui.panels.main.converter import GUIConverterPanel
+from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 
 

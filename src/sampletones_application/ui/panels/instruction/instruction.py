@@ -2,7 +2,9 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.instructions import InstructionPanelElements
+from sampletones_application.categories.elements.instructions import (
+    InstructionPanelElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (

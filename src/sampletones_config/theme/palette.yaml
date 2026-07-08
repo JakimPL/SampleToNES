@@ -18,7 +18,8 @@ colors:
 
   # tables
   table_header: "#37324a"
-  table_row: "#201e27"
+  table_row: "#232130"
+  table_row_alt: "#2d2a3c"
   table_border: "#494560"
 
   # accent

@@ -3,7 +3,9 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import StatusElements
-from sampletones_application.categories.elements.sequencer import SequencerModuleElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerModuleElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
@@ -26,9 +28,14 @@ from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
-from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
+from sampletones_application.view_model.sequencer.settings import (
+    SequencerSettingsViewModel,
+)
 from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
-from sampletones_shared.constants.project import MAX_ROWS_PER_PATTERN, MIN_ROWS_PER_PATTERN
+from sampletones_shared.constants.project import (
+    MAX_ROWS_PER_PATTERN,
+    MIN_ROWS_PER_PATTERN,
+)
 from sampletones_shared.types.application import Sender
 
 
@@ -112,12 +119,10 @@ class GUISequencerModulePanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
+            self._create_section_header(self._lbl_module_options)
             self._create_module_options()
 
     def _create_module_options(self) -> None:
-        self._create_section_header(self._lbl_module_options)
-        dpg.add_separator()
-
         settings = self._initial_settings
         with dpg.group(tag=TAG_SEQUENCER_MODULE_GROUP_OPTIONS):
             dpg.add_input_int(

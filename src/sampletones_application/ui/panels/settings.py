@@ -2,7 +2,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import GlobalDialogTitleElements
+from sampletones_application.categories.elements.global_ import (
+    GlobalDialogTitleElements,
+)
 from sampletones_application.categories.elements.settings import AudioSettingsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -149,6 +151,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE,
         ):
             self._dialog_theme.bind_to_item(combo_tag)
+
         self._update_combos()
 
     def _create_device_selection(self) -> None:

@@ -3,7 +3,9 @@ from typing import Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import ContextElements
-from sampletones_application.categories.elements.sequencer import SequencerInstrumentsElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerInstrumentsElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
@@ -20,7 +22,10 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.ui.elements.context_menu import add_play_menu_item, context_menu
+from sampletones_application.ui.elements.context_menu import (
+    add_play_menu_item,
+    context_menu,
+)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -181,7 +186,6 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._create_section_header(self._lbl_instruments)
 
     def _create_samples_table(self) -> None:
-        dpg.add_separator()
         with dpg.child_window(
             tag=TAG_SEQUENCER_INSTRUMENTS_WINDOW,
             border=False,
@@ -199,6 +203,7 @@ class GUISequencerSamplesPanel(GUIPanel):
                 borders_outerH=True,
                 borders_outerV=True,
                 scrollY=True,
+                row_background=True,
                 policy=dpg.mvTable_SizingFixedFit,
             ):
                 dpg.add_table_column(

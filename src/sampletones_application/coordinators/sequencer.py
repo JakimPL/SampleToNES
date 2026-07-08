@@ -41,7 +41,10 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_PANEL,
     TAG_SEQUENCER_ORDER_CARD,
 )
-from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
+from sampletones_application.coordinators.playback import (
+    AudioPlayerProtocol,
+    GuardedPlayer,
+)
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -1098,8 +1101,8 @@ class SequencerTabCoordinator:
                             border=False,
                             no_scroll_with_mouse=True,
                         ):
-                            self._sequencer_grid_panel.create_panel()
                             self._player_panel.create_panel()
+                            self._sequencer_grid_panel.create_panel()
                             self._song_player_logic.refresh_view()
                             dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
                             self._sequencer_actions_panel.create_panel()

@@ -248,15 +248,16 @@ class GUISequencerGridPanel(GUIPanel):
             height=-1,
             border=True,
         )
-        self._create_section_header(self._lbl_tracker, parent=TAG_SEQUENCER_GRID_CARD_TRACKER)
         dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=TAG_SEQUENCER_GRID_CARD_TRACKER)
 
         with dpg.child_window(
             tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
             parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
+            border=False,
             width=0,
             height=-1,
         ):
+            self._create_section_header(self._lbl_tracker)
             with dpg.table(
                 tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 width=0,
