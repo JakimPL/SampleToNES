@@ -217,7 +217,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._setup_mouse_event_handler()
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section, glyph=self._glyphs.headers.instruments)
+        self._create_section_header(
+            self._lbl_section,
+            glyph=self._glyphs.headers.instruments,
+        )
 
     def _create_content(self) -> None:
         dpg.add_text(

@@ -85,14 +85,18 @@ TAG_GLOBAL_THEME_CONVERTER = TagName(
     Widget.THEME,
     "converter",
 )
-TAG_GLOBAL_THEME_ACCENT_BUTTON = TagName(
+TAG_GLOBAL_THEME_PRIMARY_BUTTON = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.THEME,
-    "accent_button",
+    "primary_button",
 )
-
-
+TAG_GLOBAL_THEME_SECONDARY_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "secondary_button",
+)
 TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

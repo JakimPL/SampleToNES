@@ -9,7 +9,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_ACCENT_BUTTON
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_PRIMARY_BUTTON
 from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_BUTTON_CANCEL,
     TAG_MAIN_CONVERTER_BUTTON_CONVERT,
@@ -215,7 +215,10 @@ class GUIConverterPanel(GUIPanel):
         )
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section, glyph=self._glyphs.headers.converter)
+        self._create_section_header(
+            self._lbl_section,
+            glyph=self._glyphs.headers.converter,
+        )
 
     def _create_export_button(self) -> None:
         with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_CONVERT):
@@ -227,7 +230,7 @@ class GUIConverterPanel(GUIPanel):
                 font=Font.BOLD_LARGE,
                 enabled=False,
                 callback=self._on_convert_clicked,
-                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_ACCENT_BUTTON),
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
             )
         attach_disabled_tooltip(
             TAG_MAIN_CONVERTER_GROUP_CONVERT,

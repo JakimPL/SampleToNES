@@ -11,6 +11,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_SEQUENCER,
+    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
@@ -29,6 +30,7 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
@@ -129,7 +131,10 @@ class GUISequencerBrowserPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_reconstructions, glyph=self._glyphs.headers.reconstruction)
+        self._create_section_header(
+            self._lbl_reconstructions,
+            glyph=self._glyphs.headers.reconstruction,
+        )
 
     def _create_buttons(self) -> None:
         with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS):
@@ -138,6 +143,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
                 label=self._lbl_refresh,
                 width=-1,
                 callback=self.rebuild_tree,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
 
     def _create_tree_window(self) -> None:

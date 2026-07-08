@@ -2,16 +2,16 @@ name: studio
 
 colors:
   # surfaces and neutrals
-  ground: "#1e1c28"
-  surface: "#2c2a38"
-  surface_alt: "#322f3e"
-  menu: "#201e28"
-  status_bar: "#2a2735"
-  popup: "#2c2a37"
+  ground: "#1c1b26"
+  surface: "#2b2a37"
+  surface_alt: "#313040"
+  menu: "#20283a"
+  status_bar: "#20283a"
+  popup: "#222130"
   frame: "#383544"
   frame_hovered: "#424050"
   frame_active: "#4b475b"
-  border: "#484556"
+  border: "#464a5e"
   separator: "#3e3b4c"
   plot_background: "#201d2a"
   well: "#122234"
@@ -22,27 +22,39 @@ colors:
   table_row_alt: "#2d2a3c"
   table_border: "#494560"
 
+  # cool secondary (functional chrome: input focus, secondary emphasis)
+  cool: "#7fa8ea"
+  cool_hover: "#94b8f0"
+  cool_active: "#6690d4"
+  cool_muted: "#40506e"
+
   # accent
-  accent: "#a97fe3"
-  accent_hover: "#ba97ec"
-  accent_active: "#9066c8"
-  accent_muted: "#6b5a8f"
+  accent: "#b98af3"
+  accent_hover: "#a180ce"
+  accent_active: "#7b629e"
+  accent_muted: "#685386"
   on_accent: "#17131f"
 
-  # cool secondary (functional chrome: input focus, secondary emphasis)
-  cool: "#6f9be0"
-  cool_hover: "#86aeea"
-  cool_active: "#5883c9"
-  cool_muted: "#44506e"
+  # buttons
+  primary: "#8469aa"
+  primary_hover: "#9d8cbc"
+  primary_active: "#786694"
+  primary_muted: "#676074"
+  on_primary: "#f1f1f5"
+
+  secondary: "#303747"
+  secondary_hover: "#3a4358"
+  secondary_active: "#46516a"
+  secondary_disabled: "#2b303d"
 
   # input wells (search/filter/number fields)
-  input_bg: "#23293a"
-  input_bg_active: "#2a3348"
-  input_border: "#3b4256"
+  input_bg: "#1f2636"
+  input_bg_active: "#273246"
+  input_border: "#3a445c"
 
   # dialog windows (elevated surface + accent border/title)
-  dialog_surface: "#363341"
-  dialog_title: "#3a3054"
+  dialog_surface: "#313547"
+  dialog_title: "#34405e"
 
   # channels: pulses orange, triangle blue, noise grey
   channel_pulse1: "#f09256"
@@ -55,9 +67,9 @@ colors:
   channel_noise_soft: "#cbcace"
 
   # tabs
-  tab: "#242230"
-  tab_hovered: "#3a3550"
-  tab_active: "#4a3f6e"
+  tab: "#24283a"
+  tab_hovered: "#2f3a56"
+  tab_active: "#3c4a72"
 
   # selection (tree, list, menu highlight)
   selection: "#332e46"
@@ -68,26 +80,26 @@ colors:
   scrollbar_hovered: "#4a4759"
 
   # buttons
-  button: "#454560"
-  button_hovered: "#565676"
-  button_active: "#686892"
-  button_disabled: "#3d3a4a"
+  button: "#414c66"
+  button_hovered: "#4f5c7c"
+  button_active: "#5f6e94"
+  button_disabled: "#363a48"
 
   # player
   player_surface: "#1b2333"
   player_border: "#4a90d9"
 
   # text
-  text: "#e8e6ef"
-  text_muted: "#948f9f"
-  text_disabled: "#79768a"
+  text: "#e7e7f0"
+  text_muted: "#9497ab"
+  text_disabled: "#767a8e"
   text_trace: "#c0c0c0"
 
   # emphasis and overlays
   white: "#ffffff"
   transparent: "#00000000"
-  border_strong: "#50556b"
-  input_invalid: "#c0202064"
+  border_strong: "#565f78"
+  input_invalid: "#c0504a64"
 
   # plot lines
   plot_zero_line: "#c8c8c8"

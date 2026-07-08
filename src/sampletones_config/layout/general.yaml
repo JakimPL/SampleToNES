@@ -86,7 +86,9 @@ caret:
   border: "#88bbffff"
 
 section_header:
-  glyph_width: 22
+  glyph:
+    indent: 4
+    width: 20
 
 colors:
   text:

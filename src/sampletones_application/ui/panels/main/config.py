@@ -197,7 +197,10 @@ class GUIConfigPanel(GUIPanel):
         return SPECTRUM_METHOD_BY_LABEL[label]
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section, glyph=self._glyphs.headers.settings)
+        self._create_section_header(
+            self._lbl_section,
+            glyph=self._glyphs.headers.settings,
+        )
 
     def _create_audio_options(self) -> None:
         dpg.add_checkbox(

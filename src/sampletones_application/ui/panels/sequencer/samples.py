@@ -183,7 +183,10 @@ class GUISequencerSamplesPanel(GUIPanel):
             dpg.add_key_press_handler(callback=self._on_key_pressed)
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_instruments, glyph=self._glyphs.headers.samples)
+        self._create_section_header(
+            self._lbl_instruments,
+            glyph=self._glyphs.headers.samples,
+        )
 
     def _create_samples_table(self) -> None:
         with dpg.child_window(

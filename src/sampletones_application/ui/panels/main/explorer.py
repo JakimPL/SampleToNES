@@ -10,6 +10,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_MAIN,
+    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
@@ -29,6 +30,7 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
@@ -219,7 +221,10 @@ class GUIExplorerPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section, glyph=self._glyphs.headers.filesystem)
+        self._create_section_header(
+            self._lbl_section,
+            glyph=self._glyphs.headers.filesystem,
+        )
 
     def _create_buttons(self) -> None:
         with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_CONTROLS):
@@ -229,6 +234,7 @@ class GUIExplorerPanel(GUITreePanel):
                 parent=self.tag,
                 width=-1,
                 callback=self.refresh,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,

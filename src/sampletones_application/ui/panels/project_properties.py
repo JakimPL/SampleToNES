@@ -28,7 +28,9 @@ from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.view_model.shared.project_properties import ProjectPropertiesViewModel
+from sampletones_application.view_model.shared.project_properties import (
+    ProjectPropertiesViewModel,
+)
 from sampletones_shared.constants.project import (
     MAX_PROJECT_AUTHOR_LENGTH,
     MAX_PROJECT_COMMENT_LENGTH,
@@ -139,8 +141,16 @@ class GUIProjectPropertiesWindow(GUIWindow):
             on_close=self.hide,
             modal=True,
         ):
-            self._create_text_field(TAG_SETTINGS_PROPERTIES_INPUT_TITLE, self._lbl_title, self._title_value)
-            self._create_text_field(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR, self._lbl_author, self._author_value)
+            self._create_text_field(
+                TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
+                self._lbl_title,
+                self._title_value,
+            )
+            self._create_text_field(
+                TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR,
+                self._lbl_author,
+                self._author_value,
+            )
             self._create_comment_field()
             dpg.add_separator()
             self._create_metadata()

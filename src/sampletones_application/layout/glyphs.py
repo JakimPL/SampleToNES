@@ -32,7 +32,12 @@ class PlayerGlyphs(BaseModel, frozen=True):
     stop: str
 
 
-class GlyphsLayout(BaseModel, frozen=True):
+class Glyphs(BaseModel, frozen=True):
     common: CommonGlyphs
     headers: HeaderGlyphs
     player: PlayerGlyphs
+
+
+class GlyphLayout(BaseModel, frozen=True):
+    indent: int
+    width: int

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -11,10 +11,16 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.data import SerializedData
 
 
-def show_tooltip(parent: str, message: str, *, tag: Optional[str] = None) -> Sender:
-    tooltip_kwargs: Dict[str, Any] = {"hide_on_activity": True}
+def show_tooltip(
+    parent: str,
+    message: str,
+    *,
+    tag: Optional[str] = None,
+) -> Sender:
+    tooltip_kwargs: SerializedData = {"hide_on_activity": True}
     if tag is not None:
         tooltip_kwargs["tag"] = tag
 
@@ -26,7 +32,12 @@ def show_tooltip(parent: str, message: str, *, tag: Optional[str] = None) -> Sen
     return tooltip_text
 
 
-def attach_disabled_tooltip(parent: str, message: str, *, tag: str) -> None:
+def attach_disabled_tooltip(
+    parent: str,
+    message: str,
+    *,
+    tag: str,
+) -> None:
     """Attaches an explanatory tooltip to ``parent`` — an enabled group wrapping a control that can be
     disabled — and hides it by default. Toggle ``tag``'s ``show`` to reveal the explanation while the
     control is unavailable. The wrapper group is the hover target because DearPyGui surfaces a tooltip

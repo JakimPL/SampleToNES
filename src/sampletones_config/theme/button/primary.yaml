@@ -1,18 +1,18 @@
-name: accent_button
-tag: global.theme.accent_button
+name: primary_button
+tag: global.theme.primary_button
 
 components:
   - item_type: Button
     entries:
       - type: color
         key: Button
-        value: .accent
+        value: .primary
       - type: color
         key: ButtonHovered
-        value: .accent_hover
+        value: .primary_hover
       - type: color
         key: ButtonActive
-        value: .accent_active
+        value: .primary_active
       - type: color
         key: Text
-        value: .on_accent
+        value: .on_primary

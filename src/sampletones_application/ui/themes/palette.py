@@ -6,17 +6,13 @@ from typing import Dict, Final, Optional
 from pydantic import BaseModel, model_validator
 
 from sampletones_application.utils.color import RGBA
-from sampletones_core.paths import EXT_FILE_YAML
 from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.serialization import load_yaml
-
-PALETTE_FILENAME: Final[str] = f"palette{EXT_FILE_YAML}"
 
 REFERENCE_PREFIX: Final[str] = "."
 ALPHA_SEPARATOR: Final[str] = "/"
 
 _OPAQUE_ALPHA: Final[int] = 255
-_EMPTY_PALETTE_NAME: Final[str] = "empty"
 
 
 class PaletteReference(BaseModel, frozen=True):
@@ -36,6 +32,7 @@ class PaletteReference(BaseModel, frozen=True):
     def _from_string(cls, value: object) -> object:
         if isinstance(value, str):
             return _parse_reference(value)
+
         return value
 
 
@@ -90,22 +87,21 @@ class Palette(BaseModel, frozen=True):
 
         return (red, green, blue, round(reference.alpha * _OPAQUE_ALPHA))
 
+    @classmethod
+    def load(cls, path: Path) -> Palette:
+        """Load the palette that theme entries in ``theme_directory`` resolve against.
 
-def load_palette(theme_directory: Path) -> Palette:
-    """Load the palette that theme entries in ``theme_directory`` resolve against.
+        A directory that omits a palette file resolves to an empty palette, so a theme
+        set that states every colour as a literal loads without one.
 
-    A directory that omits a palette file resolves to an empty palette, so a theme
-    set that states every colour as a literal loads without one.
+        Raises:
+            TypeError: when the palette file holds a value other than a mapping.
+        """
+        if not path.exists():
+            raise SystemError(f"Palette file '{path}' not found")
 
-    Raises:
-        TypeError: when the palette file holds a value other than a mapping.
-    """
-    path = theme_directory / PALETTE_FILENAME
-    if not path.exists():
-        return Palette(name=_EMPTY_PALETTE_NAME, colors={})
+        raw = load_yaml(path)
+        if not isinstance(raw, dict):
+            raise TypeError(f"Palette file '{path}' must contain a mapping, got {type(raw)}")
 
-    raw = load_yaml(path)
-    if not isinstance(raw, dict):
-        raise TypeError(f"Palette file {path} must contain a mapping, got {type(raw)}")
-
-    return Palette.model_validate(raw)
+        return Palette.model_validate(raw)

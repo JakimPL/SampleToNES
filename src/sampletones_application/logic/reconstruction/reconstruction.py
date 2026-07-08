@@ -224,7 +224,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         try:
             self._reconstruction_manager.locate_original_audio()
         except FileNotFoundError:
-            logger.warning(f"Original audio file could not be found: '{path}'")
+            logger.warning(f"Original audio file could not be found: '{logger.format_path(path)}'")
             self.call(self.on_locate_audio_not_found, path)
 
     def _get_instrument_name(self, generator_name: Optional[GeneratorName] = None) -> str:

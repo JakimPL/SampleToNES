@@ -60,6 +60,7 @@ from sampletones_application.paths import (
     DEPLOYMENT_CONFIG_PATH,
     LANG_EN,
     LAYOUT_DIRECTORY,
+    PALETTE_PATH,
     THEME_DIRECTORY,
 )
 from sampletones_application.services import (
@@ -142,7 +143,7 @@ class Application:
         self.deployment: DeploymentConfig = DeploymentConfig.load(DEPLOYMENT_CONFIG_PATH)
         self._set_logging_level()
 
-        self.layout: LayoutConfig = load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
+        self.layout: LayoutConfig = self._load_layout_config()
         self._setup_gui_elements()
 
         self.language_manager: LanguageManager = LanguageManager(LANG_EN)
@@ -168,7 +169,9 @@ class Application:
             self.config_manager,
             language_manager=self.language_manager,
         )
-        self.reconstruction_manager = ReconstructionManager(scheduling=self.layout.behavior.scheduling)
+        self.reconstruction_manager = ReconstructionManager(
+            scheduling=self.layout.behavior.scheduling,
+        )
 
         _priority = self.layout.behavior.scheduling.priority_schedule
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
@@ -377,14 +380,20 @@ class Application:
     def _try_load_library(self, path: Path) -> None:
         self._instructions_tab.load_library_safely(path)
 
+    def _load_layout_config(self) -> LayoutConfig:
+        try:
+            return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
+        except ValidationError as exception:
+            raise SystemError(f"Invalid layout configuration: {exception}") from exception
+
     def _setup_gui_elements(self) -> None:
         FontRegistry.setup(self.layout.general.fonts)
         GUIPanel.configure_section_header(
             self.layout.glyphs,
-            self.layout.general.section_header.glyph_width,
+            self.layout.general.section_header.glyph,
         )
         try:
-            setup_themes(THEME_DIRECTORY)
+            setup_themes(THEME_DIRECTORY, PALETTE_PATH)
         except ValidationError as exception:
             raise SystemError(f"Invalid theme configuration: {exception}") from exception
 

@@ -15,6 +15,8 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_THEME_PRIMARY_BUTTON,
+    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
@@ -38,6 +40,7 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
@@ -170,7 +173,10 @@ class GUIBrowserPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_reconstructions, glyph=self._glyphs.headers.reconstruction)
+        self._create_section_header(
+            self._lbl_reconstructions,
+            glyph=self._glyphs.headers.reconstruction,
+        )
 
     def _create_buttons(self) -> None:
         with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS):
@@ -179,6 +185,7 @@ class GUIBrowserPanel(GUITreePanel):
                 label=self._lbl_refresh,
                 width=-1,
                 callback=self.rebuild_tree,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT):
                 GUIButton(
@@ -187,6 +194,7 @@ class GUIBrowserPanel(GUITreePanel):
                     width=-1,
                     callback=self._reconstruct_file,
                     font=Font.BOLD,
+                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
                 )
                 GUIButton(
                     tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
@@ -194,6 +202,7 @@ class GUIBrowserPanel(GUITreePanel):
                     width=-1,
                     callback=self._reconstruct_directory,
                     font=Font.BOLD,
+                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
                 )
             attach_disabled_tooltip(
                 TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT,

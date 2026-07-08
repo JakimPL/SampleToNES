@@ -155,7 +155,10 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._update_combos()
 
     def _create_device_selection(self) -> None:
-        with dpg.group(tag=TAG_SETTINGS_AUDIO_GROUP_DEVICE, horizontal=True):
+        with dpg.group(
+            tag=TAG_SETTINGS_AUDIO_GROUP_DEVICE,
+            horizontal=True,
+        ):
             label_id = dpg.add_text(self._lbl_output_device)
             FontRegistry.bind_to_item(label_id, Font.BOLD)
             dpg.add_spacer(

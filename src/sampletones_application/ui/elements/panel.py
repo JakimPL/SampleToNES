@@ -4,7 +4,7 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECTION_HEADER
-from sampletones_application.layout.glyphs import GlyphsLayout
+from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -23,8 +23,8 @@ class GUIPanel(CallbackMixin, ABC):
       how to display data, not what it means.
     """
 
-    _glyphs: GlyphsLayout
-    _section_header_glyph_width: int
+    _glyphs: Glyphs
+    _glyph_layout: GlyphLayout
 
     def __init__(
         self,
@@ -46,10 +46,14 @@ class GUIPanel(CallbackMixin, ABC):
     def create_panel(self) -> None: ...
 
     @classmethod
-    def configure_section_header(cls, glyphs: GlyphsLayout, glyph_width: int) -> None:
+    def configure_section_header(
+        cls,
+        glyphs: Glyphs,
+        glyph_layout: GlyphLayout,
+    ) -> None:
         """Set the shared glyph palette and the fixed marker width for every section header, from config."""
         cls._glyphs = glyphs
-        cls._section_header_glyph_width = glyph_width
+        cls._glyph_layout = glyph_layout
 
     def _create_section_header(
         self,
@@ -71,11 +75,18 @@ class GUIPanel(CallbackMixin, ABC):
         theme = ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER)
         marker_glyph = glyph if glyph is not None else self._glyphs.common.tick
         with dpg.group(parent=parent, tag=tag) as header:
-            with dpg.table(header_row=False, policy=dpg.mvTable_SizingFixedFit, resizable=False):
-                dpg.add_table_column(width_fixed=True, init_width_or_weight=self._section_header_glyph_width)
+            with dpg.table(
+                header_row=False,
+                policy=dpg.mvTable_SizingFixedFit,
+                resizable=False,
+            ):
+                dpg.add_table_column(
+                    width_fixed=True,
+                    init_width_or_weight=self._glyph_layout.width,
+                )
                 dpg.add_table_column(width_fixed=True)
                 with dpg.table_row():
-                    marker = dpg.add_text(marker_glyph)
+                    marker = dpg.add_text(marker_glyph, indent=self._glyph_layout.indent)
                     FontRegistry.bind_to_item(marker, Font.ICON)
                     label_text = dpg.add_text(label.upper())
                     FontRegistry.bind_to_item(label_text, Font.BOLD)

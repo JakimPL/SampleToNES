@@ -16,9 +16,8 @@ from sampletones_application.ui.themes.items import (
     ThemeItems,
 )
 from sampletones_application.ui.themes.palette import (
-    PALETTE_FILENAME,
+    Palette,
     PaletteReference,
-    load_palette,
 )
 from sampletones_application.ui.themes.spec import (
     ColorSource,
@@ -48,9 +47,9 @@ class ThemeLoader:
     describes both item states and stays authoritative wherever it is bound.
     """
 
-    def __init__(self, theme_directory: Path) -> None:
+    def __init__(self, theme_directory: Path, palette_path: Path) -> None:
         self._directory = theme_directory
-        self._palette = load_palette(theme_directory)
+        self._palette = Palette.load(palette_path)
 
     def load_all(self) -> List[Theme]:
         specs = self._load_specs()
@@ -73,9 +72,6 @@ class ThemeLoader:
     def _load_specs(self) -> List[ThemeSpec]:
         specs: List[ThemeSpec] = []
         for path in sorted(self._directory.rglob(f"*{EXT_FILE_YAML}")):
-            if path.name == PALETTE_FILENAME:
-                continue
-
             raw = load_yaml(path)
             if not isinstance(raw, dict):
                 raise TypeError(f"Theme file {path} must contain a mapping, got {type(raw)}")
@@ -97,6 +93,7 @@ class ThemeLoader:
         """
         if spec.extends is not None:
             return spec.extends
+
         if spec.name != _BASE_THEME_NAME:
             return _BASE_THEME_NAME
 
@@ -106,7 +103,7 @@ class ThemeLoader:
     def _resolve_color_key(key: str, category: str) -> int:
         color_map = PLOTS_COLOR_MAP if category == "Plots" else CORE_COLOR_MAP
         if key not in color_map:
-            raise ValueError(f"Unknown color key {key!r} for category {category!r}. Valid keys: {sorted(color_map)}")
+            raise KeyError(f"Unknown color key {key!r} for category {category!r}. Valid keys: {sorted(color_map)}")
 
         return color_map[key]
 
@@ -114,21 +111,21 @@ class ThemeLoader:
     def _resolve_style_key(key: str, category: str) -> int:
         style_map = PLOTS_STYLE_MAP if category == "Plots" else CORE_STYLE_MAP
         if key not in style_map:
-            raise ValueError(f"Unknown style key {key!r} for category {category!r}. Valid keys: {sorted(style_map)}")
+            raise KeyError(f"Unknown style key {key!r} for category {category!r}. Valid keys: {sorted(style_map)}")
 
         return style_map[key]
 
     @staticmethod
     def _resolve_item_type(item_type: str) -> int:
         if item_type not in ITEM_TYPE_MAP:
-            raise ValueError(f"Unknown item_type {item_type!r}. Valid types: {sorted(ITEM_TYPE_MAP)}")
+            raise KeyError(f"Unknown item_type {item_type!r}. Valid types: {sorted(ITEM_TYPE_MAP)}")
 
         return ITEM_TYPE_MAP[item_type]
 
     @staticmethod
     def _resolve_category(category: str) -> int:
         if category not in CATEGORY_MAP:
-            raise ValueError(f"Unknown category {category!r}. Valid categories: {sorted(CATEGORY_MAP)}")
+            raise KeyError(f"Unknown category {category!r}. Valid categories: {sorted(CATEGORY_MAP)}")
 
         return CATEGORY_MAP[category]
 
@@ -151,6 +148,7 @@ class ThemeLoader:
     def _resolve_color(self, value: ColorSource) -> ColorRGBA:
         if isinstance(value, PaletteReference):
             return self._palette.resolve(value)
+
         return value
 
     @classmethod

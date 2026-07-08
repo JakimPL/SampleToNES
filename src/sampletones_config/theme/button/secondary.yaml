@@ -1,0 +1,39 @@
+name: secondary_button
+tag: global.theme.secondary_button
+
+components:
+  - item_type: Button
+    entries:
+      - type: color
+        key: Button
+        value: .secondary
+      - type: color
+        key: ButtonHovered
+        value: .secondary_hover
+      - type: color
+        key: ButtonActive
+        value: .secondary_active
+      - type: color
+        key: Text
+        value: .cool
+      - type: color
+        key: Border
+        value: .cool_muted
+      - type: style
+        key: FrameBorderSize
+        x: 1
+  - item_type: Button
+    enabled: false
+    entries:
+      - type: color
+        key: Text
+        value: .text_disabled
+      - type: color
+        key: Button
+        value: .secondary_disabled
+      - type: color
+        key: ButtonHovered
+        value: .secondary_disabled
+      - type: color
+        key: ButtonActive
+        value: .secondary_disabled

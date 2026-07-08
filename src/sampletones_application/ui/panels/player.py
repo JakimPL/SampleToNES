@@ -18,7 +18,10 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.player_controls import centered_card, create_transport_controls
+from sampletones_application.ui.panels.player_controls import (
+    centered_card,
+    create_transport_controls,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -141,10 +144,13 @@ class GUIAudioPlayerPanel(GUIPanel):
             dpg_set_item_label(self.pause_button_tag, self._glyphs.player.pause)
             dpg_set_value(self.pause_tooltip_tag, self._lbl_pause)
 
-        position_text = (
-            f"{self._lbl_position}{view_model.current_position}" f"/{view_model.total_samples}{self._lbl_samples}"
-        )
+        position_text = self._get_position_text(view_model)
         dpg_set_value(self.position_text_tag, position_text)
+
+    def _get_position_text(self, view_model: PlayerViewModel) -> str:
+        position = f"{self._lbl_position}{view_model.current_position}"
+        total = f"{view_model.total_samples}{self._lbl_samples}"
+        return f"{position}/{total}"
 
     def _on_play_clicked(self) -> None:
         self.call(self.on_play)

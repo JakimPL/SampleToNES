@@ -257,7 +257,10 @@ class GUISequencerGridPanel(GUIPanel):
             width=0,
             height=-1,
         ):
-            self._create_section_header(self._lbl_tracker, glyph=self._glyphs.headers.tracker)
+            self._create_section_header(
+                self._lbl_tracker,
+                glyph=self._glyphs.headers.tracker,
+            )
             with dpg.table(
                 tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 width=0,

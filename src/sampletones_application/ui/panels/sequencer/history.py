@@ -126,7 +126,10 @@ class GUISequencerHistoryPanel(GUIPanel):
             height=-1,
             border=True,
         ):
-            self._create_section_header(self._lbl_history, glyph=self._glyphs.headers.history)
+            self._create_section_header(
+                self._lbl_history,
+                glyph=self._glyphs.headers.history,
+            )
             self._create_actions()
             self._create_window_list()
 

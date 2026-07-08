@@ -15,6 +15,8 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
+    TAG_GLOBAL_THEME_PRIMARY_BUTTON,
+    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
@@ -43,6 +45,7 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
@@ -226,7 +229,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._create_detail_tooltip(TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE)
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_libraries, glyph=self._glyphs.headers.instruction_data)
+        self._create_section_header(
+            self._lbl_libraries,
+            glyph=self._glyphs.headers.instruction_data,
+        )
 
     def _create_library_status(self) -> None:
         text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
@@ -240,6 +246,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     label=self._lbl_refresh,
                     width=-1,
                     callback=self._on_refresh_clicked,
+                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
                 )
                 with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE):
                     GUIButton(
@@ -248,6 +255,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                         width=-1,
                         callback=self._on_generate_clicked,
                         font=Font.BOLD,
+                        theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
                     )
                 attach_disabled_tooltip(
                     TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE,

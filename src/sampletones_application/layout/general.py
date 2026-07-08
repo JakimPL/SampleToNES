@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from sampletones_application.layout.glyphs import GlyphLayout
 from sampletones_application.utils.color import RGBA
 
 Padding = tuple[int, int]
@@ -107,7 +108,7 @@ class CaretLayout(BaseModel, frozen=True):
 
 
 class SectionHeaderLayout(BaseModel, frozen=True):
-    glyph_width: int
+    glyph: GlyphLayout
 
 
 class TextColors(BaseModel, frozen=True):
