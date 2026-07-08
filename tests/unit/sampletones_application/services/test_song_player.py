@@ -8,11 +8,11 @@ from sampletones_application.services.song_player.result import (
 from sampletones_core.project.song_position import SongPosition
 
 
-def _make_service(*, is_finished: bool = False) -> SongPlayerService:
+def _make_service(*, is_finished: bool = False, should_loop: bool = False) -> SongPlayerService:
     audio_device_manager = MagicMock()
     synthesizer = MagicMock()
     synthesizer.is_finished = is_finished
-    return SongPlayerService(audio_device_manager, synthesizer)
+    return SongPlayerService(audio_device_manager, synthesizer, should_loop=lambda: should_loop)
 
 
 class TestSongPlayerServiceInitialState:
@@ -111,6 +111,35 @@ class TestSongPlayerServiceStop:
         service.stop()
         service.stop()
         assert service._thread is None
+
+
+class TestSongPlayerServiceLoop:
+    def test_loop_to_start_wraps_when_enabled(self) -> None:
+        service = _make_service(should_loop=True)
+        service._synthesizer.is_finished = False
+
+        looped = service._loop_to_start()
+
+        assert looped is True
+        service._synthesizer.set_position.assert_called_once_with(0, 0)
+        service._synthesizer.reset.assert_called_once()
+
+    def test_loop_to_start_does_nothing_when_disabled(self) -> None:
+        service = _make_service(should_loop=False)
+
+        looped = service._loop_to_start()
+
+        assert looped is False
+        service._synthesizer.set_position.assert_not_called()
+        service._synthesizer.reset.assert_not_called()
+
+    def test_loop_to_start_stops_on_empty_song(self) -> None:
+        service = _make_service(should_loop=True, is_finished=True)
+
+        looped = service._loop_to_start()
+
+        assert looped is False
+        service._synthesizer.reset.assert_not_called()
 
 
 class TestSongPlayerServiceSubscribeAndEmit:

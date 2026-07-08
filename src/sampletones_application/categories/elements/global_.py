@@ -86,6 +86,8 @@ class MenuElements(AbstractElement):
     ITEM_PLAYBACK_PLAY_FROM_START = "item_playback_play_from_start"
     ITEM_PLAYBACK_STOP = "item_playback_stop"
     ITEM_PLAYBACK_AUTOPLAY = "item_playback_autoplay"
+    ITEM_PLAYBACK_FOLLOW_PLAYBACK = "item_playback_follow_playback"
+    ITEM_PLAYBACK_LOOP_SONG = "item_playback_loop_song"
     ITEM_PLAYBACK_AUDIO_SETTINGS = "item_playback_audio_settings"
     GROUP_VIEW = "group_view"
     ITEM_VIEW_SHOW_ADVANCED_SETTINGS = "item_view_show_advanced_settings"

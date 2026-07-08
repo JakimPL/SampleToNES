@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -11,7 +11,6 @@ from sampletones_application.constants.player import (
     GLYPH_PLAYER_PAUSE,
     GLYPH_PLAYER_PLAY,
     SUF_PLAYER_CARD,
-    SUF_PLAYER_FOLLOW,
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
     SUF_PLAYER_POSITION,
@@ -22,7 +21,7 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.player_controls import create_transport_controls
+from sampletones_application.ui.panels.player_controls import centered_card, create_transport_controls
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -47,13 +46,11 @@ class GUISongPlayerPanel(GUIPanel):
         self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
         self.stop_button_tag = f"{tag}{SUF_PLAYER_STOP}"
         self.position_text_tag = f"{tag}{SUF_PLAYER_POSITION}"
-        self.follow_checkbox_tag = f"{tag}{SUF_PLAYER_FOLLOW}"
         self.pause_tooltip_tag = f"{self.pause_button_tag}{SUF_PLAYER_TOOLTIP}"
 
         self.on_play: Optional[VoidCallback] = None
         self.on_pause_or_resume: Optional[VoidCallback] = None
         self.on_stop: Optional[VoidCallback] = None
-        self.on_follow_changed: Optional[Callable[[bool], None]] = None
 
         self._layout = layout
         self._lbl_play = language_manager[
@@ -98,43 +95,14 @@ class GUISongPlayerPanel(GUIPanel):
             TextType.TEMPLATE,
             SequencerPlayerElements.POSITION,
         ]
-        self._lbl_follow = language_manager[
-            Page.SEQUENCER,
-            Panel.PLAYER,
-            TextType.LABEL,
-            SequencerPlayerElements.FOLLOW_PLAYBACK,
-        ]
 
         super().__init__(tag=tag, parent=parent)
 
     def create_panel(self) -> None:
-        with dpg.table(
-            tag=self.tag,
-            parent=self.parent,
-            header_row=False,
-            policy=dpg.mvTable_SizingStretchProp,
-            resizable=False,
-            width=-1,
-        ):
-            dpg.add_table_column()
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.card.width)
-            dpg.add_table_column()
-
-            with dpg.table_row():
-                dpg.add_spacer()
-                with dpg.child_window(
-                    tag=self.card_tag,
-                    width=-1,
-                    auto_resize_y=True,
-                    border=True,
-                    no_scrollbar=True,
-                    no_scroll_with_mouse=True,
-                ):
-                    self._create_controls()
-                    dpg.add_text(self._msg_no_song, tag=self.position_text_tag)
-                    FontRegistry.bind_to_item(self.position_text_tag, Font.REGULAR_SMALL)
-                dpg.add_spacer()
-
+        with centered_card(self.parent, self.tag, self.card_tag, self._layout.card.width):
+            self._create_controls()
+            dpg.add_text(self._msg_no_song, tag=self.position_text_tag)
+            FontRegistry.bind_to_item(self.position_text_tag, Font.REGULAR_SMALL)
         ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_TOOLBAR).bind_to_item(self.card_tag)
 
     def _create_controls(self) -> None:
@@ -150,20 +118,9 @@ class GUISongPlayerPanel(GUIPanel):
             on_play=self._on_play_clicked,
             on_pause_or_resume=self._on_pause_or_resume_clicked,
             on_stop=self._on_stop_clicked,
-            trailing=self._create_follow_checkbox,
-        )
-
-    def _create_follow_checkbox(self) -> None:
-        dpg.add_checkbox(
-            tag=self.follow_checkbox_tag,
-            label=self._lbl_follow,
-            default_value=False,
-            callback=self._on_follow_toggled,
         )
 
     def update_view(self, view_model: SongPlayerViewModel) -> None:
-        dpg_set_value(self.follow_checkbox_tag, view_model.follow_playback)
-
         if not view_model.is_loaded:
             dpg_configure_item(self.play_button_tag, enabled=False)
             dpg_configure_item(self.pause_button_tag, enabled=False)
@@ -201,9 +158,6 @@ class GUISongPlayerPanel(GUIPanel):
                     row=view_model.row_index,
                 ),
             )
-
-    def _on_follow_toggled(self, sender: str, app_data: bool) -> None:
-        self.call(self.on_follow_changed, app_data)
 
     def _on_play_clicked(self) -> None:
         self.call(self.on_play)

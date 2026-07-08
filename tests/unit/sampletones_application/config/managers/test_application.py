@@ -35,6 +35,37 @@ class TestApplicationConfigManagerRecovery:
         assert Path("/x/y") in manager.favorites
 
 
+class TestApplicationConfigManagerPlayback:
+    def _manager(self, tmp_path: Path) -> ApplicationConfigManager:
+        path = tmp_path / "config.yaml"
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            path,
+        ):
+            return ApplicationConfigManager()
+
+    def test_toggle_autoplay_changes_value(self, tmp_path: Path) -> None:
+        manager = self._manager(tmp_path)
+        initial = manager.autoplay
+        result = manager.toggle_autoplay()
+        assert result == (not initial)
+        assert manager.autoplay == (not initial)
+
+    def test_set_follow_playback_round_trips(self, tmp_path: Path) -> None:
+        manager = self._manager(tmp_path)
+        manager.set_follow_playback(False)
+        assert manager.follow_playback is False
+        manager.set_follow_playback(True)
+        assert manager.follow_playback is True
+
+    def test_set_loop_song_round_trips(self, tmp_path: Path) -> None:
+        manager = self._manager(tmp_path)
+        manager.set_loop_song(True)
+        assert manager.loop_song is True
+        manager.set_loop_song(False)
+        assert manager.loop_song is False
+
+
 class TestApplicationConfigManagerSave:
     @pytest.mark.parametrize("exception_type", [PermissionError, IsADirectoryError, OSError])
     def test_save_recovers_from_file_error(self, tmp_path: Path, exception_type: Type[OSError]) -> None:

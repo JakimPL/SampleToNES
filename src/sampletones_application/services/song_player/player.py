@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import threading
-from typing import FrozenSet, Optional
+from typing import Callable, FrozenSet, Optional
 
 import pyaudio
 
@@ -31,11 +31,13 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         audio_device_manager: AudioDeviceManager,
         synthesizer: RowSynthesizerProtocol,
         *,
+        should_loop: Callable[[], bool],
         priority: int = 0,
     ) -> None:
         super().__init__(priority)
         self._audio_device_manager = audio_device_manager
         self._synthesizer = synthesizer
+        self._should_loop = should_loop
         self._stop_event = threading.Event()
         self._resume_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -130,13 +132,13 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
                 if self._stop_event.is_set():
                     break
 
-                if self._synthesizer.is_finished:
+                if self._synthesizer.is_finished and not self._loop_to_start():
                     self._emit(SongPlaybackStopped())
                     break
 
                 self._render_and_emit_row(self._stream)
 
-                if self._synthesizer.is_finished:
+                if self._synthesizer.is_finished and not self._loop_to_start():
                     self._emit(SongPlaybackStopped())
                     break
         except Exception as exception:  # pylint: disable=broad-exception-caught
@@ -149,6 +151,23 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             self._stream.stop_stream()
             self._stream.close()
             self._stream = None
+
+    def _loop_to_start(self) -> bool:
+        """Wraps the playhead back to the song start when looping is on; reports whether it looped.
+
+        A song with no orders stays finished after the wrap, so looping reports ``False`` there and
+        playback stops instead of spinning. Resetting mirrors a fresh ``start`` so the loop replays
+        the song from clean channel state.
+        """
+        if not self._should_loop():
+            return False
+
+        self._synthesizer.set_position(0, 0)
+        if self._synthesizer.is_finished:
+            return False
+
+        self._synthesizer.reset()
+        return True
 
     def _render_and_emit_row(self, stream: pyaudio.Stream) -> None:
         audio_chunk, position_before = self._synthesizer.render_row()

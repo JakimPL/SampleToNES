@@ -423,6 +423,8 @@ class Application:
             play_from_start=self._play_from_start,
             stop=self._stop,
             toggle_autoplay=self._toggle_autoplay,
+            toggle_follow_playback=self._toggle_follow_playback,
+            toggle_loop_song=self._toggle_loop_song,
             audio_settings=self._open_audio_settings,
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_fullscreen=self._shell.toggle_fullscreen,
@@ -484,6 +486,8 @@ class Application:
             play_or_pause_enabled=False,
             stop_enabled=False,
             autoplay=self.session_manager.autoplay,
+            follow_playback=self.session_manager.follow_playback,
+            loop_song=self.session_manager.loop_song,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )
@@ -499,6 +503,8 @@ class Application:
             play_or_pause_enabled=self._playback_router.is_play_enabled,
             stop_enabled=self._playback_router.is_stop_enabled,
             autoplay=self.session_manager.autoplay,
+            follow_playback=self.session_manager.follow_playback,
+            loop_song=self.session_manager.loop_song,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )
@@ -524,6 +530,24 @@ class Application:
         user_data: Optional[Any] = None,
     ) -> None:
         self.session_manager.toggle_autoplay()
+        self._update_menu()
+
+    def _toggle_follow_playback(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self.session_manager.set_follow_playback(not self.session_manager.follow_playback)
+        self._update_menu()
+
+    def _toggle_loop_song(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self.session_manager.set_loop_song(not self.session_manager.loop_song)
         self._update_menu()
 
     def _toggle_advanced_settings(

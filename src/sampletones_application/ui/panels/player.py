@@ -20,7 +20,7 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.player_controls import create_transport_controls
+from sampletones_application.ui.panels.player_controls import centered_card, create_transport_controls
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -98,32 +98,10 @@ class GUIAudioPlayerPanel(GUIPanel):
         super().__init__(tag=tag, parent=parent)
 
     def create_panel(self) -> None:
-        with dpg.table(
-            tag=self.tag,
-            parent=self.parent,
-            header_row=False,
-            policy=dpg.mvTable_SizingStretchProp,
-            resizable=False,
-            width=-1,
-        ):
-            dpg.add_table_column()
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.card.width)
-            dpg.add_table_column()
-
-            with dpg.table_row():
-                dpg.add_spacer()
-                with dpg.child_window(
-                    tag=self.card_tag,
-                    width=-1,
-                    auto_resize_y=True,
-                    border=True,
-                    no_scrollbar=True,
-                    no_scroll_with_mouse=True,
-                ):
-                    self._create_controls()
-                    dpg.add_text(self._msg_no_audio, tag=self.position_text_tag)
-                    FontRegistry.bind_to_item(self.position_text_tag, Font.REGULAR_SMALL)
-                dpg.add_spacer()
+        with centered_card(self.parent, self.tag, self.card_tag, self._layout.card.width):
+            self._create_controls()
+            dpg.add_text(self._msg_no_audio, tag=self.position_text_tag)
+            FontRegistry.bind_to_item(self.position_text_tag, Font.REGULAR_SMALL)
 
         ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_TOOLBAR).bind_to_item(self.card_tag)
 

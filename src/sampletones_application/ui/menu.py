@@ -19,6 +19,8 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
@@ -238,6 +240,18 @@ class MenuBar:
                 label=self._label(MenuElements.ITEM_PLAYBACK_AUTOPLAY),
                 check=True,
             )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW,
+                label=self._label(MenuElements.ITEM_PLAYBACK_FOLLOW_PLAYBACK),
+                check=True,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_LOOP_SONG,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP,
+                label=self._label(MenuElements.ITEM_PLAYBACK_LOOP_SONG),
+                check=True,
+            )
             dpg.add_separator()
             self._shortcut_manager.add_menu_item(
                 ShortcutId.AUDIO_SETTINGS,
@@ -301,6 +315,8 @@ class MenuBar:
             enabled=state.stop_enabled,
         )
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW, state.follow_playback)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP, state.loop_song)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN, state.fullscreen)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
 

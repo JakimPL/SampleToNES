@@ -172,6 +172,8 @@ global.menu.label.item_playback_resume: "Resume"
 global.menu.label.item_playback_play_from_start: "Play from start"
 global.menu.label.item_playback_stop: "Stop"
 global.menu.label.item_playback_autoplay: "Autoplay"
+global.menu.label.item_playback_follow_playback: "Follow playback"
+global.menu.label.item_playback_loop_song: "Loop song"
 global.menu.label.item_playback_audio_settings: "Audio settings..."
 global.menu.label.group_view: "View"
 global.menu.label.item_view_show_advanced_settings: "Show advanced settings"
@@ -391,7 +393,6 @@ sequencer.browser.title.load_reconstruction_dialog: "Load reconstruction as inst
 sequencer.player.message.no_song_loaded: "No song loaded."
 sequencer.player.message.playback_error: "Playback error: {error}"
 sequencer.player.template.position: "Position {position} | Row {row}"
-sequencer.player.label.follow_playback: "Follow"
 
 # =============================================================================
 # Sequencer tab — Module

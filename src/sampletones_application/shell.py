@@ -80,6 +80,8 @@ class ShortcutBindings:
     play_from_start: Callback
     stop: Callback
     toggle_autoplay: Callback
+    toggle_follow_playback: Callback
+    toggle_loop_song: Callback
     audio_settings: Callback
     toggle_advanced_settings: Callback
     toggle_fullscreen: Callback
@@ -288,6 +290,16 @@ class ApplicationShell:
             ShortcutId.TOGGLE_AUTOPLAY,
             Shortcut(dpg.mvKey_P, (Modifier.CTRL,)),
             bindings.toggle_autoplay,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
+            Shortcut(),
+            bindings.toggle_follow_playback,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.TOGGLE_LOOP_SONG,
+            Shortcut(),
+            bindings.toggle_loop_song,
         )
         self._shortcut_manager.register(
             ShortcutId.UNDO,

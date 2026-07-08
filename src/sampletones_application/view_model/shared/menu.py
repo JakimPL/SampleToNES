@@ -11,6 +11,8 @@ class MenuBarViewModel(BaseModel, frozen=True):
     play_or_pause_enabled: bool
     stop_enabled: bool
     autoplay: bool
+    follow_playback: bool
+    loop_song: bool
     fullscreen: bool
     advanced_settings: bool
 

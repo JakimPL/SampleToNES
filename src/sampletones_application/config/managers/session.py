@@ -46,10 +46,13 @@ class SessionManager:
         return self._state_manager.toggle_show_advanced_settings()
 
     def toggle_autoplay(self) -> bool:
-        return self._state_manager.toggle_autoplay()
+        return self._config_manager.toggle_autoplay()
 
     def set_follow_playback(self, value: bool) -> None:
-        self._state_manager.set_follow_playback(value)
+        self._config_manager.set_follow_playback(value)
+
+    def set_loop_song(self, value: bool) -> None:
+        self._config_manager.set_loop_song(value)
 
     def toggle_favorite(self, path: Path) -> None:
         self._config_manager.toggle_favorite(path)
@@ -152,11 +155,15 @@ class SessionManager:
 
     @property
     def autoplay(self) -> bool:
-        return self._state_manager.autoplay
+        return self._config_manager.autoplay
 
     @property
     def follow_playback(self) -> bool:
-        return self._state_manager.follow_playback
+        return self._config_manager.follow_playback
+
+    @property
+    def loop_song(self) -> bool:
+        return self._config_manager.loop_song
 
     @property
     def favorites(self) -> Set[Path]:

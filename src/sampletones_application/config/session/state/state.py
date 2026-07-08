@@ -14,14 +14,6 @@ class ApplicationState(BaseModel):
         default=False,
         description="If advanced settings are shown in the config panel.",
     )
-    autoplay: bool = Field(
-        default=True,
-        description="If samples should autoplay when clicked.",
-    )
-    follow_playback: bool = Field(
-        default=True,
-        description="If the sequencer grid follows the playhead during playback.",
-    )
     current: Current = Field(
         default_factory=Current,
         description="The current state of application elements, e.g. selected tab.",

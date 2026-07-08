@@ -259,6 +259,7 @@ class SequencerTabCoordinator:
             service=SongPlayerService(
                 audio_device_manager,
                 RowSynthesizer(project_controller, config_manager.config),
+                should_loop=lambda: session_manager.loop_song,
             ),
         )
         self._guarded_player = GuardedPlayer(
@@ -453,7 +454,6 @@ class SequencerTabCoordinator:
         self._player_panel.on_play = self._guarded_player.play
         self._player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
         self._player_panel.on_stop = self._guarded_player.stop
-        self._player_panel.on_follow_changed = self._song_player_logic.set_follow_playback
         self._song_player_logic.on_error = self._on_player_error
 
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings

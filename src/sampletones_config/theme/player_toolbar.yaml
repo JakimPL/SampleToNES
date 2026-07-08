@@ -12,4 +12,4 @@ components:
         value: .player_border
       - type: style
         key: ChildBorderSize
-        x: 2
+        x: 1
