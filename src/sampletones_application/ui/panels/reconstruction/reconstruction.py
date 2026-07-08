@@ -457,7 +457,7 @@ class GUIReconstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
-            self._create_section_header(self._lbl_audio_source, glyph=self._glyphs.source)
+            self._create_section_header(self._lbl_audio_source, glyph=self._glyphs.headers.source)
             self._create_audio_source_radio_buttons()
             dpg.add_separator()
             self._create_path_display()
@@ -478,7 +478,7 @@ class GUIReconstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
-            self._create_section_header(self._lbl_waveform, glyph=self._glyphs.waveform)
+            self._create_section_header(self._lbl_waveform, glyph=self._glyphs.headers.waveform)
             self._create_autoscale_checkbox()
             self._create_waveform_display()
             self._create_generator_checkboxes()

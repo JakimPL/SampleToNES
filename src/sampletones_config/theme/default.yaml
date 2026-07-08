@@ -72,7 +72,7 @@ components:
         value: .selection_active
       - type: color
         key: Tab
-        value: .ground
+        value: .tab
       - type: color
         key: TabHovered
         value: .accent/0.12
@@ -226,3 +226,37 @@ components:
       - type: color
         key: Text
         value: .text_muted
+  - item_type: InputText
+    entries:
+      - type: color
+        key: FrameBg
+        value: .input_bg
+      - type: color
+        key: FrameBgHovered
+        value: .input_bg_active
+      - type: color
+        key: FrameBgActive
+        value: .input_bg_active
+      - type: color
+        key: Border
+        value: .input_border
+      - type: style
+        key: FrameBorderSize
+        x: 1
+  - item_type: InputInt
+    entries:
+      - type: color
+        key: FrameBg
+        value: .input_bg
+      - type: color
+        key: FrameBgHovered
+        value: .input_bg_active
+      - type: color
+        key: FrameBgActive
+        value: .input_bg_active
+      - type: color
+        key: Border
+        value: .input_border
+      - type: style
+        key: FrameBorderSize
+        x: 1

@@ -1,9 +1,12 @@
 from pydantic import BaseModel
 
 
-class GlyphsLayout(BaseModel, frozen=True):
+class CommonGlyphs(BaseModel, frozen=True):
     tick: str
     favorite: str
+
+
+class HeaderGlyphs(BaseModel, frozen=True):
     waveform: str
     spectrum: str
     reconstruction: str
@@ -21,3 +24,15 @@ class GlyphsLayout(BaseModel, frozen=True):
     tracker: str
     order: str
     history: str
+
+
+class PlayerGlyphs(BaseModel, frozen=True):
+    play: str
+    pause: str
+    stop: str
+
+
+class GlyphsLayout(BaseModel, frozen=True):
+    common: CommonGlyphs
+    headers: HeaderGlyphs
+    player: PlayerGlyphs

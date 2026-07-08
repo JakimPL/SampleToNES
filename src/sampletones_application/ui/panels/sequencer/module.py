@@ -119,7 +119,7 @@ class GUISequencerModulePanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
-            self._create_section_header(self._lbl_module_options, glyph=self._glyphs.settings)
+            self._create_section_header(self._lbl_module_options, glyph=self._glyphs.headers.settings)
             self._create_module_options()
 
     def _create_module_options(self) -> None:

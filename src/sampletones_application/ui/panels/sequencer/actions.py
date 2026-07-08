@@ -58,7 +58,7 @@ class GUISequencerActionsPanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
-            self._create_section_header(self._lbl_project, glyph=self._glyphs.project)
+            self._create_section_header(self._lbl_project, glyph=self._glyphs.headers.project)
             self._create_buttons()
 
     def _create_buttons(self) -> None:

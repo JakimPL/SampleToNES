@@ -69,7 +69,7 @@ class GUIPanel(CallbackMixin, ABC):
         targets a specific container for panels that build outside a ``with`` block.
         """
         theme = ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER)
-        marker_glyph = glyph if glyph is not None else self._glyphs.tick
+        marker_glyph = glyph if glyph is not None else self._glyphs.common.tick
         with dpg.group(parent=parent, tag=tag) as header:
             with dpg.table(header_row=False, policy=dpg.mvTable_SizingFixedFit, resizable=False):
                 dpg.add_table_column(width_fixed=True, init_width_or_weight=self._section_header_glyph_width)

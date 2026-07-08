@@ -215,7 +215,7 @@ class GUIConverterPanel(GUIPanel):
         )
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section, glyph=self._glyphs.converter)
+        self._create_section_header(self._lbl_section, glyph=self._glyphs.headers.converter)
 
     def _create_export_button(self) -> None:
         with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_CONVERT):

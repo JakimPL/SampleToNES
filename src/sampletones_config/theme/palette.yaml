@@ -29,6 +29,21 @@ colors:
   accent_muted: "#6b5a8f"
   on_accent: "#17131f"
 
+  # cool secondary (functional chrome: input focus, secondary emphasis)
+  cool: "#6f9be0"
+  cool_hover: "#86aeea"
+  cool_active: "#5883c9"
+  cool_muted: "#44506e"
+
+  # input wells (search/filter/number fields)
+  input_bg: "#23293a"
+  input_bg_active: "#2a3348"
+  input_border: "#3b4256"
+
+  # dialog windows (elevated surface + accent border/title)
+  dialog_surface: "#363341"
+  dialog_title: "#3a3054"
+
   # channels: pulses orange, triangle blue, noise grey
   channel_pulse1: "#f09256"
   channel_pulse2: "#f2d15f"

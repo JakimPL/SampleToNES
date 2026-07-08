@@ -32,6 +32,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_PATH_MESSAGE,
+    TAG_GLOBAL_THEME_DIALOG_WINDOW,
 )
 from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED,
@@ -43,6 +44,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.trace import GUITraceback
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import center_item, table_wrapper
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -57,6 +59,10 @@ _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 def get_dialog_tag(base_tag: str) -> str:
     dialog_hash = uuid.uuid4().hex
     return f"{base_tag}{TAG_SEPARATOR}{dialog_hash}"
+
+
+def _bind_dialog_theme(tag: str) -> None:
+    ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG_WINDOW).bind_to_item(tag)
 
 
 def _show_modal_dialog(
@@ -79,6 +85,7 @@ def _show_modal_dialog(
         autosize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
+        _bind_dialog_theme(tag)
         content(tag)
         dpg.add_separator()
         ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
@@ -376,6 +383,7 @@ class DialogsRenderer:
             no_scrollbar=False,
             on_close=lambda: dpg_delete_item(tag),
         ):
+            _bind_dialog_theme(tag)
             if message is not None:
                 dpg.add_text(message, parent=tag, wrap=self._error_wrap)
 
@@ -536,6 +544,7 @@ class DialogsRenderer:
             no_resize=True,
             on_close=lambda: dpg_delete_item(tag),
         ):
+            _bind_dialog_theme(tag)
             content(tag)
 
         FrameCallbackManager.set_frame_callback(
@@ -618,6 +627,7 @@ class DialogsRenderer:
             no_resize=True,
             on_close=lambda: dpg_delete_item(tag),
         ):
+            _bind_dialog_theme(tag)
             content(tag)
 
         FrameCallbackManager.set_frame_callback(
@@ -701,6 +711,7 @@ class DialogsRenderer:
             no_resize=True,
             on_close=lambda: dpg_delete_item(tag),
         ):
+            _bind_dialog_theme(tag)
             content(tag)
 
         FrameCallbackManager.set_frame_callback(

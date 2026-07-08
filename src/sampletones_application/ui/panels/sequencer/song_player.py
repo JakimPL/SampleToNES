@@ -8,8 +8,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import TAG_GLOBAL_THEME_PLAYER_TOOLBAR
 from sampletones_application.constants.player import (
-    GLYPH_PLAYER_PAUSE,
-    GLYPH_PLAYER_PLAY,
     SUF_PLAYER_CARD,
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
@@ -109,6 +107,7 @@ class GUISongPlayerPanel(GUIPanel):
         create_transport_controls(
             self.card_tag,
             layout=self._layout,
+            glyphs=self._glyphs.player,
             play_tag=self.play_button_tag,
             pause_tag=self.pause_button_tag,
             stop_tag=self.stop_button_tag,
@@ -139,10 +138,10 @@ class GUISongPlayerPanel(GUIPanel):
         )
 
         if view_model.is_paused:
-            dpg_set_item_label(self.pause_button_tag, GLYPH_PLAYER_PLAY)
+            dpg_set_item_label(self.pause_button_tag, self._glyphs.player.play)
             dpg_set_value(self.pause_tooltip_tag, self._lbl_resume)
         else:
-            dpg_set_item_label(self.pause_button_tag, GLYPH_PLAYER_PAUSE)
+            dpg_set_item_label(self.pause_button_tag, self._glyphs.player.pause)
             dpg_set_value(self.pause_tooltip_tag, self._lbl_pause)
 
         if view_model.error is not None:

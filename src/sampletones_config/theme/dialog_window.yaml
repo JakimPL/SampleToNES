@@ -1,0 +1,21 @@
+name: dialog_window
+tag: global.theme.dialog_window
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: WindowBg
+        value: .dialog_surface
+      - type: color
+        key: Border
+        value: .accent
+      - type: color
+        key: TitleBg
+        value: .dialog_title
+      - type: color
+        key: TitleBgActive
+        value: .dialog_title
+      - type: style
+        key: WindowBorderSize
+        x: 1

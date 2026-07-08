@@ -175,7 +175,9 @@ class GUISequencerOrderPanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
-            self._create_section_header(self._lbl_order, glyph=self._glyphs.order, parent=TAG_SEQUENCER_ORDER_CARD)
+            self._create_section_header(
+                self._lbl_order, glyph=self._glyphs.headers.order, parent=TAG_SEQUENCER_ORDER_CARD
+            )
             with dpg.group(tag=self.tag):
                 self._create_button_row()
                 self._create_order_window()

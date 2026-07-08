@@ -157,7 +157,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.call(self.on_advanced_settings_changed, advanced_update)
 
     def _create_section_text(self) -> None:
-        self._create_section_header(self._lbl_section, glyph=self._glyphs.advanced)
+        self._create_section_header(self._lbl_section, glyph=self._glyphs.headers.advanced)
 
     @table_wrapper(columns=2, height=-1)
     def _create_path_settings(self) -> None:

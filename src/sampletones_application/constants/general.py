@@ -153,6 +153,12 @@ TAG_GLOBAL_THEME_DIALOG = TagName(
     Widget.THEME,
     "dialog",
 )
+TAG_GLOBAL_THEME_DIALOG_WINDOW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "dialog_window",
+)
 TAG_GLOBAL_THEME_TABLE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

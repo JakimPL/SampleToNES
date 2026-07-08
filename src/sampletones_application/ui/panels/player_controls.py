@@ -4,12 +4,8 @@ from typing import Iterator
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import SUF_BUTTON
-from sampletones_application.constants.player import (
-    GLYPH_PLAYER_PAUSE,
-    GLYPH_PLAYER_PLAY,
-    GLYPH_PLAYER_STOP,
-    SUF_PLAYER_TOOLTIP,
-)
+from sampletones_application.constants.player import SUF_PLAYER_TOOLTIP
+from sampletones_application.layout.glyphs import PlayerGlyphs
 from sampletones_application.layout.player import PlayerButtonLayout, PlayerLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -54,6 +50,7 @@ def create_transport_controls(
     parent: str,
     *,
     layout: PlayerLayout,
+    glyphs: PlayerGlyphs,
     play_tag: str,
     pause_tag: str,
     stop_tag: str,
@@ -82,11 +79,11 @@ def create_transport_controls(
 
         with dpg.table_row():
             dpg.add_spacer()
-            _create_icon_button(play_tag, GLYPH_PLAYER_PLAY, play_tooltip, on_play, button)
+            _create_icon_button(play_tag, glyphs.play, play_tooltip, on_play, button)
             dpg.add_spacer()
-            _create_icon_button(pause_tag, GLYPH_PLAYER_PAUSE, pause_tooltip, on_pause_or_resume, button)
+            _create_icon_button(pause_tag, glyphs.pause, pause_tooltip, on_pause_or_resume, button)
             dpg.add_spacer()
-            _create_icon_button(stop_tag, GLYPH_PLAYER_STOP, stop_tooltip, on_stop, button)
+            _create_icon_button(stop_tag, glyphs.stop, stop_tooltip, on_stop, button)
             dpg.add_spacer()
 
 

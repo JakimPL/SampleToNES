@@ -587,7 +587,7 @@ class GUITreePanel(GUIPanel):
 
         with dpg.group(horizontal=True):
             if is_favorite:
-                star_text = dpg.add_text(self._glyphs.favorite, color=color)
+                star_text = dpg.add_text(self._glyphs.common.favorite, color=color)
                 FontRegistry.bind_to_item(star_text, Font.ICON)
 
             text = dpg.add_text(self._context_menu_header_name(node), color=color)
