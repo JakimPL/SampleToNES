@@ -325,7 +325,7 @@ reconstructions.browser.template.incompatible_version_template: "Incompatible re
 # =============================================================================
 # Reconstructions tab — Reconstruction panel
 # =============================================================================
-reconstructions.reconstruction.label.audio_source_label: "Play audio source:"
+reconstructions.reconstruction.label.audio_source_label: "Source"
 reconstructions.reconstruction.label.autoscale_checkbox: "Autoscale"
 reconstructions.reconstruction.label.export_wav_button: "Export reconstruction to WAV"
 reconstructions.reconstruction.label.locate_audio_button: "Locate original audio"

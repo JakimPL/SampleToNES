@@ -17,6 +17,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.reconstructions import (
     PRE_RECONSTRUCTION_GENERATOR,
@@ -39,7 +40,7 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_ADD_TO_SEQUENCER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_LOCATE_ORIGINAL_AUDIO,
 )
-from sampletones_application.layout.general import PathColors
+from sampletones_application.layout.general import GeneralLayout, PathColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -49,6 +50,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
@@ -78,6 +80,7 @@ class GUIReconstructionPanel(GUIPanel):
         player_panel: GUIAudioPlayerPanel,
         *,
         layout_graphs: GraphsLayout,
+        general_layout: GeneralLayout,
         path_colors: PathColors,
         path_status_color: RGBA,
         file_dialog_width: int,
@@ -87,6 +90,7 @@ class GUIReconstructionPanel(GUIPanel):
     ) -> None:
         self._player_panel = player_panel
         self._layout_graphs = layout_graphs
+        self._general_layout = general_layout
         self._status_bar = status_bar
         self._path_colors = path_colors
         self._path_status_color = path_status_color
@@ -293,8 +297,14 @@ class GUIReconstructionPanel(GUIPanel):
 
     def create_panel(self) -> None:
         self._create_player_panel()
+        dpg.add_spacer(height=self._general_layout.panel_gap, parent=self.parent)
         self._create_audio_panel()
+        dpg.add_spacer(height=self._general_layout.panel_gap, parent=self.parent)
         self._create_plot_panel()
+
+        surface_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
+        surface_theme.bind_to_item(self.audio_tag)
+        surface_theme.bind_to_item(self.plot_tag)
 
     def update_view(self, view_model: ReconstructionViewModel) -> None:
         self._render_path(self._reconstruction_file_path, view_model.reconstruction_file)
@@ -422,14 +432,14 @@ class GUIReconstructionPanel(GUIPanel):
         self.waveform_display.set_overlay_range(start, end)
 
     def _create_audio_panel(self) -> None:
-        dpg.add_separator()
         with dpg.child_window(
             tag=self.audio_tag,
             parent=self.parent,
             no_scrollbar=True,
             auto_resize_y=True,
-            border=False,
+            border=True,
         ):
+            self._create_section_header(self._lbl_audio_source)
             self._create_audio_source_radio_buttons()
             self._create_path_display()
             self._create_add_to_sequencer_button()
@@ -438,13 +448,12 @@ class GUIReconstructionPanel(GUIPanel):
             self._create_export_wav_button()
 
     def _create_plot_panel(self) -> None:
-        dpg.add_separator()
         with dpg.child_window(
             tag=self.plot_tag,
             parent=self.parent,
             no_scrollbar=True,
             auto_resize_y=True,
-            border=False,
+            border=True,
         ):
             self._create_section_header(self._lbl_waveform)
             self._create_autoscale_checkbox()
@@ -494,7 +503,6 @@ class GUIReconstructionPanel(GUIPanel):
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
             parent=self.audio_tag,
         ):
-            dpg.add_text(self._lbl_audio_source)
             dpg.add_radio_button(
                 items=[
                     self._lbl_reconstruction_radio,

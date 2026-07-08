@@ -23,6 +23,7 @@ from sampletones_application.constants.general import (
     SUF_PANEL_RIGHT,
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.reconstructions import (
@@ -101,6 +102,7 @@ class ReconstructionsTabCoordinator:
         self._left_height = layout.general.panels.left.height
         self._instruments_width = layout.general.panels.reconstructions_instruments.width
         self._right_height = layout.general.panels.right.height
+        self._panel_gap = layout.general.panel_gap
 
         self._msg_file_not_found = language_manager[
             Page.RECONSTRUCTIONS,
@@ -248,6 +250,7 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self._reconstruction_player_panel,
             layout_graphs=layout.graphs,
+            general_layout=layout.general,
             path_colors=layout.general.colors.paths,
             path_status_color=layout.general.colors.text.disabled,
             file_dialog_width=layout.general.dialogs.file.width,
@@ -390,44 +393,66 @@ class ReconstructionsTabCoordinator:
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
-            with dpg.table(
-                parent=TAG_GLOBAL_TAB_RECONSTRUCTIONS,
-                header_row=False,
-                resizable=False,
-                policy=dpg.mvTable_SizingStretchProp,
-            ):
-                dpg.add_table_column(width_fixed=True)
-                dpg.add_table_column()
-                dpg.add_table_column(width_fixed=True)
+            with dpg.child_window(
+                width=-1,
+                height=-self._panel_gap,
+                border=False,
+                no_scrollbar=True,
+                no_scroll_with_mouse=True,
+            ) as ground_wrapper:
+                dpg.add_spacer(height=self._panel_gap)
+                with dpg.table(
+                    header_row=False,
+                    resizable=False,
+                    policy=dpg.mvTable_SizingStretchProp,
+                ):
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
+                    dpg.add_table_column(width_fixed=True)
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
+                    dpg.add_table_column()
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
+                    dpg.add_table_column(width_fixed=True)
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
 
-                with dpg.table_row():
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
-                        width=self._left_width,
-                        height=self._left_height,
-                        no_scrollbar=True,
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._browser_panel.create_panel()
+                    with dpg.table_row():
+                        dpg.add_spacer()
+                        with dpg.child_window(
+                            tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
+                            width=self._left_width,
+                            height=self._left_height,
+                            no_scrollbar=True,
+                            no_scroll_with_mouse=True,
+                        ):
+                            self._browser_panel.create_panel()
 
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._reconstruction_panel.create_panel()
+                        dpg.add_spacer()
 
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
-                        width=self._instruments_width,
-                        height=self._right_height,
-                        no_scrollbar=True,
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._reconstruction_instruments_panel.create_panel()
+                        with dpg.child_window(
+                            tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
+                            border=False,
+                            no_scroll_with_mouse=True,
+                        ):
+                            self._reconstruction_panel.create_panel()
+
+                        dpg.add_spacer()
+
+                        with dpg.child_window(
+                            tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                            width=self._instruments_width,
+                            height=self._right_height,
+                            no_scrollbar=True,
+                            no_scroll_with_mouse=True,
+                        ):
+                            self._reconstruction_instruments_panel.create_panel()
+
+                        dpg.add_spacer()
 
             surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-            for suffix in (SUF_PANEL_LEFT, SUF_PANEL_CENTER, SUF_PANEL_RIGHT):
-                surface.bind_to_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{suffix}")
+            ground = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND)
+            ground.bind_to_item(ground_wrapper)
+            surface.bind_to_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}")
+            ground.bind_to_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}")
+            surface.bind_to_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}")
 
     def lock(self) -> None:
         self._browser_panel.lock()
