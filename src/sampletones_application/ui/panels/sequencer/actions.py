@@ -8,7 +8,6 @@ from sampletones_application.categories.elements.sequencer import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sequencer import (
-    TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_MODULE_BUTTON_EXPORT,
     TAG_SEQUENCER_MODULE_BUTTON_PROPERTIES,
     TAG_SEQUENCER_MODULE_GROUP_ACTIONS,
@@ -47,13 +46,12 @@ class GUISequencerActionsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_MODULE_GROUP_ACTIONS,
-            parent=TAG_SEQUENCER_GRID_PANEL,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             width=-1,
             auto_resize_y=True,
             border=True,

@@ -13,8 +13,6 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_THEME_PRIMARY_BUTTON,
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
@@ -121,7 +119,6 @@ class GUIBrowserPanel(GUITreePanel):
         super().__init__(
             tree=tree,
             tag=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_RECONSTRUCTIONS_BROWSER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
@@ -136,13 +133,13 @@ class GUIBrowserPanel(GUITreePanel):
             colors=colors,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_section_text()

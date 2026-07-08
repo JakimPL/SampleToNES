@@ -91,7 +91,6 @@ class GUITreePanel(GUIPanel):
         self,
         tree: Tree,
         tag: str,
-        parent: str,
         tree_tag: str,
         tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
@@ -267,7 +266,6 @@ class GUITreePanel(GUIPanel):
 
         super().__init__(
             tag=tag,
-            parent=parent,
             width=width,
             height=height,
         )

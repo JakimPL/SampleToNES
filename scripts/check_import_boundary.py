@@ -3,11 +3,15 @@
 """
 Enforces layer-boundary import rules across the sampletones_application package.
 
-Each rule names a file glob, the import prefixes forbidden there, and the
+Each import rule names a file glob, the import prefixes forbidden there, and the
 contract modules exempt from those prefixes: a layer may consume another
 layer's data contract (e.g. a service's result types) while its implementation
 modules stay out of reach. The script checks every Python source file matched
 by the glob and reports any import that begins with a forbidden prefix.
+
+Token rules additionally forbid a regex within a file glob, enforcing contracts
+a prefix cannot express — e.g. that panels never compose a column suffix
+(`SUF_PANEL_*`) or parent into another panel's container.
 
 Usage:
     python check_import_boundary.py [files...]   # check specific files
@@ -39,6 +43,12 @@ class BoundaryRule(NamedTuple):
     pattern: str
     forbidden: list[str]
     contracts: list[str] = []
+
+
+class TokenRule(NamedTuple):
+    pattern: str
+    forbidden: str
+    message: str
 
 
 RULES: list[BoundaryRule] = [
@@ -108,8 +118,41 @@ RULES: list[BoundaryRule] = [
 ]
 
 
+TOKEN_RULES: list[TokenRule] = [
+    TokenRule(
+        "ui/panels/**/*.py",
+        r"\bSUF_PANEL_",
+        "ui/panels must not reference a column suffix (SUF_PANEL_*); a panel receives its "
+        "parent through create_panel(parent), set by the coordinator that owns the layout",
+    ),
+    TokenRule(
+        "ui/panels/**/*.py",
+        r"parent\s*=\s*TAG_SEQUENCER_GRID_PANEL\b",
+        "ui/panels must not parent into another panel's container (TAG_SEQUENCER_GRID_PANEL); "
+        "the coordinator injects the parent through create_panel(parent)",
+    ),
+]
+
+
 def _matches_prefix(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(prefix + ".")
+
+
+def find_token_violations(
+    filepath: Path,
+    rule: TokenRule,
+) -> list[tuple[str, str]]:
+    pattern = re.compile(rule.forbidden)
+    violations: list[tuple[str, str]] = []
+    for line_number, line in enumerate(
+        filepath.read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        if pattern.search(line):
+            location = f"{filepath}:{line_number}"
+            violations.append((rule.message, f"{location}: {line.strip()}"))
+
+    return violations
 
 
 def find_violations(
@@ -144,6 +187,10 @@ def run_all_rules() -> list[tuple[str, str]]:
         for filepath in sorted(APP_ROOT.glob(rule.pattern)):
             all_violations.extend(find_violations(filepath, rule))
 
+    for token_rule in TOKEN_RULES:
+        for filepath in sorted(APP_ROOT.glob(token_rule.pattern)):
+            all_violations.extend(find_token_violations(filepath, token_rule))
+
     return all_violations
 
 
@@ -153,6 +200,11 @@ def run_on_files(filepaths: list[Path]) -> list[tuple[str, str]]:
         matched = {path for path in filepaths if path.match(rule.pattern)}
         for filepath in sorted(matched):
             all_violations.extend(find_violations(filepath, rule))
+
+    for token_rule in TOKEN_RULES:
+        matched = {path for path in filepaths if path.match(token_rule.pattern)}
+        for filepath in sorted(matched):
+            all_violations.extend(find_token_violations(filepath, token_rule))
 
     return all_violations
 

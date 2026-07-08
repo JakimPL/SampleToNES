@@ -50,15 +50,14 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
 
         super().__init__(
             tag=tag,
-            parent=parent,
             width=width,
             height=height,
-            init=True,
         )
+        self.create_panel(parent)
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.group(tag=self.tag, parent=self.parent):
+        with dpg.group(tag=self.tag, parent=parent):
             self._create_content()
 
         self._update_axes_limits()

@@ -27,13 +27,21 @@ class GUIWindow(GUIPanel):
     def show(self, *args: Any, **kwargs: Any) -> None:
         self.hide()
         self.prepare(*args, **kwargs)
-        self.create_panel()
+        self.create_window()
         ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG_WINDOW).bind_to_item(self.tag)
         dpg.split_frame()
         self.center()
 
     def hide(self) -> None:
         dpg_delete_item(self.tag)
+
+    def create_panel(self, parent: str) -> None:
+        """Satisfy the panel contract for a top-level window, which owns its own
+        ``dpg.window`` and builds through ``create_window``."""
+        self.create_window()
+
+    @abstractmethod
+    def create_window(self) -> None: ...
 
     @abstractmethod
     def prepare(self, *args: Any, **kwargs: Any) -> None: ...

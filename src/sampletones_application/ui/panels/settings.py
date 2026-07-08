@@ -2,9 +2,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    GlobalDialogTitleElements,
-)
 from sampletones_application.categories.elements.settings import AudioSettingsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -58,12 +55,6 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._current_sample_rate_label: str = ""
         self._current_buffer_size_label: str = ""
 
-        self._ttl_main_window = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.MAIN_WINDOW,
-        ]
         self._ttl_audio = language_manager[
             Page.SETTINGS,
             Panel.AUDIO,
@@ -103,7 +94,6 @@ class GUIAudioSettingsWindow(GUIWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_AUDIO_WINDOW,
-            parent=self._ttl_main_window,
             width=layout.window.width,
             height=layout.window.height,
         )
@@ -128,7 +118,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._current_sample_rate_label = view_model.current_sample_rate_label
         self._current_buffer_size_label = view_model.buffer_size_label
 
-    def create_panel(self) -> None:
+    def create_window(self) -> None:
         with dpg.window(
             tag=self.tag,
             label=self._ttl_audio,

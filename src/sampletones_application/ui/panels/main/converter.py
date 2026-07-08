@@ -25,7 +25,6 @@ from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_TEXT_STATUS,
     TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
     TAG_MAIN_CONVERTER_WINDOW_SUMMARY,
-    TAG_MAIN_PANEL,
 )
 from sampletones_application.layout.general import PathColors
 from sampletones_application.layout.main import ConverterLayout
@@ -142,14 +141,13 @@ class GUIConverterPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_PANEL,
-            parent=TAG_MAIN_PANEL,
             height=layout.height,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             width=self.width,
             height=self.height,
             border=True,

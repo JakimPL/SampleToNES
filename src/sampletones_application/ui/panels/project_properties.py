@@ -4,7 +4,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
-    GlobalDialogTitleElements,
 )
 from sampletones_application.categories.elements.settings import (
     ProjectPropertiesElements,
@@ -66,12 +65,6 @@ class GUIProjectPropertiesWindow(GUIWindow):
         self._created_text = ""
         self._modified_text = ""
 
-        self._ttl_main_window = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.MAIN_WINDOW,
-        ]
         self._ttl_window = language_manager[
             Page.SETTINGS,
             Panel.PROPERTIES,
@@ -113,7 +106,6 @@ class GUIProjectPropertiesWindow(GUIWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_PROPERTIES_WINDOW,
-            parent=self._ttl_main_window,
             width=layout.window.width,
             height=layout.window.height,
         )
@@ -130,7 +122,7 @@ class GUIProjectPropertiesWindow(GUIWindow):
     def prepare(self, *_args: Any, **_kwargs: Any) -> None:
         """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
 
-    def create_panel(self) -> None:
+    def create_window(self) -> None:
         with dpg.window(
             tag=self.tag,
             label=self._ttl_window,

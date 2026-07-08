@@ -1,10 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import (
-    SUF_PANEL_CENTER,
-    TAG_GLOBAL_TAB_MAIN,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
-)
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_PANEL_SURFACE
 from sampletones_application.constants.main import (
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_PANEL,
@@ -37,13 +33,12 @@ class GUIMainPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}",
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_settings()
@@ -77,13 +72,13 @@ class GUIMainPanel(GUIPanel):
             dpg.add_table_column()
             with dpg.table_row():
                 with dpg.table_cell(tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL):
-                    self.config_panel.create_panel()
+                    self.config_panel.create_panel(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)
                 dpg.add_spacer()
                 with dpg.table_cell(tag=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL):
-                    self.reconstructor_panel.create_panel()
+                    self.reconstructor_panel.create_panel(TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL)
 
     def _create_advanced_settings(self) -> None:
-        self.advanced_settings_panel.create_panel()
+        self.advanced_settings_panel.create_panel(TAG_MAIN_PANEL)
 
     def _create_converter(self) -> None:
-        self.converter_panel.create_panel()
+        self.converter_panel.create_panel(TAG_MAIN_PANEL)

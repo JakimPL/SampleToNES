@@ -13,8 +13,6 @@ from sampletones_application.categories.elements.instructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_THEME_PRIMARY_BUTTON,
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
@@ -179,7 +177,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         super().__init__(
             self._library_logic.tree,
             tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
@@ -212,13 +209,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         super()._setup_handlers()
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_section_text()

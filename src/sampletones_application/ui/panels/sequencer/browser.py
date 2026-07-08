@@ -8,11 +8,7 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_SEQUENCER,
-    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
-)
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
     TAG_SEQUENCER_BROWSER_GROUP_CONTROLS,
@@ -79,7 +75,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
         super().__init__(
             tree=tree,
             tag=TAG_SEQUENCER_BROWSER_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
             tree_tag=TAG_SEQUENCER_BROWSER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
@@ -94,13 +89,13 @@ class GUISequencerBrowserPanel(GUITreePanel):
             colors=colors,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_section_text()

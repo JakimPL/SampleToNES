@@ -8,10 +8,6 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_TAB_SEQUENCER,
-)
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_REDO,
     TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
@@ -116,13 +112,12 @@ class GUISequencerHistoryPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_HISTORY_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             height=-1,
             border=True,
         ):

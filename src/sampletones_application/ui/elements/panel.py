@@ -29,21 +29,15 @@ class GUIPanel(CallbackMixin, ABC):
     def __init__(
         self,
         tag: str,
-        parent: str,
         width: int = 0,
         height: int = 0,
-        init: bool = False,
     ) -> None:
         self.tag = tag
-        self.parent = parent
         self.width = width
         self.height = height
 
-        if init:
-            self.create_panel()
-
     @abstractmethod
-    def create_panel(self) -> None: ...
+    def create_panel(self, parent: str) -> None: ...
 
     @classmethod
     def configure_section_header(

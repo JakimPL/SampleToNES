@@ -8,11 +8,7 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_HANDLER_REGISTRY,
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_TAB_SEQUENCER,
-)
+from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
     TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
@@ -108,13 +104,12 @@ class GUISequencerModulePanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_MODULE_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             width=-1,
             auto_resize_y=True,
             border=True,

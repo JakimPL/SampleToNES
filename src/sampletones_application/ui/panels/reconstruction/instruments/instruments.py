@@ -19,9 +19,7 @@ from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
-    SUF_PANEL_RIGHT,
     SUF_TEXT,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_INVALID,
 )
@@ -200,13 +198,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             width=self.width,
             height=self.height,
             border=False,

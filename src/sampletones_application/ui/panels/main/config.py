@@ -15,7 +15,6 @@ from sampletones_application.constants.main import (
     TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
     TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
     TAG_MAIN_CONFIG_PANEL,
-    TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
 )
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -153,15 +152,14 @@ class GUIConfigPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_CONFIG_PANEL,
-            parent=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
             height=panel_height,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             width=self.width,
             height=self.height,
             border=True,

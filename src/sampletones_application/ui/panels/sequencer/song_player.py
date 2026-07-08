@@ -34,7 +34,6 @@ class GUISongPlayerPanel(GUIPanel):
     def __init__(
         self,
         tag: str,
-        parent: str,
         *,
         layout: PlayerLayout,
         language_manager: LanguageManager,
@@ -94,10 +93,10 @@ class GUISongPlayerPanel(GUIPanel):
             SequencerPlayerElements.POSITION,
         ]
 
-        super().__init__(tag=tag, parent=parent)
+        super().__init__(tag=tag)
 
-    def create_panel(self) -> None:
-        with centered_card(self.parent, self.tag, self.card_tag, self._layout.card.width):
+    def create_panel(self, parent: str) -> None:
+        with centered_card(parent, self.tag, self.card_tag, self._layout.card.width):
             self._create_controls()
             dpg.add_text(self._msg_no_song, tag=self.position_text_tag)
             FontRegistry.bind_to_item(self.position_text_tag, Font.REGULAR_SMALL)

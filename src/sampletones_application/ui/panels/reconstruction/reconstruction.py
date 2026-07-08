@@ -15,8 +15,6 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
-    SUF_PANEL_CENTER,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_THEME_CHANNEL_NOISE,
     TAG_GLOBAL_THEME_CHANNEL_PULSE1,
     TAG_GLOBAL_THEME_CHANNEL_PULSE2,
@@ -274,7 +272,6 @@ class GUIReconstructionPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
 
     def _load_path_text(self, language_manager: LanguageManager) -> None:
@@ -309,12 +306,12 @@ class GUIReconstructionPanel(GUIPanel):
             StatusElements.PATH,
         ]
 
-    def create_panel(self) -> None:
-        self._create_player_panel()
-        dpg.add_spacer(height=self._general_layout.panel_gap, parent=self.parent)
-        self._create_audio_panel()
-        dpg.add_spacer(height=self._general_layout.panel_gap, parent=self.parent)
-        self._create_plot_panel()
+    def create_panel(self, parent: str) -> None:
+        self._create_player_panel(parent)
+        dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
+        self._create_audio_panel(parent)
+        dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
+        self._create_plot_panel(parent)
 
         surface_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
         surface_theme.bind_to_item(self.audio_tag)
@@ -449,10 +446,10 @@ class GUIReconstructionPanel(GUIPanel):
         end = start + self._frame_length
         self.waveform_display.set_overlay_range(start, end)
 
-    def _create_audio_panel(self) -> None:
+    def _create_audio_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.audio_tag,
-            parent=self.parent,
+            parent=parent,
             no_scrollbar=True,
             auto_resize_y=True,
             border=True,
@@ -473,10 +470,10 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_export_instruments_button()
         self._create_export_wav_button()
 
-    def _create_plot_panel(self) -> None:
+    def _create_plot_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.plot_tag,
-            parent=self.parent,
+            parent=parent,
             no_scrollbar=True,
             auto_resize_y=True,
             border=True,
@@ -524,8 +521,8 @@ class GUIReconstructionPanel(GUIPanel):
         self._reconstruction_file_path.set_status("", self._path_status_color)
         self._original_audio_path.set_status("", self._path_status_color)
 
-    def _create_player_panel(self) -> None:
-        self._player_panel.create_panel()
+    def _create_player_panel(self, parent: str) -> None:
+        self._player_panel.create_panel(parent)
 
     def _create_audio_source_radio_buttons(self) -> None:
         with dpg.group(

@@ -201,7 +201,6 @@ class InstructionsTabCoordinator:
         )
         self._instruction_player_panel = GUIAudioPlayerPanel(
             tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
-            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
             layout=layout.player,
             language_manager=language_manager,
         )
@@ -364,7 +363,7 @@ class InstructionsTabCoordinator:
                             no_scrollbar=True,
                             no_scroll_with_mouse=True,
                         ):
-                            self._library_panel.create_panel()
+                            self._library_panel.create_panel(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}")
                             self._library_logic.refresh_libraries(load_if_needed=False)
 
                         dpg.add_spacer()
@@ -374,7 +373,7 @@ class InstructionsTabCoordinator:
                             border=False,
                             no_scroll_with_mouse=True,
                         ):
-                            self._instruction_panel.create_panel()
+                            self._instruction_panel.create_panel(f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}")
 
                         dpg.add_spacer()
 
@@ -386,7 +385,9 @@ class InstructionsTabCoordinator:
                             no_scrollbar=True,
                             no_scroll_with_mouse=True,
                         ):
-                            self._instruction_details_panel.create_panel()
+                            self._instruction_details_panel.create_panel(
+                                f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}"
+                            )
 
                         dpg.add_spacer()
 

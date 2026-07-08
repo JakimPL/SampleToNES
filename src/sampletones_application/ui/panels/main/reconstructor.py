@@ -19,7 +19,6 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.main import (
     PRE_MAIN_RECONSTRUCTOR_GENERATOR,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
-    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
 from sampletones_application.layout.main import ReconstructorLayout
@@ -113,15 +112,14 @@ class GUIReconstructorPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_RECONSTRUCTOR_PANEL,
-            parent=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
             height=panel_height,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             width=self.width,
             height=self.height,
             border=True,

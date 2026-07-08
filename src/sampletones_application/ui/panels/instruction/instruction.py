@@ -7,11 +7,7 @@ from sampletones_application.categories.elements.instructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_CENTER,
-    TAG_GLOBAL_TAB_INSTRUCTIONS,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
-)
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_PANEL_SURFACE
 from sampletones_application.constants.instructions import (
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW,
@@ -71,24 +67,23 @@ class GUIInstructionPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
 
-    def create_panel(self) -> None:
-        self._create_player_panel()
-        dpg.add_spacer(height=self._general_layout.panel_gap, parent=self.parent)
-        self._create_waveform_display()
-        dpg.add_spacer(height=self._general_layout.panel_gap, parent=self.parent)
-        self._create_spectrum_display()
+    def create_panel(self, parent: str) -> None:
+        self._create_player_panel(parent)
+        dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
+        self._create_waveform_display(parent)
+        dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
+        self._create_spectrum_display(parent)
 
         surface_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
         surface_theme.bind_to_item(self.waveform_tag)
         surface_theme.bind_to_item(self.spectrum_tag)
 
-    def _create_waveform_display(self) -> None:
+    def _create_waveform_display(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.waveform_tag,
-            parent=self.parent,
+            parent=parent,
             no_scrollbar=True,
             auto_resize_y=True,
             border=True,
@@ -105,10 +100,10 @@ class GUIInstructionPanel(GUIPanel):
                 status_bar=self._status_bar,
             )
 
-    def _create_spectrum_display(self) -> None:
+    def _create_spectrum_display(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.spectrum_tag,
-            parent=self.parent,
+            parent=parent,
             no_scrollbar=True,
             auto_resize_y=True,
             border=True,
@@ -125,8 +120,8 @@ class GUIInstructionPanel(GUIPanel):
                 status_bar=self._status_bar,
             )
 
-    def _create_player_panel(self) -> None:
-        self._player_panel.create_panel()
+    def _create_player_panel(self, parent: str) -> None:
+        self._player_panel.create_panel(parent)
 
     def close_instruction(self) -> None:
         self.waveform_display.clear_layers()

@@ -7,11 +7,7 @@ from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.main import ExplorerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_MAIN,
-    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
-)
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
     TAG_MAIN_EXPLORER_BUTTON_REFRESH,
@@ -169,7 +165,6 @@ class GUIExplorerPanel(GUITreePanel):
         super().__init__(
             tree=self._explorer_logic.tree,
             tag=TAG_MAIN_EXPLORER_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_MAIN_EXPLORER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
@@ -184,13 +179,13 @@ class GUIExplorerPanel(GUITreePanel):
             colors=colors,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_section_text()

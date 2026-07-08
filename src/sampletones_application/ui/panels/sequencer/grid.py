@@ -8,8 +8,6 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_HANDLER_KEY,
     SUF_HANDLER_REGISTRY,
-    SUF_PANEL_CENTER,
-    TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_CARD_TRACKER,
@@ -175,7 +173,6 @@ class GUISequencerGridPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
             height=-1,
         )
 
@@ -199,13 +196,13 @@ class GUISequencerGridPanel(GUIPanel):
         self._lbl_context_volume_up_coarse = label(SequencerGridElements.CONTEXT_VOLUME_UP_COARSE)
         self._lbl_context_volume_down_coarse = label(SequencerGridElements.CONTEXT_VOLUME_DOWN_COARSE)
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             pass

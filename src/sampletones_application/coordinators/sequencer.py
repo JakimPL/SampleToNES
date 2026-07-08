@@ -274,7 +274,6 @@ class SequencerTabCoordinator:
         )
         self._player_panel: GUISongPlayerPanel = GUISongPlayerPanel(
             tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
-            parent=TAG_SEQUENCER_GRID_PANEL,
             layout=layout.player,
             language_manager=language_manager,
         )
@@ -1092,7 +1091,7 @@ class SequencerTabCoordinator:
                             no_scrollbar=True,
                             no_scroll_with_mouse=True,
                         ):
-                            self._sequencer_browser_panel.create_panel()
+                            self._sequencer_browser_panel.create_panel(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}")
 
                         dpg.add_spacer()
 
@@ -1101,13 +1100,13 @@ class SequencerTabCoordinator:
                             border=False,
                             no_scroll_with_mouse=True,
                         ):
-                            self._player_panel.create_panel()
-                            self._sequencer_grid_panel.create_panel()
+                            self._player_panel.create_panel(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}")
+                            self._sequencer_grid_panel.create_panel(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}")
                             self._song_player_logic.refresh_view()
                             dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
-                            self._sequencer_actions_panel.create_panel()
+                            self._sequencer_actions_panel.create_panel(TAG_SEQUENCER_GRID_PANEL)
                             dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
-                            self._sequencer_order_panel.create_panel()
+                            self._sequencer_order_panel.create_panel(TAG_SEQUENCER_GRID_PANEL)
                             dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
                             self._sequencer_grid_panel.create_tracker()
 
@@ -1121,11 +1120,11 @@ class SequencerTabCoordinator:
                             no_scrollbar=True,
                             no_scroll_with_mouse=True,
                         ):
-                            self._sequencer_module_panel.create_panel()
+                            self._sequencer_module_panel.create_panel(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}")
                             dpg.add_spacer(height=self._panel_gap)
-                            self._sequencer_samples_panel.create_panel()
+                            self._sequencer_samples_panel.create_panel(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}")
                             dpg.add_spacer(height=self._panel_gap)
-                            self._sequencer_history_panel.create_panel()
+                            self._sequencer_history_panel.create_panel(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}")
 
                         dpg.add_spacer()
 

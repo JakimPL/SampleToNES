@@ -7,7 +7,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.sequencer import (
-    TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_ORDER_BUTTON_ADD,
     TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
     TAG_SEQUENCER_ORDER_CARD,
@@ -163,14 +162,13 @@ class GUISequencerOrderPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_ORDER_PANEL,
-            parent=TAG_SEQUENCER_GRID_PANEL,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._create_entry_themes()
         with dpg.child_window(
             tag=TAG_SEQUENCER_ORDER_CARD,
-            parent=self.parent,
+            parent=parent,
             width=-1,
             auto_resize_y=True,
             border=True,

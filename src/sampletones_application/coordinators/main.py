@@ -407,7 +407,7 @@ class MainTabCoordinator:
                             no_scrollbar=True,
                             no_scroll_with_mouse=True,
                         ):
-                            self._explorer_panel.create_panel()
+                            self._explorer_panel.create_panel(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}")
 
                         dpg.add_spacer()
 
@@ -416,7 +416,7 @@ class MainTabCoordinator:
                             border=False,
                             no_scroll_with_mouse=True,
                         ):
-                            self._main_panel.create_panel()
+                            self._main_panel.create_panel(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}")
 
                         dpg.add_spacer()
 

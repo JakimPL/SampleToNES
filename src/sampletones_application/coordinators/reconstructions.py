@@ -233,7 +233,6 @@ class ReconstructionsTabCoordinator:
         )
         self._reconstruction_player_panel = GUIAudioPlayerPanel(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
-            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
             layout=layout.player,
             language_manager=language_manager,
         )
@@ -423,7 +422,7 @@ class ReconstructionsTabCoordinator:
                             no_scrollbar=True,
                             no_scroll_with_mouse=True,
                         ):
-                            self._browser_panel.create_panel()
+                            self._browser_panel.create_panel(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}")
 
                         dpg.add_spacer()
 
@@ -432,7 +431,9 @@ class ReconstructionsTabCoordinator:
                             border=False,
                             no_scroll_with_mouse=True,
                         ):
-                            self._reconstruction_panel.create_panel()
+                            self._reconstruction_panel.create_panel(
+                                f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}"
+                            )
 
                         dpg.add_spacer()
 
@@ -443,7 +444,9 @@ class ReconstructionsTabCoordinator:
                             no_scrollbar=True,
                             no_scroll_with_mouse=True,
                         ):
-                            self._reconstruction_instruments_panel.create_panel()
+                            self._reconstruction_instruments_panel.create_panel(
+                                f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}"
+                            )
 
                         dpg.add_spacer()
 

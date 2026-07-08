@@ -11,8 +11,6 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.instructions import (
@@ -200,14 +198,13 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_INSTRUCTIONS_DETAILS_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             width=-1,
             auto_resize_y=True,
             border=True,
@@ -216,11 +213,11 @@ class GUIInstructionDetailsPanel(GUIPanel):
             self._create_instructions_choice_inputs()
             self._create_no_instruction_text()
 
-        dpg.add_spacer(height=self._general_layout.panel_gap, parent=self.parent)
+        dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
 
         with dpg.child_window(
             tag=TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
-            parent=self.parent,
+            parent=parent,
             width=-1,
             auto_resize_y=True,
             border=True,
