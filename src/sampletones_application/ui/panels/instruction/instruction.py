@@ -7,7 +7,6 @@ from sampletones_application.categories.elements.instructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_PANEL_SURFACE
 from sampletones_application.constants.instructions import (
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW,
@@ -19,10 +18,10 @@ from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.logger import logger
@@ -76,18 +75,8 @@ class GUIInstructionPanel(GUIPanel):
         dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
         self._create_spectrum_display(parent)
 
-        surface_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-        surface_theme.bind_to_item(self.waveform_tag)
-        surface_theme.bind_to_item(self.spectrum_tag)
-
     def _create_waveform_display(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.waveform_tag,
-            parent=parent,
-            no_scrollbar=True,
-            auto_resize_y=True,
-            border=True,
-        ):
+        with card(parent, self.waveform_tag, width=0, no_scrollbar=True):
             self._create_section_header(
                 self._lbl_waveform,
                 glyph=self._glyphs.headers.waveform,
@@ -101,13 +90,7 @@ class GUIInstructionPanel(GUIPanel):
             )
 
     def _create_spectrum_display(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.spectrum_tag,
-            parent=parent,
-            no_scrollbar=True,
-            auto_resize_y=True,
-            border=True,
-        ):
+        with card(parent, self.spectrum_tag, width=0, no_scrollbar=True):
             self._create_section_header(
                 self._lbl_spectrum,
                 glyph=self._glyphs.headers.spectrum,

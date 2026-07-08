@@ -45,9 +45,12 @@ as its phase lands.
   (player + audio + plot), `GUIInstructionDetailsPanel` (two cards) — and the sequencer
   coordinator fills the grid panel's empty child window through
   `parent=TAG_SEQUENCER_GRID_PANEL`. Tab layout belongs solely to `create_tab()`.
-* **SURFACE bound by several owners.** `TabColumns` owns the columns' depth binding — the
-  recessed GROUND theme, and, until each side column's content moves into a card, the raised
-  SURFACE theme on the left (and reconstructions' right) columns. SURFACE is still bound
-  directly by the instruction and reconstruction host panels, by single-card panels
-  themselves, and by the sequencer coordinator's card loop. The `card()` context manager
-  becomes SURFACE's single owner.
+* **Structural depth bound outside `card()` in two remaining places.** The `card()` context
+  manager (`ui/elements/layout/card.py`) binds the raised SURFACE theme for every bordered
+  content card, replacing the host-panel self-binds and the sequencer coordinator's card loop.
+  Two owners still bind a structural surface directly: `TabColumns` binds SURFACE to the side
+  columns (the left library/browser/explorer columns and reconstructions' right instruments
+  column), whose `border=False` tree content draws its frame from the column rather than a
+  card; and the player toolbar cards bind their toolbar surface through `centered_card`.
+  Phase 5 moves the side content into cards (flipping those columns to GROUND) and Phase 6
+  folds the remaining `centered_card` callers onto `card()`.

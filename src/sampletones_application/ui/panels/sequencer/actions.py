@@ -1,7 +1,5 @@
 from typing import Optional
 
-import dearpygui.dearpygui as dpg
-
 from sampletones_application.categories.elements.sequencer import (
     SequencerModuleElements,
 )
@@ -13,6 +11,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_GROUP_ACTIONS,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.types.callback import VoidCallback
@@ -49,13 +48,7 @@ class GUISequencerActionsPanel(GUIPanel):
         )
 
     def create_panel(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.tag,
-            parent=parent,
-            width=-1,
-            auto_resize_y=True,
-            border=True,
-        ):
+        with card(parent, self.tag):
             self._create_section_header(
                 self._lbl_project,
                 glyph=self._glyphs.headers.project,

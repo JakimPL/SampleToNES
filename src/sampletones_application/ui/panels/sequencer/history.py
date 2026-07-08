@@ -21,6 +21,7 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.color import RGBA
@@ -115,12 +116,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         )
 
     def create_panel(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.tag,
-            parent=parent,
-            height=-1,
-            border=True,
-        ):
+        with card(parent, self.tag, width=0, height=-1, auto_resize_y=False):
             self._create_section_header(
                 self._lbl_history,
                 glyph=self._glyphs.headers.history,

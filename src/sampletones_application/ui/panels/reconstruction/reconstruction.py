@@ -19,7 +19,6 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_THEME_CHANNEL_PULSE1,
     TAG_GLOBAL_THEME_CHANNEL_PULSE2,
     TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.reconstructions import (
     PRE_RECONSTRUCTION_GENERATOR,
@@ -48,6 +47,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -313,10 +313,6 @@ class GUIReconstructionPanel(GUIPanel):
         dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
         self._create_plot_panel(parent)
 
-        surface_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-        surface_theme.bind_to_item(self.audio_tag)
-        surface_theme.bind_to_item(self.plot_tag)
-
     def update_view(self, view_model: ReconstructionViewModel) -> None:
         self._render_path(self._reconstruction_file_path, view_model.reconstruction_file)
         self._render_path(self._original_audio_path, view_model.original_audio)
@@ -447,13 +443,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.waveform_display.set_overlay_range(start, end)
 
     def _create_audio_panel(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.audio_tag,
-            parent=parent,
-            no_scrollbar=True,
-            auto_resize_y=True,
-            border=True,
-        ):
+        with card(parent, self.audio_tag, width=0, no_scrollbar=True):
             self._create_section_header(
                 self._lbl_audio_source,
                 glyph=self._glyphs.headers.source,
@@ -471,13 +461,7 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_export_wav_button()
 
     def _create_plot_panel(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.plot_tag,
-            parent=parent,
-            no_scrollbar=True,
-            auto_resize_y=True,
-            border=True,
-        ):
+        with card(parent, self.plot_tag, width=0, no_scrollbar=True):
             self._create_section_header(
                 self._lbl_waveform,
                 glyph=self._glyphs.headers.waveform,

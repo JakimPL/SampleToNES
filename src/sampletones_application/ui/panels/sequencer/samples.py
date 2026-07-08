@@ -24,6 +24,7 @@ from sampletones_application.ui.elements.context_menu import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
@@ -148,13 +149,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         )
 
     def create_panel(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.tag,
-            width=self.width,
-            height=self.height,
-            parent=parent,
-            border=True,
-        ):
+        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
             self._create_section_text()
             self._create_samples_table()
 

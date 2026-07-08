@@ -22,6 +22,7 @@ from sampletones_application.constants.main import (
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
 from sampletones_application.layout.main import ReconstructorLayout
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -117,13 +118,7 @@ class GUIReconstructorPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            parent=parent,
-            width=self.width,
-            height=self.height,
-            border=True,
-        ):
+        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
             self._create_section_text()
             self._create_generator_selection()
             dpg.add_separator()

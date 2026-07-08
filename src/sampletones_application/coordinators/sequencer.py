@@ -30,16 +30,10 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
-    TAG_SEQUENCER_GRID_CARD_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_PANEL_PLAYER,
-    TAG_SEQUENCER_HISTORY_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
-    TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
-    TAG_SEQUENCER_MODULE_GROUP_ACTIONS,
-    TAG_SEQUENCER_MODULE_PANEL,
-    TAG_SEQUENCER_ORDER_CARD,
 )
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
@@ -79,7 +73,6 @@ from sampletones_application.ui.panels.sequencer.module import GUISequencerModul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.song_player import GUISongPlayerPanel
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -1091,17 +1084,6 @@ class SequencerTabCoordinator:
                     ),
                 ],
             )
-
-            surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-            for card_tag in (
-                TAG_SEQUENCER_MODULE_GROUP_ACTIONS,
-                TAG_SEQUENCER_ORDER_CARD,
-                TAG_SEQUENCER_GRID_CARD_TRACKER,
-                TAG_SEQUENCER_MODULE_PANEL,
-                TAG_SEQUENCER_INSTRUMENTS_PANEL,
-                TAG_SEQUENCER_HISTORY_PANEL,
-            ):
-                surface.bind_to_item(card_tag)
 
     def _build_center_column(self, parent: str) -> None:
         """Stacks the song player, tracker grid, actions, order table, and tracker in the centre column."""

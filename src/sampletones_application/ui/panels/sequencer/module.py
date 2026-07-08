@@ -18,6 +18,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_PANEL,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -107,13 +108,7 @@ class GUISequencerModulePanel(GUIPanel):
         )
 
     def create_panel(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.tag,
-            parent=parent,
-            width=-1,
-            auto_resize_y=True,
-            border=True,
-        ):
+        with card(parent, self.tag):
             self._create_section_header(
                 self._lbl_module_options,
                 glyph=self._glyphs.headers.settings,

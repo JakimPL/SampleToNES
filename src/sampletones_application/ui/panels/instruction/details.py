@@ -9,10 +9,7 @@ from sampletones_application.categories.elements.instructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
-from sampletones_application.constants.general import (
-    SUF_HANDLER_REGISTRY,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
-)
+from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
     TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
@@ -40,11 +37,11 @@ from sampletones_application.layout.general import (
 from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.table import GUITable
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
@@ -202,32 +199,15 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            parent=parent,
-            width=-1,
-            auto_resize_y=True,
-            border=True,
-        ):
+        with card(parent, self.tag, width=-1):
             self._create_section_text()
             self._create_instructions_choice_inputs()
             self._create_no_instruction_text()
 
         dpg.add_spacer(height=self._general_layout.panel_gap, parent=parent)
 
-        with dpg.child_window(
-            tag=TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
-            parent=parent,
-            width=-1,
-            auto_resize_y=True,
-            border=True,
-            show=False,
-        ):
+        with card(parent, TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD, width=-1, show=False):
             self._create_instruction_tables()
-
-        surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-        surface.bind_to_item(self.tag)
-        surface.bind_to_item(TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD)
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):

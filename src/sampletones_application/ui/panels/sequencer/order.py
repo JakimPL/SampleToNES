@@ -23,6 +23,7 @@ from sampletones_application.ui.elements.context_menu import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
@@ -166,13 +167,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._create_entry_themes()
-        with dpg.child_window(
-            tag=TAG_SEQUENCER_ORDER_CARD,
-            parent=parent,
-            width=-1,
-            auto_resize_y=True,
-            border=True,
-        ):
+        with card(parent, TAG_SEQUENCER_ORDER_CARD):
             self._create_section_header(
                 self._lbl_order,
                 glyph=self._glyphs.headers.order,

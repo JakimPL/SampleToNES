@@ -23,6 +23,7 @@ from sampletones_application.constants.main import (
 from sampletones_application.layout.general import PathColors
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -128,13 +129,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            parent=parent,
-            width=self.width,
-            height=self.height,
-            border=True,
-        ):
+        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
             self._create_section_text()
             self._create_workers_settings()
             self._create_path_settings()
