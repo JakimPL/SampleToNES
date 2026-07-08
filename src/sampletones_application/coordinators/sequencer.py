@@ -30,7 +30,6 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
-    TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_PANEL_PLAYER,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
@@ -1087,15 +1086,14 @@ class SequencerTabCoordinator:
             )
 
     def _build_center_column(self, parent: str) -> None:
-        """Stacks the song player, tracker grid, actions, order table, and tracker in the centre column."""
+        """Stacks the song player, actions, order table, and tracker grid down the centre column."""
         self._player_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        self._sequencer_actions_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        self._sequencer_order_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._sequencer_grid_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
-        self._sequencer_actions_panel.create_panel(TAG_SEQUENCER_GRID_PANEL)
-        dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
-        self._sequencer_order_panel.create_panel(TAG_SEQUENCER_GRID_PANEL)
-        dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
-        self._sequencer_grid_panel.create_tracker()
 
     def _build_right_column(self, parent: str) -> None:
         """Stacks the module settings, samples, and history cards in the right column."""

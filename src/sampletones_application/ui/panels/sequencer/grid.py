@@ -10,7 +10,6 @@ from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
 )
 from sampletones_application.constants.sequencer import (
-    TAG_SEQUENCER_GRID_CARD_TRACKER,
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_TABLE_TRACKER,
@@ -199,18 +198,8 @@ class GUISequencerGridPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            width=self.width,
-            height=self.height,
-            parent=parent,
-            border=False,
-        ):
-            pass
-
-    def create_tracker(self) -> None:
         self._create_subcolumn_themes()
-        self._create_tracker_view()
+        self._create_tracker_view(parent)
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
@@ -238,8 +227,8 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
 
-    def _create_tracker_view(self) -> None:
-        with card(self.tag, TAG_SEQUENCER_GRID_CARD_TRACKER, width=-1, height=-1, auto_resize_y=False):
+    def _create_tracker_view(self, parent: str) -> None:
+        with card(parent, self.tag, width=-1, height=-1, auto_resize_y=False):
             dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER)
             with dpg.child_window(
                 tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
