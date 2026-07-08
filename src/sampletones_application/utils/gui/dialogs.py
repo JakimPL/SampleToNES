@@ -1,7 +1,7 @@
 import re
 import uuid
 from pathlib import Path
-from typing import Callable, Dict, Optional, Pattern, Tuple
+from typing import Dict, Optional, Pattern, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -51,7 +51,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
 )
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.callback import Callback, StringCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 
@@ -68,7 +68,7 @@ def _bind_dialog_theme(tag: str) -> None:
 def _show_modal_dialog(
     tag: str,
     title: str,
-    content: Callable[[str], None],
+    content: StringCallback,
     *,
     ok_label: str,
     width: int,
@@ -231,7 +231,7 @@ class DialogsRenderer:
         self,
         tag: str,
         title: str,
-        content: Callable[[str], None],
+        content: StringCallback,
         *,
         width: Optional[int] = None,
         height: Optional[int] = None,
@@ -560,7 +560,7 @@ class DialogsRenderer:
         tag: str,
         title: str,
         initial_value: str,
-        on_submit: Callable[[str], None],
+        on_submit: StringCallback,
         *,
         ok_label: str,
     ) -> None:

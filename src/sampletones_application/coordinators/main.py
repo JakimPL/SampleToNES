@@ -21,7 +21,9 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.main import (
+    TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
+    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
 )
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
@@ -42,7 +44,6 @@ from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsP
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
-from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -117,6 +118,7 @@ class MainTabCoordinator:
         self._explorer_width = layout.general.columns.side.width
         self._explorer_height = layout.general.columns.side.height
         self._panel_gap = layout.general.panel_gap
+        self._config_height = layout.main.config.height
         _msg_converter_error = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -237,14 +239,6 @@ class MainTabCoordinator:
             path_colors=layout.general.colors.paths,
             language_manager=language_manager,
             status_bar=status_bar,
-        )
-        self._main_panel: GUIMainPanel = GUIMainPanel(
-            self._config_panel,
-            self._reconstructor_panel,
-            self._advanced_settings_panel,
-            self._converter_panel,
-            layout=layout.main,
-            panel_gap=self._panel_gap,
         )
 
         config_manager.add_config_change_callback(self._update_config_panel_view)
@@ -392,12 +386,33 @@ class MainTabCoordinator:
                     ),
                     ColumnSpec(
                         tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}",
-                        build=self._main_panel.create_panel,
+                        build=self._build_center,
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         border=False,
                     ),
                 ],
             )
+
+    def _build_center(self, parent: str) -> None:
+        """Stacks the config and reconstructor cards side by side, then the advanced and converter cards below."""
+        TabColumns.row(
+            panel_gap=self._panel_gap,
+            height=self._config_height,
+            columns=[
+                ColumnSpec(
+                    tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
+                    build=self._config_panel.create_panel,
+                ),
+                ColumnSpec(
+                    tag=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
+                    build=self._reconstructor_panel.create_panel,
+                ),
+            ],
+        )
+        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        self._advanced_settings_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        self._converter_panel.create_panel(parent)
 
     @property
     def player(self) -> AudioPlayerProtocol:

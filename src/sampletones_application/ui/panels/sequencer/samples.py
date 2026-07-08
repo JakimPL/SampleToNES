@@ -37,6 +37,7 @@ from sampletones_application.view_model.sequencer.samples import (
 )
 from sampletones_core.utils.display import display_id, display_sample_label
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import StringCallback
 
 
 class GUISequencerSamplesPanel(GUIPanel):
@@ -55,14 +56,14 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_row: Optional[int] = None
         self._editing_sample_id: Optional[str] = None
         self._entries: Tuple[SampleEntryViewModel, ...] = ()
-        self.on_sample_selected: Optional[Callable[[str], None]] = None
-        self.on_sample_edit_requested: Optional[Callable[[str], None]] = None
+        self.on_sample_selected: Optional[StringCallback] = None
+        self.on_sample_edit_requested: Optional[StringCallback] = None
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
-        self.on_remove_requested: Optional[Callable[[str], None]] = None
-        self.on_play_requested: Optional[Callable[[str], None]] = None
+        self.on_remove_requested: Optional[StringCallback] = None
+        self.on_play_requested: Optional[StringCallback] = None
         self.on_move_requested: Optional[Callable[[str, int], None]] = None
         self.on_rename_committed: Optional[Callable[[str, str], None]] = None
-        self.on_duplicate_requested: Optional[Callable[[str], None]] = None
+        self.on_duplicate_requested: Optional[StringCallback] = None
         self._lbl_instruments = language_manager[
             Page.SEQUENCER,
             Panel.INSTRUMENTS,

@@ -96,6 +96,7 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
 
@@ -115,10 +116,10 @@ class SequencerTabCoordinator:
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
-        on_edit_sample_requested: Callable[[str], None],
+        on_edit_sample_requested: StringCallback,
         on_tab_switch: Callable[[Tab], None],
-        on_export_module: Callable[[], None],
-        on_open_properties: Callable[[], None],
+        on_export_module: VoidCallback,
+        on_open_properties: VoidCallback,
     ) -> None:
         self._project_controller = project_controller
         self._history = history

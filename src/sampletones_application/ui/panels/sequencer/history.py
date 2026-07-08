@@ -35,6 +35,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailSegment,
 )
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 
 EntryWindow = Tuple[HistoryEntryViewModel, ...]
 
@@ -82,8 +83,8 @@ class GUISequencerHistoryPanel(GUIPanel):
         self._rows: Dict[int, _EntryRow] = {}
         self._table: Optional[int] = None
 
-        self.on_undo: Optional[Callable[[], None]] = None
-        self.on_redo: Optional[Callable[[], None]] = None
+        self.on_undo: Optional[VoidCallback] = None
+        self.on_redo: Optional[VoidCallback] = None
         self.on_jump_to: Optional[Callable[[int], None]] = None
 
         self._lbl_history = language_manager[

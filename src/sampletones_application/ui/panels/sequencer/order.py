@@ -49,6 +49,7 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.constants.symbols import MINUS, PLUS
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 
 OrderKey = Tuple[Optional[GeneratorName], int]
 
@@ -103,7 +104,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_move_requested: Optional[OnMoveCallback] = None
         self.on_set_order_entry: Optional[OnSetOrderEntryCallback] = None
         self.on_set_master_entry: Optional[OnSetMasterEntryCallback] = None
-        self.on_cell_selected: Optional[Callable[[], None]] = None
+        self.on_cell_selected: Optional[VoidCallback] = None
 
         self._lbl_order = language_manager[
             Page.SEQUENCER,
