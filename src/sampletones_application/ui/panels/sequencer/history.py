@@ -3,10 +3,15 @@ from typing import Any, Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import SequencerHistoryElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerHistoryElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import SUF_PANEL_RIGHT, TAG_GLOBAL_TAB_SEQUENCER
+from sampletones_application.constants.general import (
+    SUF_PANEL_RIGHT,
+    TAG_GLOBAL_TAB_SEQUENCER,
+)
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_REDO,
     TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
@@ -28,7 +33,10 @@ from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
 )
-from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.view_model.shared.history import (
+    HistoryDetailRole,
+    HistoryDetailSegment,
+)
 from sampletones_shared.types.application import Sender
 
 EntryWindow = Tuple[HistoryEntryViewModel, ...]
@@ -115,7 +123,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
-            height=self._layout.history.height,
+            height=-1,
             border=True,
         ):
             self._create_section_header(self._lbl_history)

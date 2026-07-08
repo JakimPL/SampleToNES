@@ -15,19 +15,19 @@ components:
         x: 0.0
       - type: color
         key: Button
-        value: .menu
+        value: .status_bar
       - type: color
         key: ButtonHovered
-        value: .menu
+        value: .status_bar
       - type: color
         key: ButtonActive
-        value: .menu
+        value: .status_bar
       - type: color
         key: FrameBg
-        value: .menu
+        value: .status_bar
       - type: color
         key: WindowBg
-        value: .menu
+        value: .status_bar
   - item_type: Button
     entries:
       - type: color

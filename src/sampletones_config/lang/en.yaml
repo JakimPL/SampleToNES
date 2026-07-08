@@ -404,6 +404,7 @@ sequencer.module.label.tempo: "Tempo"
 sequencer.module.label.speed: "Speed"
 sequencer.module.label.properties: "Project properties"
 sequencer.module.label.export_module: "Export as FamiTracker module"
+sequencer.module.label.project_section: "Project"
 sequencer.module.title.export_module: "Export FamiTracker module"
 
 # =============================================================================

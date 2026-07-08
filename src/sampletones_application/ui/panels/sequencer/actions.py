@@ -36,6 +36,12 @@ class GUISequencerActionsPanel(GUIPanel):
             TextType.LABEL,
             SequencerModuleElements.EXPORT_MODULE,
         ]
+        self._lbl_project = language_manager[
+            Page.SEQUENCER,
+            Panel.MODULE,
+            TextType.LABEL,
+            SequencerModuleElements.PROJECT_SECTION,
+        ]
 
         super().__init__(
             tag=TAG_SEQUENCER_MODULE_GROUP_ACTIONS,
@@ -50,6 +56,7 @@ class GUISequencerActionsPanel(GUIPanel):
             auto_resize_y=True,
             border=True,
         ):
+            self._create_section_header(self._lbl_project)
             GUIButton(
                 tag=TAG_SEQUENCER_MODULE_BUTTON_PROPERTIES,
                 label=self._lbl_properties,

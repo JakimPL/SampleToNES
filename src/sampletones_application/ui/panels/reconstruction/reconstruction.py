@@ -17,6 +17,10 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_THEME_CHANNEL_NOISE,
+    TAG_GLOBAL_THEME_CHANNEL_PULSE1,
+    TAG_GLOBAL_THEME_CHANNEL_PULSE2,
+    TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.reconstructions import (
@@ -54,7 +58,10 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip, show_tooltip
+from sampletones_application.utils.gui.tooltip import (
+    attach_disabled_tooltip,
+    show_tooltip,
+)
 from sampletones_application.view_model.reconstruction.add_to_sequencer import (
     AddToSequencerViewModel,
 )
@@ -72,6 +79,13 @@ from sampletones_shared.types.callback import (
     PathCallback,
     VoidCallback,
 )
+
+_GENERATOR_THEME_TAGS = {
+    GeneratorName.PULSE1: TAG_GLOBAL_THEME_CHANNEL_PULSE1,
+    GeneratorName.PULSE2: TAG_GLOBAL_THEME_CHANNEL_PULSE2,
+    GeneratorName.TRIANGLE: TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
+    GeneratorName.NOISE: TAG_GLOBAL_THEME_CHANNEL_NOISE,
+}
 
 
 class GUIReconstructionPanel(GUIPanel):
@@ -315,6 +329,10 @@ class GUIReconstructionPanel(GUIPanel):
             is_available = generator_name in view_model.available_generators
             dpg_configure_item(tag, enabled=is_available, default_value=is_available)
             dpg_set_value(tag, is_available)
+            if is_available:
+                ThemeRegistry.get(_GENERATOR_THEME_TAGS[generator_name]).bind_to_item(tag)
+            else:
+                dpg.bind_item_theme(tag, 0)
 
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE, enabled=view_model.audio_source_enabled

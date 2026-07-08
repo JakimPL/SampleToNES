@@ -33,7 +33,11 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
 )
-from sampletones_application.layout.general import GeneralLayout, TableColors, TablesLayout
+from sampletones_application.layout.general import (
+    GeneralLayout,
+    TableColors,
+    TablesLayout,
+)
 from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -65,7 +69,11 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
+from sampletones_core.utils.pitch_kind import (
+    PERIOD_VALUE_KIND,
+    PITCH_VALUE_KIND,
+    PitchValueKind,
+)
 from sampletones_shared.utils.arrays import clamp
 
 

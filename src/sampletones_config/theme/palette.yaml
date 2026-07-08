@@ -6,6 +6,7 @@ colors:
   surface: "#2c2a38"
   surface_alt: "#322f3e"
   menu: "#201e28"
+  status_bar: "#2a2735"
   popup: "#2c2a37"
   frame: "#383544"
   frame_hovered: "#424050"
