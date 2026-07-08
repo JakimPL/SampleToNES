@@ -96,11 +96,13 @@ class Palette(BaseModel, frozen=True):
 
         Raises:
             TypeError: when the palette file holds a value other than a mapping.
+            SystemError: when the file is not available.
         """
-        if not path.exists():
-            raise SystemError(f"Palette file '{path}' not found")
+        try:
+            raw = load_yaml(path)
+        except OSError as exception:
+            raise SystemError(f"Palette file '{path}' not found") from exception
 
-        raw = load_yaml(path)
         if not isinstance(raw, dict):
             raise TypeError(f"Palette file '{path}' must contain a mapping, got {type(raw)}")
 

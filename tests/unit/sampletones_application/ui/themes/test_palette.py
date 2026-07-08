@@ -2,7 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from sampletones_application.ui.themes.palette import Palette, PaletteReference, load_palette
+from sampletones_application.ui.themes.palette import (
+    Palette,
+    PaletteReference,
+)
 
 _PALETTE = """
 name: test
@@ -50,10 +53,11 @@ class TestPaletteResolution:
 
 class TestLoadPalette:
     def test_a_present_palette_file_is_loaded(self, tmp_path: Path) -> None:
-        (tmp_path / "palette.yaml").write_text(_PALETTE)
-        palette = load_palette(tmp_path)
+        palette_path = tmp_path / "palette.yaml"
+        palette_path.write_text(_PALETTE)
+        palette = Palette.load(palette_path)
         assert palette.resolve(PaletteReference(token="accent")) == (169, 127, 227, 255)
 
-    def test_a_missing_palette_file_yields_an_empty_palette(self, tmp_path: Path) -> None:
-        palette = load_palette(tmp_path)
-        assert palette.colors == {}
+    def test_a_missing_palette_raises_system_error(self, tmp_path: Path) -> None:
+        with pytest.raises(SystemError):
+            Palette.load(tmp_path / "missing")
