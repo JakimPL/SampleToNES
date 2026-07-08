@@ -10,6 +10,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_ORDER_BUTTON_ADD,
     TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
+    TAG_SEQUENCER_ORDER_CARD,
     TAG_SEQUENCER_ORDER_KEY_HANDLER,
     TAG_SEQUENCER_ORDER_PANEL,
     TAG_SEQUENCER_ORDER_TABLE,
@@ -167,12 +168,18 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def create_panel(self) -> None:
         self._create_entry_themes()
-        with dpg.group(tag=self.tag, parent=self.parent):
-            dpg.add_separator(parent=self.tag)
-            self._create_section_header(self._lbl_order, parent=self.tag)
-            self._create_button_row()
-            self._create_order_window()
-            self._register_handlers()
+        with dpg.child_window(
+            tag=TAG_SEQUENCER_ORDER_CARD,
+            parent=self.parent,
+            width=-1,
+            auto_resize_y=True,
+            border=True,
+        ):
+            self._create_section_header(self._lbl_order, parent=TAG_SEQUENCER_ORDER_CARD)
+            with dpg.group(tag=self.tag):
+                self._create_button_row()
+                self._create_order_window()
+                self._register_handlers()
 
     def _create_entry_themes(self) -> None:
         """Colours every pattern entry with one readable colour.

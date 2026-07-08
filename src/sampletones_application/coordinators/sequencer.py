@@ -25,14 +25,21 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
+    TAG_SEQUENCER_GRID_CARD_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_PANEL_PLAYER,
+    TAG_SEQUENCER_HISTORY_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
+    TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
+    TAG_SEQUENCER_MODULE_GROUP_ACTIONS,
+    TAG_SEQUENCER_MODULE_PANEL,
+    TAG_SEQUENCER_ORDER_CARD,
 )
 from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
 from sampletones_application.layout.config import LayoutConfig
@@ -210,6 +217,7 @@ class SequencerTabCoordinator:
         self._left_height = layout.general.panels.left.height
         self._instruments_width = layout.sequencer.samples_panel_width
         self._right_height = layout.general.panels.right.height
+        self._panel_gap = layout.general.panel_gap
 
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
             config_manager,
@@ -1051,51 +1059,88 @@ class SequencerTabCoordinator:
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
-            with dpg.table(
-                parent=TAG_GLOBAL_TAB_SEQUENCER,
-                header_row=False,
-                resizable=False,
-                policy=dpg.mvTable_SizingStretchProp,
-            ):
-                dpg.add_table_column(width_fixed=True)
-                dpg.add_table_column()
-                dpg.add_table_column(width_fixed=True)
+            with dpg.child_window(
+                width=-1,
+                height=-self._panel_gap,
+                border=False,
+                no_scrollbar=True,
+                no_scroll_with_mouse=True,
+            ) as ground_wrapper:
+                dpg.add_spacer(height=self._panel_gap)
+                with dpg.table(
+                    header_row=False,
+                    resizable=False,
+                    policy=dpg.mvTable_SizingStretchProp,
+                ):
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
+                    dpg.add_table_column(width_fixed=True)
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
+                    dpg.add_table_column()
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
+                    dpg.add_table_column(width_fixed=True)
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=self._panel_gap)
 
-                with dpg.table_row():
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
-                        width=self._left_width,
-                        height=self._left_height,
-                        no_scrollbar=True,
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._sequencer_browser_panel.create_panel()
+                    with dpg.table_row():
+                        dpg.add_spacer()
+                        with dpg.child_window(
+                            tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
+                            width=self._left_width,
+                            height=self._left_height,
+                            no_scrollbar=True,
+                            no_scroll_with_mouse=True,
+                        ):
+                            self._sequencer_browser_panel.create_panel()
 
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._sequencer_grid_panel.create_panel()
-                        self._player_panel.create_panel()
-                        self._song_player_logic.refresh_view()
-                        self._sequencer_actions_panel.create_panel()
-                        self._sequencer_order_panel.create_panel()
-                        self._sequencer_grid_panel.create_tracker()
+                        dpg.add_spacer()
 
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
-                        width=self._instruments_width,
-                        height=self._right_height,
-                        no_scrollbar=True,
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._sequencer_module_panel.create_panel()
-                        self._sequencer_samples_panel.create_panel()
-                        self._sequencer_history_panel.create_panel()
+                        with dpg.child_window(
+                            tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
+                            border=False,
+                            no_scroll_with_mouse=True,
+                        ):
+                            self._sequencer_grid_panel.create_panel()
+                            self._player_panel.create_panel()
+                            self._song_player_logic.refresh_view()
+                            dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
+                            self._sequencer_actions_panel.create_panel()
+                            dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
+                            self._sequencer_order_panel.create_panel()
+                            dpg.add_spacer(height=self._panel_gap, parent=TAG_SEQUENCER_GRID_PANEL)
+                            self._sequencer_grid_panel.create_tracker()
+
+                        dpg.add_spacer()
+
+                        with dpg.child_window(
+                            tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
+                            width=self._instruments_width,
+                            height=self._right_height,
+                            border=False,
+                            no_scrollbar=True,
+                            no_scroll_with_mouse=True,
+                        ):
+                            self._sequencer_module_panel.create_panel()
+                            dpg.add_spacer(height=self._panel_gap)
+                            self._sequencer_samples_panel.create_panel()
+                            dpg.add_spacer(height=self._panel_gap)
+                            self._sequencer_history_panel.create_panel()
+
+                        dpg.add_spacer()
 
             surface = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_SURFACE)
-            for suffix in (SUF_PANEL_LEFT, SUF_PANEL_CENTER, SUF_PANEL_RIGHT):
-                surface.bind_to_item(f"{TAG_GLOBAL_TAB_SEQUENCER}{suffix}")
+            ground = ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND)
+            ground.bind_to_item(ground_wrapper)
+            surface.bind_to_item(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}")
+            ground.bind_to_item(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}")
+            ground.bind_to_item(f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}")
+            for card_tag in (
+                TAG_SEQUENCER_MODULE_GROUP_ACTIONS,
+                TAG_SEQUENCER_ORDER_CARD,
+                TAG_SEQUENCER_GRID_CARD_TRACKER,
+                TAG_SEQUENCER_MODULE_PANEL,
+                TAG_SEQUENCER_INSTRUMENTS_PANEL,
+                TAG_SEQUENCER_HISTORY_PANEL,
+            ):
+                surface.bind_to_item(card_tag)
 
     @property
     def player(self) -> AudioPlayerProtocol:

@@ -43,8 +43,13 @@ class GUISequencerActionsPanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
-        with dpg.group(tag=self.tag, parent=self.parent):
-            dpg.add_separator(parent=self.tag)
+        with dpg.child_window(
+            tag=self.tag,
+            parent=self.parent,
+            width=-1,
+            auto_resize_y=True,
+            border=True,
+        ):
             GUIButton(
                 tag=TAG_SEQUENCER_MODULE_BUTTON_PROPERTIES,
                 label=self._lbl_properties,

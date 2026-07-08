@@ -116,9 +116,8 @@ class GUISequencerHistoryPanel(GUIPanel):
             tag=self.tag,
             parent=self.parent,
             height=self._layout.history.height,
-            border=False,
+            border=True,
         ):
-            dpg.add_separator()
             self._create_section_header(self._lbl_history)
             self._create_actions()
             dpg.add_child_window(

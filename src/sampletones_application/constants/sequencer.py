@@ -68,6 +68,12 @@ TAG_SEQUENCER_GRID_WINDOW_TRACKER = TagName(
     Widget.WINDOW,
     "tracker",
 )
+TAG_SEQUENCER_GRID_CARD_TRACKER = TagName(
+    Page.SEQUENCER,
+    Panel.GRID,
+    Widget.WINDOW,
+    "tracker_card",
+)
 TAG_SEQUENCER_MODULE_PANEL = TagName(
     Page.SEQUENCER,
     Panel.MODULE,
@@ -139,6 +145,12 @@ TAG_SEQUENCER_ORDER_PANEL = TagName(
     Panel.ORDER,
     Widget.PANEL,
     "order",
+)
+TAG_SEQUENCER_ORDER_CARD = TagName(
+    Page.SEQUENCER,
+    Panel.ORDER,
+    Widget.WINDOW,
+    "order_card",
 )
 TAG_SEQUENCER_ORDER_TABLE = TagName(
     Page.SEQUENCER,

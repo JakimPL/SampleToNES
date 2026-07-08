@@ -105,9 +105,12 @@ class GUISequencerModulePanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
-        with dpg.group(
+        with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
+            width=-1,
+            auto_resize_y=True,
+            border=True,
         ):
             self._create_module_options()
 

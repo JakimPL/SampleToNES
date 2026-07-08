@@ -153,7 +153,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             width=self.width,
             height=self.height,
             parent=self.parent,
-            border=False,
+            border=True,
         ):
             self._create_section_text()
             self._create_samples_table()

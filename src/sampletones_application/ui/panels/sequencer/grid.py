@@ -12,6 +12,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
+    TAG_SEQUENCER_GRID_CARD_TRACKER,
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_TABLE_TRACKER,
@@ -240,9 +241,15 @@ class GUISequencerGridPanel(GUIPanel):
         self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
 
     def _create_tracker_view(self) -> None:
-        dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=self.tag)
-        dpg.add_separator(parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
-        self._create_section_header(self._lbl_tracker, parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
+        dpg.add_child_window(
+            tag=TAG_SEQUENCER_GRID_CARD_TRACKER,
+            parent=self.tag,
+            width=-1,
+            height=-1,
+            border=True,
+        )
+        self._create_section_header(self._lbl_tracker, parent=TAG_SEQUENCER_GRID_CARD_TRACKER)
+        dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=TAG_SEQUENCER_GRID_CARD_TRACKER)
 
         with dpg.child_window(
             tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
