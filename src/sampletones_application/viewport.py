@@ -1,6 +1,6 @@
 import sys
 import tkinter
-from typing import List, Optional, Tuple
+from typing import Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
@@ -12,6 +12,8 @@ from sampletones_application.ui.resources.resources import get_icon_path
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_shared.application import SAMPLETONES_NAME
 from sampletones_shared.types.callback import VoidCallback
+
+_MAX_WINDOW_MONITOR_RATIO: Final[float] = 0.9
 
 
 class ViewportManager:
@@ -36,7 +38,7 @@ class ViewportManager:
 
         icon_file_path = get_icon_path(icon_filename)
 
-        window_x, window_y = self._clamp_position(
+        window_x, window_y, window_width, window_height = self._fit_window_to_monitor(
             self._session_manager.window_x,
             self._session_manager.window_y,
             self._layout.window.width,
@@ -45,8 +47,8 @@ class ViewportManager:
 
         dpg.create_viewport(
             title=SAMPLETONES_NAME,
-            width=self._layout.window.width,
-            height=self._layout.window.height,
+            width=window_width,
+            height=window_height,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
             x_pos=window_x,
@@ -101,21 +103,11 @@ class ViewportManager:
         )
 
     def disable_fullscreen(self) -> None:
-        window_width = self._session_manager.window_width
-        window_height = self._session_manager.window_height
-        window_x = self._session_manager.window_x
-        window_y = self._session_manager.window_y
-
-        monitor = self._monitor_for_window(window_x, window_y, window_width, window_height)
-        if monitor is not None:
-            window_width = min(window_width, int(monitor.width))
-            window_height = min(window_height, int(monitor.height))
-
-        window_x, window_y = self._clamp_position(
-            window_x,
-            window_y,
-            window_width,
-            window_height,
+        window_x, window_y, window_width, window_height = self._fit_window_to_monitor(
+            self._session_manager.window_x,
+            self._session_manager.window_y,
+            self._session_manager.window_width,
+            self._session_manager.window_height,
         )
 
         self._apply_window_state(
@@ -182,13 +174,19 @@ class ViewportManager:
     def _get_monitors() -> List[Monitor]:
         return get_monitors()
 
-    def _clamp_position(
+    def _fit_window_to_monitor(
         self,
         x: int,
         y: int,
         width: int,
         height: int,
-    ) -> Tuple[int, int]:
+    ) -> Tuple[int, int, int, int]:
+        """Cap the window to a fraction of its monitor and clamp it within reserved margins.
+
+        The size is limited to ``_MAX_WINDOW_MONITOR_RATIO`` of the monitor so the title bar and
+        side panels stay on screen once the decoration frame is added, and the position is nudged
+        inside the resulting margins so every edge lands within the monitor.
+        """
         monitor = self._monitor_for_window(x, y, width, height)
         if monitor is not None:
             screen_x = int(monitor.x)
@@ -200,10 +198,17 @@ class ViewportManager:
             screen_y = 0
             screen_w, screen_h = self._get_screen_dimensions()
 
-        clamped_x = max(screen_x, min(x, screen_x + screen_w - width))
-        clamped_y = max(screen_y, min(y, screen_y + screen_h - height))
+        usable_w = int(screen_w * _MAX_WINDOW_MONITOR_RATIO)
+        usable_h = int(screen_h * _MAX_WINDOW_MONITOR_RATIO)
+        fitted_width = min(width, usable_w)
+        fitted_height = min(height, usable_h)
 
-        return clamped_x, clamped_y
+        margin_x = (screen_w - usable_w) // 2
+        margin_y = (screen_h - usable_h) // 2
+        fitted_x = max(screen_x + margin_x, min(x, screen_x + screen_w - margin_x - fitted_width))
+        fitted_y = max(screen_y + margin_y, min(y, screen_y + screen_h - margin_y - fitted_height))
+
+        return fitted_x, fitted_y, fitted_width, fitted_height
 
     def _monitor_for_window(
         self,
