@@ -176,10 +176,6 @@ class GUIInstructionChoicePanel(GUIPanel):
                 callback=self._on_instruction_changed,
                 parent=self._item_handler_tag,
             )
-            dpg.add_item_edited_handler(
-                callback=self._on_instruction_changed,
-                parent=self._item_handler_tag,
-            )
 
     def _create_section_text(self) -> None:
         self._create_section_header(
