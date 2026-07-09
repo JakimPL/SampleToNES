@@ -15,10 +15,8 @@ from sampletones_application.constants.main import (
     TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
     TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
     TAG_MAIN_CONFIG_PANEL,
-    TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
 )
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -155,21 +153,15 @@ class GUIConfigPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_CONFIG_PANEL,
-            parent=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
             height=panel_height,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            parent=self.parent,
-            width=self.width,
-            height=self.height,
-            border=True,
-        ):
+        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
             self._create_section_text()
             self._create_audio_options()
+            dpg.add_separator()
             self._create_library_settings()
             self._create_tooltips()
 
@@ -198,11 +190,12 @@ class GUIConfigPanel(GUIPanel):
         return SPECTRUM_METHOD_BY_LABEL[label]
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(
+            self._lbl_section,
+            glyph=self._glyphs.headers.settings,
+        )
 
     def _create_audio_options(self) -> None:
-        dpg.add_separator()
         dpg.add_checkbox(
             label=self._lbl_normalize,
             default_value=self._view.normalize,
@@ -217,7 +210,6 @@ class GUIConfigPanel(GUIPanel):
         )
 
     def _create_library_settings(self) -> None:
-        dpg.add_separator()
         dpg.add_text(self._lbl_section_library)
         dpg.add_input_int(
             label=self._lbl_sample_rate,

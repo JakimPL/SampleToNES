@@ -8,8 +8,6 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_HANDLER_KEY,
     SUF_HANDLER_REGISTRY,
-    SUF_PANEL_CENTER,
-    TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
@@ -25,6 +23,7 @@ from sampletones_application.ui.elements.context_menu import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
@@ -32,6 +31,7 @@ from sampletones_application.ui.panels.sequencer import display as tracker_displ
 from sampletones_application.ui.panels.sequencer.columns import (
     DIVIDER_TABLE_COLUMN,
     SAMPLE_TABLE_COLUMN,
+    channel_color,
     tracker_table_column,
 )
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
@@ -43,6 +43,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.color import with_alpha_fraction
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -172,7 +173,6 @@ class GUISequencerGridPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
             height=-1,
         )
 
@@ -196,20 +196,10 @@ class GUISequencerGridPanel(GUIPanel):
         self._lbl_context_volume_up_coarse = label(SequencerGridElements.CONTEXT_VOLUME_UP_COARSE)
         self._lbl_context_volume_down_coarse = label(SequencerGridElements.CONTEXT_VOLUME_DOWN_COARSE)
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            width=self.width,
-            height=self.height,
-            parent=self.parent,
-            border=False,
-        ):
-            pass
-
-    def create_tracker(self) -> None:
         self._create_subcolumn_themes()
-        self._create_tracker_view()
+        self._create_tracker_view(parent)
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
@@ -237,73 +227,58 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
 
-    def _create_tracker_view(self) -> None:
-        dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=self.tag)
-        dpg.add_separator(parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
-        section_text = dpg.add_text(
-            self._lbl_tracker,
-            parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
-        )
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
-
-        with dpg.child_window(
-            tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
-            parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
-            width=0,
-            height=-1,
-        ):
-            with dpg.table(
-                tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
+    def _create_tracker_view(self, parent: str) -> None:
+        with card(parent, self.tag, width=-1, height=-1, auto_resize_y=False):
+            dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER)
+            with dpg.child_window(
+                tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
+                parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
+                border=False,
                 width=0,
-                header_row=True,
-                resizable=False,
-                borders_innerH=False,
-                borders_innerV=True,
-                borders_outerH=True,
-                borders_outerV=True,
-                scrollX=True,
-                scrollY=True,
-                row_background=True,
-                policy=dpg.mvTable_SizingFixedFit,
+                height=-1,
             ):
-                FontRegistry.bind_to_item(dpg.last_item(), Font.BOLD)
-                dpg.add_table_column(width_stretch=True)
-                dpg.add_table_column(
-                    label=self._lbl_col_row,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.row,
+                self._create_section_header(
+                    self._lbl_tracker,
+                    glyph=self._glyphs.headers.tracker,
                 )
-                dpg.add_table_column(
-                    label=self._lbl_col_sample,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.sample,
-                )
-                dpg.add_table_column(
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.divider,
-                    no_header_label=True,
-                )
-                dpg.add_table_column(
-                    label=self._lbl_col_pulse_1,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.generator,
-                )
-                dpg.add_table_column(
-                    label=self._lbl_col_pulse_2,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.generator,
-                )
-                dpg.add_table_column(
-                    label=self._lbl_col_triangle,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.generator,
-                )
-                dpg.add_table_column(
-                    label=self._lbl_col_noise,
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.generator,
-                )
-                dpg.add_table_column(width_stretch=True)
+                with dpg.table(
+                    tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                    width=0,
+                    header_row=True,
+                    resizable=False,
+                    borders_innerH=False,
+                    borders_innerV=True,
+                    borders_outerH=True,
+                    borders_outerV=True,
+                    scrollX=True,
+                    scrollY=True,
+                    row_background=True,
+                    policy=dpg.mvTable_SizingFixedFit,
+                ):
+                    FontRegistry.bind_to_item(dpg.last_item(), Font.BOLD)
+                    dpg.add_table_column(width_stretch=True)
+                    dpg.add_table_column(
+                        label=self._lbl_col_row,
+                        width_fixed=True,
+                        init_width_or_weight=self._layout.table_cells.row,
+                    )
+                    dpg.add_table_column(
+                        label=self._lbl_col_sample,
+                        width_fixed=True,
+                        init_width_or_weight=self._layout.table_cells.sample,
+                    )
+                    dpg.add_table_column(
+                        width_fixed=True,
+                        init_width_or_weight=self._layout.table_cells.divider,
+                        no_header_label=True,
+                    )
+                    for generator in GeneratorName.items():
+                        dpg.add_table_column(
+                            label=self._column_labels[generator],
+                            width_fixed=True,
+                            init_width_or_weight=self._layout.table_cells.generator,
+                        )
+                    dpg.add_table_column(width_stretch=True)
 
         self.pattern_theme.bind_to_item(TAG_SEQUENCER_GRID_TABLE_TRACKER)
 
@@ -330,6 +305,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self._highlight_sample_column()
+        self._tint_channel_columns()
         self._update_cursor()
         self._apply_playing_row_highlight()
 
@@ -354,13 +330,30 @@ class GUISequencerGridPanel(GUIPanel):
         dpg.highlight_table_column(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             SAMPLE_TABLE_COLUMN,
-            self._layout.colors.sample_column,
+            self._layout.colors.sample.column,
         )
         dpg.highlight_table_column(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             DIVIDER_TABLE_COLUMN,
-            self._layout.colors.sample_divider,
+            self._layout.colors.sample.divider,
         )
+
+    def _tint_channel_columns(self) -> None:
+        """Washes each channel's column with a faint tint of its identity colour.
+
+        Reapplied after each rebuild alongside the sample column so the tint survives
+        row replacement, giving the tracker the same per-channel identity the order
+        table carries in its row labels.
+        """
+        channels = self._layout.colors.channels
+        fraction = self._layout.tracker.channel_column_tint
+        for generator in GeneratorName.items():
+            tint = with_alpha_fraction(channel_color(channels, generator), fraction)
+            dpg.highlight_table_column(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                tracker_table_column(generator),
+                tint,
+            )
 
     def _compute_cell_values(
         self,

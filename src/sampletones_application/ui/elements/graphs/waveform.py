@@ -49,7 +49,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         layout: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
-        label: str = "",
     ):
         self._layout = layout
         self._status_bar = status_bar
@@ -91,17 +90,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             GraphElements.WAVEFORM_NAVIGATION,
         ]
 
-        _label = (
-            label
-            if label
-            else language_manager[
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.WAVEFORM_DISPLAY,
-            ]
-        )
-
         self.reconstruction_autoscale = True
         self._top_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
 
@@ -124,7 +112,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             parent,
             layout.dimensions.width,
             layout.dimensions.height,
-            _label,
+            "",
             (_min_x, _max_x),
             (_min_y, _max_y),
             layout.waveform.zoom_factor,

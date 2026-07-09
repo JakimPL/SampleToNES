@@ -6,4 +6,4 @@ components:
     entries:
       - type: color
         key: FrameBg
-        value: "#c0202064"
+        value: .input_invalid

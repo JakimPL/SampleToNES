@@ -140,6 +140,12 @@ TAG_SEQUENCER_ORDER_PANEL = TagName(
     Widget.PANEL,
     "order",
 )
+TAG_SEQUENCER_ORDER_CARD = TagName(
+    Page.SEQUENCER,
+    Panel.ORDER,
+    Widget.WINDOW,
+    "order_card",
+)
 TAG_SEQUENCER_ORDER_TABLE = TagName(
     Page.SEQUENCER,
     Panel.ORDER,
@@ -217,6 +223,14 @@ TAG_SEQUENCER_THEME_TABLE_PATTERN = TagName(
     Panel.IMPLICIT,
     Widget.THEME,
     "table_pattern",
+)
+
+
+TAG_SEQUENCER_THEME_TABLE_ORDER = TagName(
+    Page.SEQUENCER,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "table_order",
 )
 
 

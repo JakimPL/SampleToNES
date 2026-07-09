@@ -3,10 +3,11 @@ from typing import Any, Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import SequencerHistoryElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerHistoryElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import SUF_PANEL_RIGHT, TAG_GLOBAL_TAB_SEQUENCER
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_REDO,
     TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
@@ -20,6 +21,7 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.color import RGBA
@@ -28,8 +30,12 @@ from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
 )
-from sampletones_application.view_model.shared.history import HistoryDetailRole, HistoryDetailSegment
+from sampletones_application.view_model.shared.history import (
+    HistoryDetailRole,
+    HistoryDetailSegment,
+)
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 
 EntryWindow = Tuple[HistoryEntryViewModel, ...]
 
@@ -77,8 +83,8 @@ class GUISequencerHistoryPanel(GUIPanel):
         self._rows: Dict[int, _EntryRow] = {}
         self._table: Optional[int] = None
 
-        self.on_undo: Optional[Callable[[], None]] = None
-        self.on_redo: Optional[Callable[[], None]] = None
+        self.on_undo: Optional[VoidCallback] = None
+        self.on_redo: Optional[VoidCallback] = None
         self.on_jump_to: Optional[Callable[[int], None]] = None
 
         self._lbl_history = language_manager[
@@ -108,26 +114,24 @@ class GUISequencerHistoryPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_HISTORY_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
         )
 
-    def create_panel(self) -> None:
-        with dpg.child_window(
-            tag=self.tag,
-            parent=self.parent,
-            height=self._layout.history.height,
-            border=False,
-        ):
-            dpg.add_separator()
-            header = dpg.add_text(self._lbl_history)
-            FontRegistry.bind_to_item(header, Font.BOLD)
-            self._create_actions()
-            dpg.add_child_window(
-                tag=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
-                width=-1,
-                height=-1,
-                border=True,
+    def create_panel(self, parent: str) -> None:
+        with card(parent, self.tag, width=0, height=-1, auto_resize_y=False):
+            self._create_section_header(
+                self._lbl_history,
+                glyph=self._glyphs.headers.history,
             )
+            self._create_actions()
+            self._create_window_list()
+
+    def _create_window_list(self) -> None:
+        dpg.add_child_window(
+            tag=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
+            width=-1,
+            height=-1,
+            border=True,
+        )
 
     def _create_actions(self) -> None:
         with dpg.group(tag=TAG_SEQUENCER_HISTORY_GROUP_ACTIONS):
@@ -295,10 +299,10 @@ class GUISequencerHistoryPanel(GUIPanel):
         self._add_text(
             entry.label,
             parent=group,
-            color=self._layout.colors.history_future if entry.is_future else None,
+            color=self._layout.colors.history.future if entry.is_future else None,
         )
         for segment in entry.detail_segments:
-            color = self._layout.colors.history_future if entry.is_future else self._role_color(segment.role)
+            color = self._layout.colors.history.future if entry.is_future else self._role_color(segment.role)
             self._add_text(segment.text, parent=group, color=color)
 
     def _add_text(self, value: str, *, parent: int, color: Optional[RGBA]) -> None:
@@ -307,7 +311,7 @@ class GUISequencerHistoryPanel(GUIPanel):
 
     def _role_color(self, role: HistoryDetailRole) -> RGBA:
         colors = self._layout.colors
-        roles = colors.history_roles
+        roles = colors.history.roles
         text = colors.text
         match role:
             case HistoryDetailRole.FRAME:

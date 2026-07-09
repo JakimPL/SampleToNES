@@ -13,8 +13,8 @@ from sampletones_application.categories.elements.instructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_INSTRUCTIONS,
+    TAG_GLOBAL_THEME_PRIMARY_BUTTON,
+    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
@@ -43,6 +43,7 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
@@ -176,7 +177,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         super().__init__(
             self._library_logic.tree,
             tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
@@ -209,13 +209,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         super()._setup_handlers()
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_section_text()
@@ -226,11 +226,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._create_detail_tooltip(TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE)
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_libraries)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(
+            self._lbl_libraries,
+            glyph=self._glyphs.headers.instruction_data,
+        )
 
     def _create_library_status(self) -> None:
-        dpg.add_separator()
         text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
         FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
 
@@ -242,6 +243,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     label=self._lbl_refresh,
                     width=-1,
                     callback=self._on_refresh_clicked,
+                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
                 )
                 with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE):
                     GUIButton(
@@ -250,6 +252,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                         width=-1,
                         callback=self._on_generate_clicked,
                         font=Font.BOLD,
+                        theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
                     )
                 attach_disabled_tooltip(
                     TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE,

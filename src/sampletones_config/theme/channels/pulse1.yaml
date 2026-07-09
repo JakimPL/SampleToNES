@@ -1,0 +1,12 @@
+name: channel_pulse1
+tag: global.theme.channel_pulse1
+
+components:
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: CheckMark
+        value: .channel_pulse1
+      - type: color
+        key: Text
+        value: .channel_pulse1_soft

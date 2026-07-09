@@ -3,13 +3,12 @@ from typing import Any, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import TreeElements
-from sampletones_application.categories.elements.sequencer import SequencerBrowserElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerBrowserElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_SEQUENCER,
-)
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
     TAG_SEQUENCER_BROWSER_GROUP_CONTROLS,
@@ -21,14 +20,13 @@ from sampletones_application.constants.sequencer import (
 from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
@@ -77,7 +75,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
         super().__init__(
             tree=tree,
             tag=TAG_SEQUENCER_BROWSER_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
             tree_tag=TAG_SEQUENCER_BROWSER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
@@ -92,17 +89,18 @@ class GUISequencerBrowserPanel(GUITreePanel):
             colors=colors,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_section_text()
             self._create_buttons()
+            dpg.add_separator()
             self._create_tree_window()
 
         self._create_detail_tooltip(TAG_SEQUENCER_BROWSER_WINDOW_TREE)
@@ -128,21 +126,22 @@ class GUISequencerBrowserPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_reconstructions)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(
+            self._lbl_reconstructions,
+            glyph=self._glyphs.headers.reconstruction,
+        )
 
     def _create_buttons(self) -> None:
-        dpg.add_separator()
         with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
                 label=self._lbl_refresh,
                 width=-1,
                 callback=self.rebuild_tree,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
 
     def _create_tree_window(self) -> None:
-        dpg.add_separator()
         self.create_search(self.tag)
         with dpg.child_window(tag=TAG_SEQUENCER_BROWSER_WINDOW_TREE):
             with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_TREE):

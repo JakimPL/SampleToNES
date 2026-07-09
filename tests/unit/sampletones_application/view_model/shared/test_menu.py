@@ -64,6 +64,8 @@ class TestUndoRedoEnablement:
             play_or_pause_enabled=False,
             stop_enabled=False,
             autoplay=False,
+            follow_playback=False,
+            loop_song=False,
             fullscreen=False,
             advanced_settings=False,
         )
@@ -90,6 +92,8 @@ class TestSaveEnablementIndependentOfLoaded:
             play_or_pause_enabled=False,
             stop_enabled=False,
             autoplay=False,
+            follow_playback=False,
+            loop_song=False,
             fullscreen=False,
             advanced_settings=False,
         )

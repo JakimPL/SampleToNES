@@ -87,13 +87,6 @@ class ApplicationStateManager:
         self.state.advanced_settings = not self.state.advanced_settings
         return self.state.advanced_settings
 
-    def toggle_autoplay(self) -> bool:
-        self.state.autoplay = not self.state.autoplay
-        return self.state.autoplay
-
-    def set_follow_playback(self, value: bool) -> None:
-        self.state.follow_playback = value
-
     def load_current_tab(self) -> Tab:
         return self.state.current.tab
 
@@ -154,11 +147,3 @@ class ApplicationStateManager:
     @property
     def advanced_settings(self) -> bool:
         return self.state.advanced_settings
-
-    @property
-    def autoplay(self) -> bool:
-        return self.state.autoplay
-
-    @property
-    def follow_playback(self) -> bool:
-        return self.state.follow_playback

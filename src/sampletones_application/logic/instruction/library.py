@@ -46,6 +46,7 @@ from sampletones_shared.exceptions import (
     WindowNotAvailableError,
 )
 from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
@@ -67,18 +68,18 @@ class LibraryLogic(CallbackMixin):
         self._eta_estimator: Optional[ETAEstimator] = None
         self._status_lock = threading.Lock()
 
-        self._lock_function: Optional[Callable[[], None]] = None
-        self._unlock_function: Optional[Callable[[], None]] = None
+        self._lock_function: Optional[VoidCallback] = None
+        self._unlock_function: Optional[VoidCallback] = None
         self._is_locked_function: Optional[Callable[[], bool]] = None
 
-        self.on_rebuild_tree_needed: Optional[Callable[[], None]] = None
-        self.on_generation_state_changed: Optional[Callable[[], None]] = None
+        self.on_rebuild_tree_needed: Optional[VoidCallback] = None
+        self.on_generation_state_changed: Optional[VoidCallback] = None
         self.on_view_changed: Optional[Callable[[LibraryPanelViewModel], None]] = None
         self.on_instruction_loaded: Optional[OnLoadInstructionCallback] = None
         self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
-        self.on_generation_completed: Optional[Callable[[], None]] = None
+        self.on_generation_completed: Optional[VoidCallback] = None
         self.on_generation_error: Optional[Callable[[Exception], None]] = None
-        self.on_generation_cancelled: Optional[Callable[[], None]] = None
+        self.on_generation_cancelled: Optional[VoidCallback] = None
         self.on_load_file_not_found: Optional[Callable[[Path, str], None]] = None
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
@@ -213,8 +214,8 @@ class LibraryLogic(CallbackMixin):
 
     def configure_lock(
         self,
-        lock_function: Callable[[], None],
-        unlock_function: Callable[[], None],
+        lock_function: VoidCallback,
+        unlock_function: VoidCallback,
         is_locked_function: Callable[[], bool],
     ) -> None:
         self._lock_function = lock_function

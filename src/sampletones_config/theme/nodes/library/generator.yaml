@@ -6,4 +6,4 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#d2e8d2"
+        value: .library_generator

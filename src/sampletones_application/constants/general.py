@@ -85,11 +85,83 @@ TAG_GLOBAL_THEME_CONVERTER = TagName(
     Widget.THEME,
     "converter",
 )
+TAG_GLOBAL_THEME_PRIMARY_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "primary_button",
+)
+TAG_GLOBAL_THEME_SECONDARY_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "secondary_button",
+)
+TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "section_header",
+)
+TAG_GLOBAL_THEME_TREE_WINDOW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "tree_window",
+)
+TAG_GLOBAL_THEME_PANEL_GROUND = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "panel_ground",
+)
+TAG_GLOBAL_THEME_PANEL_SURFACE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "panel_surface",
+)
+TAG_GLOBAL_THEME_PLAYER_TOOLBAR = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "player_toolbar",
+)
+TAG_GLOBAL_THEME_CHANNEL_PULSE1 = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse1",
+)
+TAG_GLOBAL_THEME_CHANNEL_PULSE2 = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse2",
+)
+TAG_GLOBAL_THEME_CHANNEL_TRIANGLE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_triangle",
+)
+TAG_GLOBAL_THEME_CHANNEL_NOISE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_noise",
+)
 TAG_GLOBAL_THEME_DIALOG = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.THEME,
     "dialog",
+)
+TAG_GLOBAL_THEME_DIALOG_WINDOW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "dialog_window",
 )
 TAG_GLOBAL_THEME_TABLE = TagName(
     Page.GLOBAL,
@@ -420,6 +492,18 @@ TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY = TagName(
     Panel.IMPLICIT,
     Widget.MENU,
     "item_playback_autoplay",
+)
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_follow_playback",
+)
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_loop_song",
 )
 TAG_GLOBAL_TEXT_MENU_FPS = TagName(
     Page.GLOBAL,

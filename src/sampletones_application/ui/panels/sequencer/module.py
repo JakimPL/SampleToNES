@@ -3,14 +3,12 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import StatusElements
-from sampletones_application.categories.elements.sequencer import SequencerModuleElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerModuleElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_HANDLER_REGISTRY,
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_TAB_SEQUENCER,
-)
+from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
     TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
@@ -20,17 +18,21 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_PANEL,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
-from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
+from sampletones_application.view_model.sequencer.settings import (
+    SequencerSettingsViewModel,
+)
 from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
-from sampletones_shared.constants.project import MAX_ROWS_PER_PATTERN, MIN_ROWS_PER_PATTERN
+from sampletones_shared.constants.project import (
+    MAX_ROWS_PER_PATTERN,
+    MIN_ROWS_PER_PATTERN,
+)
 from sampletones_shared.types.application import Sender
 
 
@@ -103,21 +105,17 @@ class GUISequencerModulePanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_MODULE_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
         )
 
-    def create_panel(self) -> None:
-        with dpg.group(
-            tag=self.tag,
-            parent=self.parent,
-        ):
+    def create_panel(self, parent: str) -> None:
+        with card(parent, self.tag):
+            self._create_section_header(
+                self._lbl_module_options,
+                glyph=self._glyphs.headers.settings,
+            )
             self._create_module_options()
 
     def _create_module_options(self) -> None:
-        section_text = dpg.add_text(self._lbl_module_options)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
-        dpg.add_separator()
-
         settings = self._initial_settings
         with dpg.group(tag=TAG_SEQUENCER_MODULE_GROUP_OPTIONS):
             dpg.add_input_int(

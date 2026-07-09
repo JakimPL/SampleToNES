@@ -1,18 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
 
-TAG_MAIN_PANEL = TagName(
-    Page.MAIN,
-    Panel.IMPLICIT,
-    Widget.PANEL,
-    "",
-)
-TAG_MAIN_PANEL_SETTINGS = TagName(
-    Page.MAIN,
-    Panel.IMPLICIT,
-    Widget.PANEL,
-    "settings",
-)
 TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
@@ -240,6 +228,24 @@ TAG_MAIN_CONVERTER_TOOLTIP_CONVERT = TagName(
     Panel.CONVERTER,
     Widget.TOOLTIP,
     "convert",
+)
+TAG_MAIN_CONVERTER_WINDOW_SUMMARY = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "summary",
+)
+TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "summary",
+)
+TAG_MAIN_CONVERTER_HINT_SUMMARY = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TEXT,
+    "summary_hint",
 )
 
 PRE_MAIN_RECONSTRUCTOR_GENERATOR = "gen."

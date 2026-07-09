@@ -6,4 +6,4 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#b4b4b4"
+        value: .file_muted

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from sampletones_application.layout.glyphs import GlyphLayout
 from sampletones_application.utils.color import RGBA
 
 Padding = tuple[int, int]
@@ -13,24 +14,31 @@ class WindowLayout(BaseModel, frozen=True):
     fullscreen: bool
 
 
-class SidePanelLayout(BaseModel, frozen=True):
+class ColumnLayout(BaseModel, frozen=True):
+    """Dimensions of one fixed column in a tab layout; a ``height`` of -1 fills the tab vertically."""
+
     width: int
     height: int
 
 
-class AuxPanelLayout(BaseModel, frozen=True):
-    width: int
+class ColumnsLayout(BaseModel, frozen=True):
+    """The fixed-column geometry the tab coordinators lay their panels out on.
 
+    ``side`` sizes the uniform left column — the browser, library, or explorer —
+    that every tab carries, so the side panel stays the same size across tabs. Each
+    ``*_right`` column sizes one tab's right column, whose width follows the content
+    it holds.
+    """
 
-class PanelsLayout(BaseModel, frozen=True):
-    left: SidePanelLayout
-    right: SidePanelLayout
-    instructions_details: AuxPanelLayout
-    reconstructions_instruments: AuxPanelLayout
+    side: ColumnLayout
+    instructions_right: ColumnLayout
+    reconstructions_right: ColumnLayout
+    sequencer_right: ColumnLayout
 
 
 class StatusBarLayout(BaseModel, frozen=True):
     height: int
+    reserved_margin: int
     frame_rounding: int
     frame_padding: Padding
 
@@ -103,6 +111,10 @@ class CaretLayout(BaseModel, frozen=True):
     width_padding: int
     fill: RGBA
     border: RGBA
+
+
+class SectionHeaderLayout(BaseModel, frozen=True):
+    glyph: GlyphLayout
 
 
 class TextColors(BaseModel, frozen=True):
@@ -188,7 +200,8 @@ class GeneralColors(BaseModel, frozen=True):
 
 class GeneralLayout(BaseModel, frozen=True):
     window: WindowLayout
-    panels: PanelsLayout
+    panel_gap: int
+    columns: ColumnsLayout
     status_bar: StatusBarLayout
     fonts: FontsLayout
     dialogs: DialogsLayout
@@ -198,4 +211,5 @@ class GeneralLayout(BaseModel, frozen=True):
     pitch_stepper: PitchStepperLayout
     menu: MenuLayout
     caret: CaretLayout
+    section_header: SectionHeaderLayout
     colors: GeneralColors

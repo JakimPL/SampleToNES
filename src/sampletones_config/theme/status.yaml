@@ -6,45 +6,45 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#dcdcdc"
+        value: .text
       - type: color
         key: TextDisabled
-        value: "#dcdcdc"
+        value: .text
       - type: style
         key: ButtonTextAlign
         x: 0.0
       - type: color
         key: Button
-        value: "#323232"
+        value: .status_bar
       - type: color
         key: ButtonHovered
-        value: "#323232"
+        value: .status_bar
       - type: color
         key: ButtonActive
-        value: "#323232"
+        value: .status_bar
       - type: color
         key: FrameBg
-        value: "#323232"
+        value: .status_bar
       - type: color
         key: WindowBg
-        value: "#323232"
+        value: .status_bar
   - item_type: Button
     entries:
       - type: color
         key: Text
-        value: "#dcdcdc"
+        value: .text
       - type: color
         key: TextDisabled
-        value: "#dcdcdc"
+        value: .text
   - item_type: Button
     enabled: false
     entries:
       - type: color
         key: Text
-        value: "#dcdcdc"
+        value: .text
       - type: color
         key: TextDisabled
-        value: "#dcdcdc"
+        value: .text
       - type: style
         key: ButtonTextAlign
         x: 0.0

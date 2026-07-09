@@ -7,10 +7,7 @@ from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.main import ExplorerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_MAIN,
-)
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
     TAG_MAIN_EXPLORER_BUTTON_REFRESH,
@@ -23,14 +20,13 @@ from sampletones_application.constants.main import (
 from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
@@ -169,7 +165,6 @@ class GUIExplorerPanel(GUITreePanel):
         super().__init__(
             tree=self._explorer_logic.tree,
             tag=TAG_MAIN_EXPLORER_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_MAIN_EXPLORER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
@@ -184,17 +179,18 @@ class GUIExplorerPanel(GUITreePanel):
             colors=colors,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_section_text()
             self._create_buttons()
+            dpg.add_separator()
             self._create_tree_window()
 
         self._create_detail_tooltip(TAG_MAIN_EXPLORER_WINDOW_TREE)
@@ -220,11 +216,12 @@ class GUIExplorerPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(
+            self._lbl_section,
+            glyph=self._glyphs.headers.filesystem,
+        )
 
     def _create_buttons(self) -> None:
-        dpg.add_separator()
         with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_REFRESH,
@@ -232,6 +229,7 @@ class GUIExplorerPanel(GUITreePanel):
                 parent=self.tag,
                 width=-1,
                 callback=self.refresh,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
@@ -242,7 +240,6 @@ class GUIExplorerPanel(GUITreePanel):
             )
 
     def _create_tree_window(self) -> None:
-        dpg.add_separator()
         self.create_search(self.tag)
         with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE):
             with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE):

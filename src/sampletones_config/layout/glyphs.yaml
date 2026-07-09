@@ -1,0 +1,27 @@
+common:
+  tick: "▍"
+  favorite: "★"
+
+headers:
+  waveform: "∿"
+  spectrum: "⌇"
+  reconstruction: "≈"
+  converter: "⇄"
+  settings: "⚙"
+  advanced: "✦"
+  filesystem: "▤"
+  instruction_data: "≣"
+  details: "✎"
+  parameters: "▦"
+  source: "♪"
+  instruments: "♬"
+  project: "◈"
+  samples: "♫"
+  tracker: "▦"
+  order: "≣"
+  history: "↺"
+
+player:
+  play: "▶"
+  pause: "▮▮"
+  stop: "■"

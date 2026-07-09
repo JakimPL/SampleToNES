@@ -7,13 +7,14 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.sequencer import (
-    TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_ORDER_BUTTON_ADD,
     TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
+    TAG_SEQUENCER_ORDER_CARD,
     TAG_SEQUENCER_ORDER_KEY_HANDLER,
     TAG_SEQUENCER_ORDER_PANEL,
     TAG_SEQUENCER_ORDER_TABLE,
     TAG_SEQUENCER_ORDER_WINDOW,
+    TAG_SEQUENCER_THEME_TABLE_ORDER,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.context_menu import (
@@ -22,9 +23,11 @@ from sampletones_application.ui.elements.context_menu import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
+from sampletones_application.ui.panels.sequencer.columns import channel_color
 from sampletones_application.ui.panels.sequencer.order_input import (
     INDEX_DIGITS,
     ORDER_ROWS,
@@ -32,6 +35,8 @@ from sampletones_application.ui.panels.sequencer.order_input import (
     OrderInputState,
 )
 from sampletones_application.ui.themes.inline import create_selectable_text_theme
+from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.color import with_alpha_fraction
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -44,6 +49,7 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.constants.symbols import MINUS, PLUS
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 
 OrderKey = Tuple[Optional[GeneratorName], int]
 
@@ -87,6 +93,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._playing_position: Optional[int] = None
         self._cell_handler_tag = f"{TAG_SEQUENCER_ORDER_TABLE}{SUF_HANDLER_REGISTRY}"
         self._entry_theme: int = 0
+        self._table_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_ORDER)
 
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
         self.on_remove_requested: Optional[OnRemoveCallback] = None
@@ -97,7 +104,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_move_requested: Optional[OnMoveCallback] = None
         self.on_set_order_entry: Optional[OnSetOrderEntryCallback] = None
         self.on_set_master_entry: Optional[OnSetMasterEntryCallback] = None
-        self.on_cell_selected: Optional[Callable[[], None]] = None
+        self.on_cell_selected: Optional[VoidCallback] = None
 
         self._lbl_order = language_manager[
             Page.SEQUENCER,
@@ -157,18 +164,20 @@ class GUISequencerOrderPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_ORDER_PANEL,
-            parent=TAG_SEQUENCER_GRID_PANEL,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._create_entry_themes()
-        with dpg.group(tag=self.tag, parent=self.parent):
-            dpg.add_separator(parent=self.tag)
-            header_text = dpg.add_text(self._lbl_order, parent=self.tag)
-            FontRegistry.bind_to_item(header_text, Font.BOLD)
-            self._create_button_row()
-            self._create_order_window()
-            self._register_handlers()
+        with card(parent, TAG_SEQUENCER_ORDER_CARD):
+            self._create_section_header(
+                self._lbl_order,
+                glyph=self._glyphs.headers.order,
+                parent=TAG_SEQUENCER_ORDER_CARD,
+            )
+            with dpg.group(tag=self.tag):
+                self._create_button_row()
+                self._create_order_window()
+                self._register_handlers()
 
     def _create_entry_themes(self) -> None:
         """Colours every pattern entry with one readable colour.
@@ -300,6 +309,7 @@ class GUISequencerOrderPanel(GUIPanel):
             policy=dpg.mvTable_SizingFixedFit,
         )
         FontRegistry.bind_to_item(TAG_SEQUENCER_ORDER_TABLE, Font.BOLD)
+        self._table_theme.bind_to_item(TAG_SEQUENCER_ORDER_TABLE)
 
         dpg.add_table_column(
             label="",
@@ -320,20 +330,18 @@ class GUISequencerOrderPanel(GUIPanel):
             if generator is None:
                 self._build_divider_row(position_count)
 
-        self._apply_column_backgrounds(position_count)
+        self._apply_column_backgrounds()
         self._highlight_master_row(position_count)
+        self._tint_channel_rows()
 
-    def _apply_column_backgrounds(self, position_count: int) -> None:
-        """Tints the label column like the header row, and the position columns in
-        two shades — the transposed analog of the tracker grid's alternating rows,
-        reusing the same dark-blue shades."""
-        dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, 0, self._layout.colors.order_label)
-        for position in range(position_count):
-            self._highlight_column_shade(position)
+    def _apply_column_backgrounds(self) -> None:
+        """Tints the label column like the header row.
 
-    def _highlight_column_shade(self, position: int) -> None:
-        shade = self._layout.colors.order_column_alternate if position % 2 == 1 else self._layout.colors.order_column
-        dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, shade)
+        The position columns carry no static shade, so the per-channel row tints read
+        cleanly beneath the position and cursor highlights — the transposed analog of
+        the tracker grid, whose channel column tints sit beneath its cursor.
+        """
+        dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, 0, self._layout.colors.order.label)
 
     def _highlight_master_row(self, position_count: int) -> None:
         """Tints the master row and the rule below it, matching the tracker grid's
@@ -348,7 +356,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 TAG_SEQUENCER_ORDER_TABLE,
                 DIVIDER_TABLE_ROW,
                 column,
-                color=self._layout.colors.order_master_divider,
+                color=self._layout.colors.order.master_divider,
             )
 
     def _highlight_master_cell_at(self, column: int) -> None:
@@ -356,16 +364,37 @@ class GUISequencerOrderPanel(GUIPanel):
             TAG_SEQUENCER_ORDER_TABLE,
             MASTER_TABLE_ROW,
             column,
-            color=self._layout.colors.order_master,
+            color=self._layout.colors.order.master,
         )
+
+    def _tint_channel_rows(self) -> None:
+        """Washes each channel row with a light tint of its identity colour.
+
+        Uses a row highlight, not per-cell tints, so it sits on a layer beneath the
+        position and cursor highlights — those keep working and a cleared cursor cell
+        falls back to the row tint instead of a bare patch. This is the transposed
+        analog of the tracker grid's per-channel column tint, sharing the fraction.
+        """
+        channels = self._layout.colors.channels
+        fraction = self._layout.tracker.channel_column_tint
+        for generator in GeneratorName.items():
+            tint = with_alpha_fraction(
+                channel_color(channels, generator),
+                fraction,
+            )
+            dpg.highlight_table_row(
+                TAG_SEQUENCER_ORDER_TABLE,
+                self._table_row(generator),
+                tint,
+            )
 
     def _apply_column_highlight(self, position: int, *, focused: bool) -> None:
         if focused:
             color = self._layout.colors.pattern_highlight
         elif position == self._playing_position:
-            color = self._layout.colors.order_column_playing
+            color = self._layout.colors.order.column_playing
         else:
-            color = self._layout.colors.order_column_current
+            color = self._layout.colors.order.column_current
 
         dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, color)
         self._highlighted_column = position
@@ -383,7 +412,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _clear_column_highlight(self) -> None:
         if self._highlighted_column is not None:
-            self._highlight_column_shade(self._highlighted_column)
+            dpg.unhighlight_table_column(TAG_SEQUENCER_ORDER_TABLE, self._highlighted_column + 1)
             self._highlighted_column = None
 
     def _build_row(
@@ -398,7 +427,7 @@ class GUISequencerOrderPanel(GUIPanel):
         label_text = dpg.add_text(
             self._row_labels[generator],
             parent=label_cell,
-            color=self._layout.colors.text.order,
+            color=self._layout.colors.label,
         )
         FontRegistry.bind_to_item(label_text, Font.BOLD_SMALL)
 

@@ -6,11 +6,6 @@ class PanelWithHeight(BaseModel, frozen=True):
     height: int
 
 
-class ExplorerLayout(BaseModel, frozen=True):
-    width: int
-    height: int
-
-
 class ConfigLayout(BaseModel, frozen=True):
     height: int
 
@@ -30,7 +25,6 @@ class AdvancedLayout(BaseModel, frozen=True):
 
 
 class MainLayout(BaseModel, frozen=True):
-    explorer: ExplorerLayout
     config: ConfigLayout
     converter: ConverterLayout
     reconstructor: ReconstructorLayout

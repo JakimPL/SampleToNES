@@ -63,6 +63,7 @@ class ConverterElements(AbstractElement):
     STATUS_CANCELLED = "status_cancelled"
     STATUS_INPUT_LABEL = "status_input_label"
     STATUS_OUTPUT_LABEL = "status_output_label"
+    STATUS_EMPTY_HINT = "status_empty_hint"
     PROGRESS_DIALOG = "progress_dialog"
     PROGRESS_TEMPLATE = "progress_template"
     COMPLETE_TEMPLATE = "complete_template"

@@ -3,14 +3,12 @@ from typing import Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import ContextElements
-from sampletones_application.categories.elements.sequencer import SequencerInstrumentsElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerInstrumentsElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_HANDLER_REGISTRY,
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_TAB_SEQUENCER,
-)
+from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
     TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER,
@@ -20,9 +18,13 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.ui.elements.context_menu import add_play_menu_item, context_menu
+from sampletones_application.ui.elements.context_menu import (
+    add_play_menu_item,
+    context_menu,
+)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
@@ -35,6 +37,7 @@ from sampletones_application.view_model.sequencer.samples import (
 )
 from sampletones_core.utils.display import display_id, display_sample_label
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import StringCallback
 
 
 class GUISequencerSamplesPanel(GUIPanel):
@@ -53,14 +56,14 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_row: Optional[int] = None
         self._editing_sample_id: Optional[str] = None
         self._entries: Tuple[SampleEntryViewModel, ...] = ()
-        self.on_sample_selected: Optional[Callable[[str], None]] = None
-        self.on_sample_edit_requested: Optional[Callable[[str], None]] = None
+        self.on_sample_selected: Optional[StringCallback] = None
+        self.on_sample_edit_requested: Optional[StringCallback] = None
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
-        self.on_remove_requested: Optional[Callable[[str], None]] = None
-        self.on_play_requested: Optional[Callable[[str], None]] = None
+        self.on_remove_requested: Optional[StringCallback] = None
+        self.on_play_requested: Optional[StringCallback] = None
         self.on_move_requested: Optional[Callable[[str, int], None]] = None
         self.on_rename_committed: Optional[Callable[[str, str], None]] = None
-        self.on_duplicate_requested: Optional[Callable[[str], None]] = None
+        self.on_duplicate_requested: Optional[StringCallback] = None
         self._lbl_instruments = language_manager[
             Page.SEQUENCER,
             Panel.INSTRUMENTS,
@@ -142,19 +145,12 @@ class GUISequencerSamplesPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_SEQUENCER_INSTRUMENTS_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
             width=-1,
             height=-(layout.history.height + layout.history.margin),
         )
 
-    def create_panel(self) -> None:
-        with dpg.child_window(
-            tag=self.tag,
-            width=self.width,
-            height=self.height,
-            parent=self.parent,
-            border=False,
-        ):
+    def create_panel(self, parent: str) -> None:
+        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
             self._create_section_text()
             self._create_samples_table()
 
@@ -178,11 +174,12 @@ class GUISequencerSamplesPanel(GUIPanel):
             dpg.add_key_press_handler(callback=self._on_key_pressed)
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_instruments)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(
+            self._lbl_instruments,
+            glyph=self._glyphs.headers.samples,
+        )
 
     def _create_samples_table(self) -> None:
-        dpg.add_separator()
         with dpg.child_window(
             tag=TAG_SEQUENCER_INSTRUMENTS_WINDOW,
             border=False,
@@ -200,22 +197,23 @@ class GUISequencerSamplesPanel(GUIPanel):
                 borders_outerH=True,
                 borders_outerV=True,
                 scrollY=True,
+                row_background=True,
                 policy=dpg.mvTable_SizingFixedFit,
             ):
                 dpg.add_table_column(
                     label=self._lbl_column_id,
                     width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.instrument_id,
+                    init_width_or_weight=self._layout.table_cells.instrument.id,
                 )
                 dpg.add_table_column(
                     label=self._lbl_column_name,
                     width_stretch=True,
-                    init_width_or_weight=self._layout.table_cells.instrument_name,
+                    init_width_or_weight=self._layout.table_cells.instrument.name,
                 )
                 dpg.add_table_column(
                     label=self._lbl_column_loop,
                     width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.instrument_loop,
+                    init_width_or_weight=self._layout.table_cells.instrument.loop,
                 )
         ThemeRegistry.get(TAG_SEQUENCER_INSTRUMENTS_THEME_ROW).bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
 

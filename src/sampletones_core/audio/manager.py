@@ -16,6 +16,7 @@ from sampletones_core.constants.audio import (
 )
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.locales import to_utf8
 
@@ -96,7 +97,7 @@ class AudioDeviceManager(CallbackMixin):
 
         self._position_callback: Optional[Callable[[int], None]] = None
         self.on_playback_error: Optional[OnPlaybackErrorCallback] = None
-        self.on_acquire_output: Optional[Callable[[], None]] = None
+        self.on_acquire_output: Optional[VoidCallback] = None
         self.external_output_priority: Optional[Callable[[], Optional[int]]] = None
 
         self.refresh_devices()

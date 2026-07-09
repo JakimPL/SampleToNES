@@ -26,6 +26,8 @@ class ShortcutId(Enum):
     PLAY_FROM_START = "PlayFromStart"
     STOP = "Stop"
     TOGGLE_AUTOPLAY = "ToggleAutoplay"
+    TOGGLE_FOLLOW_PLAYBACK = "ToggleFollowPlayback"
+    TOGGLE_LOOP_SONG = "ToggleLoopSong"
     AUDIO_SETTINGS = "AudioSettings"
     TOGGLE_ADVANCED_SETTINGS = "ToggleAdvancedSettings"
     TOGGLE_FULLSCREEN = "ToggleFullscreen"

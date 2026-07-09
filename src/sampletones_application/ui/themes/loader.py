@@ -15,7 +15,12 @@ from sampletones_application.ui.themes.items import (
     ThemeEntryKey,
     ThemeItems,
 )
+from sampletones_application.ui.themes.palette import (
+    Palette,
+    PaletteReference,
+)
 from sampletones_application.ui.themes.spec import (
+    ColorSource,
     ThemeColorEntrySpec,
     ThemeEntrySpec,
     ThemeSpec,
@@ -28,6 +33,7 @@ from sampletones_application.ui.themes.style import (
 )
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_core.paths import EXT_FILE_YAML
+from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.serialization import load_yaml
 
 _BASE_THEME_NAME: Final[str] = "default"
@@ -41,8 +47,9 @@ class ThemeLoader:
     describes both item states and stays authoritative wherever it is bound.
     """
 
-    def __init__(self, theme_directory: Path) -> None:
+    def __init__(self, theme_directory: Path, palette_path: Path) -> None:
         self._directory = theme_directory
+        self._palette = Palette.load(palette_path)
 
     def load_all(self) -> List[Theme]:
         specs = self._load_specs()
@@ -86,6 +93,7 @@ class ThemeLoader:
         """
         if spec.extends is not None:
             return spec.extends
+
         if spec.name != _BASE_THEME_NAME:
             return _BASE_THEME_NAME
 
@@ -95,7 +103,7 @@ class ThemeLoader:
     def _resolve_color_key(key: str, category: str) -> int:
         color_map = PLOTS_COLOR_MAP if category == "Plots" else CORE_COLOR_MAP
         if key not in color_map:
-            raise ValueError(f"Unknown color key {key!r} for category {category!r}. Valid keys: {sorted(color_map)}")
+            raise KeyError(f"Unknown color key {key!r} for category {category!r}. Valid keys: {sorted(color_map)}")
 
         return color_map[key]
 
@@ -103,40 +111,45 @@ class ThemeLoader:
     def _resolve_style_key(key: str, category: str) -> int:
         style_map = PLOTS_STYLE_MAP if category == "Plots" else CORE_STYLE_MAP
         if key not in style_map:
-            raise ValueError(f"Unknown style key {key!r} for category {category!r}. Valid keys: {sorted(style_map)}")
+            raise KeyError(f"Unknown style key {key!r} for category {category!r}. Valid keys: {sorted(style_map)}")
 
         return style_map[key]
 
     @staticmethod
     def _resolve_item_type(item_type: str) -> int:
         if item_type not in ITEM_TYPE_MAP:
-            raise ValueError(f"Unknown item_type {item_type!r}. Valid types: {sorted(ITEM_TYPE_MAP)}")
+            raise KeyError(f"Unknown item_type {item_type!r}. Valid types: {sorted(ITEM_TYPE_MAP)}")
 
         return ITEM_TYPE_MAP[item_type]
 
     @staticmethod
     def _resolve_category(category: str) -> int:
         if category not in CATEGORY_MAP:
-            raise ValueError(f"Unknown category {category!r}. Valid categories: {sorted(CATEGORY_MAP)}")
+            raise KeyError(f"Unknown category {category!r}. Valid categories: {sorted(CATEGORY_MAP)}")
 
         return CATEGORY_MAP[category]
 
-    @classmethod
-    def _entry_to_runtime(cls, entry: ThemeEntrySpec) -> ThemeValue:
-        category = cls._resolve_category(entry.category)
+    def _entry_to_runtime(self, entry: ThemeEntrySpec) -> ThemeValue:
+        category = self._resolve_category(entry.category)
         if isinstance(entry, ThemeColorEntrySpec):
             return ThemeColor(
-                key=cls._resolve_color_key(entry.key, entry.category),
-                color=entry.value,
+                key=self._resolve_color_key(entry.key, entry.category),
+                color=self._resolve_color(entry.value),
                 category=category,
             )
 
         return ThemeStyle(
-            key=cls._resolve_style_key(entry.key, entry.category),
+            key=self._resolve_style_key(entry.key, entry.category),
             x=entry.x,
             y=entry.y,
             category=category,
         )
+
+    def _resolve_color(self, value: ColorSource) -> ColorRGBA:
+        if isinstance(value, PaletteReference):
+            return self._palette.resolve(value)
+
+        return value
 
     @classmethod
     def _entry_key(
@@ -145,6 +158,7 @@ class ThemeLoader:
         enabled: bool,
         entry: ThemeEntrySpec,
     ) -> ThemeEntryKey:
+        is_style = not isinstance(entry, ThemeColorEntrySpec)
         if isinstance(entry, ThemeColorEntrySpec):
             key = cls._resolve_color_key(entry.key, entry.category)
         else:
@@ -155,22 +169,22 @@ class ThemeLoader:
             enabled=enabled,
             key=key,
             category=cls._resolve_category(entry.category),
+            is_style=is_style,
         )
 
-    @classmethod
-    def _spec_to_entries(cls, spec: ThemeSpec) -> ThemeEntries:
+    def _spec_to_entries(self, spec: ThemeSpec) -> ThemeEntries:
         entries: ThemeEntries = {}
         for component in spec.components:
-            item_type = cls._resolve_item_type(component.item_type)
+            item_type = self._resolve_item_type(component.item_type)
             parameter = ThemeParameter(
                 item_type=item_type,
                 enabled_state=component.enabled,
             )
             for entry in component.entries:
-                entry_key = cls._entry_key(item_type, component.enabled, entry)
+                entry_key = self._entry_key(item_type, component.enabled, entry)
                 entries[entry_key] = ResolvedThemeEntry(
                     parameter=parameter,
-                    value=cls._entry_to_runtime(entry),
+                    value=self._entry_to_runtime(entry),
                 )
 
         return entries
@@ -201,6 +215,7 @@ class ThemeLoader:
                 enabled=False,
                 key=entry_key.key,
                 category=entry_key.category,
+                is_style=entry_key.is_style,
             )
             if target in entries:
                 continue

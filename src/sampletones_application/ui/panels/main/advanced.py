@@ -19,12 +19,11 @@ from sampletones_application.constants.main import (
     TAG_MAIN_ADVANCED_PANEL,
     TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
     TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
-    TAG_MAIN_PANEL_SETTINGS,
 )
 from sampletones_application.layout.general import PathColors
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -125,19 +124,12 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_ADVANCED_PANEL,
-            parent=TAG_MAIN_PANEL_SETTINGS,
             height=panel_height,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            parent=self.parent,
-            width=self.width,
-            height=self.height,
-            border=True,
-        ):
+        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
             self._create_section_text()
             self._create_workers_settings()
             self._create_path_settings()
@@ -158,8 +150,10 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.call(self.on_advanced_settings_changed, advanced_update)
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(
+            self._lbl_section,
+            glyph=self._glyphs.headers.advanced,
+        )
 
     @table_wrapper(columns=2, height=-1)
     def _create_path_settings(self) -> None:
@@ -167,7 +161,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._create_output_directory_selection()
 
     def _create_workers_settings(self) -> None:
-        dpg.add_separator()
         dpg.add_input_int(
             label=self._lbl_max_workers,
             default_value=self._max_workers,

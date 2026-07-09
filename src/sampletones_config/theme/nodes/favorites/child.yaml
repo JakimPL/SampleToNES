@@ -6,9 +6,9 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#e7dbb7"
+        value: .favorite_child
   - item_type: Selectable
     entries:
       - type: color
         key: Text
-        value: "#e7dbb7"
+        value: .favorite_child

@@ -115,8 +115,10 @@ Two mechanisms keep the codebase aligned with this document.
 **Purpose:** Constructs and updates the DearPyGui widget tree. Panels own their DPG tags and the widget subtree rooted at `self.tag`.
 
 **Contracts:**
-- A panel creates its entire widget tree in one call to `create_panel()` and calls DPG afterwards only in `update_view()`, `update_*` methods, and event callbacks wired by DPG itself.
+- A panel creates its entire widget tree in one call to `create_panel(parent)`, rooting its subtree at `self.tag` inside the coordinator-injected `parent`, and calls DPG afterwards only in `update_view()`, `update_*` methods, and event callbacks wired by DPG itself.
 - Panels hold only visual state: their tag, their child widget references, and layout dimensions. Domain objects stay in logic; panels receive projections of them.
+- A panel never encodes its own placement: it does not compose a column tag (`SUF_PANEL_*`) as its parent, and it never hosts a sibling panel. Tab layout is the coordinator's (see the Coordinators reference). Where a section is a card, one card is one panel is one module; the coordinator declares which cards a tab contains and how they are arranged.
+- Structural depth themes are bound only by the layout primitives, never by a panel or coordinator. The `TabColumns` scaffold binds each column its declared depth theme — recessed GROUND for a column hosting a stack of floating cards, raised SURFACE for a full-height column that is itself a single docked surface (a file tree, an instrument list) — and the `card()` context manager binds SURFACE to a card. Panels and coordinators bind only semantic/content themes (a per-generator checkbox tint, the player toolbar), never GROUND or SURFACE.
 - Every mutation from outside goes through `update_view(view_model)` or through a direct DPG call (`dpg_configure_item`, `dpg_set_value`) triggered by an `update_*` method.
 - Callback wiring from coordinators sets public `on_x` attributes *after* construction; panels must therefore tolerate `None` hooks until wiring is complete.
 - A widget whose rendering needs synchronous per-item queries declares a consumer-owned `Protocol` of exactly that surface (e.g. `TreeLogicProtocol`, through which the file trees query per-node favorite and playability state); the owning coordinator constructs the real logic object and injects it, and the panel types against the Protocol. Hooks and view models remain the default — the Protocol is the exception for query-heavy widgets where projecting a whole tree per repaint would be disproportionate.
@@ -127,6 +129,7 @@ Two mechanisms keep the codebase aligned with this document.
 | Path | Role |
 |------|------|
 | `ui/elements/` | Reusable low-level widgets: `GUIPanel` (the panel base class), `GUIWindow` (modal variant), buttons, tables, graphs, trees, fonts, the status bar |
+| `ui/elements/layout/` | Reusable layout primitives: `TabColumns` (the tab column scaffold) and the `card()` context manager, driven declaratively by tab coordinators |
 | `ui/panels/` | Domain-level composite panels, organised by feature area |
 | `ui/themes/` | DPG themes and per-widget style helpers |
 | `ui/resources/` | Icons and image resources loaded at startup |
@@ -205,6 +208,8 @@ There are two coordinator kinds:
 *Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations) or `PlaybackRouter` (routes play/pause/stop to the active tab's player).
 
 *Tab coordinators* own everything for one tab: they instantiate its panels, logic objects, and tab-scoped services, wire their callbacks together, and provide `create_tab()` — the single method that builds the DPG widget tree for that tab. Tab coordinators present a narrow public API of intent-level methods (`set_input_path`, `display_reconstruction`, …) and keep their panels and logic objects private.
+
+`create_tab()` is the sole authority for the tab's layout: it declares the column and card arrangement through the shared `ui/elements/layout` primitives (`TabColumns`, `card()`) and injects each panel's parent container via `create_panel(parent)`. It builds widgets only — initial view population (pushing the first view models, refreshing trees) runs afterwards from the coordinator's post-build initialisation, invoked once the whole tree exists, rather than inside `create_tab()`.
 
 **Contracts:**
 - A coordinator touches DPG only on a narrow, closed surface: inside `create_tab()`; when opening a file dialog and inside its callback decorated with `@file_dialog_handler`; and when building dialog content inside a closure passed to `DialogsRenderer.show_modal`. A dialog that must wait for the next frame is deferred through `FrameCallbackManager`. All other presentation goes through `DialogsRenderer`.

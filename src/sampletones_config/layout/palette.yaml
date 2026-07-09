@@ -1,0 +1,115 @@
+name: studio
+
+colors:
+  # surfaces and neutrals
+  ground: "#1c1b26"
+  surface: "#2b2a37"
+  surface_alt: "#313040"
+  menu: "#20283a"
+  status_bar: "#20283a"
+  popup: "#222130"
+  frame: "#514c68"
+  frame_hovered: "#424050"
+  frame_active: "#4b475b"
+  border: "#464a5e"
+  separator: "#3e3b4c"
+  plot_background: "#201d2a"
+  well: "#1f2636"
+
+  # tables
+  table_header: "#37324a"
+  table_row: "#232130"
+  table_row_alt: "#2d2a3c"
+  table_border: "#494560"
+
+  # cool secondary (functional chrome: input focus, secondary emphasis)
+  cool: "#7fa8ea"
+  cool_hover: "#94b8f0"
+  cool_active: "#6690d4"
+  cool_muted: "#40506e"
+
+  # accent
+  accent: "#b98af3"
+  accent_hover: "#a180ce"
+  accent_active: "#7b629e"
+  accent_muted: "#685386"
+  on_accent: "#17131f"
+
+  # buttons
+  primary: "#8469aa"
+  primary_hover: "#9d8cbc"
+  primary_active: "#786694"
+  primary_muted: "#676074"
+  on_primary: "#f1f1f5"
+
+  secondary: "#303747"
+  secondary_hover: "#3a4358"
+  secondary_active: "#46516a"
+  secondary_disabled: "#2b303d"
+
+  # dialog windows (elevated surface + accent border/title)
+  dialog_surface: "#313547"
+  dialog_title: "#34405e"
+
+  # channels: pulses orange, triangle blue, noise grey
+  channel_pulse1: "#f09256"
+  channel_pulse2: "#f2d15f"
+  channel_triangle: "#8cc1ed"
+  channel_noise: "#bbb8c2"
+  channel_pulse1_soft: "#e7c6aa"
+  channel_pulse2_soft: "#dfd6a8"
+  channel_triangle_soft: "#b9cedf"
+  channel_noise_soft: "#cbcace"
+
+  # tabs
+  tab: "#24283a"
+  tab_hovered: "#2f3a56"
+  tab_active: "#3c4a72"
+
+  # selection (tree, list, menu highlight)
+  selection: "#332e46"
+  selection_hovered: "#3e3757"
+  selection_active: "#48406a"
+
+  # scrollbar
+  scrollbar_hovered: "#4a4759"
+
+  # buttons
+  button: "#414c66"
+  button_hovered: "#4f5c7c"
+  button_active: "#5f6e94"
+  button_disabled: "#363a48"
+
+  # player
+  player_surface: "#1b2333"
+  player_border: "#4a90d9"
+
+  # text
+  text: "#e7e7f0"
+  text_muted: "#9497ab"
+  text_disabled: "#767a8e"
+  text_trace: "#c0c0c0"
+
+  # emphasis and overlays
+  white: "#ffffff"
+  transparent: "#00000000"
+  border_strong: "#565f78"
+  input_invalid: "#c0504a64"
+
+  # plot lines
+  plot_zero_line: "#c8c8c8"
+
+  # file-tree nodes
+  file_wave: "#64c8ff"
+  file_library: "#96ff96"
+  file_reconstruction: "#b4b4ff"
+  file_muted: "#b4b4b4"
+
+  # favourites
+  favorite: "#ffd76e"
+  favorite_child: "#e7dbb7"
+
+  # instruction-library nodes
+  library_generator: "#d2e8d2"
+  library_group: "#d2e8e8"
+  library_instruction: "#d2d2d2"

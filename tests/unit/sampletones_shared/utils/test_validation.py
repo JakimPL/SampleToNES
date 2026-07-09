@@ -193,8 +193,8 @@ class TestRecoveryOnRealModels:
         assert ("audio", "volume") in recovered.dropped
 
     def test_application_state_keeps_flags_when_window_invalid(self) -> None:
-        raw = {"window": {"width": "huge"}, "autoplay": False}
+        raw = {"window": {"width": "huge"}, "advanced_settings": True}
         recovered = validate_with_recovery(ApplicationState, raw)
-        assert recovered.model.autoplay is False
+        assert recovered.model.advanced_settings is True
         assert recovered.model.window.width == ApplicationState().window.width
         assert ("window", "width") in recovered.dropped

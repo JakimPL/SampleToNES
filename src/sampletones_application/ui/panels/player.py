@@ -5,15 +5,24 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import PlayerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_PLAYER_TOOLBAR
 from sampletones_application.constants.player import (
+    SUF_PLAYER_CARD,
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
     SUF_PLAYER_POSITION,
     SUF_PLAYER_STOP,
+    SUF_PLAYER_TOOLTIP,
 )
 from sampletones_application.layout.player import PlayerLayout
-from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.panels.player_controls import (
+    centered_card,
+    create_transport_controls,
+)
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_item_label,
@@ -27,15 +36,16 @@ class GUIAudioPlayerPanel(GUIPanel):
     def __init__(
         self,
         tag: str,
-        parent: str,
         *,
         layout: PlayerLayout,
         language_manager: LanguageManager,
     ) -> None:
+        self.card_tag = f"{tag}{SUF_PLAYER_CARD}"
         self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
         self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
         self.stop_button_tag = f"{tag}{SUF_PLAYER_STOP}"
         self.position_text_tag = f"{tag}{SUF_PLAYER_POSITION}"
+        self.pause_tooltip_tag = f"{self.pause_button_tag}{SUF_PLAYER_TOOLTIP}"
 
         self.on_play: Optional[VoidCallback] = None
         self.on_pause_or_resume: Optional[VoidCallback] = None
@@ -85,58 +95,31 @@ class GUIAudioPlayerPanel(GUIPanel):
             PlayerElements.NO_AUDIO_LOADED,
         ]
 
-        super().__init__(
-            tag=tag,
-            parent=parent,
-            width=layout.panel.width,
-            height=layout.panel.height,
-        )
+        super().__init__(tag=tag)
 
-    def create_panel(self) -> None:
-        with dpg.child_window(
-            tag=self.tag,
-            parent=self.parent,
-            width=self.width,
-            height=self.height,
-            no_scroll_with_mouse=True,
-            no_scrollbar=True,
-            border=False,
-        ):
+    def create_panel(self, parent: str) -> None:
+        with centered_card(parent, self.tag, self.card_tag, self._layout.card.width):
             self._create_controls()
             dpg.add_text(self._msg_no_audio, tag=self.position_text_tag)
+            FontRegistry.bind_to_item(self.position_text_tag, Font.REGULAR_SMALL)
+
+        ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_TOOLBAR).bind_to_item(self.card_tag)
 
     def _create_controls(self) -> None:
-        with dpg.table(
-            header_row=False,
-            policy=dpg.mvTable_SizingStretchSame,
-            resizable=False,
-            width=-1,
-            height=self._layout.controls_table.height,
-        ):
-            for _ in range(3):
-                dpg.add_table_column()
-            with dpg.table_row():
-                GUIButton(
-                    tag=self.play_button_tag,
-                    label=self._lbl_play,
-                    callback=self._on_play_clicked,
-                    enabled=False,
-                    width=-1,
-                )
-                GUIButton(
-                    tag=self.pause_button_tag,
-                    label=self._lbl_pause,
-                    callback=self._on_pause_or_resume_clicked,
-                    enabled=False,
-                    width=-1,
-                )
-                GUIButton(
-                    tag=self.stop_button_tag,
-                    label=self._lbl_stop,
-                    callback=self._on_stop_clicked,
-                    enabled=False,
-                    width=-1,
-                )
+        create_transport_controls(
+            self.card_tag,
+            layout=self._layout,
+            glyphs=self._glyphs.player,
+            play_tag=self.play_button_tag,
+            pause_tag=self.pause_button_tag,
+            stop_tag=self.stop_button_tag,
+            play_tooltip=self._lbl_play,
+            pause_tooltip=self._lbl_pause,
+            stop_tooltip=self._lbl_stop,
+            on_play=self._on_play_clicked,
+            on_pause_or_resume=self._on_pause_or_resume_clicked,
+            on_stop=self._on_stop_clicked,
+        )
 
     def update_view(self, view_model: PlayerViewModel) -> None:
         if not view_model.has_audio:
@@ -154,14 +137,19 @@ class GUIAudioPlayerPanel(GUIPanel):
         dpg_configure_item(self.stop_button_tag, enabled=True)
 
         if view_model.is_paused:
-            dpg_set_item_label(self.pause_button_tag, self._lbl_resume)
+            dpg_set_item_label(self.pause_button_tag, self._glyphs.player.play)
+            dpg_set_value(self.pause_tooltip_tag, self._lbl_resume)
         else:
-            dpg_set_item_label(self.pause_button_tag, self._lbl_pause)
+            dpg_set_item_label(self.pause_button_tag, self._glyphs.player.pause)
+            dpg_set_value(self.pause_tooltip_tag, self._lbl_pause)
 
-        position_text = (
-            f"{self._lbl_position}{view_model.current_position}" f"/{view_model.total_samples}{self._lbl_samples}"
-        )
+        position_text = self._get_position_text(view_model)
         dpg_set_value(self.position_text_tag, position_text)
+
+    def _get_position_text(self, view_model: PlayerViewModel) -> str:
+        position = f"{self._lbl_position}{view_model.current_position}"
+        total = f"{view_model.total_samples}{self._lbl_samples}"
+        return f"{position}/{total}"
 
     def _on_play_clicked(self) -> None:
         self.call(self.on_play)

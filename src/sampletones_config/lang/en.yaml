@@ -172,6 +172,8 @@ global.menu.label.item_playback_resume: "Resume"
 global.menu.label.item_playback_play_from_start: "Play from start"
 global.menu.label.item_playback_stop: "Stop"
 global.menu.label.item_playback_autoplay: "Autoplay"
+global.menu.label.item_playback_follow_playback: "Follow playback"
+global.menu.label.item_playback_loop_song: "Loop song"
 global.menu.label.item_playback_audio_settings: "Audio settings..."
 global.menu.label.group_view: "View"
 global.menu.label.item_view_show_advanced_settings: "Show advanced settings"
@@ -212,11 +214,9 @@ global.player.message.audio_playback_error: "Audio playback error."
 # =============================================================================
 global.graph.label.waveform_original: "Original"
 global.graph.label.waveform_reconstruction: "Reconstruction"
-global.graph.label.waveform_display: "Waveform display"
 global.graph.label.waveform_time_axis: "Time (samples)"
 global.graph.label.waveform_amplitude_axis: "Amplitude"
 global.graph.label.waveform_sample_name: "Sample"
-global.graph.label.spectrum_display: "Spectrum display"
 global.graph.label.spectrum_x_axis: ""
 global.graph.label.spectrum_frequency_axis: "Frequency"
 global.graph.label.spectrum_name: "Spectrum"
@@ -291,6 +291,7 @@ main.converter.message.status_cancelling: "Aborting the conversion..."
 main.converter.message.status_cancelled: "Conversion cancelled."
 main.converter.message.status_input_label: "Input:"
 main.converter.message.status_output_label: "Output:"
+main.converter.message.status_empty_hint: "Select a WAV file or a folder in the browser to begin."
 main.converter.title.progress_dialog: "Reconstruction progress"
 main.converter.template.progress_template: "Progress: {}/{} files"
 main.converter.template.complete_template: "Reconstruction complete. Total error: {:.4f}"
@@ -326,7 +327,7 @@ reconstructions.browser.template.incompatible_version_template: "Incompatible re
 # =============================================================================
 # Reconstructions tab — Reconstruction panel
 # =============================================================================
-reconstructions.reconstruction.label.audio_source_label: "Play audio source:"
+reconstructions.reconstruction.label.audio_source_label: "Source"
 reconstructions.reconstruction.label.autoscale_checkbox: "Autoscale"
 reconstructions.reconstruction.label.export_wav_button: "Export reconstruction to WAV"
 reconstructions.reconstruction.label.locate_audio_button: "Locate original audio"
@@ -336,7 +337,7 @@ reconstructions.reconstruction.label.path_not_found: "not found"
 reconstructions.reconstruction.label.path_not_applicable: "N/A"
 reconstructions.reconstruction.label.original_audio_radio: "Original audio"
 reconstructions.reconstruction.label.reconstruction_radio: "Reconstruction"
-reconstructions.reconstruction.label.waveform_label: "Reconstruction waveform"
+reconstructions.reconstruction.label.waveform_label: "Waveform"
 reconstructions.reconstruction.tooltip.autoscale_tooltip: "Include reconstruction's amplification coefficient and auto-scale waveforms accordingly."
 reconstructions.reconstruction.tooltip.already_in_sequencer_tooltip: "This reconstruction is already part of the Sequencer as a sample. Edits here update that sample directly."
 reconstructions.reconstruction.tooltip.locate_audio_tooltip: "This reconstruction has no original audio path recorded."
@@ -391,8 +392,7 @@ sequencer.browser.title.load_reconstruction_dialog: "Load reconstruction as inst
 # =============================================================================
 sequencer.player.message.no_song_loaded: "No song loaded."
 sequencer.player.message.playback_error: "Playback error: {error}"
-sequencer.player.template.position: "Frame {frame} | Row {row}"
-sequencer.player.label.follow_playback: "Follow playback"
+sequencer.player.template.position: "Position {position} | Row {row}"
 
 # =============================================================================
 # Sequencer tab — Module
@@ -405,6 +405,7 @@ sequencer.module.label.tempo: "Tempo"
 sequencer.module.label.speed: "Speed"
 sequencer.module.label.properties: "Project properties"
 sequencer.module.label.export_module: "Export as FamiTracker module"
+sequencer.module.label.project_section: "Project"
 sequencer.module.title.export_module: "Export FamiTracker module"
 
 # =============================================================================
@@ -547,14 +548,14 @@ instructions.library.label.regenerate_confirmation_ok: "Regenerate"
 # =============================================================================
 # Instructions tab — Instruction panel
 # =============================================================================
-instructions.instruction.label.waveform_label: "Instruction waveform"
-instructions.instruction.label.spectrum_label: "Instruction spectrum"
+instructions.instruction.label.waveform_label: "Waveform"
+instructions.instruction.label.spectrum_label: "Spectrum"
 
 # =============================================================================
 # Instructions tab — Details
 # =============================================================================
 instructions.details.label.details_text: "Instruction details"
-instructions.details.label.parameters_text: "Parameters"
+instructions.details.label.parameters_text: "Instruction"
 instructions.details.label.general_text: "General"
 instructions.details.label.cell_nes_frequency: "NES frequency"
 instructions.details.label.cell_generator: "Generator"

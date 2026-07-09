@@ -1,0 +1,12 @@
+name: channel_triangle
+tag: global.theme.channel_triangle
+
+components:
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: CheckMark
+        value: .channel_triangle
+      - type: color
+        key: Text
+        value: .channel_triangle_soft

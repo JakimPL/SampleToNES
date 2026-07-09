@@ -68,3 +68,25 @@ class ApplicationConfigManager:
     @property
     def favorites(self) -> Set[Path]:
         return self.config.favorites.paths
+
+    @property
+    def autoplay(self) -> bool:
+        return self.config.playback.autoplay
+
+    def toggle_autoplay(self) -> bool:
+        self.config.playback.autoplay = not self.config.playback.autoplay
+        return self.config.playback.autoplay
+
+    @property
+    def follow_playback(self) -> bool:
+        return self.config.playback.follow_playback
+
+    def set_follow_playback(self, value: bool) -> None:
+        self.config.playback.follow_playback = value
+
+    @property
+    def loop_song(self) -> bool:
+        return self.config.playback.loop_song
+
+    def set_loop_song(self, value: bool) -> None:
+        self.config.playback.loop_song = value

@@ -10,14 +10,22 @@ class OrderLayout(BaseModel, frozen=True):
     master_divider_height: int
 
 
+class InstrumentColumnWidths(BaseModel, frozen=True):
+    """Widths of the three sub-columns that make up an instrument row: its id, its
+    name, and its loop marker. They only mean anything as a set, so they live together.
+    """
+
+    id: int
+    name: int
+    loop: int
+
+
 class SequencerTableCells(BaseModel, frozen=True):
     row: int
     sample: int
     divider: int
     generator: int
-    instrument_id: int
-    instrument_name: int
-    instrument_loop: int
+    instrument: InstrumentColumnWidths
 
 
 class TempoLayout(BaseModel, frozen=True):
@@ -75,25 +83,63 @@ class TrackerLayout(BaseModel, frozen=True):
     row_height: int
     page_size: int
     subcolumn_widths: SubcolumnWidths
+    channel_column_tint: float
+
+
+class ChannelColors(BaseModel, frozen=True):
+    """Per-channel identity colours shared by the order table and the tracker grid.
+
+    The order table paints each channel's row label in its colour; the tracker grid
+    tints each channel's column background with the same colour at a low alpha, so a
+    channel keeps one identity across both views.
+    """
+
+    pulse1: RGBA
+    pulse2: RGBA
+    triangle: RGBA
+    noise: RGBA
+
+
+class OrderColors(BaseModel, frozen=True):
+    """Colours specific to the order table: the row-label column, the master row and
+    the divider below it, and the per-column highlights for the current and playing
+    positions.
+    """
+
+    label: RGBA
+    master: RGBA
+    master_divider: RGBA
+    column_current: RGBA
+    column_playing: RGBA
+
+
+class SampleColors(BaseModel, frozen=True):
+    """Colours marking the tracker's sample column and the divider beside it."""
+
+    column: RGBA
+    divider: RGBA
+
+
+class HistoryColors(BaseModel, frozen=True):
+    """Colours for the history detail: the dimmed tint of future (redoable) entries
+    and the per-role token palette.
+    """
+
+    future: RGBA
+    roles: HistoryRoleColors
 
 
 class SequencerColors(BaseModel, frozen=True):
     pattern_highlight: RGBA
     cell_cursor: RGBA
     cursor_row: RGBA
-    sample_column: RGBA
-    sample_divider: RGBA
-    order_label: RGBA
-    order_master: RGBA
-    order_master_divider: RGBA
-    order_column: RGBA
-    order_column_alternate: RGBA
-    order_column_current: RGBA
-    order_column_playing: RGBA
     playback_row: RGBA
-    history_future: RGBA
-    history_roles: HistoryRoleColors
+    label: RGBA
+    order: OrderColors
+    sample: SampleColors
+    history: HistoryColors
     text: TrackerColors
+    channels: ChannelColors
 
 
 class HistoryLayout(BaseModel, frozen=True):
@@ -104,7 +150,6 @@ class HistoryLayout(BaseModel, frozen=True):
 
 
 class SequencerLayout(BaseModel, frozen=True):
-    samples_panel_width: int
     cell_padding: Padding
     order: OrderLayout
     table_cells: SequencerTableCells

@@ -1,0 +1,15 @@
+name: player_toolbar
+tag: global.theme.player_toolbar
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .player_surface
+      - type: color
+        key: Border
+        value: .player_border
+      - type: style
+        key: ChildBorderSize
+        x: 1

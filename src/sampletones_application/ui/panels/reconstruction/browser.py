@@ -13,8 +13,8 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_THEME_PRIMARY_BUTTON,
+    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
@@ -32,13 +32,13 @@ from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
@@ -119,7 +119,6 @@ class GUIBrowserPanel(GUITreePanel):
         super().__init__(
             tree=tree,
             tag=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_RECONSTRUCTIONS_BROWSER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
@@ -134,17 +133,18 @@ class GUIBrowserPanel(GUITreePanel):
             colors=colors,
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
             self._create_section_text()
             self._create_buttons()
+            dpg.add_separator()
             self._create_tree_window()
 
         self._create_detail_tooltip(TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE)
@@ -170,17 +170,19 @@ class GUIBrowserPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_reconstructions)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(
+            self._lbl_reconstructions,
+            glyph=self._glyphs.headers.reconstruction,
+        )
 
     def _create_buttons(self) -> None:
-        dpg.add_separator()
         with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
                 label=self._lbl_refresh,
                 width=-1,
                 callback=self.rebuild_tree,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT):
                 GUIButton(
@@ -189,6 +191,7 @@ class GUIBrowserPanel(GUITreePanel):
                     width=-1,
                     callback=self._reconstruct_file,
                     font=Font.BOLD,
+                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
                 )
                 GUIButton(
                     tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
@@ -196,6 +199,7 @@ class GUIBrowserPanel(GUITreePanel):
                     width=-1,
                     callback=self._reconstruct_directory,
                     font=Font.BOLD,
+                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
                 )
             attach_disabled_tooltip(
                 TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT,
@@ -204,7 +208,6 @@ class GUIBrowserPanel(GUITreePanel):
             )
 
     def _create_tree_window(self) -> None:
-        dpg.add_separator()
         self.create_search(self.tag)
         with dpg.child_window(tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE):
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE):

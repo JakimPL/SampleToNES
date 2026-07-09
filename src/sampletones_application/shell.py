@@ -17,6 +17,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
     TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
@@ -27,9 +28,11 @@ from sampletones_application.coordinators.reconstructions import (
 )
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
+from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
@@ -77,6 +80,8 @@ class ShortcutBindings:
     play_from_start: Callback
     stop: Callback
     toggle_autoplay: Callback
+    toggle_follow_playback: Callback
+    toggle_loop_song: Callback
     audio_settings: Callback
     toggle_advanced_settings: Callback
     toggle_fullscreen: Callback
@@ -287,6 +292,16 @@ class ApplicationShell:
             bindings.toggle_autoplay,
         )
         self._shortcut_manager.register(
+            ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
+            Shortcut(),
+            bindings.toggle_follow_playback,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.TOGGLE_LOOP_SONG,
+            Shortcut(),
+            bindings.toggle_loop_song,
+        )
+        self._shortcut_manager.register(
             ShortcutId.UNDO,
             Shortcut(dpg.mvKey_Z, (Modifier.CTRL,)),
             bindings.undo,
@@ -320,6 +335,8 @@ class ApplicationShell:
                 GlobalDialogTitleElements.MAIN_WINDOW,
             ],
             tag=TAG_GLOBAL_WINDOW_MAIN,
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
         ):
             self._menu_bar.create(initial_menu_state)
             self._create_tabs(on_tab_changed)
@@ -332,10 +349,13 @@ class ApplicationShell:
         self._menu_bar.update(state)
 
     def _create_tabs(self, on_tab_changed: Callback) -> None:
+        status_bar_layout = self._layout.general.status_bar
         with dpg.child_window(
-            height=-self._layout.general.status_bar.height,
+            height=-(status_bar_layout.height + status_bar_layout.reserved_margin),
             border=False,
-        ):
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
+        ) as tab_container:
             with dpg.tab_bar(
                 tag=TAG_GLOBAL_TABS,
                 callback=on_tab_changed,
@@ -345,15 +365,30 @@ class ApplicationShell:
                 self._sequencer_tab.create_tab()
                 self._instructions_tab.create_tab()
 
+        ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(tab_container)
+        for tab_tag in (
+            TAG_GLOBAL_TAB_MAIN,
+            TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+            TAG_GLOBAL_TAB_SEQUENCER,
+            TAG_GLOBAL_TAB_INSTRUCTIONS,
+        ):
+            FontRegistry.bind_to_item(tab_tag, Font.REGULAR_LARGE)
+            label = dpg.get_item_configuration(tab_tag)["label"]
+            dpg.configure_item(tab_tag, label=f"  {label}  ")
+            for content in dpg.get_item_children(tab_tag, 1) or []:
+                FontRegistry.bind_to_item(content, Font.REGULAR)
+
     def _create_status_bar(self) -> None:
         with dpg.child_window(
             tag=TAG_GLOBAL_STATUS_WINDOW,
             parent=TAG_GLOBAL_WINDOW_MAIN,
             width=-1,
-            height=-1,
+            height=self._layout.general.status_bar.height,
             indent=0,
             border=False,
             menubar=True,
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
         ):
             self._status_bar.create()
 

@@ -19,9 +19,7 @@ from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
-    SUF_PANEL_RIGHT,
     SUF_TEXT,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_INVALID,
 )
@@ -31,7 +29,6 @@ from sampletones_application.constants.graphs import (
 )
 from sampletones_application.constants.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE,
-    SUF_RECONSTRUCTIONS_INSTRUMENTS_SEPARATOR,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
@@ -41,8 +38,6 @@ from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -66,7 +61,11 @@ from sampletones_application.view_model.reconstruction.instruments import (
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
-from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
+from sampletones_core.utils.pitch_kind import (
+    PERIOD_VALUE_KIND,
+    PITCH_VALUE_KIND,
+    PitchValueKind,
+)
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.arrays import clamp
@@ -94,7 +93,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE}"
-        self.header_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_INSTRUMENTS_SEPARATOR}"
         self.mouse_item_handler_tag = f"{TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self._graphs: Dict[str, GUIBarGraph] = {}
@@ -200,13 +198,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent,
+            parent=parent,
             width=self.width,
             height=self.height,
             border=False,
@@ -217,11 +214,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._setup_mouse_event_handler()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_section_header(
+            self._lbl_section,
+            glyph=self._glyphs.headers.instruments,
+        )
 
     def _create_content(self) -> None:
-        dpg.add_separator(tag=self.header_separator_tag, parent=self.tag, show=False)
         dpg.add_text(
             tag=self.no_data_message_tag,
             parent=self.tag,
@@ -358,7 +356,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def update_view(self, view_model: ReconstructionInstrumentsViewModel) -> None:
         is_loaded = view_model.reconstruction_loaded
-        dpg_configure_item(self.header_separator_tag, show=is_loaded)
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
 
