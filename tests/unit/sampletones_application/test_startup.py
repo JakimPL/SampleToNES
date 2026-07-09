@@ -23,6 +23,7 @@ _DPG_DISPLAY_FUNCTIONS = [
     "set_viewport_height",
     "set_viewport_title",
     "set_viewport_decorated",
+    "toggle_viewport_fullscreen",
     "set_exit_callback",
     "set_primary_window",
 ]

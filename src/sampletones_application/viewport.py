@@ -53,14 +53,9 @@ class ViewportManager:
             large_icon=str(icon_file_path),
             x_pos=window_x,
             y_pos=window_y,
-            decorated=not self._session_manager.fullscreen,
+            decorated=True,
             disable_close=True,
         )
-
-        if self._session_manager.fullscreen:
-            self.enable_fullscreen()
-        else:
-            self.disable_fullscreen()
 
         color = self._theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
         assert color is not None, "Background color is not defined in the main theme"
@@ -72,59 +67,18 @@ class ViewportManager:
         else:
             dpg.set_viewport_title(app_name)
 
-    def enable_fullscreen(self) -> None:
-        dpg.set_viewport_decorated(False)
+    def apply_fullscreen_state(self) -> None:
+        """Enters fullscreen once the viewport is live when the session requests it.
 
-        window_x = self._session_manager.window_x
-        window_y = self._session_manager.window_y
-
-        monitor = self._monitor_for_window(
-            window_x,
-            window_y,
-            self._session_manager.window_width,
-            self._session_manager.window_height,
-        )
-        if monitor is not None:
-            window_x = int(monitor.x)
-            window_y = int(monitor.y)
-            window_width = int(monitor.width)
-            window_height = int(monitor.height)
-        else:
-            window_x = 0
-            window_y = 0
-            window_width, window_height = self._get_screen_dimensions()
-
-        self._apply_window_state(
-            fullscreen=True,
-            x=window_x,
-            y=window_y,
-            width=window_width,
-            height=window_height,
-        )
-
-    def disable_fullscreen(self) -> None:
-        window_x, window_y, window_width, window_height = self._fit_window_to_monitor(
-            self._session_manager.window_x,
-            self._session_manager.window_y,
-            self._session_manager.window_width,
-            self._session_manager.window_height,
-        )
-
-        self._apply_window_state(
-            fullscreen=False,
-            x=window_x,
-            y=window_y,
-            width=window_width,
-            height=window_height,
-        )
-
-        dpg.set_viewport_decorated(True)
+        A DPG viewport always starts windowed, so the persisted preference is reached with a
+        single toggle after the window exists, which also keeps the session state authoritative.
+        """
+        if self._session_manager.fullscreen:
+            dpg.toggle_viewport_fullscreen()
 
     def toggle_fullscreen(self) -> None:
-        if not self._session_manager.fullscreen:
-            self.enable_fullscreen()
-        else:
-            self.disable_fullscreen()
+        dpg.toggle_viewport_fullscreen()
+        self._persist_fullscreen(not self._session_manager.fullscreen)
 
     def save_window_state(self) -> None:
         if self._session_manager.fullscreen:
@@ -139,26 +93,14 @@ class ViewportManager:
             height=dpg.get_viewport_height(),
         )
 
-    def _apply_window_state(
-        self,
-        fullscreen: bool,
-        x: int,
-        y: int,
-        width: int,
-        height: int,
-    ) -> None:
-        dpg.set_viewport_pos([x, y])
-        dpg.set_viewport_width(width)
-        dpg.set_viewport_height(height)
-
+    def _persist_fullscreen(self, fullscreen: bool) -> None:
         self._session_manager.set_window_state(
             fullscreen=fullscreen,
-            x=x,
-            y=y,
-            width=width,
-            height=height,
+            x=self._session_manager.window_x,
+            y=self._session_manager.window_y,
+            width=self._session_manager.window_width,
+            height=self._session_manager.window_height,
         )
-
         self._on_fullscreen_state_changed()
 
     @staticmethod

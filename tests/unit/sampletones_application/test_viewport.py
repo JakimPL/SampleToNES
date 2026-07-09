@@ -1,10 +1,12 @@
-from dataclasses import dataclass
-from typing import Tuple
+from dataclasses import dataclass, field
+from typing import List, Tuple
 
 import pytest
 from screeninfo import Monitor
 
 from sampletones_application.viewport import _MAX_WINDOW_MONITOR_RATIO, ViewportManager
+
+_TOGGLE_FULLSCREEN = "dearpygui.dearpygui.toggle_viewport_fullscreen"
 
 _PRIMARY = Monitor(x=0, y=0, width=1920, height=1080)
 _SECONDARY = Monitor(x=1920, y=0, width=2560, height=1440)
@@ -99,3 +101,82 @@ class TestFitWindowToMonitor:
         assert 0 <= x and 0 <= y
         assert x + width <= 1920
         assert y + height <= 1080
+
+
+@dataclass
+class FakeSession:
+    fullscreen: bool = False
+    window_x: int = 100
+    window_y: int = 120
+    window_width: int = 1280
+    window_height: int = 800
+    set_calls: List[bool] = field(default_factory=list)
+
+    def set_window_state(self, *, fullscreen: bool, x: int, y: int, width: int, height: int) -> None:
+        self.set_calls.append(fullscreen)
+        self.fullscreen = fullscreen
+
+
+def _fullscreen_manager(session: FakeSession, changes: List[int]) -> ViewportManager:
+    manager = ViewportManager.__new__(ViewportManager)
+    manager._session_manager = session  # type: ignore[assignment]
+    manager._on_fullscreen_state_changed = lambda: changes.append(1)  # type: ignore[assignment]
+    return manager
+
+
+@dataclass(frozen=True)
+class ToggleCase:
+    name: str
+    initial: bool
+    expect_fullscreen: bool
+
+
+_TOGGLE_CASES = (
+    ToggleCase("enters_from_windowed", False, True),
+    ToggleCase("exits_from_fullscreen", True, False),
+)
+
+
+class TestToggleFullscreen:
+    @pytest.mark.parametrize("case", _TOGGLE_CASES, ids=lambda case: case.name)
+    def test_toggle_flips_dpg_and_session_together(
+        self,
+        case: ToggleCase,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        toggles: List[int] = []
+        monkeypatch.setattr(_TOGGLE_FULLSCREEN, lambda: toggles.append(1))
+        session = FakeSession(fullscreen=case.initial)
+        changes: List[int] = []
+        manager = _fullscreen_manager(session, changes)
+
+        manager.toggle_fullscreen()
+
+        assert len(toggles) == 1
+        assert session.fullscreen is case.expect_fullscreen
+        assert session.set_calls[-1] is case.expect_fullscreen
+        assert changes
+
+
+class TestApplyFullscreenState:
+    def test_enters_fullscreen_when_session_requests_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        toggles: List[int] = []
+        monkeypatch.setattr(_TOGGLE_FULLSCREEN, lambda: toggles.append(1))
+        session = FakeSession(fullscreen=True)
+        manager = _fullscreen_manager(session, [])
+
+        manager.apply_fullscreen_state()
+
+        assert len(toggles) == 1
+        assert session.fullscreen is True
+        assert session.set_calls == []
+
+    def test_stays_windowed_when_session_is_windowed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        toggles: List[int] = []
+        monkeypatch.setattr(_TOGGLE_FULLSCREEN, lambda: toggles.append(1))
+        session = FakeSession(fullscreen=False)
+        manager = _fullscreen_manager(session, [])
+
+        manager.apply_fullscreen_state()
+
+        assert toggles == []

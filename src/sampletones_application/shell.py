@@ -158,6 +158,7 @@ class ApplicationShell:
         dpg.setup_dearpygui()
         dpg.show_viewport()
         dpg.render_dearpygui_frame()
+        self._viewport_manager.apply_fullscreen_state()
 
     def _set_fonts(self) -> None:
         FontRegistry.register_fonts(self._layout.general.fonts.scale)
