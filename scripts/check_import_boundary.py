@@ -131,6 +131,13 @@ TOKEN_RULES: list[TokenRule] = [
         "ui/panels must not parent into another panel's container (TAG_SEQUENCER_GRID_PANEL); "
         "the coordinator injects the parent through create_panel(parent)",
     ),
+    TokenRule(
+        "ui/panels/**/*.py",
+        r"\bTAG_GLOBAL_THEME_PANEL_(SURFACE|GROUND)\b",
+        "ui/panels must not bind a structural depth theme (TAG_GLOBAL_THEME_PANEL_SURFACE/"
+        "GROUND); only the layout primitives own depth (TabColumns binds the column, card() "
+        "binds the card), and a panel binds only semantic themes",
+    ),
 ]
 
 

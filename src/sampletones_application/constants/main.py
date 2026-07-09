@@ -1,12 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
 
-TAG_MAIN_PANEL = TagName(
-    Page.MAIN,
-    Panel.IMPLICIT,
-    Widget.PANEL,
-    "",
-)
 TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
