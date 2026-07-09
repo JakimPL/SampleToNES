@@ -3,7 +3,10 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import MenuElements, PlayerElements
+from sampletones_application.categories.elements.global_ import (
+    MenuElements,
+    PlayerElements,
+)
 from sampletones_application.categories.elements.instructions import (
     InstructionsLibraryElements,
 )
@@ -25,7 +28,10 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
 )
-from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
+from sampletones_application.coordinators.playback import (
+    AudioPlayerProtocol,
+    GuardedPlayer,
+)
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.details import (
     InstructionDetailsPanelLogic,
@@ -54,7 +60,7 @@ from sampletones_application.ui.panels.instruction.spectrum import (
 from sampletones_application.ui.panels.instruction.waveform import (
     GUIInstructionWaveformPanel,
 )
-from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.ui.panels.player.player import GUIAudioPlayerPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager

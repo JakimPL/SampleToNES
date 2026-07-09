@@ -13,7 +13,12 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 @contextmanager
-def centered_card(parent: str, table_tag: str, card_tag: str, width: int) -> Iterator[str]:
+def centered_card(
+    parent: str,
+    table_tag: str,
+    card_tag: str,
+    width: int,
+) -> Iterator[str]:
     """Open a fixed-width bordered card horizontally centred within ``parent``.
 
     A transparent stretch table keeps a fixed-width column between two stretch
@@ -79,11 +84,29 @@ def create_transport_controls(
 
         with dpg.table_row():
             dpg.add_spacer()
-            _create_icon_button(play_tag, glyphs.play, play_tooltip, on_play, button)
+            _create_icon_button(
+                play_tag,
+                glyphs.play,
+                play_tooltip,
+                on_play,
+                button,
+            )
             dpg.add_spacer()
-            _create_icon_button(pause_tag, glyphs.pause, pause_tooltip, on_pause_or_resume, button)
+            _create_icon_button(
+                pause_tag,
+                glyphs.pause,
+                pause_tooltip,
+                on_pause_or_resume,
+                button,
+            )
             dpg.add_spacer()
-            _create_icon_button(stop_tag, glyphs.stop, stop_tooltip, on_stop, button)
+            _create_icon_button(
+                stop_tag,
+                glyphs.stop,
+                stop_tooltip,
+                on_stop,
+                button,
+            )
             dpg.add_spacer()
 
 

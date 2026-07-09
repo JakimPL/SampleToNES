@@ -18,7 +18,7 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.player_controls import (
+from sampletones_application.ui.panels.player.controls import (
     centered_card,
     create_transport_controls,
 )

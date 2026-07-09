@@ -3,7 +3,9 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import PlayerElements
-from sampletones_application.categories.elements.sequencer import SequencerPlayerElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerPlayerElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import TAG_GLOBAL_THEME_PLAYER_TOOLBAR
@@ -19,7 +21,10 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.player_controls import centered_card, create_transport_controls
+from sampletones_application.ui.panels.player.controls import (
+    centered_card,
+    create_transport_controls,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,

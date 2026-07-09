@@ -29,7 +29,10 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
 )
-from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
+from sampletones_application.coordinators.playback import (
+    AudioPlayerProtocol,
+    GuardedPlayer,
+)
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
@@ -38,23 +41,41 @@ from sampletones_application.logic.reconstruction.instruments import (
     ReconstructionInstrumentsLogic,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
+from sampletones_application.logic.reconstruction.reconstruction import (
+    ReconstructionPanelLogic,
+)
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
-from sampletones_application.services.export import ExportError, ExportKind, ExportResult, ExportService, ExportSuccess
+from sampletones_application.services.export import (
+    ExportError,
+    ExportKind,
+    ExportResult,
+    ExportService,
+    ExportSuccess,
+)
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
-from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
-from sampletones_application.ui.panels.reconstruction.audio import GUIReconstructionAudioPanel
+from sampletones_application.ui.panels.player.player import GUIAudioPlayerPanel
+from sampletones_application.ui.panels.reconstruction.audio import (
+    GUIReconstructionAudioPanel,
+)
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
-from sampletones_application.ui.panels.reconstruction.instruments.instruments import GUIReconstructionInstrumentsPanel
-from sampletones_application.ui.panels.reconstruction.plot import GUIReconstructionPlotPanel
+from sampletones_application.ui.panels.reconstruction.instruments.instruments import (
+    GUIReconstructionInstrumentsPanel,
+)
+from sampletones_application.ui.panels.reconstruction.plot import (
+    GUIReconstructionPlotPanel,
+)
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.view_model.reconstruction.add_to_sequencer import AddToSequencerViewModel
-from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
+from sampletones_application.view_model.reconstruction.add_to_sequencer import (
+    AddToSequencerViewModel,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
+    ReconstructionViewModel,
+)
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import (
