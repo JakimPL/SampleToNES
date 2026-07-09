@@ -296,7 +296,6 @@ class ReconstructionsTabCoordinator:
             shortcut_manager,
             layout_general=layout.general,
             layout_graphs=layout.graphs,
-            layout_reconstructions=layout.reconstructions,
             language_manager=language_manager,
             status_bar=status_bar,
         )

@@ -37,6 +37,8 @@ NOTE_NAMES: Tuple[str, ...] = (
 
 MIN_TRANSPOSE: Final[int] = -24
 MAX_TRANSPOSE: Final[int] = 36
+ARPEGGIO_MIN: Final[int] = -128
+ARPEGGIO_MAX: Final[int] = 127
 
 # Instruction parameters ranges
 
@@ -78,6 +80,7 @@ NOISE_PERIODS: Final[Tuple[int, ...]] = (
 )
 NUM_PERIODS: Final[int] = len(NOISE_PERIODS)
 MAX_PERIOD: Final[int] = NUM_PERIODS - 1
+MAX_NOISE_MODE: Final[int] = 1
 
 NOISE_SHORT_PERIOD: Final[float] = 93.0
 NOISE_LONG_PERIOD: Final[float] = 32767.0

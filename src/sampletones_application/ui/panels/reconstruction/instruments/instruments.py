@@ -36,7 +36,6 @@ from sampletones_application.constants.reconstructions import (
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.layout.reconstructions import ReconstructionsLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
@@ -44,7 +43,6 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.reconstruction.instruments.config import (
-    FEATURE_DISPLAY_ORDER,
     FeaturePlotConfig,
     make_feature_plot_configs,
 )
@@ -58,9 +56,10 @@ from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName, LibraryGeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
+from sampletones_core.features import GENERATOR_KIND, supported_features
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
     PITCH_VALUE_KIND,
@@ -81,7 +80,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         *,
         layout_general: GeneralLayout,
         layout_graphs: GraphsLayout,
-        layout_reconstructions: ReconstructionsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ) -> None:
@@ -98,9 +96,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._layout_general = layout_general
         self._layout_graphs = layout_graphs
-        self._layout_reconstructions = layout_reconstructions
         self._feature_plot_configs = make_feature_plot_configs(
-            layout_reconstructions,
             layout_general.colors.features,
             language_manager,
         )
@@ -259,6 +255,15 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         for generator_name in GeneratorName.items():
             self._create_generator_tab(generator_name)
 
+    def _generator_kind(self, generator_name: GeneratorName) -> LibraryGeneratorName:
+        return GENERATOR_KIND[generator_name]
+
+    def _generator_features(self, generator_name: GeneratorName) -> list[FeatureKey]:
+        return supported_features(self._generator_kind(generator_name))
+
+    def _feature_plot_config(self, generator_name: GeneratorName, feature_key: FeatureKey) -> FeaturePlotConfig:
+        return self._feature_plot_configs[self._generator_kind(generator_name)][feature_key]
+
     def _create_generator_tab(self, generator_name: GeneratorName) -> None:
         tab_tag = self._get_generator_tab_tag(generator_name)
         window_tag = self._get_window_tag(tab_tag)
@@ -285,14 +290,19 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 parent=tab_tag,
                 no_scroll_with_mouse=True,
             ):
-                initial_pitch = MIN_PITCH if generator_name != GeneratorName.NOISE else MAX_PERIOD
-                self._create_pitch_stepper(generator_name, initial_pitch, window_tag)
-                for feature_key in FEATURE_DISPLAY_ORDER:
-                    self._add_generator_feature_display(
-                        generator_name,
-                        feature_key,
-                        window_tag,
-                    )
+                self._create_generator_content(generator_name, window_tag)
+
+    def _create_generator_content(self, generator_name: GeneratorName, window_tag: str) -> None:
+        initial_pitch = self._default_initial_pitch(generator_name)
+        self._create_pitch_stepper(generator_name, initial_pitch, window_tag)
+        self._create_generator_feature_displays(generator_name, window_tag)
+
+    def _default_initial_pitch(self, generator_name: GeneratorName) -> int:
+        return MAX_PERIOD if generator_name == GeneratorName.NOISE else MIN_PITCH
+
+    def _create_generator_feature_displays(self, generator_name: GeneratorName, window_tag: str) -> None:
+        for feature_key in self._generator_features(generator_name):
+            self._add_generator_feature_display(generator_name, feature_key, window_tag)
 
     def _add_generator_feature_display(
         self,
@@ -334,7 +344,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         if plot is None:
             return
 
-        config = self._feature_plot_configs[feature_key]
+        config = self._feature_plot_config(generator_name, feature_key)
         self._configure_plot_data(
             plot,
             generator_name,
@@ -373,19 +383,30 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             if generator_features is None:
                 continue
 
-            initial_pitch = cast(int, generator_features[FeatureKey.INITIAL_PITCH])
-            self._apply_pitch_display(generator_name, initial_pitch)
+            self._update_generator_feature_data(generator_name, generator_features)
 
-            for key in FEATURE_DISPLAY_ORDER:
-                if key == FeatureKey.INITIAL_PITCH:
-                    continue
+    def _update_generator_feature_data(self, generator_name: GeneratorName, generator_features: Features) -> None:
+        initial_pitch = cast(int, generator_features[FeatureKey.INITIAL_PITCH])
+        self._apply_pitch_display(generator_name, initial_pitch)
 
-                feature: Optional[np.ndarray] = cast(Optional[np.ndarray], generator_features.get(key))
-                if feature is None:
-                    feature = np.array([], dtype=np.int8)
+        for feature_key in self._generator_features(generator_name):
+            self._update_generator_feature_display(generator_name, generator_features, feature_key)
 
-                self._update_generator_plot(generator_name, key, feature)
-                self._update_raw_data_text(generator_name, key, feature)
+    def _update_generator_feature_display(
+        self,
+        generator_name: GeneratorName,
+        generator_features: Features,
+        feature_key: FeatureKey,
+    ) -> None:
+        feature = self._feature_array(generator_features, feature_key)
+        self._update_generator_plot(generator_name, feature_key, feature)
+        self._update_raw_data_text(generator_name, feature_key, feature)
+
+    def _feature_array(self, generator_features: Features, feature_key: FeatureKey) -> np.ndarray:
+        feature = cast(Optional[np.ndarray], generator_features.get(feature_key))
+        if feature is None:
+            return np.array([], dtype=np.int8)
+        return feature
 
     def _pitch_kind(self, generator_name: GeneratorName) -> PitchValueKind:
         return PERIOD_VALUE_KIND if generator_name == GeneratorName.NOISE else PITCH_VALUE_KIND
@@ -430,7 +451,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         data: np.ndarray,
         parent: str,
     ) -> GUIBarGraph:
-        config = self._feature_plot_configs[feature_key]
+        config = self._feature_plot_config(generator_name, feature_key)
         plot = self._add_bar_plot(parent, config, data, generator_name, feature_key)
         self._add_raw_data_text(parent, generator_name, feature_key, config, plot, data)
         return plot
