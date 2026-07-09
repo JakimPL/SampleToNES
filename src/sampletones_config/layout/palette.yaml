@@ -8,13 +8,13 @@ colors:
   menu: "#20283a"
   status_bar: "#20283a"
   popup: "#222130"
-  frame: "#383544"
+  frame: "#514c68"
   frame_hovered: "#424050"
   frame_active: "#4b475b"
   border: "#464a5e"
   separator: "#3e3b4c"
   plot_background: "#201d2a"
-  well: "#122234"
+  well: "#1f2636"
 
   # tables
   table_header: "#37324a"
@@ -46,11 +46,6 @@ colors:
   secondary_hover: "#3a4358"
   secondary_active: "#46516a"
   secondary_disabled: "#2b303d"
-
-  # input wells (search/filter/number fields)
-  input_bg: "#1f2636"
-  input_bg_active: "#273246"
-  input_border: "#3a445c"
 
   # dialog windows (elevated surface + accent border/title)
   dialog_surface: "#313547"
