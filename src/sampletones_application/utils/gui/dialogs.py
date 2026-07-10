@@ -472,6 +472,7 @@ class DialogsRenderer:
         on_confirm: Callback,
         *,
         ok_label: str,
+        path: Optional[Path] = None,
         opt_out_label: Optional[str] = None,
         on_opt_out: Optional[Callback] = None,
         on_cancel: Optional[Callback] = None,
@@ -486,6 +487,17 @@ class DialogsRenderer:
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._default_wrap)
+
+            if path is not None:
+                GUIPathText(
+                    tag=f"{tag}{SUF_PATH}",
+                    path=path,
+                    parent=parent,
+                    color=self._col_path,
+                    hover_color=self._col_path_hover,
+                    status_message=self._msg_path,
+                    status_bar=self._status_bar,
+                )
 
             if opt_out_label is not None:
                 dpg.add_checkbox(

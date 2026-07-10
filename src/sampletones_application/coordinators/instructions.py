@@ -318,16 +318,18 @@ class InstructionsTabCoordinator:
         self._library_logic.load_generator(generator_name)
 
     def _request_remove_library(self, library_key: InstructionLibraryKey) -> None:
-        library_name = self._library_logic.get_path(library_key).name
+        library_path = self._library_logic.get_path(library_key)
         self._dialogs.show_confirmation(
             tag=TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
             title=self._ttl_remove_library,
-            message=self._msg_remove_library.format(name=library_name),
+            message=self._msg_remove_library,
             on_confirm=lambda: self._remove_library(library_key),
             ok_label=self._lbl_remove,
+            path=library_path,
         )
 
     def _remove_library(self, library_key: InstructionLibraryKey) -> None:
+        was_current_library = self._library_logic.current_library_key == library_key
         try:
             self._library_logic.remove_library(library_key)
         except (OSError, SampleToNESError) as exception:
@@ -335,7 +337,7 @@ class InstructionsTabCoordinator:
             self._dialogs.show_error(exception)
             return
 
-        if self._library_logic.current_library_key is None:
+        if was_current_library:
             self._close_instruction()
             self._instruction_player_logic.clear_audio()
             self._on_audio_state_changed()

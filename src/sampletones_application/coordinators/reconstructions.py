@@ -522,23 +522,26 @@ class ReconstructionsTabCoordinator:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
             title=self._ttl_remove_reconstruction,
-            message=self._msg_remove_reconstruction.format(name=filepath.name),
+            message=self._msg_remove_reconstruction,
             on_confirm=lambda: self._remove_reconstruction(filepath),
             ok_label=self._lbl_remove,
+            path=filepath,
         )
 
     def _request_remove_directory(self, directory: Path) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
             title=self._ttl_remove_directory,
-            message=self._msg_remove_directory.format(name=directory.name),
+            message=self._msg_remove_directory,
             on_confirm=lambda: self._remove_directory(directory),
             ok_label=self._lbl_remove,
+            path=directory,
         )
 
     def _remove_reconstruction(self, filepath: Path) -> None:
         if self._reconstruction_manager.filepath == filepath:
-            self._reconstruction_manager.close_reconstruction()
+            self._reconstruction_manager.detach_current_reconstruction()
+            self._reconstruction_manager.mark_updated()
 
         try:
             self._browser_logic.remove_path(filepath)
@@ -552,7 +555,8 @@ class ReconstructionsTabCoordinator:
     def _remove_directory(self, directory: Path) -> None:
         current_filepath = self._reconstruction_manager.filepath
         if current_filepath is not None and current_filepath.is_relative_to(directory):
-            self._reconstruction_manager.close_reconstruction()
+            self._reconstruction_manager.detach_current_reconstruction()
+            self._reconstruction_manager.mark_updated()
 
         try:
             self._browser_logic.remove_path(directory)

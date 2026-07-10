@@ -83,7 +83,7 @@ def _remove_library_coordinator(*, current_library_key: object | None) -> Instru
     coordinator._on_audio_state_changed = MagicMock()
     coordinator._close_instruction = MagicMock()
     coordinator._ttl_remove_library = "Remove library"
-    coordinator._msg_remove_library = 'Remove library "{name}"?'
+    coordinator._msg_remove_library = "Remove this library?"
     coordinator._lbl_remove = "Remove"
     return coordinator
 
@@ -96,15 +96,17 @@ class TestRemoveLibrary:
         coordinator._request_remove_library(key)
 
         confirmation = coordinator._dialogs.show_confirmation.call_args.kwargs
-        assert confirmation["message"] == 'Remove library "lead.stnlib"?'
+        assert confirmation["message"] == "Remove this library?"
+        assert confirmation["path"] == Path("lead.stnlib")
 
         confirmation["on_confirm"]()
         coordinator._library_logic.remove_library.assert_called_once_with(key)
 
     def test_removing_current_library_clears_display_and_audio(self) -> None:
-        coordinator = _remove_library_coordinator(current_library_key=None)
+        key = MagicMock()
+        coordinator = _remove_library_coordinator(current_library_key=key)
 
-        coordinator._remove_library(MagicMock())
+        coordinator._remove_library(key)
 
         coordinator._close_instruction.assert_called_once_with()
         coordinator._instruction_player_logic.clear_audio.assert_called_once_with()
