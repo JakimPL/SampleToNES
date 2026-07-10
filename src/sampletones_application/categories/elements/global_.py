@@ -39,6 +39,7 @@ class ContextElements(AbstractElement):
     COPY_PATH = "copy_path"
     OPEN_IN_EXPLORER = "open_in_explorer"
     ADD_TO_SEQUENCER = "add_to_sequencer"
+    LOCATE_ORIGINAL_AUDIO = "locate_original_audio"
     TRIANGLE = "triangle"
     PULSE_1 = "pulse_1"
     PULSE_2 = "pulse_2"

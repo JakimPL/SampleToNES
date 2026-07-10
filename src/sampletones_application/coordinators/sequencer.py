@@ -64,7 +64,6 @@ from sampletones_application.services.song_player.player import SongPlayerServic
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
-from sampletones_application.ui.panels.sequencer.actions import GUISequencerActionsPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
@@ -95,7 +94,7 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import StringCallback, VoidCallback
+from sampletones_shared.types.callback import StringCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
 
@@ -117,15 +116,11 @@ class SequencerTabCoordinator:
         status_bar: GUIStatusBar,
         on_edit_sample_requested: StringCallback,
         on_tab_switch: Callable[[Tab], None],
-        on_export_module: VoidCallback,
-        on_open_properties: VoidCallback,
     ) -> None:
         self._project_controller = project_controller
         self._history = history
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_tab_switch = on_tab_switch
-        self._on_export_module = on_export_module
-        self._on_open_properties = on_open_properties
         self._layout = layout
         self._language_manager = language_manager
         self._dialogs = dialogs
@@ -284,9 +279,6 @@ class SequencerTabCoordinator:
             status_bar=status_bar,
             shortcut_manager=shortcut_manager,
         )
-        self._sequencer_actions_panel: GUISequencerActionsPanel = GUISequencerActionsPanel(
-            language_manager=language_manager,
-        )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
@@ -329,8 +321,6 @@ class SequencerTabCoordinator:
             detail=self._history_detail.value,
             coalesce=self._module_setting_key,
         )
-        self._sequencer_actions_panel.on_open_properties = self._on_open_properties
-        self._sequencer_actions_panel.on_export_module = self._on_export_module
         self._sequencer_grid_panel.on_clear_row = self._undoable(
             HistoryAction.CLEAR_ROW,
             self._on_clear_row,
@@ -613,7 +603,6 @@ class SequencerTabCoordinator:
         self._sequencer_samples_logic.push_samples()
         is_open = self._project_controller.is_open
         self._sequencer_module_panel.set_enabled(is_open)
-        self._sequencer_actions_panel.set_enabled(is_open)
         self._sequencer_grid_panel.set_enabled(is_open)
         self._sequencer_order_panel.set_enabled(is_open)
         self._sequencer_history_panel.set_enabled(is_open)
@@ -1086,10 +1075,8 @@ class SequencerTabCoordinator:
             )
 
     def _build_center_column(self, parent: str) -> None:
-        """Stacks the song player, actions, order table, and tracker grid down the centre column."""
+        """Stacks the song player, order table, and tracker grid down the centre column."""
         self._player_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
-        self._sequencer_actions_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._sequencer_order_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap, parent=parent)

@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
+    ContextElements,
     GlobalMessageElements,
     TreeElements,
 )
@@ -72,6 +73,7 @@ class GUIBrowserPanel(GUITreePanel):
         self.on_reconstruct_file: Optional[VoidCallback] = None
         self.on_reconstruct_directory: Optional[VoidCallback] = None
         self.on_load_reconstruction: Optional[PathCallback] = None
+        self.on_locate_original_audio: Optional[PathCallback] = None
 
         self._tree_behavior = tree_behavior
 
@@ -106,6 +108,12 @@ class GUIBrowserPanel(GUITreePanel):
             Panel.BROWSER,
             TextType.LABEL,
             ReconstructionsBrowserElements.CONTEXT_LOAD_RECONSTRUCTION,
+        ]
+        self._lbl_ctx_locate_audio = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.LOCATE_ORIGINAL_AUDIO,
         ]
         self._lbl_reconstructions = language_manager[
             Page.RECONSTRUCTIONS,
@@ -364,6 +372,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_load_reconstruction_item(node)
             self._add_context_menu_sequencer_items(node)
             self._add_context_menu_path_items(node.filepath)
+            self._add_context_menu_locate_audio_item(node)
             self._add_context_menu_favorite_item(node)
 
     def _add_context_menu_load_reconstruction_item(self, node: FileSystemNode) -> None:
@@ -373,6 +382,16 @@ class GUIBrowserPanel(GUITreePanel):
             callback=self._on_load_reconstruction,
             user_data=node,
         )
+
+    def _add_context_menu_locate_audio_item(self, node: FileSystemNode) -> None:
+        dpg.add_menu_item(
+            label=self._lbl_ctx_locate_audio,
+            callback=self._on_locate_original_audio,
+            user_data=node,
+        )
+
+    def _on_locate_original_audio(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
+        self.call(self.on_locate_original_audio, user_data.filepath)
 
     def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
         self._load_reconstruction(user_data)

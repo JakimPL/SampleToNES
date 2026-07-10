@@ -20,19 +20,15 @@ class ReconstructionsBrowserElements(AbstractElement):
 class ReconstructionPanelElements(AbstractElement):
     AUDIO_SOURCE_LABEL = "audio_source_label"
     AUTOSCALE_CHECKBOX = "autoscale_checkbox"
-    EXPORT_WAV_BUTTON = "export_wav_button"
-    LOCATE_AUDIO_BUTTON = "locate_audio_button"
     RECONSTRUCTION_FILE_LABEL = "reconstruction_file_label"
     ORIGINAL_AUDIO_LABEL = "original_audio_label"
     PATH_NOT_FOUND = "path_not_found"
     PATH_NOT_APPLICABLE = "path_not_applicable"
-    ALREADY_IN_SEQUENCER_TOOLTIP = "already_in_sequencer_tooltip"
     ORIGINAL_AUDIO_RADIO = "original_audio_radio"
     RECONSTRUCTION_RADIO = "reconstruction_radio"
     WAVEFORM_LABEL = "waveform_label"
     AUTOSCALE_TOOLTIP = "autoscale_tooltip"
     LOCATE_AUDIO_FAILED = "locate_audio_failed"
-    LOCATE_AUDIO_TOOLTIP = "locate_audio_tooltip"
     EXPORT_WAV_SUCCESS = "export_wav_success"
     EXPORT_WAV_FAILED = "export_wav_failed"
 
@@ -40,7 +36,6 @@ class ReconstructionPanelElements(AbstractElement):
 class ReconstructionsInstrumentsElements(AbstractElement):
     SECTION = "section"
     EXPORT_INSTRUMENT_BUTTON = "export_instrument_button"
-    EXPORT_INSTRUMENTS_BUTTON = "export_instruments_button"
     COPY_BUTTON = "copy_button"
     PITCH_LABEL = "pitch_label"
     HI_PITCH_LABEL = "hi_pitch_label"

@@ -104,24 +104,6 @@ TAG_SEQUENCER_MODULE_INPUT_SPEED = TagName(
     Widget.INPUT,
     "speed",
 )
-TAG_SEQUENCER_MODULE_BUTTON_PROPERTIES = TagName(
-    Page.SEQUENCER,
-    Panel.MODULE,
-    Widget.BUTTON,
-    "properties",
-)
-TAG_SEQUENCER_MODULE_BUTTON_EXPORT = TagName(
-    Page.SEQUENCER,
-    Panel.MODULE,
-    Widget.BUTTON,
-    "export",
-)
-TAG_SEQUENCER_MODULE_GROUP_ACTIONS = TagName(
-    Page.SEQUENCER,
-    Panel.MODULE,
-    Widget.GROUP,
-    "actions",
-)
 TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY = TagName(
     Page.SEQUENCER,
     Panel.MODULE,

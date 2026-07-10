@@ -3,6 +3,7 @@ from typing import Final, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
+    ContextElements,
     GlobalTemplateElements,
     MenuElements,
 )
@@ -24,10 +25,13 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOCATE_AUDIO,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN_IN_EXPLORER,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
@@ -77,6 +81,10 @@ class MenuBar:
 
     def _label(self, element: MenuElements) -> str:
         return self._language_manager[Page.GLOBAL, Panel.MENU, TextType.LABEL, element]
+
+    def _context_label(self, element: ContextElements) -> str:
+        """Resolves a shared context-action label reused between the tree menus and this bar."""
+        return self._language_manager[Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, element]
 
     def create(self, state: MenuBarViewModel) -> None:
         with dpg.menu_bar():
@@ -201,6 +209,26 @@ class MenuBar:
             )
             dpg.add_separator()
             self._shortcut_manager.add_menu_item(
+                ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
+                label=self._context_label(ContextElements.ADD_TO_SEQUENCER),
+                enabled=state.add_to_sequencer_enabled,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN_IN_EXPLORER,
+                label=self._context_label(ContextElements.OPEN_IN_EXPLORER),
+                enabled=state.open_in_explorer_enabled,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.LOCATE_ORIGINAL_AUDIO,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOCATE_AUDIO,
+                label=self._context_label(ContextElements.LOCATE_ORIGINAL_AUDIO),
+                enabled=state.locate_audio_enabled,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
                 ShortcutId.EXPORT_RECONSTRUCTION_WAV,
                 tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV,
                 label=self._label(MenuElements.ITEM_RECONSTRUCTION_EXPORT_WAV),
@@ -300,6 +328,19 @@ class MenuBar:
 
         for reconstruction_item_tag in RECONSTRUCTION_ITEM_TAGS:
             dpg_configure_item(reconstruction_item_tag, enabled=state.reconstruction_loaded)
+
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
+            enabled=state.add_to_sequencer_enabled,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN_IN_EXPLORER,
+            enabled=state.open_in_explorer_enabled,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOCATE_AUDIO,
+            enabled=state.locate_audio_enabled,
+        )
 
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,

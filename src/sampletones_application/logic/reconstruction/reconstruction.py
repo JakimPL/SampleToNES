@@ -19,6 +19,7 @@ from sampletones_core.paths import EXT_FILE_INSTRUMENT
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
 class ExportServiceProtocol(Protocol):
@@ -226,6 +227,14 @@ class ReconstructionPanelLogic(CallbackMixin):
         except FileNotFoundError:
             logger.warning(f"Original audio file could not be found: '{logger.format_path(path)}'")
             self.call(self.on_locate_audio_not_found, path)
+
+    def open_reconstruction_in_explorer(self) -> None:
+        """Reveals the loaded reconstruction's own file in the OS file manager."""
+        filepath = self._reconstruction_manager.filepath
+        if filepath is None:
+            return
+
+        open_path_in_explorer(filepath)
 
     def _get_instrument_name(self, generator_name: Optional[GeneratorName] = None) -> str:
         reconstruction_data = self._reconstruction_data
