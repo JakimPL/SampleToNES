@@ -19,7 +19,9 @@ from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import (
+    DEFAULT_MAX_FILENAME_DISPLAY,
     open_path_in_explorer,
+    shorten_filename,
     shorten_path,
     to_path,
 )
@@ -36,13 +38,17 @@ class GUIPathText(CallbackMixin):
         status_message: str,
         prefix: Optional[str] = None,
         font: Optional[Font] = None,
+        use_filename_only: bool = False,
+        max_filename_length: int = DEFAULT_MAX_FILENAME_DISPLAY,
         *,
         status_bar: GUIStatusBar,
     ) -> None:
         self.tag = tag
         self._status_bar = status_bar
         self.path = path or Path()
-        self.display_text = shorten_path(self.path)
+        self._use_filename_only = use_filename_only
+        self._max_filename_length = max_filename_length
+        self.display_text = self._format_display_text(self.path)
         self.label = prefix
 
         self.tooltip: Optional[Sender] = None
@@ -87,6 +93,15 @@ class GUIPathText(CallbackMixin):
     def path_text(self) -> str:
         return str(self.path.absolute())
 
+    def _format_display_text(self, path: Path) -> str:
+        if self._use_filename_only:
+            return shorten_filename(
+                path.name,
+                max_length=self._max_filename_length,
+            )
+
+        return shorten_path(path)
+
     def _create_handler(self) -> None:
         dpg_delete_item(self.handler_tag)
 
@@ -116,7 +131,11 @@ class GUIPathText(CallbackMixin):
 
     def set_path(self, path: Pathlike, shorten: bool = True) -> None:
         self.path = to_path(path)
-        self.display_text = shorten_path(self.path) if shorten else str(self.path)
+        if shorten:
+            self.display_text = self._format_display_text(self.path)
+        else:
+            self.display_text = str(self.path)
+
         self.color = self._path_color
         self.hover_color = self._path_hover_color
         dpg_set_value(self.tag, self.display_text)

@@ -1,10 +1,13 @@
 import os
 import subprocess
 from pathlib import Path
+from typing import Final
 
 from sampletones_shared.types.path import GeneralPathlike, Pathlike
 
 from .system import System
+
+DEFAULT_MAX_FILENAME_DISPLAY: Final[int] = 48
 
 
 def to_path(path: GeneralPathlike) -> Path:
@@ -76,6 +79,21 @@ def shorten_path(path: GeneralPathlike, levels: int = 5) -> str:
     first_directory = parts[1]
     last_parts = parts[index:]
     return os.sep.join([begin, first_directory, "..."] + list(last_parts))
+
+
+def shorten_filename(filename: str, max_length: int = DEFAULT_MAX_FILENAME_DISPLAY) -> str:
+    """Shortens a filename by replacing its tail with ``...`` past ``max_length``.
+
+    The beginning of the filename remains visible so users can recognize the selected
+    item in compact UI surfaces such as confirmation dialogs.
+    """
+    if max_length < 4:
+        raise ValueError("max_length must be at least 4")
+
+    if len(filename) <= max_length:
+        return filename
+
+    return f"{filename[: max_length - 3]}..."
 
 
 def get_directory(path: Pathlike) -> Path:

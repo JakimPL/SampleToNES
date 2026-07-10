@@ -496,6 +496,7 @@ class DialogsRenderer:
                     color=self._col_path,
                     hover_color=self._col_path_hover,
                     status_message=self._msg_path,
+                    use_filename_only=True,
                     status_bar=self._status_bar,
                 )
 

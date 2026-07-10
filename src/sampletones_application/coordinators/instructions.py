@@ -329,7 +329,10 @@ class InstructionsTabCoordinator:
         )
 
     def _remove_library(self, library_key: InstructionLibraryKey) -> None:
-        was_current_library = self._library_logic.current_library_key == library_key
+        displayed_instruction = self._instruction_details_logic.get_current_instruction_data()
+        was_displaying_removed_library = (
+            displayed_instruction is not None and displayed_instruction.library_key == library_key
+        )
         try:
             self._library_logic.remove_library(library_key)
         except (OSError, SampleToNESError) as exception:
@@ -337,7 +340,7 @@ class InstructionsTabCoordinator:
             self._dialogs.show_error(exception)
             return
 
-        if was_current_library:
+        if was_displaying_removed_library:
             self._close_instruction()
             self._instruction_player_logic.clear_audio()
             self._on_audio_state_changed()

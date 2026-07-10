@@ -152,6 +152,7 @@ class InstructionsLibraryManager(CallbackMixin):
         fragment = data[instruction]
         library_config = data.config
         instruction_data = InstructionPanelData(
+            library_key=self._current_library_key,
             instruction=instruction,
             config=library_config,
             fragment=fragment,
