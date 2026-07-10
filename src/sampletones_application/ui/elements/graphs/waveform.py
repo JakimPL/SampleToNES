@@ -31,7 +31,7 @@ from sampletones_application.utils.gui.dpg import (
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import Color, Sender
 
 
 class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
@@ -361,44 +361,55 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        existing_series_tags = {self._series_tag(layer_name) for layer_name in list(self.layers.keys())}
-        children = dpg.get_item_children(self.y_axis_tag, 1) or []
-        for child in children:
-            child_tag = dpg.get_item_alias(child)
-            if child_tag in (self.position_indicator_tag, self.overlay_rectangle_tag):
-                continue
-
-            if child_tag not in existing_series_tags:
-                dpg_delete_item(child)
-
+        self._prune_stale_series()
         for layer in self.layers.values():
             series_tag = self._series_tag(layer.name)
-            theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
-            if dpg.does_item_exist(series_tag):
-                dpg.configure_item(
-                    series_tag,
-                    x=layer.x_data,
-                    y=layer.y_data,
-                )
-            else:
-                dpg.add_line_series(
-                    layer.x_data.tolist(),
-                    layer.y_data.tolist(),
-                    label=layer.name,
-                    parent=self.y_axis_tag,
-                    tag=series_tag,
-                )
+            self._upsert_series(series_tag, layer)
+            self._bind_series_theme(series_tag, layer.color)
 
-            if not dpg.does_item_exist(theme_tag):
-                with dpg.theme(tag=theme_tag):
-                    with dpg.theme_component(dpg.mvLineSeries):
-                        dpg.add_theme_color(
-                            dpg.mvPlotCol_Line,
-                            layer.color,
-                            category=dpg.mvThemeCat_Plots,
-                        )
+    def _prune_stale_series(self) -> None:
+        """Aligns the y-axis series with the current layers, keeping the position indicator
+        and overlay rectangle attached across updates."""
+        live_series_tags = {self._series_tag(layer_name) for layer_name in list(self.layers.keys())}
+        preserved_tags = (self.position_indicator_tag, self.overlay_rectangle_tag)
+        for child in dpg.get_item_children(self.y_axis_tag, 1) or []:
+            child_tag = dpg.get_item_alias(child)
+            if child_tag in preserved_tags:
+                continue
 
-            dpg_bind_item_theme(series_tag, theme_tag)
+            if child_tag not in live_series_tags:
+                dpg_delete_item(child)
+
+    def _upsert_series(self, series_tag: str, layer: Union[ArrayLayer, InstructionLayer]) -> None:
+        """Refreshes the points of an existing series, or creates it on the y-axis when new."""
+        if dpg.does_item_exist(series_tag):
+            dpg.configure_item(
+                series_tag,
+                x=layer.x_data,
+                y=layer.y_data,
+            )
+        else:
+            dpg.add_line_series(
+                layer.x_data.tolist(),
+                layer.y_data.tolist(),
+                label=layer.name,
+                parent=self.y_axis_tag,
+                tag=series_tag,
+            )
+
+    def _bind_series_theme(self, series_tag: str, color: Color) -> None:
+        """Creates the line-color theme for a series when new and binds it to the series."""
+        theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
+        if not dpg.does_item_exist(theme_tag):
+            with dpg.theme(tag=theme_tag):
+                with dpg.theme_component(dpg.mvLineSeries):
+                    dpg.add_theme_color(
+                        dpg.mvPlotCol_Line,
+                        color,
+                        category=dpg.mvThemeCat_Plots,
+                    )
+
+        dpg_bind_item_theme(series_tag, theme_tag)
 
     def _add_position_indicator(self) -> None:
         dpg_delete_item(self.position_indicator_tag)
