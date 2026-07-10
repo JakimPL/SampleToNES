@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_core.structures.tree import Tree
+from sampletones_shared.utils.system.filesystem import remove_path
 
 
 class BrowserLogic:
@@ -19,3 +22,7 @@ class BrowserLogic:
     def refresh_tree(self) -> None:
         reconstructions_directory = self._config_manager.get_reconstructions_directory()
         self._browser_manager.set_reconstructions_directory(reconstructions_directory)
+
+    def remove_path(self, path: Path) -> None:
+        remove_path(path)
+        self.refresh_tree()

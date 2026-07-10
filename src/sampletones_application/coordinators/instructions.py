@@ -4,6 +4,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
+    DialogElements,
     MenuElements,
     PlayerElements,
 )
@@ -40,6 +41,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
+    TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
@@ -163,6 +165,24 @@ class InstructionsTabCoordinator:
             TextType.TITLE,
             InstructionsLibraryElements.GENERATION_STATUS_DIALOG,
         ]
+        self._ttl_remove_library = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TITLE,
+            InstructionsLibraryElements.REMOVE_LIBRARY_DIALOG,
+        ]
+        self._msg_remove_library = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.REMOVE_LIBRARY_MESSAGE,
+        ]
+        self._lbl_remove = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.REMOVE,
+        ]
 
         self._library_logic = LibraryLogic(
             config_manager,
@@ -210,6 +230,7 @@ class InstructionsTabCoordinator:
         self._library_panel.on_cancel_generation = self._library_logic.cancel_generation
         self._library_panel.on_library_selected = self._library_logic.load_library_and_set_current
         self._library_panel.on_generator_selected = self._on_generator_selected
+        self._library_panel.on_library_remove_requested = self._request_remove_library
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_audio_state_changed,
@@ -296,6 +317,33 @@ class InstructionsTabCoordinator:
         self._library_logic.load_library_and_set_current(library_key)
         self._library_logic.load_generator(generator_name)
 
+    def _request_remove_library(self, library_key: InstructionLibraryKey) -> None:
+        library_path = self._library_logic.get_path(library_key)
+        self._dialogs.show_confirmation(
+            tag=TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
+            title=self._ttl_remove_library,
+            message=self._msg_remove_library,
+            on_confirm=lambda: self._remove_library(library_key),
+            ok_label=self._lbl_remove,
+            path=library_path,
+        )
+
+    def _remove_library(self, library_key: InstructionLibraryKey) -> None:
+        displayed_instruction = self._instruction_details_logic.get_current_instruction_data()
+        was_displaying_removed_library = (
+            displayed_instruction is not None and displayed_instruction.library_key == library_key
+        )
+        try:
+            self._library_logic.remove_library(library_key)
+        except (OSError, SampleToNESError) as exception:
+            logger.error_with_traceback(exception, f"Failed to remove library: {library_key}")
+            self._dialogs.show_error(exception)
+            return
+
+        if was_displaying_removed_library:
+            self._close_instruction()
+            self._on_audio_state_changed()
+
     def _on_generation_completed(self) -> None:
         if not self._is_converter_visible():
             self._dialogs.show_info(
@@ -366,6 +414,7 @@ class InstructionsTabCoordinator:
         self._waveform_panel.clear_layers()
         self._spectrum_panel.clear_layers()
         self._instruction_details_logic.clear_display()
+        self._instruction_player_logic.clear_audio()
 
     def _update_details_view(self, view_model: InstructionDetailsPanelViewModel) -> None:
         """Fans the details view model out to the parameters and choice cards."""

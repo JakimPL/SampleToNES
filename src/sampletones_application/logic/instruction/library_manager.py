@@ -152,6 +152,7 @@ class InstructionsLibraryManager(CallbackMixin):
         fragment = data[instruction]
         library_config = data.config
         instruction_data = InstructionPanelData(
+            library_key=self._current_library_key,
             instruction=instruction,
             config=library_config,
             fragment=fragment,
@@ -227,6 +228,9 @@ class InstructionsLibraryManager(CallbackMixin):
     @property
     def current_library_key(self) -> Optional[InstructionLibraryKey]:
         return self._current_library_key
+
+    def clear_current_library(self) -> None:
+        self._current_library_key = None
 
     @property
     def creator(self) -> Optional[InstructionsLibraryCreator]:

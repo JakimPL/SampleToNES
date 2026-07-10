@@ -72,6 +72,8 @@ class GUIBrowserPanel(GUITreePanel):
         self.on_reconstruct_file: Optional[VoidCallback] = None
         self.on_reconstruct_directory: Optional[VoidCallback] = None
         self.on_load_reconstruction: Optional[PathCallback] = None
+        self.on_reconstruction_remove_requested: Optional[PathCallback] = None
+        self.on_directory_remove_requested: Optional[PathCallback] = None
 
         self._tree_behavior = tree_behavior
 
@@ -106,6 +108,18 @@ class GUIBrowserPanel(GUITreePanel):
             Panel.BROWSER,
             TextType.LABEL,
             ReconstructionsBrowserElements.CONTEXT_LOAD_RECONSTRUCTION,
+        ]
+        self._lbl_context_remove_reconstruction = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.LABEL,
+            ReconstructionsBrowserElements.CONTEXT_REMOVE_RECONSTRUCTION,
+        ]
+        self._lbl_context_remove_directory = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.LABEL,
+            ReconstructionsBrowserElements.CONTEXT_REMOVE_DIRECTORY,
         ]
         self._lbl_reconstructions = language_manager[
             Page.RECONSTRUCTIONS,
@@ -352,6 +366,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_text(node)
             self._add_context_menu_details(node)
             self._add_context_menu_path_items(node.filepath)
+            self._add_context_menu_remove_directory_item(node)
             self._add_context_menu_favorite_item(node)
 
     def _show_reconstruction_context_menu(self, node: FileSystemNode, node_tag: str) -> None:
@@ -362,6 +377,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_text(node)
             self._add_context_menu_play_item(node)
             self._add_context_menu_load_reconstruction_item(node)
+            self._add_context_menu_remove_reconstruction_item(node)
             self._add_context_menu_sequencer_items(node)
             self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_locate_audio_item(node)
@@ -373,6 +389,19 @@ class GUIBrowserPanel(GUITreePanel):
             label=self._lbl_context_load,
             callback=self._on_load_reconstruction,
             user_data=node,
+        )
+
+    def _add_context_menu_remove_reconstruction_item(self, node: FileSystemNode) -> None:
+        dpg.add_menu_item(
+            label=self._lbl_context_remove_reconstruction,
+            callback=lambda: self.call(self.on_reconstruction_remove_requested, node.filepath),
+        )
+
+    def _add_context_menu_remove_directory_item(self, node: FileSystemNode) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=self._lbl_context_remove_directory,
+            callback=lambda: self.call(self.on_directory_remove_requested, node.filepath),
         )
 
     def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:

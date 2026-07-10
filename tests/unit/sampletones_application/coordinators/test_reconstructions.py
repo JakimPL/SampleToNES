@@ -144,3 +144,76 @@ class TestAudioDataChanged:
 
         instance._reconstruction_player_logic.clear_audio.assert_called_once_with()
         instance._reconstruction_player_logic.load_audio_data.assert_not_called()
+
+
+@pytest.fixture
+def removal_coordinator() -> ReconstructionsTabCoordinator:
+    instance = object.__new__(ReconstructionsTabCoordinator)
+    instance._dialogs = MagicMock()
+    instance._browser_logic = MagicMock()
+    instance._browser_panel = MagicMock()
+    instance._reconstruction_manager = MagicMock()
+    instance._ttl_remove_reconstruction = "Remove reconstruction"
+    instance._msg_remove_reconstruction = "Remove this reconstruction?"
+    instance._ttl_remove_directory = "Remove directory"
+    instance._msg_remove_directory = "Remove this directory and all included reconstructions?"
+    instance._lbl_remove = "Remove"
+    instance._msg_load_error = "load error"
+    return instance
+
+
+class TestRemoveTreeEntries:
+    def test_request_remove_reconstruction_prompts_confirmation(
+        self,
+        removal_coordinator: ReconstructionsTabCoordinator,
+    ) -> None:
+        path = Path("tone.strec")
+
+        removal_coordinator._request_remove_reconstruction(path)
+
+        confirmation = removal_coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert confirmation["message"] == "Remove this reconstruction?"
+        assert confirmation["path"] == path
+
+        confirmation["on_confirm"]()
+        removal_coordinator._browser_logic.remove_path.assert_called_once_with(path)
+
+    def test_removing_open_reconstruction_detaches_and_marks_it_dirty(
+        self,
+        removal_coordinator: ReconstructionsTabCoordinator,
+    ) -> None:
+        path = Path("tone.strec")
+        removal_coordinator._reconstruction_manager.filepath = path
+
+        removal_coordinator._remove_reconstruction(path)
+
+        removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_called_once_with()
+        removal_coordinator._reconstruction_manager.mark_updated.assert_called_once_with()
+        removal_coordinator._browser_logic.remove_path.assert_called_once_with(path)
+        removal_coordinator._browser_panel.refresh.assert_called_once_with()
+
+    def test_removing_open_directory_detaches_loaded_reconstruction_inside_it(
+        self,
+        removal_coordinator: ReconstructionsTabCoordinator,
+    ) -> None:
+        directory = Path("set")
+        removal_coordinator._reconstruction_manager.filepath = directory / "tone.strec"
+
+        removal_coordinator._remove_directory(directory)
+
+        removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_called_once_with()
+        removal_coordinator._reconstruction_manager.mark_updated.assert_called_once_with()
+        removal_coordinator._browser_logic.remove_path.assert_called_once_with(directory)
+        removal_coordinator._browser_panel.refresh.assert_called_once_with()
+
+    def test_request_remove_directory_prompts_with_path(
+        self,
+        removal_coordinator: ReconstructionsTabCoordinator,
+    ) -> None:
+        directory = Path("set")
+
+        removal_coordinator._request_remove_directory(directory)
+
+        confirmation = removal_coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert confirmation["message"] == "Remove this directory and all included reconstructions?"
+        assert confirmation["path"] == directory

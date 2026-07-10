@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -72,6 +73,70 @@ class TestGenerationCompletedNotice:
         coordinator._dialogs.show_info.assert_not_called()
 
 
+def _remove_library_coordinator(*, current_library_key: object | None) -> InstructionsTabCoordinator:
+    coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
+    coordinator._library_logic = MagicMock()
+    coordinator._library_logic.current_library_key = current_library_key
+    coordinator._dialogs = MagicMock()
+    coordinator._instruction_player_logic = MagicMock()
+    coordinator._on_audio_state_changed = MagicMock()
+    coordinator._close_instruction = MagicMock()
+    coordinator._instruction_details_logic = MagicMock()
+    coordinator._ttl_remove_library = "Remove library"
+    coordinator._msg_remove_library = "Remove this library?"
+    coordinator._lbl_remove = "Remove"
+    return coordinator
+
+
+class TestRemoveLibrary:
+    def test_request_prompts_confirmation(self) -> None:
+        coordinator = _remove_library_coordinator(current_library_key="current")
+        key = "current"
+        coordinator._library_logic.get_path.return_value = Path("lead.stnlib")
+
+        coordinator._request_remove_library(key)
+
+        confirmation = coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert confirmation["message"] == "Remove this library?"
+        assert confirmation["path"] == Path("lead.stnlib")
+
+        confirmation["on_confirm"]()
+        coordinator._library_logic.remove_library.assert_called_once_with(key)
+
+    def test_removing_current_library_clears_display_and_audio(self) -> None:
+        key = "current"
+        coordinator = _remove_library_coordinator(current_library_key=key)
+        coordinator._instruction_details_logic.get_current_instruction_data.return_value = MagicMock(library_key=key)
+
+        coordinator._remove_library(key)
+
+        coordinator._close_instruction.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_not_called()
+        coordinator._on_audio_state_changed.assert_called_once_with()
+
+    def test_removing_other_library_keeps_current_display(self) -> None:
+        coordinator = _remove_library_coordinator(current_library_key="current")
+        coordinator._instruction_details_logic.get_current_instruction_data.return_value = MagicMock(
+            library_key="current"
+        )
+
+        coordinator._remove_library("other")
+
+        coordinator._close_instruction.assert_not_called()
+        coordinator._instruction_player_logic.clear_audio.assert_not_called()
+
+    def test_removing_loaded_library_clears_display_even_after_selection_changed(self) -> None:
+        coordinator = _remove_library_coordinator(current_library_key="other")
+        coordinator._instruction_details_logic.get_current_instruction_data.return_value = MagicMock(
+            library_key="removed"
+        )
+
+        coordinator._remove_library("removed")
+
+        coordinator._close_instruction.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_not_called()
+
+
 def _display_coordinator() -> InstructionsTabCoordinator:
     """A coordinator with only the collaborators ``_display_instruction`` touches, bypassing the
     heavy constructor."""
@@ -117,7 +182,29 @@ class TestDisplayInstruction:
         coordinator._waveform_panel.clear_layers.assert_called_once_with()
         coordinator._spectrum_panel.clear_layers.assert_called_once_with()
         coordinator._instruction_details_logic.clear_display.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_called_once_with()
         coordinator._instruction_player_logic.load_audio_data.assert_not_called()
+
+
+def _close_coordinator() -> InstructionsTabCoordinator:
+    coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
+    coordinator._waveform_panel = MagicMock()
+    coordinator._spectrum_panel = MagicMock()
+    coordinator._instruction_details_logic = MagicMock()
+    coordinator._instruction_player_logic = MagicMock()
+    return coordinator
+
+
+class TestCloseInstruction:
+    def test_close_clears_graphs_details_and_audio(self) -> None:
+        coordinator = _close_coordinator()
+
+        coordinator._close_instruction()
+
+        coordinator._waveform_panel.clear_layers.assert_called_once_with()
+        coordinator._spectrum_panel.clear_layers.assert_called_once_with()
+        coordinator._instruction_details_logic.clear_display.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_called_once_with()
 
 
 def _render_coordinator(*, plot_error: Exception) -> InstructionsTabCoordinator:

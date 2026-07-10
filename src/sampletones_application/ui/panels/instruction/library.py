@@ -110,6 +110,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.on_cancel_generation: Optional[VoidCallback] = None
         self.on_library_selected: Optional[Callable[[InstructionLibraryKey], None]] = None
         self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, LibraryGeneratorName], None]] = None
+        self.on_library_remove_requested: Optional[Callable[[InstructionLibraryKey], None]] = None
 
         self._lbl_generate = language_manager[
             Page.INSTRUCTIONS,
@@ -158,6 +159,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             Panel.LIBRARY,
             TextType.LABEL,
             InstructionsLibraryElements.CONTEXT_LOAD_LIBRARY,
+        ]
+        self._lbl_ctx_remove_library = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.CONTEXT_REMOVE_LIBRARY,
         ]
         self._msg_status_node_generator = language_manager[
             Page.INSTRUCTIONS,
@@ -472,6 +479,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg.add_menu_item(
             label=self._lbl_ctx_load_library,
             callback=lambda: self.call(self.on_library_selected, node.library_key),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_ctx_remove_library,
+            callback=lambda: self.call(self.on_library_remove_requested, node.library_key),
         )
 
     def _show_generator_context_menu(self, node: GeneratorNode) -> None:

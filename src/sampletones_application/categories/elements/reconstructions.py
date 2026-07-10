@@ -7,6 +7,8 @@ class ReconstructionsBrowserElements(AbstractElement):
     REFRESH_BUTTON = "refresh_button"
     RECONSTRUCTIONS_TREE = "reconstructions_tree"
     CONTEXT_LOAD_RECONSTRUCTION = "context_load_reconstruction"
+    CONTEXT_REMOVE_RECONSTRUCTION = "context_remove_reconstruction"
+    CONTEXT_REMOVE_DIRECTORY = "context_remove_directory"
     FILE_NOT_FOUND = "file_not_found"
     AUDIO_FILE_NOT_FOUND = "audio_file_not_found"
     LOAD_ERROR = "load_error"
@@ -14,6 +16,10 @@ class ReconstructionsBrowserElements(AbstractElement):
     INVALID_FILE = "invalid_file"
     DESERIALIZATION_ERROR = "deserialization_error"
     LOAD_RECONSTRUCTION_DIALOG = "load_reconstruction_dialog"
+    REMOVE_RECONSTRUCTION_DIALOG = "remove_reconstruction_dialog"
+    REMOVE_RECONSTRUCTION_MESSAGE = "remove_reconstruction_message"
+    REMOVE_DIRECTORY_DIALOG = "remove_directory_dialog"
+    REMOVE_DIRECTORY_MESSAGE = "remove_directory_message"
     INCOMPATIBLE_VERSION_TEMPLATE = "incompatible_version_template"
 
 

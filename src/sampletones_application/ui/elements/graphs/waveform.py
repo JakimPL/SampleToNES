@@ -273,6 +273,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.current_data = waveform_data
         for layer in self._display_layers(waveform_data, selected_generators):
             self.layers[layer.name] = layer
+
         self._update_display()
 
     def load_waveform_data(
@@ -359,6 +360,15 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
+
+        existing_series_tags = {self._series_tag(layer_name) for layer_name in list(self.layers.keys())}
+        children = dpg.get_item_children(self.y_axis_tag, 1)
+        for child_tag in children:
+            if child_tag in (self.position_indicator_tag, self.overlay_rectangle_tag):
+                continue
+
+            if child_tag not in existing_series_tags:
+                dpg_delete_item(child_tag)
 
         for layer in self.layers.values():
             series_tag = self._series_tag(layer.name)

@@ -10,10 +10,12 @@ import pytest
 
 from sampletones_shared.types.path import GeneralPathlike
 from sampletones_shared.utils.system.paths import (
+    DEFAULT_MAX_FILENAME_DISPLAY,
     get_directory,
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
     open_path_in_explorer,
+    shorten_filename,
     shorten_path,
     to_path,
 )
@@ -393,6 +395,22 @@ class TestShortenPath(BaseTestSuite):
 
             result = shorten_path(test_case.input_path, levels=test_case.levels)
             assert result == test_case.expected
+
+
+class TestShortenFilename:
+    def test_keeps_short_filename(self) -> None:
+        assert shorten_filename("lead.stnlib", max_length=DEFAULT_MAX_FILENAME_DISPLAY) == "lead.stnlib"
+
+    def test_truncates_long_filename_with_three_dots(self) -> None:
+        filename = "very_long_library_filename_that_keeps_going_and_going.stnlib"
+
+        result = shorten_filename(filename, max_length=16)
+
+        assert result == "very_long_lib..."
+
+    def test_rejects_too_small_limit(self) -> None:
+        with pytest.raises(ValueError):
+            shorten_filename("lead.stnlib", max_length=3)
 
 
 class TestGetDirectory:
