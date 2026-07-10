@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -70,6 +71,52 @@ class TestGenerationCompletedNotice:
         coordinator._on_generation_completed()
 
         coordinator._dialogs.show_info.assert_not_called()
+
+
+def _remove_library_coordinator(*, current_library_key: object | None) -> InstructionsTabCoordinator:
+    coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
+    coordinator._library_logic = MagicMock()
+    coordinator._library_logic.get_path.return_value = Path("lead.stnlib")
+    coordinator._library_logic.current_library_key = current_library_key
+    coordinator._dialogs = MagicMock()
+    coordinator._instruction_player_logic = MagicMock()
+    coordinator._on_audio_state_changed = MagicMock()
+    coordinator._close_instruction = MagicMock()
+    coordinator._ttl_remove_library = "Remove library"
+    coordinator._msg_remove_library = 'Remove library "{name}"?'
+    coordinator._lbl_remove = "Remove"
+    return coordinator
+
+
+class TestRemoveLibrary:
+    def test_request_prompts_confirmation(self) -> None:
+        coordinator = _remove_library_coordinator(current_library_key=object())
+        key = MagicMock()
+
+        coordinator._request_remove_library(key)
+
+        confirmation = coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert confirmation["message"] == 'Remove library "lead.stnlib"?'
+
+        confirmation["on_confirm"]()
+        coordinator._library_logic.remove_library.assert_called_once_with(key)
+
+    def test_removing_current_library_clears_display_and_audio(self) -> None:
+        coordinator = _remove_library_coordinator(current_library_key=None)
+
+        coordinator._remove_library(MagicMock())
+
+        coordinator._close_instruction.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_called_once_with()
+        coordinator._on_audio_state_changed.assert_called_once_with()
+
+    def test_removing_other_library_keeps_current_display(self) -> None:
+        coordinator = _remove_library_coordinator(current_library_key=MagicMock())
+
+        coordinator._remove_library(MagicMock())
+
+        coordinator._close_instruction.assert_not_called()
+        coordinator._instruction_player_logic.clear_audio.assert_not_called()
 
 
 def _display_coordinator() -> InstructionsTabCoordinator:

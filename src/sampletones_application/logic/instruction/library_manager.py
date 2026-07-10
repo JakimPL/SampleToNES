@@ -228,6 +228,9 @@ class InstructionsLibraryManager(CallbackMixin):
     def current_library_key(self) -> Optional[InstructionLibraryKey]:
         return self._current_library_key
 
+    def clear_current_library(self) -> None:
+        self._current_library_key = None
+
     @property
     def creator(self) -> Optional[InstructionsLibraryCreator]:
         return self._creator

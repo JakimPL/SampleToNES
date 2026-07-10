@@ -48,6 +48,7 @@ from sampletones_shared.exceptions import (
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.system.filesystem import remove_path
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
 OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey], None]
@@ -272,6 +273,16 @@ class LibraryLogic(CallbackMixin):
         self._library_manager.gather_available_libraries()
         self._sync_with_config_key(load_if_needed=load_if_needed)
         self.call(self.on_rebuild_tree_needed)
+
+    def remove_library(self, library_key: InstructionLibraryKey) -> Path:
+        filepath = self._library_manager.get_path(library_key)
+        remove_path(filepath)
+
+        if self.current_library_key == library_key:
+            self._library_manager.clear_current_library()
+
+        self.refresh_libraries(load_if_needed=False)
+        return filepath
 
     def update_status(self) -> None:
         """Repaints the idle library status; during a generation the progress handlers own the

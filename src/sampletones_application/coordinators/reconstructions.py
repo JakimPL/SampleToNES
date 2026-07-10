@@ -4,6 +4,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
+    DialogElements,
     GlobalMessageElements,
     MenuElements,
     PlayerElements,
@@ -27,6 +28,8 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.constants.reconstructions import (
+    TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
+    TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
 )
 from sampletones_application.coordinators.playback import (
@@ -126,6 +129,36 @@ class ReconstructionsTabCoordinator:
         self._instruments_width = layout.general.columns.reconstructions_right.width
         self._right_height = layout.general.columns.reconstructions_right.height
         self._panel_gap = layout.general.panel_gap
+        self._ttl_remove_reconstruction = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.TITLE,
+            ReconstructionsBrowserElements.REMOVE_RECONSTRUCTION_DIALOG,
+        ]
+        self._msg_remove_reconstruction = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.REMOVE_RECONSTRUCTION_MESSAGE,
+        ]
+        self._ttl_remove_directory = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.TITLE,
+            ReconstructionsBrowserElements.REMOVE_DIRECTORY_DIALOG,
+        ]
+        self._msg_remove_directory = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.REMOVE_DIRECTORY_MESSAGE,
+        ]
+        self._lbl_remove = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.REMOVE,
+        ]
 
         self._msg_file_not_found = language_manager[
             Page.RECONSTRUCTIONS,
@@ -308,6 +341,8 @@ class ReconstructionsTabCoordinator:
         self._browser_panel.on_reconstruct_file = on_reconstruct_file
         self._browser_panel.on_reconstruct_directory = on_reconstruct_directory
         self._browser_panel.on_load_reconstruction = on_load_reconstruction_with_confirmation
+        self._browser_panel.on_reconstruction_remove_requested = self._request_remove_reconstruction
+        self._browser_panel.on_directory_remove_requested = self._request_remove_directory
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_plot_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
@@ -482,6 +517,51 @@ class ReconstructionsTabCoordinator:
     def close_reconstruction(self) -> None:
         self._reconstruction_panel_logic.close_reconstruction()
         self._reconstruction_instruments_logic.update_display()
+
+    def _request_remove_reconstruction(self, filepath: Path) -> None:
+        self._dialogs.show_confirmation(
+            tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
+            title=self._ttl_remove_reconstruction,
+            message=self._msg_remove_reconstruction.format(name=filepath.name),
+            on_confirm=lambda: self._remove_reconstruction(filepath),
+            ok_label=self._lbl_remove,
+        )
+
+    def _request_remove_directory(self, directory: Path) -> None:
+        self._dialogs.show_confirmation(
+            tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
+            title=self._ttl_remove_directory,
+            message=self._msg_remove_directory.format(name=directory.name),
+            on_confirm=lambda: self._remove_directory(directory),
+            ok_label=self._lbl_remove,
+        )
+
+    def _remove_reconstruction(self, filepath: Path) -> None:
+        if self._reconstruction_manager.filepath == filepath:
+            self._reconstruction_manager.close_reconstruction()
+
+        try:
+            self._browser_logic.remove_path(filepath)
+        except OSError as exception:
+            logger.error_with_traceback(exception, f"Failed to remove reconstruction: {filepath}")
+            self._dialogs.show_error(exception, self._msg_load_error)
+            return
+
+        self._browser_panel.refresh()
+
+    def _remove_directory(self, directory: Path) -> None:
+        current_filepath = self._reconstruction_manager.filepath
+        if current_filepath is not None and current_filepath.is_relative_to(directory):
+            self._reconstruction_manager.close_reconstruction()
+
+        try:
+            self._browser_logic.remove_path(directory)
+        except OSError as exception:
+            logger.error_with_traceback(exception, f"Failed to remove directory: {directory}")
+            self._dialogs.show_error(exception, self._msg_load_error)
+            return
+
+        self._browser_panel.refresh()
 
     def update_reconstruction(self) -> None:
         self._reconstruction_panel_logic.update_reconstruction()
