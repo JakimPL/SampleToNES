@@ -275,4 +275,5 @@ class GUISequencerBrowserPanel(GUITreePanel):
             self._add_context_menu_play_item(node)
             self._add_context_menu_sequencer_items(node)
             self._add_context_menu_path_items(node.filepath)
+            self._add_context_menu_locate_audio_item(node)
             self._add_context_menu_favorite_item(node)

@@ -34,6 +34,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
 )
+from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
     GuardedPlayer,
@@ -109,6 +110,7 @@ class SequencerTabCoordinator:
         browser_manager: BrowserManager,
         project_controller: ProjectController,
         history: HistoryManager,
+        original_audio_locator: OriginalAudioLocator,
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -119,6 +121,7 @@ class SequencerTabCoordinator:
     ) -> None:
         self._project_controller = project_controller
         self._history = history
+        self._original_audio_locator = original_audio_locator
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_tab_switch = on_tab_switch
         self._layout = layout
@@ -426,6 +429,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
+        self._sequencer_browser_panel.on_locate_original_audio = self._original_audio_locator.locate
         self._sequencer_browser_panel.on_refresh_tree = self._sequencer_browser_logic.refresh_tree
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
         self._sequencer_tree_logic.on_favorite_changed = self._sequencer_browser_panel.update_favorite_indicator

@@ -29,6 +29,7 @@ from sampletones_application.constants.general import (
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
+from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
     PlaybackRouter,
@@ -242,6 +243,11 @@ class Application:
             is_reconstruction_embedded=self._editing_project_sample,
         )
 
+        self._original_audio_locator = OriginalAudioLocator(
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+        )
+
         self._reconstructions_tab = ReconstructionsTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
@@ -256,6 +262,7 @@ class Application:
             on_change_audio_state=self._update_menu,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
             is_operation_active=self._is_operation_active,
+            original_audio_locator=self._original_audio_locator,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -311,6 +318,7 @@ class Application:
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,
+            original_audio_locator=self._original_audio_locator,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,

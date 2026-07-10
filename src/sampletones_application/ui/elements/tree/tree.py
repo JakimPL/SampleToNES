@@ -206,6 +206,12 @@ class GUITreePanel(GUIPanel):
             TextType.LABEL,
             ContextElements.ADD_TO_SEQUENCER,
         ]
+        self._lbl_ctx_locate_audio = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.LOCATE_ORIGINAL_AUDIO,
+        ]
         self._lbl_ctx_mark_as_favorite = language_manager[
             Page.GLOBAL,
             Panel.CONTEXT,
@@ -263,6 +269,7 @@ class GUITreePanel(GUIPanel):
 
         self.on_add_to_sequencer: Optional[PathCallback] = None
         self.can_add_to_sequencer: Optional[Callable[[], bool]] = None
+        self.on_locate_original_audio: Optional[PathCallback] = None
 
         super().__init__(
             tag=tag,
@@ -666,6 +673,19 @@ class GUITreePanel(GUIPanel):
             user_data=node,
             enabled=self.call(self.can_add_to_sequencer),
         )
+
+    def _add_context_menu_locate_audio_item(self, node: FileSystemNode) -> None:
+        dpg.add_menu_item(
+            label=self._lbl_ctx_locate_audio,
+            callback=self._on_locate_original_audio,
+            user_data=node,
+        )
+
+    def _on_locate_original_audio(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
+            return
+
+        self.call(self.on_locate_original_audio, user_data.filepath)
 
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (

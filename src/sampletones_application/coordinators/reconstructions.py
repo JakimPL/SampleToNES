@@ -29,6 +29,7 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
 )
+from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
     GuardedPlayer,
@@ -82,11 +83,9 @@ from sampletones_shared.exceptions import (
     InvalidReconstructionError,
     InvalidReconstructionValuesError,
     LoadReconstructionError,
-    SampleToNESError,
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
-from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
 class ReconstructionsTabCoordinator:
@@ -105,6 +104,7 @@ class ReconstructionsTabCoordinator:
         on_change_audio_state: VoidCallback,
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
         is_operation_active: Callable[[], bool],
+        original_audio_locator: OriginalAudioLocator,
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -113,6 +113,7 @@ class ReconstructionsTabCoordinator:
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._dialogs = dialogs
+        self._original_audio_locator = original_audio_locator
 
         self._tab_label = language_manager[
             Page.GLOBAL,
@@ -320,7 +321,7 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_audio_panel.on_export_wav_confirmed = (
             self._reconstruction_panel_logic.handle_export_wav_confirmed
         )
-        self._browser_panel.on_locate_original_audio = self._locate_node_original_audio
+        self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
@@ -512,29 +513,6 @@ class ReconstructionsTabCoordinator:
     def open_reconstruction_in_explorer(self) -> None:
         """Reveals the loaded reconstruction's own file in the OS file manager."""
         self._reconstruction_panel_logic.open_reconstruction_in_explorer()
-
-    def _locate_node_original_audio(self, filepath: Path) -> None:
-        """Reveals a browsed reconstruction's original audio, loading the file on demand.
-
-        The tree node carries only its own path, so the reconstruction is read to recover
-        the recorded audio location. A detached reconstruction keeps no such location and is
-        left alone; a recorded location whose file has since moved surfaces a not-found dialog.
-        """
-        try:
-            audio_filepath = self._browser_logic.resolve_original_audio(filepath)
-        except (SampleToNESError, OSError) as exception:
-            logger.error_with_traceback(exception, f"Failed to read reconstruction from {filepath}")
-            self._dialogs.show_error(exception, self._msg_load_error)
-            return
-
-        if audio_filepath is None:
-            return
-
-        if not audio_filepath.exists():
-            self._dialogs.show_file_not_found(audio_filepath, self._msg_locate_audio_failed)
-            return
-
-        open_path_in_explorer(audio_filepath)
 
     def load_reconstruction(self, filepath: Path) -> None:
         self._browser_panel.lock()
