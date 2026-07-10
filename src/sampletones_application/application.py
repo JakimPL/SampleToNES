@@ -29,6 +29,7 @@ from sampletones_application.constants.general import (
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
+from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
     PlaybackRouter,
@@ -88,9 +89,6 @@ from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.view_model.reconstruction.add_to_sequencer import (
-    AddToSequencerViewModel,
-)
 from sampletones_application.view_model.shared.audio_settings import (
     AudioSettingsViewModel,
 )
@@ -245,6 +243,11 @@ class Application:
             is_reconstruction_embedded=self._editing_project_sample,
         )
 
+        self._original_audio_locator = OriginalAudioLocator(
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+        )
+
         self._reconstructions_tab = ReconstructionsTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
@@ -259,6 +262,7 @@ class Application:
             on_change_audio_state=self._update_menu,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
             is_operation_active=self._is_operation_active,
+            original_audio_locator=self._original_audio_locator,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -314,14 +318,13 @@ class Application:
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,
+            original_audio_locator=self._original_audio_locator,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
             on_tab_switch=self._set_current_tab,
-            on_export_module=self._project_coordinator.export_module_dialog,
-            on_open_properties=self._open_project_properties,
         )
 
         self._playback_router = PlaybackRouter(
@@ -408,7 +411,6 @@ class Application:
         self.history.reset()
         self.config_manager.update_gui()
         self._update_menu()
-        self._update_add_to_sequencer_state()
 
     def _create_shortcut_bindings(self) -> ShortcutBindings:
         return ShortcutBindings(
@@ -432,6 +434,9 @@ class Application:
             close_reconstruction=self._reconstruction_coordinator.close_with_confirmation,
             export_wav=self._export_reconstruction_wav_dialog,
             export_instruments=self._export_reconstruction_instruments_dialog,
+            add_reconstruction_to_sequencer=self._add_current_reconstruction_to_sequencer,
+            open_reconstruction_in_explorer=self._open_reconstruction_in_explorer,
+            locate_original_audio=self._locate_original_audio,
             play=self._play,
             play_from_start=self._play_from_start,
             stop=self._stop,
@@ -478,7 +483,6 @@ class Application:
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
         self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
         self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
-        self._reconstructions_tab.set_on_add_current_reconstruction(self._add_current_reconstruction_to_sequencer)
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
@@ -488,6 +492,9 @@ class Application:
             project_open=self.project_manager.is_open,
             reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
             reconstruction_saveable=self._reconstruction_coordinator.is_saveable(),
+            reconstruction_in_project=self._editing_project_sample(),
+            reconstruction_file_backed=self._reconstruction_coordinator.is_saveable(),
+            reconstruction_audio_recorded=self.reconstruction_manager.audio_filepath is not None,
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
             play_label=self.language_manager[
@@ -510,6 +517,9 @@ class Application:
             project_open=self.project_manager.is_open,
             reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
             reconstruction_saveable=self._reconstruction_coordinator.is_saveable(),
+            reconstruction_in_project=self._editing_project_sample(),
+            reconstruction_file_backed=self._reconstruction_coordinator.is_saveable(),
+            reconstruction_audio_recorded=self.reconstruction_manager.audio_filepath is not None,
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
             play_label=self._playback_router.play_label,
@@ -874,14 +884,11 @@ class Application:
             reconstruction_data.name,
         )
 
-    def _update_add_to_sequencer_state(self) -> None:
-        self._reconstructions_tab.update_add_to_sequencer(
-            AddToSequencerViewModel(
-                reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
-                project_open=self.project_controller.is_open,
-                already_in_sequencer=self._editing_project_sample(),
-            )
-        )
+    def _open_reconstruction_in_explorer(self) -> None:
+        self._reconstructions_tab.open_reconstruction_in_explorer()
+
+    def _locate_original_audio(self) -> None:
+        self._reconstructions_tab.locate_original_audio()
 
     def _reconstruction_title_part(self) -> Optional[ReconstructionTitlePart]:
         reconstruction_name = self._reconstruction_coordinator.reconstruction_name
@@ -953,12 +960,10 @@ class Application:
         self._sync_reconstruction_ownership()
         self._update_title()
         self._update_menu()
-        self._update_add_to_sequencer_state()
 
     def _on_reconstruction_state_changed(self) -> None:
         self._update_title()
         self._update_menu()
-        self._update_add_to_sequencer_state()
 
     def _set_current_tab(self, tab: Tab) -> None:
         self._shell.set_current_tab(tab)

@@ -445,6 +445,24 @@ TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS = TagName(
     Widget.MENU,
     "item_reconstruction_export_instruments",
 )
+TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_reconstruction_add_to_sequencer",
+)
+TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN_IN_EXPLORER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_reconstruction_open_in_explorer",
+)
+TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOCATE_AUDIO = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_reconstruction_locate_audio",
+)
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

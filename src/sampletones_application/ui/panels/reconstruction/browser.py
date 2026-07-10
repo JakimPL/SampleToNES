@@ -380,6 +380,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_remove_reconstruction_item(node)
             self._add_context_menu_sequencer_items(node)
             self._add_context_menu_path_items(node.filepath)
+            self._add_context_menu_locate_audio_item(node)
             self._add_context_menu_favorite_item(node)
 
     def _add_context_menu_load_reconstruction_item(self, node: FileSystemNode) -> None:

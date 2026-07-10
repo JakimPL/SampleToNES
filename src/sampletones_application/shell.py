@@ -76,6 +76,9 @@ class ShortcutBindings:
     close_reconstruction: Callback
     export_wav: Callback
     export_instruments: Callback
+    add_reconstruction_to_sequencer: Callback
+    open_reconstruction_in_explorer: Callback
+    locate_original_audio: Callback
     play: Callback
     play_from_start: Callback
     stop: Callback
@@ -261,6 +264,21 @@ class ApplicationShell:
             ShortcutId.EXPORT_RECONSTRUCTION_INSTRUMENTS,
             Shortcut(dpg.mvKey_I, (Modifier.CTRL,)),
             bindings.export_instruments,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
+            Shortcut(),
+            bindings.add_reconstruction_to_sequencer,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER,
+            Shortcut(),
+            bindings.open_reconstruction_in_explorer,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.LOCATE_ORIGINAL_AUDIO,
+            Shortcut(),
+            bindings.locate_original_audio,
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_FULLSCREEN,

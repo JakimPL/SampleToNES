@@ -32,6 +32,7 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
 )
+from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
     GuardedPlayer,
@@ -73,9 +74,6 @@ from sampletones_application.ui.panels.reconstruction.plot import (
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.view_model.reconstruction.add_to_sequencer import (
-    AddToSequencerViewModel,
-)
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -109,6 +107,7 @@ class ReconstructionsTabCoordinator:
         on_change_audio_state: VoidCallback,
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
         is_operation_active: Callable[[], bool],
+        original_audio_locator: OriginalAudioLocator,
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -117,6 +116,7 @@ class ReconstructionsTabCoordinator:
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._dialogs = dialogs
+        self._original_audio_locator = original_audio_locator
 
         self._tab_label = language_manager[
             Page.GLOBAL,
@@ -250,7 +250,7 @@ class ReconstructionsTabCoordinator:
             TextType.MESSAGE,
             ReconstructionPanelElements.EXPORT_WAV_FAILED,
         ]
-        _msg_locate_audio_failed = language_manager[
+        self._msg_locate_audio_failed = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.RECONSTRUCTION,
             TextType.MESSAGE,
@@ -346,10 +346,6 @@ class ReconstructionsTabCoordinator:
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_plot_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
-        self._reconstruction_audio_panel.on_export_wav_requested = self.request_export_wav_dialog
-        self._reconstruction_audio_panel.on_export_instruments_requested = (
-            self._reconstruction_panel_logic.request_export_instruments_dialog
-        )
         self._reconstruction_audio_panel.on_export_instrument_confirmed = (
             self._reconstruction_panel_logic.handle_export_instrument_confirmed
         )
@@ -359,9 +355,7 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_audio_panel.on_export_wav_confirmed = (
             self._reconstruction_panel_logic.handle_export_wav_confirmed
         )
-        self._reconstruction_audio_panel.on_locate_original_audio_requested = (
-            self._reconstruction_panel_logic.handle_locate_original_audio
-        )
+        self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
@@ -383,7 +377,7 @@ class ReconstructionsTabCoordinator:
             self._reconstruction_audio_panel.open_export_wav_dialog
         )
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
-            path, _msg_locate_audio_failed
+            path, self._msg_locate_audio_failed
         )
 
         export_service.subscribe(
@@ -595,11 +589,13 @@ class ReconstructionsTabCoordinator:
     def set_can_add_to_sequencer(self, predicate: Callable[[], bool]) -> None:
         self._browser_panel.can_add_to_sequencer = predicate
 
-    def set_on_add_current_reconstruction(self, callback: VoidCallback) -> None:
-        self._reconstruction_audio_panel.on_add_to_sequencer_requested = callback
+    def locate_original_audio(self) -> None:
+        """Reveals the loaded reconstruction's original audio file in the OS file manager."""
+        self._reconstruction_panel_logic.handle_locate_original_audio()
 
-    def update_add_to_sequencer(self, view_model: AddToSequencerViewModel) -> None:
-        self._reconstruction_audio_panel.update_add_to_sequencer(view_model)
+    def open_reconstruction_in_explorer(self) -> None:
+        """Reveals the loaded reconstruction's own file in the OS file manager."""
+        self._reconstruction_panel_logic.open_reconstruction_in_explorer()
 
     def load_reconstruction(self, filepath: Path) -> None:
         self._browser_panel.lock()

@@ -19,7 +19,6 @@ class HeaderGlyphs(BaseModel, frozen=True):
     parameters: str
     source: str
     instruments: str
-    project: str
     samples: str
     tracker: str
     order: str
