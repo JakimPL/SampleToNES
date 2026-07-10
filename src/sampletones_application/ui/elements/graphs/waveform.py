@@ -362,13 +362,14 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             return
 
         existing_series_tags = {self._series_tag(layer_name) for layer_name in list(self.layers.keys())}
-        children = dpg.get_item_children(self.y_axis_tag, 1)
-        for child_tag in children:
+        children = dpg.get_item_children(self.y_axis_tag, 1) or []
+        for child in children:
+            child_tag = dpg.get_item_alias(child)
             if child_tag in (self.position_indicator_tag, self.overlay_rectangle_tag):
                 continue
 
             if child_tag not in existing_series_tags:
-                dpg_delete_item(child_tag)
+                dpg_delete_item(child)
 
         for layer in self.layers.values():
             series_tag = self._series_tag(layer.name)
