@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 import pytest
 
-from sampletones_application.constants.reconstructions import (
+from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
     TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT,

@@ -8,8 +8,9 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
-from sampletones_application.constants.sequencer import (
+from sampletones_application.layout.behavior import TreeBehavior
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
+from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
     TAG_SEQUENCER_BROWSER_GROUP_CONTROLS,
     TAG_SEQUENCER_BROWSER_GROUP_TREE,
@@ -17,7 +18,6 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_BROWSER_TREE,
     TAG_SEQUENCER_BROWSER_WINDOW_TREE,
 )
-from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.status import GUIStatusBar

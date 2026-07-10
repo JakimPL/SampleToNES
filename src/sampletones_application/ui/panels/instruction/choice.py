@@ -9,8 +9,10 @@ from sampletones_application.categories.elements.instructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
-from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
-from sampletones_application.constants.instructions import (
+from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.layout.instructions import InstructionsLayout
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
     TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
@@ -22,8 +24,6 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_PANEL,
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
 )
-from sampletones_application.layout.general import GeneralLayout
-from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper

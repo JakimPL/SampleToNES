@@ -2,7 +2,8 @@ from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import (
+from sampletones_application.layout.general import FontsLayout
+from sampletones_application.tags.general import (
     TAG_GLOBAL_FONT_BOLD,
     TAG_GLOBAL_FONT_BOLD_LARGE,
     TAG_GLOBAL_FONT_BOLD_SMALL,
@@ -14,7 +15,6 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_FONT_REGULAR_LARGE,
     TAG_GLOBAL_FONT_REGULAR_SMALL,
 )
-from sampletones_application.layout.general import FontsLayout
 from sampletones_application.ui.elements.fonts.data import FontData
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.resources.items import FontResource

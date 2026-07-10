@@ -100,7 +100,7 @@ GENERATOR_ABBREVIATION_TO_NAME: Final[Dict[str, GeneratorName]] = {
 GENERATOR_ABBREVIATION_PATTERN: Final[str] = rf"^[{''.join(GENERATOR_ABBREVIATIONS.values())}]+$"
 
 
-DEFAULT_GENERATORS: Final[list[GeneratorName]] = [
+DEFAULT_GENERATORS: Final[List[GeneratorName]] = [
     GeneratorName.PULSE1,
     GeneratorName.TRIANGLE,
     GeneratorName.NOISE,

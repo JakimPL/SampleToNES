@@ -12,20 +12,20 @@ from sampletones_application.categories.elements.reconstructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_CHANNEL_NOISE,
     TAG_GLOBAL_THEME_CHANNEL_PULSE1,
     TAG_GLOBAL_THEME_CHANNEL_PULSE2,
     TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
 )
-from sampletones_application.constants.reconstructions import (
+from sampletones_application.tags.reconstructions import (
     PRE_RECONSTRUCTION_GENERATOR,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     TAG_RECONSTRUCTIONS_PLOT_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
 )
-from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph

@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 import pytest
 
-from sampletones_application.constants.instructions import (
+from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
     TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
 )

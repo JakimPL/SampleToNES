@@ -3,10 +3,10 @@ from typing import Iterator
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import SUF_BUTTON
-from sampletones_application.constants.player import SUF_PLAYER_TOOLTIP
 from sampletones_application.layout.glyphs import PlayerGlyphs
 from sampletones_application.layout.player import PlayerButtonLayout, PlayerLayout
+from sampletones_application.tags.general import SUF_BUTTON
+from sampletones_application.tags.player import SUF_PLAYER_TOOLTIP
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_shared.types.callback import VoidCallback

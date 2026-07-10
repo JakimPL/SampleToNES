@@ -3,8 +3,8 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry

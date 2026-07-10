@@ -4,7 +4,7 @@ from typing import Iterator
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_PANEL_SURFACE
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_PANEL_SURFACE
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.registry import ThemeRegistry

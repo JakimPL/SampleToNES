@@ -12,11 +12,12 @@ from sampletones_application.categories.elements.instructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.layout.behavior import TreeBehavior
+from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PRIMARY_BUTTON,
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
-from sampletones_application.constants.instructions import (
+from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
@@ -32,7 +33,6 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_TREE,
     TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
 )
-from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font

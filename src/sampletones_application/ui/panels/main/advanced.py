@@ -7,10 +7,11 @@ from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import AdvancedElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.layout.general import PathColors
+from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
 )
-from sampletones_application.constants.main import (
+from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
     TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
@@ -20,7 +21,6 @@ from sampletones_application.constants.main import (
     TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
     TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
 )
-from sampletones_application.layout.general import PathColors
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.layout.card import card

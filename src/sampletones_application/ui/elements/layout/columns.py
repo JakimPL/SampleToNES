@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_PANEL_GROUND
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_PANEL_GROUND
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_shared.types.callback import StringCallback
 

@@ -9,19 +9,19 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ReconstructorElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.layout.main import ReconstructorLayout
+from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
     TAG_GLOBAL_THEME_CHANNEL_NOISE,
     TAG_GLOBAL_THEME_CHANNEL_PULSE1,
     TAG_GLOBAL_THEME_CHANNEL_PULSE2,
     TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
 )
-from sampletones_application.constants.main import (
+from sampletones_application.tags.main import (
     PRE_MAIN_RECONSTRUCTOR_GENERATOR,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
-from sampletones_application.layout.main import ReconstructorLayout
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar

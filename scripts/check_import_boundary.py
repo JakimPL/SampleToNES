@@ -21,7 +21,7 @@ Usage:
 import re
 import sys
 from pathlib import Path
-from typing import NamedTuple
+from typing import List, NamedTuple, Tuple
 
 APP_ROOT = Path(__file__).parent.parent / "src" / "sampletones_application"
 
@@ -41,8 +41,8 @@ SERVICE_CONTRACTS = [
 
 class BoundaryRule(NamedTuple):
     pattern: str
-    forbidden: list[str]
-    contracts: list[str] = []
+    forbidden: List[str]
+    contracts: List[str] = []
 
 
 class TokenRule(NamedTuple):
@@ -51,7 +51,7 @@ class TokenRule(NamedTuple):
     message: str
 
 
-RULES: list[BoundaryRule] = [
+RULES: List[BoundaryRule] = [
     BoundaryRule(
         "config/**/*.py",
         [
@@ -118,7 +118,7 @@ RULES: list[BoundaryRule] = [
 ]
 
 
-TOKEN_RULES: list[TokenRule] = [
+TOKEN_RULES: List[TokenRule] = [
     TokenRule(
         "ui/panels/**/*.py",
         r"\bSUF_PANEL_",
@@ -148,9 +148,9 @@ def _matches_prefix(module: str, prefix: str) -> bool:
 def find_token_violations(
     filepath: Path,
     rule: TokenRule,
-) -> list[tuple[str, str]]:
+) -> List[Tuple[str, str]]:
     pattern = re.compile(rule.forbidden)
-    violations: list[tuple[str, str]] = []
+    violations: List[Tuple[str, str]] = []
     for line_number, line in enumerate(
         filepath.read_text(encoding="utf-8").splitlines(),
         start=1,
@@ -165,8 +165,8 @@ def find_token_violations(
 def find_violations(
     filepath: Path,
     rule: BoundaryRule,
-) -> list[tuple[str, str]]:
-    violations: list[tuple[str, str]] = []
+) -> List[Tuple[str, str]]:
+    violations: List[Tuple[str, str]] = []
     for line_number, line in enumerate(
         filepath.read_text(encoding="utf-8").splitlines(),
         start=1,
@@ -188,8 +188,8 @@ def find_violations(
     return violations
 
 
-def run_all_rules() -> list[tuple[str, str]]:
-    all_violations: list[tuple[str, str]] = []
+def run_all_rules() -> List[Tuple[str, str]]:
+    all_violations: List[Tuple[str, str]] = []
     for rule in RULES:
         for filepath in sorted(APP_ROOT.glob(rule.pattern)):
             all_violations.extend(find_violations(filepath, rule))
@@ -201,8 +201,8 @@ def run_all_rules() -> list[tuple[str, str]]:
     return all_violations
 
 
-def run_on_files(filepaths: list[Path]) -> list[tuple[str, str]]:
-    all_violations: list[tuple[str, str]] = []
+def run_on_files(filepaths: List[Path]) -> List[Tuple[str, str]]:
+    all_violations: List[Tuple[str, str]] = []
     for rule in RULES:
         matched = {path for path in filepaths if path.match(rule.pattern)}
         for filepath in sorted(matched):

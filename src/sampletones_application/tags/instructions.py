@@ -1,5 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
+from sampletones_application.constants.global_ import TAG_SEPARATOR
 
 TAG_INSTRUCTIONS_LIBRARY_PANEL = TagName(
     Page.INSTRUCTIONS,
@@ -254,4 +255,4 @@ TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES = TagName(
     "tables",
 )
 
-SUF_INSTRUCTION_DETAILS_TABLE = ".table"
+SUF_INSTRUCTION_DETAILS_TABLE = f"{TAG_SEPARATOR}table"

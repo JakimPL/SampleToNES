@@ -1,9 +1,11 @@
+from typing import Tuple, TypeAlias
+
 from pydantic import BaseModel
 
 from sampletones_application.layout.glyphs import GlyphLayout
 from sampletones_application.utils.color import RGBA
 
-Padding = tuple[int, int]
+Padding: TypeAlias = Tuple[int, int]
 
 
 class WindowLayout(BaseModel, frozen=True):

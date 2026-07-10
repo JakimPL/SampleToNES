@@ -43,7 +43,9 @@ class TreeLogic(CallbackMixin):
         with self._thread_lock:
             self._lock_counter += 1
             self._is_locked = True
-            self.call(self.on_lock_state_changed, False)
+
+            if self.on_lock_state_changed is not None:
+                CallbackQueue.add(self.on_lock_state_changed, False)
 
     def unlock(self) -> None:
         with self._thread_lock:
@@ -51,7 +53,9 @@ class TreeLogic(CallbackMixin):
             if self._lock_counter <= 0:
                 self._lock_counter = 0
                 self._is_locked = False
-                self.call(self.on_lock_state_changed, True)
+
+                if self.on_lock_state_changed is not None:
+                    CallbackQueue.add(self.on_lock_state_changed, True)
 
     @property
     def locked(self) -> bool:

@@ -9,8 +9,10 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_PRIMARY_BUTTON
-from sampletones_application.constants.main import (
+from sampletones_application.layout.general import PathColors
+from sampletones_application.layout.main import ConverterLayout
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_PRIMARY_BUTTON
+from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_BUTTON_CANCEL,
     TAG_MAIN_CONVERTER_BUTTON_CONVERT,
     TAG_MAIN_CONVERTER_BUTTON_LOAD,
@@ -26,8 +28,6 @@ from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
     TAG_MAIN_CONVERTER_WINDOW_SUMMARY,
 )
-from sampletones_application.layout.general import PathColors
-from sampletones_application.layout.main import ConverterLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry

@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -8,8 +8,9 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
-from sampletones_application.constants.sequencer import (
+from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
     TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER,
     TAG_SEQUENCER_INSTRUMENTS_PANEL,
@@ -17,7 +18,6 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_THEME_ROW,
     TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
-from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.context_menu import (
     add_play_menu_item,
     context_menu,
@@ -410,7 +410,7 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _on_loop_toggled(self, sender: Sender, app_data: bool, user_data: str) -> None:
         self.call(self.on_loop_changed, user_data, app_data)
 
-    def _on_sample_double_clicked(self, sender: Sender, app_data: list[int]) -> None:
+    def _on_sample_double_clicked(self, sender: Sender, app_data: List[int]) -> None:
         clicked_item = app_data[1]
         user_data = dpg.get_item_user_data(clicked_item)
         if user_data is not None:

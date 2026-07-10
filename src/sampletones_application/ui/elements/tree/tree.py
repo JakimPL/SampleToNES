@@ -13,9 +13,9 @@ from sampletones_application.categories.elements.global_ import (
     TreeElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.tags.general import (
     SUF_BUTTON_SEARCH,
     SUF_HANDLER_DETAIL_TOOLTIP,
     SUF_HANDLER_NODE,
@@ -31,7 +31,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_THEME_FILE_WAVE,
     TAG_GLOBAL_THEME_TREE_WINDOW,
 )
-from sampletones_application.constants.instructions import (
+from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
     TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP,
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,

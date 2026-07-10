@@ -1,5 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
+from sampletones_application.constants.global_ import TAG_SEPARATOR
 
 TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Page.MAIN,
@@ -248,5 +249,5 @@ TAG_MAIN_CONVERTER_HINT_SUMMARY = TagName(
     "summary_hint",
 )
 
-PRE_MAIN_RECONSTRUCTOR_GENERATOR = "gen."
-SUF_MAIN_EXPLORER_NODE_DUMMY = ".node_dummy"
+PRE_MAIN_RECONSTRUCTOR_GENERATOR = f"gen{TAG_SEPARATOR}"
+SUF_MAIN_EXPLORER_NODE_DUMMY = f"{TAG_SEPARATOR}node_dummy"

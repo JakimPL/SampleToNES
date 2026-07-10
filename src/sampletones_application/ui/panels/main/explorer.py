@@ -7,8 +7,9 @@ from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.main import ExplorerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
-from sampletones_application.constants.main import (
+from sampletones_application.layout.behavior import TreeBehavior
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
+from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
     TAG_MAIN_EXPLORER_BUTTON_REFRESH,
     TAG_MAIN_EXPLORER_GROUP_CONTROLS,
@@ -17,7 +18,6 @@ from sampletones_application.constants.main import (
     TAG_MAIN_EXPLORER_TREE,
     TAG_MAIN_EXPLORER_WINDOW_TREE,
 )
-from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.status import GUIStatusBar

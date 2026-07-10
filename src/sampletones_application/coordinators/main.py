@@ -12,19 +12,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_CENTER,
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_MAIN,
-    TAG_GLOBAL_TABS,
-    TAG_GLOBAL_THEME_PANEL_GROUND,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
-)
-from sampletones_application.constants.main import (
-    TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
-    TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
-    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
-)
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
     PreviewPlayer,
@@ -37,6 +24,19 @@ from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.conversion import ConversionService
+from sampletones_application.tags.general import (
+    SUF_PANEL_CENTER,
+    SUF_PANEL_LEFT,
+    TAG_GLOBAL_TAB_MAIN,
+    TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
+)
+from sampletones_application.tags.main import (
+    TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
+    TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
+    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
+)
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors

@@ -5,18 +5,18 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.sequencer import SequencerGridElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.tags.general import (
     SUF_HANDLER_KEY,
     SUF_HANDLER_REGISTRY,
 )
-from sampletones_application.constants.sequencer import (
+from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_TABLE_TRACKER,
     TAG_SEQUENCER_GRID_WINDOW_TRACKER,
     TAG_SEQUENCER_THEME_TABLE_PATTERN,
 )
-from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.context_menu import (
     add_play_menu_item,
     context_menu,

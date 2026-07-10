@@ -6,16 +6,16 @@ import numpy as np
 
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.graphs import (
+from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.graphs import (
     SUF_BAR_PLOT_HOVER_BAR,
     SUF_BAR_PLOT_ZERO_LINE,
     SUF_GRAPH_THEME,
     SUF_HANDLER_MOUSE,
     TAG_GLOBAL_GRAPH_THEME_ZERO_LINE,
 )
-from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.bar import BarLayer
 from sampletones_application.ui.themes.registry import ThemeRegistry

@@ -8,7 +8,9 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.sequencer import (
+from sampletones_application.layout.general import FeatureColors
+from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_REDO,
     TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
     TAG_SEQUENCER_HISTORY_GROUP_ACTIONS,
@@ -16,8 +18,6 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_HISTORY_THEME_LIST,
     TAG_SEQUENCER_HISTORY_WINDOW_LIST,
 )
-from sampletones_application.layout.general import FeatureColors
-from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry

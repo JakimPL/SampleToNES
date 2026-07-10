@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_TABLE
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_TABLE
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry

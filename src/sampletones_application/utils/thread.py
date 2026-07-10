@@ -43,6 +43,7 @@ class SingleThreadExecutor:
             self._thread = thread
             with SingleThreadExecutor._live_threads_lock:
                 SingleThreadExecutor._live_threads.add(thread)
+
             thread.start()
             return True
 

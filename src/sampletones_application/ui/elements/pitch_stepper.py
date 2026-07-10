@@ -2,7 +2,8 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import (
+from sampletones_application.layout.general import PitchStepperLayout
+from sampletones_application.tags.general import (
     SUF_BUTTON_DECREMENT,
     SUF_BUTTON_INCREMENT,
     SUF_HANDLER_REGISTRY,
@@ -13,7 +14,6 @@ from sampletones_application.constants.general import (
     SUF_TOOLTIP,
     TAG_GLOBAL_THEME_PITCH_STEPPER,
 )
-from sampletones_application.layout.general import PitchStepperLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry

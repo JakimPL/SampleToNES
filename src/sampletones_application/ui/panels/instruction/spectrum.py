@@ -5,11 +5,11 @@ from sampletones_application.categories.elements.instructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.instructions import (
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
     TAG_INSTRUCTIONS_SPECTRUM_PANEL,
 )
-from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel

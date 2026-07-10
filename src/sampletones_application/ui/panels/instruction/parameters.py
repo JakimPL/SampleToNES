@@ -7,7 +7,8 @@ from sampletones_application.categories.elements.instructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.instructions import (
+from sampletones_application.layout.general import TableColors, TablesLayout
+from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
     TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
     TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
@@ -16,7 +17,6 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
     TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
 )
-from sampletones_application.layout.general import TableColors, TablesLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.card import card

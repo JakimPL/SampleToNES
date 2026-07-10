@@ -1,6 +1,0 @@
-SUF_PLAYER_PLAY = ".play"
-SUF_PLAYER_PAUSE = ".pause"
-SUF_PLAYER_STOP = ".stop"
-SUF_PLAYER_POSITION = ".position"
-SUF_PLAYER_CARD = ".card"
-SUF_PLAYER_TOOLTIP = ".tooltip"

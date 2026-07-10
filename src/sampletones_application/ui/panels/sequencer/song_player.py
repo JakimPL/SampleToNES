@@ -8,8 +8,9 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_PLAYER_TOOLBAR
-from sampletones_application.constants.player import (
+from sampletones_application.layout.player import PlayerLayout
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_PLAYER_TOOLBAR
+from sampletones_application.tags.player import (
     SUF_PLAYER_CARD,
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
@@ -17,7 +18,6 @@ from sampletones_application.constants.player import (
     SUF_PLAYER_STOP,
     SUF_PLAYER_TOOLTIP,
 )
-from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel

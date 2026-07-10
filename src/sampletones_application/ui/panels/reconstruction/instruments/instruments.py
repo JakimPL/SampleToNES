@@ -12,10 +12,13 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
-from sampletones_application.constants.general import (
+from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.layout.reconstructions import ReconstructionsLayout
+from sampletones_application.tags.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
@@ -23,20 +26,17 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_INVALID,
 )
-from sampletones_application.constants.graphs import (
+from sampletones_application.tags.graphs import (
     SUF_GRAPH,
     SUF_GRAPH_RAW_DATA,
 )
-from sampletones_application.constants.reconstructions import (
+from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
 )
-from sampletones_application.layout.general import GeneralLayout
-from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.layout.reconstructions import ReconstructionsLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range

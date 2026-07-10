@@ -18,22 +18,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextT
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_CENTER,
-    SUF_PANEL_LEFT,
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
-    TAG_GLOBAL_TAB_SEQUENCER,
-    TAG_GLOBAL_TABS,
-    TAG_GLOBAL_THEME_PANEL_GROUND,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
-)
-from sampletones_application.constants.sequencer import (
-    TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
-    TAG_SEQUENCER_GRID_PANEL_PLAYER,
-    TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
-    TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
-)
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
@@ -62,6 +46,22 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.song_player.player import SongPlayerService
+from sampletones_application.tags.general import (
+    SUF_PANEL_CENTER,
+    SUF_PANEL_LEFT,
+    SUF_PANEL_RIGHT,
+    TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
+    TAG_GLOBAL_TAB_SEQUENCER,
+    TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
+)
+from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
+    TAG_SEQUENCER_GRID_PANEL_PLAYER,
+    TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
+    TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
+)
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors

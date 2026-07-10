@@ -12,15 +12,15 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
+from sampletones_application.layout import LayoutConfig
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
     TAG_GLOBAL_DIALOG_PROJECT_OPEN,
     TAG_GLOBAL_DIALOG_PROJECT_SAVED,
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
 )
-from sampletones_application.layout import LayoutConfig
-from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_MODULE, EXT_FILE_PROJECT

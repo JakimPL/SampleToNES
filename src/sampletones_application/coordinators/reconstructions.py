@@ -17,18 +17,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_CENTER,
-    SUF_PANEL_LEFT,
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
-    TAG_GLOBAL_TABS,
-    TAG_GLOBAL_THEME_PANEL_GROUND,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
-)
-from sampletones_application.constants.reconstructions import (
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
-)
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
@@ -53,6 +41,18 @@ from sampletones_application.services.export import (
     ExportResult,
     ExportService,
     ExportSuccess,
+)
+from sampletones_application.tags.general import (
+    SUF_PANEL_CENTER,
+    SUF_PANEL_LEFT,
+    SUF_PANEL_RIGHT,
+    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
+)
+from sampletones_application.tags.reconstructions import (
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar

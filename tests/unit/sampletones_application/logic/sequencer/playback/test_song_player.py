@@ -1,3 +1,4 @@
+from typing import List
 from unittest.mock import MagicMock
 
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
@@ -25,8 +26,8 @@ def _make_logic(*, is_open: bool = True) -> SongPlayerLogic:
     )
 
 
-def _capture_views(logic: SongPlayerLogic) -> list[SongPlayerViewModel]:
-    views: list[SongPlayerViewModel] = []
+def _capture_views(logic: SongPlayerLogic) -> List[SongPlayerViewModel]:
+    views: List[SongPlayerViewModel] = []
     logic.on_view_changed = views.append
     return views
 
@@ -189,7 +190,7 @@ class TestOnServiceResult:
     def test_position_update_fires_on_position_changed(self) -> None:
         logic = _make_logic()
         logic.on_view_changed = lambda _: None
-        received: list[tuple[int, int]] = []
+        received: List[Tuple[int, int]] = []
         logic.on_position_changed = lambda order, row: received.append((order, row))
 
         logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=2, row_index=6)))
@@ -274,7 +275,7 @@ class TestOnServiceResult:
     def test_playback_error_fires_on_error_callback(self) -> None:
         logic = _make_logic()
         logic.on_view_changed = lambda _: None
-        errors: list[Exception] = []
+        errors: List[Exception] = []
         logic.on_error = errors.append
 
         error = RuntimeError("device lost")
@@ -323,7 +324,7 @@ class TestSeekSuppression:
         logic = _make_logic(is_open=True)
         logic._service.alive = True
         logic.on_view_changed = lambda _: None
-        received: list[tuple[int, int]] = []
+        received: List[Tuple[int, int]] = []
         logic.on_position_changed = lambda order, row: received.append((order, row))
 
         logic.seek(5)
@@ -335,7 +336,7 @@ class TestSeekSuppression:
         logic = _make_logic(is_open=True)
         logic._service.alive = True
         logic.on_view_changed = lambda _: None
-        received: list[tuple[int, int]] = []
+        received: List[Tuple[int, int]] = []
         logic.on_position_changed = lambda order, row: received.append((order, row))
 
         logic.seek(5)
@@ -349,7 +350,7 @@ class TestSeekSuppression:
         logic = _make_logic(is_open=True)
         logic._service.alive = False
         logic.on_view_changed = lambda _: None
-        received: list[tuple[int, int]] = []
+        received: List[Tuple[int, int]] = []
         logic.on_position_changed = lambda order, row: received.append((order, row))
 
         logic.seek(5)

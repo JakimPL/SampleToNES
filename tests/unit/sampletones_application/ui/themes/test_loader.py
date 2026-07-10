@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Dict, Generator, List, Optional
+from typing import Dict, Generator, Optional
 
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.paths import PALETTE_PATH, THEME_DIRECTORY
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.ui.themes.loader import ThemeLoader
 from sampletones_application.ui.themes.spec import ThemeSpec
 from sampletones_application.ui.themes.theme import Theme

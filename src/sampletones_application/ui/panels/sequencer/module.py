@@ -8,8 +8,9 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
-from sampletones_application.constants.sequencer import (
+from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
     TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
     TAG_SEQUENCER_MODULE_INPUT_ROWS,
@@ -17,7 +18,6 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_INPUT_TEMPO,
     TAG_SEQUENCER_MODULE_PANEL,
 )
-from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar

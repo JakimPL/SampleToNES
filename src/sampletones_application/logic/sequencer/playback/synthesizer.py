@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from typing import FrozenSet, List, Optional
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
@@ -78,7 +78,7 @@ class RowSynthesizer:
         self._position = SongPosition()
         self._tick_debt: int = 0
         self._active_channels: FrozenSet[GeneratorName] = frozenset(GeneratorName.items())
-        self._channel_states: dict[GeneratorName, _ChannelState] = {
+        self._channel_states: Dict[GeneratorName, _ChannelState] = {
             generator_name: _ChannelState(
                 generator=GENERATOR_CLASSES[generator_name](
                     config,
@@ -139,7 +139,7 @@ class RowSynthesizer:
         library = self._config.library.model_copy(update={"nes_frequency": nes_frequency})
         return self._config.model_copy(update={"library": library})
 
-    def render_row(self) -> tuple[np.ndarray, SongPosition]:
+    def render_row(self) -> Tuple[np.ndarray, SongPosition]:
         project = self._project_controller.project
         settings = project.settings
         song = project.song

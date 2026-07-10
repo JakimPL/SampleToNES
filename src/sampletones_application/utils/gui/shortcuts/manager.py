@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_GLOBAL_HANDLER_FOCUS
+from sampletones_application.tags.general import TAG_GLOBAL_HANDLER_FOCUS
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut

@@ -3,7 +3,7 @@ from typing import Any
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_DIALOG_WINDOW
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG_WINDOW
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import center_item

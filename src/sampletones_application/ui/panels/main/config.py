@@ -6,8 +6,8 @@ from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import ConfigPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
-from sampletones_application.constants.main import (
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
     TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE,
     TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,

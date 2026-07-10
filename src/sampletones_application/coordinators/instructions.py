@@ -14,20 +14,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_CENTER,
-    SUF_PANEL_LEFT,
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_TAB_INSTRUCTIONS,
-    TAG_GLOBAL_TABS,
-    TAG_GLOBAL_THEME_PANEL_GROUND,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
-)
-from sampletones_application.constants.instructions import (
-    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
-    TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
-    TAG_INSTRUCTIONS_LIBRARY_PANEL,
-)
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
     GuardedPlayer,
@@ -42,6 +28,20 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_application.tags.general import (
+    SUF_PANEL_CENTER,
+    SUF_PANEL_LEFT,
+    SUF_PANEL_RIGHT,
+    TAG_GLOBAL_TAB_INSTRUCTIONS,
+    TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
+)
+from sampletones_application.tags.instructions import (
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
+    TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
+    TAG_INSTRUCTIONS_LIBRARY_PANEL,
+)
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors

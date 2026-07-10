@@ -10,7 +10,15 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
+from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.main import MainTabCoordinator
+from sampletones_application.coordinators.playback import AudioPlayerProtocol
+from sampletones_application.coordinators.reconstructions import (
+    ReconstructionsTabCoordinator,
+)
+from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.layout import LayoutConfig
+from sampletones_application.tags.general import (
     TAG_GLOBAL_STATUS_WINDOW,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_TAB_MAIN,
@@ -20,14 +28,6 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_THEME_PANEL_GROUND,
     TAG_GLOBAL_WINDOW_MAIN,
 )
-from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
-from sampletones_application.coordinators.main import MainTabCoordinator
-from sampletones_application.coordinators.playback import AudioPlayerProtocol
-from sampletones_application.coordinators.reconstructions import (
-    ReconstructionsTabCoordinator,
-)
-from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
-from sampletones_application.layout import LayoutConfig
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar

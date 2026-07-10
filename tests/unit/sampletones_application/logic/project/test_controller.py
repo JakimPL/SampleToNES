@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List
 
 import numpy as np
 
@@ -47,7 +47,7 @@ class TestInfoAndSettings:
 class TestSamples:
     def test_add_sample_appends_and_emits(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
         controller = _controller()
-        emitted: list[str] = []
+        emitted: List[str] = []
         controller.on_samples_changed = lambda: emitted.append("samples")
 
         sample = controller.add_sample(reconstruction_factory(), name="lead")
@@ -142,7 +142,7 @@ class TestSamples:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         controller.add_sample(reconstruction_factory(), name="pad")
-        emitted: list[str] = []
+        emitted: List[str] = []
         controller.on_samples_changed = lambda: emitted.append("samples")
         controller.on_song_changed = lambda: emitted.append("song")
 
@@ -168,7 +168,7 @@ class TestSamples:
     def test_duplicate_sample_emits_samples_change(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
         controller = _controller()
         source = controller.add_sample(reconstruction_factory(), name="lead")
-        emitted: list[str] = []
+        emitted: List[str] = []
         controller.on_samples_changed = lambda: emitted.append("samples")
 
         controller.duplicate_sample(source.id)
@@ -276,7 +276,7 @@ class TestProjectLifecycle:
     def test_new_creates_fresh_project_and_fires_callback(self) -> None:
         controller = _controller()
         controller.set_title("Before")
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_project_replaced = lambda: fired.append("replaced")
         controller.new()
         assert controller.project.info.title == ""
@@ -284,7 +284,7 @@ class TestProjectLifecycle:
 
     def test_close_fires_project_replaced_callback(self) -> None:
         controller = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_project_replaced = lambda: fired.append("replaced")
         controller.close()
         assert fired == ["replaced"]
@@ -296,7 +296,7 @@ class TestProjectLifecycle:
         source.save(path)
 
         target = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         target.on_project_replaced = lambda: fired.append("replaced")
         target.load(path)
         assert target.project.info.title == "Loaded"
@@ -304,7 +304,7 @@ class TestProjectLifecycle:
 
     def test_mark_updated_fires_song_changed_callback(self) -> None:
         controller = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_song_changed = lambda: fired.append("song")
         controller.mark_updated()
         assert fired == ["song"]
@@ -313,7 +313,7 @@ class TestProjectLifecycle:
 class TestInfoAndSettingsCallbacks:
     def test_set_author_updates_info_and_fires_callback(self) -> None:
         controller = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_info_changed = lambda: fired.append("info")
         controller.set_author("Alice")
         assert controller.project.info.author == "Alice"
@@ -321,7 +321,7 @@ class TestInfoAndSettingsCallbacks:
 
     def test_set_comment_updates_info_and_fires_callback(self) -> None:
         controller = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_info_changed = lambda: fired.append("info")
         controller.set_comment("A demo")
         assert controller.project.info.comment == "A demo"
@@ -329,21 +329,21 @@ class TestInfoAndSettingsCallbacks:
 
     def test_set_tempo_fires_settings_callback(self) -> None:
         controller = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_settings_changed = lambda: fired.append("settings")
         controller.set_tempo(120)
         assert fired == ["settings"]
 
     def test_set_speed_fires_settings_callback(self) -> None:
         controller = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_settings_changed = lambda: fired.append("settings")
         controller.set_speed(6)
         assert fired == ["settings"]
 
     def test_set_nes_frequency_updates_settings(self) -> None:
         controller = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_settings_changed = lambda: fired.append("settings")
         controller.set_nes_frequency(50)
         assert controller.project.settings.nes_frequency == 50
@@ -351,7 +351,7 @@ class TestInfoAndSettingsCallbacks:
 
     def test_set_sample_rate_updates_settings(self) -> None:
         controller = _controller()
-        fired: list[str] = []
+        fired: List[str] = []
         controller.on_settings_changed = lambda: fired.append("settings")
         controller.set_sample_rate(44100)
         assert controller.project.settings.sample_rate == 44100

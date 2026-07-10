@@ -1,10 +1,10 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from sampletones_application.constants.main import (
+from sampletones_application.coordinators.main import MainTabCoordinator
+from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
-from sampletones_application.coordinators.main import MainTabCoordinator
 
 
 def _coordinator(*, operation_active: bool) -> MainTabCoordinator:

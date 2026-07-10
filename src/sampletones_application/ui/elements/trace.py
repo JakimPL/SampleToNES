@@ -8,7 +8,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import DialogElements, TracebackElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.tags.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP_TRACEBACK,
     SUF_TEXT,

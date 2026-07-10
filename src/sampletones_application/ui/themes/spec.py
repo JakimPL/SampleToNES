@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, List, Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -34,11 +34,11 @@ ThemeEntrySpec = Annotated[
 class ThemeComponentSpec(BaseModel, frozen=True):
     item_type: str
     enabled: bool = True
-    entries: list[ThemeEntrySpec]
+    entries: List[ThemeEntrySpec]
 
 
 class ThemeSpec(BaseModel, frozen=True):
     name: str
     tag: str
     extends: str | None = None
-    components: list[ThemeComponentSpec]
+    components: List[ThemeComponentSpec]

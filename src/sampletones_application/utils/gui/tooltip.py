@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import (
+from sampletones_application.tags.general import (
     TAG_GLOBAL_STATUS_BAR,
     TAG_GLOBAL_THEME_TOOLTIP,
     TAG_GLOBAL_THEME_TOOLTIP_TABLE,

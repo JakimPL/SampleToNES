@@ -17,9 +17,10 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.tags.general import (
     SUF_BUTTON_CANCEL,
     SUF_BUTTON_OK,
     SUF_BUTTON_SAVE,
@@ -34,10 +35,9 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_PATH_MESSAGE,
     TAG_GLOBAL_THEME_DIALOG_WINDOW,
 )
-from sampletones_application.constants.reconstructions import (
+from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED,
 )
-from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry

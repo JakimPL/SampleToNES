@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -44,7 +44,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
     _width_padding: float = 0.0
     _rectangle: Optional[Sender] = None
 
-    _owner: Optional[object] = None
+    _owner: Optional[Any] = None
     _widget: Optional[Sender] = None
     _caret_index: int = 0
     _font: Optional[Font] = None

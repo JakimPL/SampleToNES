@@ -514,7 +514,7 @@ class AudioDeviceManager(CallbackMixin):
         *,
         update: bool = True,
         priority: int = 0,
-        owner: Optional[object] = None,
+        owner: Optional[Any] = None,
     ) -> None:
         """
         Play audio data.

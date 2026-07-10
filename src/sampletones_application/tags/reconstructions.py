@@ -1,7 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
-
-PRE_RECONSTRUCTION_GENERATOR = "reconstruction.generator."
+from sampletones_application.constants.global_ import TAG_SEPARATOR
 
 TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED = TagName(
     Page.RECONSTRUCTIONS,
@@ -142,6 +141,7 @@ TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT = TagName(
     "export_instrument",
 )
 
-SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE = ".no_data_message"
-SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW = ".window"
-SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE = ".autoscale"
+PRE_RECONSTRUCTION_GENERATOR = f"reconstruction{TAG_SEPARATOR}generator{TAG_SEPARATOR}"
+SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE = f"{TAG_SEPARATOR}no_data_message"
+SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW = f"{TAG_SEPARATOR}window"
+SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE = f"{TAG_SEPARATOR}autoscale"

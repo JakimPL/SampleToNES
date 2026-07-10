@@ -3,7 +3,7 @@ from typing import Iterator
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_PANEL_SURFACE
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_PANEL_SURFACE
 from sampletones_application.ui.themes.registry import ThemeRegistry
 
 

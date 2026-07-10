@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -156,7 +156,7 @@ class TestReconstructionPanelLogicPathRows:
         mock_reconstruction_manager.current_reconstruction = ReconstructionData.from_reconstruction(
             reconstruction, name="Sample"
         )
-        captured: list[ReconstructionViewModel] = []
+        captured: List[ReconstructionViewModel] = []
         panel_logic.on_view_changed = captured.append
 
         panel_logic.display_reconstruction()
@@ -277,7 +277,7 @@ class TestReconstructionPanelLogicAudioSource:
             reconstruction, name="Sample"
         )
         panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
-        received: list[AudioSourceType] = []
+        received: List[AudioSourceType] = []
         panel_logic.on_waveform_source_changed = received.append
 
         panel_logic.display_reconstruction()
@@ -292,7 +292,7 @@ class TestReconstructionPanelLogicAudioSource:
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = data_with_original_audio
         panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
-        received: list[AudioSourceType] = []
+        received: List[AudioSourceType] = []
         panel_logic.on_waveform_source_changed = received.append
 
         panel_logic.display_reconstruction()

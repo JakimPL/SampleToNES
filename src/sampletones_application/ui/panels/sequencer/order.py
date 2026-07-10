@@ -5,8 +5,9 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
-from sampletones_application.constants.sequencer import (
+from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_ORDER_BUTTON_ADD,
     TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
     TAG_SEQUENCER_ORDER_CARD,
@@ -16,7 +17,6 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_ORDER_WINDOW,
     TAG_SEQUENCER_THEME_TABLE_ORDER,
 )
-from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.context_menu import (
     add_play_menu_item,
     context_menu,

@@ -5,8 +5,9 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.settings import AudioSettingsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_DIALOG
-from sampletones_application.constants.settings import (
+from sampletones_application.layout.settings import SettingsLayout
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
+from sampletones_application.tags.settings import (
     TAG_SETTINGS_AUDIO_BUTTON_APPLY,
     TAG_SETTINGS_AUDIO_BUTTON_REFRESH,
     TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE,
@@ -17,7 +18,6 @@ from sampletones_application.constants.settings import (
     TAG_SETTINGS_AUDIO_GROUP_SAMPLE_RATE,
     TAG_SETTINGS_AUDIO_WINDOW,
 )
-from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry

@@ -19,13 +19,6 @@ from sampletones_application.config.deployment.deployment import (
 )
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
-    TAG_GLOBAL_DIALOG_ABOUT,
-    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
-    TAG_GLOBAL_THEME_DEFAULT,
-    TAG_GLOBAL_THEME_MENU_FPS,
-    TAG_GLOBAL_WINDOW_MAIN,
-)
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
@@ -71,6 +64,13 @@ from sampletones_application.services import (
     RegenerationService,
 )
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_DIALOG_ABOUT,
+    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+    TAG_GLOBAL_THEME_DEFAULT,
+    TAG_GLOBAL_THEME_MENU_FPS,
+    TAG_GLOBAL_WINDOW_MAIN,
+)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel

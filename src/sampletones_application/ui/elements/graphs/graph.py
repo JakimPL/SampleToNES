@@ -3,8 +3,8 @@ from typing import Any, Dict, Generic, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
-from sampletones_application.constants.graphs import (
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.graphs import (
     SUF_GRAPH_CONTROLS,
     SUF_GRAPH_INFO,
     SUF_GRAPH_LEGEND,

@@ -10,8 +10,9 @@ from sampletones_application.categories.elements.settings import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_DIALOG
-from sampletones_application.constants.settings import (
+from sampletones_application.layout.project_properties import ProjectPropertiesLayout
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
+from sampletones_application.tags.settings import (
     TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL,
     TAG_SETTINGS_PROPERTIES_BUTTON_OK,
     TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR,
@@ -19,7 +20,6 @@ from sampletones_application.constants.settings import (
     TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
     TAG_SETTINGS_PROPERTIES_WINDOW,
 )
-from sampletones_application.layout.project_properties import ProjectPropertiesLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry

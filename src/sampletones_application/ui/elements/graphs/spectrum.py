@@ -5,10 +5,10 @@ import numpy as np
 
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.graphs import SUF_GRAPH_THEME
+from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.graphs import SUF_GRAPH_THEME
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.spectrum import SpectrumLayer
 from sampletones_application.ui.elements.status import GUIStatusBar

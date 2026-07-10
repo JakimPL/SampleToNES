@@ -1,8 +1,8 @@
-from typing import Final
+from typing import Dict, Final
 
 import dearpygui.dearpygui as dpg
 
-ITEM_TYPE_MAP: Final[dict[str, int]] = {
+ITEM_TYPE_MAP: Final[Dict[str, int]] = {
     "All": dpg.mvAll,
     "Button": dpg.mvButton,
     "Checkbox": dpg.mvCheckbox,
@@ -19,7 +19,7 @@ ITEM_TYPE_MAP: Final[dict[str, int]] = {
     "TreeNode": dpg.mvTreeNode,
 }
 
-CORE_COLOR_MAP: Final[dict[str, int]] = {
+CORE_COLOR_MAP: Final[Dict[str, int]] = {
     "Border": dpg.mvThemeCol_Border,
     "Button": dpg.mvThemeCol_Button,
     "ButtonActive": dpg.mvThemeCol_ButtonActive,
@@ -62,14 +62,14 @@ CORE_COLOR_MAP: Final[dict[str, int]] = {
     "WindowBg": dpg.mvThemeCol_WindowBg,
 }
 
-PLOTS_COLOR_MAP: Final[dict[str, int]] = {
+PLOTS_COLOR_MAP: Final[Dict[str, int]] = {
     "Fill": dpg.mvPlotCol_Fill,
     "FrameBg": dpg.mvPlotCol_FrameBg,
     "Line": dpg.mvPlotCol_Line,
     "PlotBg": dpg.mvPlotCol_PlotBg,
 }
 
-CORE_STYLE_MAP: Final[dict[str, int]] = {
+CORE_STYLE_MAP: Final[Dict[str, int]] = {
     "ButtonTextAlign": dpg.mvStyleVar_ButtonTextAlign,
     "CellPadding": dpg.mvStyleVar_CellPadding,
     "ChildBorderSize": dpg.mvStyleVar_ChildBorderSize,
@@ -91,11 +91,11 @@ CORE_STYLE_MAP: Final[dict[str, int]] = {
     "WindowRounding": dpg.mvStyleVar_WindowRounding,
 }
 
-PLOTS_STYLE_MAP: Final[dict[str, int]] = {
+PLOTS_STYLE_MAP: Final[Dict[str, int]] = {
     "LineWeight": dpg.mvPlotStyleVar_LineWeight,
 }
 
-CATEGORY_MAP: Final[dict[str, int]] = {
+CATEGORY_MAP: Final[Dict[str, int]] = {
     "Core": dpg.mvThemeCat_Core,
     "Plots": dpg.mvThemeCat_Plots,
 }

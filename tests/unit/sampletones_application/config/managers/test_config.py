@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -112,14 +113,14 @@ class TestConfigManagerCallbacks:
         tmp_path: Path,
     ) -> None:
         manager = _manager(tmp_path / "missing.json")
-        fired: list[str] = []
+        fired: List[str] = []
         manager.add_config_change_callback(lambda: fired.append("changed"))
         manager.update_gui()
         assert fired == ["changed"]
 
     def test_multiple_callbacks_all_fire(self, tmp_path: Path) -> None:
         manager = _manager(tmp_path / "missing.json")
-        fired: list[str] = []
+        fired: List[str] = []
         manager.add_config_change_callback(lambda: fired.append("a"))
         manager.add_config_change_callback(lambda: fired.append("b"))
         manager.update_gui()
@@ -178,7 +179,7 @@ class TestConfigManagerApplySettings:
 
     def test_apply_settings_fires_config_change_callbacks(self, tmp_path: Path) -> None:
         manager = _manager(tmp_path / "missing.json")
-        fired: list[str] = []
+        fired: List[str] = []
         manager.add_config_change_callback(lambda: fired.append("changed"))
         update = AudioSettingsUpdate(normalize=True, quantize=False)
         manager.apply_audio_settings(update)
