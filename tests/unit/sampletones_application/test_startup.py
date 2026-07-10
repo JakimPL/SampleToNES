@@ -148,3 +148,55 @@ class TestReconstructionSaveAsDetachment:
         assert app.reconstruction_manager.reconstruction is not original
         assert sample.reconstruction is original
         assert original in [sample.reconstruction for sample in app.project_manager.current.samples]
+
+
+class TestAddOpenReconstructionToSequencer:
+    """Adding the open standalone reconstruction to the sequencer embeds an independent copy.
+
+    A project sample is self-contained, so its reconstruction is detached from its local
+    source audio for portability. The reconstruction still open in the tab keeps its own
+    source location and file backing, so its menu can still locate the original audio.
+    """
+
+    def _open_file_backed_reconstruction(
+        self,
+        app: Application,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> Path:
+        reconstruction_path = tmp_path / "lead.stn"
+        reconstruction_factory().save(reconstruction_path)
+        app.reconstruction_manager.load_reconstruction(reconstruction_path)
+        return reconstruction_path
+
+    def test_adding_open_document_keeps_its_source_audio(
+        self,
+        app: Application,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        self._open_file_backed_reconstruction(app, reconstruction_factory, tmp_path)
+        app.project_controller.new()
+        source_before = app.reconstruction_manager.audio_filepath
+
+        app._add_current_reconstruction_to_sequencer()
+
+        assert source_before is not None
+        assert app.reconstruction_manager.audio_filepath == source_before
+        assert app._build_menu_bar_viewmodel().locate_audio_enabled
+
+    def test_embedded_sample_is_a_detached_copy(
+        self,
+        app: Application,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        self._open_file_backed_reconstruction(app, reconstruction_factory, tmp_path)
+        app.project_controller.new()
+
+        app._add_current_reconstruction_to_sequencer()
+
+        sample = app.project_manager.current.samples[0]
+        assert sample.reconstruction is not app.reconstruction_manager.reconstruction
+        assert sample.reconstruction.audio_filepath is None
+        assert not app._editing_project_sample()

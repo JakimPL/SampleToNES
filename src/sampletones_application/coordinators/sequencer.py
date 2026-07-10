@@ -670,7 +670,11 @@ class SequencerTabCoordinator:
         self._add_reconstruction_with_frequency_check(reconstruction, filepath.stem)
 
     def import_reconstruction_object(self, reconstruction: Reconstruction, name: str) -> None:
-        """Adds an in-memory reconstruction — the one open in the Reconstruction tab — as a sample."""
+        """Adds an in-memory reconstruction — the one open in the Reconstruction tab — as a sample.
+
+        The sample embeds an independent copy, so the open document keeps its own source-audio
+        location and file backing while the project stores a self-contained, detached sample.
+        """
         if not self._project_controller.is_open:
             self._dialogs.show_info(
                 TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
@@ -679,7 +683,7 @@ class SequencerTabCoordinator:
             )
             return
 
-        self._add_reconstruction_with_frequency_check(reconstruction, name)
+        self._add_reconstruction_with_frequency_check(reconstruction.model_copy(deep=True), name)
 
     def _add_reconstruction_with_frequency_check(self, reconstruction: Reconstruction, name: str) -> None:
         """Adds a loaded reconstruction, reconciling its NES frequency with the project's.

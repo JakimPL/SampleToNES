@@ -6,7 +6,6 @@ import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.resources.items import IconResource
 from sampletones_application.ui.resources.resources import get_icon_path
 from sampletones_application.ui.themes.theme import Theme
@@ -22,12 +21,10 @@ class ViewportManager:
         session_manager: SessionManager,
         theme: Theme,
         *,
-        layout: GeneralLayout,
         on_fullscreen_state_changed: VoidCallback,
     ) -> None:
         self._session_manager = session_manager
         self._theme = theme
-        self._layout = layout
         self._on_fullscreen_state_changed = on_fullscreen_state_changed
 
     def create_viewport(self) -> None:
@@ -41,8 +38,8 @@ class ViewportManager:
         window_x, window_y, window_width, window_height = self._fit_window_to_monitor(
             self._session_manager.window_x,
             self._session_manager.window_y,
-            self._layout.window.width,
-            self._layout.window.height,
+            self._session_manager.window_width,
+            self._session_manager.window_height,
         )
 
         dpg.create_viewport(
