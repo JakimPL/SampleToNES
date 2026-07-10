@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.logic.main.converter import ConverterLogic
+from sampletones_application.logic.main.converter import ConversionSuccess, ConverterLogic
 from sampletones_application.view_model.main.converter import ACTIVE_PHASES, ConversionPhase
 
 
@@ -184,3 +184,37 @@ class TestAssignPaths:
                 converter_logic._assign_paths(Path("/tmp/input.wav"), MagicMock())
 
         converter_logic.on_error.assert_not_called()
+
+
+class TestConversionCompleteHandsOverOutcome:
+    """A completed conversion tells its listener what was produced, so the follow-up load offer can
+    target the single reconstruction (file) or the browser (directory)."""
+
+    def test_success_carries_input_kind_and_output_path(self, converter_logic: ConverterLogic) -> None:
+        on_success = MagicMock()
+        converter_logic.on_success = on_success
+        converter_logic._is_file = True
+        converter_logic._output_path = Path("/reconstructions/kick.rcn")
+
+        converter_logic._on_conversion_complete(Path("/reconstructions/kick.rcn"))
+
+        assert converter_logic._phase == ConversionPhase.COMPLETED
+        on_success.assert_called_once_with(
+            ConversionSuccess(is_file=True, output_path=Path("/reconstructions/kick.rcn"))
+        )
+
+
+class TestFailureReturnsToIdle:
+    """With no Close button, a failure reports through ``on_error`` and schedules its own return to
+    idle so the panel never strands on the failed phase."""
+
+    def test_failure_schedules_return_to_idle_and_reports(self, converter_logic: ConverterLogic) -> None:
+        converter_logic.on_error = MagicMock()
+
+        with patch("sampletones_application.logic.main.converter.CallbackQueue.add") as scheduled:
+            converter_logic._on_conversion_error(RuntimeError("boom"))
+
+        assert converter_logic._phase == ConversionPhase.FAILED
+        scheduled.assert_called_once()
+        assert scheduled.call_args.args[0] == converter_logic.close
+        converter_logic.on_error.assert_called_once()

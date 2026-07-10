@@ -304,8 +304,9 @@ class Application:
             dialogs=self.dialogs,
             status_bar=self.status_bar,
             on_load_file=self._on_converted_reconstruction_loaded,
-            on_load_directory=self._reconstructions_tab.refresh_browser,
-            on_cancelled=self._reconstructions_tab.refresh_browser,
+            on_load_directory=self._navigate_to_reconstructions,
+            on_cancelled=self._refresh_reconstruction_trees,
+            on_refresh_trees=self._refresh_reconstruction_trees,
             on_generate_library=self._instructions_tab.ensure_library_loaded,
         )
 
@@ -707,8 +708,14 @@ class Application:
         )
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
-        self._reconstructions_tab.refresh_browser()
         self._reconstruction_coordinator.load_with_confirmation(filepath)
+
+    def _refresh_reconstruction_trees(self) -> None:
+        self._reconstructions_tab.refresh_browser()
+        self._sequencer_tab.refresh_browser()
+
+    def _navigate_to_reconstructions(self) -> None:
+        self._set_current_tab(Tab.RECONSTRUCTIONS)
 
     def _edit_project_sample(self, sample_id: str) -> None:
         sample = self.project_manager.current.sample(sample_id)

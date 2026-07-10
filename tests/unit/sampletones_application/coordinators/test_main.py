@@ -2,7 +2,10 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from sampletones_application.coordinators.main import MainTabCoordinator
+from sampletones_application.logic.main.converter import ConversionSuccess
 from sampletones_application.tags.main import (
+    TAG_MAIN_CONVERTER_DIALOG_CANCEL,
+    TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
 
@@ -83,23 +86,70 @@ class TestReconstructGuards:
         coordinator._dialogs.show_info.assert_not_called()
 
 
-class TestConversionSuccessDialog:
-    """The completed-conversion notice interrupts deliberately: it is raised modal so it is
-    acknowledged before further input."""
+def _success_coordinator() -> MainTabCoordinator:
+    coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
+    coordinator._dialogs = MagicMock()
+    coordinator._on_refresh_trees = MagicMock()
+    coordinator._converter_logic = MagicMock()
+    coordinator._ttl_load = "complete"
+    coordinator._msg_load_file = "load file"
+    coordinator._msg_load_directory = "open tab"
+    coordinator._lbl_load = "load"
+    coordinator._lbl_open = "open"
+    coordinator._lbl_close = "close"
+    return coordinator
 
-    def test_success_shows_the_modal_info_dialog(self) -> None:
+
+class TestConversionSuccessDialog:
+    """A completed conversion refreshes the reconstruction trees, then offers to load the result;
+    both the load and the dismiss choice return the converter to idle."""
+
+    def test_file_success_refreshes_and_offers_to_load(self) -> None:
+        coordinator = _success_coordinator()
+        output_path = Path("/reconstructions/kick.rcn")
+
+        coordinator._on_conversion_success(ConversionSuccess(is_file=True, output_path=output_path))
+
+        coordinator._on_refresh_trees.assert_called_once_with()
+        coordinator._dialogs.show_confirmation.assert_called_once()
+        args, kwargs = coordinator._dialogs.show_confirmation.call_args
+        assert args[0] == TAG_MAIN_CONVERTER_DIALOG_LOAD
+        assert args[1] == "load file"
+        assert args[3] == coordinator._converter_logic.handle_load_request
+        assert kwargs["ok_label"] == "load"
+        assert kwargs["cancel_label"] == "close"
+        assert kwargs["path"] == output_path
+        assert kwargs["on_cancel"] == coordinator._converter_logic.close
+
+    def test_directory_success_offers_to_open_without_a_path(self) -> None:
+        coordinator = _success_coordinator()
+
+        coordinator._on_conversion_success(ConversionSuccess(is_file=False, output_path=Path("/reconstructions")))
+
+        _, kwargs = coordinator._dialogs.show_confirmation.call_args
+        assert kwargs["ok_label"] == "open"
+        assert kwargs["path"] is None
+
+
+class TestCancelConfirmation:
+    """Cancelling is destructive, so the panel's cancel intent asks for confirmation before the
+    conversion is actually stopped."""
+
+    def test_cancel_request_confirms_before_stopping(self) -> None:
         coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
         coordinator._dialogs = MagicMock()
-        coordinator._converter_panel = MagicMock()
-        coordinator._converter_panel.tag = "converter.panel"
-        coordinator._msg_success = "success"
-        coordinator._ttl_progress = "title"
+        coordinator._converter_logic = MagicMock()
+        coordinator._ttl_cancel = "cancel?"
+        coordinator._msg_cancel = "stop it?"
+        coordinator._lbl_stop = "stop"
+        coordinator._lbl_continue = "continue"
 
-        coordinator._on_conversion_success()
+        coordinator._request_cancel_confirmation()
 
-        coordinator._dialogs.show_info.assert_called_once_with(
-            "converter.panel",
-            "success",
-            "title",
-            modal=True,
-        )
+        coordinator._converter_logic.cancel.assert_not_called()
+        coordinator._dialogs.show_confirmation.assert_called_once()
+        args, kwargs = coordinator._dialogs.show_confirmation.call_args
+        assert args[0] == TAG_MAIN_CONVERTER_DIALOG_CANCEL
+        assert args[3] == coordinator._converter_logic.cancel
+        assert kwargs["ok_label"] == "stop"
+        assert kwargs["cancel_label"] == "continue"

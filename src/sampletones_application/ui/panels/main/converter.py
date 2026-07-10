@@ -11,11 +11,12 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general import PathColors
 from sampletones_application.layout.main import ConverterLayout
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_PRIMARY_BUTTON
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_PRIMARY_BUTTON,
+)
 from sampletones_application.tags.main import (
-    TAG_MAIN_CONVERTER_BUTTON_CANCEL,
-    TAG_MAIN_CONVERTER_BUTTON_CONVERT,
-    TAG_MAIN_CONVERTER_BUTTON_LOAD,
+    TAG_MAIN_CONVERTER_BUTTON_ACTION,
     TAG_MAIN_CONVERTER_GROUP,
     TAG_MAIN_CONVERTER_GROUP_CONVERT,
     TAG_MAIN_CONVERTER_GROUP_SUMMARY,
@@ -36,14 +37,17 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.align import table_wrapper
+from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_item_callback,
     dpg_set_value,
 )
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
-from sampletones_application.view_model.main.converter import ConverterViewModel
+from sampletones_application.view_model.main.converter import (
+    ConverterAction,
+    ConverterViewModel,
+)
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -59,11 +63,12 @@ class GUIConverterPanel(GUIPanel):
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
         self._status_bar = status_bar
+        self._action_button: Optional[GUIButton] = None
+        self._theme_convert: Optional[Theme] = None
+        self._theme_cancel: Optional[Theme] = None
 
         self.on_convert_requested: Optional[VoidCallback] = None
         self.on_cancel_requested: Optional[VoidCallback] = None
-        self.on_close_requested: Optional[VoidCallback] = None
-        self.on_load_requested: Optional[VoidCallback] = None
 
         self._layout = layout
         self._path_colors = path_colors
@@ -85,23 +90,11 @@ class GUIConverterPanel(GUIPanel):
             TextType.LABEL,
             ConverterElements.CANCEL_BUTTON,
         ]
-        self._lbl_load_button = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.LOAD_BUTTON,
-        ]
         self._lbl_convert_button = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
             TextType.LABEL,
             ConverterElements.CONVERT_SAMPLE_BUTTON,
-        ]
-        self._lbl_close_button = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CLOSE_BUTTON,
         ]
         self._lbl_convert_directory_button = language_manager[
             Page.MAIN,
@@ -148,7 +141,7 @@ class GUIConverterPanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
             self._create_section_text()
-            self._create_export_button()
+            self._create_action_button()
             dpg.add_separator()
             self._create_summary()
             self._create_conversion_status()
@@ -181,31 +174,35 @@ class GUIConverterPanel(GUIPanel):
             self.output_path_text.set_path(view_model.output_path)
 
     def _update_controls(self, view_model: ConverterViewModel) -> None:
-        base_convert = self._lbl_convert_button if view_model.is_file else self._lbl_convert_directory_button
-        convert_label = (
-            f"{base_convert}: {view_model.input_path.name}" if view_model.input_path is not None else base_convert
-        )
+        match view_model.primary_action:
+            case ConverterAction.CANCEL:
+                label = self._lbl_cancel_button
+                callback: VoidCallback = self._on_cancel_clicked
+                theme = self._theme_cancel
+            case ConverterAction.CONVERT:
+                label = self._convert_label(view_model)
+                callback = self._on_convert_clicked
+                theme = self._theme_convert
+
         dpg_configure_item(
-            TAG_MAIN_CONVERTER_BUTTON_CONVERT,
-            label=convert_label,
-            enabled=view_model.convert_button_enabled,
+            TAG_MAIN_CONVERTER_BUTTON_ACTION,
+            label=label,
+            enabled=view_model.primary_action_enabled,
         )
+        dpg_set_item_callback(TAG_MAIN_CONVERTER_BUTTON_ACTION, callback)
+        if self._action_button is not None and theme is not None:
+            self._action_button.set_theme(theme)
         dpg_configure_item(
             TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
-            show=view_model.other_operation_active,
+            show=view_model.other_operation_active and view_model.primary_action == ConverterAction.CONVERT,
         )
-        dpg_configure_item(
-            TAG_MAIN_CONVERTER_BUTTON_LOAD,
-            enabled=view_model.load_button_enabled,
-        )
-        dpg_configure_item(
-            TAG_MAIN_CONVERTER_BUTTON_CANCEL,
-            label=self._lbl_close_button if view_model.is_done else self._lbl_cancel_button,
-        )
-        dpg_set_item_callback(
-            TAG_MAIN_CONVERTER_BUTTON_CANCEL,
-            self._on_close_clicked if view_model.is_done else self._on_cancel_clicked,
-        )
+
+    def _convert_label(self, view_model: ConverterViewModel) -> str:
+        base = self._lbl_convert_button if view_model.is_file else self._lbl_convert_directory_button
+        if view_model.input_path is None:
+            return base
+
+        return f"{base}: {view_model.input_path.name}"
 
     def _create_section_text(self) -> None:
         self._create_section_header(
@@ -213,17 +210,19 @@ class GUIConverterPanel(GUIPanel):
             glyph=self._glyphs.headers.converter,
         )
 
-    def _create_export_button(self) -> None:
+    def _create_action_button(self) -> None:
+        self._theme_convert = ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON)
+        self._theme_cancel = ThemeRegistry.get(TAG_GLOBAL_THEME_DANGER_BUTTON)
         with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_CONVERT):
-            GUIButton(
+            self._action_button = GUIButton(
                 label=self._lbl_convert_button,
-                tag=TAG_MAIN_CONVERTER_BUTTON_CONVERT,
+                tag=TAG_MAIN_CONVERTER_BUTTON_ACTION,
                 width=self._layout.width,
                 height=self._layout.button_height,
                 font=Font.BOLD_LARGE,
                 enabled=False,
                 callback=self._on_convert_clicked,
-                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
+                theme=self._theme_convert,
             )
         attach_disabled_tooltip(
             TAG_MAIN_CONVERTER_GROUP_CONVERT,
@@ -283,34 +282,9 @@ class GUIConverterPanel(GUIPanel):
                 width=-1,
                 overlay="0%",
             )
-            dpg.add_separator()
-            self._add_buttons()
-
-    @table_wrapper(columns=2)
-    def _add_buttons(self) -> None:
-        GUIButton(
-            label=self._lbl_load_button,
-            tag=TAG_MAIN_CONVERTER_BUTTON_LOAD,
-            width=self._layout.width,
-            callback=self._on_load_clicked,
-            enabled=False,
-        )
-        GUIButton(
-            label=self._lbl_cancel_button,
-            tag=TAG_MAIN_CONVERTER_BUTTON_CANCEL,
-            width=self._layout.width,
-            callback=self._on_cancel_clicked,
-        )
 
     def _on_convert_clicked(self) -> None:
         self.call(self.on_convert_requested)
 
     def _on_cancel_clicked(self) -> None:
         self.call(self.on_cancel_requested)
-
-    def _on_close_clicked(self) -> None:
-        self.call(self.on_close_requested)
-
-    def _on_load_clicked(self) -> None:
-        dpg_configure_item(TAG_MAIN_CONVERTER_BUTTON_LOAD, enabled=False)
-        self.call(self.on_load_requested)

@@ -611,6 +611,9 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.set_enabled(is_open)
         self._sequencer_history_panel.set_enabled(is_open)
 
+    def refresh_browser(self) -> None:
+        self._sequencer_browser_panel.refresh()
+
     def _on_song_changed(self) -> None:
         self._sequencer_grid_logic.push_settings()
         self._sequencer_grid_logic.push_grid()

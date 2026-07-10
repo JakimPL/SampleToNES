@@ -17,6 +17,17 @@ class ConversionPhase(StrEnum):
     FAILED = "failed"
 
 
+class ConverterAction(StrEnum):
+    """The single action the panel's button offers in the current phase.
+
+    Every terminal phase returns to idle on its own, so the button only ever
+    starts a conversion or cancels the running one.
+    """
+
+    CONVERT = "convert"
+    CANCEL = "cancel"
+
+
 ACTIVE_PHASES: Final[FrozenSet[ConversionPhase]] = frozenset(
     {
         ConversionPhase.WAITING,
@@ -61,13 +72,16 @@ class ConverterViewModel(BaseModel, frozen=True):
         return self.phase == ConversionPhase.IDLE and self.input_path is not None and not self.other_operation_active
 
     @property
-    def load_button_enabled(self) -> bool:
-        return self.phase == ConversionPhase.COMPLETED and self.output_path is not None
+    def primary_action(self) -> ConverterAction:
+        """Cancel while a conversion occupies resources, otherwise convert.
+
+        Terminal phases resolve back to idle on their own, so they present the
+        convert action (disabled until the phase is actually idle)."""
+        return ConverterAction.CANCEL if self.is_active else ConverterAction.CONVERT
 
     @property
-    def is_done(self) -> bool:
-        return self.phase in (
-            ConversionPhase.COMPLETED,
-            ConversionPhase.CANCELLED,
-            ConversionPhase.FAILED,
-        )
+    def primary_action_enabled(self) -> bool:
+        if self.primary_action == ConverterAction.CANCEL:
+            return self.phase != ConversionPhase.CANCELLING
+
+        return self.convert_button_enabled

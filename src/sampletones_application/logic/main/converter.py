@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional, Protocol
 
@@ -31,6 +32,17 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
+
+
+@dataclass(frozen=True)
+class ConversionSuccess:
+    """The outcome a completed conversion hands to its listener.
+
+    Carries what the follow-up load offer needs: whether a single file or a
+    directory was converted, and where its reconstruction was written."""
+
+    is_file: bool
+    output_path: Optional[Path]
 
 
 class ConversionServiceProtocol(Protocol):
@@ -130,7 +142,7 @@ class ConverterLogic(CallbackMixin):
         self._service.subscribe(self._on_service_result)
 
         self.on_view_changed: Optional[Callable[[ConverterViewModel], None]] = None
-        self.on_success: Optional[VoidCallback] = None
+        self.on_success: Optional[Callable[[ConversionSuccess], None]] = None
         self.on_error: Optional[Callable[[Exception], None]] = None
         self.on_no_files_to_process: Optional[VoidCallback] = None
         self.on_no_generators: Optional[VoidCallback] = None
@@ -259,6 +271,7 @@ class ConverterLogic(CallbackMixin):
     def _handle_library_progress(self, progress: TaskProgress) -> None:
         if self._phase != ConversionPhase.WAITING:
             return
+
         total = max(progress.total, 1)
         fraction = progress.completed / total
         self._emit_view_model(self._msg_generating_library, fraction)
@@ -276,6 +289,7 @@ class ConverterLogic(CallbackMixin):
             logger.error("Invalid path")
             self.call(self.on_error, exception)
             return False
+
         return True
 
     def _wait_for_library_and_start(self) -> None:
@@ -303,12 +317,19 @@ class ConverterLogic(CallbackMixin):
 
         self._phase = ConversionPhase.COMPLETED
         self._emit_view_model(self._msg_completed, 1.0)
-        self.call(self.on_success)
+        self.call(
+            self.on_success,
+            ConversionSuccess(
+                is_file=self._is_file,
+                output_path=self._output_path,
+            ),
+        )
 
     def _on_conversion_error(self, exception: Exception) -> None:
         self._system_progress.error()
         self._phase = ConversionPhase.FAILED
         self._emit_view_model(self._msg_error, 0.0)
+        self._schedule_return_to_idle()
         if isinstance(exception, NoFilesToProcessError):
             self.call(self.on_no_files_to_process)
         else:
@@ -317,12 +338,15 @@ class ConverterLogic(CallbackMixin):
     def _on_cancellation_complete(self) -> None:
         self._phase = ConversionPhase.CANCELLED
         self._emit_view_model(self._msg_cancelled, 0.0)
+        self._schedule_return_to_idle()
+        self.call(self.on_cancelled)
+
+    def _schedule_return_to_idle(self) -> None:
         CallbackQueue.add(
             self.close,
             priority=self._scheduling.priority_schedule,
             delay=self._scheduling.delay_cancel,
         )
-        self.call(self.on_cancelled)
 
     def _emit_view_model(
         self,

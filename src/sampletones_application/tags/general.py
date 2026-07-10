@@ -98,6 +98,12 @@ TAG_GLOBAL_THEME_SECONDARY_BUTTON = TagName(
     Widget.THEME,
     "secondary_button",
 )
+TAG_GLOBAL_THEME_DANGER_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "danger_button",
+)
 TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -472,6 +472,7 @@ class DialogsRenderer:
         on_confirm: Callback,
         *,
         ok_label: str,
+        cancel_label: Optional[str] = None,
         path: Optional[Path] = None,
         opt_out_label: Optional[str] = None,
         on_opt_out: Optional[Callback] = None,
@@ -479,11 +480,13 @@ class DialogsRenderer:
     ) -> None:
         """Modal confirmation. ``on_confirm``/``on_cancel`` run on the respective choice.
 
+        ``cancel_label`` names the negative button; it falls back to the shared Cancel label.
         When ``opt_out_label`` is given, a checkbox is shown; if it is ticked when the user
         confirms, ``on_opt_out`` runs as well — letting the caller suppress future prompts.
         """
         tag = get_dialog_tag(tag)
         opt_out_tag = f"{tag}{SUF_CHECKBOX}"
+        cancel_label = cancel_label if cancel_label is not None else self._lbl_cancel
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._default_wrap)
@@ -542,7 +545,7 @@ class DialogsRenderer:
                 )
                 GUIButton(
                     tag=cancel_button_tag,
-                    label=self._lbl_cancel,
+                    label=cancel_label,
                     callback=_on_cancel,
                     width=-1,
                 )

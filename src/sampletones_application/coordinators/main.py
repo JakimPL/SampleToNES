@@ -20,7 +20,10 @@ from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
-from sampletones_application.logic.main.converter import ConverterLogic
+from sampletones_application.logic.main.converter import (
+    ConversionSuccess,
+    ConverterLogic,
+)
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.conversion import ConversionService
@@ -34,6 +37,8 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
+    TAG_MAIN_CONVERTER_DIALOG_CANCEL,
+    TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
     TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
 )
@@ -96,6 +101,7 @@ class MainTabCoordinator:
         on_load_file: PathCallback,
         on_load_directory: VoidCallback,
         on_cancelled: VoidCallback,
+        on_refresh_trees: VoidCallback,
         on_generate_library: VoidCallback,
     ) -> None:
         self._config_manager = config_manager
@@ -107,6 +113,7 @@ class MainTabCoordinator:
         self._on_load_library = on_load_library
         self._is_operation_active = is_operation_active
         self._on_busy_state_changed = on_busy_state_changed
+        self._on_refresh_trees = on_refresh_trees
         self._dialogs = dialogs
 
         self._tab_label = language_manager[
@@ -137,17 +144,71 @@ class MainTabCoordinator:
             TextType.MESSAGE,
             ConverterElements.STATUS_NO_GENERATORS,
         ]
-        self._msg_success = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_SUCCESS,
-        ]
         self._ttl_progress = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
             TextType.TITLE,
             ConverterElements.PROGRESS_DIALOG,
+        ]
+        self._ttl_load = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.TITLE,
+            ConverterElements.LOAD_DIALOG,
+        ]
+        self._msg_load_file = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.LOAD_FILE_PROMPT,
+        ]
+        self._msg_load_directory = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.LOAD_DIRECTORY_PROMPT,
+        ]
+        self._lbl_load = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.LOAD_BUTTON,
+        ]
+        self._lbl_open = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.OPEN_BUTTON,
+        ]
+        self._lbl_close = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CLOSE_BUTTON,
+        ]
+        self._ttl_cancel = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.TITLE,
+            ConverterElements.CANCEL_DIALOG,
+        ]
+        self._msg_cancel = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.CANCEL_PROMPT,
+        ]
+        self._lbl_stop = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.STOP_BUTTON,
+        ]
+        self._lbl_continue = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CONTINUE_BUTTON,
         ]
         self._msg_converter_running = language_manager[
             Page.MAIN,
@@ -284,9 +345,7 @@ class MainTabCoordinator:
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
-        self._converter_panel.on_cancel_requested = self._converter_logic.cancel
-        self._converter_panel.on_close_requested = self._converter_logic.close
-        self._converter_panel.on_load_requested = self._converter_logic.handle_load_request
+        self._converter_panel.on_cancel_requested = self._request_cancel_confirmation
 
     def _on_explorer_autoplay_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
@@ -328,12 +387,36 @@ class MainTabCoordinator:
 
         return True
 
-    def _on_conversion_success(self) -> None:
-        self._dialogs.show_info(
-            self._converter_panel.tag,
-            self._msg_success,
-            self._ttl_progress,
-            modal=True,
+    def _on_conversion_success(self, success: ConversionSuccess) -> None:
+        self._on_refresh_trees()
+        if success.is_file:
+            message = self._msg_load_file
+            ok_label = self._lbl_load
+            path = success.output_path
+        else:
+            message = self._msg_load_directory
+            ok_label = self._lbl_open
+            path = None
+
+        self._dialogs.show_confirmation(
+            TAG_MAIN_CONVERTER_DIALOG_LOAD,
+            message,
+            self._ttl_load,
+            self._converter_logic.handle_load_request,
+            ok_label=ok_label,
+            cancel_label=self._lbl_close,
+            path=path,
+            on_cancel=self._converter_logic.close,
+        )
+
+    def _request_cancel_confirmation(self) -> None:
+        self._dialogs.show_confirmation(
+            TAG_MAIN_CONVERTER_DIALOG_CANCEL,
+            self._msg_cancel,
+            self._ttl_cancel,
+            self._converter_logic.cancel,
+            ok_label=self._lbl_stop,
+            cancel_label=self._lbl_continue,
         )
 
     def _update_config_panel_view(self) -> None:

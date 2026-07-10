@@ -200,23 +200,23 @@ TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH = TagName(
     Widget.TEXT,
     "output_path",
 )
-TAG_MAIN_CONVERTER_BUTTON_LOAD = TagName(
+TAG_MAIN_CONVERTER_BUTTON_ACTION = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.BUTTON,
+    "action",
+)
+TAG_MAIN_CONVERTER_DIALOG_LOAD = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.DIALOG,
     "load",
 )
-TAG_MAIN_CONVERTER_BUTTON_CANCEL = TagName(
+TAG_MAIN_CONVERTER_DIALOG_CANCEL = TagName(
     Page.MAIN,
     Panel.CONVERTER,
-    Widget.BUTTON,
+    Widget.DIALOG,
     "cancel",
-)
-TAG_MAIN_CONVERTER_BUTTON_CONVERT = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.BUTTON,
-    "convert",
 )
 TAG_MAIN_CONVERTER_GROUP_CONVERT = TagName(
     Page.MAIN,

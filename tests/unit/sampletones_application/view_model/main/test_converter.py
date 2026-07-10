@@ -4,6 +4,7 @@ import pytest
 
 from sampletones_application.view_model.main.converter import (
     ConversionPhase,
+    ConverterAction,
     ConverterViewModel,
 )
 
@@ -49,3 +50,49 @@ class TestProgressOverlay:
     def test_overlay_renders_the_clamped_percentage(self, progress: float, overlay: str) -> None:
         view_model = _view_model(phase=ConversionPhase.RUNNING, progress=progress)
         assert view_model.progress_overlay == overlay
+
+
+class TestPrimaryAction:
+    """The one action button cancels while a conversion holds resources and otherwise offers to
+    convert; terminal phases present the convert action as they fall back to idle on their own."""
+
+    @pytest.mark.parametrize(
+        ("phase", "action"),
+        [
+            (ConversionPhase.IDLE, ConverterAction.CONVERT),
+            (ConversionPhase.WAITING, ConverterAction.CANCEL),
+            (ConversionPhase.RUNNING, ConverterAction.CANCEL),
+            (ConversionPhase.CANCELLING, ConverterAction.CANCEL),
+            (ConversionPhase.COMPLETED, ConverterAction.CONVERT),
+            (ConversionPhase.CANCELLED, ConverterAction.CONVERT),
+            (ConversionPhase.FAILED, ConverterAction.CONVERT),
+        ],
+    )
+    def test_action_follows_phase(self, phase: ConversionPhase, action: ConverterAction) -> None:
+        assert _view_model(phase=phase).primary_action == action
+
+
+class TestPrimaryActionEnabled:
+    """Cancel stays live while running but is withheld once the stop is already in flight; convert
+    is live only from an idle panel that has an input selected."""
+
+    @pytest.mark.parametrize(
+        ("phase", "enabled"),
+        [
+            (ConversionPhase.WAITING, True),
+            (ConversionPhase.RUNNING, True),
+            (ConversionPhase.CANCELLING, False),
+        ],
+    )
+    def test_cancel_enablement(self, phase: ConversionPhase, enabled: bool) -> None:
+        assert _view_model(phase=phase).primary_action_enabled is enabled
+
+    @pytest.mark.parametrize(
+        "phase",
+        [ConversionPhase.COMPLETED, ConversionPhase.CANCELLED, ConversionPhase.FAILED],
+    )
+    def test_convert_disabled_in_terminal_phases(self, phase: ConversionPhase) -> None:
+        assert _view_model(phase=phase).primary_action_enabled is False
+
+    def test_convert_enabled_when_idle_with_input(self) -> None:
+        assert _view_model(phase=ConversionPhase.IDLE).primary_action_enabled is True

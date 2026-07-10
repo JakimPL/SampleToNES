@@ -47,6 +47,12 @@ colors:
   secondary_active: "#46516a"
   secondary_disabled: "#2b303d"
 
+  # danger (destructive actions: cancel, abort)
+  danger: "#a85555"
+  danger_hover: "#bd6a6a"
+  danger_active: "#8e4747"
+  on_danger: "#f1f1f5"
+
   # dialog windows (elevated surface + accent border/title)
   dialog_surface: "#313547"
   dialog_title: "#34405e"
