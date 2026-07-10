@@ -214,7 +214,6 @@ class Application:
         self._viewport_manager = ViewportManager(
             self.session_manager,
             self.theme,
-            layout=self.layout.general,
             on_fullscreen_state_changed=self._update_menu,
         )
 
