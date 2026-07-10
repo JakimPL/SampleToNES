@@ -111,7 +111,7 @@ class TestRemoveLibrary:
         coordinator._remove_library(key)
 
         coordinator._close_instruction.assert_called_once_with()
-        coordinator._instruction_player_logic.clear_audio.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_not_called()
         coordinator._on_audio_state_changed.assert_called_once_with()
 
     def test_removing_other_library_keeps_current_display(self) -> None:
@@ -134,7 +134,7 @@ class TestRemoveLibrary:
         coordinator._remove_library("removed")
 
         coordinator._close_instruction.assert_called_once_with()
-        coordinator._instruction_player_logic.clear_audio.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_not_called()
 
 
 def _display_coordinator() -> InstructionsTabCoordinator:
@@ -182,7 +182,29 @@ class TestDisplayInstruction:
         coordinator._waveform_panel.clear_layers.assert_called_once_with()
         coordinator._spectrum_panel.clear_layers.assert_called_once_with()
         coordinator._instruction_details_logic.clear_display.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_called_once_with()
         coordinator._instruction_player_logic.load_audio_data.assert_not_called()
+
+
+def _close_coordinator() -> InstructionsTabCoordinator:
+    coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
+    coordinator._waveform_panel = MagicMock()
+    coordinator._spectrum_panel = MagicMock()
+    coordinator._instruction_details_logic = MagicMock()
+    coordinator._instruction_player_logic = MagicMock()
+    return coordinator
+
+
+class TestCloseInstruction:
+    def test_close_clears_graphs_details_and_audio(self) -> None:
+        coordinator = _close_coordinator()
+
+        coordinator._close_instruction()
+
+        coordinator._waveform_panel.clear_layers.assert_called_once_with()
+        coordinator._spectrum_panel.clear_layers.assert_called_once_with()
+        coordinator._instruction_details_logic.clear_display.assert_called_once_with()
+        coordinator._instruction_player_logic.clear_audio.assert_called_once_with()
 
 
 def _render_coordinator(*, plot_error: Exception) -> InstructionsTabCoordinator:

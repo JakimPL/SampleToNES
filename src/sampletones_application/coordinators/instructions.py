@@ -342,7 +342,6 @@ class InstructionsTabCoordinator:
 
         if was_displaying_removed_library:
             self._close_instruction()
-            self._instruction_player_logic.clear_audio()
             self._on_audio_state_changed()
 
     def _on_generation_completed(self) -> None:
@@ -415,6 +414,7 @@ class InstructionsTabCoordinator:
         self._waveform_panel.clear_layers()
         self._spectrum_panel.clear_layers()
         self._instruction_details_logic.clear_display()
+        self._instruction_player_logic.clear_audio()
 
     def _update_details_view(self, view_model: InstructionDetailsPanelViewModel) -> None:
         """Fans the details view model out to the parameters and choice cards."""
