@@ -31,6 +31,7 @@ class AudioPlayer(CallbackMixin):
 
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_data = audio_data
+        self.audio_device_manager.replace_audio(audio_data.sample, owner=self)
 
     def clear_audio(self) -> None:
         self.stop()
@@ -73,6 +74,7 @@ class AudioPlayer(CallbackMixin):
             self.audio_device_manager.play(
                 audio,
                 priority=PlaybackPriority.NORMAL,
+                owner=self,
             )
         except ValueError as exception:
             raise PlaybackError(f"Audio playback failed: {exception}") from exception
