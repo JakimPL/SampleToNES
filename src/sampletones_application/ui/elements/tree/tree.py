@@ -32,10 +32,10 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_TREE_WINDOW,
 )
 from sampletones_application.tags.instructions import (
+    TAG_INSTRUCTIONS_LIBRARY_THEME,
     TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
     TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP,
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
-    TAG_INSTRUCTIONS_LIBRARY_THEME_LIBRARY,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import add_play_menu_item
@@ -845,7 +845,7 @@ class GUITreePanel(GUIPanel):
         theme: Theme
         match node.node_type:
             case NodeType.LIBRARY:
-                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_LIBRARY)
+                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME)
             case NodeType.GENERATOR:
                 theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR)
             case NodeType.GROUP:

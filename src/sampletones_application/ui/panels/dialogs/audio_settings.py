@@ -13,7 +13,7 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE,
     TAG_SETTINGS_AUDIO_COMBO_DEVICE,
     TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
-    TAG_SETTINGS_AUDIO_WINDOW_AUDIO,
+    TAG_SETTINGS_AUDIO_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.field import labeled_field
@@ -89,7 +89,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         ]
 
         super().__init__(
-            tag=TAG_SETTINGS_AUDIO_WINDOW_AUDIO,
+            tag=TAG_SETTINGS_AUDIO_WINDOW,
             width=layout.window.width,
             height=layout.window.height,
         )

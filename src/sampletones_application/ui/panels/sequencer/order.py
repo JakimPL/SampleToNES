@@ -10,11 +10,11 @@ from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_ORDER_BUTTON_ADD,
     TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
-    TAG_SEQUENCER_ORDER_CARD,
-    TAG_SEQUENCER_ORDER_KEY_HANDLER,
+    TAG_SEQUENCER_ORDER_HANDLER_KEY,
     TAG_SEQUENCER_ORDER_PANEL,
     TAG_SEQUENCER_ORDER_TABLE,
     TAG_SEQUENCER_ORDER_WINDOW,
+    TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
     TAG_SEQUENCER_THEME_TABLE_ORDER,
 )
 from sampletones_application.ui.elements.context_menu import (
@@ -168,11 +168,11 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._create_entry_themes()
-        with card(parent, TAG_SEQUENCER_ORDER_CARD):
+        with card(parent, TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD):
             self._create_section_header(
                 self._lbl_order,
                 glyph=self._glyphs.headers.order,
-                parent=TAG_SEQUENCER_ORDER_CARD,
+                parent=TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
             )
             with dpg.group(tag=self.tag):
                 self._create_button_row()
@@ -211,7 +211,7 @@ class GUISequencerOrderPanel(GUIPanel):
         )
 
     def _register_handlers(self) -> None:
-        with dpg.handler_registry(tag=TAG_SEQUENCER_ORDER_KEY_HANDLER):
+        with dpg.handler_registry(tag=TAG_SEQUENCER_ORDER_HANDLER_KEY):
             dpg.add_key_press_handler(callback=self._on_key_pressed)
 
         with dpg.item_handler_registry(tag=self._cell_handler_tag):

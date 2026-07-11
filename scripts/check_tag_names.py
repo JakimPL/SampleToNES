@@ -3,8 +3,19 @@ import sys
 from pathlib import Path
 from typing import Final, List, Optional
 
+from sampletones_application.categories.hierarchy import Page, Panel, Widget
+from sampletones_application.categories.key import TagName
+from sampletones_application.constants.global_ import TAG_SEPARATOR
+
 TAG_PREFIX: Final = "TAG"
 TAG_NAME_CLASS_NAME: Final = "TagName"
+
+ARGUMENT_ENUMS: Final = (Page, Panel, Widget)
+
+
+def expected_name(tag: TagName) -> str:
+    body = str(tag).upper().replace(TAG_SEPARATOR, "_")
+    return f"{TAG_PREFIX}_{body}"
 
 
 def validate_assignment(assignment: ast.Assign, path: Path) -> Optional[str]:
@@ -16,7 +27,7 @@ def validate_assignment(assignment: ast.Assign, path: Path) -> Optional[str]:
     ):
         return None
 
-    elif not isinstance(target, ast.Name):
+    if not isinstance(target, ast.Name):
         return f"Module '{path.name}' contains an invalid tag:\n{str(type(target))}, expected ast.Name"
 
     page, panel, widget, name = assignment.value.args
@@ -27,24 +38,23 @@ def validate_assignment(assignment: ast.Assign, path: Path) -> Optional[str]:
     ):
         return f"Module '{path.name}' contains an invalid tag: {target.id},\nexpected all arguments to be ast.Attribute"
 
-    elif not isinstance(name, ast.Constant) or not isinstance(name.value, str):
+    if not isinstance(name, ast.Constant) or not isinstance(name.value, str):
         return f"Module '{path.name}' contains an invalid tag: {target.id},\nexpected last argument to be ast.Constant with a string value"
 
-    items = TAG_PREFIX, page.attr, panel.attr, widget.attr, name.value.upper()
-    expected_name = "_".join(items)
-
-    if target.id != expected_name:
-        return f"Module '{path.name}' contains an invalid tag: {target.id},\nexpected {expected_name}"
+    page_value, panel_value, widget_value = (
+        getattr(enum, attribute.attr) for enum, attribute in zip(ARGUMENT_ENUMS, (page, panel, widget))
+    )
+    tag = TagName(page_value, panel_value, widget_value, name.value)
+    expected = expected_name(tag)
+    if target.id != expected:
+        return f"Module '{path.name}' contains an invalid tag: {target.id},\nexpected {expected}"
 
     return None
 
 
-def validate_source_file(path: Path) -> Optional[List[str]]:
-    with open(path, "r") as file:
-        source = file.read()
-
+def validate_source_file(path: Path) -> List[str]:
+    tree = ast.parse(path.read_text())
     messages: List[str] = []
-    tree = ast.parse(source)
     assignments = [item for item in tree.body if isinstance(item, ast.Assign)]
     for assignment in assignments:
         message = validate_assignment(assignment, path)
@@ -57,9 +67,7 @@ def validate_source_file(path: Path) -> Optional[List[str]]:
 def validate_tag_names(paths: List[Path]) -> List[str]:
     invalid_tags = []
     for path in paths:
-        messages = validate_source_file(path)
-        if messages:
-            invalid_tags.extend(messages)
+        invalid_tags.extend(validate_source_file(path))
 
     return invalid_tags
 
@@ -71,7 +79,7 @@ if __name__ == "__main__":
     if not invalid_tags:
         sys.exit(0)
 
-    for tag in invalid_tags:
-        print(tag)
+    for invalid_tag in invalid_tags:
+        print(invalid_tag)
 
     sys.exit(1)

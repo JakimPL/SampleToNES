@@ -55,7 +55,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_PLAYER,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -288,7 +288,7 @@ class ReconstructionsTabCoordinator:
             on_change_audio_state,
         )
         self._reconstruction_player_panel = GUIAudioPlayerPanel(
-            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_PLAYER,
             layout=layout.player,
             language_manager=language_manager,
         )

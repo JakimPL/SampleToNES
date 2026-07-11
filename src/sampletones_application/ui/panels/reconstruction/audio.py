@@ -14,8 +14,8 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general import PathColors
 from sampletones_application.tags.reconstructions import (
-    TAG_RECONSTRUCTIONS_AUDIO_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_ORIGINAL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
@@ -104,7 +104,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_RECONSTRUCTIONS_AUDIO_PANEL,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
         )
 
     def _load_path_text(self, language_manager: LanguageManager) -> None:

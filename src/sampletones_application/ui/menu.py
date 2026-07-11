@@ -23,8 +23,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
-    TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW,
-    TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
@@ -312,13 +312,13 @@ class MenuBar:
             )
             self._shortcut_manager.add_menu_item(
                 ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
-                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
                 label=self._label(MenuElements.ITEM_PLAYBACK_FOLLOW_PLAYBACK),
                 check=True,
             )
             self._shortcut_manager.add_menu_item(
                 ShortcutId.TOGGLE_LOOP_SONG,
-                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
                 label=self._label(MenuElements.ITEM_PLAYBACK_LOOP_SONG),
                 check=True,
             )
@@ -429,8 +429,8 @@ class MenuBar:
         self._update_player_toolbar(state)
 
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
-        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW, state.follow_playback)
-        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP, state.loop_song)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK, state.follow_playback)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG, state.loop_song)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN, state.fullscreen)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
 

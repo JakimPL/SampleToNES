@@ -20,12 +20,12 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_GROUP,
     TAG_MAIN_CONVERTER_GROUP_CONVERT,
     TAG_MAIN_CONVERTER_GROUP_SUMMARY,
-    TAG_MAIN_CONVERTER_HINT_SUMMARY,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_CONVERTER_PATH_INPUT_PATH,
     TAG_MAIN_CONVERTER_PROGRESS,
     TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH,
     TAG_MAIN_CONVERTER_TEXT_STATUS,
+    TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT,
     TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
     TAG_MAIN_CONVERTER_WINDOW_SUMMARY,
 )
@@ -147,7 +147,7 @@ class GUIConverterPanel(GUIPanel):
         has_input = view_model.input_path is not None
         dpg.configure_item(TAG_MAIN_CONVERTER_GROUP, show=view_model.subpanel_visible)
         dpg_configure_item(TAG_MAIN_CONVERTER_WINDOW_SUMMARY, show=not view_model.subpanel_visible)
-        dpg_configure_item(TAG_MAIN_CONVERTER_HINT_SUMMARY, show=not has_input)
+        dpg_configure_item(TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT, show=not has_input)
         dpg_configure_item(TAG_MAIN_CONVERTER_GROUP_SUMMARY, show=has_input)
 
     def _update_status(self, view_model: ConverterViewModel) -> None:
@@ -217,7 +217,7 @@ class GUIConverterPanel(GUIPanel):
             height=-1,
             border=False,
         ):
-            hint = dpg.add_text(self._msg_empty_hint, tag=TAG_MAIN_CONVERTER_HINT_SUMMARY)
+            hint = dpg.add_text(self._msg_empty_hint, tag=TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT)
             FontRegistry.bind_to_item(hint, Font.REGULAR_SMALL)
             with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_SUMMARY, show=False):
                 self.input_path_text = GUIPathText(

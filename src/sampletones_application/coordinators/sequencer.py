@@ -58,7 +58,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
-    TAG_SEQUENCER_GRID_PANEL_PLAYER,
+    TAG_SEQUENCER_GRID_PANEL_GRID_PLAYER,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
 )
@@ -265,7 +265,7 @@ class SequencerTabCoordinator:
             ],
         )
         self._player_panel: GUISongPlayerPanel = GUISongPlayerPanel(
-            tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
+            tag=TAG_SEQUENCER_GRID_PANEL_GRID_PLAYER,
             layout=layout.player,
             language_manager=language_manager,
         )

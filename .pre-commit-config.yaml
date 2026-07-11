@@ -39,6 +39,7 @@ repos:
         entry: uv run scripts/check_tag_names.py
         language: system
         types: [python]
+        files: ^src/sampletones_application/tags/
         verbose: true
 
       - id: yamlfmt
