@@ -492,9 +492,6 @@ class ReconstructionsTabCoordinator:
     def unlock(self) -> None:
         self._browser_panel.unlock()
 
-    def refresh_reconstruct_buttons(self) -> None:
-        self._browser_panel.refresh_action_buttons()
-
     def refresh_browser(self) -> None:
         self._browser_panel.refresh()
 

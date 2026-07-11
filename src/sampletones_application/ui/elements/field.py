@@ -28,7 +28,8 @@ def labeled_field(
         if font is not None:
             FontRegistry.bind_to_item(label_id, font)
 
-        offset = label_width - int(dpg.get_text_size(label)[0])
+        text_size = dpg.get_text_size(label)
+        offset = label_width - int(text_size[0]) if text_size is not None else label_width
         if offset > 0:
             dpg.add_spacer(width=offset)
 

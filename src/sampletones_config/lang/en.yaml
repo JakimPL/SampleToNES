@@ -320,8 +320,6 @@ main.advanced.title.select_output_directory: "Select output directory"
 # =============================================================================
 # Reconstructions tab — Browser
 # =============================================================================
-reconstructions.browser.label.reconstruct_file_button: "Reconstruct file"
-reconstructions.browser.label.reconstruct_directory_button: "Reconstruct directory"
 reconstructions.browser.label.refresh_button: "Refresh reconstructions"
 reconstructions.browser.label.reconstructions_tree: "Reconstructions"
 reconstructions.browser.label.context_load_reconstruction: "Load reconstruction"

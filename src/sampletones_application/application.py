@@ -662,7 +662,6 @@ class Application:
         generation starts or finishes, keeping the two long operations mutually exclusive. Each panel
         reads the live ``_is_operation_active`` state for itself; this only nudges them to
         re-apply, so the busy truth lives in one place."""
-        self._reconstructions_tab.refresh_reconstruct_buttons()
         self._instructions_tab.refresh_generate_button()
 
     def _on_library_operation_changed(self) -> None:
