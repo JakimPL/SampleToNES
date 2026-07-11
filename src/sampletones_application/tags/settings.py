@@ -1,7 +1,7 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
 
-TAG_SETTINGS_AUDIO_WINDOW = TagName(
+TAG_SETTINGS_AUDIO_WINDOW_AUDIO = TagName(
     Page.SETTINGS,
     Panel.AUDIO,
     Widget.WINDOW,

@@ -42,7 +42,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
-    TAG_INSTRUCTIONS_LIBRARY_PANEL,
+    TAG_INSTRUCTIONS_LIBRARY_PANEL_LIBRARY,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -343,7 +343,7 @@ class InstructionsTabCoordinator:
     def _on_generation_completed(self) -> None:
         if not self._is_converter_visible():
             self._dialogs.show_info(
-                TAG_INSTRUCTIONS_LIBRARY_PANEL,
+                TAG_INSTRUCTIONS_LIBRARY_PANEL_LIBRARY,
                 self._msg_generation_success,
                 self._ttl_generation_status,
                 modal=True,
@@ -354,7 +354,7 @@ class InstructionsTabCoordinator:
 
     def _on_generation_cancelled(self) -> None:
         self._dialogs.show_info(
-            TAG_INSTRUCTIONS_LIBRARY_PANEL,
+            TAG_INSTRUCTIONS_LIBRARY_PANEL_LIBRARY,
             self._msg_generation_cancelled,
             self._ttl_generation_status,
             modal=True,

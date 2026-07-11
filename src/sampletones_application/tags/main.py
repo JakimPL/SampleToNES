@@ -14,7 +14,7 @@ TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL = TagName(
     Widget.PANEL,
     "reconstructor_cell",
 )
-TAG_MAIN_EXPLORER_TREE = TagName(
+TAG_MAIN_EXPLORER_TREE_EXPLORER = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.TREE,

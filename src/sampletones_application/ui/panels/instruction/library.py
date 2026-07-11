@@ -26,7 +26,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
-    TAG_INSTRUCTIONS_LIBRARY_PANEL,
+    TAG_INSTRUCTIONS_LIBRARY_PANEL_LIBRARY,
     TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
     TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS,
     TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
@@ -183,7 +183,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         super().__init__(
             self._library_logic.tree,
-            tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
+            tag=TAG_INSTRUCTIONS_LIBRARY_PANEL_LIBRARY,
             tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,

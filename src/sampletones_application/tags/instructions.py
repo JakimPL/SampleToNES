@@ -2,7 +2,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
 from sampletones_application.constants.global_ import TAG_SEPARATOR
 
-TAG_INSTRUCTIONS_LIBRARY_PANEL = TagName(
+TAG_INSTRUCTIONS_LIBRARY_PANEL_LIBRARY = TagName(
     Page.INSTRUCTIONS,
     Panel.LIBRARY,
     Widget.PANEL,

@@ -15,7 +15,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_GROUP_CONTROLS,
     TAG_MAIN_EXPLORER_GROUP_TREE,
     TAG_MAIN_EXPLORER_PANEL,
-    TAG_MAIN_EXPLORER_TREE,
+    TAG_MAIN_EXPLORER_TREE_EXPLORER,
     TAG_MAIN_EXPLORER_WINDOW_TREE,
 )
 from sampletones_application.ui.elements.button import GUIButton
@@ -165,7 +165,7 @@ class GUIExplorerPanel(GUITreePanel):
         super().__init__(
             tree=self._explorer_logic.tree,
             tag=TAG_MAIN_EXPLORER_PANEL,
-            tree_tag=TAG_MAIN_EXPLORER_TREE,
+            tree_tag=TAG_MAIN_EXPLORER_TREE_EXPLORER,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
             search_label=language_manager[

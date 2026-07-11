@@ -26,6 +26,21 @@ repos:
 
   - repo: local
     hooks:
+      - id: import-boundary
+        name: import boundary
+        entry: uv run scripts/check_import_boundary.py --all
+        language: system
+        types: [python]
+        pass_filenames: false
+        verbose: true
+
+      - id: tag-names
+        name: tag names
+        entry: uv run scripts/check_tag_names.py
+        language: system
+        types: [python]
+        verbose: true
+
       - id: yamlfmt
         name: yamlfmt
         entry: yamlfmt
