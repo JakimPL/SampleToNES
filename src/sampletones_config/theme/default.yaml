@@ -147,6 +147,10 @@ components:
       - type: color
         key: MenuBarBg
         value: .menu
+      - type: style
+        key: FramePadding
+        x: 10
+        y: 10
   - item_type: Button
     entries:
       - type: color

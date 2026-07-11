@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 
 
 @pytest.fixture(autouse=True)

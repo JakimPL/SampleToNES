@@ -23,4 +23,5 @@ headers:
 player:
   play: "▶"
   pause: "▮▮"
+  resume: "▮▶"
   stop: "■"

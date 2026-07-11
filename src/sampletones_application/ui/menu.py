@@ -64,6 +64,8 @@ from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_shared.types.callback import VoidCallback
 
+TOOLBAR_STRIP_PADDING: Final[int] = 4
+
 PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
@@ -350,9 +352,11 @@ class MenuBar:
 
     def _create_player_toolbar(self) -> None:
         """Builds the transport strip sitting on its own recessed surface beside the menus."""
+        toolbar = self._player_layout.toolbar
+        strip_width = toolbar.width * 3 + toolbar.gap * 2 + TOOLBAR_STRIP_PADDING * 2
         with dpg.child_window(
             tag=TAG_GLOBAL_PANEL_PLAYER,
-            auto_resize_x=True,
+            width=strip_width,
             auto_resize_y=True,
             border=False,
             no_scrollbar=True,
@@ -436,7 +440,7 @@ class MenuBar:
         dpg_configure_item(self._stop_button_tag, enabled=state.stop_enabled)
 
         if state.player_paused:
-            dpg_set_item_label(self._pause_button_tag, self._player_glyphs.play)
+            dpg_set_item_label(self._pause_button_tag, self._player_glyphs.resume)
             dpg_set_value(self._pause_tooltip_tag, self._lbl_resume)
         else:
             dpg_set_item_label(self._pause_button_tag, self._player_glyphs.pause)

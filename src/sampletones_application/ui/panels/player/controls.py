@@ -129,13 +129,12 @@ def create_compact_transport_controls(
 
     Unlike :func:`create_transport_controls`, which centres the buttons across a
     stretch table for a wide card, this packs them tightly for a menu-bar strip.
+    The inter-button gap is set by ``ItemSpacing`` in the toolbar theme.
     """
     button = layout.toolbar
     with dpg.group(horizontal=True, parent=parent):
         _create_icon_button(play_tag, glyphs.play, play_tooltip, on_play, button, width=button.width)
-        dpg.add_spacer(width=button.gap)
         _create_icon_button(pause_tag, glyphs.pause, pause_tooltip, on_pause_or_resume, button, width=button.width)
-        dpg.add_spacer(width=button.gap)
         _create_icon_button(stop_tag, glyphs.stop, stop_tooltip, on_stop, button, width=button.width)
 
 

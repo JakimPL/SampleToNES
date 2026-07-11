@@ -7,6 +7,6 @@ button:
   gap: 10
 
 toolbar:
-  height: 22
-  width: 30
-  gap: 3
+  height: 32
+  width: 44
+  gap: 4
