@@ -14,3 +14,4 @@ class PlayerButtonLayout(BaseModel, frozen=True):
 class PlayerLayout(BaseModel, frozen=True):
     card: PlayerCardLayout
     button: PlayerButtonLayout
+    toolbar: PlayerButtonLayout

@@ -7,9 +7,10 @@ components:
       - type: color
         key: ChildBg
         value: .player_surface
-      - type: color
-        key: Border
-        value: .player_border
+      - type: style
+        key: WindowPadding
+        x: 4
+        y: 0
       - type: style
         key: ChildBorderSize
-        x: 1
+        x: 0

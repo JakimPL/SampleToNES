@@ -130,7 +130,7 @@ def create_compact_transport_controls(
     Unlike :func:`create_transport_controls`, which centres the buttons across a
     stretch table for a wide card, this packs them tightly for a menu-bar strip.
     """
-    button = layout.button
+    button = layout.toolbar
     with dpg.group(horizontal=True, parent=parent):
         _create_icon_button(play_tag, glyphs.play, play_tooltip, on_play, button, width=button.width)
         dpg.add_spacer(width=button.gap)

@@ -354,7 +354,7 @@ class MenuBar:
             tag=TAG_GLOBAL_PANEL_PLAYER,
             auto_resize_x=True,
             auto_resize_y=True,
-            border=True,
+            border=False,
             no_scrollbar=True,
             no_scroll_with_mouse=True,
         ):
