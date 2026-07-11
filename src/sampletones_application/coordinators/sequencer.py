@@ -278,6 +278,7 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.settings,
             layout=layout.sequencer,
             input_width=layout.general.inputs.default_width,
+            label_width=layout.general.inputs.label_width,
             language_manager=language_manager,
             status_bar=status_bar,
             shortcut_manager=shortcut_manager,

@@ -18,6 +18,7 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_MODULE_INPUT_TEMPO,
     TAG_SEQUENCER_MODULE_PANEL,
 )
+from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -43,6 +44,7 @@ class GUISequencerModulePanel(GUIPanel):
         *,
         layout: SequencerLayout,
         input_width: int,
+        label_width: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         shortcut_manager: ShortcutManager,
@@ -50,6 +52,7 @@ class GUISequencerModulePanel(GUIPanel):
         self._initial_settings = initial_settings
         self._layout = layout
         self._input_width = input_width
+        self._label_width = label_width
         self._status_bar = status_bar
         self._shortcut_manager = shortcut_manager
         self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
@@ -118,48 +121,48 @@ class GUISequencerModulePanel(GUIPanel):
     def _create_module_options(self) -> None:
         settings = self._initial_settings
         with dpg.group(tag=TAG_SEQUENCER_MODULE_GROUP_OPTIONS):
-            dpg.add_input_int(
-                label=self._lbl_nes_frequency,
-                default_value=settings.nes_frequency,
-                tag=TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
-                min_value=MIN_NES_FREQUENCY,
-                max_value=MAX_NES_FREQUENCY,
-                min_clamped=True,
-                max_clamped=True,
-                width=self._input_width,
-            )
-            dpg.add_input_int(
-                label=self._lbl_rows,
-                default_value=settings.rows_per_pattern,
-                tag=TAG_SEQUENCER_MODULE_INPUT_ROWS,
-                min_value=MIN_ROWS_PER_PATTERN,
-                max_value=MAX_ROWS_PER_PATTERN,
-                min_clamped=True,
-                max_clamped=True,
-                width=self._input_width,
-            )
-            dpg.add_input_int(
-                label=self._lbl_tempo,
-                default_value=settings.tempo,
-                tag=TAG_SEQUENCER_MODULE_INPUT_TEMPO,
-                min_value=self._layout.tempo.min,
-                max_value=self._layout.tempo.max,
-                min_clamped=True,
-                max_clamped=True,
-                width=self._input_width,
-                callback=self._on_tempo_input,
-            )
-            dpg.add_input_int(
-                label=self._lbl_speed,
-                default_value=settings.speed,
-                tag=TAG_SEQUENCER_MODULE_INPUT_SPEED,
-                min_value=self._layout.speed.min,
-                max_value=self._layout.speed.max,
-                min_clamped=True,
-                max_clamped=True,
-                width=self._input_width,
-                callback=self._on_speed_input,
-            )
+            with labeled_field(self._lbl_nes_frequency, self._label_width):
+                dpg.add_input_int(
+                    default_value=settings.nes_frequency,
+                    tag=TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
+                    min_value=MIN_NES_FREQUENCY,
+                    max_value=MAX_NES_FREQUENCY,
+                    min_clamped=True,
+                    max_clamped=True,
+                    width=self._input_width,
+                )
+            with labeled_field(self._lbl_rows, self._label_width):
+                dpg.add_input_int(
+                    default_value=settings.rows_per_pattern,
+                    tag=TAG_SEQUENCER_MODULE_INPUT_ROWS,
+                    min_value=MIN_ROWS_PER_PATTERN,
+                    max_value=MAX_ROWS_PER_PATTERN,
+                    min_clamped=True,
+                    max_clamped=True,
+                    width=self._input_width,
+                )
+            with labeled_field(self._lbl_tempo, self._label_width):
+                dpg.add_input_int(
+                    default_value=settings.tempo,
+                    tag=TAG_SEQUENCER_MODULE_INPUT_TEMPO,
+                    min_value=self._layout.tempo.min,
+                    max_value=self._layout.tempo.max,
+                    min_clamped=True,
+                    max_clamped=True,
+                    width=self._input_width,
+                    callback=self._on_tempo_input,
+                )
+            with labeled_field(self._lbl_speed, self._label_width):
+                dpg.add_input_int(
+                    default_value=settings.speed,
+                    tag=TAG_SEQUENCER_MODULE_INPUT_SPEED,
+                    min_value=self._layout.speed.min,
+                    max_value=self._layout.speed.max,
+                    min_clamped=True,
+                    max_clamped=True,
+                    width=self._input_width,
+                    callback=self._on_speed_input,
+                )
 
         self._commit_on_finish(
             TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,

@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import StrEnum, auto
 
 
 class TextType(StrEnum):
@@ -59,46 +59,46 @@ class Panel(StrEnum):
     IMPLICIT = ""
 
     # Global cross-page panels
-    MENU = "menu"
-    DIALOG = "dialog"
-    TRACEBACK = "traceback"
-    CONTEXT = "context"
-    STATUS = "status"
-    GRAPH = "graph"
-    PITCH = "pitch"
+    MENU = auto()
+    DIALOG = auto()
+    TRACEBACK = auto()
+    CONTEXT = auto()
+    STATUS = auto()
+    GRAPH = auto()
+    PITCH = auto()
 
     # Shared per-page panels (used under multiple Pages)
-    PLAYER = "player"
-    BROWSER = "browser"
-    DETAILS = "details"
-    EXPLORER = "explorer"
+    PLAYER = auto()
+    BROWSER = auto()
+    DETAILS = auto()
+    EXPLORER = auto()
 
     # Main tab
-    CONFIG_PANEL = "config_panel"
-    RECONSTRUCTOR = "reconstructor"
-    CONVERTER = "converter"
-    ADVANCED = "advanced"
+    CONFIG = auto()
+    RECONSTRUCTOR = auto()
+    CONVERTER = auto()
+    ADVANCED = auto()
 
     # Reconstructions tab
-    RECONSTRUCTION = "reconstruction"
+    RECONSTRUCTION = auto()
 
     # Sequencer tab
-    GRID = "grid"
-    ORDER = "order"
-    MODULE = "module"
-    INSTRUMENTS = "instruments"
-    HISTORY = "history"
+    GRID = auto()
+    ORDER = auto()
+    MODULE = auto()
+    INSTRUMENTS = auto()
+    HISTORY = auto()
 
     # Instructions tab
-    LIBRARY = "library"
-    INSTRUCTION = "instruction"
+    LIBRARY = auto()
+    INSTRUCTION = auto()
 
     # Settings
-    AUDIO = "audio"
-    PROPERTIES = "properties"
+    AUDIO = auto()
+    PROPERTIES = auto()
 
     # Prototype
-    PAGE = "page"
-    LABEL_INPUT = "label_input"
-    MULTIPLIER = "multiplier"
-    RESULT = "result"
+    PAGE = auto()
+    LABEL_INPUT = auto()
+    MULTIPLIER = auto()
+    RESULT = auto()

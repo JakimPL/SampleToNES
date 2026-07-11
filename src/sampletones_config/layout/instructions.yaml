@@ -1,6 +1,7 @@
 dimensions:
   instruction_choice_height: 105
-  instruction_choice_input_width: 220
+  instruction_choice_input_width: 205
+  instruction_choice_label_width: 120
 
 values:
   float_precision: 4

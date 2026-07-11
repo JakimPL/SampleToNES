@@ -22,6 +22,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
+from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -45,6 +46,7 @@ class GUIReconstructorPanel(GUIPanel):
         *,
         layout: ReconstructorLayout,
         input_width: int,
+        label_width: int,
         panel_height: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -52,6 +54,7 @@ class GUIReconstructorPanel(GUIPanel):
         self._view = initial_view
         self._layout = layout
         self._input_width = input_width
+        self._label_width = label_width
         self._status_bar = status_bar
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
         self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
@@ -160,15 +163,15 @@ class GUIReconstructorPanel(GUIPanel):
         ]
 
     def _create_drive_slider(self) -> None:
-        dpg.add_slider_float(
-            label=self._lbl_drive,
-            tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
-            min_value=0.0,
-            max_value=MAX_DRIVE,
-            default_value=self._view.drive,
-            width=self._input_width,
-            format=self._layout.drive_format,
-        )
+        with labeled_field(self._lbl_drive, self._label_width):
+            dpg.add_slider_float(
+                tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+                min_value=0.0,
+                max_value=MAX_DRIVE,
+                default_value=self._view.drive,
+                width=self._input_width,
+                format=self._layout.drive_format,
+            )
 
         dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._item_handler_tag)
         self._status_bar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._msg_status_input)

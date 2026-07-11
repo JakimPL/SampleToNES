@@ -24,6 +24,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_PANEL,
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
 )
+from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
@@ -251,26 +252,32 @@ class GUIInstructionChoicePanel(GUIPanel):
             label=self._lbl_window_pulse_pitch,
             tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_PITCH,
         )
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
+        with labeled_field(
+            self._lbl_window_pulse_volume,
+            self._layout.dimensions.instruction_choice_label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-            label=self._lbl_window_pulse_volume,
-            default_value=instruction.volume,
-            min_value=1,
-            max_value=MAX_VOLUME,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
-        )
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
+        ):
+            dpg.add_slider_int(
+                tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
+                default_value=instruction.volume,
+                min_value=1,
+                max_value=MAX_VOLUME,
+                clamped=True,
+                width=self._layout.dimensions.instruction_choice_input_width,
+            )
+        with labeled_field(
+            self._lbl_window_pulse_duty_cycle,
+            self._layout.dimensions.instruction_choice_label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-            label=self._lbl_window_pulse_duty_cycle,
-            default_value=instruction.duty_cycle,
-            min_value=0,
-            max_value=MAX_DUTY_CYCLE,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
-        )
+        ):
+            dpg.add_slider_int(
+                tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
+                default_value=instruction.duty_cycle,
+                min_value=0,
+                max_value=MAX_DUTY_CYCLE,
+                clamped=True,
+                width=self._layout.dimensions.instruction_choice_input_width,
+            )
 
         for tag in [
             TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
@@ -294,16 +301,19 @@ class GUIInstructionChoicePanel(GUIPanel):
             label=self._lbl_window_noise_period,
             tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
         )
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
+        with labeled_field(
+            self._lbl_window_noise_volume,
+            self._layout.dimensions.instruction_choice_label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-            label=self._lbl_window_noise_volume,
-            default_value=instruction.volume,
-            min_value=1,
-            max_value=MAX_VOLUME,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
-        )
+        ):
+            dpg.add_slider_int(
+                tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
+                default_value=instruction.volume,
+                min_value=1,
+                max_value=MAX_VOLUME,
+                clamped=True,
+                width=self._layout.dimensions.instruction_choice_input_width,
+            )
         dpg.add_checkbox(
             tag=TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,

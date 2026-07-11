@@ -16,6 +16,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
     TAG_MAIN_CONFIG_PANEL,
 )
+from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -43,12 +44,14 @@ class GUIConfigPanel(GUIPanel):
         initial_view: ConfigPanelViewModel,
         *,
         input_width: int,
+        label_width: int,
         panel_height: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ) -> None:
         self._view = initial_view
         self._input_width = input_width
+        self._label_width = label_width
         self._status_bar = status_bar
         self.on_audio_settings_changed: Optional[Callable[[AudioSettingsUpdate], None]] = None
         self.on_library_settings_changed: Optional[Callable[[LibrarySettingsUpdate], None]] = None
@@ -56,85 +59,85 @@ class GUIConfigPanel(GUIPanel):
 
         self._lbl_section = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.LABEL,
             ConfigPanelElements.SECTION,
         ]
         self._lbl_section_library = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.LABEL,
             ConfigPanelElements.SECTION_LIBRARY,
         ]
         self._lbl_normalize = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.LABEL,
             ConfigPanelElements.CHECKBOX_NORMALIZE,
         ]
         self._lbl_quantize = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.LABEL,
             ConfigPanelElements.CHECKBOX_QUANTIZE,
         ]
         self._lbl_sample_rate = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.LABEL,
             ConfigPanelElements.INPUT_SAMPLE_RATE,
         ]
         self._lbl_nes_frequency = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.LABEL,
             ConfigPanelElements.INPUT_NES_FREQUENCY,
         ]
         self._lbl_spectrum_method = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.LABEL,
             ConfigPanelElements.COMBO_SPECTRUM_METHOD,
         ]
         self._lbl_gamma = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.LABEL,
             ConfigPanelElements.SLIDER_TRANSFORMATION_GAMMA,
         ]
         self._tooltip_normalize = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_NORMALIZE,
         ]
         self._tooltip_quantize = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_QUANTIZE,
         ]
         self._tooltip_sample_rate = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_SAMPLE_RATE,
         ]
         self._tooltip_nes_frequency = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_NES_FREQUENCY,
         ]
         self._tooltip_spectrum_method = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_SPECTRUM_METHOD,
         ]
         self._tooltip_gamma = language_manager[
             Page.MAIN,
-            Panel.CONFIG_PANEL,
+            Panel.CONFIG,
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_TRANSFORMATION_GAMMA,
         ]
@@ -211,41 +214,41 @@ class GUIConfigPanel(GUIPanel):
 
     def _create_library_settings(self) -> None:
         dpg.add_text(self._lbl_section_library)
-        dpg.add_input_int(
-            label=self._lbl_sample_rate,
-            default_value=self._view.sample_rate,
-            tag=TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
-            min_value=MIN_SAMPLE_RATE,
-            max_value=MAX_SAMPLE_RATE,
-            width=self._input_width,
-            callback=self._on_parameter_change,
-        )
-        dpg.add_input_int(
-            label=self._lbl_nes_frequency,
-            default_value=self._view.nes_frequency,
-            tag=TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
-            min_value=MIN_NES_FREQUENCY,
-            max_value=MAX_NES_FREQUENCY,
-            width=self._input_width,
-            callback=self._on_parameter_change,
-        )
-        dpg.add_combo(
-            label=self._lbl_spectrum_method,
-            tag=TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,
-            items=[format_spectrum_method(method) for method in SpectrumMethod],
-            default_value=format_spectrum_method(self._view.spectrum_method),
-            width=self._input_width,
-            callback=self._on_parameter_change,
-        )
-        dpg.add_slider_int(
-            label=self._lbl_gamma,
-            tag=TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
-            default_value=self._view.transformation_gamma,
-            min_value=0,
-            max_value=MAX_TRANSFORMATION_GAMMA,
-            width=self._input_width,
-            callback=self._on_parameter_change,
-        )
+        with labeled_field(self._lbl_sample_rate, self._label_width):
+            dpg.add_input_int(
+                default_value=self._view.sample_rate,
+                tag=TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
+                min_value=MIN_SAMPLE_RATE,
+                max_value=MAX_SAMPLE_RATE,
+                width=self._input_width,
+                callback=self._on_parameter_change,
+            )
+        with labeled_field(self._lbl_nes_frequency, self._label_width):
+            dpg.add_input_int(
+                default_value=self._view.nes_frequency,
+                tag=TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
+                min_value=MIN_NES_FREQUENCY,
+                max_value=MAX_NES_FREQUENCY,
+                width=self._input_width,
+                callback=self._on_parameter_change,
+            )
+        with labeled_field(self._lbl_spectrum_method, self._label_width):
+            dpg.add_combo(
+                tag=TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,
+                items=[format_spectrum_method(method) for method in SpectrumMethod],
+                default_value=format_spectrum_method(self._view.spectrum_method),
+                width=self._input_width,
+                callback=self._on_parameter_change,
+            )
+        with labeled_field(self._lbl_gamma, self._label_width):
+            dpg.add_slider_int(
+                tag=TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
+                default_value=self._view.transformation_gamma,
+                min_value=0,
+                max_value=MAX_TRANSFORMATION_GAMMA,
+                width=self._input_width,
+                callback=self._on_parameter_change,
+            )
 
         for tag in [
             TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
