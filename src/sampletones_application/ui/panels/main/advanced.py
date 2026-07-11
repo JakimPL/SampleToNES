@@ -45,6 +45,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         initial_view: AdvancedSettingsPanelViewModel,
         *,
         panel_height: int,
+        button_height: int,
         input_width: int,
         file_dialog_width: int,
         file_dialog_height: int,
@@ -61,6 +62,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._library_directory: Path = initial_view.library_directory
         self._output_directory: Path = initial_view.reconstructions_directory
         self._max_workers: int = initial_view.max_workers
+        self._button_height = button_height
         self._input_width = input_width
         self._file_dialog_width = file_dialog_width
         self._file_dialog_height = file_dialog_height
@@ -132,6 +134,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
             self._create_section_text()
             self._create_workers_settings()
+            dpg.add_separator()
             self._create_path_settings()
             self._create_tooltips()
 
@@ -186,6 +189,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 parent=TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
                 label=self._lbl_select_library,
                 width=-1,
+                height=self._button_height,
                 callback=self._select_library_directory_dialog,
             )
 
@@ -212,6 +216,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 label=self._lbl_select_output,
                 parent=TAG_MAIN_ADVANCED_GROUP_RECONSTRUCTIONS_DIRECTORY,
                 width=-1,
+                height=self._button_height,
                 callback=self._select_output_directory_dialog,
             )
 

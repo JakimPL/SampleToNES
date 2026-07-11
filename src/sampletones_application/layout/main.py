@@ -22,6 +22,7 @@ class ConverterLayout(BaseModel, frozen=True):
 
 class AdvancedLayout(BaseModel, frozen=True):
     height: int
+    button_height: int
 
 
 class MainLayout(BaseModel, frozen=True):

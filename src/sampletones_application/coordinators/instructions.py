@@ -350,6 +350,7 @@ class InstructionsTabCoordinator:
                 TAG_INSTRUCTIONS_LIBRARY_PANEL,
                 self._msg_generation_success,
                 self._ttl_generation_status,
+                modal=True,
             )
 
     def _on_generation_error(self, exception: Exception) -> None:
@@ -360,6 +361,7 @@ class InstructionsTabCoordinator:
             TAG_INSTRUCTIONS_LIBRARY_PANEL,
             self._msg_generation_cancelled,
             self._ttl_generation_status,
+            modal=True,
         )
 
     def _on_library_file_not_found(self, path: Path, message: str) -> None:

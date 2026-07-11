@@ -280,6 +280,7 @@ class MainTabCoordinator:
                 reconstructions_directory=config_manager.get_reconstructions_directory(),
             ),
             panel_height=layout.main.advanced.height,
+            button_height=layout.main.advanced.button_height,
             input_width=layout.general.inputs.default_width,
             file_dialog_width=layout.general.dialogs.file.width,
             file_dialog_height=layout.general.dialogs.file.height,
