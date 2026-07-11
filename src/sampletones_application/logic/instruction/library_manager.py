@@ -245,6 +245,16 @@ class InstructionsLibraryManager(CallbackMixin):
             self._creator.cleanup()
             self._creator = None
 
+    def shutdown(self) -> None:
+        """Tears the library creator's process pool down synchronously for application exit.
+
+        A conversion generates its library first, so this pool is the one still spawning
+        workers when a run is cancelled and the window is closed; this blocks until it has
+        stopped so the process reaps its workers before releasing shared resources."""
+        if self._creator:
+            self._creator.shutdown()
+            self._creator = None
+
     def clear_all_libraries(self) -> None:
         self._library.purge()
         self._library_files.clear()

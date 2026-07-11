@@ -654,7 +654,7 @@ class AudioDeviceManager(CallbackMixin):
         except OSError as exception:
             playback_error = PlaybackError(f"Failed to open audio stream: {exception}")
             self.call(self.on_playback_error, playback_error)
-            raise playback_error from exception
+            return
 
         try:
             self._playback_loop(stream, update)

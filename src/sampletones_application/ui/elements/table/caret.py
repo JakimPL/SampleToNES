@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.layout.general import CaretLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.utils.gui.dpg import dpg_get_item_parent
 from sampletones_shared.meta import NonInstantiableMeta
 from sampletones_shared.types.application import ColorRGBA, Sender
 
@@ -236,7 +237,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
             if _as_item_id(node) == root_id:
                 return True
 
-            parent = dpg.get_item_parent(node)
+            parent = dpg_get_item_parent(node)
             if not parent:
                 return False
 

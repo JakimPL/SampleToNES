@@ -6,7 +6,7 @@ reconstructor:
 
 converter:
   width: -1
-  height: 248
+  height: 180
   button_height: 45
 
 advanced:

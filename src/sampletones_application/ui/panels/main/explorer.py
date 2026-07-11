@@ -32,7 +32,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_children,
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.thread import concurrent
+from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core import paths
 from sampletones_core.structures.tree import (
     FileSystemNode,

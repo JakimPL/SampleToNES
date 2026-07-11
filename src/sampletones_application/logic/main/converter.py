@@ -61,6 +61,8 @@ class ConversionServiceProtocol(Protocol):
 
     def cleanup(self) -> None: ...
 
+    def shutdown(self) -> None: ...
+
     def is_running(self) -> bool: ...
 
 
@@ -247,7 +249,7 @@ class ConverterLogic(CallbackMixin):
         self.close()
 
     def cleanup(self) -> None:
-        self._service.cleanup()
+        self._service.shutdown()
         self._system_progress.clear()
 
     def _on_service_result(self, result: ConversionResult) -> None:

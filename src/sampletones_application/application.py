@@ -83,12 +83,12 @@ from sampletones_application.ui.panels.dialogs.project_properties import (
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
-from sampletones_application.utils.background import stop_background_workers
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.parallelization.background import stop_background_workers
 from sampletones_application.view_model.shared.audio_settings import (
     AudioSettingsViewModel,
 )
@@ -1103,6 +1103,14 @@ class Application:
             priority=self.layout.behavior.scheduling.priority_update_status,
         )
 
+    def _save_config(self) -> bool:
+        try:
+            self.config_manager.save_config()
+            return False
+        except OSError as exception:
+            logger.error_with_traceback(exception, "Failed to save configuration on exit")
+            return True
+
     def run(self) -> None:
         try:
             while dpg.is_dearpygui_running():
@@ -1113,13 +1121,8 @@ class Application:
         finally:
             stop_background_workers()
             self._main_tab.cleanup()
-            save_failed = False
-
-            try:
-                self.config_manager.save_config()
-            except OSError as exception:
-                logger.error_with_traceback(exception, "Failed to save configuration on exit")
-                save_failed = True
+            self.library_manager.shutdown()
+            save_failed = self._save_config()
 
             self._persist_application_state()
             self.audio_device_manager.terminate()

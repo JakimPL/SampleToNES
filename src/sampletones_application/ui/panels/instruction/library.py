@@ -47,7 +47,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
-from sampletones_application.utils.thread import concurrent
+from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey

@@ -1,7 +1,7 @@
 from typing import Final
 
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 
 SHUTDOWN_JOIN_TIMEOUT: Final[float] = 5.0
 

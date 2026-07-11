@@ -64,6 +64,21 @@ def dpg_bind_item_theme(tag: Sender, theme_tag: Sender, /, *args: Any, **kwargs:
         dpg.bind_item_theme(tag, theme_tag, *args, **kwargs)
 
 
+def dpg_get_item_parent(tag: Sender, /, *args: Any, **kwargs: Any) -> Optional[Sender]:
+    """The item's parent, or None when the item is absent.
+
+    Queued callbacks mutate the item tree on the callback-queue thread, so an item read
+    from another thread can be removed underneath this lookup; DearPyGui reports the
+    absent item by raising, which resolves here to None.
+    """
+    try:
+        parent: Optional[Sender] = dpg.get_item_parent(tag, *args, **kwargs)
+    except Exception:
+        return None
+
+    return parent
+
+
 @dpg_wrapper(button_function=GUIButton.configure_item)
 def dpg_configure_item(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
     dpg.configure_item(tag, *args, **kwargs)

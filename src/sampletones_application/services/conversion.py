@@ -61,10 +61,20 @@ class ConversionService(ServiceBase[ConversionResult]):
 
     def cleanup(self) -> None:
         if self._converter is not None:
-            if self._converter.is_running():
-                self._converter.cancel()
             self._converter.cleanup()
             self._converter = None
+
+        self._eta_estimator = None
+
+    def shutdown(self) -> None:
+        """Tears the converter's process pool down synchronously for application exit.
+
+        The pool spawns its workers, so the process must reap them before it releases
+        the shared resources they depend on; this blocks until the pool has stopped."""
+        if self._converter is not None:
+            self._converter.shutdown()
+            self._converter = None
+
         self._eta_estimator = None
 
     def is_running(self) -> bool:

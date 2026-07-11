@@ -8,7 +8,7 @@ from typing import List, Tuple
 import numpy as np
 
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.utils.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.audio import write_wave
 from sampletones_core.exporters import Features
 from sampletones_shared.logger import logger

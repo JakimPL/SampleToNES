@@ -29,7 +29,7 @@ from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.thread import concurrent
+from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
