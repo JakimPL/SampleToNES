@@ -120,6 +120,30 @@ class ConverterLogic(CallbackMixin):
             TextType.MESSAGE,
             ConverterElements.STATUS_CANCELLED,
         ]
+        self._lbl_convert = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CONVERT_SAMPLE_BUTTON,
+        ]
+        self._lbl_convert_directory = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CONVERT_DIRECTORY_BUTTON,
+        ]
+        self._lbl_cancel = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CANCEL_BUTTON,
+        ]
+        self._tpl_convert_label = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.TEMPLATE,
+            ConverterElements.CONVERT_LABEL_TEMPLATE,
+        ]
         self._tpl_progress = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -348,6 +372,18 @@ class ConverterLogic(CallbackMixin):
             delay=self._scheduling.delay_cancel,
         )
 
+    def _compose_action_label(self, input_path: Optional[Path]) -> str:
+        """The label the single action button shows: the cancel label while a conversion holds
+        resources, otherwise the convert label named after the selected input."""
+        if self._phase in ACTIVE_PHASES:
+            return self._lbl_cancel
+
+        base = self._lbl_convert if self._is_file else self._lbl_convert_directory
+        if input_path is None:
+            return base
+
+        return self._tpl_convert_label.format(base, input_path.name)
+
     def _emit_view_model(
         self,
         status_text: str,
@@ -357,11 +393,13 @@ class ConverterLogic(CallbackMixin):
         display_output = (
             self._output_path if self._output_path is not None else self._config_manager.get_reconstructions_directory()
         )
+        display_input = input_path if input_path is not None else self._input_path
         view_model = ConverterViewModel(
             phase=self._phase,
             status_text=status_text,
+            action_label=self._compose_action_label(display_input),
             progress=progress,
-            input_path=(input_path if input_path is not None else self._input_path),
+            input_path=display_input,
             output_path=display_output,
             is_file=self._is_file,
             other_operation_active=self._is_operation_active(),

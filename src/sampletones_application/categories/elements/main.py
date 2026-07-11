@@ -75,6 +75,7 @@ class ConverterElements(AbstractElement):
     CANCEL_PROMPT = "cancel_prompt"
     PROGRESS_TEMPLATE = "progress_template"
     COMPLETE_TEMPLATE = "complete_template"
+    CONVERT_LABEL_TEMPLATE = "convert_label_template"
 
 
 class AdvancedElements(AbstractElement):

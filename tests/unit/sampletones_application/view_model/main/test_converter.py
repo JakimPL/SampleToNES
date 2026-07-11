@@ -18,6 +18,7 @@ def _view_model(
     return ConverterViewModel(
         phase=phase,
         status_text="",
+        action_label="",
         progress=progress,
         input_path=Path("/audio/sample.wav"),
         output_path=Path("/reconstructions"),

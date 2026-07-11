@@ -4,7 +4,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from sampletones_application.logic.main.converter import ConversionSuccess, ConverterLogic
-from sampletones_application.view_model.main.converter import ACTIVE_PHASES, ConversionPhase
+from sampletones_application.view_model.main.converter import (
+    ACTIVE_PHASES,
+    ConversionPhase,
+    ConverterViewModel,
+)
 
 
 @pytest.fixture
@@ -124,6 +128,54 @@ class TestActivePhases:
     def test_inactive_when_idle_or_terminal(self, converter_logic: ConverterLogic, phase: ConversionPhase) -> None:
         converter_logic._phase = phase
         assert converter_logic.is_active is False
+
+
+def _last_view_model(converter_logic: ConverterLogic) -> ConverterViewModel:
+    return converter_logic.on_view_changed.call_args.args[0]
+
+
+class TestActionLabel:
+    """The one action button's label is a projection of converter state, composed where the display
+    strings are resolved (the logic layer) rather than glued together in the panel: it names the
+    selected input while idle and reads the cancel label once a conversion holds resources."""
+
+    @pytest.fixture(autouse=True)
+    def _labels(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._lbl_convert = "Convert sample"
+        converter_logic._lbl_convert_directory = "Convert directory"
+        converter_logic._lbl_cancel = "Cancel"
+        converter_logic._tpl_convert_label = "{}: {}"
+
+    def test_idle_file_label_names_the_selected_file(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._is_file = True
+        converter_logic._input_path = Path("/audio/kick.wav")
+
+        converter_logic.emit_initial_view()
+
+        assert _last_view_model(converter_logic).action_label == "Convert sample: kick.wav"
+
+    def test_idle_directory_label_uses_the_directory_variant(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._is_file = False
+        converter_logic._input_path = Path("/audio/drums")
+
+        converter_logic.emit_initial_view()
+
+        assert _last_view_model(converter_logic).action_label == "Convert directory: drums"
+
+    def test_idle_without_input_reads_the_bare_convert_label(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._input_path = None
+
+        converter_logic.emit_initial_view()
+
+        assert _last_view_model(converter_logic).action_label == "Convert sample"
+
+    def test_active_conversion_reads_the_cancel_label(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._input_path = Path("/audio/kick.wav")
+
+        with patch("sampletones_application.logic.main.converter.CallbackQueue.add"):
+            converter_logic.start_conversion()
+
+        assert _last_view_model(converter_logic).action_label == "Cancel"
 
 
 class TestStartConversionGate:

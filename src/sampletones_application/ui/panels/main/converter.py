@@ -84,23 +84,11 @@ class GUIConverterPanel(GUIPanel):
             TextType.LABEL,
             ConverterElements.SECTION,
         ]
-        self._lbl_cancel_button = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CANCEL_BUTTON,
-        ]
         self._lbl_convert_button = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
             TextType.LABEL,
             ConverterElements.CONVERT_SAMPLE_BUTTON,
-        ]
-        self._lbl_convert_directory_button = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CONVERT_DIRECTORY_BUTTON,
         ]
         self._tooltip_convert_disabled = language_manager[
             Page.GLOBAL,
@@ -176,17 +164,15 @@ class GUIConverterPanel(GUIPanel):
     def _update_controls(self, view_model: ConverterViewModel) -> None:
         match view_model.primary_action:
             case ConverterAction.CANCEL:
-                label = self._lbl_cancel_button
                 callback: VoidCallback = self._on_cancel_clicked
                 theme = self._theme_cancel
             case ConverterAction.CONVERT:
-                label = self._convert_label(view_model)
                 callback = self._on_convert_clicked
                 theme = self._theme_convert
 
         dpg_configure_item(
             TAG_MAIN_CONVERTER_BUTTON_ACTION,
-            label=label,
+            label=view_model.action_label,
             enabled=view_model.primary_action_enabled,
         )
         dpg_set_item_callback(TAG_MAIN_CONVERTER_BUTTON_ACTION, callback)
@@ -196,13 +182,6 @@ class GUIConverterPanel(GUIPanel):
             TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
             show=view_model.other_operation_active and view_model.primary_action == ConverterAction.CONVERT,
         )
-
-    def _convert_label(self, view_model: ConverterViewModel) -> str:
-        base = self._lbl_convert_button if view_model.is_file else self._lbl_convert_directory_button
-        if view_model.input_path is None:
-            return base
-
-        return f"{base}: {view_model.input_path.name}"
 
     def _create_section_text(self) -> None:
         self._create_section_header(

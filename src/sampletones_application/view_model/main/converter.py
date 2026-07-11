@@ -48,6 +48,7 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     phase: ConversionPhase
     status_text: str
+    action_label: str
     progress: float
     input_path: Optional[Path]
     output_path: Optional[Path]
