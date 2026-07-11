@@ -315,10 +315,6 @@ class ReconstructionsTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
         )
-        self._reconstruction_player_panel.on_play = self._guarded_player.play
-        self._reconstruction_player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
-        self._reconstruction_player_panel.on_stop = self._guarded_player.stop
-        self._reconstruction_player_logic.on_view_changed = self._reconstruction_player_panel.update_view
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
@@ -485,9 +481,7 @@ class ReconstructionsTabCoordinator:
             )
 
     def _build_reconstruction_column(self, parent: str) -> None:
-        """Stacks the player, audio, and plot cards down the centre column."""
-        self._reconstruction_player_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        """Stacks the audio and plot cards down the centre column."""
         self._reconstruction_audio_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)

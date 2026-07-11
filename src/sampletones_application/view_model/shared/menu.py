@@ -12,6 +12,8 @@ class MenuBarViewModel(BaseModel, frozen=True):
     can_redo: bool
     play_label: str
     play_or_pause_enabled: bool
+    pause_enabled: bool
+    player_paused: bool
     stop_enabled: bool
     autoplay: bool
     follow_playback: bool

@@ -536,6 +536,12 @@ TAG_GLOBAL_TEXT_MENU_FPS = TagName(
     Widget.TEXT,
     "menu_fps",
 )
+TAG_GLOBAL_PANEL_PLAYER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.PANEL,
+    "player",
+)
 TAG_GLOBAL_STATUS_BAR = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

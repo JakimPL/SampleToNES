@@ -70,7 +70,8 @@ class PlayerLogic(CallbackMixin):
         self.call(self.on_position_changed, position)
 
     def _emit_view(self) -> None:
-        self.call(self.on_view_changed, self._build_viewmodel())
+        if self.on_view_changed is not None:
+            self.call(self.on_view_changed, self._build_viewmodel())
 
     def _build_viewmodel(self) -> PlayerViewModel:
         has_audio = self._audio_player.audio_data.is_loaded()
