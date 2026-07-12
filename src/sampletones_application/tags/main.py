@@ -8,6 +8,12 @@ TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Widget.PANEL,
     "config_cell",
 )
+TAG_MAIN_CONFIG_TABLE_CONFIG_ROW = TagName(
+    Page.MAIN,
+    Panel.CONFIG,
+    Widget.TABLE,
+    "config_row",
+)
 TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL = TagName(
     Page.MAIN,
     Panel.RECONSTRUCTOR,

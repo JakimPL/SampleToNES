@@ -52,6 +52,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         file_dialog_width: int,
         file_dialog_height: int,
         max_workers_minimum: int,
+        initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         path_colors: PathColors,
@@ -131,15 +132,16 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             tag=TAG_MAIN_ADVANCED_PANEL,
             height=panel_height,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
-            self._create_section_text()
-            self._create_workers_settings()
-            dpg.add_separator()
-            self._create_path_settings()
-            self._create_tooltips()
+            with self._collapsible_section(self._lbl_section, glyph=self._glyphs.headers.advanced):
+                self._create_workers_settings()
+                dpg.add_separator()
+                self._create_path_settings()
+                self._create_tooltips()
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
@@ -154,12 +156,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             reconstructions_directory=self._output_directory,
         )
         self.call(self.on_advanced_settings_changed, advanced_update)
-
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_section,
-            glyph=self._glyphs.headers.advanced,
-        )
 
     @table_wrapper(columns=2, height=-1)
     def _create_path_settings(self) -> None:

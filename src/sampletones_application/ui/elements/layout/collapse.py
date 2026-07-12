@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.glyphs import Glyphs
 from sampletones_application.tags.general import (
     SUF_COLLAPSE_BODY,
@@ -63,9 +64,10 @@ class CollapseController(CallbackMixin):
         self.rail_tag = f"{card_tag}{SUF_COLLAPSE_RAIL}"
         self.chevron_tag = f"{card_tag}{SUF_COLLAPSE_CHEVRON}"
         self.strip_handler_tag = f"{self.strip_tag}{SUF_HANDLER_REGISTRY}"
-        self.rail_handler_tag = f"{self.rail_tag}{SUF_HANDLER_REGISTRY}"
+        self.click_handler_tag = f"{card_tag}{SUF_COLLAPSE_STRIP}{TAG_SEPARATOR}click{SUF_HANDLER_REGISTRY}"
 
         self.on_toggle: Optional[Callable[[str, bool], None]] = None
+        self._collapsed_height: Optional[int] = None
 
     @property
     def collapsed(self) -> bool:
@@ -90,21 +92,21 @@ class CollapseController(CallbackMixin):
         return self._glyphs.common.expanded
 
     def attach(self) -> None:
-        """Binds click-to-toggle and hover-to-highlight to the built header strip and rail."""
+        """Binds hover-to-highlight to the header strip and a global click that toggles whichever bar is hovered.
+
+        A child window accepts a hover handler but not a clicked handler, so the toggle rides a global
+        mouse-click handler gated on the strip or rail being hovered.
+        """
         dpg_delete_item(self.strip_handler_tag)
         with dpg.item_handler_registry(tag=self.strip_handler_tag):
-            dpg.add_item_clicked_handler(callback=self._on_toggle_clicked)
             dpg.add_item_hover_handler(callback=self._on_strip_hover)
 
         dpg.bind_item_handler_registry(self.strip_tag, self.strip_handler_tag)
         self._bind_idle_theme()
 
-        if self.is_horizontal:
-            dpg_delete_item(self.rail_handler_tag)
-            with dpg.item_handler_registry(tag=self.rail_handler_tag):
-                dpg.add_item_clicked_handler(callback=self._on_toggle_clicked)
-
-            dpg.bind_item_handler_registry(self.rail_tag, self.rail_handler_tag)
+        dpg_delete_item(self.click_handler_tag)
+        with dpg.handler_registry(tag=self.click_handler_tag):
+            dpg.add_mouse_click_handler(button=dpg.mvMouseButton_Left, callback=self._on_mouse_click)
 
     def set_collapsed(self, collapsed: bool, *, notify: bool = True) -> None:
         self._collapsed = collapsed
@@ -113,20 +115,69 @@ class CollapseController(CallbackMixin):
         if self.is_horizontal:
             dpg_configure_item(self.strip_tag, show=not collapsed)
             dpg_configure_item(self.rail_tag, show=collapsed)
+        elif collapsed:
+            self._apply_collapsed_height()
         else:
-            height = self._header_bar_height if collapsed else self._expanded_height
-            dpg_configure_item(self.card_tag, height=height)
+            dpg_configure_item(
+                self.card_tag,
+                height=self._expanded_height,
+                no_scrollbar=False,
+                no_scroll_with_mouse=False,
+            )
 
         dpg_set_value(self.chevron_tag, self.chevron_glyph)
 
         if notify:
             self.call(self.on_toggle, self.card_tag, collapsed)
 
+    def _apply_collapsed_height(self) -> None:
+        """Shrink the card to a bar tall enough to hold the header strip plus the card's own padding.
+
+        The padding is read from the rendered strip's top offset so the bar matches the card theme.
+        Before the strip has rendered, the sizing waits a frame until that offset becomes available.
+        """
+        if not self._collapsed:
+            return
+
+        if self._collapsed_height is None:
+            strip_offset = self._strip_top_offset()
+            if strip_offset is None:
+                FrameCallbackManager.set_frame_callback(self._apply_collapsed_height)
+                return
+            self._collapsed_height = self._header_bar_height + 2 * strip_offset
+
+        dpg_configure_item(
+            self.card_tag,
+            height=self._collapsed_height,
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
+        )
+
+    def _strip_top_offset(self) -> Optional[int]:
+        """The strip's vertical offset inside the card once rendered, standing in for the card padding.
+
+        The offset settles to the card's top padding only after the strip has been laid out, so a
+        non-positive reading means the card has yet to render and the caller should wait a frame.
+        """
+        if not dpg.does_item_exist(self.strip_tag):
+            return None
+        offset = int(dpg.get_item_pos(self.strip_tag)[1])
+        if offset <= 0:
+            return None
+        return offset
+
     def toggle(self) -> None:
         self.set_collapsed(not self._collapsed)
 
-    def _on_toggle_clicked(self) -> None:
-        self.toggle()
+    def _on_mouse_click(self) -> None:
+        if self._is_bar_hovered():
+            self.toggle()
+
+    def _is_bar_hovered(self) -> bool:
+        if dpg.does_item_exist(self.strip_tag) and dpg.is_item_hovered(self.strip_tag):
+            return True
+
+        return bool(self.is_horizontal and dpg.does_item_exist(self.rail_tag) and dpg.is_item_hovered(self.rail_tag))
 
     def _on_strip_hover(self) -> None:
         if not dpg.does_item_exist(self.strip_tag):

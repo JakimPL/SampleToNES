@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_PANEL_GROUND
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback
 
 
@@ -82,6 +83,7 @@ class TabColumns:
         panel_gap: int,
         columns: Sequence[ColumnSpec],
         height: int = 0,
+        tag: Sender = 0,
     ) -> None:
         """Lays a gap-separated row of columns flush inside the container already on the stack.
 
@@ -89,7 +91,8 @@ class TabColumns:
         column a coordinator already owns: it drops the ground wrapper and the outer gaps, so the
         columns sit flush to the container edges with a single gap between each neighbour. Each
         column's builder fills its cell directly, letting the hosted cards own their own surface.
-        A ``height`` of ``0`` sizes the row to its content.
+        A ``height`` of ``0`` sizes the row to its content. A ``tag`` names the row table so a
+        coordinator can resize it when its hosted cards collapse.
         """
         with dpg.table(
             header_row=False,
@@ -97,6 +100,7 @@ class TabColumns:
             policy=dpg.mvTable_SizingStretchProp,
             width=-1,
             height=height,
+            tag=tag,
         ):
             cls._declare_row_columns(panel_gap, columns)
             with dpg.table_row():

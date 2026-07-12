@@ -36,10 +36,15 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.tags.main import (
+    TAG_MAIN_ADVANCED_PANEL,
+    TAG_MAIN_CONFIG_PANEL,
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
+    TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
+    TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
+    TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
@@ -51,6 +56,7 @@ from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.main.advanced import (
@@ -260,6 +266,7 @@ class MainTabCoordinator:
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
             panel_height=layout.main.config.height,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONFIG_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
         )
@@ -272,6 +279,7 @@ class MainTabCoordinator:
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
             panel_height=layout.main.config.height,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_RECONSTRUCTOR_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
         )
@@ -288,6 +296,7 @@ class MainTabCoordinator:
             file_dialog_width=layout.general.dialogs.file.width,
             file_dialog_height=layout.general.dialogs.file.height,
             max_workers_minimum=layout.behavior.main.max_workers_minimum,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_ADVANCED_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
             path_colors=layout.general.colors.paths,
@@ -302,6 +311,7 @@ class MainTabCoordinator:
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
             layout=layout.main.converter,
             path_colors=layout.general.colors.paths,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
         )
@@ -315,6 +325,8 @@ class MainTabCoordinator:
         self._reconstructor_panel.on_generation_settings_changed = config_manager.apply_generation_settings
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
         self._advanced_settings_panel.on_library_path_memorized = session_manager.set_library_path
+
+        self._wire_collapse_handlers()
 
         self._explorer_panel.set_callbacks(
             on_wave_file_clicked=self._on_wave_file_clicked,
@@ -485,6 +497,7 @@ class MainTabCoordinator:
         TabColumns.row(
             panel_gap=self._panel_gap,
             height=self._config_height,
+            tag=TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
             columns=[
                 ColumnSpec(
                     tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
@@ -496,10 +509,33 @@ class MainTabCoordinator:
                 ),
             ],
         )
+        self._sync_config_row_height()
         dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._advanced_settings_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._converter_panel.create_panel(parent)
+
+    def _wire_collapse_handlers(self) -> None:
+        """Routes each Main card's collapse toggle to the handler that persists it and reflows the shared config row."""
+        self._config_panel.set_collapse_handler(self._on_config_row_collapse_changed)
+        self._reconstructor_panel.set_collapse_handler(self._on_config_row_collapse_changed)
+        self._advanced_settings_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._converter_panel.set_collapse_handler(self._on_card_collapse_changed)
+
+    def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists a card's collapsed state so it restores on the next launch."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+
+    def _on_config_row_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists the config or reconstructor collapse, then reflows the row both cards share."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+        self._sync_config_row_height()
+
+    def _sync_config_row_height(self) -> None:
+        """Lets the shared config row size to its collapsed cards once both are collapsed, else keeps it full height."""
+        both_collapsed = self._config_panel.collapsed and self._reconstructor_panel.collapsed
+        height = 0 if both_collapsed else self._config_height
+        dpg_configure_item(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW, height=height)
 
     @property
     def player(self) -> AudioPlayerProtocol:

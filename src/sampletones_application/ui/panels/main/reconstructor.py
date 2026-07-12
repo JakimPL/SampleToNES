@@ -50,6 +50,7 @@ class GUIReconstructorPanel(GUIPanel):
         input_width: int,
         label_width: int,
         panel_height: int,
+        initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ) -> None:
@@ -120,27 +121,22 @@ class GUIReconstructorPanel(GUIPanel):
             tag=TAG_MAIN_RECONSTRUCTOR_PANEL,
             height=panel_height,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
-            self._create_section_text()
-            self._create_generator_selection()
-            dpg.add_separator()
-            self._create_drive_slider()
-            self._create_tooltips()
+            with self._collapsible_section(self._lbl_section_settings, glyph=self._glyphs.headers.reconstruction):
+                self._create_generator_selection()
+                dpg.add_separator()
+                self._create_drive_slider()
+                self._create_tooltips()
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
             dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
-
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_section_settings,
-            glyph=self._glyphs.headers.reconstruction,
-        )
 
     def _create_generator_selection(self) -> None:
         dpg.add_text(self._lbl_section_generators)

@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.layout.general import CollapseLayout
 from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.ui.elements.fonts.font import Font
@@ -27,6 +28,7 @@ class GUIPanel(CallbackMixin, ABC):
 
     _glyphs: Glyphs
     _glyph_layout: GlyphLayout
+    _collapse_layout: CollapseLayout
 
     def __init__(
         self,
@@ -55,10 +57,29 @@ class GUIPanel(CallbackMixin, ABC):
         cls,
         glyphs: Glyphs,
         glyph_layout: GlyphLayout,
+        collapse_layout: CollapseLayout,
     ) -> None:
-        """Set the shared glyph palette and the fixed marker width for every section header, from config."""
+        """Set the glyph palette, marker width, and collapse geometry every section header draws from."""
         cls._glyphs = glyphs
         cls._glyph_layout = glyph_layout
+        cls._collapse_layout = collapse_layout
+
+    def _enable_vertical_collapse(self, *, initial_collapsed: bool) -> None:
+        """Give this card a controller that shrinks it to a header bar in place, seeded from persisted state."""
+        self._collapse = CollapseController(
+            self.tag,
+            CollapseAxis.VERTICAL,
+            expanded_height=self.height,
+            header_bar_height=self._collapse_layout.header_bar_height,
+            rail_width=self._collapse_layout.rail_width,
+            glyphs=self._glyphs,
+            initial_collapsed=initial_collapsed,
+        )
+
+    def set_collapse_handler(self, callback: Callable[[str, bool], None]) -> None:
+        """Route this card's collapse toggles to ``callback`` so the coordinator can persist and react to them."""
+        if self._collapse is not None:
+            self._collapse.on_toggle = callback
 
     def _create_section_header(
         self,
@@ -120,7 +141,6 @@ class GUIPanel(CallbackMixin, ABC):
     @contextmanager
     def _collapsible_section(
         self,
-        controller: CollapseController,
         label: str,
         *,
         glyph: str,
@@ -131,8 +151,14 @@ class GUIPanel(CallbackMixin, ABC):
         chevron signals the card collapses. The body opens as a group tagged for show/hide, so the
         panel's existing flat ``dpg.add_*`` calls land inside it unchanged. Horizontal cards also get
         a hidden rail the collapsed state swaps in. Building finishes by applying the persisted
-        collapsed state without re-notifying, so restore-on-launch matches the stored value.
+        collapsed state without re-notifying, so restore-on-launch matches the stored value. The card
+        must have a controller enabled first, so ``_enable_vertical_collapse`` (or a horizontal
+        equivalent) runs in the panel's constructor.
         """
+        controller = self._collapse
+        if controller is None:
+            raise RuntimeError(f"Card {self.tag} opened a collapsible section without a collapse controller.")
+
         with dpg.child_window(
             tag=controller.strip_tag,
             height=controller.header_bar_height,

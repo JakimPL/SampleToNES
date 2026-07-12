@@ -402,6 +402,7 @@ class Application:
         GUIPanel.configure_section_header(
             self.layout.glyphs,
             self.layout.general.section_header.glyph,
+            self.layout.general.collapse,
         )
         try:
             setup_themes(THEME_DIRECTORY, PALETTE_PATH)

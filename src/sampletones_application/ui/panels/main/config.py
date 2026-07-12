@@ -48,6 +48,7 @@ class GUIConfigPanel(GUIPanel):
         input_width: int,
         label_width: int,
         panel_height: int,
+        initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ) -> None:
@@ -160,15 +161,16 @@ class GUIConfigPanel(GUIPanel):
             tag=TAG_MAIN_CONFIG_PANEL,
             height=panel_height,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
-            self._create_section_text()
-            self._create_audio_options()
-            dpg.add_separator()
-            self._create_library_settings()
-            self._create_tooltips()
+            with self._collapsible_section(self._lbl_section, glyph=self._glyphs.headers.settings):
+                self._create_audio_options()
+                dpg.add_separator()
+                self._create_library_settings()
+                self._create_tooltips()
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
@@ -193,12 +195,6 @@ class GUIConfigPanel(GUIPanel):
     def _selected_spectrum_method(self) -> SpectrumMethod:
         label = dpg.get_value(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD)
         return SPECTRUM_METHOD_BY_LABEL[label]
-
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_section,
-            glyph=self._glyphs.headers.settings,
-        )
 
     def _create_audio_options(self) -> None:
         dpg.add_checkbox(

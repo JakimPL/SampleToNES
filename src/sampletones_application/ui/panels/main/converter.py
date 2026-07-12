@@ -57,6 +57,7 @@ class GUIConverterPanel(GUIPanel):
         *,
         layout: ConverterLayout,
         path_colors: PathColors,
+        initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ) -> None:
@@ -125,14 +126,15 @@ class GUIConverterPanel(GUIPanel):
             tag=TAG_MAIN_CONVERTER_PANEL,
             height=layout.height,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def create_panel(self, parent: str) -> None:
         with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
-            self._create_section_text()
-            self._create_action_button()
-            dpg.add_separator()
-            self._create_summary()
-            self._create_conversion_status()
+            with self._collapsible_section(self._lbl_section, glyph=self._glyphs.headers.converter):
+                self._create_action_button()
+                dpg.add_separator()
+                self._create_summary()
+                self._create_conversion_status()
 
     def is_visible(self) -> bool:
         return bool(dpg.get_item_configuration(self.tag)["show"])
@@ -183,12 +185,6 @@ class GUIConverterPanel(GUIPanel):
             show=view_model.other_operation_active and view_model.primary_action == ConverterAction.CONVERT,
         )
 
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_section,
-            glyph=self._glyphs.headers.converter,
-        )
-
     def _create_action_button(self) -> None:
         self._theme_convert = ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON)
         self._theme_cancel = ThemeRegistry.get(TAG_GLOBAL_THEME_DANGER_BUTTON)
@@ -212,7 +208,6 @@ class GUIConverterPanel(GUIPanel):
     def _create_summary(self) -> None:
         with dpg.child_window(
             tag=TAG_MAIN_CONVERTER_WINDOW_SUMMARY,
-            parent=self.tag,
             width=-1,
             height=-1,
             border=False,
@@ -246,7 +241,6 @@ class GUIConverterPanel(GUIPanel):
     def _create_conversion_status(self) -> None:
         with dpg.group(
             tag=TAG_MAIN_CONVERTER_GROUP,
-            parent=self.tag,
             show=False,
         ):
             dpg.add_text(

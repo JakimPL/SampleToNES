@@ -114,7 +114,7 @@ class SectionHeaderLayout(BaseModel, extra="forbid", frozen=True):
 
 
 class CollapseLayout(BaseModel, extra="forbid", frozen=True):
-    """Geometry of a collapsed card: the header bar a vertical card shrinks to, and the rail a docked column retracts to."""
+    """Geometry a collapsed card shrinks to: the header bar for a vertical card, the rail for a docked column."""
 
     header_bar_height: int
     rail_width: int
