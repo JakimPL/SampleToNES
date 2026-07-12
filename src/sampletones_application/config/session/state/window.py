@@ -9,7 +9,7 @@ _DEFAULT_POSITION_Y: Final = 200
 _DEFAULT_FULLSCREEN: Final = False
 
 
-class WindowState(BaseModel):
+class ViewportState(BaseModel):
     width: int = Field(
         default=_DEFAULT_WIDTH,
         description="The width of the main application window.",

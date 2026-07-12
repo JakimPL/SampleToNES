@@ -53,32 +53,32 @@ class ApplicationStateManager:
         width: int,
         height: int,
     ) -> None:
-        self.state.window.fullscreen = fullscreen
+        self.state.viewport.fullscreen = fullscreen
         if not fullscreen:
-            self.state.window.x = x
-            self.state.window.y = y
-            self.state.window.width = width
-            self.state.window.height = height
+            self.state.viewport.x = x
+            self.state.viewport.y = y
+            self.state.viewport.width = width
+            self.state.viewport.height = height
 
     @property
     def fullscreen(self) -> bool:
-        return self.state.window.fullscreen
+        return self.state.viewport.fullscreen
 
     @property
     def window_x(self) -> int:
-        return self.state.window.x
+        return self.state.viewport.x
 
     @property
     def window_y(self) -> int:
-        return self.state.window.y
+        return self.state.viewport.y
 
     @property
     def window_width(self) -> int:
-        return self.state.window.width
+        return self.state.viewport.width
 
     @property
     def window_height(self) -> int:
-        return self.state.window.height
+        return self.state.viewport.height
 
     def set_current_tab(self, tab: Tab) -> None:
         self.state.current.tab = tab
