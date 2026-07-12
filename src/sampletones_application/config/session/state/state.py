@@ -1,3 +1,5 @@
+from typing import Dict
+
 from pydantic import BaseModel, Field
 
 from sampletones_application.config.session.state.current import Current
@@ -13,6 +15,10 @@ class ApplicationState(BaseModel):
     advanced_settings: bool = Field(
         default=False,
         description="If advanced settings are shown in the config panel.",
+    )
+    collapsed_cards: Dict[str, bool] = Field(
+        default_factory=dict,
+        description="Collapsed state of each card, keyed by the card's tag.",
     )
     current: Current = Field(
         default_factory=Current,

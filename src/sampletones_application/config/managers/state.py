@@ -87,6 +87,12 @@ class ApplicationStateManager:
         self.state.advanced_settings = not self.state.advanced_settings
         return self.state.advanced_settings
 
+    def is_card_collapsed(self, card_tag: str) -> bool:
+        return self.state.collapsed_cards.get(card_tag, False)
+
+    def set_card_collapsed(self, card_tag: str, collapsed: bool) -> None:
+        self.state.collapsed_cards[card_tag] = collapsed
+
     def load_current_tab(self) -> Tab:
         return self.state.current.tab
 

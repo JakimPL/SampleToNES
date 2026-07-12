@@ -45,7 +45,6 @@ class Page(StrEnum):
     SEQUENCER = "sequencer"
     INSTRUCTIONS = "instructions"
     SETTINGS = "settings"
-    PROTOTYPE = "prototype"
 
 
 class Tab(StrEnum):

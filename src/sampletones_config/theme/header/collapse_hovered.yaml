@@ -1,0 +1,9 @@
+name: collapse_header_hovered
+tag: global.theme.collapse_header_hovered
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .selection_hovered

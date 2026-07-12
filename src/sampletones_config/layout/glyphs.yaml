@@ -1,6 +1,8 @@
 common:
   tick: "▍"
   favorite: "★"
+  expanded: "▾"
+  collapsed: "▸"
 
 headers:
   waveform: "∿"

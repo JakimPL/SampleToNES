@@ -45,6 +45,12 @@ class SessionManager:
     def toggle_show_advanced_settings(self) -> bool:
         return self._state_manager.toggle_show_advanced_settings()
 
+    def is_card_collapsed(self, card_tag: str) -> bool:
+        return self._state_manager.is_card_collapsed(card_tag)
+
+    def set_card_collapsed(self, card_tag: str, collapsed: bool) -> None:
+        self._state_manager.set_card_collapsed(card_tag, collapsed)
+
     def toggle_autoplay(self) -> bool:
         return self._config_manager.toggle_autoplay()
 
