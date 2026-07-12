@@ -18,6 +18,8 @@ from sampletones_application.ui.themes.theme import Theme
 
 _EXPANDED_GLYPH = "v"
 _COLLAPSED_GLYPH = ">"
+_CHEVRON_LEFT_GLYPH = "L"
+_CHEVRON_RIGHT_GLYPH = "R"
 _CARD_TAG = "test.card"
 _EXPANDED_HEIGHT = 200
 _HEADER_BAR_HEIGHT = 32
@@ -52,6 +54,8 @@ def _glyphs() -> Glyphs:
         favorite="*",
         expanded=_EXPANDED_GLYPH,
         collapsed=_COLLAPSED_GLYPH,
+        chevron_left=_CHEVRON_LEFT_GLYPH,
+        chevron_right=_CHEVRON_RIGHT_GLYPH,
     )
     return Glyphs.model_construct(common=common)
 
@@ -118,6 +122,7 @@ class TestVerticalCollapse:
         assert dpg.get_item_configuration(controller.card_tag)["height"] == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
         assert dpg.get_item_configuration(controller.card_tag)["no_scrollbar"] is True
         assert dpg.get_value(controller.chevron_tag) == _COLLAPSED_GLYPH
+        assert controller.collapsed_height == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
 
     def test_expanding_shows_the_body_and_restores_the_fixed_height(
         self, dpg_context: None, rendered_strip_padding: None
@@ -191,3 +196,10 @@ class TestHorizontalCollapse:
         controller.toggle()
 
         assert announced == [(_CARD_TAG, True), (_CARD_TAG, False)]
+
+    def test_chevron_points_toward_the_collapse_direction(self) -> None:
+        """The expanded affordance points toward the edge the panel docks against, flipping when collapsed."""
+        assert _controller(CollapseAxis.HORIZONTAL_LEFT).chevron_glyph == _CHEVRON_LEFT_GLYPH
+        assert _controller(CollapseAxis.HORIZONTAL_LEFT, initial_collapsed=True).chevron_glyph == _CHEVRON_RIGHT_GLYPH
+        assert _controller(CollapseAxis.HORIZONTAL_RIGHT).chevron_glyph == _CHEVRON_RIGHT_GLYPH
+        assert _controller(CollapseAxis.HORIZONTAL_RIGHT, initial_collapsed=True).chevron_glyph == _CHEVRON_LEFT_GLYPH

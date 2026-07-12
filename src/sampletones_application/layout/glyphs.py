@@ -6,6 +6,8 @@ class CommonGlyphs(BaseModel, extra="forbid", frozen=True):
     favorite: str
     expanded: str
     collapsed: str
+    chevron_left: str
+    chevron_right: str
 
 
 class HeaderGlyphs(BaseModel, extra="forbid", frozen=True):

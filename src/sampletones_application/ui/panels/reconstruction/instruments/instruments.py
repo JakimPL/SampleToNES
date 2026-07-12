@@ -41,6 +41,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
+from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -58,7 +59,11 @@ from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
-from sampletones_core.constants.enums import FeatureKey, GeneratorName, LibraryGeneratorName
+from sampletones_core.constants.enums import (
+    FeatureKey,
+    GeneratorName,
+    LibraryGeneratorName,
+)
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
 from sampletones_core.features import GENERATOR_KIND, supported_features
@@ -84,6 +89,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         layout_graphs: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        initial_collapsed: bool = False,
     ) -> None:
         self.shortcut_manager = shortcut_manager
         self._status_bar = status_bar
@@ -198,6 +204,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             tag=TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
         )
 
+        self._enable_horizontal_collapse(
+            initial_collapsed=initial_collapsed,
+            side=CollapseAxis.HORIZONTAL_RIGHT,
+        )
+
     def create_panel(self, parent: str) -> None:
         with dpg.child_window(
             tag=self.tag,
@@ -206,26 +217,24 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             height=self.height,
             border=False,
         ):
-            self._create_section_text()
-            self._create_content()
+            with self._collapsible_section(self._lbl_section, glyph=self._glyphs.headers.instruments):
+                self._create_content()
 
         self._setup_mouse_event_handler()
-
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_section,
-            glyph=self._glyphs.headers.instruments,
-        )
 
     def _create_content(self) -> None:
         dpg.add_text(
             tag=self.no_data_message_tag,
-            parent=self.tag,
+            parent=self._body_container,
             default_value=self._msg_reconstruction_no_data,
             show=True,
         )
 
-        with dpg.tab_bar(tag=self.tab_bar_tag, parent=self.tag, show=False):
+        with dpg.tab_bar(
+            tag=self.tab_bar_tag,
+            parent=self._body_container,
+            show=False,
+        ):
             self._create_tabs_for_generators()
 
     def _get_generator_tab_tag(self, generator_name: GeneratorName) -> str:

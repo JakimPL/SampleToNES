@@ -55,6 +55,8 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
+    TAG_RECONSTRUCTIONS_BROWSER_PANEL,
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
 )
@@ -72,6 +74,7 @@ from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.reconstruction import (
@@ -129,6 +132,7 @@ class ReconstructionsTabCoordinator:
         self._left_height = layout.general.columns.side.height
         self._instruments_width = layout.general.columns.reconstructions_right.width
         self._right_height = layout.general.columns.reconstructions_right.height
+        self._rail_width = layout.general.collapse.rail_width
         self._panel_gap = layout.general.panel_gap
         self._ttl_remove_reconstruction = language_manager[
             Page.RECONSTRUCTIONS,
@@ -279,11 +283,13 @@ class ReconstructionsTabCoordinator:
                 accent=layout.general.colors.headers.reconstruction,
             ),
             is_operation_active=is_operation_active,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = self._browser_panel.update_favorite_indicator
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
         self._browser_tree_logic.on_autoplay_error = self._on_browser_autoplay_error
+        self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._reconstruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_change_audio_state,
@@ -327,7 +333,9 @@ class ReconstructionsTabCoordinator:
             layout_graphs=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL),
         )
+        self._reconstruction_instruments_panel.set_collapse_handler(self._on_instruments_collapse_changed)
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
             reconstruction_manager,
             scheduling=layout.behavior.scheduling,
@@ -480,6 +488,9 @@ class ReconstructionsTabCoordinator:
                 ],
             )
 
+        self._sync_browser_width()
+        self._sync_instruments_width()
+
     def _build_reconstruction_column(self, parent: str) -> None:
         """Stacks the audio and plot cards down the centre column."""
         self._reconstruction_audio_panel.create_panel(parent)
@@ -489,6 +500,26 @@ class ReconstructionsTabCoordinator:
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists a card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
+
+    def _on_browser_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+        self._sync_browser_width()
+
+    def _on_instruments_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists the instruments panel's collapse, then docks or restores the width of the column it fills."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+        self._sync_instruments_width()
+
+    def _sync_browser_width(self) -> None:
+        """Shrinks the browser column to the collapse rail when collapsed, else restores its full width."""
+        width = self._rail_width if self._browser_panel.collapsed else self._left_width
+        dpg_configure_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}", width=width)
+
+    def _sync_instruments_width(self) -> None:
+        """Shrinks the instruments column to the collapse rail when collapsed, else restores its full width."""
+        width = self._rail_width if self._reconstruction_instruments_panel.collapsed else self._instruments_width
+        dpg_configure_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}", width=width)
 
     def lock(self) -> None:
         self._browser_panel.lock()

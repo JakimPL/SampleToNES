@@ -20,6 +20,7 @@ from sampletones_application.tags.main import (
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
+from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
@@ -80,6 +81,7 @@ class GUIExplorerPanel(GUITreePanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
+        initial_collapsed: bool = False,
     ) -> None:
         self._explorer_logic = explorer_logic
         self.shortcut_manager = shortcut_manager
@@ -179,6 +181,11 @@ class GUIExplorerPanel(GUITreePanel):
             colors=colors,
         )
 
+        self._enable_horizontal_collapse(
+            initial_collapsed=initial_collapsed,
+            side=CollapseAxis.HORIZONTAL_LEFT,
+        )
+
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
@@ -188,10 +195,13 @@ class GUIExplorerPanel(GUITreePanel):
             parent=parent,
             border=False,
         ):
-            self._create_section_text()
-            self._create_buttons()
-            dpg.add_separator()
-            self._create_tree_window()
+            with self._collapsible_section(
+                self._lbl_section,
+                glyph=self._glyphs.headers.filesystem,
+            ):
+                self._create_buttons()
+                dpg.add_separator()
+                self._create_tree_window()
 
         self._create_detail_tooltip(TAG_MAIN_EXPLORER_WINDOW_TREE)
         self.rebuild_tree()
@@ -215,18 +225,12 @@ class GUIExplorerPanel(GUITreePanel):
 
         super()._setup_handlers()
 
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_section,
-            glyph=self._glyphs.headers.filesystem,
-        )
-
     def _create_buttons(self) -> None:
         with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_REFRESH,
                 label=self._lbl_refresh,
-                parent=self.tag,
+                parent=self._body_container,
                 width=-1,
                 callback=self.refresh,
                 theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
@@ -234,13 +238,13 @@ class GUIExplorerPanel(GUITreePanel):
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
                 label=self._lbl_collapse_all,
-                parent=self.tag,
+                parent=self._body_container,
                 width=-1,
                 callback=self.collapse_all,
             )
 
     def _create_tree_window(self) -> None:
-        self.create_search(self.tag)
+        self.create_search(self._body_container)
         with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE):
             with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE):
                 with dpg.tree_node(

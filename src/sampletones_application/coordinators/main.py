@@ -44,6 +44,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
+    TAG_MAIN_EXPLORER_PANEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
 )
@@ -130,6 +131,7 @@ class MainTabCoordinator:
         ]
         self._explorer_width = layout.general.columns.side.width
         self._explorer_height = layout.general.columns.side.height
+        self._rail_width = layout.general.collapse.rail_width
         self._panel_gap = layout.general.panel_gap
         self._config_height = layout.main.config.height
         _msg_converter_error = language_manager[
@@ -247,6 +249,7 @@ class MainTabCoordinator:
                 layout.general.colors,
                 accent=layout.general.colors.paths.hover,
             ),
+            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_EXPLORER_PANEL),
         )
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
         self._explorer_tree_logic.on_favorite_changed = self._explorer_panel.update_favorite_indicator
@@ -492,6 +495,8 @@ class MainTabCoordinator:
                 ],
             )
 
+        self._sync_explorer_width()
+
     def _build_center(self, parent: str) -> None:
         """Stacks the config and reconstructor cards side by side, then the advanced and converter cards below."""
         TabColumns.row(
@@ -517,6 +522,7 @@ class MainTabCoordinator:
 
     def _wire_collapse_handlers(self) -> None:
         """Routes each Main card's collapse toggle to the handler that persists it and reflows the shared config row."""
+        self._explorer_panel.set_collapse_handler(self._on_explorer_collapse_changed)
         self._config_panel.set_collapse_handler(self._on_config_row_collapse_changed)
         self._reconstructor_panel.set_collapse_handler(self._on_config_row_collapse_changed)
         self._advanced_settings_panel.set_collapse_handler(self._on_card_collapse_changed)
@@ -525,6 +531,16 @@ class MainTabCoordinator:
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists a card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
+
+    def _on_explorer_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists the filesystem panel's collapse, then docks or restores the width of the column it fills."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+        self._sync_explorer_width()
+
+    def _sync_explorer_width(self) -> None:
+        """Shrinks the filesystem column to the collapse rail when collapsed, else restores its full width."""
+        width = self._rail_width if self._explorer_panel.collapsed else self._explorer_width
+        dpg_configure_item(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}", width=width)
 
     def _on_config_row_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists the config or reconstructor collapse, then reflows the row both cards share."""

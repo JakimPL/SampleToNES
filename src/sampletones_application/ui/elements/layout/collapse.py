@@ -114,9 +114,18 @@ class CollapseController(CallbackMixin):
 
     @property
     def chevron_glyph(self) -> str:
-        if self._collapsed:
-            return self._glyphs.common.collapsed
-        return self._glyphs.common.expanded
+        """The affordance glyph, pointing toward the collapse direction so it reads right for the card's axis.
+
+        A docked card hides its strip when collapsed, so only the expanded glyph is ever seen there; it still
+        flips on state so the value stays correct if the strip is inspected.
+        """
+        if self.axis is CollapseAxis.HORIZONTAL_LEFT:
+            return self._glyphs.common.chevron_right if self._collapsed else self._glyphs.common.chevron_left
+
+        if self.axis is CollapseAxis.HORIZONTAL_RIGHT:
+            return self._glyphs.common.chevron_left if self._collapsed else self._glyphs.common.chevron_right
+
+        return self._glyphs.common.collapsed if self._collapsed else self._glyphs.common.expanded
 
     def attach(self) -> None:
         """Binds hover-to-highlight to the header strip and a global click that toggles whichever bar is hovered.

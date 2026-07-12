@@ -3,6 +3,8 @@ common:
   favorite: "★"
   expanded: "▾"
   collapsed: "▸"
+  chevron_left: "◂"
+  chevron_right: "▸"
 
 headers:
   waveform: "∿"

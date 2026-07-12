@@ -10,7 +10,10 @@ from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.card import card
-from sampletones_application.ui.elements.layout.collapse import CollapseAxis, CollapseController
+from sampletones_application.ui.elements.layout.collapse import (
+    CollapseAxis,
+    CollapseController,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.types.application import Sender
@@ -99,6 +102,31 @@ class GUIPanel(CallbackMixin, ABC):
             glyphs=self._glyphs,
             initial_collapsed=initial_collapsed,
             auto_height=auto_height,
+        )
+
+    def _enable_horizontal_collapse(
+        self,
+        *,
+        initial_collapsed: bool,
+        side: CollapseAxis,
+    ) -> None:
+        """Give this panel a controller that swaps its body for a narrow rail, freeing the width for its coordinator.
+
+        ``side`` names the edge the panel docks against, orienting the affordance toward the collapse direction;
+        it must be ``HORIZONTAL_LEFT`` or ``HORIZONTAL_RIGHT``. A docked card owns none of its own geometry: it
+        hides its body and shows the rail, leaving the freed width for the coordinator to reclaim on the toggle.
+        """
+        if side is CollapseAxis.VERTICAL:
+            raise ValueError(f"Card {self.tag} enabled horizontal collapse with a vertical axis.")
+
+        self._collapse = CollapseController(
+            self.tag,
+            side,
+            expanded_height=self.height,
+            header_bar_height=self._collapse_layout.header_bar_height,
+            rail_width=self._collapse_layout.rail_width,
+            glyphs=self._glyphs,
+            initial_collapsed=initial_collapsed,
         )
 
     def set_collapse_handler(self, callback: Callable[[str, bool], None]) -> None:
@@ -242,7 +270,7 @@ class GUIPanel(CallbackMixin, ABC):
         if controller.is_horizontal:
             with dpg.child_window(
                 tag=controller.rail_tag,
-                width=controller.rail_width,
+                width=-1,
                 border=False,
                 no_scrollbar=True,
                 show=False,
