@@ -68,6 +68,30 @@ TAG_GLOBAL_FONT_REGULAR_LARGE = TagName(
     Widget.FONT,
     "regular_large",
 )
+TAG_GLOBAL_FONT_MONO = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.FONT,
+    "mono",
+)
+TAG_GLOBAL_FONT_MONO_SMALL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.FONT,
+    "mono_small",
+)
+TAG_GLOBAL_FONT_MONO_BOLD = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.FONT,
+    "mono_bold",
+)
+TAG_GLOBAL_FONT_MONO_BOLD_SMALL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.FONT,
+    "mono_bold_small",
+)
 TAG_GLOBAL_FONT_ICON = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

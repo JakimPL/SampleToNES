@@ -53,10 +53,11 @@ ICON_UNIX_FILENAME: Final[str] = "sampletones.png"
 
 # Font paths
 FONT_DIRECTORY: Final[str] = "fonts"
-FONT_MAIN: Final[str] = "RobotoMono-Regular.ttf"
-FONT_BOLD: Final[str] = "RobotoMono-Bold.ttf"
-FONT_ITALIC: Final[str] = "RobotoMono-Italic.ttf"
-FONT_BOLD_ITALIC: Final[str] = "RobotoMono-BoldItalic.ttf"
+FONT_SANS_REGULAR: Final[str] = "Inter-Regular.ttf"
+FONT_SANS_BOLD: Final[str] = "Inter-Bold.ttf"
+FONT_SANS_ITALIC: Final[str] = "Inter-Italic.ttf"
+FONT_MONO_REGULAR: Final[str] = "RobotoMono-Regular.ttf"
+FONT_MONO_BOLD: Final[str] = "RobotoMono-Bold.ttf"
 FONT_ICON: Final[str] = "DejaVuSans.ttf"
 
 PROJECTS_DIRECTORY.mkdir(parents=True, exist_ok=True)

@@ -11,6 +11,10 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_FONT_ITALIC,
     TAG_GLOBAL_FONT_ITALIC_LARGE,
     TAG_GLOBAL_FONT_ITALIC_SMALL,
+    TAG_GLOBAL_FONT_MONO,
+    TAG_GLOBAL_FONT_MONO_BOLD,
+    TAG_GLOBAL_FONT_MONO_BOLD_SMALL,
+    TAG_GLOBAL_FONT_MONO_SMALL,
     TAG_GLOBAL_FONT_REGULAR,
     TAG_GLOBAL_FONT_REGULAR_LARGE,
     TAG_GLOBAL_FONT_REGULAR_SMALL,
@@ -74,6 +78,26 @@ class FontRegistry:
                 TAG_GLOBAL_FONT_BOLD_LARGE,
                 layout.size_large,
                 FontResource.BOLD,
+            ),
+            Font.MONO: FontData(
+                TAG_GLOBAL_FONT_MONO,
+                layout.size,
+                FontResource.MONO,
+            ),
+            Font.MONO_SMALL: FontData(
+                TAG_GLOBAL_FONT_MONO_SMALL,
+                layout.size_small,
+                FontResource.MONO,
+            ),
+            Font.MONO_BOLD: FontData(
+                TAG_GLOBAL_FONT_MONO_BOLD,
+                layout.size,
+                FontResource.MONO_BOLD,
+            ),
+            Font.MONO_BOLD_SMALL: FontData(
+                TAG_GLOBAL_FONT_MONO_BOLD_SMALL,
+                layout.size_small,
+                FontResource.MONO_BOLD,
             ),
             Font.ICON: FontData(
                 TAG_GLOBAL_FONT_ICON,
