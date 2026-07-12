@@ -12,6 +12,8 @@ from sampletones_application.tags.graphs import (
     SUF_GRAPH_X_AXIS,
     SUF_GRAPH_Y_AXIS,
 )
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.layers.type import LayerT
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_shared.types.application import Sender
@@ -60,6 +62,7 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         with dpg.group(tag=self.tag, parent=parent):
             self._create_content()
 
+        FontRegistry.bind_to_item(self.plot_tag, Font.MONO_SMALL)
         self._update_axes_limits()
 
     def _setup_handlers(self) -> None:

@@ -254,6 +254,7 @@ class GUIConverterPanel(GUIPanel):
                 tag=TAG_MAIN_CONVERTER_TEXT_STATUS,
                 parent=TAG_MAIN_CONVERTER_GROUP,
             )
+            FontRegistry.bind_to_item(TAG_MAIN_CONVERTER_TEXT_STATUS, Font.MONO_SMALL)
             dpg.add_progress_bar(
                 tag=TAG_MAIN_CONVERTER_PROGRESS,
                 parent=TAG_MAIN_CONVERTER_GROUP,
@@ -261,6 +262,7 @@ class GUIConverterPanel(GUIPanel):
                 width=-1,
                 overlay="0%",
             )
+            FontRegistry.bind_to_item(TAG_MAIN_CONVERTER_PROGRESS, Font.MONO)
 
     def _on_convert_clicked(self) -> None:
         self.call(self.on_convert_requested)

@@ -240,7 +240,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _create_library_status(self) -> None:
         text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
-        FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
+        FontRegistry.bind_to_item(text, Font.MONO_SMALL)
 
     def _create_library_controls(self) -> None:
         with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS):
@@ -272,6 +272,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     width=-1,
                     default_value=0.0,
                 )
+                FontRegistry.bind_to_item(TAG_INSTRUCTIONS_LIBRARY_PROGRESS, Font.MONO)
                 GUIButton(
                     tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
                     label=self._lbl_cancel,

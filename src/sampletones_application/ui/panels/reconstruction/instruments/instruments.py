@@ -37,6 +37,8 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -582,6 +584,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                     plot,
                 ),
             )
+            FontRegistry.bind_to_item(raw_data_tag, Font.MONO)
 
         self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
         self._status_bar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
