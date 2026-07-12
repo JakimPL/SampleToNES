@@ -39,6 +39,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.tags.instructions import (
+    TAG_INSTRUCTIONS_DETAILS_PANEL,
+    TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
@@ -269,14 +271,18 @@ class InstructionsTabCoordinator:
             shortcut_manager,
             layout=layout.instructions,
             general_layout=layout.general,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_DETAILS_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._instruction_parameters_panel = GUIInstructionParametersPanel(
             table_colors=layout.general.colors.tables,
             table_layout=layout.general.tables,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD),
             language_manager=language_manager,
         )
+        self._instruction_choice_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._instruction_parameters_panel.set_collapse_handler(self._on_card_collapse_changed)
 
         config_manager.add_config_change_callback(self._library_logic.update_status)
 

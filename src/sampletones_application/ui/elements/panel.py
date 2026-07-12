@@ -106,6 +106,15 @@ class GUIPanel(CallbackMixin, ABC):
         if self._collapse is not None:
             self._collapse.on_toggle = callback
 
+    def set_expanded_height(self, height: int) -> None:
+        """Change the height this card returns to when expanded, applying it now while the card is expanded.
+
+        A coordinator uses this to retune one fixed-height card when a sibling's collapse frees space.
+        """
+        self.height = height
+        if self._collapse is not None:
+            self._collapse.set_expanded_height(height)
+
     def _create_section_header(
         self,
         label: str,
@@ -172,12 +181,13 @@ class GUIPanel(CallbackMixin, ABC):
         glyph: str,
         width: int = -1,
         no_scrollbar: bool = False,
+        show: bool = True,
     ) -> Iterator[None]:
         """Open this panel's card and frame its content with the collapsible header in one step.
 
         The card's tag, height, and auto-resize follow the collapse controller, so the card and its
-        controller stay in step; the panel supplies only the width and scrollbar the controller does
-        not own. A controller must be enabled first via ``_enable_vertical_collapse``.
+        controller stay in step; the panel supplies only the width, scrollbar, and initial visibility
+        the controller does not own. A controller must be enabled first via ``_enable_vertical_collapse``.
         """
         controller = self._collapse
         if controller is None:
@@ -190,6 +200,7 @@ class GUIPanel(CallbackMixin, ABC):
             height=controller.expanded_height,
             auto_resize_y=controller.auto_height,
             no_scrollbar=no_scrollbar,
+            show=show,
         ):
             with self._collapsible_section(label, glyph=glyph):
                 yield

@@ -81,6 +81,12 @@ class CollapseController(CallbackMixin):
     def expanded_height(self) -> int:
         return self._expanded_height
 
+    def set_expanded_height(self, height: int) -> None:
+        """Retune the height the card returns to when expanded, applying it live for an expanded vertical card."""
+        self._expanded_height = height
+        if not self._collapsed and self.axis is CollapseAxis.VERTICAL and not self._auto_height:
+            dpg_configure_item(self.card_tag, height=height)
+
     @property
     def auto_height(self) -> bool:
         return self._auto_height

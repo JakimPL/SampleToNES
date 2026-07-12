@@ -27,7 +27,6 @@ from sampletones_application.tags.instructions import (
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -65,6 +64,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         general_layout: GeneralLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        initial_collapsed: bool = False,
     ) -> None:
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
@@ -160,11 +160,11 @@ class GUIInstructionChoicePanel(GUIPanel):
         super().__init__(
             tag=TAG_INSTRUCTIONS_DETAILS_PANEL,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed, auto_height=True)
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with card(parent, self.tag, width=-1):
-            self._create_section_text()
+        with self._collapsible_card(parent, self._lbl_section, glyph=self._glyphs.headers.details):
             self._create_instructions_choice_inputs()
             self._create_no_instruction_text()
 
@@ -180,23 +180,17 @@ class GUIInstructionChoicePanel(GUIPanel):
                 parent=self._item_handler_tag,
             )
 
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_section,
-            glyph=self._glyphs.headers.details,
-        )
-
     def _create_no_instruction_text(self) -> None:
         dpg.add_text(
             self._msg_no_instruction,
             tag=TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
-            parent=self.tag,
+            parent=self._body_container,
         )
 
     def _create_instructions_choice_inputs(self) -> None:
         with dpg.child_window(
             tag=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-            parent=self.tag,
+            parent=self._body_container,
             auto_resize_y=True,
             border=False,
         ):

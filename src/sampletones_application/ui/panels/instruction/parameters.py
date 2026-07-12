@@ -12,14 +12,12 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
     TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
     TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
-    TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS_SECTION,
     TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
     TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.table import GUITable
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -35,6 +33,7 @@ class GUIInstructionParametersPanel(GUIPanel):
         table_colors: TableColors,
         table_layout: TablesLayout,
         language_manager: LanguageManager,
+        initial_collapsed: bool = False,
     ) -> None:
         self.general_table: GUITable
         self.parameters_table: GUITable
@@ -58,9 +57,15 @@ class GUIInstructionParametersPanel(GUIPanel):
         super().__init__(
             tag=TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed, auto_height=True)
 
     def create_panel(self, parent: str) -> None:
-        with card(parent, self.tag, width=-1, show=False):
+        with self._collapsible_card(
+            parent,
+            self._lbl_parameters,
+            glyph=self._glyphs.headers.parameters,
+            show=False,
+        ):
             self._create_instruction_tables()
 
     def update_tables(self, table_data: Optional[InstructionTableData]) -> None:
@@ -80,15 +85,8 @@ class GUIInstructionParametersPanel(GUIPanel):
     def _create_instruction_tables(self) -> None:
         with dpg.group(
             tag=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-            parent=TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
+            parent=self._body_container,
         ):
-            self._create_section_header(
-                self._lbl_parameters,
-                glyph=self._glyphs.headers.parameters,
-                parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                tag=TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS_SECTION,
-            )
-
             dpg.add_text(
                 self._lbl_general,
                 tag=TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,

@@ -217,6 +217,10 @@ class SequencerTabCoordinator:
         self._instruments_width = layout.general.columns.sequencer_right.width
         self._right_height = layout.general.columns.sequencer_right.height
         self._panel_gap = layout.general.panel_gap
+        self._history_reservation = layout.sequencer.history.height + layout.sequencer.history.margin
+        self._collapsed_history_reservation = (
+            layout.general.collapse.header_bar_height + layout.sequencer.history.margin
+        )
 
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
             config_manager,
@@ -462,6 +466,22 @@ class SequencerTabCoordinator:
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists a card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
+        if card_tag == TAG_SEQUENCER_HISTORY_PANEL:
+            self._sync_samples_height()
+
+    def _sync_samples_height(self) -> None:
+        """Reserves only as much bottom space as the history card currently occupies.
+
+        The samples card fills the right column above the history card by reserving the history card's
+        height. When history collapses to its header bar, the samples card reclaims the freed space so
+        the history bar sits directly beneath it instead of leaving a gap.
+        """
+        reservation = (
+            self._collapsed_history_reservation
+            if self._sequencer_history_panel.collapsed
+            else self._history_reservation
+        )
+        self._sequencer_samples_panel.set_expanded_height(-reservation)
 
     def _wire_history(self) -> None:
         self._sequencer_history_panel.on_undo = self.undo
@@ -1110,6 +1130,7 @@ class SequencerTabCoordinator:
         self._sequencer_samples_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap)
         self._sequencer_history_panel.create_panel(parent)
+        self._sync_samples_height()
 
     @property
     def player(self) -> AudioPlayerProtocol:
