@@ -58,6 +58,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
+    TAG_SEQUENCER_BROWSER_PANEL,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_HISTORY_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
@@ -76,6 +77,7 @@ from sampletones_application.ui.panels.sequencer.module import GUISequencerModul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.history import (
@@ -101,6 +103,10 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
+
+_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}"
+_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}"
+_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}"
 
 
 class SequencerTabCoordinator:
@@ -216,8 +222,10 @@ class SequencerTabCoordinator:
         self._left_height = layout.general.columns.side.height
         self._instruments_width = layout.general.columns.sequencer_right.width
         self._right_height = layout.general.columns.sequencer_right.height
+        self._rail_width = layout.general.collapse.rail_width
         self._panel_gap = layout.general.panel_gap
         self._history_expanded_height = layout.sequencer.history.height
+        self._history_collapsed_footprint = layout.general.collapse.header_bar_height + 2 * self._panel_gap
 
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
             config_manager,
@@ -240,6 +248,7 @@ class SequencerTabCoordinator:
                 layout.general.colors,
                 accent=layout.general.colors.headers.reconstruction,
             ),
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL),
         )
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
@@ -441,6 +450,7 @@ class SequencerTabCoordinator:
             self._sequencer_samples_logic.duplicate_sample,
             detail=self._history_detail.duplicate_sample,
         )
+        self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.on_locate_original_audio = self._original_audio_locator.locate
@@ -466,22 +476,26 @@ class SequencerTabCoordinator:
         if card_tag == TAG_SEQUENCER_HISTORY_PANEL:
             self._sync_samples_height()
 
+    def _on_browser_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+        self._sync_browser_width()
+
+    def _sync_browser_width(self) -> None:
+        """Shrinks the browser column to the collapse rail when collapsed, else restores its full width."""
+        width = self._rail_width if self._sequencer_browser_panel.collapsed else self._left_width
+        dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
+
     def _sync_samples_height(self) -> None:
         """Reserves only as much bottom space as the history card and its gap currently occupy.
 
         The samples card fills the right column above the history card by reserving that footprint.
-        When history collapses to its header bar, the reservation shrinks to the bar's measured height
-        so the samples card reclaims the freed space and the history bar sits flush beneath it. The
-        collapsed bar height is measured from the rendered strip, so a history card that starts
-        collapsed at launch reserves once the strip lays out, retried on the next frame until then.
+        History fills whatever the reservation leaves it, so when it collapses the reservation shrinks
+        to a header-bar footprint and the history card follows it down flush beneath the samples card,
+        absorbing the inter-card spacing that a fixed collapsed height cannot predict.
         """
         if self._sequencer_history_panel.collapsed:
-            controller = self._sequencer_history_panel.collapse
-            assert controller is not None, "History panel collapsed without a collapse controller."
-            footprint = controller.collapsed_height
-            if footprint is None:
-                FrameCallbackManager.set_frame_callback(self._sync_samples_height)
-                return
+            footprint = self._history_collapsed_footprint
         else:
             footprint = self._history_expanded_height
 
@@ -1096,7 +1110,7 @@ class SequencerTabCoordinator:
                 panel_gap=self._panel_gap,
                 columns=[
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
+                        tag=_LEFT_COLUMN_TAG,
                         build=self._sequencer_browser_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
                         width=self._left_width,
@@ -1104,13 +1118,13 @@ class SequencerTabCoordinator:
                         no_scrollbar=True,
                     ),
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
+                        tag=_CENTER_COLUMN_TAG,
                         build=self._build_center_column,
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         border=False,
                     ),
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
+                        tag=_RIGHT_COLUMN_TAG,
                         build=self._build_right_column,
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         width=self._instruments_width,
@@ -1120,6 +1134,8 @@ class SequencerTabCoordinator:
                     ),
                 ],
             )
+
+        self._sync_browser_width()
 
     def _build_center_column(self, parent: str) -> None:
         """Stacks the order table and tracker grid down the centre column."""

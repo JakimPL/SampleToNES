@@ -64,6 +64,7 @@ def _controller(
     axis: CollapseAxis,
     initial_collapsed: bool = False,
     auto_height: bool = False,
+    fill: bool = False,
 ) -> CollapseController:
     return CollapseController(
         _CARD_TAG,
@@ -74,6 +75,7 @@ def _controller(
         glyphs=_glyphs(),
         initial_collapsed=initial_collapsed,
         auto_height=auto_height,
+        fill=fill,
     )
 
 
@@ -172,6 +174,32 @@ class TestAutoHeightVerticalCollapse:
         assert dpg.get_value(controller.chevron_tag) == _EXPANDED_GLYPH
 
 
+class TestFillVerticalCollapse:
+    """A fill card leaves its height to the owner that reserves its footprint: collapsing hides the body
+    and flips the chevron without touching the card height, so it shrinks only as the owner shrinks the
+    reservation rather than snapping to a fixed collapsed bar."""
+
+    def test_collapsing_hides_the_body_and_leaves_the_height_untouched(self, dpg_context: None) -> None:
+        controller = _controller(CollapseAxis.VERTICAL, fill=True)
+        _build_card(controller)
+
+        controller.set_collapsed(True)
+
+        assert dpg.get_item_configuration(controller.body_tag)["show"] is False
+        assert dpg.get_item_configuration(controller.card_tag)["height"] == _EXPANDED_HEIGHT
+        assert dpg.get_value(controller.chevron_tag) == _COLLAPSED_GLYPH
+
+    def test_expanding_shows_the_body_and_leaves_the_height_untouched(self, dpg_context: None) -> None:
+        controller = _controller(CollapseAxis.VERTICAL, initial_collapsed=True, fill=True)
+        _build_card(controller)
+
+        controller.set_collapsed(False)
+
+        assert dpg.get_item_configuration(controller.body_tag)["show"] is True
+        assert dpg.get_item_configuration(controller.card_tag)["height"] == _EXPANDED_HEIGHT
+        assert dpg.get_value(controller.chevron_tag) == _EXPANDED_GLYPH
+
+
 class TestHorizontalCollapse:
     """A horizontal card leaves its own width to the coordinator: collapsing hides the body and the
     strip and reveals the rail, and the toggle is announced so the coordinator can reclaim the column."""
@@ -197,9 +225,19 @@ class TestHorizontalCollapse:
 
         assert announced == [(_CARD_TAG, True), (_CARD_TAG, False)]
 
-    def test_chevron_points_toward_the_collapse_direction(self) -> None:
-        """The expanded affordance points toward the edge the panel docks against, flipping when collapsed."""
-        assert _controller(CollapseAxis.HORIZONTAL_LEFT).chevron_glyph == _CHEVRON_LEFT_GLYPH
-        assert _controller(CollapseAxis.HORIZONTAL_LEFT, initial_collapsed=True).chevron_glyph == _CHEVRON_RIGHT_GLYPH
-        assert _controller(CollapseAxis.HORIZONTAL_RIGHT).chevron_glyph == _CHEVRON_RIGHT_GLYPH
-        assert _controller(CollapseAxis.HORIZONTAL_RIGHT, initial_collapsed=True).chevron_glyph == _CHEVRON_LEFT_GLYPH
+    def test_strip_chevron_points_at_the_dock_edge_and_the_rail_chevron_points_away(self) -> None:
+        """The strip (shown while expanded) points at the dock edge; the rail (shown while collapsed) the other way.
+
+        Each affordance shows in only one state, so neither flips: clicking the strip collapses the card toward
+        its edge, and clicking the rail expands it back out the other way.
+        """
+        left = _controller(CollapseAxis.HORIZONTAL_LEFT)
+        right = _controller(CollapseAxis.HORIZONTAL_RIGHT)
+
+        assert left.chevron_glyph == _CHEVRON_LEFT_GLYPH
+        assert left.rail_chevron_glyph == _CHEVRON_RIGHT_GLYPH
+        assert right.chevron_glyph == _CHEVRON_RIGHT_GLYPH
+        assert right.rail_chevron_glyph == _CHEVRON_LEFT_GLYPH
+
+        assert _controller(CollapseAxis.HORIZONTAL_LEFT, initial_collapsed=True).chevron_glyph == _CHEVRON_LEFT_GLYPH
+        assert _controller(CollapseAxis.HORIZONTAL_RIGHT, initial_collapsed=True).chevron_glyph == _CHEVRON_RIGHT_GLYPH

@@ -20,6 +20,7 @@ from sampletones_application.tags.sequencer import (
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
+from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
@@ -53,6 +54,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
+        initial_collapsed: bool = False,
     ) -> None:
         self.on_refresh_tree: Optional[VoidCallback] = None
 
@@ -89,6 +91,11 @@ class GUISequencerBrowserPanel(GUITreePanel):
             colors=colors,
         )
 
+        self._enable_horizontal_collapse(
+            initial_collapsed=initial_collapsed,
+            side=CollapseAxis.HORIZONTAL_LEFT,
+        )
+
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
@@ -98,10 +105,13 @@ class GUISequencerBrowserPanel(GUITreePanel):
             parent=parent,
             border=False,
         ):
-            self._create_section_text()
-            self._create_buttons()
-            dpg.add_separator()
-            self._create_tree_window()
+            with self._collapsible_section(
+                self._lbl_reconstructions,
+                glyph=self._glyphs.headers.reconstruction,
+            ):
+                self._create_buttons()
+                dpg.add_separator()
+                self._create_tree_window()
 
         self._create_detail_tooltip(TAG_SEQUENCER_BROWSER_WINDOW_TREE)
         self.rebuild_tree()
@@ -125,12 +135,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
         super()._setup_handlers()
 
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_reconstructions,
-            glyph=self._glyphs.headers.reconstruction,
-        )
-
     def _create_buttons(self) -> None:
         with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS):
             GUIButton(
@@ -142,7 +146,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
             )
 
     def _create_tree_window(self) -> None:
-        self.create_search(self.tag)
+        self.create_search(self._body_container)
         with dpg.child_window(tag=TAG_SEQUENCER_BROWSER_WINDOW_TREE):
             with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_TREE):
                 with dpg.tree_node(

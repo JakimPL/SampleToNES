@@ -84,14 +84,17 @@ class GUIPanel(CallbackMixin, ABC):
         *,
         initial_collapsed: bool,
         auto_height: bool = False,
+        fill: bool = False,
         card_tag: Optional[str] = None,
     ) -> None:
         """Give this card a controller that shrinks it to a header bar in place, seeded from persisted state.
 
         ``auto_height`` suits a card that sizes itself to its content: it collapses by hiding its body
-        and lets its own auto-resize settle onto the header bar. ``card_tag`` names the child-window the
-        controller resizes when it differs from the panel tag, so a panel whose card wraps an inner group
-        still collapses the outer card.
+        and lets its own auto-resize settle onto the header bar. ``fill`` suits a card whose footprint is
+        reserved by an owning coordinator: it collapses by hiding its body alone and shrinks as the owner
+        shrinks the reservation, so the collapsed bar sits flush with no space to predict. ``card_tag``
+        names the child-window the controller resizes when it differs from the panel tag, so a panel whose
+        card wraps an inner group still collapses the outer card.
         """
         self._collapse = CollapseController(
             card_tag if card_tag is not None else self.tag,
@@ -102,6 +105,7 @@ class GUIPanel(CallbackMixin, ABC):
             glyphs=self._glyphs,
             initial_collapsed=initial_collapsed,
             auto_height=auto_height,
+            fill=fill,
         )
 
     def _enable_horizontal_collapse(
@@ -277,6 +281,8 @@ class GUIPanel(CallbackMixin, ABC):
             ):
                 rail_marker = dpg.add_text(glyph)
                 FontRegistry.bind_to_item(rail_marker, Font.ICON)
+                rail_chevron = dpg.add_text(controller.rail_chevron_glyph)
+                FontRegistry.bind_to_item(rail_chevron, Font.ICON)
 
         controller.attach()
 

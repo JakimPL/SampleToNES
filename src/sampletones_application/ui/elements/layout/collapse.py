@@ -36,6 +36,8 @@ class CollapseController(CallbackMixin):
     A vertical card owns its own height, so this controller shrinks it to the header
     bar in place. A card that sizes itself to its content (``auto_height``) collapses by
     hiding its body alone, letting the card's own auto-resize settle onto the header bar.
+    A ``fill`` card leaves its height to the owner that reserves its footprint, so it too
+    collapses by hiding its body alone and shrinks as the owner shrinks the reservation.
     A horizontal card only hides its body and swaps in a rail; the owning coordinator
     reclaims the freed width, which it learns through ``on_toggle``. The card's tag is the
     persistence key, so the collapsible set is defined by which panels build a controller
@@ -53,6 +55,7 @@ class CollapseController(CallbackMixin):
         glyphs: Glyphs,
         initial_collapsed: bool = False,
         auto_height: bool = False,
+        fill: bool = False,
     ) -> None:
         self.card_tag = card_tag
         self.axis = axis
@@ -62,6 +65,7 @@ class CollapseController(CallbackMixin):
         self._glyphs = glyphs
         self._collapsed = initial_collapsed
         self._auto_height = auto_height
+        self._fill = fill
 
         self.strip_tag = f"{card_tag}{SUF_COLLAPSE_STRIP}"
         self.body_tag = f"{card_tag}{SUF_COLLAPSE_BODY}"
@@ -93,12 +97,22 @@ class CollapseController(CallbackMixin):
     def set_expanded_height(self, height: int) -> None:
         """Retune the height the card returns to when expanded, applying it live for an expanded vertical card."""
         self._expanded_height = height
-        if not self._collapsed and self.axis is CollapseAxis.VERTICAL and not self._auto_height:
+        if not self._collapsed and self.axis is CollapseAxis.VERTICAL and self._manages_height:
             dpg_configure_item(self.card_tag, height=height)
 
     @property
     def auto_height(self) -> bool:
         return self._auto_height
+
+    @property
+    def _manages_height(self) -> bool:
+        """Whether this controller sets the card's height directly.
+
+        A plain vertical card is shrunk to a fixed bar on collapse. A card that auto-resizes to
+        its content, or one that fills a footprint its owner reserves, leaves its height alone —
+        it settles by its own resize or by the owner shrinking the reservation.
+        """
+        return not self._auto_height and not self._fill
 
     @property
     def header_bar_height(self) -> int:
@@ -114,18 +128,31 @@ class CollapseController(CallbackMixin):
 
     @property
     def chevron_glyph(self) -> str:
-        """The affordance glyph, pointing toward the collapse direction so it reads right for the card's axis.
+        """The strip's affordance glyph, pointing toward the collapse direction for the card's axis.
 
-        A docked card hides its strip when collapsed, so only the expanded glyph is ever seen there; it still
-        flips on state so the value stays correct if the strip is inspected.
+        A docked card's strip only shows while expanded and collapsing pulls it toward its dock edge,
+        so a horizontal strip points at that edge and never flips. A vertical strip stays in place, so
+        it flips between the expanded and collapsed markers with the state.
         """
         if self.axis is CollapseAxis.HORIZONTAL_LEFT:
-            return self._glyphs.common.chevron_right if self._collapsed else self._glyphs.common.chevron_left
+            return self._glyphs.common.chevron_left
 
         if self.axis is CollapseAxis.HORIZONTAL_RIGHT:
-            return self._glyphs.common.chevron_left if self._collapsed else self._glyphs.common.chevron_right
+            return self._glyphs.common.chevron_right
 
         return self._glyphs.common.collapsed if self._collapsed else self._glyphs.common.expanded
+
+    @property
+    def rail_chevron_glyph(self) -> str:
+        """The rail's affordance glyph, shown while collapsed and pointing toward the expand direction.
+
+        The rail only shows while collapsed, so a click expands the card away from its dock edge; the
+        chevron points that way, opposite the strip's.
+        """
+        if self.axis is CollapseAxis.HORIZONTAL_RIGHT:
+            return self._glyphs.common.chevron_left
+
+        return self._glyphs.common.chevron_right
 
     def attach(self) -> None:
         """Binds hover-to-highlight to the header strip and a global click that toggles whichever bar is hovered.
@@ -151,7 +178,7 @@ class CollapseController(CallbackMixin):
         if self.is_horizontal:
             dpg_configure_item(self.strip_tag, show=not collapsed)
             dpg_configure_item(self.rail_tag, show=collapsed)
-        elif not self._auto_height:
+        elif self._manages_height:
             if collapsed:
                 self._apply_collapsed_height()
             else:

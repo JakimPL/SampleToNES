@@ -72,6 +72,9 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
+_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}"
+_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}"
+
 
 class MainTabCoordinator:
     """
@@ -479,7 +482,7 @@ class MainTabCoordinator:
                 panel_gap=self._panel_gap,
                 columns=[
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
+                        tag=_LEFT_COLUMN_TAG,
                         build=self._explorer_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
                         width=self._explorer_width,
@@ -487,7 +490,7 @@ class MainTabCoordinator:
                         no_scrollbar=True,
                     ),
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}",
+                        tag=_CENTER_COLUMN_TAG,
                         build=self._build_center,
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         border=False,
@@ -540,7 +543,7 @@ class MainTabCoordinator:
     def _sync_explorer_width(self) -> None:
         """Shrinks the filesystem column to the collapse rail when collapsed, else restores its full width."""
         width = self._rail_width if self._explorer_panel.collapsed else self._explorer_width
-        dpg_configure_item(f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}", width=width)
+        dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _on_config_row_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists the config or reconstructor collapse, then reflows the row both cards share."""

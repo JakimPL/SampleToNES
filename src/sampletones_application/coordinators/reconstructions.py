@@ -93,6 +93,10 @@ from sampletones_shared.exceptions import (
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
+_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}"
+_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}"
+_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}"
+
 
 class ReconstructionsTabCoordinator:
     def __init__(
@@ -464,7 +468,7 @@ class ReconstructionsTabCoordinator:
                 panel_gap=self._panel_gap,
                 columns=[
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
+                        tag=_LEFT_COLUMN_TAG,
                         build=self._browser_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
                         width=self._left_width,
@@ -472,13 +476,13 @@ class ReconstructionsTabCoordinator:
                         no_scrollbar=True,
                     ),
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        tag=_CENTER_COLUMN_TAG,
                         build=self._build_reconstruction_column,
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         border=False,
                     ),
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                        tag=_RIGHT_COLUMN_TAG,
                         build=self._reconstruction_instruments_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
                         width=self._instruments_width,
@@ -514,12 +518,12 @@ class ReconstructionsTabCoordinator:
     def _sync_browser_width(self) -> None:
         """Shrinks the browser column to the collapse rail when collapsed, else restores its full width."""
         width = self._rail_width if self._browser_panel.collapsed else self._left_width
-        dpg_configure_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}", width=width)
+        dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _sync_instruments_width(self) -> None:
         """Shrinks the instruments column to the collapse rail when collapsed, else restores its full width."""
         width = self._rail_width if self._reconstruction_instruments_panel.collapsed else self._instruments_width
-        dpg_configure_item(f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}", width=width)
+        dpg_configure_item(_RIGHT_COLUMN_TAG, width=width)
 
     def lock(self) -> None:
         self._browser_panel.lock()

@@ -115,7 +115,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         super().__init__(
             tag=TAG_SEQUENCER_HISTORY_PANEL,
         )
-        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed, fill=True)
 
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
