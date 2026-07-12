@@ -308,7 +308,7 @@ class GUISequencerOrderPanel(GUIPanel):
             scrollY=False,
             policy=dpg.mvTable_SizingFixedFit,
         )
-        FontRegistry.bind_to_item(TAG_SEQUENCER_ORDER_TABLE, Font.BOLD)
+        FontRegistry.bind_to_item(TAG_SEQUENCER_ORDER_TABLE, Font.MONO_BOLD)
         self._table_theme.bind_to_item(TAG_SEQUENCER_ORDER_TABLE)
 
         dpg.add_table_column(
@@ -420,7 +420,7 @@ class GUISequencerOrderPanel(GUIPanel):
         generator: Optional[GeneratorName],
         position_count: int,
     ) -> None:
-        font = Font.BOLD_SMALL if generator is None else Font.REGULAR_SMALL
+        font = Font.MONO_BOLD_SMALL if generator is None else Font.MONO_SMALL
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_ORDER_TABLE)
 
         label_cell = dpg.add_table_cell(parent=row_id)
@@ -429,7 +429,7 @@ class GUISequencerOrderPanel(GUIPanel):
             parent=label_cell,
             color=self._layout.colors.label,
         )
-        FontRegistry.bind_to_item(label_text, Font.BOLD_SMALL)
+        FontRegistry.bind_to_item(label_text, Font.MONO_BOLD_SMALL)
 
         for position in range(position_count):
             cell = dpg.add_table_cell(parent=row_id)
@@ -563,7 +563,7 @@ class GUISequencerOrderPanel(GUIPanel):
             return
 
         key: OrderKey = (cursor.generator, cursor.position)
-        font = Font.BOLD_SMALL if cursor.generator is None else Font.REGULAR_SMALL
+        font = Font.MONO_BOLD_SMALL if cursor.generator is None else Font.MONO_SMALL
         CaretOverlay.set_target(
             owner=TAG_SEQUENCER_ORDER_TABLE,
             widget=self._order.widget(key),
@@ -598,7 +598,7 @@ class GUISequencerOrderPanel(GUIPanel):
     def _show_context_menu(self, position: int) -> None:
         with context_menu():
             header = dpg.add_text(display_id(position))
-            FontRegistry.bind_to_item(header, Font.BOLD)
+            FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_from_requested, position))
             dpg.add_separator()

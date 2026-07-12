@@ -254,7 +254,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             user_data=(position, entry.sample_id),
             callback=self._on_sample_selected,
         )
-        FontRegistry.bind_to_item(id_selectable, Font.REGULAR_SMALL)
+        FontRegistry.bind_to_item(id_selectable, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(id_selectable, self._row_handler_tag)
 
     def _build_name_cell(self, row_id: int | str, position: int, entry: SampleEntryViewModel) -> None:
@@ -271,7 +271,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             user_data=(position, entry.sample_id),
             callback=self._on_sample_selected,
         )
-        FontRegistry.bind_to_item(name_selectable, Font.REGULAR_SMALL)
+        FontRegistry.bind_to_item(name_selectable, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(name_selectable, self._row_handler_tag)
 
     def _build_name_input(self, name_cell: int | str, entry: SampleEntryViewModel) -> None:
@@ -283,7 +283,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             on_enter=True,
             callback=self._on_rename_enter,
         )
-        FontRegistry.bind_to_item(name_input, Font.REGULAR_SMALL)
+        FontRegistry.bind_to_item(name_input, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(name_input, self._rename_handler_tag)
 
     def _build_loop_cell(self, row_id: int | str, entry: SampleEntryViewModel) -> None:
@@ -439,7 +439,7 @@ class GUISequencerSamplesPanel(GUIPanel):
 
         with context_menu():
             header = dpg.add_text(display_sample_label(position, entry.name))
-            FontRegistry.bind_to_item(header, Font.BOLD)
+            FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_requested, sample_id))
             dpg.add_menu_item(

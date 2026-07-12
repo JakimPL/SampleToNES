@@ -255,7 +255,7 @@ class GUISequencerGridPanel(GUIPanel):
                     row_background=True,
                     policy=dpg.mvTable_SizingFixedFit,
                 ):
-                    FontRegistry.bind_to_item(dpg.last_item(), Font.BOLD)
+                    FontRegistry.bind_to_item(dpg.last_item(), Font.MONO_BOLD)
                     dpg.add_table_column(width_stretch=True)
                     dpg.add_table_column(
                         label=self._lbl_col_row,
@@ -416,7 +416,7 @@ class GUISequencerGridPanel(GUIPanel):
             user_data=row_index,
             callback=self._on_row_number_clicked,
         )
-        FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
+        FontRegistry.bind_to_item(selectable, Font.MONO_SMALL)
         dpg.bind_item_theme(selectable, self._row_number_theme)
         dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
         self._rows[row_index] = selectable
@@ -427,7 +427,7 @@ class GUISequencerGridPanel(GUIPanel):
         row_index: int,
         generator: Optional[GeneratorName],
     ) -> None:
-        font = Font.BOLD_SMALL if generator is None else Font.REGULAR_SMALL
+        font = Font.MONO_BOLD_SMALL if generator is None else Font.MONO_SMALL
         cell = dpg.add_table_cell(parent=row_id)
         group = dpg.add_group(
             horizontal=True,
@@ -544,7 +544,7 @@ class GUISequencerGridPanel(GUIPanel):
             return
 
         key = (cursor.row, cursor.generator, cursor.subcolumn)
-        font = Font.BOLD_SMALL if cursor.generator is None else Font.REGULAR_SMALL
+        font = Font.MONO_BOLD_SMALL if cursor.generator is None else Font.MONO_SMALL
         CaretOverlay.set_target(
             owner=TAG_SEQUENCER_GRID_TABLE_TRACKER,
             widget=self._editable_cells.widget(key),
@@ -708,7 +708,7 @@ class GUISequencerGridPanel(GUIPanel):
     ) -> None:
         with context_menu():
             header = dpg.add_text(tracker_display.indexed_label(row_index, self._column_labels[generator]))
-            FontRegistry.bind_to_item(header, Font.BOLD)
+            FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_from_row, row_index))
             dpg.add_separator()

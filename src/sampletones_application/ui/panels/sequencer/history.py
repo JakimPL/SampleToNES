@@ -281,7 +281,7 @@ class GUISequencerHistoryPanel(GUIPanel):
                 user_data=entry.index,
                 callback=self._on_entry_clicked,
             )
-            FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
+            FontRegistry.bind_to_item(selectable, Font.MONO_SMALL)
             group = dpg.add_group(horizontal=True)
 
         self._fill_entry_texts(group, entry)
@@ -307,7 +307,7 @@ class GUISequencerHistoryPanel(GUIPanel):
 
     def _add_text(self, value: str, *, parent: int, color: Optional[RGBA]) -> None:
         text = dpg.add_text(value, parent=parent) if color is None else dpg.add_text(value, parent=parent, color=color)
-        FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
+        FontRegistry.bind_to_item(text, Font.MONO_SMALL)
 
     def _role_color(self, role: HistoryDetailRole) -> RGBA:
         colors = self._layout.colors
