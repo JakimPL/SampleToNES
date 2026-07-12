@@ -28,6 +28,7 @@ class HeaderGlyphs(BaseModel, frozen=True):
 class PlayerGlyphs(BaseModel, frozen=True):
     play: str
     pause: str
+    resume: str
     stop: str
 
 

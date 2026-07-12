@@ -2,7 +2,7 @@ import gc
 import threading
 from typing import Dict
 
-from sampletones_application.utils.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 
 JOIN_TIMEOUT: float = 5.0
 DEADLINE_TIMEOUT: float = 0.05

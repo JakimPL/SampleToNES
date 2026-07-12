@@ -6,7 +6,7 @@ from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.hierarchy import Page, Panel, TextType, Widget
 from sampletones_application.constants.global_ import TAG_SEPARATOR
 
-_PANEL_SHORT_NAMES: Final[Dict[Panel, str]] = {Panel.CONFIG_PANEL: "config"}
+_PANEL_SHORT_NAMES: Final[Dict[Panel, str]] = {Panel.CONFIG: "config"}
 
 
 class TextKey(NamedTuple):

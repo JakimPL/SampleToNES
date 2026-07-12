@@ -7,8 +7,8 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.instructions import (
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_WAVEFORM,
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
-    TAG_INSTRUCTIONS_WAVEFORM_PANEL,
 )
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.layout.card import card
@@ -38,7 +38,7 @@ class GUIInstructionWaveformPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_INSTRUCTIONS_WAVEFORM_PANEL,
+            tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
         )
 
     def create_panel(self, parent: str) -> None:
@@ -48,7 +48,7 @@ class GUIInstructionWaveformPanel(GUIPanel):
                 glyph=self._glyphs.headers.waveform,
             )
             self.display = GUIWaveformGraph(
-                tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
+                tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_WAVEFORM,
                 parent=self.tag,
                 layout=self._layout,
                 language_manager=self._language_manager,

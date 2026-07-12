@@ -2,8 +2,6 @@ from sampletones_application.categories.abstract import AbstractElement
 
 
 class ReconstructionsBrowserElements(AbstractElement):
-    RECONSTRUCT_FILE_BUTTON = "reconstruct_file_button"
-    RECONSTRUCT_DIRECTORY_BUTTON = "reconstruct_directory_button"
     REFRESH_BUTTON = "refresh_button"
     RECONSTRUCTIONS_TREE = "reconstructions_tree"
     CONTEXT_LOAD_RECONSTRUCTION = "context_load_reconstruction"

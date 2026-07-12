@@ -55,8 +55,9 @@ dialogs:
     height: 400
 
 inputs:
-  default_width: -180
+  default_width: -8
   search_width: -80
+  label_width: 145
 
 buttons:
   copy_width: 80

@@ -4,7 +4,7 @@ from sampletones_application.constants.global_ import TAG_SEPARATOR
 
 TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Page.MAIN,
-    Panel.CONFIG_PANEL,
+    Panel.CONFIG,
     Widget.PANEL,
     "config_cell",
 )
@@ -64,43 +64,43 @@ TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL = TagName(
 )
 TAG_MAIN_CONFIG_PANEL = TagName(
     Page.MAIN,
-    Panel.CONFIG_PANEL,
+    Panel.CONFIG,
     Widget.PANEL,
     "config",
 )
 TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE = TagName(
     Page.MAIN,
-    Panel.CONFIG_PANEL,
+    Panel.CONFIG,
     Widget.CHECKBOX,
     "normalize",
 )
 TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE = TagName(
     Page.MAIN,
-    Panel.CONFIG_PANEL,
+    Panel.CONFIG,
     Widget.CHECKBOX,
     "quantize",
 )
 TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE = TagName(
     Page.MAIN,
-    Panel.CONFIG_PANEL,
+    Panel.CONFIG,
     Widget.INPUT,
     "sample_rate",
 )
 TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY = TagName(
     Page.MAIN,
-    Panel.CONFIG_PANEL,
+    Panel.CONFIG,
     Widget.INPUT,
     "nes_frequency",
 )
 TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD = TagName(
     Page.MAIN,
-    Panel.CONFIG_PANEL,
+    Panel.CONFIG,
     Widget.COMBO,
     "spectrum_method",
 )
 TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA = TagName(
     Page.MAIN,
-    Panel.CONFIG_PANEL,
+    Panel.CONFIG,
     Widget.INPUT,
     "transformation_gamma",
 )
@@ -242,7 +242,7 @@ TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
     Widget.GROUP,
     "summary",
 )
-TAG_MAIN_CONVERTER_HINT_SUMMARY = TagName(
+TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.TEXT,

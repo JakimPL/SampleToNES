@@ -157,6 +157,16 @@ class PlaybackRouter:
         return self._current_player_fn().is_loaded()
 
     @property
+    def is_pause_enabled(self) -> bool:
+        """Pause/resume is available while the active tab's player is sounding or held paused."""
+        player = self._current_player_fn()
+        return player.is_playing() or player.is_paused()
+
+    @property
+    def is_paused(self) -> bool:
+        return self._current_player_fn().is_paused()
+
+    @property
     def is_stop_enabled(self) -> bool:
         """Stop is available whenever the active tab's player reports audible output,
         covering one-shot previews that play without loading audio into the player."""

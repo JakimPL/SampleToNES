@@ -58,7 +58,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
-    TAG_SEQUENCER_GRID_PANEL_PLAYER,
+    TAG_SEQUENCER_GRID_PANEL_GRID_PLAYER,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
 )
@@ -265,7 +265,7 @@ class SequencerTabCoordinator:
             ],
         )
         self._player_panel: GUISongPlayerPanel = GUISongPlayerPanel(
-            tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
+            tag=TAG_SEQUENCER_GRID_PANEL_GRID_PLAYER,
             layout=layout.player,
             language_manager=language_manager,
         )
@@ -278,6 +278,7 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.settings,
             layout=layout.sequencer,
             input_width=layout.general.inputs.default_width,
+            label_width=layout.general.inputs.label_width,
             language_manager=language_manager,
             status_bar=status_bar,
             shortcut_manager=shortcut_manager,
@@ -438,9 +439,6 @@ class SequencerTabCoordinator:
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_view_changed = self._on_player_view_changed
-        self._player_panel.on_play = self._guarded_player.play
-        self._player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
-        self._player_panel.on_stop = self._guarded_player.stop
         self._song_player_logic.on_error = self._on_player_error
 
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
@@ -627,8 +625,6 @@ class SequencerTabCoordinator:
             self._playing_order = None
             self._sequencer_grid_panel.set_playing_row(None)
             self._sequencer_order_panel.set_playing_position(None)
-
-        self._player_panel.update_view(view_model)
 
     def _on_player_position_changed(self, order_position: int, row_index: int) -> None:
         self._playing_order = order_position
@@ -1086,9 +1082,7 @@ class SequencerTabCoordinator:
             )
 
     def _build_center_column(self, parent: str) -> None:
-        """Stacks the song player, order table, and tracker grid down the centre column."""
-        self._player_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        """Stacks the order table and tracker grid down the centre column."""
         self._sequencer_order_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._sequencer_grid_panel.create_panel(parent)

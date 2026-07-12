@@ -2,8 +2,24 @@ name: fps
 tag: global.theme.menu_fps
 
 components:
+  - item_type: All
+    entries:
+      - type: color
+        key: Text
+        value: .text_muted
+      - type: color
+        key: Button
+        value: .menu
+      - type: color
+        key: ButtonHovered
+        value: .menu
+      - type: color
+        key: ButtonActive
+        value: .menu
+      - type: color
+        key: MenuBarBg
+        value: .menu
   - item_type: Button
-    enabled: false
     entries:
       - type: style
         key: ButtonTextAlign
@@ -19,7 +35,4 @@ components:
         value: .menu
       - type: color
         key: ButtonActive
-        value: .menu
-      - type: color
-        key: MenuBarBg
         value: .menu

@@ -8,7 +8,7 @@ import pytest
 
 from sampletones_application.services.regeneration import RegenerationService
 from sampletones_application.services.result import ServiceCancelled, ServiceError, ServiceSuccess
-from sampletones_application.utils.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 
 _real_executor_execute = SingleThreadExecutor.execute

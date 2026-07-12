@@ -11,8 +11,8 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_INSTRUMENTS_HANDLER_KEY,
     TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
-    TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER,
     TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_TABLE,
     TAG_SEQUENCER_INSTRUMENTS_THEME_ROW,
@@ -170,7 +170,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._shortcut_manager.attach_focus_tracking(self._rename_handler_tag)
 
     def _create_key_handler(self) -> None:
-        with dpg.handler_registry(tag=TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER):
+        with dpg.handler_registry(tag=TAG_SEQUENCER_INSTRUMENTS_HANDLER_KEY):
             dpg.add_key_press_handler(callback=self._on_key_pressed)
 
     def _create_section_text(self) -> None:

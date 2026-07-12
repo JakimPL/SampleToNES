@@ -12,10 +12,10 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
     TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
     TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
-    TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
-    TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
+    TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS_SECTION,
     TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
     TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
+    TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -56,7 +56,7 @@ class GUIInstructionParametersPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
+            tag=TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
         )
 
     def create_panel(self, parent: str) -> None:
@@ -80,13 +80,13 @@ class GUIInstructionParametersPanel(GUIPanel):
     def _create_instruction_tables(self) -> None:
         with dpg.group(
             tag=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-            parent=TAG_INSTRUCTIONS_DETAILS_PARAMETERS_CARD,
+            parent=TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
         ):
             self._create_section_header(
                 self._lbl_parameters,
                 glyph=self._glyphs.headers.parameters,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                tag=TAG_INSTRUCTIONS_DETAILS_SECTION_PARAMETERS,
+                tag=TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS_SECTION,
             )
 
             dpg.add_text(

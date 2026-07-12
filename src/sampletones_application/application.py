@@ -69,6 +69,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
+    TAG_GLOBAL_THEME_PLAYER_TOOLBAR,
     TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.ui.elements.fonts.font import Font
@@ -204,11 +205,18 @@ class Application:
         self.project_properties_window.on_commit = self._commit_project_properties
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
         self.fps_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_MENU_FPS)
+        self.player_toolbar_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_TOOLBAR)
 
         self._menu_bar = MenuBar(
             shortcut_manager=self.shortcut_manager,
             fps_theme=self.fps_theme,
+            player_toolbar_theme=self.player_toolbar_theme,
+            player_glyphs=self.layout.glyphs.player,
+            player_layout=self.layout.player,
             language_manager=self.language_manager,
+            on_play_from_start=self._play_from_start,
+            on_pause_or_resume=self._play,
+            on_stop=self._stop,
         )
 
         self._viewport_manager = ViewportManager(
@@ -504,6 +512,8 @@ class Application:
                 MenuElements.ITEM_PLAYBACK_PLAY,
             ],
             play_or_pause_enabled=False,
+            pause_enabled=False,
+            player_paused=False,
             stop_enabled=False,
             autoplay=self.session_manager.autoplay,
             follow_playback=self.session_manager.follow_playback,
@@ -524,6 +534,8 @@ class Application:
             can_redo=self.history.can_redo,
             play_label=self._playback_router.play_label,
             play_or_pause_enabled=self._playback_router.is_play_enabled,
+            pause_enabled=self._playback_router.is_pause_enabled,
+            player_paused=self._playback_router.is_paused,
             stop_enabled=self._playback_router.is_stop_enabled,
             autoplay=self.session_manager.autoplay,
             follow_playback=self.session_manager.follow_playback,
@@ -650,7 +662,6 @@ class Application:
         generation starts or finishes, keeping the two long operations mutually exclusive. Each panel
         reads the live ``_is_operation_active`` state for itself; this only nudges them to
         re-apply, so the busy truth lives in one place."""
-        self._reconstructions_tab.refresh_reconstruct_buttons()
         self._instructions_tab.refresh_generate_button()
 
     def _on_library_operation_changed(self) -> None:

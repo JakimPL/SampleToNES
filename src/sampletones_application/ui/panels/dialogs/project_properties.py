@@ -21,6 +21,7 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_PROPERTIES_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.window import GUIWindow
@@ -157,10 +158,7 @@ class GUIProjectPropertiesWindow(GUIWindow):
             self._dialog_theme.bind_to_item(input_tag)
 
     def _create_text_field(self, tag: str, label: str, value: str) -> None:
-        with dpg.group(horizontal=True):
-            label_id = dpg.add_text(label)
-            FontRegistry.bind_to_item(label_id, Font.BOLD)
-            dpg.add_spacer(width=self._layout.label_width - int(dpg.get_text_size(label)[0]))
+        with labeled_field(label, self._layout.label_width):
             dpg.add_input_text(tag=tag, default_value=value, width=self._layout.input_width)
 
         self._shortcut_manager.setup_input_focus_handlers(tag)

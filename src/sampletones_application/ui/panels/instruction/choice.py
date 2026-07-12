@@ -13,17 +13,18 @@ from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.instructions import (
-    TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
+    TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,
     TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
-    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
-    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
-    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_PITCH,
-    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
-    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
+    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
     TAG_INSTRUCTIONS_DETAILS_PANEL,
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
 )
+from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
@@ -249,32 +250,38 @@ class GUIInstructionChoicePanel(GUIPanel):
             kind=PITCH_VALUE_KIND,
             initial_value=instruction.pitch,
             label=self._lbl_window_pulse_pitch,
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_PITCH,
+            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_PITCH,
         )
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
+        with labeled_field(
+            self._lbl_window_pulse_volume,
+            self._layout.dimensions.instruction_choice_label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-            label=self._lbl_window_pulse_volume,
-            default_value=instruction.volume,
-            min_value=1,
-            max_value=MAX_VOLUME,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
-        )
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
+        ):
+            dpg.add_slider_int(
+                tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+                default_value=instruction.volume,
+                min_value=1,
+                max_value=MAX_VOLUME,
+                clamped=True,
+                width=self._layout.dimensions.instruction_choice_input_width,
+            )
+        with labeled_field(
+            self._lbl_window_pulse_duty_cycle,
+            self._layout.dimensions.instruction_choice_label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-            label=self._lbl_window_pulse_duty_cycle,
-            default_value=instruction.duty_cycle,
-            min_value=0,
-            max_value=MAX_DUTY_CYCLE,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
-        )
+        ):
+            dpg.add_slider_int(
+                tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+                default_value=instruction.duty_cycle,
+                min_value=0,
+                max_value=MAX_DUTY_CYCLE,
+                clamped=True,
+                width=self._layout.dimensions.instruction_choice_input_width,
+            )
 
         for tag in [
-            TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
-            TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
+            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
         ]:
             self._status_bar.bind_to_item(tag, self._msg_status_input)
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
@@ -284,7 +291,7 @@ class GUIInstructionChoicePanel(GUIPanel):
             kind=PITCH_VALUE_KIND,
             initial_value=instruction.pitch,
             label=self._lbl_window_triangle_pitch,
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
+            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
         )
 
     def _create_noise_instruction_choice_panel(self, instruction: NoiseInstruction) -> None:
@@ -292,29 +299,38 @@ class GUIInstructionChoicePanel(GUIPanel):
             kind=PERIOD_VALUE_KIND,
             initial_value=instruction.period,
             label=self._lbl_window_noise_period,
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
+            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
         )
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
+        with labeled_field(
+            self._lbl_window_noise_volume,
+            self._layout.dimensions.instruction_choice_label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-            label=self._lbl_window_noise_volume,
-            default_value=instruction.volume,
-            min_value=1,
-            max_value=MAX_VOLUME,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
-        )
+        ):
+            dpg.add_slider_int(
+                tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+                default_value=instruction.volume,
+                min_value=1,
+                max_value=MAX_VOLUME,
+                clamped=True,
+                width=self._layout.dimensions.instruction_choice_input_width,
+            )
         dpg.add_checkbox(
-            tag=TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
+            tag=TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
             label=self._lbl_window_noise_short,
             default_value=instruction.short,
             callback=self._on_instruction_changed,
         )
 
-        self._status_bar.bind_to_item(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME, self._msg_status_input)
-        self._status_bar.bind_to_item(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT, self._msg_status_input)
-        dpg.bind_item_handler_registry(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME, self._item_handler_tag)
+        self._status_bar.bind_to_item(
+            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME, self._msg_status_input
+        )
+        self._status_bar.bind_to_item(
+            TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT, self._msg_status_input
+        )
+        dpg.bind_item_handler_registry(
+            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME, self._item_handler_tag
+        )
 
     def _on_instruction_changed(self, *_arguments: Any) -> None:
         if self._current_instruction_data is None:
@@ -330,9 +346,15 @@ class GUIInstructionChoicePanel(GUIPanel):
         match generator_type:
             case GeneratorClassName.PULSE_GENERATOR:
                 pitch = self._pitch_stepper.value
-                volume = int(clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME), 1, MAX_VOLUME))
+                volume = int(
+                    clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_VOLUME), 1, MAX_VOLUME)
+                )
                 duty_cycle = int(
-                    clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE), 0, MAX_DUTY_CYCLE)
+                    clamp(
+                        dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE),
+                        0,
+                        MAX_DUTY_CYCLE,
+                    )
                 )
                 instruction = PulseInstruction(
                     on=True,
@@ -343,8 +365,8 @@ class GUIInstructionChoicePanel(GUIPanel):
 
                 values = [volume, duty_cycle]
                 tags = [
-                    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
-                    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
+                    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+                    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
                 ]
             case GeneratorClassName.TRIANGLE_GENERATOR:
                 instruction = TriangleInstruction(
@@ -352,8 +374,10 @@ class GUIInstructionChoicePanel(GUIPanel):
                     pitch=self._pitch_stepper.value,
                 )
             case GeneratorClassName.NOISE_GENERATOR:
-                volume = int(clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME), 1, MAX_VOLUME))
-                short = bool(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT))
+                volume = int(
+                    clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME), 1, MAX_VOLUME)
+                )
+                short = bool(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT))
                 instruction = NoiseInstruction(
                     on=True,
                     period=self._pitch_stepper.value,
@@ -363,7 +387,7 @@ class GUIInstructionChoicePanel(GUIPanel):
 
                 values = [volume]
                 tags = [
-                    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
+                    TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
                 ]
 
         for tag, value in zip(tags, values):

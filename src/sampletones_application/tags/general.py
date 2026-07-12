@@ -518,13 +518,13 @@ TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY = TagName(
     Widget.MENU,
     "item_playback_autoplay",
 )
-TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW = TagName(
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
     "item_playback_follow_playback",
 )
-TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP = TagName(
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
@@ -535,6 +535,12 @@ TAG_GLOBAL_TEXT_MENU_FPS = TagName(
     Panel.IMPLICIT,
     Widget.TEXT,
     "menu_fps",
+)
+TAG_GLOBAL_PANEL_PLAYER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.PANEL,
+    "player",
 )
 TAG_GLOBAL_STATUS_BAR = TagName(
     Page.GLOBAL,

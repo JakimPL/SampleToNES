@@ -142,7 +142,7 @@ class GUISongPlayerPanel(GUIPanel):
         )
 
         if view_model.is_paused:
-            dpg_set_item_label(self.pause_button_tag, self._glyphs.player.play)
+            dpg_set_item_label(self.pause_button_tag, self._glyphs.player.resume)
             dpg_set_value(self.pause_tooltip_tag, self._lbl_resume)
         else:
             dpg_set_item_label(self.pause_button_tag, self._glyphs.player.pause)

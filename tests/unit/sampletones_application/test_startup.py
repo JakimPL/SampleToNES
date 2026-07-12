@@ -8,7 +8,7 @@ import pytest
 
 from sampletones_application.application import Application
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.utils.background import stop_background_workers
+from sampletones_application.utils.parallelization.background import stop_background_workers
 from sampletones_core.reconstructions import Reconstruction
 
 _DPG_DISPLAY_FUNCTIONS = [

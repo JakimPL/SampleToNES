@@ -39,7 +39,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.tags.instructions import (
-    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_PLAYER,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
@@ -236,7 +236,7 @@ class InstructionsTabCoordinator:
             on_audio_state_changed,
         )
         self._instruction_player_panel = GUIAudioPlayerPanel(
-            tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
+            tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_PLAYER,
             layout=layout.player,
             language_manager=language_manager,
         )
@@ -260,10 +260,6 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
         )
-        self._instruction_player_panel.on_play = self._guarded_player.play
-        self._instruction_player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
-        self._instruction_player_panel.on_stop = self._guarded_player.stop
-        self._instruction_player_logic.on_view_changed = self._instruction_player_panel.update_view
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
@@ -468,9 +464,7 @@ class InstructionsTabCoordinator:
             )
 
     def _build_display_column(self, parent: str) -> None:
-        """Stacks the player, waveform, and spectrum cards down the centre column."""
-        self._instruction_player_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        """Stacks the waveform and spectrum cards down the centre column."""
         self._waveform_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._spectrum_panel.create_panel(parent)

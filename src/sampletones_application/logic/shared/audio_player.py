@@ -32,6 +32,7 @@ class AudioPlayer(CallbackMixin):
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_data = audio_data
         self.audio_device_manager.replace_audio(audio_data.sample, owner=self)
+        self._notify_audio_state_changed()
 
     def clear_audio(self) -> None:
         self.stop()

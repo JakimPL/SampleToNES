@@ -5,3 +5,8 @@ button:
   height: 34
   width: 52
   gap: 10
+
+toolbar:
+  height: 32
+  width: 44
+  gap: 4

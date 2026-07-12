@@ -22,9 +22,9 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.reconstructions import (
     PRE_RECONSTRUCTION_GENERATOR,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
-    TAG_RECONSTRUCTIONS_PLOT_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -68,7 +68,9 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
         self.on_generators_changed: Optional[Callable[[List[GeneratorName]], None]] = None
 
-        self.autoscale_tag = f"{TAG_RECONSTRUCTIONS_PLOT_PANEL}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
+        self.autoscale_tag = (
+            f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
+        )
 
         self._lbl_waveform = language_manager[
             Page.RECONSTRUCTIONS,
@@ -138,7 +140,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_RECONSTRUCTIONS_PLOT_PANEL,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
         )
 
     def create_panel(self, parent: str) -> None:
@@ -212,7 +214,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformGraph(
-            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM,
             parent=self.tag,
             layout=self._layout_graphs,
             language_manager=self._language_manager,

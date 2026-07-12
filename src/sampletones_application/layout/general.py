@@ -79,6 +79,7 @@ class DialogsLayout(BaseModel, frozen=True):
 class InputsLayout(BaseModel, frozen=True):
     default_width: int
     search_width: int
+    label_width: int
 
 
 class ButtonsLayout(BaseModel, frozen=True):

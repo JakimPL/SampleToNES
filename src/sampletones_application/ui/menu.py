@@ -6,9 +6,12 @@ from sampletones_application.categories.elements.global_ import (
     ContextElements,
     GlobalTemplateElements,
     MenuElements,
+    PlayerElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.glyphs import PlayerGlyphs
+from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
     TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
@@ -20,8 +23,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
-    TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW,
-    TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
@@ -38,13 +41,30 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
     TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+    TAG_GLOBAL_PANEL_PLAYER,
     TAG_GLOBAL_TEXT_MENU_FPS,
 )
+from sampletones_application.tags.player import (
+    SUF_PLAYER_PAUSE,
+    SUF_PLAYER_PLAY,
+    SUF_PLAYER_STOP,
+    SUF_PLAYER_TOOLTIP,
+)
+from sampletones_application.ui.panels.player.controls import (
+    create_compact_transport_controls,
+)
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.dpg import (
+    dpg_configure_item,
+    dpg_set_item_label,
+    dpg_set_value,
+)
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
+from sampletones_shared.types.callback import VoidCallback
+
+TOOLBAR_STRIP_PADDING: Final[int] = 4
 
 PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
@@ -67,17 +87,38 @@ class MenuBar:
         *,
         shortcut_manager: ShortcutManager,
         fps_theme: Theme,
+        player_toolbar_theme: Theme,
+        player_glyphs: PlayerGlyphs,
+        player_layout: PlayerLayout,
         language_manager: LanguageManager,
+        on_play_from_start: VoidCallback,
+        on_pause_or_resume: VoidCallback,
+        on_stop: VoidCallback,
     ) -> None:
         self._shortcut_manager = shortcut_manager
         self._fps_theme = fps_theme
+        self._player_toolbar_theme = player_toolbar_theme
+        self._player_glyphs = player_glyphs
+        self._player_layout = player_layout
         self._language_manager = language_manager
+        self._on_play_from_start = on_play_from_start
+        self._on_pause_or_resume = on_pause_or_resume
+        self._on_stop = on_stop
         self._tpl_fps = language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
             TextType.TEMPLATE,
             GlobalTemplateElements.FPS,
         ]
+
+        self._play_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_PLAY}"
+        self._pause_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_PAUSE}"
+        self._stop_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_STOP}"
+        self._pause_tooltip_tag = f"{self._pause_button_tag}{SUF_PLAYER_TOOLTIP}"
+        self._lbl_play = language_manager[Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.PLAY]
+        self._lbl_pause = language_manager[Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.PAUSE]
+        self._lbl_resume = language_manager[Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.RESUME]
+        self._lbl_stop = language_manager[Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.STOP]
 
     def _label(self, element: MenuElements) -> str:
         return self._language_manager[Page.GLOBAL, Panel.MENU, TextType.LABEL, element]
@@ -94,6 +135,7 @@ class MenuBar:
             self._create_playback_menu(state)
             self._create_view_menu()
             self._create_help_menu()
+            self._create_player_toolbar()
             self._create_fps_indicator()
 
     def _create_file_menu(self, state: MenuBarViewModel) -> None:
@@ -270,13 +312,13 @@ class MenuBar:
             )
             self._shortcut_manager.add_menu_item(
                 ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
-                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
                 label=self._label(MenuElements.ITEM_PLAYBACK_FOLLOW_PLAYBACK),
                 check=True,
             )
             self._shortcut_manager.add_menu_item(
                 ShortcutId.TOGGLE_LOOP_SONG,
-                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
                 label=self._label(MenuElements.ITEM_PLAYBACK_LOOP_SONG),
                 check=True,
             )
@@ -307,6 +349,35 @@ class MenuBar:
                 ShortcutId.ABOUT_DIALOG,
                 label=self._label(MenuElements.ITEM_HELP_ABOUT),
             )
+
+    def _create_player_toolbar(self) -> None:
+        """Builds the transport strip sitting on its own recessed surface beside the menus."""
+        toolbar = self._player_layout.toolbar
+        strip_width = toolbar.width * 3 + toolbar.gap * 2 + TOOLBAR_STRIP_PADDING * 2
+        with dpg.child_window(
+            tag=TAG_GLOBAL_PANEL_PLAYER,
+            width=strip_width,
+            auto_resize_y=True,
+            border=False,
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
+        ):
+            create_compact_transport_controls(
+                TAG_GLOBAL_PANEL_PLAYER,
+                layout=self._player_layout,
+                glyphs=self._player_glyphs,
+                play_tag=self._play_button_tag,
+                pause_tag=self._pause_button_tag,
+                stop_tag=self._stop_button_tag,
+                play_tooltip=self._lbl_play,
+                pause_tooltip=self._lbl_pause,
+                stop_tooltip=self._lbl_stop,
+                on_play=self._on_play_from_start,
+                on_pause_or_resume=self._on_pause_or_resume,
+                on_stop=self._on_stop,
+            )
+
+        self._player_toolbar_theme.bind_to_item(TAG_GLOBAL_PANEL_PLAYER)
 
     def _create_fps_indicator(self) -> None:
         dpg.add_button(
@@ -355,11 +426,25 @@ class MenuBar:
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
             enabled=state.stop_enabled,
         )
+        self._update_player_toolbar(state)
+
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
-        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW, state.follow_playback)
-        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP, state.loop_song)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK, state.follow_playback)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG, state.loop_song)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN, state.fullscreen)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
+
+    def _update_player_toolbar(self, state: MenuBarViewModel) -> None:
+        dpg_configure_item(self._play_button_tag, enabled=state.play_or_pause_enabled)
+        dpg_configure_item(self._pause_button_tag, enabled=state.pause_enabled)
+        dpg_configure_item(self._stop_button_tag, enabled=state.stop_enabled)
+
+        if state.player_paused:
+            dpg_set_item_label(self._pause_button_tag, self._player_glyphs.resume)
+            dpg_set_value(self._pause_tooltip_tag, self._lbl_resume)
+        else:
+            dpg_set_item_label(self._pause_button_tag, self._player_glyphs.pause)
+            dpg_set_value(self._pause_tooltip_tag, self._lbl_pause)
 
     def update_fps(self, fps: float) -> None:
         dpg_configure_item(

@@ -110,12 +110,41 @@ def create_transport_controls(
             dpg.add_spacer()
 
 
+def create_compact_transport_controls(
+    parent: str,
+    *,
+    layout: PlayerLayout,
+    glyphs: PlayerGlyphs,
+    play_tag: str,
+    pause_tag: str,
+    stop_tag: str,
+    play_tooltip: str,
+    pause_tooltip: str,
+    stop_tooltip: str,
+    on_play: VoidCallback,
+    on_pause_or_resume: VoidCallback,
+    on_stop: VoidCallback,
+) -> None:
+    """Render the three transport buttons as a compact fixed-width row inside ``parent``.
+
+    Unlike :func:`create_transport_controls`, which centres the buttons across a
+    stretch table for a wide card, this packs them tightly for a menu-bar strip.
+    The inter-button gap is set by ``ItemSpacing`` in the toolbar theme.
+    """
+    button = layout.toolbar
+    with dpg.group(horizontal=True, parent=parent):
+        _create_icon_button(play_tag, glyphs.play, play_tooltip, on_play, button, width=button.width)
+        _create_icon_button(pause_tag, glyphs.pause, pause_tooltip, on_pause_or_resume, button, width=button.width)
+        _create_icon_button(stop_tag, glyphs.stop, stop_tooltip, on_stop, button, width=button.width)
+
+
 def _create_icon_button(
     tag: str,
     glyph: str,
     tooltip: str,
     callback: VoidCallback,
     button_layout: PlayerButtonLayout,
+    width: int = -1,
 ) -> None:
     GUIButton(
         tag=tag,
@@ -123,7 +152,7 @@ def _create_icon_button(
         callback=callback,
         enabled=False,
         font=Font.ICON,
-        width=-1,
+        width=width,
         height=button_layout.height,
     )
     with dpg.tooltip(parent=f"{tag}{SUF_BUTTON}"):

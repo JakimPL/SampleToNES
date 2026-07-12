@@ -55,7 +55,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_PLAYER,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -288,7 +288,7 @@ class ReconstructionsTabCoordinator:
             on_change_audio_state,
         )
         self._reconstruction_player_panel = GUIAudioPlayerPanel(
-            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_PLAYER,
             layout=layout.player,
             language_manager=language_manager,
         )
@@ -315,10 +315,6 @@ class ReconstructionsTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
         )
-        self._reconstruction_player_panel.on_play = self._guarded_player.play
-        self._reconstruction_player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
-        self._reconstruction_player_panel.on_stop = self._guarded_player.stop
-        self._reconstruction_player_logic.on_view_changed = self._reconstruction_player_panel.update_view
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
@@ -485,9 +481,7 @@ class ReconstructionsTabCoordinator:
             )
 
     def _build_reconstruction_column(self, parent: str) -> None:
-        """Stacks the player, audio, and plot cards down the centre column."""
-        self._reconstruction_player_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        """Stacks the audio and plot cards down the centre column."""
         self._reconstruction_audio_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)
@@ -497,9 +491,6 @@ class ReconstructionsTabCoordinator:
 
     def unlock(self) -> None:
         self._browser_panel.unlock()
-
-    def refresh_reconstruct_buttons(self) -> None:
-        self._browser_panel.refresh_action_buttons()
 
     def refresh_browser(self) -> None:
         self._browser_panel.refresh()

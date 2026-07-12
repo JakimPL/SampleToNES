@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
-    GlobalMessageElements,
     TreeElements,
 )
 from sampletones_application.categories.elements.reconstructions import (
@@ -14,24 +13,18 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.tags.general import (
-    TAG_GLOBAL_THEME_PRIMARY_BUTTON,
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.tags.reconstructions import (
-    TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
-    TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
     TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
-    TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT,
     TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE,
     TAG_RECONSTRUCTIONS_BROWSER_PANEL,
-    TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT,
     TAG_RECONSTRUCTIONS_BROWSER_TREE,
     TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
-from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
@@ -41,7 +34,6 @@ from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -79,29 +71,11 @@ class GUIBrowserPanel(GUITreePanel):
 
         self._is_operation_active = is_operation_active
 
-        self._lbl_reconstruct_file = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.LABEL,
-            ReconstructionsBrowserElements.RECONSTRUCT_FILE_BUTTON,
-        ]
-        self._lbl_reconstruct_directory = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.LABEL,
-            ReconstructionsBrowserElements.RECONSTRUCT_DIRECTORY_BUTTON,
-        ]
         self._lbl_refresh = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.BROWSER,
             TextType.LABEL,
             ReconstructionsBrowserElements.REFRESH_BUTTON,
-        ]
-        self._tooltip_reconstruct_disabled = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.OPERATION_IN_PROGRESS,
         ]
         self._lbl_context_load = language_manager[
             Page.RECONSTRUCTIONS,
@@ -198,28 +172,6 @@ class GUIBrowserPanel(GUITreePanel):
                 callback=self.rebuild_tree,
                 theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
-            with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT):
-                GUIButton(
-                    tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
-                    label=self._lbl_reconstruct_file,
-                    width=-1,
-                    callback=self._reconstruct_file,
-                    font=Font.BOLD,
-                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
-                )
-                GUIButton(
-                    tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
-                    label=self._lbl_reconstruct_directory,
-                    width=-1,
-                    callback=self._reconstruct_directory,
-                    font=Font.BOLD,
-                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
-                )
-            attach_disabled_tooltip(
-                TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT,
-                self._tooltip_reconstruct_disabled,
-                tag=TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT,
-            )
 
     def _create_tree_window(self) -> None:
         self.create_search(self.tag)
@@ -296,22 +248,6 @@ class GUIBrowserPanel(GUITreePanel):
     def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE, enabled=enabled)
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS, enabled=enabled)
-        self._apply_action_button_states()
-
-    def refresh_action_buttons(self) -> None:
-        """Re-evaluate the reconstruct buttons against the live tree-lock and operation state.
-
-        Called whenever a long operation starts or finishes. The buttons stay enabled only while the
-        panel is unlocked and no conversion or library generation is running, leaving the rest of the
-        browser usable during such an operation."""
-        self._apply_action_button_states()
-
-    def _apply_action_button_states(self) -> None:
-        operation_active = self._is_operation_active()
-        enabled = not self.locked and not operation_active
-        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE, enabled=enabled)
-        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY, enabled=enabled)
-        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT, show=operation_active)
 
     def _reconstruct_file(self) -> None:
         self.call(self.on_reconstruct_file)

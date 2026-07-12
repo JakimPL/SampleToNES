@@ -22,6 +22,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -47,6 +48,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         panel_height: int,
         button_height: int,
         input_width: int,
+        label_width: int,
         file_dialog_width: int,
         file_dialog_height: int,
         max_workers_minimum: int,
@@ -64,6 +66,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._max_workers: int = initial_view.max_workers
         self._button_height = button_height
         self._input_width = input_width
+        self._label_width = label_width
         self._file_dialog_width = file_dialog_width
         self._file_dialog_height = file_dialog_height
         self._max_workers_minimum = max_workers_minimum
@@ -164,13 +167,13 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._create_output_directory_selection()
 
     def _create_workers_settings(self) -> None:
-        dpg.add_input_int(
-            label=self._lbl_max_workers,
-            default_value=self._max_workers,
-            tag=TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
-            min_value=self._max_workers_minimum,
-            width=self._input_width,
-        )
+        with labeled_field(self._lbl_max_workers, self._label_width):
+            dpg.add_input_int(
+                default_value=self._max_workers,
+                tag=TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
+                min_value=self._max_workers_minimum,
+                width=self._input_width,
+            )
 
         dpg.bind_item_handler_registry(
             TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
