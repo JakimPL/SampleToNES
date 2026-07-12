@@ -115,17 +115,47 @@ class MenuBar:
         self._pause_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_PAUSE}"
         self._stop_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_STOP}"
         self._pause_tooltip_tag = f"{self._pause_button_tag}{SUF_PLAYER_TOOLTIP}"
-        self._lbl_play = language_manager[Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.PLAY]
-        self._lbl_pause = language_manager[Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.PAUSE]
-        self._lbl_resume = language_manager[Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.RESUME]
-        self._lbl_stop = language_manager[Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.STOP]
+        self._lbl_play = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.PLAY,
+        ]
+        self._lbl_pause = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.PAUSE,
+        ]
+        self._lbl_resume = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.RESUME,
+        ]
+        self._lbl_stop = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.STOP,
+        ]
 
     def _label(self, element: MenuElements) -> str:
-        return self._language_manager[Page.GLOBAL, Panel.MENU, TextType.LABEL, element]
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            element,
+        ]
 
     def _context_label(self, element: ContextElements) -> str:
         """Resolves a shared context-action label reused between the tree menus and this bar."""
-        return self._language_manager[Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, element]
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            element,
+        ]
 
     def create(self, state: MenuBarViewModel) -> None:
         with dpg.menu_bar():
@@ -135,7 +165,6 @@ class MenuBar:
             self._create_playback_menu(state)
             self._create_view_menu()
             self._create_help_menu()
-            dpg.add_spacer(width=12)
             self._create_player_toolbar()
             self._create_fps_indicator()
 
@@ -351,27 +380,21 @@ class MenuBar:
                 label=self._label(MenuElements.ITEM_HELP_ABOUT),
             )
 
-    def _get_player_toolbar_width(self) -> int:
-        button_layout = self._player_layout.button
-        toolbar_layout = self._player_layout.toolbar
-        return toolbar_layout.width * 3 + button_layout.gap * 2 + toolbar_layout.padding * 2
-
     def _create_player_toolbar(self) -> None:
         """Builds the transport strip sitting on its own recessed surface beside the menus."""
-        toolbar_layout = self._player_layout.toolbar
-        strip_width = self._get_player_toolbar_width()
+        dpg.add_spacer(width=self._player_layout.toolbar.indent)
         with dpg.child_window(
             tag=TAG_GLOBAL_PANEL_PLAYER,
-            width=strip_width,
-            auto_resize_y=True,
+            width=self._player_layout.toolbar.width,
+            height=self._player_layout.toolbar.height,
+            auto_resize_y=False,
             border=False,
             no_scrollbar=True,
             no_scroll_with_mouse=True,
         ):
-            dpg.add_spacer(width=toolbar_layout.padding)
             create_compact_transport_controls(
                 TAG_GLOBAL_PANEL_PLAYER,
-                layout=self._player_layout.button,
+                layout=self._player_layout,
                 glyphs=self._player_glyphs,
                 play_tag=self._play_button_tag,
                 pause_tag=self._pause_button_tag,
@@ -400,13 +423,24 @@ class MenuBar:
         for project_item_tag in PROJECT_ITEM_TAGS:
             dpg_configure_item(project_item_tag, enabled=state.project_open)
 
-        dpg_configure_item(TAG_GLOBAL_MENU_ITEM_EDIT_UNDO, enabled=state.undo_enabled)
-        dpg_configure_item(TAG_GLOBAL_MENU_ITEM_EDIT_REDO, enabled=state.redo_enabled)
-
-        dpg_configure_item(TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE, enabled=state.reconstruction_saveable)
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
+            enabled=state.undo_enabled,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
+            enabled=state.redo_enabled,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
+            enabled=state.reconstruction_saveable,
+        )
 
         for reconstruction_item_tag in RECONSTRUCTION_ITEM_TAGS:
-            dpg_configure_item(reconstruction_item_tag, enabled=state.reconstruction_loaded)
+            dpg_configure_item(
+                reconstruction_item_tag,
+                enabled=state.reconstruction_loaded,
+            )
 
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,

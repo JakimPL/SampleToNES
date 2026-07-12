@@ -398,7 +398,7 @@ class Application:
             raise SystemError(f"Invalid layout configuration: {exception}") from exception
 
     def _setup_gui_elements(self) -> None:
-        FontRegistry.setup(self.layout.general.fonts)
+        FontRegistry.setup(self.layout.fonts)
         GUIPanel.configure_section_header(
             self.layout.glyphs,
             self.layout.general.section_header.glyph,

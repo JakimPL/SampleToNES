@@ -45,13 +45,6 @@ class StatusBarLayout(BaseModel, extra="forbid", frozen=True):
     frame_padding: Padding
 
 
-class FontsLayout(BaseModel, extra="forbid", frozen=True):
-    size: int
-    size_small: int
-    size_large: int
-    scale: int
-
-
 class DialogSizeLayout(BaseModel, extra="forbid", frozen=True):
     width: int
     height: int
@@ -206,7 +199,6 @@ class GeneralLayout(BaseModel, extra="forbid", frozen=True):
     panel_gap: int
     columns: ColumnsLayout
     status_bar: StatusBarLayout
-    fonts: FontsLayout
     dialogs: DialogsLayout
     inputs: InputsLayout
     buttons: ButtonsLayout

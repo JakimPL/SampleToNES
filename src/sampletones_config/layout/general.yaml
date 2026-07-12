@@ -27,12 +27,6 @@ status_bar:
   frame_rounding: 0
   frame_padding: [0, 0]
 
-fonts:
-  size: 22
-  size_small: 19
-  size_large: 26
-  scale: 1
-
 dialogs:
   default:
     width: 420

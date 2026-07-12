@@ -1,8 +1,8 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.general import FontsLayout
+from sampletones_application.layout.fonts import FontsLayout, Step, Typeface
 from sampletones_application.tags.general import (
     TAG_GLOBAL_FONT_BOLD,
     TAG_GLOBAL_FONT_BOLD_LARGE,
@@ -29,81 +29,29 @@ from sampletones_shared.types.application import Sender
 class FontRegistry:
     _LAYOUT: FontsLayout
     _REGISTRY: Dict[Font, FontData] = {}
+    _SPECS: Dict[Font, Tuple[str, FontResource, Typeface, Step]] = {
+        Font.REGULAR: (TAG_GLOBAL_FONT_REGULAR, FontResource.REGULAR, Typeface.SANS, Step.MEDIUM),
+        Font.REGULAR_SMALL: (TAG_GLOBAL_FONT_REGULAR_SMALL, FontResource.REGULAR, Typeface.SANS, Step.SMALL),
+        Font.REGULAR_LARGE: (TAG_GLOBAL_FONT_REGULAR_LARGE, FontResource.REGULAR, Typeface.SANS, Step.LARGE),
+        Font.ITALIC: (TAG_GLOBAL_FONT_ITALIC, FontResource.ITALIC, Typeface.SANS, Step.MEDIUM),
+        Font.ITALIC_SMALL: (TAG_GLOBAL_FONT_ITALIC_SMALL, FontResource.ITALIC, Typeface.SANS, Step.SMALL),
+        Font.ITALIC_LARGE: (TAG_GLOBAL_FONT_ITALIC_LARGE, FontResource.ITALIC, Typeface.SANS, Step.LARGE),
+        Font.BOLD: (TAG_GLOBAL_FONT_BOLD, FontResource.BOLD, Typeface.SANS, Step.MEDIUM),
+        Font.BOLD_SMALL: (TAG_GLOBAL_FONT_BOLD_SMALL, FontResource.BOLD, Typeface.SANS, Step.SMALL),
+        Font.BOLD_LARGE: (TAG_GLOBAL_FONT_BOLD_LARGE, FontResource.BOLD, Typeface.SANS, Step.LARGE),
+        Font.MONO: (TAG_GLOBAL_FONT_MONO, FontResource.MONO, Typeface.MONO, Step.MEDIUM),
+        Font.MONO_SMALL: (TAG_GLOBAL_FONT_MONO_SMALL, FontResource.MONO, Typeface.MONO, Step.SMALL),
+        Font.MONO_BOLD: (TAG_GLOBAL_FONT_MONO_BOLD, FontResource.MONO_BOLD, Typeface.MONO, Step.MEDIUM),
+        Font.MONO_BOLD_SMALL: (TAG_GLOBAL_FONT_MONO_BOLD_SMALL, FontResource.MONO_BOLD, Typeface.MONO, Step.SMALL),
+        Font.ICON: (TAG_GLOBAL_FONT_ICON, FontResource.ICON, Typeface.ICON, Step.SMALL),
+    }
 
     @classmethod
     def setup(cls, layout: FontsLayout) -> None:
         cls._LAYOUT = layout
         cls._REGISTRY = {
-            Font.REGULAR: FontData(
-                TAG_GLOBAL_FONT_REGULAR,
-                layout.size,
-                FontResource.REGULAR,
-            ),
-            Font.REGULAR_SMALL: FontData(
-                TAG_GLOBAL_FONT_REGULAR_SMALL,
-                layout.size_small,
-                FontResource.REGULAR,
-            ),
-            Font.REGULAR_LARGE: FontData(
-                TAG_GLOBAL_FONT_REGULAR_LARGE,
-                layout.size_large,
-                FontResource.REGULAR,
-            ),
-            Font.ITALIC: FontData(
-                TAG_GLOBAL_FONT_ITALIC,
-                layout.size,
-                FontResource.ITALIC,
-            ),
-            Font.ITALIC_SMALL: FontData(
-                TAG_GLOBAL_FONT_ITALIC_SMALL,
-                layout.size_small,
-                FontResource.ITALIC,
-            ),
-            Font.ITALIC_LARGE: FontData(
-                TAG_GLOBAL_FONT_ITALIC_LARGE,
-                layout.size_large,
-                FontResource.ITALIC,
-            ),
-            Font.BOLD: FontData(
-                TAG_GLOBAL_FONT_BOLD,
-                layout.size,
-                FontResource.BOLD,
-            ),
-            Font.BOLD_SMALL: FontData(
-                TAG_GLOBAL_FONT_BOLD_SMALL,
-                layout.size_small,
-                FontResource.BOLD,
-            ),
-            Font.BOLD_LARGE: FontData(
-                TAG_GLOBAL_FONT_BOLD_LARGE,
-                layout.size_large,
-                FontResource.BOLD,
-            ),
-            Font.MONO: FontData(
-                TAG_GLOBAL_FONT_MONO,
-                layout.size,
-                FontResource.MONO,
-            ),
-            Font.MONO_SMALL: FontData(
-                TAG_GLOBAL_FONT_MONO_SMALL,
-                layout.size_small,
-                FontResource.MONO,
-            ),
-            Font.MONO_BOLD: FontData(
-                TAG_GLOBAL_FONT_MONO_BOLD,
-                layout.size,
-                FontResource.MONO_BOLD,
-            ),
-            Font.MONO_BOLD_SMALL: FontData(
-                TAG_GLOBAL_FONT_MONO_BOLD_SMALL,
-                layout.size_small,
-                FontResource.MONO_BOLD,
-            ),
-            Font.ICON: FontData(
-                TAG_GLOBAL_FONT_ICON,
-                layout.size_small,
-                FontResource.ICON,
-            ),
+            font: FontData(tag, layout.size_for(typeface, step), resource)
+            for font, (tag, resource, typeface, step) in cls._SPECS.items()
         }
 
     @classmethod

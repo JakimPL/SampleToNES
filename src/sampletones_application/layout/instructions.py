@@ -3,10 +3,10 @@ from pydantic import BaseModel
 from sampletones_application.utils.color import RGBA
 
 
-class InstructionDimensions(BaseModel, extra="forbid", frozen=True):
-    instruction_choice_height: int
-    instruction_choice_input_width: int
-    instruction_choice_label_width: int
+class InstructionChoiceLayout(BaseModel, extra="forbid", frozen=True):
+    height: int
+    input_width: int
+    label_width: int
 
 
 class InstructionValues(BaseModel, extra="forbid", frozen=True):
@@ -21,6 +21,6 @@ class InstructionColors(BaseModel, extra="forbid", frozen=True):
 
 
 class InstructionsLayout(BaseModel, extra="forbid", frozen=True):
-    dimensions: InstructionDimensions
+    instruction_choice: InstructionChoiceLayout
     values: InstructionValues
     colors: InstructionColors

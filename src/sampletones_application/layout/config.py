@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
 from sampletones_application.layout.behavior import BehaviorConfig
+from sampletones_application.layout.fonts import FontsLayout
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.glyphs import Glyphs
 from sampletones_application.layout.graphs import GraphsLayout
@@ -14,6 +15,7 @@ from sampletones_application.layout.settings import SettingsLayout
 
 class LayoutConfig(BaseModel, extra="forbid", frozen=True):
     general: GeneralLayout
+    fonts: FontsLayout
     glyphs: Glyphs
     graphs: GraphsLayout
     instructions: InstructionsLayout

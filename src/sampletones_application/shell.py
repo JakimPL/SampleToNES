@@ -164,7 +164,7 @@ class ApplicationShell:
         self._viewport_manager.apply_fullscreen_state()
 
     def _set_fonts(self) -> None:
-        FontRegistry.register_fonts(self._layout.general.fonts.scale)
+        FontRegistry.register_fonts(self._layout.fonts.scale)
 
     def _set_default_theme(self) -> None:
         self._theme.bind()
