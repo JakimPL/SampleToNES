@@ -8,7 +8,7 @@ from sampletones_application.utils.color import RGBA
 Padding: TypeAlias = Tuple[int, int]
 
 
-class WindowLayout(BaseModel, frozen=True):
+class WindowLayout(BaseModel, extra="forbid", frozen=True):
     width: int
     height: int
     position_x: int
@@ -16,14 +16,14 @@ class WindowLayout(BaseModel, frozen=True):
     fullscreen: bool
 
 
-class ColumnLayout(BaseModel, frozen=True):
+class ColumnLayout(BaseModel, extra="forbid", frozen=True):
     """Dimensions of one fixed column in a tab layout; a ``height`` of -1 fills the tab vertically."""
 
     width: int
     height: int
 
 
-class ColumnsLayout(BaseModel, frozen=True):
+class ColumnsLayout(BaseModel, extra="forbid", frozen=True):
     """The fixed-column geometry the tab coordinators lay their panels out on.
 
     ``side`` sizes the uniform left column — the browser, library, or explorer —
@@ -38,35 +38,35 @@ class ColumnsLayout(BaseModel, frozen=True):
     sequencer_right: ColumnLayout
 
 
-class StatusBarLayout(BaseModel, frozen=True):
+class StatusBarLayout(BaseModel, extra="forbid", frozen=True):
     height: int
     reserved_margin: int
     frame_rounding: int
     frame_padding: Padding
 
 
-class FontsLayout(BaseModel, frozen=True):
+class FontsLayout(BaseModel, extra="forbid", frozen=True):
     size: int
     size_small: int
     size_large: int
     scale: int
 
 
-class DialogSizeLayout(BaseModel, frozen=True):
+class DialogSizeLayout(BaseModel, extra="forbid", frozen=True):
     width: int
     height: int
 
 
-class DialogSizeNoWidth(BaseModel, frozen=True):
+class DialogSizeNoWidth(BaseModel, extra="forbid", frozen=True):
     height: int
 
 
-class DialogSizeNoHeight(BaseModel, frozen=True):
+class DialogSizeNoHeight(BaseModel, extra="forbid", frozen=True):
     width: int
     height: int
 
 
-class DialogsLayout(BaseModel, frozen=True):
+class DialogsLayout(BaseModel, extra="forbid", frozen=True):
     default: DialogSizeLayout
     error: DialogSizeLayout
     recovery: DialogSizeLayout
@@ -76,13 +76,13 @@ class DialogsLayout(BaseModel, frozen=True):
     traceback: DialogSizeLayout
 
 
-class InputsLayout(BaseModel, frozen=True):
+class InputsLayout(BaseModel, extra="forbid", frozen=True):
     default_width: int
     search_width: int
     label_width: int
 
 
-class ButtonsLayout(BaseModel, frozen=True):
+class ButtonsLayout(BaseModel, extra="forbid", frozen=True):
     copy_width: int
     search_width: int
     int_width: int
@@ -90,13 +90,13 @@ class ButtonsLayout(BaseModel, frozen=True):
     frame_padding: Padding
 
 
-class TablesLayout(BaseModel, frozen=True):
+class TablesLayout(BaseModel, extra="forbid", frozen=True):
     label_width: int
     cell_padding: Padding
     frame_rounding: int
 
 
-class PitchStepperLayout(BaseModel, frozen=True):
+class PitchStepperLayout(BaseModel, extra="forbid", frozen=True):
     label_width: int
     value_width: int
     button_column_width: int
@@ -105,22 +105,22 @@ class PitchStepperLayout(BaseModel, frozen=True):
     commit_delay: int
 
 
-class MenuLayout(BaseModel, frozen=True):
+class MenuLayout(BaseModel, extra="forbid", frozen=True):
     fps_text_offset: int
 
 
-class CaretLayout(BaseModel, frozen=True):
+class CaretLayout(BaseModel, extra="forbid", frozen=True):
     offset: int
     width_padding: int
     fill: RGBA
     border: RGBA
 
 
-class SectionHeaderLayout(BaseModel, frozen=True):
+class SectionHeaderLayout(BaseModel, extra="forbid", frozen=True):
     glyph: GlyphLayout
 
 
-class TextColors(BaseModel, frozen=True):
+class TextColors(BaseModel, extra="forbid", frozen=True):
     white: RGBA
     default: RGBA
     disabled: RGBA
@@ -129,26 +129,26 @@ class TextColors(BaseModel, frozen=True):
     traceback: RGBA
 
 
-class FileColors(BaseModel, frozen=True):
+class FileColors(BaseModel, extra="forbid", frozen=True):
     wave: RGBA
     library: RGBA
     reconstruction: RGBA
     directory_not_expanded: RGBA
 
 
-class FavoriteColors(BaseModel, frozen=True):
+class FavoriteColors(BaseModel, extra="forbid", frozen=True):
     default: RGBA
     child: RGBA
 
 
-class ButtonColors(BaseModel, frozen=True):
+class ButtonColors(BaseModel, extra="forbid", frozen=True):
     default: RGBA
     active: RGBA
     hovered: RGBA
     light: RGBA
 
 
-class BackgroundColors(BaseModel, frozen=True):
+class BackgroundColors(BaseModel, extra="forbid", frozen=True):
     default: RGBA
     dark: RGBA
     light: RGBA
@@ -156,7 +156,7 @@ class BackgroundColors(BaseModel, frozen=True):
     input_invalid: RGBA
 
 
-class TableColors(BaseModel, frozen=True):
+class TableColors(BaseModel, extra="forbid", frozen=True):
     header: RGBA
     row: RGBA
     row_alternative: RGBA
@@ -165,17 +165,17 @@ class TableColors(BaseModel, frozen=True):
     value: RGBA
 
 
-class PathColors(BaseModel, frozen=True):
+class PathColors(BaseModel, extra="forbid", frozen=True):
     default: RGBA
     hover: RGBA
 
 
-class HeaderColors(BaseModel, frozen=True):
+class HeaderColors(BaseModel, extra="forbid", frozen=True):
     library: RGBA
     reconstruction: RGBA
 
 
-class FeatureColors(BaseModel, frozen=True):
+class FeatureColors(BaseModel, extra="forbid", frozen=True):
     """The per-feature palette shared by every view that names a feature.
 
     The details tab's bar plots and the history panel's detail segments both
@@ -189,7 +189,7 @@ class FeatureColors(BaseModel, frozen=True):
     duty_cycle: RGBA
 
 
-class GeneralColors(BaseModel, frozen=True):
+class GeneralColors(BaseModel, extra="forbid", frozen=True):
     text: TextColors
     files: FileColors
     favorites: FavoriteColors
@@ -201,7 +201,7 @@ class GeneralColors(BaseModel, frozen=True):
     features: FeatureColors
 
 
-class GeneralLayout(BaseModel, frozen=True):
+class GeneralLayout(BaseModel, extra="forbid", frozen=True):
     window: WindowLayout
     panel_gap: int
     columns: ColumnsLayout

@@ -1,31 +1,31 @@
 from pydantic import BaseModel
 
 
-class PanelWithHeight(BaseModel, frozen=True):
+class PanelWithHeight(BaseModel, extra="forbid", frozen=True):
     width: int
     height: int
 
 
-class ConfigLayout(BaseModel, frozen=True):
+class ConfigLayout(BaseModel, extra="forbid", frozen=True):
     height: int
 
 
-class ReconstructorLayout(BaseModel, frozen=True):
+class ReconstructorLayout(BaseModel, extra="forbid", frozen=True):
     drive_format: str
 
 
-class ConverterLayout(BaseModel, frozen=True):
+class ConverterLayout(BaseModel, extra="forbid", frozen=True):
     width: int
     height: int
     button_height: int
 
 
-class AdvancedLayout(BaseModel, frozen=True):
+class AdvancedLayout(BaseModel, extra="forbid", frozen=True):
     height: int
     button_height: int
 
 
-class MainLayout(BaseModel, frozen=True):
+class MainLayout(BaseModel, extra="forbid", frozen=True):
     config: ConfigLayout
     converter: ConverterLayout
     reconstructor: ReconstructorLayout

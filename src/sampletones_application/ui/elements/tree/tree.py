@@ -87,6 +87,8 @@ from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
 class GUITreePanel(GUIPanel):
+    _NAME_FONT: Font = Font.REGULAR_SMALL
+
     def __init__(
         self,
         tree: Tree,
@@ -641,7 +643,7 @@ class GUITreePanel(GUIPanel):
         dpg.add_separator()
         for label, value in detail_items:
             detail_text = dpg.add_text(f"{label}: {value}", color=self._colors.muted)
-            FontRegistry.bind_to_item(detail_text, Font.REGULAR_SMALL)
+            FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:
         if not self._logic.is_playable_file(node):
@@ -766,7 +768,7 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor: bool = False,
         is_node_expanded: bool = False,
     ) -> None:
-        FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
+        FontRegistry.bind_to_item(node_tag, self._NAME_FONT)
         if isinstance(node, FileSystemNode):
             match node.node_type:
                 case NodeType.DIRECTORY:

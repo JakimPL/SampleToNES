@@ -88,6 +88,8 @@ class LibraryLogicProtocol(Protocol):
 
 
 class GUIInstructionsLibraryPanel(GUITreePanel):
+    _NAME_FONT: Font = Font.MONO_SMALL
+
     def __init__(
         self,
         library_logic: LibraryLogicProtocol,

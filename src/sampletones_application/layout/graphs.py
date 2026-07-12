@@ -3,13 +3,13 @@ from pydantic import BaseModel
 from sampletones_application.utils.color import RGBA
 
 
-class GraphDimensions(BaseModel, frozen=True):
+class GraphDimensions(BaseModel, extra="forbid", frozen=True):
     width: int
     height: int
     bar_plot_height: int
 
 
-class WaveformLayout(BaseModel, frozen=True):
+class WaveformLayout(BaseModel, extra="forbid", frozen=True):
     sample_thickness: float
     reconstruction_thickness: float
     position_indicator_thickness: float
@@ -17,21 +17,21 @@ class WaveformLayout(BaseModel, frozen=True):
     max_display_points: int
 
 
-class SpectrumLayout(BaseModel, frozen=True):
+class SpectrumLayout(BaseModel, extra="forbid", frozen=True):
     max_display_bins: int
     offset_log: float
     color_dim: RGBA
     color_bright: RGBA
 
 
-class GraphRange(BaseModel, frozen=True):
+class GraphRange(BaseModel, extra="forbid", frozen=True):
     min_x: float
     max_x: float
     min_y: float
     max_y: float
 
 
-class BarPlotLayout(BaseModel, frozen=True):
+class BarPlotLayout(BaseModel, extra="forbid", frozen=True):
     min_x: float
     min_y: float
     max_y: float
@@ -40,7 +40,7 @@ class BarPlotLayout(BaseModel, frozen=True):
     hover_alpha: int
 
 
-class GraphColors(BaseModel, frozen=True):
+class GraphColors(BaseModel, extra="forbid", frozen=True):
     bar_plot: RGBA
     bar_plot_zero_line: RGBA
     waveform_default: RGBA
@@ -50,7 +50,7 @@ class GraphColors(BaseModel, frozen=True):
     waveform_overlay: RGBA
 
 
-class GraphsLayout(BaseModel, frozen=True):
+class GraphsLayout(BaseModel, extra="forbid", frozen=True):
     dimensions: GraphDimensions
     waveform: WaveformLayout
     spectrum: SpectrumLayout

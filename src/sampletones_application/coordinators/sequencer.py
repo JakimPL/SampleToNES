@@ -58,7 +58,6 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
-    TAG_SEQUENCER_GRID_PANEL_GRID_PLAYER,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
 )
@@ -71,7 +70,6 @@ from sampletones_application.ui.panels.sequencer.history import GUISequencerHist
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
-from sampletones_application.ui.panels.sequencer.song_player import GUISongPlayerPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -263,11 +261,6 @@ class SequencerTabCoordinator:
                 TextType.MESSAGE,
                 PlayerElements.AUDIO_PLAYBACK_ERROR,
             ],
-        )
-        self._player_panel: GUISongPlayerPanel = GUISongPlayerPanel(
-            tag=TAG_SEQUENCER_GRID_PANEL_GRID_PLAYER,
-            layout=layout.player,
-            language_manager=language_manager,
         )
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             layout=layout.sequencer,

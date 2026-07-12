@@ -5,7 +5,7 @@ window:
   position_y: 200
   fullscreen: false
 
-panel_gap: 14
+panel_gap: 8
 
 columns:
   side:

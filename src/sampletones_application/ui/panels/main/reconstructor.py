@@ -23,6 +23,8 @@ from sampletones_application.tags.main import (
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
 from sampletones_application.ui.elements.field import labeled_field
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -175,6 +177,7 @@ class GUIReconstructorPanel(GUIPanel):
 
         dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._item_handler_tag)
         self._status_bar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._msg_status_input)
+        FontRegistry.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, Font.MONO)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._tooltip_drive)

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class SchedulingBehavior(BaseModel, frozen=True):
+class SchedulingBehavior(BaseModel, extra="forbid", frozen=True):
     delay_gui_action: int
     delay_schedule: int
     delay_cancel: int
@@ -12,22 +12,22 @@ class SchedulingBehavior(BaseModel, frozen=True):
     priority_add_node: int
 
 
-class UiBehavior(BaseModel, frozen=True):
+class UiBehavior(BaseModel, extra="forbid", frozen=True):
     status_bar_display_time: float
 
 
-class TreeBehavior(BaseModel, frozen=True):
+class TreeBehavior(BaseModel, extra="forbid", frozen=True):
     priority_add_handler: int
     priority_add_node: int
 
 
-class MainBehavior(BaseModel, frozen=True):
+class MainBehavior(BaseModel, extra="forbid", frozen=True):
     fps_update_interval: float
     max_workers_minimum: int
     explorer: TreeBehavior
 
 
-class BehaviorConfig(BaseModel, frozen=True):
+class BehaviorConfig(BaseModel, extra="forbid", frozen=True):
     scheduling: SchedulingBehavior
     ui: UiBehavior
     main: MainBehavior

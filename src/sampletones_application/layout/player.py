@@ -1,17 +1,17 @@
 from pydantic import BaseModel
 
 
-class PlayerCardLayout(BaseModel, frozen=True):
+class PlayerToolbarLayout(BaseModel, extra="forbid", frozen=True):
     width: int
+    padding: int
 
 
-class PlayerButtonLayout(BaseModel, frozen=True):
+class PlayerButtonLayout(BaseModel, extra="forbid", frozen=True):
     height: int
     width: int
     gap: int
 
 
-class PlayerLayout(BaseModel, frozen=True):
-    card: PlayerCardLayout
+class PlayerLayout(BaseModel, extra="forbid", frozen=True):
+    toolbar: PlayerToolbarLayout
     button: PlayerButtonLayout
-    toolbar: PlayerButtonLayout

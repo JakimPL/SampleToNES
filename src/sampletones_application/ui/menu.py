@@ -50,6 +50,8 @@ from sampletones_application.tags.player import (
     SUF_PLAYER_STOP,
     SUF_PLAYER_TOOLTIP,
 )
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.panels.player.controls import (
     create_compact_transport_controls,
 )
@@ -63,8 +65,6 @@ from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_shared.types.callback import VoidCallback
-
-TOOLBAR_STRIP_PADDING: Final[int] = 4
 
 PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
@@ -135,6 +135,7 @@ class MenuBar:
             self._create_playback_menu(state)
             self._create_view_menu()
             self._create_help_menu()
+            dpg.add_spacer(width=12)
             self._create_player_toolbar()
             self._create_fps_indicator()
 
@@ -350,10 +351,15 @@ class MenuBar:
                 label=self._label(MenuElements.ITEM_HELP_ABOUT),
             )
 
+    def _get_player_toolbar_width(self) -> int:
+        button_layout = self._player_layout.button
+        toolbar_layout = self._player_layout.toolbar
+        return toolbar_layout.width * 3 + button_layout.gap * 2 + toolbar_layout.padding * 2
+
     def _create_player_toolbar(self) -> None:
         """Builds the transport strip sitting on its own recessed surface beside the menus."""
-        toolbar = self._player_layout.toolbar
-        strip_width = toolbar.width * 3 + toolbar.gap * 2 + TOOLBAR_STRIP_PADDING * 2
+        toolbar_layout = self._player_layout.toolbar
+        strip_width = self._get_player_toolbar_width()
         with dpg.child_window(
             tag=TAG_GLOBAL_PANEL_PLAYER,
             width=strip_width,
@@ -362,9 +368,10 @@ class MenuBar:
             no_scrollbar=True,
             no_scroll_with_mouse=True,
         ):
+            dpg.add_spacer(width=toolbar_layout.padding)
             create_compact_transport_controls(
                 TAG_GLOBAL_PANEL_PLAYER,
-                layout=self._player_layout,
+                layout=self._player_layout.button,
                 glyphs=self._player_glyphs,
                 play_tag=self._play_button_tag,
                 pause_tag=self._pause_button_tag,
@@ -387,6 +394,7 @@ class MenuBar:
             enabled=False,
         )
         self._fps_theme.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS)
+        FontRegistry.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS, Font.MONO_SMALL)
 
     def update(self, state: MenuBarViewModel) -> None:
         for project_item_tag in PROJECT_ITEM_TAGS:

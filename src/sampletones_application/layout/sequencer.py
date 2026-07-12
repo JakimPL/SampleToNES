@@ -4,13 +4,13 @@ from sampletones_application.layout.general import Padding
 from sampletones_application.utils.color import RGBA
 
 
-class OrderLayout(BaseModel, frozen=True):
+class OrderLayout(BaseModel, extra="forbid", frozen=True):
     height: int
     position_column_width: int
     master_divider_height: int
 
 
-class InstrumentColumnWidths(BaseModel, frozen=True):
+class InstrumentColumnWidths(BaseModel, extra="forbid", frozen=True):
     """Widths of the three sub-columns that make up an instrument row: its id, its
     name, and its loop marker. They only mean anything as a set, so they live together.
     """
@@ -20,7 +20,7 @@ class InstrumentColumnWidths(BaseModel, frozen=True):
     loop: int
 
 
-class SequencerTableCells(BaseModel, frozen=True):
+class SequencerTableCells(BaseModel, extra="forbid", frozen=True):
     row: int
     sample: int
     divider: int
@@ -28,25 +28,25 @@ class SequencerTableCells(BaseModel, frozen=True):
     instrument: InstrumentColumnWidths
 
 
-class TempoLayout(BaseModel, frozen=True):
+class TempoLayout(BaseModel, extra="forbid", frozen=True):
     min: int
     max: int
     default: int
 
 
-class SpeedLayout(BaseModel, frozen=True):
+class SpeedLayout(BaseModel, extra="forbid", frozen=True):
     min: int
     max: int
     default: int
 
 
-class SubcolumnWidths(BaseModel, frozen=True):
+class SubcolumnWidths(BaseModel, extra="forbid", frozen=True):
     instrument: int
     transpose: int
     volume: int
 
 
-class TrackerColors(BaseModel, frozen=True):
+class TrackerColors(BaseModel, extra="forbid", frozen=True):
     """The semantic text colours shared across every tracker view.
 
     One palette feeds the pattern grid, the order table, and the history detail so a
@@ -65,7 +65,7 @@ class TrackerColors(BaseModel, frozen=True):
     order: RGBA
 
 
-class HistoryRoleColors(BaseModel, frozen=True):
+class HistoryRoleColors(BaseModel, extra="forbid", frozen=True):
     """Colours for the history-detail token roles that the tracker does not already own.
 
     The instrument/transpose/volume, frame, row, and sample tokens draw from the
@@ -78,7 +78,7 @@ class HistoryRoleColors(BaseModel, frozen=True):
     separator: RGBA
 
 
-class TrackerLayout(BaseModel, frozen=True):
+class TrackerLayout(BaseModel, extra="forbid", frozen=True):
     rows: int
     row_height: int
     page_size: int
@@ -86,7 +86,7 @@ class TrackerLayout(BaseModel, frozen=True):
     channel_column_tint: float
 
 
-class ChannelColors(BaseModel, frozen=True):
+class ChannelColors(BaseModel, extra="forbid", frozen=True):
     """Per-channel identity colours shared by the order table and the tracker grid.
 
     The order table paints each channel's row label in its colour; the tracker grid
@@ -100,7 +100,7 @@ class ChannelColors(BaseModel, frozen=True):
     noise: RGBA
 
 
-class OrderColors(BaseModel, frozen=True):
+class OrderColors(BaseModel, extra="forbid", frozen=True):
     """Colours specific to the order table: the row-label column, the master row and
     the divider below it, and the per-column highlights for the current and playing
     positions.
@@ -113,14 +113,14 @@ class OrderColors(BaseModel, frozen=True):
     column_playing: RGBA
 
 
-class SampleColors(BaseModel, frozen=True):
+class SampleColors(BaseModel, extra="forbid", frozen=True):
     """Colours marking the tracker's sample column and the divider beside it."""
 
     column: RGBA
     divider: RGBA
 
 
-class HistoryColors(BaseModel, frozen=True):
+class HistoryColors(BaseModel, extra="forbid", frozen=True):
     """Colours for the history detail: the dimmed tint of future (redoable) entries
     and the per-role token palette.
     """
@@ -129,7 +129,7 @@ class HistoryColors(BaseModel, frozen=True):
     roles: HistoryRoleColors
 
 
-class SequencerColors(BaseModel, frozen=True):
+class SequencerColors(BaseModel, extra="forbid", frozen=True):
     pattern_highlight: RGBA
     cell_cursor: RGBA
     cursor_row: RGBA
@@ -142,14 +142,14 @@ class SequencerColors(BaseModel, frozen=True):
     channels: ChannelColors
 
 
-class HistoryLayout(BaseModel, frozen=True):
+class HistoryLayout(BaseModel, extra="forbid", frozen=True):
     height: int
     margin: int
     selectable_column_weight: float
     max_rendered_entries: int
 
 
-class SequencerLayout(BaseModel, frozen=True):
+class SequencerLayout(BaseModel, extra="forbid", frozen=True):
     cell_padding: Padding
     order: OrderLayout
     table_cells: SequencerTableCells

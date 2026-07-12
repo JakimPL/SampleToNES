@@ -39,7 +39,6 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.tags.instructions import (
-    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_PLAYER,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
@@ -62,7 +61,6 @@ from sampletones_application.ui.panels.instruction.spectrum import (
 from sampletones_application.ui.panels.instruction.waveform import (
     GUIInstructionWaveformPanel,
 )
-from sampletones_application.ui.panels.player.player import GUIAudioPlayerPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -234,11 +232,6 @@ class InstructionsTabCoordinator:
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_audio_state_changed,
-        )
-        self._instruction_player_panel = GUIAudioPlayerPanel(
-            tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_PLAYER,
-            layout=layout.player,
-            language_manager=language_manager,
         )
         self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,

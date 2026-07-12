@@ -12,7 +12,7 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.layout.settings import SettingsLayout
 
 
-class LayoutConfig(BaseModel, frozen=True):
+class LayoutConfig(BaseModel, extra="forbid", frozen=True):
     general: GeneralLayout
     glyphs: Glyphs
     graphs: GraphsLayout

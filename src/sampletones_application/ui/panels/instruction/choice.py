@@ -25,6 +25,8 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
 )
 from sampletones_application.ui.elements.field import labeled_field
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
@@ -285,6 +287,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         ]:
             self._status_bar.bind_to_item(tag, self._msg_status_input)
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
+            FontRegistry.bind_to_item(tag, Font.MONO)
 
     def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
         self._create_pitch_stepper(
@@ -325,6 +328,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         self._status_bar.bind_to_item(
             TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME, self._msg_status_input
         )
+        FontRegistry.bind_to_item(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME, Font.MONO)
         self._status_bar.bind_to_item(
             TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT, self._msg_status_input
         )

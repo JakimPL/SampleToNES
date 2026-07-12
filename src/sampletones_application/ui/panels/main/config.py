@@ -17,6 +17,8 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_PANEL,
 )
 from sampletones_application.ui.elements.field import labeled_field
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -256,6 +258,7 @@ class GUIConfigPanel(GUIPanel):
             TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
         ]:
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
+            FontRegistry.bind_to_item(tag, Font.MONO)
 
         self._status_bar.bind_to_item(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD, self._msg_status_combo)
         self._status_bar.bind_to_item(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._msg_status_input)

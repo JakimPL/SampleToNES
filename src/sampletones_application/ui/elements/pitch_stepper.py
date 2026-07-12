@@ -15,6 +15,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PITCH_STEPPER,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -136,6 +138,7 @@ class GUIPitchStepper(CallbackMixin):
                         tag=self._value_tag,
                         color=self._value_color,
                     )
+                    FontRegistry.bind_to_item(self._value_tag, Font.MONO)
                 with dpg.table_cell():
                     dpg.add_input_text(
                         tag=self._input_tag,
@@ -143,6 +146,7 @@ class GUIPitchStepper(CallbackMixin):
                         width=-1,
                         on_enter=False,
                     )
+                    FontRegistry.bind_to_item(self._input_tag, Font.MONO)
                 with dpg.table_cell():
                     GUIButton(
                         label="-",

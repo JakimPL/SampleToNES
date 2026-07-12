@@ -19,6 +19,8 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_MODULE_PANEL,
 )
 from sampletones_application.ui.elements.field import labeled_field
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -163,6 +165,14 @@ class GUISequencerModulePanel(GUIPanel):
                     width=self._input_width,
                     callback=self._on_speed_input,
                 )
+
+        for tag in (
+            TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
+            TAG_SEQUENCER_MODULE_INPUT_ROWS,
+            TAG_SEQUENCER_MODULE_INPUT_TEMPO,
+            TAG_SEQUENCER_MODULE_INPUT_SPEED,
+        ):
+            FontRegistry.bind_to_item(tag, Font.MONO)
 
         self._commit_on_finish(
             TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,

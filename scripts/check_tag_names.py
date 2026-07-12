@@ -39,7 +39,10 @@ def validate_assignment(assignment: ast.Assign, path: Path) -> Optional[str]:
         return f"Module '{path.name}' contains an invalid tag: {target.id},\nexpected all arguments to be ast.Attribute"
 
     if not isinstance(name, ast.Constant) or not isinstance(name.value, str):
-        return f"Module '{path.name}' contains an invalid tag: {target.id},\nexpected last argument to be ast.Constant with a string value"
+        return (
+            f"Module '{path.name}' contains an invalid tag: {target.id},\n"
+            "expected last argument to be ast.Constant with a string value"
+        )
 
     page_value, panel_value, widget_value = (
         getattr(enum, attribute.attr) for enum, attribute in zip(ARGUMENT_ENUMS, (page, panel, widget))

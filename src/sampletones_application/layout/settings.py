@@ -1,12 +1,12 @@
 from pydantic import BaseModel
 
 
-class SettingsWindowLayout(BaseModel, frozen=True):
+class SettingsWindowLayout(BaseModel, extra="forbid", frozen=True):
     width: int
     height: int
 
 
-class SettingsLayout(BaseModel, frozen=True):
+class SettingsLayout(BaseModel, extra="forbid", frozen=True):
     window: SettingsWindowLayout
     combo_width: int
     label_width: int

@@ -83,7 +83,7 @@ def populate_detail_tooltip(tag: str, items: List[Tuple[str, str]]) -> None:
                 label_text = dpg.add_text(label)
                 FontRegistry.bind_to_item(label_text, Font.REGULAR_SMALL)
                 value_text = dpg.add_text(value)
-                FontRegistry.bind_to_item(value_text, Font.REGULAR_SMALL)
+                FontRegistry.bind_to_item(value_text, Font.MONO_SMALL)
 
 
 def show_status(message: str) -> None:
