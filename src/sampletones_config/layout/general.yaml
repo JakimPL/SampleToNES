@@ -87,6 +87,10 @@ section_header:
     indent: 4
     width: 20
 
+collapse:
+  header_bar_height: 32
+  rail_width: 28
+
 colors:
   text:
     white: "#ffffff"

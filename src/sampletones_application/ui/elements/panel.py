@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from contextlib import contextmanager
+from typing import Iterator, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -7,6 +8,7 @@ from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.collapse import CollapseAxis, CollapseController
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.types.application import Sender
@@ -35,9 +37,18 @@ class GUIPanel(CallbackMixin, ABC):
         self.tag = tag
         self.width = width
         self.height = height
+        self._collapse: Optional[CollapseController] = None
 
     @abstractmethod
     def create_panel(self, parent: str) -> None: ...
+
+    @property
+    def collapse(self) -> Optional[CollapseController]:
+        return self._collapse
+
+    @property
+    def collapsed(self) -> bool:
+        return self._collapse is not None and self._collapse.collapsed
 
     @classmethod
     def configure_section_header(
@@ -56,6 +67,8 @@ class GUIPanel(CallbackMixin, ABC):
         glyph: Optional[str] = None,
         parent: Sender = 0,
         tag: Sender = 0,
+        affordance: Optional[str] = None,
+        affordance_tag: Sender = 0,
     ) -> None:
         """Render this panel's section header: a compact accent-toned label with a leading marker.
 
@@ -65,20 +78,26 @@ class GUIPanel(CallbackMixin, ABC):
         glyph's own width. Every panel opens with the same header treatment, so defining it on the
         base keeps the tabs consistent and gives one place to restyle every header at once. ``parent``
         targets a specific container for panels that build outside a ``with`` block.
+
+        When ``affordance`` is given, a stretch spacer pushes a right-aligned chevron to the header's
+        end, signalling the card collapses; the chevron carries ``affordance_tag`` so the controller
+        can flip its glyph, and the trailing separator is dropped because the collapse strip frames the
+        header itself.
         """
         theme = ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER)
         marker_glyph = glyph if glyph is not None else self._glyphs.common.tick
+        collapsible = affordance is not None
+        policy = dpg.mvTable_SizingStretchProp if collapsible else dpg.mvTable_SizingFixedFit
         with dpg.group(parent=parent, tag=tag) as header:
-            with dpg.table(
-                header_row=False,
-                policy=dpg.mvTable_SizingFixedFit,
-                resizable=False,
-            ):
+            with dpg.table(header_row=False, policy=policy, resizable=False):
                 dpg.add_table_column(
                     width_fixed=True,
                     init_width_or_weight=self._glyph_layout.width,
                 )
-                dpg.add_table_column(width_fixed=True)
+                dpg.add_table_column(width_fixed=not collapsible)
+                if collapsible:
+                    dpg.add_table_column(width_fixed=True)
+
                 with dpg.table_row():
                     with dpg.table_cell():
                         marker = dpg.add_text(marker_glyph, indent=self._glyph_layout.indent)
@@ -88,8 +107,62 @@ class GUIPanel(CallbackMixin, ABC):
                         label_text = dpg.add_text(label.upper())
                         FontRegistry.bind_to_item(label_text, Font.BOLD)
 
-        dpg.add_separator()
+                    if collapsible:
+                        with dpg.table_cell():
+                            chevron = dpg.add_text(affordance, tag=affordance_tag)
+                            FontRegistry.bind_to_item(chevron, Font.ICON)
+
+        if not collapsible:
+            dpg.add_separator()
+
         theme.bind_to_item(header)
+
+    @contextmanager
+    def _collapsible_section(
+        self,
+        controller: CollapseController,
+        label: str,
+        *,
+        glyph: str,
+    ) -> Iterator[None]:
+        """Frame a card's content with a clickable, collapsible header and yield its body container.
+
+        The header lives in a thin child-window strip so it can carry a hover background, and its
+        chevron signals the card collapses. The body opens as a group tagged for show/hide, so the
+        panel's existing flat ``dpg.add_*`` calls land inside it unchanged. Horizontal cards also get
+        a hidden rail the collapsed state swaps in. Building finishes by applying the persisted
+        collapsed state without re-notifying, so restore-on-launch matches the stored value.
+        """
+        with dpg.child_window(
+            tag=controller.strip_tag,
+            height=controller.header_bar_height,
+            border=False,
+            no_scrollbar=True,
+        ):
+            self._create_section_header(
+                label,
+                glyph=glyph,
+                affordance=controller.chevron_glyph,
+                affordance_tag=controller.chevron_tag,
+            )
+
+        if controller.is_horizontal:
+            with dpg.child_window(
+                tag=controller.rail_tag,
+                width=controller.rail_width,
+                border=False,
+                no_scrollbar=True,
+                show=False,
+            ):
+                rail_marker = dpg.add_text(glyph)
+                FontRegistry.bind_to_item(rail_marker, Font.ICON)
+
+        controller.attach()
+
+        with dpg.group(tag=controller.body_tag):
+            yield
+
+        controller.set_collapsed(controller.collapsed, notify=False)
 
     def set_visibility(self, visible: bool) -> None:
         dpg_configure_item(self.tag, show=visible)

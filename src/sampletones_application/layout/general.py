@@ -113,6 +113,13 @@ class SectionHeaderLayout(BaseModel, extra="forbid", frozen=True):
     glyph: GlyphLayout
 
 
+class CollapseLayout(BaseModel, extra="forbid", frozen=True):
+    """Geometry of a collapsed card: the header bar a vertical card shrinks to, and the rail a docked column retracts to."""
+
+    header_bar_height: int
+    rail_width: int
+
+
 class TextColors(BaseModel, extra="forbid", frozen=True):
     white: RGBA
     default: RGBA
@@ -207,4 +214,5 @@ class GeneralLayout(BaseModel, extra="forbid", frozen=True):
     menu: MenuLayout
     caret: CaretLayout
     section_header: SectionHeaderLayout
+    collapse: CollapseLayout
     colors: GeneralColors
