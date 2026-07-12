@@ -217,10 +217,7 @@ class SequencerTabCoordinator:
         self._instruments_width = layout.general.columns.sequencer_right.width
         self._right_height = layout.general.columns.sequencer_right.height
         self._panel_gap = layout.general.panel_gap
-        self._history_reservation = layout.sequencer.history.height + layout.sequencer.history.margin
-        self._collapsed_history_reservation = (
-            layout.general.collapse.header_bar_height + layout.sequencer.history.margin
-        )
+        self._history_expanded_height = layout.sequencer.history.height
 
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
             config_manager,
@@ -470,18 +467,25 @@ class SequencerTabCoordinator:
             self._sync_samples_height()
 
     def _sync_samples_height(self) -> None:
-        """Reserves only as much bottom space as the history card currently occupies.
+        """Reserves only as much bottom space as the history card and its gap currently occupy.
 
-        The samples card fills the right column above the history card by reserving the history card's
-        height. When history collapses to its header bar, the samples card reclaims the freed space so
-        the history bar sits directly beneath it instead of leaving a gap.
+        The samples card fills the right column above the history card by reserving that footprint.
+        When history collapses to its header bar, the reservation shrinks to the bar's measured height
+        so the samples card reclaims the freed space and the history bar sits flush beneath it. The
+        collapsed bar height is measured from the rendered strip, so a history card that starts
+        collapsed at launch reserves once the strip lays out, retried on the next frame until then.
         """
-        reservation = (
-            self._collapsed_history_reservation
-            if self._sequencer_history_panel.collapsed
-            else self._history_reservation
-        )
-        self._sequencer_samples_panel.set_expanded_height(-reservation)
+        if self._sequencer_history_panel.collapsed:
+            controller = self._sequencer_history_panel.collapse
+            assert controller is not None, "History panel collapsed without a collapse controller."
+            footprint = controller.collapsed_height
+            if footprint is None:
+                FrameCallbackManager.set_frame_callback(self._sync_samples_height)
+                return
+        else:
+            footprint = self._history_expanded_height
+
+        self._sequencer_samples_panel.set_expanded_height(-(self._panel_gap + footprint))
 
     def _wire_history(self) -> None:
         self._sequencer_history_panel.on_undo = self.undo

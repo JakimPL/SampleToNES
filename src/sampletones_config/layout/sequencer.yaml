@@ -37,7 +37,6 @@ tracker:
 
 history:
   height: 260
-  margin: 5
   selectable_column_weight: 0.0001
   max_rendered_entries: 100
 

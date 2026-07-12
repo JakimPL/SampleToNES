@@ -146,7 +146,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         super().__init__(
             tag=TAG_SEQUENCER_INSTRUMENTS_PANEL,
             width=-1,
-            height=-(layout.history.height + layout.history.margin),
+            height=-layout.history.height,
         )
         self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
