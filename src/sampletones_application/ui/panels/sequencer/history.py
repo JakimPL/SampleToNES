@@ -21,7 +21,6 @@ from sampletones_application.tags.sequencer import (
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.color import RGBA
@@ -77,6 +76,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         layout: SequencerLayout,
         feature_colors: FeatureColors,
         language_manager: LanguageManager,
+        initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._feature_colors = feature_colors
@@ -115,13 +115,15 @@ class GUISequencerHistoryPanel(GUIPanel):
         super().__init__(
             tag=TAG_SEQUENCER_HISTORY_PANEL,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def create_panel(self, parent: str) -> None:
-        with card(parent, self.tag, width=0, height=-1, auto_resize_y=False):
-            self._create_section_header(
-                self._lbl_history,
-                glyph=self._glyphs.headers.history,
-            )
+        with self._collapsible_card(
+            parent,
+            self._lbl_history,
+            glyph=self._glyphs.headers.history,
+            width=0,
+        ):
             self._create_actions()
             self._create_window_list()
 

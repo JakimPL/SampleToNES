@@ -58,8 +58,13 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
+    TAG_SEQUENCER_GRID_PANEL,
+    TAG_SEQUENCER_HISTORY_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
+    TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
+    TAG_SEQUENCER_MODULE_PANEL,
+    TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -118,6 +123,7 @@ class SequencerTabCoordinator:
         on_tab_switch: Callable[[Tab], None],
     ) -> None:
         self._project_controller = project_controller
+        self._session_manager = session_manager
         self._history = history
         self._original_audio_locator = original_audio_locator
         self._on_edit_sample_requested = on_edit_sample_requested
@@ -264,6 +270,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             layout=layout.sequencer,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_GRID_PANEL),
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
@@ -272,23 +279,27 @@ class SequencerTabCoordinator:
             layout=layout.sequencer,
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_MODULE_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
             shortcut_manager=shortcut_manager,
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD),
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
             layout=layout.sequencer,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_INSTRUMENTS_PANEL),
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
         self._sequencer_history_panel: GUISequencerHistoryPanel = GUISequencerHistoryPanel(
             layout=layout.sequencer,
             feature_colors=layout.general.colors.features,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_HISTORY_PANEL),
             language_manager=language_manager,
         )
         self._history_detail: SequencerHistoryDetail = SequencerHistoryDetail(
@@ -299,6 +310,14 @@ class SequencerTabCoordinator:
         self._wire_callbacks()
 
     def _wire_callbacks(self) -> None:
+        for panel in (
+            self._sequencer_order_panel,
+            self._sequencer_grid_panel,
+            self._sequencer_module_panel,
+            self._sequencer_samples_panel,
+            self._sequencer_history_panel,
+        ):
+            panel.set_collapse_handler(self._on_card_collapse_changed)
         self._sequencer_module_panel.on_nes_frequency = self._request_nes_frequency_change
         self._sequencer_module_panel.on_rows_per_pattern = self._undoable(
             HistoryAction.SET_ROWS_PER_PATTERN,
@@ -439,6 +458,10 @@ class SequencerTabCoordinator:
         self._project_controller.on_samples_changed = self._sequencer_samples_logic.push_samples
         self._project_controller.on_project_replaced = self._on_project_replaced
         self._wire_history()
+
+    def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists a card's collapsed state so it restores on the next launch."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
 
     def _wire_history(self) -> None:
         self._sequencer_history_panel.on_undo = self.undo

@@ -9,6 +9,7 @@ from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis, CollapseController
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -52,6 +53,17 @@ class GUIPanel(CallbackMixin, ABC):
     def collapsed(self) -> bool:
         return self._collapse is not None and self._collapse.collapsed
 
+    @property
+    def _body_container(self) -> str:
+        """The container new body content attaches to: the collapse body group when collapsible, else the card.
+
+        A collapsible card hides its body group to collapse, so content built with an explicit parent
+        must target that group rather than the card, or it stays visible when the card collapses.
+        """
+        if self._collapse is not None:
+            return self._collapse.body_tag
+        return self.tag
+
     @classmethod
     def configure_section_header(
         cls,
@@ -64,16 +76,29 @@ class GUIPanel(CallbackMixin, ABC):
         cls._glyph_layout = glyph_layout
         cls._collapse_layout = collapse_layout
 
-    def _enable_vertical_collapse(self, *, initial_collapsed: bool) -> None:
-        """Give this card a controller that shrinks it to a header bar in place, seeded from persisted state."""
+    def _enable_vertical_collapse(
+        self,
+        *,
+        initial_collapsed: bool,
+        auto_height: bool = False,
+        card_tag: Optional[str] = None,
+    ) -> None:
+        """Give this card a controller that shrinks it to a header bar in place, seeded from persisted state.
+
+        ``auto_height`` suits a card that sizes itself to its content: it collapses by hiding its body
+        and lets its own auto-resize settle onto the header bar. ``card_tag`` names the child-window the
+        controller resizes when it differs from the panel tag, so a panel whose card wraps an inner group
+        still collapses the outer card.
+        """
         self._collapse = CollapseController(
-            self.tag,
+            card_tag if card_tag is not None else self.tag,
             CollapseAxis.VERTICAL,
             expanded_height=self.height,
             header_bar_height=self._collapse_layout.header_bar_height,
             rail_width=self._collapse_layout.rail_width,
             glyphs=self._glyphs,
             initial_collapsed=initial_collapsed,
+            auto_height=auto_height,
         )
 
     def set_collapse_handler(self, callback: Callable[[str, bool], None]) -> None:
@@ -137,6 +162,37 @@ class GUIPanel(CallbackMixin, ABC):
             dpg.add_separator()
 
         theme.bind_to_item(header)
+
+    @contextmanager
+    def _collapsible_card(
+        self,
+        parent: str,
+        label: str,
+        *,
+        glyph: str,
+        width: int = -1,
+        no_scrollbar: bool = False,
+    ) -> Iterator[None]:
+        """Open this panel's card and frame its content with the collapsible header in one step.
+
+        The card's tag, height, and auto-resize follow the collapse controller, so the card and its
+        controller stay in step; the panel supplies only the width and scrollbar the controller does
+        not own. A controller must be enabled first via ``_enable_vertical_collapse``.
+        """
+        controller = self._collapse
+        if controller is None:
+            raise RuntimeError(f"Card {self.tag} opened a collapsible card without a collapse controller.")
+
+        with card(
+            parent,
+            controller.card_tag,
+            width=width,
+            height=controller.expanded_height,
+            auto_resize_y=controller.auto_height,
+            no_scrollbar=no_scrollbar,
+        ):
+            with self._collapsible_section(label, glyph=glyph):
+                yield
 
     @contextmanager
     def _collapsible_section(

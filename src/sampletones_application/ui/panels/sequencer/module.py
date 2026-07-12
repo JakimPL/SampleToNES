@@ -21,7 +21,6 @@ from sampletones_application.tags.sequencer import (
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -50,6 +49,7 @@ class GUISequencerModulePanel(GUIPanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         shortcut_manager: ShortcutManager,
+        initial_collapsed: bool = False,
     ) -> None:
         self._initial_settings = initial_settings
         self._layout = layout
@@ -111,13 +111,17 @@ class GUISequencerModulePanel(GUIPanel):
         super().__init__(
             tag=TAG_SEQUENCER_MODULE_PANEL,
         )
+        self._enable_vertical_collapse(
+            initial_collapsed=initial_collapsed,
+            auto_height=True,
+        )
 
     def create_panel(self, parent: str) -> None:
-        with card(parent, self.tag):
-            self._create_section_header(
-                self._lbl_module_options,
-                glyph=self._glyphs.headers.settings,
-            )
+        with self._collapsible_card(
+            parent,
+            self._lbl_module_options,
+            glyph=self._glyphs.headers.settings,
+        ):
             self._create_module_options()
 
     def _create_module_options(self) -> None:

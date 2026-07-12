@@ -34,10 +34,12 @@ class CollapseController(CallbackMixin):
     """Drives one card's collapse interaction and, for a vertical card, its geometry.
 
     A vertical card owns its own height, so this controller shrinks it to the header
-    bar in place. A horizontal card only hides its body and swaps in a rail; the owning
-    coordinator reclaims the freed width, which it learns through ``on_toggle``. The
-    card's tag is the persistence key, so the collapsible set is defined by which panels
-    build a controller rather than by a central registry.
+    bar in place. A card that sizes itself to its content (``auto_height``) collapses by
+    hiding its body alone, letting the card's own auto-resize settle onto the header bar.
+    A horizontal card only hides its body and swaps in a rail; the owning coordinator
+    reclaims the freed width, which it learns through ``on_toggle``. The card's tag is the
+    persistence key, so the collapsible set is defined by which panels build a controller
+    rather than by a central registry.
     """
 
     def __init__(
@@ -50,6 +52,7 @@ class CollapseController(CallbackMixin):
         rail_width: int,
         glyphs: Glyphs,
         initial_collapsed: bool = False,
+        auto_height: bool = False,
     ) -> None:
         self.card_tag = card_tag
         self.axis = axis
@@ -58,6 +61,7 @@ class CollapseController(CallbackMixin):
         self._rail_width = rail_width
         self._glyphs = glyphs
         self._collapsed = initial_collapsed
+        self._auto_height = auto_height
 
         self.strip_tag = f"{card_tag}{SUF_COLLAPSE_STRIP}"
         self.body_tag = f"{card_tag}{SUF_COLLAPSE_BODY}"
@@ -72,6 +76,14 @@ class CollapseController(CallbackMixin):
     @property
     def collapsed(self) -> bool:
         return self._collapsed
+
+    @property
+    def expanded_height(self) -> int:
+        return self._expanded_height
+
+    @property
+    def auto_height(self) -> bool:
+        return self._auto_height
 
     @property
     def header_bar_height(self) -> int:
@@ -115,15 +127,16 @@ class CollapseController(CallbackMixin):
         if self.is_horizontal:
             dpg_configure_item(self.strip_tag, show=not collapsed)
             dpg_configure_item(self.rail_tag, show=collapsed)
-        elif collapsed:
-            self._apply_collapsed_height()
-        else:
-            dpg_configure_item(
-                self.card_tag,
-                height=self._expanded_height,
-                no_scrollbar=False,
-                no_scroll_with_mouse=False,
-            )
+        elif not self._auto_height:
+            if collapsed:
+                self._apply_collapsed_height()
+            else:
+                dpg_configure_item(
+                    self.card_tag,
+                    height=self._expanded_height,
+                    no_scrollbar=False,
+                    no_scroll_with_mouse=False,
+                )
 
         dpg_set_value(self.chevron_tag, self.chevron_glyph)
 

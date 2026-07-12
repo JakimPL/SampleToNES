@@ -25,7 +25,6 @@ from sampletones_application.tags.main import (
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -50,9 +49,9 @@ class GUIReconstructorPanel(GUIPanel):
         input_width: int,
         label_width: int,
         panel_height: int,
-        initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        initial_collapsed: bool = False,
     ) -> None:
         self._view = initial_view
         self._layout = layout
@@ -125,12 +124,16 @@ class GUIReconstructorPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
-            with self._collapsible_section(self._lbl_section_settings, glyph=self._glyphs.headers.reconstruction):
-                self._create_generator_selection()
-                dpg.add_separator()
-                self._create_drive_slider()
-                self._create_tooltips()
+        with self._collapsible_card(
+            parent,
+            self._lbl_section_settings,
+            glyph=self._glyphs.headers.reconstruction,
+            width=self.width,
+        ):
+            self._create_generator_selection()
+            dpg.add_separator()
+            self._create_drive_slider()
+            self._create_tooltips()
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):

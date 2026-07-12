@@ -56,7 +56,11 @@ def _glyphs() -> Glyphs:
     return Glyphs.model_construct(common=common)
 
 
-def _controller(axis: CollapseAxis, initial_collapsed: bool = False) -> CollapseController:
+def _controller(
+    axis: CollapseAxis,
+    initial_collapsed: bool = False,
+    auto_height: bool = False,
+) -> CollapseController:
     return CollapseController(
         _CARD_TAG,
         axis,
@@ -65,6 +69,7 @@ def _controller(axis: CollapseAxis, initial_collapsed: bool = False) -> Collapse
         rail_width=_RAIL_WIDTH,
         glyphs=_glyphs(),
         initial_collapsed=initial_collapsed,
+        auto_height=auto_height,
     )
 
 
@@ -134,6 +139,32 @@ class TestVerticalCollapse:
         assert controller.collapsed is True
         assert dpg.get_item_configuration(controller.card_tag)["height"] == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
         assert dpg.get_value(controller.chevron_tag) == _COLLAPSED_GLYPH
+
+
+class TestAutoHeightVerticalCollapse:
+    """An auto-height card leaves its geometry to its own auto-resize: collapsing hides the body and
+    flips the chevron without touching the card height, so the card settles onto the header bar on its
+    own rather than being sized to a fixed collapsed bar."""
+
+    def test_collapsing_hides_the_body_and_leaves_the_height_untouched(self, dpg_context: None) -> None:
+        controller = _controller(CollapseAxis.VERTICAL, auto_height=True)
+        _build_card(controller)
+
+        controller.set_collapsed(True)
+
+        assert dpg.get_item_configuration(controller.body_tag)["show"] is False
+        assert dpg.get_item_configuration(controller.card_tag)["height"] == _EXPANDED_HEIGHT
+        assert dpg.get_value(controller.chevron_tag) == _COLLAPSED_GLYPH
+
+    def test_expanding_shows_the_body_and_leaves_the_height_untouched(self, dpg_context: None) -> None:
+        controller = _controller(CollapseAxis.VERTICAL, initial_collapsed=True, auto_height=True)
+        _build_card(controller)
+
+        controller.set_collapsed(False)
+
+        assert dpg.get_item_configuration(controller.body_tag)["show"] is True
+        assert dpg.get_item_configuration(controller.card_tag)["height"] == _EXPANDED_HEIGHT
+        assert dpg.get_value(controller.chevron_tag) == _EXPANDED_GLYPH
 
 
 class TestHorizontalCollapse:

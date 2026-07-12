@@ -23,7 +23,6 @@ from sampletones_application.ui.elements.context_menu import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
@@ -81,6 +80,7 @@ class GUISequencerGridPanel(GUIPanel):
         layout: SequencerLayout,
         language_manager: LanguageManager,
         shortcut_manager: ShortcutManager,
+        initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._language_manager = language_manager
@@ -175,6 +175,7 @@ class GUISequencerGridPanel(GUIPanel):
             tag=TAG_SEQUENCER_GRID_PANEL,
             height=-1,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def _load_context_labels(self, language_manager: LanguageManager) -> None:
         def label(element: SequencerGridElements) -> str:
@@ -228,7 +229,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
 
     def _create_tracker_view(self, parent: str) -> None:
-        with card(parent, self.tag, width=-1, height=-1, auto_resize_y=False):
+        with self._collapsible_card(parent, self._lbl_tracker, glyph=self._glyphs.headers.tracker):
             dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER)
             with dpg.child_window(
                 tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
@@ -237,10 +238,6 @@ class GUISequencerGridPanel(GUIPanel):
                 width=0,
                 height=-1,
             ):
-                self._create_section_header(
-                    self._lbl_tracker,
-                    glyph=self._glyphs.headers.tracker,
-                )
                 with dpg.table(
                     tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
                     width=0,

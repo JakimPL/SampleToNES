@@ -23,7 +23,6 @@ from sampletones_application.ui.elements.context_menu import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
@@ -81,6 +80,7 @@ class GUISequencerOrderPanel(GUIPanel):
         layout: SequencerLayout,
         language_manager: LanguageManager,
         shortcut_manager: ShortcutManager,
+        initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._shortcut_manager = shortcut_manager
@@ -165,15 +165,19 @@ class GUISequencerOrderPanel(GUIPanel):
         super().__init__(
             tag=TAG_SEQUENCER_ORDER_PANEL,
         )
+        self._enable_vertical_collapse(
+            initial_collapsed=initial_collapsed,
+            auto_height=True,
+            card_tag=TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
+        )
 
     def create_panel(self, parent: str) -> None:
         self._create_entry_themes()
-        with card(parent, TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD):
-            self._create_section_header(
-                self._lbl_order,
-                glyph=self._glyphs.headers.order,
-                parent=TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
-            )
+        with self._collapsible_card(
+            parent,
+            self._lbl_order,
+            glyph=self._glyphs.headers.order,
+        ):
             with dpg.group(tag=self.tag):
                 self._create_button_row()
                 self._create_order_window()

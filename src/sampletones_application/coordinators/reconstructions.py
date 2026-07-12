@@ -55,6 +55,8 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -113,6 +115,7 @@ class ReconstructionsTabCoordinator:
         status_bar: GUIStatusBar,
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
+        self._session_manager = session_manager
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
 
@@ -300,14 +303,18 @@ class ReconstructionsTabCoordinator:
             path_status_color=layout.general.colors.text.disabled,
             file_dialog_width=layout.general.dialogs.file.width,
             file_dialog_height=layout.general.dialogs.file.height,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO),
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._reconstruction_plot_panel: GUIReconstructionPlotPanel = GUIReconstructionPlotPanel(
             layout_graphs=layout.graphs,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT),
             language_manager=language_manager,
             status_bar=status_bar,
         )
+        self._reconstruction_audio_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._reconstruction_plot_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
@@ -478,6 +485,10 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_audio_panel.create_panel(parent)
         dpg.add_spacer(height=self._panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)
+
+    def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists a card's collapsed state so it restores on the next launch."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
 
     def lock(self) -> None:
         self._browser_panel.lock()

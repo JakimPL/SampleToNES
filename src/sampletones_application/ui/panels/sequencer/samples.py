@@ -24,7 +24,6 @@ from sampletones_application.ui.elements.context_menu import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
@@ -47,6 +46,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         layout: SequencerLayout,
         language_manager: LanguageManager,
         shortcut_manager: ShortcutManager,
+        initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._shortcut_manager = shortcut_manager
@@ -148,10 +148,14 @@ class GUISequencerSamplesPanel(GUIPanel):
             width=-1,
             height=-(layout.history.height + layout.history.margin),
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def create_panel(self, parent: str) -> None:
-        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
-            self._create_section_text()
+        with self._collapsible_card(
+            parent,
+            self._lbl_instruments,
+            glyph=self._glyphs.headers.samples,
+        ):
             self._create_samples_table()
 
         self._create_row_handlers()
@@ -172,12 +176,6 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _create_key_handler(self) -> None:
         with dpg.handler_registry(tag=TAG_SEQUENCER_INSTRUMENTS_HANDLER_KEY):
             dpg.add_key_press_handler(callback=self._on_key_pressed)
-
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_instruments,
-            glyph=self._glyphs.headers.samples,
-        )
 
     def _create_samples_table(self) -> None:
         with dpg.child_window(

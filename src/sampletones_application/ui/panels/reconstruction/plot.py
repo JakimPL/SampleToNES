@@ -29,7 +29,6 @@ from sampletones_application.tags.reconstructions import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -58,6 +57,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         layout_graphs: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        initial_collapsed: bool = False,
     ) -> None:
         self._layout_graphs = layout_graphs
         self._status_bar = status_bar
@@ -142,13 +142,19 @@ class GUIReconstructionPlotPanel(GUIPanel):
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
         )
+        self._enable_vertical_collapse(
+            initial_collapsed=initial_collapsed,
+            auto_height=True,
+        )
 
     def create_panel(self, parent: str) -> None:
-        with card(parent, self.tag, width=0, no_scrollbar=True):
-            self._create_section_header(
-                self._lbl_waveform,
-                glyph=self._glyphs.headers.waveform,
-            )
+        with self._collapsible_card(
+            parent,
+            self._lbl_waveform,
+            glyph=self._glyphs.headers.waveform,
+            width=0,
+            no_scrollbar=True,
+        ):
             self._create_autoscale_checkbox()
             self._create_waveform_display()
             self._create_generator_checkboxes()
@@ -206,7 +212,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         dpg.add_checkbox(
             label=self._lbl_autoscale,
             tag=self.autoscale_tag,
-            parent=self.tag,
+            parent=self._body_container,
             default_value=True,
             callback=self._on_autoscale_changed,
         )
@@ -215,7 +221,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformGraph(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM,
-            parent=self.tag,
+            parent=self._body_container,
             layout=self._layout_graphs,
             language_manager=self._language_manager,
             status_bar=self._status_bar,
@@ -231,7 +237,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
         with dpg.group(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
-            parent=self.tag,
+            parent=self._body_container,
             horizontal=True,
         ):
             for generator_name, label in generator_labels.items():

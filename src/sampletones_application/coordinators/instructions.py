@@ -39,6 +39,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.tags.instructions import (
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
@@ -244,15 +246,19 @@ class InstructionsTabCoordinator:
             ],
         )
         self._waveform_panel = GUIInstructionWaveformPanel(
+            initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),
             layout=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._spectrum_panel = GUIInstructionSpectrumPanel(
+            initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM),
             layout=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,
         )
+        self._waveform_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._spectrum_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
@@ -406,6 +412,10 @@ class InstructionsTabCoordinator:
         self._spectrum_panel.clear_layers()
         self._instruction_details_logic.clear_display()
         self._instruction_player_logic.clear_audio()
+
+    def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists a centre-column card's collapsed state so it restores on the next launch."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
 
     def _update_details_view(self, view_model: InstructionDetailsPanelViewModel) -> None:
         """Fans the details view model out to the parameters and choice cards."""

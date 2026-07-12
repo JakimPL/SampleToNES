@@ -32,7 +32,6 @@ from sampletones_application.tags.main import (
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -129,12 +128,16 @@ class GUIConverterPanel(GUIPanel):
         self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def create_panel(self, parent: str) -> None:
-        with card(parent, self.tag, width=self.width, height=self.height, auto_resize_y=False):
-            with self._collapsible_section(self._lbl_section, glyph=self._glyphs.headers.converter):
-                self._create_action_button()
-                dpg.add_separator()
-                self._create_summary()
-                self._create_conversion_status()
+        with self._collapsible_card(
+            parent,
+            self._lbl_section,
+            glyph=self._glyphs.headers.converter,
+            width=self.width,
+        ):
+            self._create_action_button()
+            dpg.add_separator()
+            self._create_summary()
+            self._create_conversion_status()
 
     def is_visible(self) -> bool:
         return bool(dpg.get_item_configuration(self.tag)["show"])
