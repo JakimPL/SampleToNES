@@ -118,6 +118,7 @@ class CollapseLayout(BaseModel, extra="forbid", frozen=True):
 
     header_bar_height: int
     rail_width: int
+    rail_title_gap: int
 
 
 class TextColors(BaseModel, extra="forbid", frozen=True):

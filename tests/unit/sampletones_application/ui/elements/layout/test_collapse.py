@@ -3,15 +3,19 @@ from typing import Iterator, List, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.layout.glyphs import CommonGlyphs, Glyphs
+from sampletones_application.layout.general import CollapseLayout
+from sampletones_application.layout.glyphs import CommonGlyphs, GlyphLayout, Glyphs
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_COLLAPSE_HEADER,
     TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED,
+    TAG_GLOBAL_THEME_SECTION_HEADER,
 )
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.collapse import (
     CollapseAxis,
     CollapseController,
 )
+from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
@@ -34,11 +38,13 @@ def dpg_context() -> Iterator[None]:
     dpg.create_context()
     ThemeRegistry.register(Theme(tag=TAG_GLOBAL_THEME_COLLAPSE_HEADER, items=ThemeItems()))
     ThemeRegistry.register(Theme(tag=TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED, items=ThemeItems()))
+    ThemeRegistry.register(Theme(tag=TAG_GLOBAL_THEME_SECTION_HEADER, items=ThemeItems()))
     try:
         yield
     finally:
         ThemeRegistry._registry.pop(TAG_GLOBAL_THEME_COLLAPSE_HEADER, None)
         ThemeRegistry._registry.pop(TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED, None)
+        ThemeRegistry._registry.pop(TAG_GLOBAL_THEME_SECTION_HEADER, None)
         dpg.destroy_context()
 
 
@@ -241,3 +247,44 @@ class TestHorizontalCollapse:
 
         assert _controller(CollapseAxis.HORIZONTAL_LEFT, initial_collapsed=True).chevron_glyph == _CHEVRON_LEFT_GLYPH
         assert _controller(CollapseAxis.HORIZONTAL_RIGHT, initial_collapsed=True).chevron_glyph == _CHEVRON_RIGHT_GLYPH
+
+
+_RAIL_LABEL = "Filesystem"
+_RAIL_GLYPH = "#"
+
+
+class _RailPanel(GUIPanel):
+    """A bare panel that only exists to build ``_collapsible_section`` so its rail can be inspected."""
+
+    def create_panel(self, parent: str) -> None:
+        raise NotImplementedError
+
+
+@pytest.fixture
+def section_panel(dpg_context: None, monkeypatch: pytest.MonkeyPatch) -> _RailPanel:
+    """A horizontally docked panel wired with test geometry, its font binding stubbed to a no-op."""
+    monkeypatch.setattr(FontRegistry, "bind_to_item", staticmethod(lambda item, font: None))
+    GUIPanel.configure_section_header(
+        _glyphs(),
+        GlyphLayout(indent=0, width=_RAIL_WIDTH),
+        CollapseLayout(header_bar_height=_HEADER_BAR_HEIGHT, rail_width=_RAIL_WIDTH, rail_title_gap=6),
+    )
+    panel = _RailPanel(tag=_CARD_TAG)
+    panel._enable_horizontal_collapse(initial_collapsed=True, side=CollapseAxis.HORIZONTAL_LEFT)
+    return panel
+
+
+class TestHorizontalRailTitle:
+    """A docked card's rail names itself: it stacks the card title one character per line, so a
+    collapsed column still reads as what it holds beside its glyph and expand chevron."""
+
+    def test_rail_stacks_the_title_one_character_per_line(self, section_panel: _RailPanel) -> None:
+        with dpg.window():
+            with dpg.child_window(tag=section_panel.tag):
+                with section_panel._collapsible_section(_RAIL_LABEL, glyph=_RAIL_GLYPH):
+                    dpg.add_text("body")
+
+        controller = section_panel.collapse
+        assert controller is not None
+        rail_texts = [dpg.get_value(item) for item in dpg.get_item_children(controller.rail_tag, 1)]
+        assert "\n".join(_RAIL_LABEL) in rail_texts
