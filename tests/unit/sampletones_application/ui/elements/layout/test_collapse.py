@@ -3,7 +3,7 @@ from typing import Iterator, List, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.layout.general import CollapseLayout
+from sampletones_application.layout.general import CollapseLayout, SectionHeaderLayout
 from sampletones_application.layout.glyphs import CommonGlyphs, GlyphLayout, Glyphs
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_COLLAPSE_HEADER,
@@ -294,7 +294,7 @@ def section_panel(dpg_context: None, monkeypatch: pytest.MonkeyPatch) -> _RailPa
     monkeypatch.setattr(dpg, "get_text_size", lambda text, font=0: None)
     GUIPanel.configure_section_header(
         _glyphs(),
-        GlyphLayout(indent=0, width=_RAIL_WIDTH),
+        SectionHeaderLayout(glyph=GlyphLayout(indent=0, width=_RAIL_WIDTH), chevron_offset=8),
         CollapseLayout(header_bar_height=_HEADER_BAR_HEIGHT, rail_width=_RAIL_WIDTH, rail_title_gap=6),
     )
     panel = _RailPanel(tag=_CARD_TAG)

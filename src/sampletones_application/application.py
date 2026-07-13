@@ -401,7 +401,7 @@ class Application:
         FontRegistry.setup(self.layout.fonts)
         GUIPanel.configure_section_header(
             self.layout.glyphs,
-            self.layout.general.section_header.glyph,
+            self.layout.general.section_header,
             self.layout.general.collapse,
         )
         try:

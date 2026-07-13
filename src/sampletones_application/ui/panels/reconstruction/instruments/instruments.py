@@ -217,7 +217,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             height=self.height,
             border=False,
         ):
-            with self._collapsible_section(self._lbl_section, glyph=self._glyphs.headers.instruments):
+            with self._collapsible_section(
+                self._lbl_section,
+                glyph=self._glyphs.headers.instruments,
+            ):
                 self._create_content()
 
         self._setup_mouse_event_handler()

@@ -111,6 +111,7 @@ class CaretLayout(BaseModel, extra="forbid", frozen=True):
 
 class SectionHeaderLayout(BaseModel, extra="forbid", frozen=True):
     glyph: GlyphLayout
+    chevron_offset: int
 
 
 class CollapseLayout(BaseModel, extra="forbid", frozen=True):

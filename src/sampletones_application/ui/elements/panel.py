@@ -5,7 +5,7 @@ from typing import Callable, Iterator, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.general import CollapseLayout
+from sampletones_application.layout.general import CollapseLayout, SectionHeaderLayout
 from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.ui.elements.fonts.font import Font
@@ -38,6 +38,7 @@ class GUIPanel(CallbackMixin, ABC):
 
     _glyphs: Glyphs
     _glyph_layout: GlyphLayout
+    _section_header_layout: SectionHeaderLayout
     _collapse_layout: CollapseLayout
 
     def __init__(
@@ -77,12 +78,13 @@ class GUIPanel(CallbackMixin, ABC):
     def configure_section_header(
         cls,
         glyphs: Glyphs,
-        glyph_layout: GlyphLayout,
+        section_header_layout: SectionHeaderLayout,
         collapse_layout: CollapseLayout,
     ) -> None:
-        """Set the glyph palette, marker width, and collapse geometry every section header draws from."""
+        """Set the glyph palette, header geometry, and collapse geometry every section header draws from."""
         cls._glyphs = glyphs
-        cls._glyph_layout = glyph_layout
+        cls._section_header_layout = section_header_layout
+        cls._glyph_layout = section_header_layout.glyph
         cls._collapse_layout = collapse_layout
 
     def _enable_vertical_collapse(
@@ -172,10 +174,10 @@ class GUIPanel(CallbackMixin, ABC):
         base keeps the tabs consistent and gives one place to restyle every header at once. ``parent``
         targets a specific container for panels that build outside a ``with`` block.
 
-        When ``affordance`` is given, a stretch spacer pushes a right-aligned chevron to the header's
-        end, signalling the card collapses; the chevron carries ``affordance_tag`` so the controller
-        can flip its glyph, and the trailing separator is dropped because the collapse strip frames the
-        header itself.
+        When ``affordance`` is given, a stretch spacer pushes a right-aligned chevron toward the header's
+        end, and a trailing fixed column of ``chevron_offset`` keeps it clear of the edge; the chevron
+        signals the card collapses, carries ``affordance_tag`` so the controller can flip its glyph, and
+        the trailing separator is dropped because the collapse strip frames the header itself.
         """
         theme = ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER)
         marker_glyph = glyph if glyph is not None else self._glyphs.common.tick
@@ -190,6 +192,10 @@ class GUIPanel(CallbackMixin, ABC):
                 dpg.add_table_column(width_fixed=not collapsible)
                 if collapsible:
                     dpg.add_table_column(width_fixed=True)
+                    dpg.add_table_column(
+                        width_fixed=True,
+                        init_width_or_weight=self._section_header_layout.chevron_offset,
+                    )
 
                 with dpg.table_row():
                     with dpg.table_cell():
@@ -204,6 +210,8 @@ class GUIPanel(CallbackMixin, ABC):
                         with dpg.table_cell():
                             chevron = dpg.add_text(affordance, tag=affordance_tag)
                             FontRegistry.bind_to_item(chevron, Font.ICON)
+                        with dpg.table_cell():
+                            dpg.add_spacer()
 
         if not collapsible:
             dpg.add_separator()

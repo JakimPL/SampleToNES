@@ -86,6 +86,7 @@ section_header:
   glyph:
     indent: 4
     width: 20
+  chevron_offset: 8
 
 collapse:
   header_bar_height: 32
