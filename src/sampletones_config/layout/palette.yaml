@@ -14,7 +14,7 @@ colors:
   frame_hovered: "#424050"
   frame_active: "#4b475b"
   border: "#464a5e"
-  separator: "#3e3b4c"
+  separator: "#585370"
   plot_background: "#201d2a"
   well: "#1f2636"
 

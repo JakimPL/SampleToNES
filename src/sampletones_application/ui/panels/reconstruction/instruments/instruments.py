@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones_application.categories.elements.global_ import (
+    ContextElements,
     DialogElements,
     GlobalMessageElements,
 )
@@ -24,6 +25,8 @@ from sampletones_application.tags.general import (
     SUF_TEXT,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_INVALID,
+    TAG_GLOBAL_THEME_INSTRUMENT_TABS,
+    TAG_GLOBAL_THEME_PANEL_INSTRUMENT,
 )
 from sampletones_application.tags.graphs import (
     SUF_GRAPH,
@@ -200,6 +203,32 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             TextType.LABEL,
             DialogElements.COPIED,
         ]
+        self._generator_labels: Dict[GeneratorName, str] = {
+            GeneratorName.PULSE1: language_manager[
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.PULSE_1,
+            ],
+            GeneratorName.PULSE2: language_manager[
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.PULSE_2,
+            ],
+            GeneratorName.TRIANGLE: language_manager[
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.TRIANGLE,
+            ],
+            GeneratorName.NOISE: language_manager[
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.NOISE,
+            ],
+        }
 
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
@@ -299,7 +328,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         window_tag = self._get_window_tag(tab_tag)
 
         with dpg.tab(
-            label=generator_name,
+            label=self._generator_labels[generator_name],
             tag=tab_tag,
             parent=self.tab_bar_tag,
             show=False,
@@ -322,6 +351,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 no_scroll_with_mouse=True,
             ):
                 self._create_generator_content(generator_name, window_tag)
+
+            ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_INSTRUMENT).bind_to_item(window_tag)
+
+        ThemeRegistry.get(TAG_GLOBAL_THEME_INSTRUMENT_TABS).bind_to_item(tab_tag)
 
     def _create_generator_content(self, generator_name: GeneratorName, window_tag: str) -> None:
         initial_pitch = self._default_initial_pitch(generator_name)

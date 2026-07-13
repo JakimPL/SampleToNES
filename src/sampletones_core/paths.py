@@ -53,9 +53,9 @@ ICON_UNIX_FILENAME: Final[str] = "sampletones.png"
 
 # Font paths
 FONT_DIRECTORY: Final[str] = "fonts"
-FONT_SANS_REGULAR: Final[str] = "Inter-Regular.ttf"
-FONT_SANS_BOLD: Final[str] = "Inter-Bold.ttf"
-FONT_SANS_ITALIC: Final[str] = "Inter-Italic.ttf"
+FONT_SANS_REGULAR: Final[str] = "SourceSans3-Regular.ttf"
+FONT_SANS_BOLD: Final[str] = "SourceSans3-Bold.ttf"
+FONT_SANS_ITALIC: Final[str] = "SourceSans3-Italic.ttf"
 FONT_MONO_REGULAR: Final[str] = "RobotoMono-Regular.ttf"
 FONT_MONO_BOLD: Final[str] = "RobotoMono-Bold.ttf"
 FONT_ICON: Final[str] = "DejaVuSans.ttf"

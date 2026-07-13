@@ -1,13 +1,13 @@
 scale: 1
 sans:
-  small: 15
-  medium: 19
-  large: 24
+  small: 22
+  medium: 24
+  large: 26
 mono:
   small: 19
   medium: 22
   large: 26
 icon:
-  small: 19
-  medium: 22
-  large: 26
+  small: 20
+  medium: 27
+  large: 33

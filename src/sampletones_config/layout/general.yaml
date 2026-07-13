@@ -89,8 +89,8 @@ section_header:
   chevron_offset: 8
 
 collapse:
-  header_bar_height: 32
-  rail_width: 45
+  header_bar_height: 34
+  rail_width: 50
   rail_title_gap: 6
 
 colors:

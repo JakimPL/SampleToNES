@@ -1,0 +1,12 @@
+name: instrument_tabs
+tag: global.theme.instrument_tabs
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: TabSelected
+        value: .recess
+      - type: color
+        key: TabDimmedSelected
+        value: .recess

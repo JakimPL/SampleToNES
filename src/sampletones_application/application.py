@@ -404,6 +404,7 @@ class Application:
             self.layout.general.section_header,
             self.layout.general.collapse,
         )
+
         try:
             setup_themes(THEME_DIRECTORY, PALETTE_PATH)
         except ValidationError as exception:

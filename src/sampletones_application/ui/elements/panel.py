@@ -199,12 +199,15 @@ class GUIPanel(CallbackMixin, ABC):
 
                 with dpg.table_row():
                     with dpg.table_cell():
-                        marker = dpg.add_text(marker_glyph, indent=self._glyph_layout.indent)
+                        marker = dpg.add_text(
+                            marker_glyph,
+                            indent=self._glyph_layout.indent,
+                        )
                         FontRegistry.bind_to_item(marker, Font.ICON)
 
                     with dpg.table_cell():
                         label_text = dpg.add_text(label.upper())
-                        FontRegistry.bind_to_item(label_text, Font.BOLD)
+                        FontRegistry.bind_to_item(label_text, Font.BOLD_LARGE)
 
                     if collapsible:
                         with dpg.table_cell():

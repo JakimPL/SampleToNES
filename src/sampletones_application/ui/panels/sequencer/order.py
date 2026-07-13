@@ -113,7 +113,12 @@ class GUISequencerOrderPanel(GUIPanel):
             SequencerOrderElements.ORDER_TEXT,
         ]
         self._row_labels: Dict[Optional[GeneratorName], str] = {
-            None: language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, SequencerOrderElements.ROW_MASTER],
+            None: language_manager[
+                Page.SEQUENCER,
+                Panel.ORDER,
+                TextType.LABEL,
+                SequencerOrderElements.ROW_MASTER,
+            ],
             GeneratorName.PULSE1: language_manager[
                 Page.SEQUENCER,
                 Panel.ORDER,

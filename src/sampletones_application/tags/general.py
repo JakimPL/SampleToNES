@@ -170,6 +170,18 @@ TAG_GLOBAL_THEME_TAB_STRIP = TagName(
     Widget.THEME,
     "tab_strip",
 )
+TAG_GLOBAL_THEME_INSTRUMENT_TABS = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "instrument_tabs",
+)
+TAG_GLOBAL_THEME_PANEL_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "panel_instrument",
+)
 TAG_GLOBAL_THEME_PLAYER_TOOLBAR = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
