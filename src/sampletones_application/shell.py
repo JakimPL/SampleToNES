@@ -25,7 +25,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
-    TAG_GLOBAL_THEME_PANEL_GROUND,
+    TAG_GLOBAL_THEME_TAB_STRIP,
     TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.ui.elements.fonts.font import Font
@@ -384,7 +384,7 @@ class ApplicationShell:
                 self._sequencer_tab.create_tab()
                 self._instructions_tab.create_tab()
 
-        ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(tab_container)
+        ThemeRegistry.get(TAG_GLOBAL_THEME_TAB_STRIP).bind_to_item(tab_container)
         for tab_tag in (
             TAG_GLOBAL_TAB_MAIN,
             TAG_GLOBAL_TAB_RECONSTRUCTIONS,

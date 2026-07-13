@@ -3,6 +3,7 @@ name: studio
 colors:
   # surfaces and neutrals
   ground: "#1c1b26"
+  tab_strip: "#24232f"
   recess: "#2f2e3c"
   surface: "#3a3949"
   surface_alt: "#454456"
