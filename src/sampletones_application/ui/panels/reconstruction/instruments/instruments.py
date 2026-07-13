@@ -41,6 +41,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
+from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
@@ -210,20 +211,35 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
 
     def create_panel(self, parent: str) -> None:
-        with dpg.child_window(
-            tag=self.tag,
-            parent=parent,
-            width=self.width,
-            height=self.height,
-            border=False,
-        ):
+        with card(parent, self.tag, auto_resize_y=True):
             with self._collapsible_section(
                 self._lbl_section,
                 glyph=self._glyphs.headers.instruments,
             ):
                 self._create_content()
 
+        self._apply_collapse_sizing(self.collapsed)
         self._setup_mouse_event_handler()
+
+    def set_collapse_handler(self, callback: Callable[[str, bool], None]) -> None:
+        """Size the card on each collapse toggle before handing the toggle to the coordinator.
+
+        The card hugs its content while expanded and fills the column while collapsed, so the
+        docked rail spans the full column height rather than a short stub.
+        """
+
+        def handler(card_tag: str, collapsed: bool) -> None:
+            self._apply_collapse_sizing(collapsed)
+            callback(card_tag, collapsed)
+
+        super().set_collapse_handler(handler)
+
+    def _apply_collapse_sizing(self, collapsed: bool) -> None:
+        """Fill the column vertically while collapsed for a full-height rail, else hug the content."""
+        if collapsed:
+            dpg_configure_item(self.tag, auto_resize_y=False, height=-1)
+        else:
+            dpg_configure_item(self.tag, auto_resize_y=True, height=0)
 
     def _create_content(self) -> None:
         dpg.add_text(
@@ -302,6 +318,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             with dpg.child_window(
                 tag=window_tag,
                 parent=tab_tag,
+                auto_resize_y=True,
                 no_scroll_with_mouse=True,
             ):
                 self._create_generator_content(generator_name, window_tag)

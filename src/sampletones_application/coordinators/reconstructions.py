@@ -484,10 +484,10 @@ class ReconstructionsTabCoordinator:
                     ColumnSpec(
                         tag=_RIGHT_COLUMN_TAG,
                         build=self._reconstruction_instruments_panel.create_panel,
-                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
+                        theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         width=self._instruments_width,
                         height=self._right_height,
-                        no_scrollbar=True,
+                        border=False,
                     ),
                 ],
             )
