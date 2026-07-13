@@ -1,11 +1,11 @@
 config:
-  height: 282
+  height: 260
 
 reconstructor:
   drive_format: "%.2f"
 
 advanced:
-  height: 180
+  height: 285
   button_height: 50
 
 converter:

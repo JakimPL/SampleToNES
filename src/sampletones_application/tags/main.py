@@ -98,18 +98,6 @@ TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY = TagName(
     Widget.INPUT,
     "nes_frequency",
 )
-TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD = TagName(
-    Page.MAIN,
-    Panel.CONFIG,
-    Widget.COMBO,
-    "spectrum_method",
-)
-TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA = TagName(
-    Page.MAIN,
-    Panel.CONFIG,
-    Widget.INPUT,
-    "transformation_gamma",
-)
 TAG_MAIN_RECONSTRUCTOR_PANEL = TagName(
     Page.MAIN,
     Panel.RECONSTRUCTOR,
@@ -127,6 +115,18 @@ TAG_MAIN_ADVANCED_PANEL = TagName(
     Panel.ADVANCED,
     Widget.PANEL,
     "advanced",
+)
+TAG_MAIN_ADVANCED_COMBO_SPECTRUM_METHOD = TagName(
+    Page.MAIN,
+    Panel.ADVANCED,
+    Widget.COMBO,
+    "spectrum_method",
+)
+TAG_MAIN_ADVANCED_INPUT_TRANSFORMATION_GAMMA = TagName(
+    Page.MAIN,
+    Panel.ADVANCED,
+    Widget.INPUT,
+    "transformation_gamma",
 )
 TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS = TagName(
     Page.MAIN,

@@ -34,3 +34,13 @@ def labeled_field(
             dpg.add_spacer(width=offset)
 
         yield
+
+
+def subheader(label: str, *, parent: Union[int, str] = 0) -> None:
+    """Render a bold subheader that groups the fields beneath it within a card.
+
+    Uses the default body colour at bold weight, sitting a level below the card's section
+    header so related fields read as one labelled group under a clear caption.
+    """
+    label_id = dpg.add_text(label, parent=parent)
+    FontRegistry.bind_to_item(label_id, Font.BOLD)

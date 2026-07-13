@@ -22,7 +22,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
-from sampletones_application.ui.elements.field import labeled_field
+from sampletones_application.ui.elements.field import labeled_field, subheader
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -142,7 +142,7 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
     def _create_generator_selection(self) -> None:
-        dpg.add_text(self._lbl_section_generators)
+        subheader(self._lbl_section_generators)
 
         with dpg.group():
             for generator, label, theme_tag in self._generator_chips():

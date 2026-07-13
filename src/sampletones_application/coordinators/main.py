@@ -266,8 +266,6 @@ class MainTabCoordinator:
                 quantize=_config.general.quantize,
                 sample_rate=_config.library.sample_rate,
                 nes_frequency=_config.library.nes_frequency,
-                spectrum_method=_config.library.spectrum_method,
-                transformation_gamma=_config.library.transformation_gamma,
             ),
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
@@ -292,6 +290,8 @@ class MainTabCoordinator:
         self._advanced_settings_panel: GUIAdvancedSettingsPanel = GUIAdvancedSettingsPanel(
             AdvancedSettingsPanelViewModel(
                 max_workers=_config.general.max_workers,
+                spectrum_method=_config.library.spectrum_method,
+                transformation_gamma=_config.library.transformation_gamma,
                 library_directory=config_manager.get_library_directory(),
                 reconstructions_directory=config_manager.get_reconstructions_directory(),
             ),
@@ -449,8 +449,6 @@ class MainTabCoordinator:
                 quantize=config.general.quantize,
                 sample_rate=config.library.sample_rate,
                 nes_frequency=config.library.nes_frequency,
-                spectrum_method=config.library.spectrum_method,
-                transformation_gamma=config.library.transformation_gamma,
             )
         )
 
@@ -467,6 +465,8 @@ class MainTabCoordinator:
         self._advanced_settings_panel.update_view(
             AdvancedSettingsPanelViewModel(
                 max_workers=self._config_manager.config.general.max_workers,
+                spectrum_method=self._config_manager.config.library.spectrum_method,
+                transformation_gamma=self._config_manager.config.library.transformation_gamma,
                 library_directory=self._config_manager.get_library_directory(),
                 reconstructions_directory=self._config_manager.get_reconstructions_directory(),
             )

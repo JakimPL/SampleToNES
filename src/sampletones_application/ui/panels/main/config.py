@@ -2,7 +2,6 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import ConfigPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -10,13 +9,11 @@ from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
     TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE,
-    TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,
     TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
     TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
-    TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
     TAG_MAIN_CONFIG_PANEL,
 )
-from sampletones_application.ui.elements.field import labeled_field
+from sampletones_application.ui.elements.field import labeled_field, subheader
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -28,13 +25,7 @@ from sampletones_application.view_model.main.updates import (
     AudioSettingsUpdate,
     LibrarySettingsUpdate,
 )
-from sampletones_core.configs.display import (
-    SPECTRUM_METHOD_BY_LABEL,
-    format_spectrum_method,
-)
-from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
-from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.types.application import Sender
 
@@ -95,18 +86,6 @@ class GUIConfigPanel(GUIPanel):
             TextType.LABEL,
             ConfigPanelElements.INPUT_NES_FREQUENCY,
         ]
-        self._lbl_spectrum_method = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.LABEL,
-            ConfigPanelElements.COMBO_SPECTRUM_METHOD,
-        ]
-        self._lbl_gamma = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.LABEL,
-            ConfigPanelElements.SLIDER_TRANSFORMATION_GAMMA,
-        ]
         self._tooltip_normalize = language_manager[
             Page.MAIN,
             Panel.CONFIG,
@@ -131,31 +110,6 @@ class GUIConfigPanel(GUIPanel):
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_NES_FREQUENCY,
         ]
-        self._tooltip_spectrum_method = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.TOOLTIP,
-            ConfigPanelElements.TOOLTIP_SPECTRUM_METHOD,
-        ]
-        self._tooltip_gamma = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.TOOLTIP,
-            ConfigPanelElements.TOOLTIP_TRANSFORMATION_GAMMA,
-        ]
-        self._msg_status_input = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.INPUT,
-        ]
-        self._msg_status_combo = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.COMBO,
-        ]
-
         super().__init__(
             tag=TAG_MAIN_CONFIG_PANEL,
             height=panel_height,
@@ -189,15 +143,9 @@ class GUIConfigPanel(GUIPanel):
         library_update = LibrarySettingsUpdate(
             sample_rate=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE)),
             nes_frequency=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY)),
-            spectrum_method=self._selected_spectrum_method(),
-            transformation_gamma=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA)),
         )
         self.call(self.on_audio_settings_changed, audio_update)
         self.call(self.on_library_settings_changed, library_update)
-
-    def _selected_spectrum_method(self) -> SpectrumMethod:
-        label = dpg.get_value(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD)
-        return SPECTRUM_METHOD_BY_LABEL[label]
 
     def _create_audio_options(self) -> None:
         dpg.add_checkbox(
@@ -214,7 +162,7 @@ class GUIConfigPanel(GUIPanel):
         )
 
     def _create_library_settings(self) -> None:
-        dpg.add_text(self._lbl_section_library)
+        subheader(self._lbl_section_library)
         with labeled_field(self._lbl_sample_rate, self._label_width):
             dpg.add_input_int(
                 default_value=self._view.sample_rate,
@@ -233,42 +181,18 @@ class GUIConfigPanel(GUIPanel):
                 width=self._input_width,
                 callback=self._on_parameter_change,
             )
-        with labeled_field(self._lbl_spectrum_method, self._label_width):
-            dpg.add_combo(
-                tag=TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,
-                items=[format_spectrum_method(method) for method in SpectrumMethod],
-                default_value=format_spectrum_method(self._view.spectrum_method),
-                width=self._input_width,
-                callback=self._on_parameter_change,
-            )
-        with labeled_field(self._lbl_gamma, self._label_width):
-            dpg.add_slider_int(
-                tag=TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
-                default_value=self._view.transformation_gamma,
-                min_value=0,
-                max_value=MAX_TRANSFORMATION_GAMMA,
-                width=self._input_width,
-                callback=self._on_parameter_change,
-            )
-
         for tag in [
             TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
             TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
-            TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
         ]:
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
             FontRegistry.bind_to_item(tag, Font.MONO)
-
-        self._status_bar.bind_to_item(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD, self._msg_status_combo)
-        self._status_bar.bind_to_item(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._msg_status_input)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE, self._tooltip_normalize)
         show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, self._tooltip_quantize)
         show_tooltip(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, self._tooltip_sample_rate)
         show_tooltip(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, self._tooltip_nes_frequency)
-        show_tooltip(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD, self._tooltip_spectrum_method)
-        show_tooltip(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._tooltip_gamma)
 
     def update_view(self, view_model: ConfigPanelViewModel) -> None:
         self._view = view_model
@@ -276,11 +200,3 @@ class GUIConfigPanel(GUIPanel):
         dpg.set_value(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, view_model.quantize)
         dpg.set_value(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, view_model.sample_rate)
         dpg.set_value(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, view_model.nes_frequency)
-        dpg.set_value(
-            TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,
-            format_spectrum_method(view_model.spectrum_method),
-        )
-        dpg.set_value(
-            TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
-            view_model.transformation_gamma,
-        )

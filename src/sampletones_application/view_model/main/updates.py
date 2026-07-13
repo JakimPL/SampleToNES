@@ -14,8 +14,6 @@ class AudioSettingsUpdate(BaseModel, frozen=True):
 class LibrarySettingsUpdate(BaseModel, frozen=True):
     sample_rate: int
     nes_frequency: int
-    spectrum_method: SpectrumMethod
-    transformation_gamma: int
 
 
 class GenerationSettingsUpdate(BaseModel, frozen=True):
@@ -25,5 +23,7 @@ class GenerationSettingsUpdate(BaseModel, frozen=True):
 
 class AdvancedSettingsUpdate(BaseModel, frozen=True):
     max_workers: int
+    spectrum_method: SpectrumMethod
+    transformation_gamma: int
     library_directory: Path
     reconstructions_directory: Path

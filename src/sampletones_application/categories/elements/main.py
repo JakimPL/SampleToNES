@@ -26,14 +26,10 @@ class ConfigPanelElements(AbstractElement):
     CHECKBOX_QUANTIZE = "checkbox_quantize"
     INPUT_SAMPLE_RATE = "input_sample_rate"
     INPUT_NES_FREQUENCY = "input_nes_frequency"
-    COMBO_SPECTRUM_METHOD = "combo_spectrum_method"
-    SLIDER_TRANSFORMATION_GAMMA = "slider_transformation_gamma"
     TOOLTIP_NORMALIZE = "tooltip_normalize"
     TOOLTIP_QUANTIZE = "tooltip_quantize"
     TOOLTIP_SAMPLE_RATE = "tooltip_sample_rate"
     TOOLTIP_NES_FREQUENCY = "tooltip_nes_frequency"
-    TOOLTIP_SPECTRUM_METHOD = "tooltip_spectrum_method"
-    TOOLTIP_TRANSFORMATION_GAMMA = "tooltip_transformation_gamma"
 
 
 class ReconstructorElements(AbstractElement):
@@ -80,7 +76,12 @@ class ConverterElements(AbstractElement):
 
 class AdvancedElements(AbstractElement):
     SECTION = "section"
+    SECTION_METHOD = "section_method"
     SELECT_OUTPUT_DIRECTORY = "select_output_directory"
     SELECT_LIBRARY_DIRECTORY = "select_library_directory"
+    COMBO_SPECTRUM_METHOD = "combo_spectrum_method"
+    SLIDER_TRANSFORMATION_GAMMA = "slider_transformation_gamma"
     INPUT_MAX_WORKERS = "input_max_workers"
+    TOOLTIP_SPECTRUM_METHOD = "tooltip_spectrum_method"
+    TOOLTIP_TRANSFORMATION_GAMMA = "tooltip_transformation_gamma"
     TOOLTIP_MAX_WORKERS = "tooltip_max_workers"
