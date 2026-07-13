@@ -110,6 +110,10 @@ components:
         x: 8
         y: 8
       - type: style
+        key: ItemSpacing
+        x: 8
+        y: 4
+      - type: style
         key: IndentSpacing
         x: 18
       - type: style

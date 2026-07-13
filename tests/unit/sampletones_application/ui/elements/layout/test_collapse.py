@@ -181,28 +181,36 @@ class TestAutoHeightVerticalCollapse:
 
 
 class TestFillVerticalCollapse:
-    """A fill card leaves its height to the owner that reserves its footprint: collapsing hides the body
-    and flips the chevron without touching the card height, so it shrinks only as the owner shrinks the
-    reservation rather than snapping to a fixed collapsed bar."""
+    """A fill card fills its owner's reserved footprint while expanded and pins to its header bar while
+    collapsed: collapsing hides the body and shrinks the card to the strip plus its padding, and expanding
+    restores the fill sentinel height (0) so the card fills the reservation again. Pinning makes the
+    collapsed size intrinsic, so the bar holds even when the owner is no longer reserving its footprint."""
 
-    def test_collapsing_hides_the_body_and_leaves_the_height_untouched(self, dpg_context: None) -> None:
+    def test_collapsing_hides_the_body_and_pins_the_card_to_the_strip(
+        self, dpg_context: None, rendered_strip_padding: None
+    ) -> None:
         controller = _controller(CollapseAxis.VERTICAL, fill=True)
         _build_card(controller)
 
         controller.set_collapsed(True)
 
         assert dpg.get_item_configuration(controller.body_tag)["show"] is False
-        assert dpg.get_item_configuration(controller.card_tag)["height"] == _EXPANDED_HEIGHT
+        assert dpg.get_item_configuration(controller.card_tag)["height"] == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
+        assert dpg.get_item_configuration(controller.card_tag)["no_scrollbar"] is True
         assert dpg.get_value(controller.chevron_tag) == _COLLAPSED_GLYPH
+        assert controller.collapsed_height == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
 
-    def test_expanding_shows_the_body_and_leaves_the_height_untouched(self, dpg_context: None) -> None:
+    def test_expanding_shows_the_body_and_restores_the_fill_height(
+        self, dpg_context: None, rendered_strip_padding: None
+    ) -> None:
         controller = _controller(CollapseAxis.VERTICAL, initial_collapsed=True, fill=True)
         _build_card(controller)
 
         controller.set_collapsed(False)
 
         assert dpg.get_item_configuration(controller.body_tag)["show"] is True
-        assert dpg.get_item_configuration(controller.card_tag)["height"] == _EXPANDED_HEIGHT
+        assert dpg.get_item_configuration(controller.card_tag)["height"] == 0
+        assert dpg.get_item_configuration(controller.card_tag)["no_scrollbar"] is False
         assert dpg.get_value(controller.chevron_tag) == _EXPANDED_GLYPH
 
 

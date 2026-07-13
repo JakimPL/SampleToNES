@@ -18,7 +18,21 @@ class Theme:
     def __init__(self, *, tag: str, items: ThemeItems) -> None:
         self.tag = tag
         self._items = items
-        self._dictionary: ThemeDictionary = {}
+        self._dictionary: ThemeDictionary = self._index(items)
+
+    @staticmethod
+    def _index(items: ThemeItems) -> ThemeDictionary:
+        """Index every entry by its merge identity so a value reads back before the DPG theme is created.
+
+        The lookup derives from the resolved definition alone, so ``get_color``/``get_style`` answer
+        as soon as the theme is registered, without waiting for the first bind to build the DPG items.
+        """
+        dictionary: ThemeDictionary = {}
+        for parameter, values in items.items.items():
+            for item in values:
+                dictionary[parameter, item.key, item.category, isinstance(item, ThemeStyle)] = item
+
+        return dictionary
 
     def create(self, *, override: bool = False) -> None:
         if not override and dpg.does_item_exist(self.tag):
@@ -27,7 +41,6 @@ class Theme:
         if override and dpg.does_item_exist(self.tag):
             dpg.delete_item(self.tag)
 
-        dictionary: ThemeDictionary = {}
         with dpg.theme(tag=self.tag):
             for parameter, values in self._items.items.items():
                 with dpg.theme_component(
@@ -35,7 +48,6 @@ class Theme:
                     enabled_state=parameter.enabled_state,
                 ):
                     for item in values:
-                        dictionary[parameter, item.key, item.category, isinstance(item, ThemeStyle)] = item
                         if isinstance(item, ThemeColor):
                             dpg.add_theme_color(
                                 item.key,
@@ -49,8 +61,6 @@ class Theme:
                                 item.y,
                                 category=item.category,
                             )
-
-        self._dictionary = dictionary
 
     def bind_to_item(self, item: int | str) -> None:
         self.create()

@@ -36,9 +36,9 @@ class CollapseController(CallbackMixin):
     A vertical card owns its own height, so this controller shrinks it to the header
     bar in place. A card that sizes itself to its content (``auto_height``) collapses by
     hiding its body alone, letting the card's own auto-resize settle onto the header bar.
-    A ``fill`` card leaves its height to the owner that reserves its footprint, so it too
-    collapses by hiding its body alone and shrinks as the owner shrinks the reservation.
-    A horizontal card only hides its body and swaps in a rail; the owning coordinator
+    A ``fill`` card fills its owner's reserved footprint while expanded and pins to the
+    header bar while collapsed, so its collapsed size holds regardless of what the owner
+    reserves. A horizontal card only hides its body and swaps in a rail; the owning coordinator
     reclaims the freed width, which it learns through ``on_toggle``. The card's tag is the
     persistence key, so the collapsible set is defined by which panels build a controller
     rather than by a central registry.
@@ -106,13 +106,26 @@ class CollapseController(CallbackMixin):
 
     @property
     def _manages_height(self) -> bool:
-        """Whether this controller sets the card's height directly.
+        """Whether the card carries a fixed expanded height this controller can retune.
 
-        A plain vertical card is shrunk to a fixed bar on collapse. A card that auto-resizes to
-        its content, or one that fills a footprint its owner reserves, leaves its height alone —
-        it settles by its own resize or by the owner shrinking the reservation.
+        A fill card fills its owner's footprint and an auto-height card sizes to its body, so
+        neither has a fixed expanded height to set; only a plain vertical card does.
         """
         return not self._auto_height and not self._fill
+
+    @property
+    def _pins_collapsed_height(self) -> bool:
+        """Whether collapsing pins the card to a fixed header-bar height.
+
+        A fixed card and a fill card both pin to the bar on collapse; an auto-height card sizes to
+        its hidden body instead. A fill card differs only on expand, where it returns to filling.
+        """
+        return not self._auto_height
+
+    @property
+    def _restored_height(self) -> int:
+        """The height a vertical card returns to on expand: the fill sentinel for a fill card, else its fixed expanded height."""
+        return 0 if self._fill else self._expanded_height
 
     @property
     def header_bar_height(self) -> int:
@@ -182,13 +195,13 @@ class CollapseController(CallbackMixin):
         if self.is_horizontal:
             dpg_configure_item(self.strip_tag, show=not collapsed)
             dpg_configure_item(self.rail_tag, show=collapsed)
-        elif self._manages_height:
+        elif self._pins_collapsed_height:
             if collapsed:
                 self._apply_collapsed_height()
             else:
                 dpg_configure_item(
                     self.card_tag,
-                    height=self._expanded_height,
+                    height=self._restored_height,
                     no_scrollbar=False,
                     no_scroll_with_mouse=False,
                 )
