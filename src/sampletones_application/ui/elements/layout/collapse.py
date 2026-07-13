@@ -155,17 +155,21 @@ class CollapseController(CallbackMixin):
         return self._glyphs.common.chevron_right
 
     def attach(self) -> None:
-        """Binds hover-to-highlight to the header strip and a global click that toggles whichever bar is hovered.
+        """Binds hover-to-highlight to whichever bar shows and a global click that toggles the hovered one.
 
-        A child window accepts a hover handler but not a clicked handler, so the toggle rides a global
-        mouse-click handler gated on the strip or rail being hovered.
+        The strip and the rail share one hover handler registry, so a docked card's rail highlights on
+        hover exactly as its expanded strip does. A child window accepts a hover handler but not a
+        clicked handler, so the toggle rides a global mouse-click handler gated on either bar being hovered.
         """
         dpg_delete_item(self.strip_handler_tag)
         with dpg.item_handler_registry(tag=self.strip_handler_tag):
-            dpg.add_item_hover_handler(callback=self._on_strip_hover)
+            dpg.add_item_hover_handler(callback=self._on_bar_hover)
 
         dpg.bind_item_handler_registry(self.strip_tag, self.strip_handler_tag)
-        self._bind_idle_theme()
+        self._bind_idle_theme(self.strip_tag)
+        if self.is_horizontal:
+            dpg.bind_item_handler_registry(self.rail_tag, self.strip_handler_tag)
+            self._bind_idle_theme(self.rail_tag)
 
         dpg_delete_item(self.click_handler_tag)
         with dpg.handler_registry(tag=self.click_handler_tag):
@@ -243,18 +247,28 @@ class CollapseController(CallbackMixin):
 
         return bool(self.is_horizontal and dpg.does_item_exist(self.rail_tag) and dpg.is_item_hovered(self.rail_tag))
 
-    def _on_strip_hover(self) -> None:
-        if not dpg.does_item_exist(self.strip_tag):
+    def _on_bar_hover(self) -> None:
+        """Highlight whichever bar the pointer is over and settle the rest back to idle.
+
+        An item hover handler fires only while its item is hovered, so a frame callback re-checks a
+        couple of frames on to catch the un-hover and restore the idle background.
+        """
+        self._refresh_bar_theme(self.strip_tag)
+        if self.is_horizontal:
+            self._refresh_bar_theme(self.rail_tag)
+
+    def _refresh_bar_theme(self, bar_tag: str) -> None:
+        if not dpg.does_item_exist(bar_tag):
             return
 
-        if dpg.is_item_hovered(self.strip_tag):
-            self._bind_hovered_theme()
-            FrameCallbackManager.set_frame_callback(self._on_strip_hover, 2)
+        if dpg.is_item_hovered(bar_tag):
+            self._bind_hovered_theme(bar_tag)
+            FrameCallbackManager.set_frame_callback(self._on_bar_hover, 2)
         else:
-            self._bind_idle_theme()
+            self._bind_idle_theme(bar_tag)
 
-    def _bind_idle_theme(self) -> None:
-        ThemeRegistry.get(TAG_GLOBAL_THEME_COLLAPSE_HEADER).bind_to_item(self.strip_tag)
+    def _bind_idle_theme(self, bar_tag: str) -> None:
+        ThemeRegistry.get(TAG_GLOBAL_THEME_COLLAPSE_HEADER).bind_to_item(bar_tag)
 
-    def _bind_hovered_theme(self) -> None:
-        ThemeRegistry.get(TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED).bind_to_item(self.strip_tag)
+    def _bind_hovered_theme(self, bar_tag: str) -> None:
+        ThemeRegistry.get(TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED).bind_to_item(bar_tag)

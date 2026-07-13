@@ -220,6 +220,20 @@ class TestHorizontalCollapse:
         assert dpg.get_item_configuration(controller.strip_tag)["show"] is False
         assert dpg.get_item_configuration(controller.rail_tag)["show"] is True
 
+    def test_hover_highlighting_covers_the_rail_as_well_as_the_strip(
+        self, dpg_context: None, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A docked card highlights its rail on hover just as its strip, so both bars are hover-probed."""
+        controller = _controller(CollapseAxis.HORIZONTAL_LEFT)
+        _build_card(controller)
+        probed: List[str] = []
+        monkeypatch.setattr(dpg, "is_item_hovered", lambda tag: bool(probed.append(tag)) and False)
+
+        controller._on_bar_hover()
+
+        assert controller.strip_tag in probed
+        assert controller.rail_tag in probed
+
     def test_toggle_announces_the_new_state(self, dpg_context: None) -> None:
         controller = _controller(CollapseAxis.HORIZONTAL_LEFT)
         _build_card(controller)
@@ -275,10 +289,10 @@ def section_panel(dpg_context: None, monkeypatch: pytest.MonkeyPatch) -> _RailPa
 
 
 class TestHorizontalRailTitle:
-    """A docked card's rail names itself: it stacks the card title one character per line, so a
-    collapsed column still reads as what it holds beside its glyph and expand chevron."""
+    """A docked card's rail names itself: it stacks the card title one uppercased character per line,
+    matching the header's treatment, so a collapsed column still reads as what it holds."""
 
-    def test_rail_stacks_the_title_one_character_per_line(self, section_panel: _RailPanel) -> None:
+    def test_rail_stacks_the_uppercased_title_one_character_per_line(self, section_panel: _RailPanel) -> None:
         with dpg.window():
             with dpg.child_window(tag=section_panel.tag):
                 with section_panel._collapsible_section(_RAIL_LABEL, glyph=_RAIL_GLYPH):
@@ -287,4 +301,4 @@ class TestHorizontalRailTitle:
         controller = section_panel.collapse
         assert controller is not None
         rail_texts = [dpg.get_value(item) for item in dpg.get_item_children(controller.rail_tag, 1)]
-        assert "\n".join(_RAIL_LABEL) in rail_texts
+        assert "\n".join(_RAIL_LABEL.upper()) in rail_texts

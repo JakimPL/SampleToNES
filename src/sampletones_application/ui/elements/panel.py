@@ -250,10 +250,11 @@ class GUIPanel(CallbackMixin, ABC):
         chevron signals the card collapses. The body opens as a group tagged for show/hide, so the
         panel's existing flat ``dpg.add_*`` calls land inside it unchanged. Horizontal cards also get
         a hidden rail the collapsed state swaps in, carrying the card's glyph, an expand chevron, and
-        the title stacked one character per line so the collapsed column still names itself. Building
-        finishes by applying the persisted collapsed state without re-notifying, so restore-on-launch
-        matches the stored value. The card must have a controller enabled first, so
-        ``_enable_vertical_collapse`` (or a horizontal equivalent) runs in the panel's constructor.
+        the title stacked one character per line in the header's accent style so the collapsed column
+        still names itself. Building finishes by applying the persisted collapsed state without
+        re-notifying, so restore-on-launch matches the stored value. The card must have a controller
+        enabled first, so ``_enable_vertical_collapse`` (or a horizontal equivalent) runs in the
+        panel's constructor.
         """
         controller = self._collapse
         if controller is None:
@@ -285,8 +286,9 @@ class GUIPanel(CallbackMixin, ABC):
                 rail_chevron = dpg.add_text(controller.rail_chevron_glyph)
                 FontRegistry.bind_to_item(rail_chevron, Font.ICON)
                 dpg.add_spacer(height=self._collapse_layout.rail_title_gap)
-                rail_title = dpg.add_text("\n".join(label))
+                rail_title = dpg.add_text("\n".join(label.upper()))
                 FontRegistry.bind_to_item(rail_title, Font.MONO_BOLD_SMALL)
+                ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(rail_title)
 
         controller.attach()
 
