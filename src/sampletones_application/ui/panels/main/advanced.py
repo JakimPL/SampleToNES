@@ -24,6 +24,7 @@ from sampletones_application.tags.main import (
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -169,12 +170,13 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def _create_workers_settings(self) -> None:
         with labeled_field(self._lbl_max_workers, self._label_width):
-            dpg.add_input_int(
+            input_value = dpg.add_input_int(
                 default_value=self._max_workers,
                 tag=TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
                 min_value=self._max_workers_minimum,
                 width=self._input_width,
             )
+            FontRegistry.bind_to_item(input_value, Font.MONO)
 
         dpg.bind_item_handler_registry(
             TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
