@@ -38,9 +38,9 @@ colors:
   on_accent: "#17131f"
 
   # buttons
-  primary: "#8469aa"
-  primary_hover: "#9d8cbc"
-  primary_active: "#786694"
+  primary: "#8f6fc0"
+  primary_hover: "#a689d4"
+  primary_active: "#7d64ac"
   primary_muted: "#676074"
   on_primary: "#f1f1f5"
 
@@ -83,9 +83,9 @@ colors:
   scrollbar_hovered: "#4a4759"
 
   # buttons
-  button: "#414c66"
-  button_hovered: "#4f5c7c"
-  button_active: "#5f6e94"
+  button: "#576793"
+  button_hovered: "#687aac"
+  button_active: "#778abe"
   button_disabled: "#363a48"
 
   # player
