@@ -72,16 +72,16 @@ components:
         value: .selection_active
       - type: color
         key: Tab
-        value: .tab
+        value: .ground
       - type: color
         key: TabHovered
         value: .accent/0.12
       - type: color
         key: TabActive
-        value: .accent/0.25
+        value: .recess
       - type: color
         key: TabSelected
-        value: .accent/0.25
+        value: .recess
       - type: color
         key: TabSelectedOverline
         value: .accent

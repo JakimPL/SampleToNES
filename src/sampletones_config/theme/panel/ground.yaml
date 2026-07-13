@@ -6,4 +6,4 @@ components:
     entries:
       - type: color
         key: ChildBg
-        value: .ground
+        value: .recess

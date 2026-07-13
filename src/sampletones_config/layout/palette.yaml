@@ -3,8 +3,9 @@ name: studio
 colors:
   # surfaces and neutrals
   ground: "#1c1b26"
-  surface: "#2b2a37"
-  surface_alt: "#313040"
+  recess: "#2f2e3c"
+  surface: "#3a3949"
+  surface_alt: "#454456"
   menu: "#20283a"
   status_bar: "#20283a"
   popup: "#222130"
@@ -17,10 +18,10 @@ colors:
   well: "#1f2636"
 
   # tables
-  table_header: "#37324a"
-  table_row: "#232130"
-  table_row_alt: "#2d2a3c"
-  table_border: "#494560"
+  table_header: "#46415c"
+  table_row: "#323042"
+  table_row_alt: "#3c394e"
+  table_border: "#585472"
 
   # cool secondary (functional chrome: input focus, secondary emphasis)
   cool: "#7fa8ea"
@@ -73,9 +74,9 @@ colors:
   tab_active: "#3c4a72"
 
   # selection (tree, list, menu highlight)
-  selection: "#332e46"
-  selection_hovered: "#3e3757"
-  selection_active: "#48406a"
+  selection: "#423d58"
+  selection_hovered: "#4d4669"
+  selection_active: "#574f7c"
 
   # scrollbar
   scrollbar_hovered: "#4a4759"
