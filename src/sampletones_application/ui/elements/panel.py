@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from typing import Callable, Iterator, Optional
+from functools import partial
+from typing import Callable, Iterator, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -16,8 +17,13 @@ from sampletones_application.ui.elements.layout.collapse import (
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.callbacks import CallbackMixin
+
+# The rail child-window's inner padding, mirroring the theme WindowPadding it inherits; rail items
+# are centered within the content region this padding leaves, so it must track that style.
+_RAIL_CONTENT_PADDING = 8
 
 
 class GUIPanel(CallbackMixin, ABC):
@@ -281,14 +287,23 @@ class GUIPanel(CallbackMixin, ABC):
                 no_scrollbar=True,
                 show=False,
             ):
-                rail_marker = dpg.add_text(glyph)
-                FontRegistry.bind_to_item(rail_marker, Font.ICON)
-                rail_chevron = dpg.add_text(controller.rail_chevron_glyph)
-                FontRegistry.bind_to_item(rail_chevron, Font.ICON)
-                dpg.add_spacer(height=self._collapse_layout.rail_title_gap)
-                rail_title = dpg.add_text("\n".join(label.upper()))
-                FontRegistry.bind_to_item(rail_title, Font.MONO_BOLD_SMALL)
-                ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(rail_title)
+                with dpg.group() as rail_content:
+                    rail_chevron = dpg.add_text(controller.rail_chevron_glyph)
+                    FontRegistry.bind_to_item(rail_chevron, Font.ICON)
+                    rail_marker = dpg.add_text(glyph)
+                    FontRegistry.bind_to_item(rail_marker, Font.ICON)
+                    dpg.add_spacer(height=self._collapse_layout.rail_title_gap)
+                    rail_title = dpg.add_text("\n".join(label.upper()))
+                    FontRegistry.bind_to_item(rail_title, Font.MONO_BOLD_SMALL)
+                ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(rail_content)
+                self._center_rail_items(
+                    controller.rail_width,
+                    [
+                        (rail_chevron, Font.ICON),
+                        (rail_marker, Font.ICON),
+                        (rail_title, Font.MONO_BOLD_SMALL),
+                    ],
+                )
 
         controller.attach()
 
@@ -296,6 +311,26 @@ class GUIPanel(CallbackMixin, ABC):
             yield
 
         controller.set_collapsed(controller.collapsed, notify=False)
+
+    def _center_rail_items(self, rail_width: int, items: List[Tuple[Sender, Font]]) -> None:
+        """Indent each rail item so its glyph sits centered in the rail's content region.
+
+        Text is left-aligned, so an item is nudged right by half the slack between the content width
+        and the glyph's own width — the chevron, card glyph, and every title character each get their
+        own offset. ``get_text_size`` reads back ``None`` until the font atlas is built a frame in, so
+        the pass reschedules itself until it can measure.
+        """
+        content_width = rail_width - 2 * _RAIL_CONTENT_PADDING
+        indents: List[Tuple[Sender, int]] = []
+        for item, font in items:
+            size = dpg.get_text_size(dpg.get_value(item), font=FontRegistry.get_tag(font))
+            if size is None:
+                FrameCallbackManager.set_frame_callback(partial(self._center_rail_items, rail_width, items))
+                return
+            indents.append((item, max(0, round((content_width - size[0]) / 2))))
+
+        for item, indent in indents:
+            dpg_configure_item(item, indent=indent)
 
     def set_visibility(self, visible: bool) -> None:
         dpg_configure_item(self.tag, show=visible)

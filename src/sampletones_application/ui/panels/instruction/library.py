@@ -37,6 +37,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
@@ -97,6 +98,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         shortcut_manager: ShortcutManager,
         *,
         tree_behavior: TreeBehavior,
+        initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
@@ -200,6 +202,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             colors=colors,
         )
 
+        self._enable_horizontal_collapse(
+            initial_collapsed=initial_collapsed,
+            side=CollapseAxis.HORIZONTAL_LEFT,
+        )
+
     def _setup_handlers(self) -> None:
         self._node_handlers = {
             NodeType.LIBRARY: NodeHandler(
@@ -227,18 +234,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             parent=parent,
             border=False,
         ):
-            self._create_section_text()
-            self._create_library_status()
-            self._create_library_controls()
-            self._create_library_tree()
+            with self._collapsible_section(
+                self._lbl_libraries,
+                glyph=self._glyphs.headers.instruction_data,
+            ):
+                self._create_library_status()
+                self._create_library_controls()
+                self._create_library_tree()
 
         self._create_detail_tooltip(TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE)
-
-    def _create_section_text(self) -> None:
-        self._create_section_header(
-            self._lbl_libraries,
-            glyph=self._glyphs.headers.instruction_data,
-        )
 
     def _create_library_status(self) -> None:
         text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
@@ -284,7 +288,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _create_library_tree(self) -> None:
         dpg.add_separator()
-        self.create_search(self.tag)
+        self.create_search(self._body_container)
         with dpg.child_window(
             tag=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
             width=-1,

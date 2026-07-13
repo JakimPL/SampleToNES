@@ -66,6 +66,7 @@ from sampletones_application.ui.panels.instruction.waveform import (
     GUIInstructionWaveformPanel,
 )
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
@@ -79,6 +80,10 @@ from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
+
+_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}"
+_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}"
+_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}"
 
 
 class InstructionsTabCoordinator:
@@ -119,6 +124,7 @@ class InstructionsTabCoordinator:
         self._details_width = layout.general.columns.instructions_right.width
         self._right_height = layout.general.columns.instructions_right.height
         self._panel_gap = layout.general.panel_gap
+        self._rail_width = layout.general.collapse.rail_width
         self._msg_display_error = language_manager[
             Page.INSTRUCTIONS,
             Panel.LIBRARY,
@@ -202,6 +208,7 @@ class InstructionsTabCoordinator:
             self._library_tree_logic,
             shortcut_manager,
             tree_behavior=layout.behavior.instructions,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_LIBRARY_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
             colors=TreeColors.create(
@@ -210,6 +217,7 @@ class InstructionsTabCoordinator:
             ),
             is_operation_active=is_operation_active,
         )
+        self._library_panel.set_collapse_handler(self._on_library_collapse_changed)
         self._library_tree_logic.on_lock_state_changed = self._library_panel.set_tree_enabled
         self._library_tree_logic.on_favorite_changed = self._library_panel.update_favorite_indicator
         self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
@@ -423,6 +431,16 @@ class InstructionsTabCoordinator:
         """Persists a centre-column card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
 
+    def _on_library_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists the library panel's collapse, then docks or restores the width of the column it fills."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+        self._sync_library_width()
+
+    def _sync_library_width(self) -> None:
+        """Shrinks the library column to the collapse rail when collapsed, else restores its full width."""
+        width = self._rail_width if self._library_panel.collapsed else self._left_width
+        dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
+
     def _update_details_view(self, view_model: InstructionDetailsPanelViewModel) -> None:
         """Fans the details view model out to the parameters and choice cards."""
         self._instruction_parameters_panel.update_tables(view_model.table_data)
@@ -447,7 +465,7 @@ class InstructionsTabCoordinator:
                 panel_gap=self._panel_gap,
                 columns=[
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
+                        tag=_LEFT_COLUMN_TAG,
                         build=self._library_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
                         width=self._left_width,
@@ -455,13 +473,13 @@ class InstructionsTabCoordinator:
                         no_scrollbar=True,
                     ),
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        tag=_CENTER_COLUMN_TAG,
                         build=self._build_display_column,
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         border=False,
                     ),
                     ColumnSpec(
-                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                        tag=_RIGHT_COLUMN_TAG,
                         build=self._build_details_column,
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         width=self._details_width,
@@ -471,6 +489,8 @@ class InstructionsTabCoordinator:
                     ),
                 ],
             )
+
+        self._sync_library_width()
 
     def _build_display_column(self, parent: str) -> None:
         """Stacks the waveform and spectrum cards down the centre column."""

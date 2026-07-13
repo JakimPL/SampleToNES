@@ -89,7 +89,7 @@ section_header:
 
 collapse:
   header_bar_height: 32
-  rail_width: 28
+  rail_width: 45
   rail_title_gap: 6
 
 colors:

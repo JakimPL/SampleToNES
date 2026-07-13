@@ -276,8 +276,14 @@ class _RailPanel(GUIPanel):
 
 @pytest.fixture
 def section_panel(dpg_context: None, monkeypatch: pytest.MonkeyPatch) -> _RailPanel:
-    """A horizontally docked panel wired with test geometry, its font binding stubbed to a no-op."""
+    """A horizontally docked panel wired with test geometry, its fonts and text metrics stubbed out.
+
+    Without a viewport the font atlas never builds, so rail centering only has to defer cleanly rather
+    than measure: the font lookups return a sentinel and ``get_text_size`` reads back None.
+    """
     monkeypatch.setattr(FontRegistry, "bind_to_item", staticmethod(lambda item, font: None))
+    monkeypatch.setattr(FontRegistry, "get_tag", classmethod(lambda cls, font: 0))
+    monkeypatch.setattr(dpg, "get_text_size", lambda text, font=0: None)
     GUIPanel.configure_section_header(
         _glyphs(),
         GlyphLayout(indent=0, width=_RAIL_WIDTH),
@@ -300,5 +306,6 @@ class TestHorizontalRailTitle:
 
         controller = section_panel.collapse
         assert controller is not None
-        rail_texts = [dpg.get_value(item) for item in dpg.get_item_children(controller.rail_tag, 1)]
+        (rail_content,) = dpg.get_item_children(controller.rail_tag, 1)
+        rail_texts = [dpg.get_value(item) for item in dpg.get_item_children(rail_content, 1)]
         assert "\n".join(_RAIL_LABEL.upper()) in rail_texts
