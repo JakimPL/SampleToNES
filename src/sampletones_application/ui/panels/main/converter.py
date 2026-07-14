@@ -13,6 +13,7 @@ from sampletones_application.layout.general import PathColors
 from sampletones_application.layout.main import ConverterLayout
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_PANEL_EMPHASIS,
     TAG_GLOBAL_THEME_PRIMARY_BUTTON,
 )
 from sampletones_application.tags.main import (
@@ -133,6 +134,7 @@ class GUIConverterPanel(GUIPanel):
             self._lbl_section,
             glyph=self._glyphs.headers.converter,
             width=self.width,
+            card_theme=TAG_GLOBAL_THEME_PANEL_EMPHASIS,
         ):
             self._create_action_button()
             dpg.add_separator()

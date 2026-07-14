@@ -8,9 +8,7 @@ from sampletones_application.categories.elements.main import AdvancedElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general import PathColors
-from sampletones_application.tags.general import (
-    SUF_HANDLER_REGISTRY,
-)
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
     TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,

@@ -89,7 +89,7 @@ section_header:
   chevron_offset: 8
 
 collapse:
-  header_bar_height: 34
+  header_bar_height: 35
   rail_width: 50
   rail_title_gap: 6
 

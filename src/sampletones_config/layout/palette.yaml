@@ -7,6 +7,7 @@ colors:
   recess: "#2f2e3c"
   surface: "#3a3949"
   surface_alt: "#454456"
+  surface_accent: "#403a55"
   menu: "#20283a"
   status_bar: "#20283a"
   popup: "#222130"

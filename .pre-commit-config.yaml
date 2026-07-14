@@ -44,7 +44,7 @@ repos:
 
       - id: yamlfmt
         name: yamlfmt
-        entry: yamlfmt
+        entry: uv run yamlfmt
         language: system
         types: [yaml]
 

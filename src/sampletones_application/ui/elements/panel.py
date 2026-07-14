@@ -7,7 +7,10 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.layout.general import CollapseLayout, SectionHeaderLayout
 from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECTION_HEADER
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
+    TAG_GLOBAL_THEME_SECTION_HEADER,
+)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.card import card
@@ -183,8 +186,15 @@ class GUIPanel(CallbackMixin, ABC):
         marker_glyph = glyph if glyph is not None else self._glyphs.common.tick
         collapsible = affordance is not None
         policy = dpg.mvTable_SizingStretchProp if collapsible else dpg.mvTable_SizingFixedFit
-        with dpg.group(parent=parent, tag=tag) as header:
-            with dpg.table(header_row=False, policy=policy, resizable=False):
+        with dpg.group(
+            parent=parent,
+            tag=tag,
+        ) as header:
+            with dpg.table(
+                header_row=False,
+                policy=policy,
+                resizable=False,
+            ):
                 dpg.add_table_column(
                     width_fixed=True,
                     init_width_or_weight=self._glyph_layout.width,
@@ -231,12 +241,15 @@ class GUIPanel(CallbackMixin, ABC):
         width: int = -1,
         no_scrollbar: bool = False,
         show: bool = True,
+        card_theme: str = TAG_GLOBAL_THEME_PANEL_SURFACE,
     ) -> Iterator[None]:
         """Open this panel's card and frame its content with the collapsible header in one step.
 
         The card's tag, height, and auto-resize follow the collapse controller, so the card and its
         controller stay in step; the panel supplies only the width, scrollbar, and initial visibility
         the controller does not own. A controller must be enabled first via ``_enable_vertical_collapse``.
+        ``card_theme`` picks the card surface, so a primary card stands out from its siblings while the
+        rest keep the shared surface by default.
         """
         controller = self._collapse
         if controller is None:
@@ -245,6 +258,7 @@ class GUIPanel(CallbackMixin, ABC):
         with card(
             parent,
             controller.card_tag,
+            theme=card_theme,
             width=width,
             height=controller.expanded_height,
             auto_resize_y=controller.auto_height,
