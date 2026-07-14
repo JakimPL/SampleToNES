@@ -1,6 +1,6 @@
 from typing import Final, Optional, Tuple
 
-from sampletones_application.layout.sequencer import ChannelColors
+from sampletones_application.layout.sequencer.colors import ChannelColors
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName

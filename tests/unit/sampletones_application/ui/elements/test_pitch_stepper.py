@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Tuple
 
 import pytest
 
-from sampletones_application.layout.general import PitchStepperLayout
+from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.ui.elements import pitch_stepper as pitch_stepper_module
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.utils.callbacks.queue import CallbackQueue

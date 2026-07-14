@@ -2,7 +2,7 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.general import PitchStepperLayout
+from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.tags.general import (
     SUF_BUTTON_DECREMENT,
     SUF_BUTTON_INCREMENT,

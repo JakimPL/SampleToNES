@@ -1,0 +1,5 @@
+sample_thickness: 1.5
+reconstruction_thickness: 1.2
+position_indicator_thickness: 2.0
+zoom_factor: 0.2
+max_display_points: 4096

@@ -13,23 +13,23 @@ from sampletones_application.layout.project_properties import ProjectPropertiesL
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.utils.palette import PALETTE_CONTEXT_KEY, Palette
-from sampletones_shared.utils.serialization import load_yaml_model
+from sampletones_shared.utils.serialization import load_yaml_model, load_yaml_model_dir
 
 
 def load_layout_config(layout_directory: Path, behavior_directory: Path, palette: Palette) -> LayoutConfig:
     context = {PALETTE_CONTEXT_KEY: palette}
     return LayoutConfig(
-        general=load_yaml_model(layout_directory / "general.yaml", GeneralLayout, context=context),
+        general=load_yaml_model_dir(layout_directory / "general", GeneralLayout, context=context),
         fonts=load_yaml_model(layout_directory / "fonts.yaml", FontsLayout, context=context),
         glyphs=load_yaml_model(layout_directory / "glyphs.yaml", Glyphs, context=context),
-        graphs=load_yaml_model(layout_directory / "graphs.yaml", GraphsLayout, context=context),
-        instructions=load_yaml_model(layout_directory / "instructions.yaml", InstructionsLayout, context=context),
+        graphs=load_yaml_model_dir(layout_directory / "graphs", GraphsLayout, context=context),
+        instructions=load_yaml_model_dir(layout_directory / "instructions", InstructionsLayout, context=context),
         main=load_yaml_model(layout_directory / "main.yaml", MainLayout, context=context),
         player=load_yaml_model(layout_directory / "player.yaml", PlayerLayout, context=context),
         project_properties=load_yaml_model(
             layout_directory / "project_properties.yaml", ProjectPropertiesLayout, context=context
         ),
-        sequencer=load_yaml_model(layout_directory / "sequencer.yaml", SequencerLayout, context=context),
+        sequencer=load_yaml_model_dir(layout_directory / "sequencer", SequencerLayout, context=context),
         settings=load_yaml_model(layout_directory / "settings.yaml", SettingsLayout, context=context),
         behavior=load_yaml_model(behavior_directory / "general.yaml", BehaviorConfig, context=context),
     )

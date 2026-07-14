@@ -8,7 +8,7 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general import FeatureColors
+from sampletones_application.layout.general.colors import FeatureColors
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_REDO,

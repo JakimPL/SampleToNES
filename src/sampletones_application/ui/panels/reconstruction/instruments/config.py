@@ -6,7 +6,7 @@ from sampletones_application.categories.elements.reconstructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general import FeatureColors
+from sampletones_application.layout.general.colors import FeatureColors
 from sampletones_core.constants.enums import FeatureKey, LibraryGeneratorName
 from sampletones_core.features import feature_range, supported_features
 from sampletones_shared.types.application import Color

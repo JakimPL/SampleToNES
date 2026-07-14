@@ -5,7 +5,8 @@ from typing import Callable, Iterator, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.general import CollapseLayout, SectionHeaderLayout
+from sampletones_application.layout.general.collapse import CollapseLayout
+from sampletones_application.layout.general.section_header import SectionHeaderLayout
 from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,

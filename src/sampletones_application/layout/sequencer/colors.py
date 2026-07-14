@@ -1,49 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.general import Padding
 from sampletones_application.utils.palette import PaletteColor
-
-
-class OrderLayout(BaseModel, extra="forbid", frozen=True):
-    height: int
-    position_column_width: int
-    master_divider_height: int
-
-
-class InstrumentColumnWidths(BaseModel, extra="forbid", frozen=True):
-    """Widths of the three sub-columns that make up an instrument row: its id, its
-    name, and its loop marker. They only mean anything as a set, so they live together.
-    """
-
-    id: int
-    name: int
-    loop: int
-
-
-class SequencerTableCells(BaseModel, extra="forbid", frozen=True):
-    row: int
-    sample: int
-    divider: int
-    generator: int
-    instrument: InstrumentColumnWidths
-
-
-class TempoLayout(BaseModel, extra="forbid", frozen=True):
-    min: int
-    max: int
-    default: int
-
-
-class SpeedLayout(BaseModel, extra="forbid", frozen=True):
-    min: int
-    max: int
-    default: int
-
-
-class SubcolumnWidths(BaseModel, extra="forbid", frozen=True):
-    instrument: int
-    transpose: int
-    volume: int
 
 
 class TrackerColors(BaseModel, extra="forbid", frozen=True):
@@ -76,14 +33,6 @@ class HistoryRoleColors(BaseModel, extra="forbid", frozen=True):
     channel: PaletteColor
     value: PaletteColor
     separator: PaletteColor
-
-
-class TrackerLayout(BaseModel, extra="forbid", frozen=True):
-    rows: int
-    row_height: int
-    page_size: int
-    subcolumn_widths: SubcolumnWidths
-    channel_column_tint: float
 
 
 class ChannelColors(BaseModel, extra="forbid", frozen=True):
@@ -140,20 +89,3 @@ class SequencerColors(BaseModel, extra="forbid", frozen=True):
     history: HistoryColors
     text: TrackerColors
     channels: ChannelColors
-
-
-class HistoryLayout(BaseModel, extra="forbid", frozen=True):
-    height: int
-    selectable_column_weight: float
-    max_rendered_entries: int
-
-
-class SequencerLayout(BaseModel, extra="forbid", frozen=True):
-    cell_padding: Padding
-    order: OrderLayout
-    table_cells: SequencerTableCells
-    tempo: TempoLayout
-    speed: SpeedLayout
-    tracker: TrackerLayout
-    history: HistoryLayout
-    colors: SequencerColors

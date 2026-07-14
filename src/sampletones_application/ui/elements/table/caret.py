@@ -2,7 +2,7 @@ from typing import Any, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.general import CaretLayout
+from sampletones_application.layout.general.caret import CaretLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.utils.gui.dpg import dpg_get_item_parent

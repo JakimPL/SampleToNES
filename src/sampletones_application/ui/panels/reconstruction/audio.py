@@ -12,7 +12,7 @@ from sampletones_application.categories.elements.reconstructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general import PathColors
+from sampletones_application.layout.general.colors import PathColors
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,

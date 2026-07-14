@@ -9,7 +9,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general import PathColors
+from sampletones_application.layout.general.colors import PathColors
 from sampletones_application.layout.main import ConverterLayout
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DANGER_BUTTON,

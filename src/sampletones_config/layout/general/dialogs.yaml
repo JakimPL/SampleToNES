@@ -1,0 +1,19 @@
+default:
+  width: 420
+  height: 100
+error:
+  width: 600
+  height: 120
+recovery:
+  width: 640
+  height: 120
+file:
+  width: 720
+  height: 400
+confirmation:
+  height: 130
+text_input:
+  height: 104
+traceback:
+  width: 0
+  height: 400

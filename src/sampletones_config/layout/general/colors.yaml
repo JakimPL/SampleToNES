@@ -1,0 +1,44 @@
+text:
+  white: .white
+  default: .text_default
+  disabled: .text_inactive
+  error: .text_error
+  highlight: .text_highlight
+  traceback: .text_trace
+files:
+  wave: .file_wave
+  library: .file_library
+  reconstruction: .file_reconstruction
+  directory_not_expanded: .file_muted
+favorites:
+  default: .favorite
+  child: .favorite_child
+buttons:
+  default: .button_flat
+  active: .button_flat_active
+  hovered: .button_flat_hovered
+  light: .button_flat_light
+backgrounds:
+  default: .background_default
+  dark: .background_dark
+  light: .background_light
+  menu: .background_menu
+  input_invalid: .background_invalid
+tables:
+  header: .properties_header
+  row: .properties_row
+  row_alternative: .properties_row_alt
+  border: .properties_border
+  label: .properties_label
+  value: .properties_value
+paths:
+  default: .path_link
+  hover: .path_link_hover
+headers:
+  library: .header_library
+  reconstruction: .header_reconstruction
+features:
+  volume: .feature_volume
+  arpeggio: .feature_arpeggio
+  pitch: .feature_pitch
+  duty_cycle: .feature_duty_cycle
