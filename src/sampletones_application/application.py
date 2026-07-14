@@ -89,6 +89,7 @@ from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.palette import Palette
 from sampletones_application.utils.parallelization.background import stop_background_workers
 from sampletones_application.view_model.shared.audio_settings import (
     AudioSettingsViewModel,
@@ -142,6 +143,7 @@ class Application:
         self.deployment: DeploymentConfig = DeploymentConfig.load(DEPLOYMENT_CONFIG_PATH)
         self._set_logging_level()
 
+        self._palette: Palette = Palette.load(PALETTE_PATH)
         self.layout: LayoutConfig = self._load_layout_config()
         self._setup_gui_elements()
 
@@ -393,7 +395,7 @@ class Application:
 
     def _load_layout_config(self) -> LayoutConfig:
         try:
-            return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
+            return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, self._palette)
         except ValidationError as exception:
             raise SystemError(f"Invalid layout configuration: {exception}") from exception
 
@@ -406,7 +408,7 @@ class Application:
         )
 
         try:
-            setup_themes(THEME_DIRECTORY, PALETTE_PATH)
+            setup_themes(THEME_DIRECTORY, self._palette)
         except ValidationError as exception:
             raise SystemError(f"Invalid theme configuration: {exception}") from exception
 

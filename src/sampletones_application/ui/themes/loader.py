@@ -15,12 +15,7 @@ from sampletones_application.ui.themes.items import (
     ThemeEntryKey,
     ThemeItems,
 )
-from sampletones_application.ui.themes.palette import (
-    Palette,
-    PaletteReference,
-)
 from sampletones_application.ui.themes.spec import (
-    ColorSource,
     ThemeColorEntrySpec,
     ThemeEntrySpec,
     ThemeSpec,
@@ -32,6 +27,11 @@ from sampletones_application.ui.themes.style import (
     ThemeValue,
 )
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_application.utils.palette import (
+    ColorSource,
+    Palette,
+    PaletteReference,
+)
 from sampletones_core.paths import EXT_FILE_YAML
 from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.serialization import load_yaml
@@ -47,9 +47,9 @@ class ThemeLoader:
     describes both item states and stays authoritative wherever it is bound.
     """
 
-    def __init__(self, theme_directory: Path, palette_path: Path) -> None:
+    def __init__(self, theme_directory: Path, palette: Palette) -> None:
         self._directory = theme_directory
-        self._palette = Palette.load(palette_path)
+        self._palette = palette
 
     def load_all(self) -> List[Theme]:
         specs = self._load_specs()

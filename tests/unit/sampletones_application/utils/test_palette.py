@@ -1,11 +1,19 @@
 from pathlib import Path
 
 import pytest
+from pydantic import BaseModel, ValidationError
 
-from sampletones_application.ui.themes.palette import (
+from sampletones_application.utils.palette import (
+    PALETTE_CONTEXT_KEY,
     Palette,
+    PaletteColor,
     PaletteReference,
 )
+
+
+class _Swatch(BaseModel, frozen=True):
+    color: PaletteColor
+
 
 _PALETTE = """
 name: test
@@ -61,3 +69,24 @@ class TestLoadPalette:
     def test_a_missing_palette_raises_system_error(self, tmp_path: Path) -> None:
         with pytest.raises(SystemError):
             Palette.load(tmp_path / "missing")
+
+
+class TestPaletteColor:
+    @pytest.fixture
+    def palette(self) -> Palette:
+        return Palette.model_validate({"name": "test", "colors": {"accent": "#a97fe3", "overlay": "#ffffff40"}})
+
+    def test_a_hex_literal_resolves_without_a_palette(self) -> None:
+        assert _Swatch.model_validate({"color": "#a97fe3"}).color == (169, 127, 227, 255)
+
+    def test_a_reference_resolves_against_the_context_palette(self, palette: Palette) -> None:
+        swatch = _Swatch.model_validate({"color": ".accent"}, context={PALETTE_CONTEXT_KEY: palette})
+        assert swatch.color == (169, 127, 227, 255)
+
+    def test_a_reference_alpha_override_is_applied(self, palette: Palette) -> None:
+        swatch = _Swatch.model_validate({"color": ".accent/0.5"}, context={PALETTE_CONTEXT_KEY: palette})
+        assert swatch.color == (169, 127, 227, 128)
+
+    def test_a_reference_without_a_palette_context_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            _Swatch.model_validate({"color": ".accent"})

@@ -13,8 +13,8 @@ waveform:
 spectrum:
   max_display_bins: 512
   offset_log: 0.01
-  color_dim: "#1c1c1c"
-  color_bright: "#ffffff"
+  color_dim: .spectrum_dim
+  color_bright: .white
 
 graph:
   min_x: 0.0
@@ -31,10 +31,10 @@ bar_plot:
   hover_alpha: 80
 
 colors:
-  bar_plot: "#64c8ff"
-  bar_plot_zero_line: "#c8c8c8"
-  waveform_default: "#ffffff"
-  waveform_sample: "#64c8ff"
-  waveform_reconstruction: "#ffc864"
-  waveform_position_indicator: "#ffffff"
-  waveform_overlay: "#ffffff20"
+  bar_plot: .graph_bar
+  bar_plot_zero_line: .plot_zero_line
+  waveform_default: .white
+  waveform_sample: .waveform_sample
+  waveform_reconstruction: .waveform_reconstruction
+  waveform_position_indicator: .white
+  waveform_overlay: .waveform_overlay

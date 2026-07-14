@@ -79,8 +79,8 @@ menu:
 caret:
   offset: 3
   width_padding: 2
-  fill: "#4488ff80"
-  border: "#88bbffff"
+  fill: .caret_fill
+  border: .caret_border
 
 section_header:
   glyph:
@@ -95,46 +95,46 @@ collapse:
 
 colors:
   text:
-    white: "#ffffff"
-    default: "#dcdcdc"
-    disabled: "#828282"
-    error: "#ff6464"
-    highlight: "#ffcf6e"
-    traceback: "#c0c0c0"
+    white: .white
+    default: .text_default
+    disabled: .text_inactive
+    error: .text_error
+    highlight: .text_highlight
+    traceback: .text_trace
   files:
-    wave: "#64c8ff"
-    library: "#96ff96"
-    reconstruction: "#b4b4ff"
-    directory_not_expanded: "#b4b4b4"
+    wave: .file_wave
+    library: .file_library
+    reconstruction: .file_reconstruction
+    directory_not_expanded: .file_muted
   favorites:
-    default: "#ffd76e"
-    child: "#e7dbb7"
+    default: .favorite
+    child: .favorite_child
   buttons:
-    default: "#363648"
-    active: "#5a5a78"
-    hovered: "#48486c"
-    light: "#404060"
+    default: .button_flat
+    active: .button_flat_active
+    hovered: .button_flat_hovered
+    light: .button_flat_light
   backgrounds:
-    default: "#242424"
-    dark: "#1c1c1c"
-    light: "#2c2c2c"
-    menu: "#323232"
-    input_invalid: "#c0202064"
+    default: .background_default
+    dark: .background_dark
+    light: .background_light
+    menu: .background_menu
+    input_invalid: .background_invalid
   tables:
-    header: "#2d3241"
-    row: "#1e2028"
-    row_alternative: "#262834"
-    border: "#3c4155"
-    label: "#8ca0c8"
-    value: "#c8cddc"
+    header: .properties_header
+    row: .properties_row
+    row_alternative: .properties_row_alt
+    border: .properties_border
+    label: .properties_label
+    value: .properties_value
   paths:
-    default: "#6496ff"
-    hover: "#96c8ff"
+    default: .path_link
+    hover: .path_link_hover
   headers:
-    library: "#96d2a0"
-    reconstruction: "#c8a0ff"
+    library: .header_library
+    reconstruction: .header_reconstruction
   features:
-    volume: "#64ff64"
-    arpeggio: "#ff9664"
-    pitch: "#64c8ff"
-    duty_cycle: "#ffc864"
+    volume: .feature_volume
+    arpeggio: .feature_arpeggio
+    pitch: .feature_pitch
+    duty_cycle: .feature_duty_cycle

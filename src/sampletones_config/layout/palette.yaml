@@ -122,3 +122,87 @@ colors:
   library_generator: "#d2e8d2"
   library_group: "#d2e8e8"
   library_instruction: "#d2d2d2"
+  library_root: "#dcdcdc"
+
+  # layout: content text
+  text_default: "#dcdcdc"
+  text_inactive: "#828282"
+  text_error: "#ff6464"
+  text_highlight: "#ffcf6e"
+
+  # layout: flat control buttons
+  button_flat: "#363648"
+  button_flat_active: "#5a5a78"
+  button_flat_hovered: "#48486c"
+  button_flat_light: "#404060"
+
+  # layout: background fills
+  background_default: "#242424"
+  background_dark: "#1c1c1c"
+  background_light: "#2c2c2c"
+  background_menu: "#323232"
+  background_invalid: "#c0202064"
+
+  # layout: properties table
+  properties_header: "#2d3241"
+  properties_row: "#1e2028"
+  properties_row_alt: "#262834"
+  properties_border: "#3c4155"
+  properties_label: "#8ca0c8"
+  properties_value: "#c8cddc"
+
+  # layout: path links
+  path_link: "#6496ff"
+  path_link_hover: "#96c8ff"
+
+  # layout: section headers
+  header_library: "#96d2a0"
+  header_reconstruction: "#c8a0ff"
+
+  # layout: instruction features
+  feature_volume: "#64ff64"
+  feature_arpeggio: "#ff9664"
+  feature_pitch: "#64c8ff"
+  feature_duty_cycle: "#ffc864"
+
+  # layout: caret overlay
+  caret_fill: "#4488ff80"
+  caret_border: "#88bbffff"
+
+  # layout: graphs and waveforms
+  graph_bar: "#64c8ff"
+  waveform_sample: "#64c8ff"
+  waveform_reconstruction: "#ffc864"
+  waveform_overlay: "#ffffff20"
+  spectrum_dim: "#1c1c1c"
+
+  # layout: tracker cursor and playback
+  pattern_highlight: "#ffffff40"
+  cell_cursor: "#66bbffa0"
+  cursor_row: "#ffffff18"
+  playback_row: "#64dc6440"
+
+  # layout: order table
+  order_label: "#2d3241"
+  order_master: "#22ccff18"
+  order_master_divider: "#22ccff24"
+  order_column_current: "#ffffff20"
+  order_column_playing: "#64dc6430"
+
+  # layout: sample column
+  sample_column: "#22ccff2c"
+  sample_divider: "#22ccff24"
+
+  # layout: history detail
+  history_future: "#808080ff"
+  history_channel: "#88bbffff"
+  history_value: "#d0d0d0ff"
+  history_separator: "#707070ff"
+
+  # layout: tracker text (instrument and sample share the reference yellow)
+  tracker_reference: "#e0c860ff"
+  tracker_transpose: "#c0c0c0ff"
+  tracker_volume: "#64dc64ff"
+  tracker_frame: "#22ccffff"
+  tracker_row: "#a0a0a0ff"
+  tracker_order: "#c8d0e0ff"

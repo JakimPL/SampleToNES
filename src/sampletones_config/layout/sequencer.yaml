@@ -41,36 +41,36 @@ history:
   max_rendered_entries: 100
 
 colors:
-  pattern_highlight: "#ffffff40"
-  cell_cursor: "#66bbffa0"
-  cursor_row: "#ffffff18"
-  playback_row: "#64dc6440"
-  label: "#ffffff"
+  pattern_highlight: .pattern_highlight
+  cell_cursor: .cell_cursor
+  cursor_row: .cursor_row
+  playback_row: .playback_row
+  label: .white
   order:
-    label: "#2d3241"
-    master: "#22ccff18"
-    master_divider: "#22ccff24"
-    column_current: "#ffffff20"
-    column_playing: "#64dc6430"
+    label: .order_label
+    master: .order_master
+    master_divider: .order_master_divider
+    column_current: .order_column_current
+    column_playing: .order_column_playing
   sample:
-    column: "#22ccff2c"
-    divider: "#22ccff24"
+    column: .sample_column
+    divider: .sample_divider
   history:
-    future: "#808080ff"
+    future: .history_future
     roles:
-      channel: "#88bbffff"
-      value: "#d0d0d0ff"
-      separator: "#707070ff"
+      channel: .history_channel
+      value: .history_value
+      separator: .history_separator
   text:
-    instrument: "#e0c860ff"
-    transpose: "#c0c0c0ff"
-    volume: "#64dc64ff"
-    sample: "#e0c860ff"
-    frame: "#22ccffff"
-    row: "#a0a0a0ff"
-    order: "#c8d0e0ff"
+    instrument: .tracker_reference
+    transpose: .tracker_transpose
+    volume: .tracker_volume
+    sample: .tracker_reference
+    frame: .tracker_frame
+    row: .tracker_row
+    order: .tracker_order
   channels:
-    pulse1: "#f09256"
-    pulse2: "#f2d15f"
-    triangle: "#8cc1ed"
-    noise: "#bbb8c2"
+    pulse1: .channel_pulse1
+    pulse2: .channel_pulse2
+    triangle: .channel_triangle
+    noise: .channel_noise

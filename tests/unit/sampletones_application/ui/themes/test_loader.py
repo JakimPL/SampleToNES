@@ -9,6 +9,7 @@ from sampletones_application.tags.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.ui.themes.loader import ThemeLoader
 from sampletones_application.ui.themes.spec import ThemeSpec
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_application.utils.palette import Palette
 
 _BASE_NAME = "default"
 
@@ -67,7 +68,7 @@ class TestLoadedInheritance:
 
     @pytest.fixture
     def themes(self) -> Dict[str, Theme]:
-        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, PALETTE_PATH).load_all()}
+        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, Palette.load(PALETTE_PATH)).load_all()}
 
     def test_every_theme_carries_the_base_row_background(self, themes: Dict[str, Theme]) -> None:
         dpg.create_context()
@@ -113,7 +114,7 @@ class TestDisabledStateMirroring:
         palette_path.write_text(_SYNTHETIC_PALETTE)
         dpg.create_context()
         try:
-            theme = ThemeLoader(themes_path, palette_path).load_all()[0]
+            theme = ThemeLoader(themes_path, Palette.load(palette_path)).load_all()[0]
             theme.create()
             yield theme
         finally:

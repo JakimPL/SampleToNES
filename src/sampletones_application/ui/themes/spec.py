@@ -4,10 +4,7 @@ from typing import Annotated, List, Literal, Union
 
 from pydantic import BaseModel, Field
 
-from sampletones_application.ui.themes.palette import PaletteReference
-from sampletones_application.utils.color import RGBA
-
-ColorSource = Annotated[Union[PaletteReference, RGBA], Field(union_mode="left_to_right")]
+from sampletones_application.utils.palette import ColorSource
 
 
 class ThemeColorEntrySpec(BaseModel, frozen=True):

@@ -4,7 +4,7 @@ import json
 from collections.abc import Hashable
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Final, List, Type, TypeVar, Union
+from typing import Any, Final, List, Mapping, Optional, Type, TypeVar, Union
 
 import numpy as np
 import yaml
@@ -106,13 +106,21 @@ def load_yaml(filepath: Pathlike) -> Union[List[Any], SerializedData]:
         return data
 
 
-def load_yaml_model(filepath: Pathlike, model_type: Type[ModelTypeT]) -> ModelTypeT:
+def load_yaml_model(
+    filepath: Pathlike,
+    model_type: Type[ModelTypeT],
+    *,
+    context: Optional[Mapping[str, Any]] = None,
+) -> ModelTypeT:
     """
     Loads and validates a Pydantic model from a YAML file holding a mapping.
 
     Args:
         filepath (Pathlike): Path to the YAML file to load.
         model_type (Type[ModelTypeT]): Model class validating the mapping.
+        context (Optional[Mapping[str, Any]]): Validation context forwarded to
+            ``model_validate``, letting field validators resolve against shared state
+            (e.g. a palette for colour references).
 
     Returns:
         ModelTypeT: The validated model instance.
@@ -124,7 +132,7 @@ def load_yaml_model(filepath: Pathlike, model_type: Type[ModelTypeT]) -> ModelTy
     if not isinstance(raw, dict):
         raise TypeError(f"YAML file {filepath} must contain a mapping, got {type(raw)}")
 
-    return model_type.model_validate(raw)
+    return model_type.model_validate(raw, context=context)
 
 
 def save_binary(filepath: Pathlike, data: bytes) -> None:

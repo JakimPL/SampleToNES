@@ -3,7 +3,7 @@ from typing import Tuple, TypeAlias
 from pydantic import BaseModel
 
 from sampletones_application.layout.glyphs import GlyphLayout
-from sampletones_application.utils.color import RGBA
+from sampletones_application.utils.palette import PaletteColor
 
 Padding: TypeAlias = Tuple[int, int]
 
@@ -105,8 +105,8 @@ class MenuLayout(BaseModel, extra="forbid", frozen=True):
 class CaretLayout(BaseModel, extra="forbid", frozen=True):
     offset: int
     width_padding: int
-    fill: RGBA
-    border: RGBA
+    fill: PaletteColor
+    border: PaletteColor
 
 
 class SectionHeaderLayout(BaseModel, extra="forbid", frozen=True):
@@ -123,58 +123,58 @@ class CollapseLayout(BaseModel, extra="forbid", frozen=True):
 
 
 class TextColors(BaseModel, extra="forbid", frozen=True):
-    white: RGBA
-    default: RGBA
-    disabled: RGBA
-    error: RGBA
-    highlight: RGBA
-    traceback: RGBA
+    white: PaletteColor
+    default: PaletteColor
+    disabled: PaletteColor
+    error: PaletteColor
+    highlight: PaletteColor
+    traceback: PaletteColor
 
 
 class FileColors(BaseModel, extra="forbid", frozen=True):
-    wave: RGBA
-    library: RGBA
-    reconstruction: RGBA
-    directory_not_expanded: RGBA
+    wave: PaletteColor
+    library: PaletteColor
+    reconstruction: PaletteColor
+    directory_not_expanded: PaletteColor
 
 
 class FavoriteColors(BaseModel, extra="forbid", frozen=True):
-    default: RGBA
-    child: RGBA
+    default: PaletteColor
+    child: PaletteColor
 
 
 class ButtonColors(BaseModel, extra="forbid", frozen=True):
-    default: RGBA
-    active: RGBA
-    hovered: RGBA
-    light: RGBA
+    default: PaletteColor
+    active: PaletteColor
+    hovered: PaletteColor
+    light: PaletteColor
 
 
 class BackgroundColors(BaseModel, extra="forbid", frozen=True):
-    default: RGBA
-    dark: RGBA
-    light: RGBA
-    menu: RGBA
-    input_invalid: RGBA
+    default: PaletteColor
+    dark: PaletteColor
+    light: PaletteColor
+    menu: PaletteColor
+    input_invalid: PaletteColor
 
 
 class TableColors(BaseModel, extra="forbid", frozen=True):
-    header: RGBA
-    row: RGBA
-    row_alternative: RGBA
-    border: RGBA
-    label: RGBA
-    value: RGBA
+    header: PaletteColor
+    row: PaletteColor
+    row_alternative: PaletteColor
+    border: PaletteColor
+    label: PaletteColor
+    value: PaletteColor
 
 
 class PathColors(BaseModel, extra="forbid", frozen=True):
-    default: RGBA
-    hover: RGBA
+    default: PaletteColor
+    hover: PaletteColor
 
 
 class HeaderColors(BaseModel, extra="forbid", frozen=True):
-    library: RGBA
-    reconstruction: RGBA
+    library: PaletteColor
+    reconstruction: PaletteColor
 
 
 class FeatureColors(BaseModel, extra="forbid", frozen=True):
@@ -185,10 +185,10 @@ class FeatureColors(BaseModel, extra="forbid", frozen=True):
     application.
     """
 
-    volume: RGBA
-    arpeggio: RGBA
-    pitch: RGBA
-    duty_cycle: RGBA
+    volume: PaletteColor
+    arpeggio: PaletteColor
+    pitch: PaletteColor
+    duty_cycle: PaletteColor
 
 
 class GeneralColors(BaseModel, extra="forbid", frozen=True):

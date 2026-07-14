@@ -7,7 +7,7 @@ values:
   float_precision: 4
 
 colors:
-  library: "#dcdcdc"
-  generator: "#d2e8d2"
-  group: "#d2e8e8"
-  instruction: "#d2d2d2"
+  library: .library_root
+  generator: .library_generator
+  group: .library_group
+  instruction: .library_instruction

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 from sampletones_application.layout.general import Padding
-from sampletones_application.utils.color import RGBA
+from sampletones_application.utils.palette import PaletteColor
 
 
 class OrderLayout(BaseModel, extra="forbid", frozen=True):
@@ -56,13 +56,13 @@ class TrackerColors(BaseModel, extra="forbid", frozen=True):
     step instead of each carrying its own copy.
     """
 
-    instrument: RGBA
-    transpose: RGBA
-    volume: RGBA
-    sample: RGBA
-    frame: RGBA
-    row: RGBA
-    order: RGBA
+    instrument: PaletteColor
+    transpose: PaletteColor
+    volume: PaletteColor
+    sample: PaletteColor
+    frame: PaletteColor
+    row: PaletteColor
+    order: PaletteColor
 
 
 class HistoryRoleColors(BaseModel, extra="forbid", frozen=True):
@@ -73,9 +73,9 @@ class HistoryRoleColors(BaseModel, extra="forbid", frozen=True):
     live here.
     """
 
-    channel: RGBA
-    value: RGBA
-    separator: RGBA
+    channel: PaletteColor
+    value: PaletteColor
+    separator: PaletteColor
 
 
 class TrackerLayout(BaseModel, extra="forbid", frozen=True):
@@ -94,10 +94,10 @@ class ChannelColors(BaseModel, extra="forbid", frozen=True):
     channel keeps one identity across both views.
     """
 
-    pulse1: RGBA
-    pulse2: RGBA
-    triangle: RGBA
-    noise: RGBA
+    pulse1: PaletteColor
+    pulse2: PaletteColor
+    triangle: PaletteColor
+    noise: PaletteColor
 
 
 class OrderColors(BaseModel, extra="forbid", frozen=True):
@@ -106,18 +106,18 @@ class OrderColors(BaseModel, extra="forbid", frozen=True):
     positions.
     """
 
-    label: RGBA
-    master: RGBA
-    master_divider: RGBA
-    column_current: RGBA
-    column_playing: RGBA
+    label: PaletteColor
+    master: PaletteColor
+    master_divider: PaletteColor
+    column_current: PaletteColor
+    column_playing: PaletteColor
 
 
 class SampleColors(BaseModel, extra="forbid", frozen=True):
     """Colours marking the tracker's sample column and the divider beside it."""
 
-    column: RGBA
-    divider: RGBA
+    column: PaletteColor
+    divider: PaletteColor
 
 
 class HistoryColors(BaseModel, extra="forbid", frozen=True):
@@ -125,16 +125,16 @@ class HistoryColors(BaseModel, extra="forbid", frozen=True):
     and the per-role token palette.
     """
 
-    future: RGBA
+    future: PaletteColor
     roles: HistoryRoleColors
 
 
 class SequencerColors(BaseModel, extra="forbid", frozen=True):
-    pattern_highlight: RGBA
-    cell_cursor: RGBA
-    cursor_row: RGBA
-    playback_row: RGBA
-    label: RGBA
+    pattern_highlight: PaletteColor
+    cell_cursor: PaletteColor
+    cursor_row: PaletteColor
+    playback_row: PaletteColor
+    label: PaletteColor
     order: OrderColors
     sample: SampleColors
     history: HistoryColors

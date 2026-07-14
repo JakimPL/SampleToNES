@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.utils.color import RGBA
+from sampletones_application.utils.palette import PaletteColor
 
 
 class InstructionChoiceLayout(BaseModel, extra="forbid", frozen=True):
@@ -14,10 +14,10 @@ class InstructionValues(BaseModel, extra="forbid", frozen=True):
 
 
 class InstructionColors(BaseModel, extra="forbid", frozen=True):
-    library: RGBA
-    generator: RGBA
-    group: RGBA
-    instruction: RGBA
+    library: PaletteColor
+    generator: PaletteColor
+    group: PaletteColor
+    instruction: PaletteColor
 
 
 class InstructionsLayout(BaseModel, extra="forbid", frozen=True):

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.utils.color import RGBA
+from sampletones_application.utils.palette import PaletteColor
 
 
 class GraphDimensions(BaseModel, extra="forbid", frozen=True):
@@ -20,8 +20,8 @@ class WaveformLayout(BaseModel, extra="forbid", frozen=True):
 class SpectrumLayout(BaseModel, extra="forbid", frozen=True):
     max_display_bins: int
     offset_log: float
-    color_dim: RGBA
-    color_bright: RGBA
+    color_dim: PaletteColor
+    color_bright: PaletteColor
 
 
 class GraphRange(BaseModel, extra="forbid", frozen=True):
@@ -41,13 +41,13 @@ class BarPlotLayout(BaseModel, extra="forbid", frozen=True):
 
 
 class GraphColors(BaseModel, extra="forbid", frozen=True):
-    bar_plot: RGBA
-    bar_plot_zero_line: RGBA
-    waveform_default: RGBA
-    waveform_sample: RGBA
-    waveform_reconstruction: RGBA
-    waveform_position_indicator: RGBA
-    waveform_overlay: RGBA
+    bar_plot: PaletteColor
+    bar_plot_zero_line: PaletteColor
+    waveform_default: PaletteColor
+    waveform_sample: PaletteColor
+    waveform_reconstruction: PaletteColor
+    waveform_position_indicator: PaletteColor
+    waveform_overlay: PaletteColor
 
 
 class GraphsLayout(BaseModel, extra="forbid", frozen=True):

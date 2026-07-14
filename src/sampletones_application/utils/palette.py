@@ -1,27 +1,26 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Final, Optional
+from typing import Annotated, Dict, Final, Mapping, Optional, Union
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, ValidationInfo, model_validator
 
-from sampletones_application.utils.color import RGBA
+from sampletones_application.utils.color import RGBA, parse_hex_color, with_alpha_fraction
 from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.serialization import load_yaml
 
 REFERENCE_PREFIX: Final[str] = "."
 ALPHA_SEPARATOR: Final[str] = "/"
-
-_OPAQUE_ALPHA: Final[int] = 255
+PALETTE_CONTEXT_KEY: Final[str] = "palette"
 
 
 class PaletteReference(BaseModel, frozen=True):
-    """A theme entry's reference to a named palette colour.
+    """A colour entry's reference to a named palette colour.
 
     Written in YAML as ``.token`` or ``.token/alpha`` where ``alpha`` is a fraction
     in ``[0, 1]`` that overrides the token's own alpha. The leading ``.`` marks the
     value as a reference and keeps it distinct from a ``#rrggbb`` literal, so a
-    theme entry accepts either form in the same field.
+    colour field accepts either form in the same slot.
     """
 
     token: str
@@ -56,11 +55,11 @@ def _parse_reference(value: str) -> Dict[str, object]:
 
 
 class Palette(BaseModel, frozen=True):
-    """A named set of semantic colour tokens shared across a theme set.
+    """A named set of semantic colour tokens shared across a theme set and the layout.
 
-    Theme entries reference these tokens by name so a colour is defined once and
-    reused everywhere, and swapping the palette restyles every theme that resolves
-    against it.
+    Colour fields reference these tokens by name so a colour is defined once and
+    reused everywhere, and swapping the palette restyles every theme and layout entry
+    that resolves against it.
     """
 
     name: str
@@ -81,18 +80,15 @@ class Palette(BaseModel, frozen=True):
                 f"Known tokens: {sorted(self.colors)}"
             )
 
-        red, green, blue, token_alpha = self.colors[reference.token]
+        color = self.colors[reference.token]
         if reference.alpha is None:
-            return (red, green, blue, token_alpha)
+            return color
 
-        return (red, green, blue, round(reference.alpha * _OPAQUE_ALPHA))
+        return with_alpha_fraction(color, reference.alpha)
 
     @classmethod
     def load(cls, path: Path) -> Palette:
-        """Load the palette that theme entries in ``theme_directory`` resolve against.
-
-        A directory that omits a palette file resolves to an empty palette, so a theme
-        set that states every colour as a literal loads without one.
+        """Load the palette that colour references resolve against.
 
         Raises:
             TypeError: when the palette file holds a value other than a mapping.
@@ -107,3 +103,37 @@ class Palette(BaseModel, frozen=True):
             raise TypeError(f"Palette file '{path}' must contain a mapping, got {type(raw)}")
 
         return Palette.model_validate(raw)
+
+
+ColorSource = Annotated[Union[PaletteReference, RGBA], Field(union_mode="left_to_right")]
+
+
+def _palette_from_context(info: ValidationInfo) -> Palette:
+    context = info.context
+    if not isinstance(context, Mapping) or PALETTE_CONTEXT_KEY not in context:
+        raise ValueError(f"Resolving a palette reference requires a {PALETTE_CONTEXT_KEY!r} validation context")
+
+    palette = context[PALETTE_CONTEXT_KEY]
+    if not isinstance(palette, Palette):
+        raise TypeError(f"Validation context {PALETTE_CONTEXT_KEY!r} must be a Palette, got {type(palette)}")
+
+    return palette
+
+
+def _resolve_palette_color(value: object, info: ValidationInfo) -> object:
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith(REFERENCE_PREFIX):
+            return _palette_from_context(info).resolve(PaletteReference.model_validate(text))
+
+        return parse_hex_color(text)
+
+    return value
+
+
+PaletteColor = Annotated[ColorRGBA, BeforeValidator(_resolve_palette_color)]
+"""A colour field accepting a ``#rrggbb`` literal or a ``.token`` palette reference.
+
+References resolve against the :class:`Palette` supplied under ``PALETTE_CONTEXT_KEY`` in
+the Pydantic validation context, so a validated field always holds a concrete RGBA tuple.
+"""
