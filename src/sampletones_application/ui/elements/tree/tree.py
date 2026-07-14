@@ -118,6 +118,8 @@ class GUITreePanel(GUIPanel):
         self._detail_tooltip_handler_tag = f"{tag}{SUF_HANDLER_DETAIL_TOOLTIP}"
         self._detail_tooltip_owner_tag: Optional[str] = None
 
+        self._rebuild_generation: int = 0
+
         self._node_handlers: Dict[NodeType, NodeHandler] = {}
 
         self.search_label = search_label
@@ -280,6 +282,17 @@ class GUITreePanel(GUIPanel):
         )
 
     def build_tree(self, root_tag: Optional[str] = None) -> None:
+        """Rebuilds the widget tree from the model, tagging this rebuild with a fresh generation.
+
+        Node widgets are created asynchronously on the callback queue, so a rebuild that starts
+        while a previous one's node creations are still draining shares the queue with them.
+        Bumping the generation here and stamping every queued creation with it (see
+        :meth:`_queue_node`) lets the stale creations recognise they belong to a superseded
+        rebuild and skip themselves, so they neither recreate an existing tag nor add nodes the
+        latest model no longer contains.
+        """
+        self._rebuild_generation += 1
+
         if root_tag is None:
             root_tag = self.tree_tag
 
@@ -288,6 +301,7 @@ class GUITreePanel(GUIPanel):
         if root is None:
             if self.tree.is_filtered():
                 dpg.add_text(self._msg_no_results, parent=root_tag)
+
             return
 
         self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
@@ -321,6 +335,8 @@ class GUITreePanel(GUIPanel):
         node: TreeNode,
         node_tag: str,
         parent: str,
+        *,
+        generation: int,
         leaf: bool = False,
         open_on_arrow: bool = False,
         open_on_double_click: bool = False,
@@ -328,7 +344,13 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor: bool = False,
         is_node_expanded: bool = False,
     ) -> None:
+        if generation != self._rebuild_generation:
+            return
+
         if not dpg.does_item_exist(parent):
+            return
+
+        if dpg.does_item_exist(node_tag):
             return
 
         with dpg.tree_node(
@@ -363,11 +385,13 @@ class GUITreePanel(GUIPanel):
         add_node_priority: int = 5,
         add_handler_priority: int = 10,
     ) -> None:
+        generation = self._rebuild_generation
         CallbackQueue.add(
             self._add_node,
             node,
             node_tag,
             parent,
+            generation=generation,
             leaf=leaf,
             open_on_arrow=open_on_arrow,
             open_on_double_click=open_on_double_click,
@@ -381,6 +405,7 @@ class GUITreePanel(GUIPanel):
             self._bind_item_handler_registry,
             node_tag=node_tag,
             node=node,
+            generation=generation,
             priority=add_handler_priority,
         )
 
@@ -506,7 +531,10 @@ class GUITreePanel(GUIPanel):
                         )
                     )
 
-    def _bind_item_handler_registry(self, node_tag: str, node: TreeNode) -> None:
+    def _bind_item_handler_registry(self, node_tag: str, node: TreeNode, *, generation: int) -> None:
+        if generation != self._rebuild_generation:
+            return
+
         handler_tag = self._node_handlers[node.node_type].tag
         if dpg.does_item_exist(node_tag) and dpg.does_item_exist(handler_tag):
             dpg.bind_item_handler_registry(node_tag, handler_tag)
