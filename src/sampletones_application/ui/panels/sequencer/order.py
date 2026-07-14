@@ -55,6 +55,8 @@ OrderKey = Tuple[Optional[GeneratorName], int]
 MASTER_TABLE_ROW: Final[int] = 0
 DIVIDER_TABLE_ROW: Final[int] = 1
 
+FROZEN_LABEL_COLUMNS: Final[int] = 1
+
 OnFrameSelectedCallback = Callable[[int], None]
 OnRemoveCallback = Callable[[int], None]
 OnFrameActionCallback = Callable[[int], None]
@@ -315,6 +317,7 @@ class GUISequencerOrderPanel(GUIPanel):
             borders_outerV=True,
             scrollX=True,
             scrollY=False,
+            freeze_columns=FROZEN_LABEL_COLUMNS,
             policy=dpg.mvTable_SizingFixedFit,
         )
         FontRegistry.bind_to_item(TAG_SEQUENCER_ORDER_TABLE, Font.MONO_BOLD)

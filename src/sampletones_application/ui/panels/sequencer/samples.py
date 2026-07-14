@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -37,6 +37,8 @@ from sampletones_application.view_model.sequencer.samples import (
 from sampletones_core.utils.display import display_id, display_sample_label
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback
+
+FROZEN_HEADER_ROWS: Final[int] = 1
 
 
 class GUISequencerSamplesPanel(GUIPanel):
@@ -195,6 +197,7 @@ class GUISequencerSamplesPanel(GUIPanel):
                 borders_outerH=True,
                 borders_outerV=True,
                 scrollY=True,
+                freeze_rows=FROZEN_HEADER_ROWS,
                 row_background=True,
                 policy=dpg.mvTable_SizingFixedFit,
             ):

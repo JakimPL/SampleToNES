@@ -72,6 +72,8 @@ OCTAVE_STEP: Final[int] = 12
 VOLUME_FINE_STEP: Final[int] = 1
 VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
 
+FROZEN_HEADER_ROWS: Final[int] = 1
+
 
 class GUISequencerGridPanel(GUIPanel):
     def __init__(
@@ -247,8 +249,9 @@ class GUISequencerGridPanel(GUIPanel):
                     borders_innerV=True,
                     borders_outerH=True,
                     borders_outerV=True,
-                    scrollX=True,
+                    scrollX=False,
                     scrollY=True,
+                    freeze_rows=FROZEN_HEADER_ROWS,
                     row_background=True,
                     policy=dpg.mvTable_SizingFixedFit,
                 ):
