@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import threading
-from typing import Callable, FrozenSet, Optional
+from collections import deque
+from dataclasses import dataclass
+from typing import Callable, Deque, Final, FrozenSet, Optional, Tuple
 
+import numpy as np
 import pyaudio
 
 from sampletones_application.services.base import ServiceBase
@@ -15,15 +18,31 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.logger import logger
+
+PREFETCH_SECONDS: Final[float] = 0.25
+STOP_POLL_TIMEOUT: Final[float] = 0.05
+
+
+@dataclass(frozen=True)
+class _RenderedRow:
+    chunk: np.ndarray
+    position: SongPosition
 
 
 class SongPlayerService(ServiceBase[SongPlayerResult]):
-    """Streams audio from a RowSynthesizer to the audio device on a background thread.
+    """Streams a song to the audio device through a render-ahead prefetch buffer.
 
-    Blocking ``stream.write()`` provides natural row-rate pacing — no sleep needed.
-    The caller receives ``SongPositionUpdate`` after each row and ``SongPlaybackStopped``
-    when the song ends or ``stop()`` is called.
+    A synthesis thread renders rows into a buffer bounded by ``PREFETCH_SECONDS`` of
+    look-ahead audio; a writer thread drains that buffer to the device with blocking
+    ``stream.write()`` calls that pace playback at the audio clock. Keeping synthesis
+    off the writer thread lets the buffer absorb synthesis and scheduling jitter, so the
+    device stays fed and playback runs continuously.
+
+    Each row's position is emitted as the writer hands that row to the device, so the
+    reported playhead tracks the audio the listener is hearing. The caller receives
+    ``SongPositionUpdate`` per row and ``SongPlaybackStopped`` when the song ends.
     """
 
     def __init__(
@@ -40,12 +59,18 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._should_loop = should_loop
         self._stop_event = threading.Event()
         self._resume_event = threading.Event()
-        self._thread: Optional[threading.Thread] = None
-        self._stream: Optional[pyaudio.Stream] = None
+        self._render_thread: Optional[threading.Thread] = None
+        self._write_thread: Optional[threading.Thread] = None
+
+        self._buffer: Deque[Optional[_RenderedRow]] = deque()
+        self._buffer_condition = threading.Condition()
+        self._queued_samples: int = 0
+        self._prefetch_samples: int = 0
+        self._playback_error: Optional[Exception] = None
 
     @property
     def alive(self) -> bool:
-        return self._thread is not None and self._thread.is_alive()
+        return self._write_thread is not None and self._write_thread.is_alive()
 
     @property
     def is_playing(self) -> bool:
@@ -66,22 +91,34 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._synthesizer.set_position(order_position, row_index)
         self._synthesizer.set_channel_mask(active_channels)
         self._synthesizer.reset()
+        self._playback_error = None
+        self._prefetch_samples = max(1, round(PREFETCH_SECONDS * self._audio_device_manager.sample_rate))
         self._stop_event.clear()
         self._resume_event.set()
-        self._thread = threading.Thread(
-            target=self._playback_loop,
+        self._render_thread = threading.Thread(
+            target=self._render_loop,
             daemon=True,
-            name="SongPlayerWorker",
+            name="SongPlayerRenderWorker",
         )
-        self._thread.start()
+        self._write_thread = threading.Thread(
+            target=self._write_loop,
+            daemon=True,
+            name="SongPlayerWriteWorker",
+        )
+        self._render_thread.start()
+        self._write_thread.start()
 
     def stop(self) -> None:
         self._stop_event.set()
         self._resume_event.set()
-        if self._thread is not None:
-            self._thread.join(timeout=2.0)
+        self._wake_buffer()
+        for thread in (self._render_thread, self._write_thread):
+            if thread is not None:
+                thread.join(timeout=2.0)
 
-        self._thread = None
+        self._render_thread = None
+        self._write_thread = None
+        self._clear_buffer()
 
     def pause(self) -> None:
         self._resume_event.clear()
@@ -94,6 +131,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         This keeps the synthesiser's state (where ``start`` resets it), so voices sounding at the
         moment of the move carry over to the new order — the playhead jumps while the audio plays on.
+        Rows already buffered ahead play out first, so the jump lands within one look-ahead window.
         """
         if not self.alive:
             return
@@ -112,45 +150,130 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         self._synthesizer.set_position(order_position, self._synthesizer.row_index)
 
-    def _playback_loop(self) -> None:
+    def _render_loop(self) -> None:
+        """Renders rows into the prefetch buffer until the song ends or a stop is requested.
+
+        Wraps synthesis failures into ``_playback_error`` and closes the buffer with an
+        end marker so the writer thread reports the terminal result through ``CallbackQueue``,
+        keeping every result on the service's single result channel.
+        """
         try:
-            sample_rate = self._audio_device_manager.sample_rate
-            frame_length = sample_rate // 60
-            self._stream = self._audio_device_manager.open_output_stream(
-                sample_rate=sample_rate,
-                buffer_size=frame_length,
-            )
-            logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
+            while not self._stop_event.is_set():
+                if self._synthesizer.is_finished and not self._loop_to_start():
+                    self._enqueue_end()
+                    return
+
+                chunk, position = self._synthesizer.render_row()
+                self._enqueue_row(_RenderedRow(chunk=chunk, position=position))
         except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.error(f"{self.class_name}: failed to open audio stream: {exception}")
-            self._emit(SongPlaybackStopped())
+            logger.error_with_traceback(exception, f"{self.class_name}: synthesis error")
+            self._playback_error = exception
+            self._enqueue_end()
+
+    def _write_loop(self) -> None:
+        stream = self._open_stream()
+        if stream is None:
             return
 
         try:
-            while not self._stop_event.is_set():
-                self._resume_event.wait()
-                if self._stop_event.is_set():
-                    break
-
-                if self._synthesizer.is_finished and not self._loop_to_start():
-                    self._emit(SongPlaybackStopped())
-                    break
-
-                self._render_and_emit_row(self._stream)
-
-                if self._synthesizer.is_finished and not self._loop_to_start():
-                    self._emit(SongPlaybackStopped())
-                    break
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.error_with_traceback(
-                exception,
-                f"{self.class_name}: playback error",
-            )
-            self._emit(SongPlaybackError(error=exception))
+            self._drain_to_stream(stream)
         finally:
-            self._stream.stop_stream()
-            self._stream.close()
-            self._stream = None
+            stream.stop_stream()
+            stream.close()
+
+    def _open_stream(self) -> Optional[pyaudio.Stream]:
+        try:
+            sample_rate = self._audio_device_manager.sample_rate
+            stream = self._audio_device_manager.open_output_stream(
+                sample_rate=sample_rate,
+                buffer_size=self._audio_device_manager.buffer_size,
+            )
+            logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
+            return stream
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            logger.error(f"{self.class_name}: failed to open audio stream: {exception}")
+            self._emit(SongPlaybackStopped())
+            self._stop_event.set()
+            self._wake_buffer()
+            return None
+
+    def _drain_to_stream(self, stream: pyaudio.Stream) -> None:
+        while not self._stop_event.is_set():
+            self._resume_event.wait()
+            if self._stop_event.is_set():
+                return
+
+            popped, row = self._dequeue()
+            if not popped or self._stop_event.is_set():
+                return
+
+            if row is None:
+                self._emit_terminal()
+                return
+
+            self._play_row(stream, row)
+
+    def _play_row(self, stream: pyaudio.Stream, row: _RenderedRow) -> None:
+        if len(row.chunk):
+            stream.write(row.chunk.tobytes())
+
+        self._emit(SongPositionUpdate(position=row.position))
+
+    def _emit_terminal(self) -> None:
+        if self._playback_error is not None:
+            self._emit(SongPlaybackError(error=self._playback_error))
+        else:
+            self._emit(SongPlaybackStopped())
+
+    def _enqueue_row(self, row: _RenderedRow) -> None:
+        """Appends a rendered row once the buffered look-ahead falls below the target.
+
+        Bounding the buffer by queued audio duration (rather than a fixed row count) holds a
+        constant real-time cushion whatever the row length, so short high-tempo rows stay as
+        well-buffered as long ones while the render-ahead latency stays bounded.
+        """
+        with self._buffer_condition:
+            while not self._stop_event.is_set() and self._queued_samples >= self._prefetch_samples:
+                self._buffer_condition.wait(timeout=STOP_POLL_TIMEOUT)
+
+            if self._stop_event.is_set():
+                return
+
+            self._buffer.append(row)
+            self._queued_samples += len(row.chunk)
+            self._buffer_condition.notify_all()
+
+    def _enqueue_end(self) -> None:
+        with self._buffer_condition:
+            if self._stop_event.is_set():
+                return
+
+            self._buffer.append(None)
+            self._buffer_condition.notify_all()
+
+    def _dequeue(self) -> Tuple[bool, Optional[_RenderedRow]]:
+        with self._buffer_condition:
+            while not self._stop_event.is_set() and not self._buffer:
+                self._buffer_condition.wait(timeout=STOP_POLL_TIMEOUT)
+
+            if not self._buffer:
+                return False, None
+
+            row = self._buffer.popleft()
+            if row is not None:
+                self._queued_samples -= len(row.chunk)
+                self._buffer_condition.notify_all()
+
+            return True, row
+
+    def _wake_buffer(self) -> None:
+        with self._buffer_condition:
+            self._buffer_condition.notify_all()
+
+    def _clear_buffer(self) -> None:
+        with self._buffer_condition:
+            self._buffer.clear()
+            self._queued_samples = 0
 
     def _loop_to_start(self) -> bool:
         """Wraps the playhead back to the song start when looping is on; reports whether it looped.
@@ -168,10 +291,3 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         self._synthesizer.reset()
         return True
-
-    def _render_and_emit_row(self, stream: pyaudio.Stream) -> None:
-        audio_chunk, position_before = self._synthesizer.render_row()
-        if len(audio_chunk):
-            stream.write(audio_chunk.tobytes())
-
-        self._emit(SongPositionUpdate(position=position_before))
