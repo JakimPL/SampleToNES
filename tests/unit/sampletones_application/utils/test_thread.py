@@ -70,6 +70,9 @@ class TestJoinAll:
 
 
 class TestShutdownCancellation:
+    def setup_method(self) -> None:
+        SingleThreadExecutor.reset_shutdown()
+
     def teardown_method(self) -> None:
         SingleThreadExecutor.reset_shutdown()
         SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)

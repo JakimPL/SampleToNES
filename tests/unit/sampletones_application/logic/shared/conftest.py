@@ -27,4 +27,5 @@ def scheduling() -> SchedulingBehavior:
         priority_schedule=0,
         priority_add_handler=0,
         priority_add_node=0,
+        queue_budget_seconds=0.005,
     )

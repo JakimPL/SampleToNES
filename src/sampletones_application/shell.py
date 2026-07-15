@@ -40,6 +40,7 @@ from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_shared.types.application import Sender
@@ -151,10 +152,18 @@ class ApplicationShell:
         self._setup_dearpygui()
         self._setup_handlers()
         self._create_main_window(on_tab_changed, initial_menu_state)
-        self._activate_callback_queue()
+        self._activate_background_work()
         dpg.set_exit_callback(on_close)
 
-    def _activate_callback_queue(self) -> None:
+    def _activate_background_work(self) -> None:
+        """Re-arm the background machinery for this run.
+
+        Clears any shutdown request left by a previous teardown so the executor
+        runs tasks again, and marks the callback queue live so pending results
+        drain. Symmetric with :func:`stop_background_workers`, which sets the
+        shutdown flag and stops the queue.
+        """
+        SingleThreadExecutor.reset_shutdown()
         CallbackQueue.start()
 
     def _setup_dearpygui(self) -> None:

@@ -9,6 +9,7 @@ import pytest
 from sampletones_application.application import Application
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.utils.parallelization.background import stop_background_workers
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.reconstructions import Reconstruction
 
 _DPG_DISPLAY_FUNCTIONS = [
@@ -35,6 +36,7 @@ class TestGUIStartup:
         dpg.create_context()
         yield
         stop_background_workers()
+        SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
 
     def test_initialises_without_error(self) -> None:
@@ -61,6 +63,7 @@ def app() -> Generator[Any, Application, Any]:
             yield Application()
     finally:
         stop_background_workers()
+        SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
 
 
