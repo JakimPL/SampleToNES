@@ -1117,6 +1117,7 @@ class Application:
             self._update_status,
             priority=self.layout.behavior.scheduling.priority_update_status,
         )
+        CallbackQueue.process(self.layout.behavior.scheduling.queue_budget_seconds)
 
     def _save_config(self) -> bool:
         try:

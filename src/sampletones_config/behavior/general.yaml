@@ -7,6 +7,7 @@ scheduling:
   priority_schedule: 1
   priority_add_handler: 10
   priority_add_node: 5
+  queue_budget_seconds: 0.005
 
 ui:
   status_bar_display_time: 2.0

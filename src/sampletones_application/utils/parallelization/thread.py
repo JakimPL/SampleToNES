@@ -9,9 +9,19 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import CallbackT, VoidCallback
 
 
+class BackgroundWorkCancelled(Exception):
+    """Unwinds a background task promptly once shutdown has been requested.
+
+    Long-running tasks poll :meth:`SingleThreadExecutor.is_shutting_down` at their
+    cancellation points and raise this to abandon the remaining work, so teardown
+    joins the worker in milliseconds instead of waiting out its natural duration.
+    """
+
+
 class SingleThreadExecutor:
     _live_threads: Set[threading.Thread] = set()
     _live_threads_lock = threading.Lock()
+    _shutdown = threading.Event()
 
     def __init__(self) -> None:
         self._thread: Optional[threading.Thread] = None
@@ -46,6 +56,25 @@ class SingleThreadExecutor:
 
             thread.start()
             return True
+
+    @classmethod
+    def request_shutdown(cls) -> None:
+        """Signal running background tasks to wind down at their next cancellation point.
+
+        Set before :meth:`join_all` at teardown so an in-flight task raises
+        :class:`BackgroundWorkCancelled` and finishes promptly, rather than the join
+        blocking until the task completes on its own.
+        """
+        cls._shutdown.set()
+
+    @classmethod
+    def is_shutting_down(cls) -> bool:
+        return cls._shutdown.is_set()
+
+    @classmethod
+    def reset_shutdown(cls) -> None:
+        """Re-arm the executor for a fresh run, clearing a prior shutdown request."""
+        cls._shutdown.clear()
 
     @classmethod
     def join_all(cls, timeout: Optional[float] = None) -> None:
@@ -104,8 +133,12 @@ def concurrent(
             executor: SingleThreadExecutor = getattr(self, executor_attribute)
 
             def task() -> None:
+                if SingleThreadExecutor.is_shutting_down():
+                    return
                 try:
                     function(self, *args, **kwargs)
+                except BackgroundWorkCancelled:
+                    return
                 except Exception as exception:  # pylint: disable=broad-exception-caught
                     logger.error_with_traceback(
                         exception,

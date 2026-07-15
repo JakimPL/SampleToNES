@@ -10,6 +10,7 @@ class SchedulingBehavior(BaseModel, extra="forbid", frozen=True):
     priority_schedule: int
     priority_add_handler: int
     priority_add_node: int
+    queue_budget_seconds: float
 
 
 class UiBehavior(BaseModel, extra="forbid", frozen=True):

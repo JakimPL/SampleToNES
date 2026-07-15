@@ -65,7 +65,7 @@ This decouples widget construction (which happens during `create_panel()`) from 
 
 ### 6. Background threads deliver results through `CallbackQueue`
 
-Services execute long-running work on background threads. Their results are posted to `CallbackQueue` with a priority, and the main-thread event loop processes them on the next frame. This is the only mechanism for crossing the thread boundary; applying a background result to UI state directly from the worker thread is forbidden.
+Services execute long-running work on background threads. Their results are posted to `CallbackQueue` with a priority, and the main-thread render loop drains the due results each frame within a per-frame time budget (`scheduling.queue_budget_seconds`), so a large backlog spreads across frames while rendering continues. Draining on the render thread keeps every callback's DPG work on the thread that owns the context. This is the only mechanism for crossing the thread boundary; applying a background result to UI state directly from the worker thread is forbidden.
 
 ### 7. Construction flows from the composition root
 

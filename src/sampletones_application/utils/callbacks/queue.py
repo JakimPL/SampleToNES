@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import heapq
 import threading
+import time
 from functools import wraps
 from typing import Any, Callable, List, Optional, Union, cast
 
@@ -15,45 +16,42 @@ from sampletones_shared.types.callback import Callback, CallbackT
 
 class CallbackQueue(metaclass=NonInstantiableMeta):
     """
-    The sole mechanism for delivering background-thread results to the main thread.
+    The sole channel delivering background-thread results to the main thread.
 
-    - Results are posted with a priority, and the main-thread event loop drains
-      the queue each frame — serialised, ordered, and isolated from the
-      rendering cycle.
-    - Individual failures are caught so the remaining callbacks still run.
-    - Non-instantiable by design: it is a shared execution channel, not a
-      dependency to be injected.
+    Producers on any thread post callbacks with a priority through :meth:`add`.
+    The main-thread render loop advances the frame counter once per rendered
+    frame with :meth:`notify_frame` and drains the due callbacks with
+    :meth:`process`, spending at most a wall-clock time budget per frame so a
+    large backlog spreads across frames while the frame keeps rendering.
+    Draining on the render thread keeps each callback's DearPyGui work on the
+    thread that owns the context.
+
+    A callback becomes due once the frame counter reaches its target frame;
+    callbacks posted with a delay wait in the heap until then. Ordering within a
+    frame follows the callback priority and then insertion order. Individual
+    failures are caught and logged so the remaining callbacks still run.
+
+    Non-instantiable by design: it is a shared execution channel, not a
+    dependency to be injected.
     """
 
     _callbacks: List[CallbackTask] = []
     _lock: threading.Lock = threading.Lock()
-    _condition: threading.Condition = threading.Condition(_lock)
-    _processing_lock: threading.Lock = threading.Lock()
     _frame_counter: int = 0
     _insertion_counter: int = 0
-    _worker_thread: Optional[threading.Thread] = None
-    _stop_event: threading.Event = threading.Event()
-    _frame_updated: bool = False
+    _stopped: bool = False
 
     @classmethod
     def start(cls) -> None:
-        if cls._worker_thread is not None and cls._worker_thread.is_alive():
-            return
+        """Mark the queue live for a fresh application run.
 
-        cls._stop_event.clear()
-        cls._worker_thread = threading.Thread(
-            target=cls._worker,
-            daemon=True,
-            name="CallbackQueueWorker",
-        )
-        cls._worker_thread.start()
-        logger.debug("Callback queue worker thread started")
-
-    @classmethod
-    def _worker(cls) -> None:
-        while not cls._stop_event.is_set():
-            cls.process()
-            cls._stop_event.wait(timeout=0.01)
+        Clears the stopped flag set by a previous :meth:`stop` so pending work
+        drains again. Leaves the heap intact, because panels enqueue their first
+        tree-build tasks during window construction, before the run loop starts
+        draining.
+        """
+        with cls._lock:
+            cls._stopped = False
 
     @classmethod
     def add(
@@ -64,64 +62,53 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
         delay: int = 0,
         **kwargs: Any,
     ) -> None:
-        with cls._condition:
+        with cls._lock:
             frame = cls._frame_counter + delay
             insertion_order = cls._insertion_counter
             cls._insertion_counter += 1
             task_priority = CallbackPriority(priority, frame, insertion_order)
             task = CallbackTask(task_priority, callback, args, kwargs)
             heapq.heappush(cls._callbacks, task)
-            cls._condition.notify()
 
     @classmethod
     def notify_frame(cls) -> None:
-        with cls._condition:
+        with cls._lock:
             cls._frame_counter += 1
-            cls._frame_updated = True
-            cls._condition.notify()
 
     @classmethod
-    def process(cls) -> None:
-        with cls._processing_lock:
-            cls._process()
+    def process(cls, budget_seconds: float) -> None:
+        """Run the callbacks due at the current frame, up to a time budget.
 
-    @classmethod
-    def _process(cls) -> None:
-        while not cls._stop_event.is_set():
-            task = None
-            frame_before = None
-
-            with cls._condition:
-                frame_before = cls._frame_counter
-
-                if cls._callbacks and cls._callbacks[0].priority.frame <= cls._frame_counter:
-                    task = heapq.heappop(cls._callbacks)
-                else:
-                    cls._condition.wait(timeout=0.01)
-                    continue
-
-            if task:
-                _, callback, args, kwargs = task
-                stopped = cls.run(callback, *args, **kwargs)
-
-                if stopped:
-                    cls.stop()
+        Drains callbacks whose target frame has been reached, newest-priority
+        first, until either none remain due or the wall-clock budget is spent;
+        callbacks left over are revisited on the next frame. At least one due
+        callback runs per call, so a single long callback cannot be starved by a
+        tight budget.
+        """
+        deadline = time.perf_counter() + budget_seconds
+        while True:
+            with cls._lock:
+                if cls._stopped:
                     return
 
-                with cls._condition:
-                    if cls._frame_counter != frame_before:
-                        return
+                if not cls._callbacks or cls._callbacks[0].priority.frame > cls._frame_counter:
+                    return
+
+                task = heapq.heappop(cls._callbacks)
+
+            _, callback, args, kwargs = task
+            if cls.run(callback, *args, **kwargs):
+                cls.stop()
+                return
+
+            if time.perf_counter() >= deadline:
+                return
 
     @classmethod
     def stop(cls) -> None:
-        cls._stop_event.set()
-        with cls._condition:
+        with cls._lock:
+            cls._stopped = True
             cls._callbacks.clear()
-            cls._condition.notify()
-
-        if cls._worker_thread and cls._worker_thread.is_alive():
-            cls._worker_thread.join(timeout=0.1)
-            logger.debug("Callback queue worker thread stopped")
 
     @classmethod
     def run(cls, callback: Callback, *args: Any, **kwargs: Any) -> bool:
@@ -131,7 +118,7 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
         except CallbackQueueStop as exception:
             logger.error(f"Callback queue processing stopped due to the error: {exception}.")
             return True
-        except Exception as exception:
+        except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error_with_traceback(
                 exception,
                 f"Error executing callback {getattr(callback, '__name__', str(callback))}",

@@ -61,6 +61,10 @@ from sampletones_application.utils.gui.tooltip import (
     create_detail_tooltip,
     populate_detail_tooltip,
 )
+from sampletones_application.utils.parallelization.thread import (
+    BackgroundWorkCancelled,
+    SingleThreadExecutor,
+)
 from sampletones_core import paths
 from sampletones_core.configs.display import (
     format_nes_frequency,
@@ -385,6 +389,9 @@ class GUITreePanel(GUIPanel):
         add_node_priority: int = 5,
         add_handler_priority: int = 10,
     ) -> None:
+        if SingleThreadExecutor.is_shutting_down():
+            raise BackgroundWorkCancelled
+
         generation = self._rebuild_generation
         CallbackQueue.add(
             self._add_node,

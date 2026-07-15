@@ -151,10 +151,10 @@ class ApplicationShell:
         self._setup_dearpygui()
         self._setup_handlers()
         self._create_main_window(on_tab_changed, initial_menu_state)
-        self._start_callback_worker()
+        self._activate_callback_queue()
         dpg.set_exit_callback(on_close)
 
-    def _start_callback_worker(self) -> None:
+    def _activate_callback_queue(self) -> None:
         CallbackQueue.start()
 
     def _setup_dearpygui(self) -> None:

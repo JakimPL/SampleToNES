@@ -1,8 +1,13 @@
 import gc
 import threading
-from typing import Dict
+from typing import Dict, List
+from unittest.mock import patch
 
-from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import (
+    BackgroundWorkCancelled,
+    SingleThreadExecutor,
+    concurrent,
+)
 
 JOIN_TIMEOUT: float = 5.0
 DEADLINE_TIMEOUT: float = 0.05
@@ -62,6 +67,47 @@ class TestJoinAll:
             release.set()
 
         SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
+
+
+class TestShutdownCancellation:
+    def teardown_method(self) -> None:
+        SingleThreadExecutor.reset_shutdown()
+        SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
+
+    def test_request_query_and_reset(self) -> None:
+        assert not SingleThreadExecutor.is_shutting_down()
+
+        SingleThreadExecutor.request_shutdown()
+        assert SingleThreadExecutor.is_shutting_down()
+
+        SingleThreadExecutor.reset_shutdown()
+        assert not SingleThreadExecutor.is_shutting_down()
+
+    def test_concurrent_task_is_skipped_while_shutting_down(self) -> None:
+        ran: List[bool] = []
+
+        class Worker:
+            @concurrent(wait=True)
+            def work(self) -> None:
+                ran.append(True)
+
+        SingleThreadExecutor.request_shutdown()
+        Worker().work()
+        SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
+
+        assert ran == []
+
+    def test_cancelled_exception_unwinds_without_logging_an_error(self) -> None:
+        class Worker:
+            @concurrent(wait=True)
+            def work(self) -> None:
+                raise BackgroundWorkCancelled
+
+        with patch("sampletones_application.utils.parallelization.thread.logger") as logger:
+            Worker().work()
+            SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
+
+        logger.error_with_traceback.assert_not_called()
 
 
 class TestExecute:
