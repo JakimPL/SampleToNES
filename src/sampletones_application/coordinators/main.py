@@ -245,7 +245,7 @@ class MainTabCoordinator:
             self._explorer_logic,
             self._explorer_tree_logic,
             shortcut_manager,
-            tree_behavior=layout.behavior.main.explorer,
+            scheduling=layout.behavior.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
             colors=TreeColors.create(

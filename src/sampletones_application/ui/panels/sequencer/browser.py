@@ -8,7 +8,7 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import TreeBehavior
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
@@ -50,7 +50,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        tree_behavior: TreeBehavior,
+        scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
@@ -58,7 +58,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
     ) -> None:
         self.on_refresh_tree: Optional[VoidCallback] = None
 
-        self._tree_behavior = tree_behavior
         self._lbl_refresh = language_manager[
             Page.SEQUENCER,
             Panel.BROWSER,
@@ -80,6 +79,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
             tree_tag=TAG_SEQUENCER_BROWSER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
+            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -161,15 +161,11 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def rebuild_tree(self) -> None:
-        if self.locked:
-            return
-
-        self.lock()
-        try:
-            self.call(self.on_refresh_tree)
-            self.build_tree()
-        finally:
-            self.unlock()
+        self._launch_rebuild(
+            lambda: self.call(self.on_refresh_tree),
+            lambda: self._collect_specs(self.tree_tag),
+            root_tag=self.tree_tag,
+        )
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:
@@ -195,24 +191,20 @@ class GUISequencerBrowserPanel(GUITreePanel):
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
-            self._queue_node(
+            self._append_spec(
                 node=node,
                 node_tag=node_tag,
                 parent=state.parent,
                 should_expand=should_expand,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=self._tree_behavior.priority_add_node,
-                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
         else:
-            self._queue_node(
+            self._append_spec(
                 node=node,
                 node_tag=node_tag,
                 parent=state.parent,
                 leaf=True,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=self._tree_behavior.priority_add_node,
-                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
 
         state.parent = node_tag

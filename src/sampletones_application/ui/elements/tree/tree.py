@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -15,6 +16,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.general import (
     SUF_BUTTON_SEARCH,
     SUF_HANDLER_DETAIL_TOOLTIP,
@@ -44,15 +46,15 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.elements.tree.emitter import TreeEmitter
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
+from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
-    dpg_delete_children,
     dpg_get_value,
     dpg_is_item_hovered,
 )
@@ -86,6 +88,7 @@ from sampletones_shared.types.callback import (
     Callback,
     MessageCallback,
     PathCallback,
+    VoidCallback,
 )
 from sampletones_shared.utils.system.paths import open_path_in_explorer
 
@@ -103,6 +106,7 @@ class GUITreePanel(GUIPanel):
         width: int = -1,
         height: int = -1,
         *,
+        scheduling: SchedulingBehavior,
         search_label: str,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -110,9 +114,13 @@ class GUITreePanel(GUIPanel):
     ) -> None:
         self._logic = tree_logic
         self._status_bar = status_bar
+        self._scheduling = scheduling
         self.tree = tree
         self.tree_tag = tree_tag
         self.shortcut_manager = shortcut_manager
+
+        self._pending_specs: List[NodeSpec] = []
+        self._emitter = TreeEmitter(scheduling=scheduling, name_font=self._NAME_FONT)
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
@@ -121,8 +129,6 @@ class GUITreePanel(GUIPanel):
         self._detail_tooltip_tag = f"{tag}{SUF_TOOLTIP_DETAIL}"
         self._detail_tooltip_handler_tag = f"{tag}{SUF_HANDLER_DETAIL_TOOLTIP}"
         self._detail_tooltip_owner_tag: Optional[str] = None
-
-        self._rebuild_generation: int = 0
 
         self._node_handlers: Dict[NodeType, NodeHandler] = {}
 
@@ -285,30 +291,59 @@ class GUITreePanel(GUIPanel):
             height=height,
         )
 
-    def build_tree(self, root_tag: Optional[str] = None) -> None:
-        """Rebuilds the widget tree from the model, tagging this rebuild with a fresh generation.
+    def _launch_rebuild(
+        self,
+        refresh: VoidCallback,
+        collect: Callable[[], List[NodeSpec]],
+        *,
+        root_tag: str,
+        on_finished: Optional[VoidCallback] = None,
+    ) -> None:
+        """Rebuild the subtree under ``root_tag``: prepare it off-thread, emit it on the main thread.
 
-        Node widgets are created asynchronously on the callback queue, so a rebuild that starts
-        while a previous one's node creations are still draining shares the queue with them.
-        Bumping the generation here and stamping every queued creation with it (see
-        :meth:`_queue_node`) lets the stale creations recognise they belong to a superseded
-        rebuild and skip themselves, so they neither recreate an existing tag nor add nodes the
-        latest model no longer contains.
+        Runs on the background traversal worker and walks through five steps:
+
+        1. A rebuild already in flight holds the lock, so return and let it finish.
+        2. Acquire the lock; responsibility for releasing it passes to the emit pipeline.
+        3. ``refresh`` updates the model, then ``collect`` resolves it into a flat
+           :class:`NodeSpec` list -- every per-node decision, including the filesystem
+           content check, happens here on the worker.
+        4. Post the specs to :class:`TreeEmitter` through the queue. This crosses back to
+           the main thread, where the emitter clears the old tree and stages the new nodes
+           across frames.
+        5. :meth:`_finish_emit` runs as the emitter's completion callback: it applies the
+           active filter, runs ``on_finished``, and releases the lock.
+
+        A failure before the handoff releases the lock so the tree stays interactive.
         """
-        self._rebuild_generation += 1
-
-        if root_tag is None:
-            root_tag = self.tree_tag
-
-        self._clear_children(root_tag)
-        root = self.tree.get_root()
-        if root is None:
-            if self.tree.is_filtered():
-                dpg.add_text(self._msg_no_results, parent=root_tag)
-
+        if self.locked:
             return
 
-        self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
+        self.lock()
+        handed_off = False
+        try:
+            refresh()
+            specs = collect()
+            CallbackQueue.add(
+                self._emitter.emit,
+                tuple(specs),
+                root_tag,
+                partial(self._finish_emit, root_tag, on_finished),
+                priority=self._scheduling.priority_emit,
+            )
+            handed_off = True
+        finally:
+            if not handed_off:
+                self.unlock()
+
+    def _collect_specs(self, root_tag: str) -> List[NodeSpec]:
+        """Traverse the model into a flat spec list, doing all per-node work off the main thread."""
+        self._pending_specs = []
+        root = self.tree.get_root()
+        if root is not None:
+            self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
+
+        return self._pending_specs
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = f"{self.tag}{SUF_INPUT_SEARCH}"
@@ -334,48 +369,7 @@ class GUITreePanel(GUIPanel):
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
         return f"{self.tag}{TAG_SEPARATOR}{node_type.value}{SUF_HANDLER_NODE}"
 
-    def _add_node(
-        self,
-        node: TreeNode,
-        node_tag: str,
-        parent: str,
-        *,
-        generation: int,
-        leaf: bool = False,
-        open_on_arrow: bool = False,
-        open_on_double_click: bool = False,
-        should_expand: bool = False,
-        has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
-    ) -> None:
-        if generation != self._rebuild_generation:
-            return
-
-        if not dpg.does_item_exist(parent):
-            return
-
-        if dpg.does_item_exist(node_tag):
-            return
-
-        with dpg.tree_node(
-            label=node.name,
-            tag=node_tag,
-            parent=parent,
-            default_open=should_expand,
-            open_on_arrow=open_on_arrow,
-            open_on_double_click=open_on_double_click,
-            leaf=leaf,
-            bullet=leaf,
-            user_data=(node, node_tag),
-        ):
-            self._apply_node_theme(
-                node_tag,
-                node,
-                has_favorite_ancestor=has_favorite_ancestor,
-                is_node_expanded=is_node_expanded,
-            )
-
-    def _queue_node(
+    def _append_spec(
         self,
         node: TreeNode,
         node_tag: str,
@@ -386,35 +380,54 @@ class GUITreePanel(GUIPanel):
         should_expand: bool = False,
         has_favorite_ancestor: bool = False,
         is_node_expanded: bool = False,
-        add_node_priority: int = 5,
-        add_handler_priority: int = 10,
     ) -> None:
+        """Resolve a node into a :class:`NodeSpec` and record it for emission.
+
+        Runs on the background traversal worker, so the theme and handler tags — including the
+        directory content check that touches the filesystem — are chosen here, off the main
+        thread. A shutdown request raises to unwind the traversal promptly.
+        """
         if SingleThreadExecutor.is_shutting_down():
             raise BackgroundWorkCancelled
 
-        generation = self._rebuild_generation
-        CallbackQueue.add(
-            self._add_node,
+        theme_tag = self._resolve_node_theme_tag(
             node,
-            node_tag,
-            parent,
-            generation=generation,
-            leaf=leaf,
-            open_on_arrow=open_on_arrow,
-            open_on_double_click=open_on_double_click,
-            should_expand=should_expand,
             has_favorite_ancestor=has_favorite_ancestor,
             is_node_expanded=is_node_expanded,
-            priority=add_node_priority,
+        )
+        self._pending_specs.append(
+            NodeSpec(
+                node=node,
+                node_tag=node_tag,
+                parent_tag=parent,
+                label=node.name,
+                leaf=leaf,
+                open_on_arrow=open_on_arrow,
+                open_on_double_click=open_on_double_click,
+                should_expand=should_expand,
+                theme_tag=theme_tag,
+                handler_tag=self._node_handlers[node.node_type].tag,
+            )
         )
 
-        CallbackQueue.add(
-            self._bind_item_handler_registry,
-            node_tag=node_tag,
-            node=node,
-            generation=generation,
-            priority=add_handler_priority,
-        )
+    def _finish_emit(self, root_tag: str, on_finished: Optional[VoidCallback]) -> None:
+        """Complete a rebuild on the main thread: show the empty state, run the hook, unlock.
+
+        The emitter runs this once its last batch has attached. When a filtered tree
+        resolved to an empty model, the no-results message fills the cleared tree so the
+        filter outcome is visible. Applying the filter here lets late-emitted nodes honour
+        an active search, and releasing the lock hands control back to interactive rebuilds.
+        """
+        if root_tag == self.tree_tag and self.tree.is_filtered() and self.tree.get_root() is None:
+            dpg.add_text(self._msg_no_results, parent=root_tag)
+
+        if on_finished is not None:
+            on_finished()
+
+        if self.tree.is_filtered():
+            self.update_tree_visibility()
+
+        self.unlock()
 
     def _create_hover_callback(
         self,
@@ -537,14 +550,6 @@ class GUITreePanel(GUIPanel):
                             item_double_click_callback,
                         )
                     )
-
-    def _bind_item_handler_registry(self, node_tag: str, node: TreeNode, *, generation: int) -> None:
-        if generation != self._rebuild_generation:
-            return
-
-        handler_tag = self._node_handlers[node.node_type].tag
-        if dpg.does_item_exist(node_tag) and dpg.does_item_exist(handler_tag):
-            dpg.bind_item_handler_registry(node_tag, handler_tag)
 
     @abstractmethod
     def _build_tree_node(
@@ -793,9 +798,6 @@ class GUITreePanel(GUIPanel):
     def clear_filter(self) -> None:
         self.tree.clear_filter()
 
-    def _clear_children(self, tag: str) -> None:
-        dpg_delete_children(tag)
-
     def _apply_node_theme(
         self,
         node_tag: str,
@@ -804,95 +806,91 @@ class GUITreePanel(GUIPanel):
         is_node_expanded: bool = False,
     ) -> None:
         FontRegistry.bind_to_item(node_tag, self._NAME_FONT)
+        theme_tag = self._resolve_node_theme_tag(
+            node,
+            has_favorite_ancestor=has_favorite_ancestor,
+            is_node_expanded=is_node_expanded,
+        )
+        ThemeRegistry.get(theme_tag).bind_to_item(node_tag)
+
+    def _resolve_node_theme_tag(
+        self,
+        node: TreeNode,
+        *,
+        has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
+    ) -> str:
+        """Select the theme tag for a node from its type, favorite state, and content.
+
+        Pure lookup that touches no DearPyGui, so the background traversal can resolve it into
+        each :class:`NodeSpec`; the main-thread emitter binds the chosen theme by tag.
+        """
         if isinstance(node, FileSystemNode):
             match node.node_type:
                 case NodeType.DIRECTORY:
-                    return self._apply_directory_node_theme(
-                        node_tag,
-                        node,
-                        has_favorite_ancestor=has_favorite_ancestor,
-                    )
-
+                    return self._resolve_directory_theme_tag(node, has_favorite_ancestor=has_favorite_ancestor)
                 case NodeType.FILE:
-                    return self._apply_file_node_theme(
-                        node_tag,
+                    return self._resolve_file_theme_tag(
                         node,
                         has_favorite_ancestor=has_favorite_ancestor,
                         is_not_expanded=is_node_expanded,
                     )
 
-        return self._apply_other_node_theme(node_tag, node)
+        return self._resolve_other_theme_tag(node)
 
-    def _apply_directory_node_theme(
+    def _resolve_directory_theme_tag(
         self,
-        node_tag: str,
         node: FileSystemNode,
+        *,
         has_favorite_ancestor: bool = False,
-    ) -> None:
-        has_content = self._has_relevant_content(node)
-        is_favorite = self._logic.is_node_favorite(node)
+    ) -> str:
+        if self._logic.is_node_favorite(node):
+            return TAG_GLOBAL_THEME_FAVORITE
 
-        theme: Theme
-        if is_favorite:
-            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FAVORITE)
-        elif not has_content:
-            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_NO_CONTENT)
-        elif has_favorite_ancestor:
-            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FAVORITE_CHILD)
-        else:
-            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
+        if not self._has_relevant_content(node):
+            return TAG_GLOBAL_THEME_FILE_NO_CONTENT
 
-        theme.bind_to_item(node_tag)
+        if has_favorite_ancestor:
+            return TAG_GLOBAL_THEME_FAVORITE_CHILD
 
-    def _apply_file_node_theme(
+        return TAG_GLOBAL_THEME_DEFAULT
+
+    def _resolve_file_theme_tag(
         self,
-        node_tag: str,
         node: FileSystemNode,
+        *,
         has_favorite_ancestor: bool = False,
         is_not_expanded: bool = False,
-    ) -> None:
-        is_favorite = self._logic.is_node_favorite(node)
+    ) -> str:
+        if self._logic.is_node_favorite(node):
+            return TAG_GLOBAL_THEME_FAVORITE
 
-        theme: Theme
-        if is_favorite:
-            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FAVORITE)
-        else:
-            match node.filepath.suffix.lower():
-                case paths.EXT_FILE_RECONSTRUCTION:
-                    theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_RECONSTRUCTION)
-                case paths.EXT_FILE_LIBRARY:
-                    theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_LIBRARY)
-                case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_WAVE)
-                case _:
-                    if has_favorite_ancestor:
-                        theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FAVORITE_CHILD)
-                    elif is_not_expanded:
-                        theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY)
-                    else:
-                        theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
+        match node.filepath.suffix.lower():
+            case paths.EXT_FILE_RECONSTRUCTION:
+                return TAG_GLOBAL_THEME_FILE_RECONSTRUCTION
+            case paths.EXT_FILE_LIBRARY:
+                return TAG_GLOBAL_THEME_FILE_LIBRARY
+            case suffix if suffix in paths.EXT_FILES_AUDIO:
+                return TAG_GLOBAL_THEME_FILE_WAVE
+            case _:
+                if has_favorite_ancestor:
+                    return TAG_GLOBAL_THEME_FAVORITE_CHILD
+                if is_not_expanded:
+                    return TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY
+                return TAG_GLOBAL_THEME_DEFAULT
 
-        theme.bind_to_item(node_tag)
-
-    def _apply_other_node_theme(
-        self,
-        node_tag: str,
-        node: TreeNode,
-    ) -> None:
-        theme: Theme
+    def _resolve_other_theme_tag(self, node: TreeNode) -> str:
         match node.node_type:
             case NodeType.LIBRARY:
-                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME)
+                return TAG_INSTRUCTIONS_LIBRARY_THEME
             case NodeType.GENERATOR:
-                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR)
+                return TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR
             case NodeType.GROUP:
-                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP)
+                return TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP
             case NodeType.INSTRUCTION:
-                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION)
+                return TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION
             case _:
-                theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
-
-        theme.bind_to_item(node_tag)
+                return TAG_GLOBAL_THEME_DEFAULT
 
     def _reapply_theme_recursively(self, node: FileSystemNode, has_favorite_ancestor: bool = False) -> None:
         node_tag = self._generate_node_tag(node)

@@ -31,9 +31,9 @@ def _tree(
             priority_update_status=0,
             priority_gui_action=0,
             priority_schedule=0,
-            priority_add_handler=0,
-            priority_add_node=0,
+            priority_emit=0,
             queue_budget_seconds=0.005,
+            emit_batch_size=128,
         )
     return TreeLogic(session_manager, audio_device_manager, scheduling=scheduling)
 

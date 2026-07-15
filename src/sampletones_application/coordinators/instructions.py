@@ -207,7 +207,7 @@ class InstructionsTabCoordinator:
             self._library_logic,
             self._library_tree_logic,
             shortcut_manager,
-            tree_behavior=layout.behavior.instructions,
+            scheduling=layout.behavior.scheduling,
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_LIBRARY_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,

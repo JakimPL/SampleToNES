@@ -43,15 +43,30 @@ class TreeLogic(CallbackMixin):
         with self._thread_lock:
             self._lock_counter += 1
             self._is_locked = True
-            self.call(self.on_lock_state_changed, False)
+
+        self._notify_lock_state(False)
 
     def unlock(self) -> None:
         with self._thread_lock:
             self._lock_counter -= 1
-            if self._lock_counter <= 0:
+            unlocked = self._lock_counter <= 0
+            if unlocked:
                 self._lock_counter = 0
                 self._is_locked = False
-                self.call(self.on_lock_state_changed, True)
+
+        if unlocked:
+            self._notify_lock_state(True)
+
+    def _notify_lock_state(self, is_unlocked: bool) -> None:
+        """Deliver the tree-enabled change on the main thread.
+
+        A rebuild toggles the lock from a background worker, and the bound listener flips the
+        tree's enabled state in DearPyGui. Routing it through the callback queue keeps that
+        widget work on the thread that owns the context.
+        """
+        callback = self.on_lock_state_changed
+        if callback is not None:
+            CallbackQueue.add(callback, is_unlocked, priority=self._scheduling.priority_gui_action)
 
     @property
     def locked(self) -> bool:

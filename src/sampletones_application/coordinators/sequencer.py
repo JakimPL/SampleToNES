@@ -244,7 +244,7 @@ class SequencerTabCoordinator:
             self._sequencer_browser_logic.tree,
             self._sequencer_tree_logic,
             shortcut_manager,
-            tree_behavior=layout.behavior.sequencer,
+            scheduling=layout.behavior.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
             colors=TreeColors.create(

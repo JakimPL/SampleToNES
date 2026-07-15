@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -7,7 +7,7 @@ from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.main import ExplorerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import TreeBehavior
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
@@ -25,13 +25,11 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
+from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import (
-    dpg_configure_item,
-    dpg_delete_children,
-)
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core import paths
@@ -77,7 +75,7 @@ class GUIExplorerPanel(GUITreePanel):
         tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        tree_behavior: TreeBehavior,
+        scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
@@ -85,7 +83,6 @@ class GUIExplorerPanel(GUITreePanel):
     ) -> None:
         self._explorer_logic = explorer_logic
         self.shortcut_manager = shortcut_manager
-        self._tree_behavior = tree_behavior
 
         self._lbl_section = language_manager[
             Page.MAIN,
@@ -170,6 +167,7 @@ class GUIExplorerPanel(GUITreePanel):
             tree_tag=TAG_MAIN_EXPLORER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
+            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -266,32 +264,22 @@ class GUIExplorerPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def rebuild_tree(self) -> None:
-        if self.locked:
-            return
-
-        self.lock()
-        try:
-            self._explorer_logic.refresh_tree()
-            self.build_tree()
-        finally:
-            self.unlock()
-
-    def _rebuild_directory_node(self, node: FileSystemNode, node_tag: str) -> None:
-        if self.locked:
-            return
-
-        self.lock()
-        try:
-            self._rebuild_node_subtree(node, node_tag)
-        finally:
-            self.unlock()
+        self._launch_rebuild(
+            self._explorer_logic.refresh_tree,
+            lambda: self._collect_specs(self.tree_tag),
+            root_tag=self.tree_tag,
+        )
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_node_subtree(self, node: FileSystemNode, node_tag: str) -> None:
-        if not dpg.does_item_exist(node_tag):
-            return
+        self._launch_rebuild(
+            lambda: None,
+            lambda: self._collect_subtree_specs(node, node_tag),
+            root_tag=node_tag,
+        )
 
-        dpg_delete_children(node_tag)
+    def _collect_subtree_specs(self, node: FileSystemNode, node_tag: str) -> List[NodeSpec]:
+        self._pending_specs = []
         if self._explorer_logic.is_directory_expanded(node.filepath):
             for child in node.children:
                 has_favorite_ancestor = self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(child)
@@ -302,6 +290,8 @@ class GUIExplorerPanel(GUITreePanel):
                         has_favorite_ancestor=has_favorite_ancestor,
                     ),
                 )
+
+        return self._pending_specs
 
     @traverse(TreeTraversal.BFS)
     def _build_tree_node(
@@ -323,7 +313,7 @@ class GUIExplorerPanel(GUITreePanel):
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self._explorer_logic.is_directory_expanded(node.filepath)
             is_directory_expanded = self._explorer_logic.is_directory_expanded(node.filepath)
-            self._queue_node(
+            self._append_spec(
                 node,
                 node_tag,
                 state.parent,
@@ -331,18 +321,14 @@ class GUIExplorerPanel(GUITreePanel):
                 should_expand=should_expand,
                 has_favorite_ancestor=state.has_favorite_ancestor,
                 is_node_expanded=is_directory_expanded,
-                add_node_priority=self._tree_behavior.priority_add_node,
-                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
         else:
-            self._queue_node(
+            self._append_spec(
                 node,
                 node_tag,
                 state.parent,
                 leaf=True,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=self._tree_behavior.priority_add_node,
-                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
 
         state.parent = node_tag
@@ -482,7 +468,7 @@ class GUIExplorerPanel(GUITreePanel):
         state = dpg.get_value(node_tag)
         if not is_directory_expanded:
             self._explorer_logic.expand_directory(node)
-            self._rebuild_directory_node(node, node_tag)
+            self._rebuild_node_subtree(node, node_tag)
 
         dpg.set_value(node_tag, not state)
 

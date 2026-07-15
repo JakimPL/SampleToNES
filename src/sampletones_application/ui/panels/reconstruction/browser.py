@@ -11,7 +11,7 @@ from sampletones_application.categories.elements.reconstructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import TreeBehavior
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
@@ -55,7 +55,7 @@ class GUIBrowserPanel(GUITreePanel):
         tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        tree_behavior: TreeBehavior,
+        scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
@@ -68,8 +68,6 @@ class GUIBrowserPanel(GUITreePanel):
         self.on_load_reconstruction: Optional[PathCallback] = None
         self.on_reconstruction_remove_requested: Optional[PathCallback] = None
         self.on_directory_remove_requested: Optional[PathCallback] = None
-
-        self._tree_behavior = tree_behavior
 
         self._is_operation_active = is_operation_active
 
@@ -112,6 +110,7 @@ class GUIBrowserPanel(GUITreePanel):
             tree_tag=TAG_RECONSTRUCTIONS_BROWSER_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
+            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -193,15 +192,11 @@ class GUIBrowserPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def rebuild_tree(self) -> None:
-        if self.locked:
-            return
-
-        self.lock()
-        try:
-            self.call(self.on_refresh_tree)
-            self.build_tree()
-        finally:
-            self.unlock()
+        self._launch_rebuild(
+            lambda: self.call(self.on_refresh_tree),
+            lambda: self._collect_specs(self.tree_tag),
+            root_tag=self.tree_tag,
+        )
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:
@@ -227,24 +222,20 @@ class GUIBrowserPanel(GUITreePanel):
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
-            self._queue_node(
+            self._append_spec(
                 node=node,
                 node_tag=node_tag,
                 parent=state.parent,
                 should_expand=should_expand,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=self._tree_behavior.priority_add_node,
-                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
         else:
-            self._queue_node(
+            self._append_spec(
                 node=node,
                 node_tag=node_tag,
                 parent=state.parent,
                 leaf=True,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=self._tree_behavior.priority_add_node,
-                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
 
         state.parent = node_tag

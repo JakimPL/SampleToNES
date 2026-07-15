@@ -279,7 +279,7 @@ class ReconstructionsTabCoordinator:
             self._browser_logic.tree,
             self._browser_tree_logic,
             shortcut_manager,
-            tree_behavior=layout.behavior.reconstructions,
+            scheduling=layout.behavior.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
             colors=TreeColors.create(
