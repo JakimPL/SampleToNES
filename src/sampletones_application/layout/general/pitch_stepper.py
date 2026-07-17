@@ -8,3 +8,4 @@ class PitchStepperLayout(BaseModel, extra="forbid", frozen=True):
     button_width: int
     hold_delay: float
     commit_delay: int
+    commit_priority: int

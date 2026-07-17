@@ -16,6 +16,7 @@ LAYOUT = PitchStepperLayout(
     button_width=30,
     hold_delay=0.075,
     commit_delay=12,
+    commit_priority=1,
 )
 
 
