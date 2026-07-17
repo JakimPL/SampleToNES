@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from sampletones_application.utils.callbacks.priority import CallbackPriority
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 
 _real_queue_add = CallbackQueue.add
@@ -154,3 +155,41 @@ class TestCallbackQueueBudget:
         CallbackQueue.notify_frame()
         CallbackQueue.process(GENEROUS_BUDGET)
         assert results == ["now", "later"]
+
+
+class TestCallbackQueueFramePriorityInteraction:
+    """Dueness must depend on the target frame, not on the priority number.
+
+    These cover the case existing tests miss: differing priorities combined with
+    differing frames. A background result (regeneration) is starved here when a
+    lower-priority-number task scheduled for a future frame parks at the heap top
+    and blocks the due task behind it.
+    """
+
+    def test_due_task_not_starved_by_future_lower_priority_number(self) -> None:
+        fired: List[str] = []
+
+        CallbackQueue.add(lambda: fired.append("due_emit"), priority=100, delay=0)
+        CallbackQueue.add(lambda: fired.append("future_schedule"), priority=1, delay=5)
+        CallbackQueue.notify_frame()
+        CallbackQueue.process(GENEROUS_BUDGET)
+
+        assert fired == ["due_emit"]
+
+    def test_due_schedule_not_starved_by_future_default_priority_settle(self) -> None:
+        """Mirrors the reconstruction case: a pitch-stepper settle (default priority 0,
+        delayed) must not block a due schedule/result task (priority 1)."""
+        fired: List[str] = []
+
+        CallbackQueue.add(lambda: fired.append("pitch_settle"), delay=5)
+        CallbackQueue.add(lambda: fired.append("due_schedule"), priority=1, delay=0)
+        CallbackQueue.notify_frame()
+        CallbackQueue.process(GENEROUS_BUDGET)
+
+        assert fired == ["due_schedule"]
+
+    def test_priority_order_sorts_frame_before_priority_number(self) -> None:
+        earlier_frame_low_precedence = CallbackPriority(priority=100, frame=0, insertion_counter=0)
+        later_frame_high_precedence = CallbackPriority(priority=1, frame=5, insertion_counter=0)
+
+        assert earlier_frame_low_precedence < later_frame_high_precedence

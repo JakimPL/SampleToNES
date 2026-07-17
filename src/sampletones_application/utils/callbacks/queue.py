@@ -95,6 +95,12 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
                     return
 
                 task = heapq.heappop(cls._callbacks)
+                frame_counter = cls._frame_counter
+
+            assert task.priority.frame <= frame_counter, (
+                "CallbackQueue drained a task ahead of its target frame; "
+                "CallbackPriority.order must sort frame-first"
+            )
 
             _, callback, args, kwargs = task
             if cls.run(callback, *args, **kwargs):

@@ -12,7 +12,18 @@ class CallbackPriority:
 
     @property
     def order(self) -> Tuple[int, int, int]:
-        return (self.priority, self.frame, self.insertion_counter)
+        """Sort key with the target frame as the primary component.
+
+        ``CallbackQueue`` drains in this order and reads dueness off the heap
+        top, so the earliest target frame must sort first for a not-yet-due top
+        to mean nothing is due. Within a single frame, lower priority numbers
+        run first, then earlier insertion.
+        """
+        return (
+            self.frame,
+            self.priority,
+            self.insertion_counter,
+        )
 
     def __lt__(self, other: CallbackPriority) -> bool:
         return self.order < other.order
