@@ -4,8 +4,9 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
+from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY, PALETTE_PATH
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
+from sampletones_application.utils.palette import Palette
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
@@ -14,7 +15,7 @@ from sampletones_application.view_model.sequencer.history import (
 
 @pytest.fixture
 def layout_config() -> LayoutConfig:
-    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, Palette.load(PALETTE_PATH))
 
 
 @pytest.fixture

@@ -1,0 +1,15 @@
+from importlib import metadata
+from typing import Final
+
+SAMPLETONES_NAME: Final[str] = "SampleToNES"
+SAMPLETONES_PACKAGE_NAME: Final[str] = "sampletones"
+SAMPLETONES_ENV_PREFIX: Final[str] = "SAMPLETONES_"
+
+SAMPLETONES_VERSION: Final[str] = metadata.version(SAMPLETONES_PACKAGE_NAME)
+SAMPLETONES_LIBRARY_DATA_VERSION: Final[str] = "2.0"
+SAMPLETONES_RECONSTRUCTION_DATA_VERSION: Final[str] = "2.0"
+SAMPLETONES_PROJECT_DATA_VERSION: Final[str] = "1.0"
+
+SAMPLETONES_NAME_VERSION: Final[str] = f"{SAMPLETONES_NAME} v{SAMPLETONES_VERSION}"
+SAMPLETONES_AUTHOR: Final[str] = "Jakim"
+SAMPLETONES_GROUP: Final[str] = "Stage Magician"

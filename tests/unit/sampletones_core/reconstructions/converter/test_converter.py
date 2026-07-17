@@ -4,8 +4,10 @@ from unittest.mock import patch
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.reconstructions.converter.conversion import reconstruct_file
-from sampletones_core.reconstructions.converter.converter import ReconstructionConverter
+from sampletones_core.reconstructions.converter import (
+    ReconstructionConverter,
+    reconstruct_file,
+)
 from sampletones_shared.exceptions import NoFilesToProcessError
 
 _RECONSTRUCTOR_PATCH = "sampletones_core.reconstructions.converter.converter.Reconstructor"
@@ -192,5 +194,7 @@ class TestReconstructionConverterNotifyProgress:
         converter.audio_files = [path_a, path_b]
         converter.total_tasks = 2
         converter.completed_tasks = 1
+        converter._notify_progress()
+        assert converter.current_file == str(path_a)
         converter._notify_progress()
         assert converter.current_file == str(path_a)

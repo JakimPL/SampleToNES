@@ -33,7 +33,27 @@ def reconstruction_coordinator() -> ReconstructionCoordinator:
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
         on_reconstruction_updated=MagicMock(),
+        is_reconstruction_embedded=MagicMock(return_value=False),
     )
+
+
+def _gating_coordinator(*, unsaved: bool, embedded: bool) -> ReconstructionCoordinator:
+    coordinator = ReconstructionCoordinator(
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        dialogs=MagicMock(),
+        language_manager=MagicMock(),
+        layout=MagicMock(),
+        on_tab_switch=MagicMock(),
+        on_session_state_changed=MagicMock(),
+        on_reconstruction_updated=MagicMock(),
+        is_reconstruction_embedded=lambda: embedded,
+    )
+    coordinator._reconstruction_manager.session.unsaved_changes = unsaved
+    coordinator.set_reconstructions_tab(MagicMock())
+    return coordinator
 
 
 class TestReconstructionRestoreSuccess:
@@ -110,6 +130,7 @@ class TestRegenerationApplyOrdering:
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
             on_reconstruction_updated=lambda _outcome: observed.append(manager.reconstruction),
+            is_reconstruction_embedded=lambda: False,
         )
         coordinator.set_reconstructions_tab(MagicMock())
         regenerated = reconstruction_factory()
@@ -134,3 +155,51 @@ class TestReconstructionRestorePropagatesUnexpected:
             reconstruction_coordinator.load_reconstruction_safely(Path("lead.stn"))
 
         reconstruction_coordinator._session_manager.set_current_reconstruction.assert_not_called()
+
+
+class TestSaveConfirmationGating(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        unsaved: bool
+        embedded: bool
+        expects_prompt: bool
+
+    test_cases = [
+        TestCase(label="standalone_unsaved_prompts", unsaved=True, embedded=False, expects_prompt=True, expected=True),
+        TestCase(
+            label="embedded_unsaved_skips_prompt", unsaved=True, embedded=True, expects_prompt=False, expected=False
+        ),
+        TestCase(
+            label="standalone_saved_skips_prompt", unsaved=False, embedded=False, expects_prompt=False, expected=False
+        ),
+        TestCase(
+            label="embedded_saved_skips_prompt", unsaved=False, embedded=True, expects_prompt=False, expected=False
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_close_prompts_only_for_standalone_unsaved(self, test_case: TestCase) -> None:
+        coordinator = _gating_coordinator(unsaved=test_case.unsaved, embedded=test_case.embedded)
+
+        coordinator.close_with_confirmation()
+
+        if test_case.expects_prompt:
+            coordinator._dialogs.show_save_confirmation.assert_called_once()
+            coordinator._reconstruction_manager.close_reconstruction.assert_not_called()
+        else:
+            coordinator._dialogs.show_save_confirmation.assert_not_called()
+            coordinator._reconstruction_manager.close_reconstruction.assert_called_once()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_load_prompts_only_for_standalone_unsaved(self, test_case: TestCase) -> None:
+        coordinator = _gating_coordinator(unsaved=test_case.unsaved, embedded=test_case.embedded)
+        path = Path("lead.stn")
+
+        coordinator.load_with_confirmation(path)
+
+        if test_case.expects_prompt:
+            coordinator._dialogs.show_save_confirmation.assert_called_once()
+            coordinator._reconstructions_tab.load_reconstruction.assert_not_called()
+        else:
+            coordinator._dialogs.show_save_confirmation.assert_not_called()
+            coordinator._reconstructions_tab.load_reconstruction.assert_called_once_with(path)

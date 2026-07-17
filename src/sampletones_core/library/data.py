@@ -11,11 +11,11 @@ from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.data import DataModel, Metadata
 from sampletones_core.generators import GeneratorClassNames
 from sampletones_core.instructions import InstructionUnion
-from sampletones_shared.constants.application import (
+from sampletones_shared.application import (
     SAMPLETONES_LIBRARY_DATA_VERSION,
     SAMPLETONES_NAME,
-    compare_versions,
 )
+from sampletones_shared.deployment.version import compare_versions
 from sampletones_shared.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataValuesError,

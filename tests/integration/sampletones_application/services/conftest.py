@@ -7,7 +7,7 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MIN_PITCH

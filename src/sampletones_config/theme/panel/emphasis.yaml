@@ -1,0 +1,12 @@
+name: panel_emphasis
+tag: global.theme.panel_emphasis
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .surface_accent
+      - type: color
+        key: Border
+        value: .accent

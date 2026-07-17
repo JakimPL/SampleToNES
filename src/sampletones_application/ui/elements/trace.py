@@ -8,7 +8,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import DialogElements, TracebackElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.tags.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP_TRACEBACK,
     SUF_TEXT,
@@ -16,6 +16,8 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_THEME_TRACEBACK,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.clipboard import copy_to_clipboard
@@ -72,6 +74,7 @@ class GUITraceback:
             )
 
             self.theme.bind_to_item(traceback_text_tag)
+            FontRegistry.bind_to_item(traceback_text_tag, Font.MONO)
 
             GUIButton(
                 tag=traceback_copy_tag,

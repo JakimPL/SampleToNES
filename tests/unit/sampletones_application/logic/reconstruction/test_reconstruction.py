@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
@@ -13,6 +15,8 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
     ReconstructionViewModel,
 )
+from sampletones_core.audio import write_wave
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.reconstructions import Reconstruction
 
@@ -50,6 +54,47 @@ def panel_logic(
 @pytest.fixture
 def loaded_data(reconstruction_factory: Callable[[], Reconstruction]) -> ReconstructionData:
     return ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+
+
+@pytest.fixture
+def data_with_original_audio(
+    reconstruction_factory: Callable[[], Reconstruction],
+    tmp_path: Path,
+) -> ReconstructionData:
+    source_audio = tmp_path / "source.wav"
+    write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+    reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+    return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+
+@dataclass(frozen=True)
+class AudioPathCase:
+    label: str
+    has_filepath: bool
+    has_content: bool
+    expected_state: ReconstructionPathState
+
+
+audio_path_cases = [
+    AudioPathCase(
+        "detached",
+        has_filepath=False,
+        has_content=False,
+        expected_state=ReconstructionPathState.NOT_APPLICABLE,
+    ),
+    AudioPathCase(
+        "recorded_but_unavailable",
+        has_filepath=True,
+        has_content=False,
+        expected_state=ReconstructionPathState.NOT_FOUND,
+    ),
+    AudioPathCase(
+        "available",
+        has_filepath=True,
+        has_content=True,
+        expected_state=ReconstructionPathState.AVAILABLE,
+    ),
+]
 
 
 class TestReconstructionPanelLogicDisplay:
@@ -111,7 +156,7 @@ class TestReconstructionPanelLogicPathRows:
         mock_reconstruction_manager.current_reconstruction = ReconstructionData.from_reconstruction(
             reconstruction, name="Sample"
         )
-        captured: list[ReconstructionViewModel] = []
+        captured: List[ReconstructionViewModel] = []
         panel_logic.on_view_changed = captured.append
 
         panel_logic.display_reconstruction()
@@ -120,15 +165,14 @@ class TestReconstructionPanelLogicPathRows:
         assert view_model.reconstruction_file.state is ReconstructionPathState.NOT_APPLICABLE
         assert view_model.original_audio.state is ReconstructionPathState.NOT_APPLICABLE
 
-    def test_missing_source_audio_reports_original_not_found(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-        tmp_path: Path,
-    ) -> None:
-        missing_audio = tmp_path / "ghost.wav"
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": missing_audio})
-        original_audio = ReconstructionPanelLogic._build_audio_path_view_model(reconstruction.audio_filepath)
-        assert original_audio.state is ReconstructionPathState.NOT_FOUND
+    @pytest.mark.parametrize("case", audio_path_cases, ids=lambda case: case.label)
+    def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
+        audio_filepath = Path("/songs/source.wav") if case.has_filepath else None
+        original_audio = np.zeros(4, dtype=np.float32) if case.has_content else None
+
+        view_model = ReconstructionPanelLogic._build_audio_path_view_model(audio_filepath, original_audio)
+
+        assert view_model.state is case.expected_state
 
 
 class TestReconstructionPanelLogicUpdate:
@@ -221,6 +265,40 @@ class TestReconstructionPanelLogicClose:
 
 
 class TestReconstructionPanelLogicAudioSource:
+    def test_display_without_original_audio_switches_source_to_reconstruction(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction.detach_source()
+        mock_reconstruction_manager.current_reconstruction = ReconstructionData.from_reconstruction(
+            reconstruction, name="Sample"
+        )
+        panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
+        received: List[AudioSourceType] = []
+        panel_logic.on_waveform_source_changed = received.append
+
+        panel_logic.display_reconstruction()
+
+        assert received == [AudioSourceType.RECONSTRUCTION]
+
+    def test_display_with_original_audio_keeps_selected_source(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        data_with_original_audio: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = data_with_original_audio
+        panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
+        received: List[AudioSourceType] = []
+        panel_logic.on_waveform_source_changed = received.append
+
+        panel_logic.display_reconstruction()
+
+        assert received == [AudioSourceType.ORIGINAL]
+
     def test_set_audio_source_changes_to_original(
         self,
         panel_logic: ReconstructionPanelLogic,
@@ -435,16 +513,14 @@ class TestReconstructionPanelLogicComputeAudio:
 
 
 class TestReconstructionPanelLogicLocateAudio:
-    def test_no_audio_filepath_fires_on_locate_audio_missing(
+    def test_no_audio_filepath_skips_locating(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
     ) -> None:
         mock_reconstruction_manager.audio_filepath = None
-        callback = MagicMock()
-        panel_logic.on_locate_audio_missing = callback
         panel_logic.handle_locate_original_audio()
-        callback.assert_called_once()
+        mock_reconstruction_manager.locate_original_audio.assert_not_called()
 
     def test_missing_audio_file_fires_on_locate_audio_not_found(
         self,

@@ -7,7 +7,7 @@ import numpy as np
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.result import ServiceCancelled, ServiceError, ServiceSuccess
-from sampletones_application.utils.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones_core.instructions import InstructionUnion

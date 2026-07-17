@@ -4,7 +4,7 @@ from typing import Any, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import (
+from sampletones_application.tags.general import (
     SUF_HANDLER_STATUS,
     TAG_GLOBAL_STATUS_BAR,
     TAG_GLOBAL_STATUS_WINDOW,

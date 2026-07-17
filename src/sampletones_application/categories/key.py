@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Final, NamedTuple
+from typing import Dict, Final, NamedTuple
 
 from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.hierarchy import Page, Panel, TextType, Widget
+from sampletones_application.constants.global_ import TAG_SEPARATOR
 
-TAG_SEPARATOR: Final[str] = "."
-_PANEL_SHORT_NAMES: Final[dict[Panel, str]] = {Panel.CONFIG_PANEL: "config"}
+_PANEL_SHORT_NAMES: Final[Dict[Panel, str]] = {Panel.CONFIG: "config"}
 
 
 class TextKey(NamedTuple):

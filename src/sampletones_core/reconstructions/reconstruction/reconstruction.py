@@ -22,11 +22,11 @@ from sampletones_core.instructions import (
     InstructionUnion,
     get_instruction_by_type,
 )
-from sampletones_shared.constants.application import (
+from sampletones_shared.application import (
     SAMPLETONES_NAME,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
-    compare_versions,
 )
+from sampletones_shared.deployment.version import compare_versions
 from sampletones_shared.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
@@ -287,7 +287,7 @@ class Reconstruction(DataModel):
             exporter_class = self._get_exporter_class(instructions[0])
             exporter: ExporterUnion = exporter_class()
             self._validate_instructions(exporter, instructions)
-            feature: Features = exporter.to_features(instructions)  # type: ignore
+            feature: Features = exporter.to_features(instructions)  # type: ignore[arg-type]
             features[name] = feature
 
         return features

@@ -1,0 +1,9 @@
+name: section_header
+tag: global.theme.section_header
+
+components:
+  - item_type: Text
+    entries:
+      - type: color
+        key: Text
+        value: .accent

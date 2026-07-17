@@ -15,6 +15,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import display_sample
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import StringCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -46,7 +47,7 @@ class SequencerSamplesLogic(CallbackMixin):
         self._pending_autoplay_sample: Optional[str] = None
 
         self.on_samples_changed: Optional[Callable[[SequencerSamplesViewModel], None]] = None
-        self.on_edit_sample_requested: Optional[Callable[[str], None]] = None
+        self.on_edit_sample_requested: Optional[StringCallback] = None
         self.on_autoplay_error: Optional[Callable[[Exception], None]] = None
 
     def build_samples(self) -> SequencerSamplesViewModel:

@@ -1,6 +1,10 @@
-panel:
-  width: -1
-  height: 65
+toolbar:
+  indent: 12
+  width: 200
+  height: 100
+  padding: 10
+  gap: 3
 
-controls_table:
-  height: 32
+button:
+  height: 30
+  width: 48

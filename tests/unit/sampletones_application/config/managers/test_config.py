@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -112,14 +113,14 @@ class TestConfigManagerCallbacks:
         tmp_path: Path,
     ) -> None:
         manager = _manager(tmp_path / "missing.json")
-        fired: list[str] = []
+        fired: List[str] = []
         manager.add_config_change_callback(lambda: fired.append("changed"))
         manager.update_gui()
         assert fired == ["changed"]
 
     def test_multiple_callbacks_all_fire(self, tmp_path: Path) -> None:
         manager = _manager(tmp_path / "missing.json")
-        fired: list[str] = []
+        fired: List[str] = []
         manager.add_config_change_callback(lambda: fired.append("a"))
         manager.add_config_change_callback(lambda: fired.append("b"))
         manager.update_gui()
@@ -145,12 +146,9 @@ class TestConfigManagerApplySettings:
         update = LibrarySettingsUpdate(
             sample_rate=22050,
             nes_frequency=60,
-            spectrum_method=SpectrumMethod.CQT,
-            transformation_gamma=2,
         )
         manager.apply_library_settings(update)
         assert manager.config.library.sample_rate == 22050
-        assert manager.config.library.spectrum_method == SpectrumMethod.CQT
 
     def test_apply_generation_settings_updates_drive(self, tmp_path: Path) -> None:
         manager = _manager(tmp_path / "missing.json")
@@ -170,15 +168,18 @@ class TestConfigManagerApplySettings:
         rec_dir = tmp_path / "rec"
         update = AdvancedSettingsUpdate(
             max_workers=2,
+            spectrum_method=SpectrumMethod.CQT,
+            transformation_gamma=2,
             library_directory=lib_dir,
             reconstructions_directory=rec_dir,
         )
         manager.apply_advanced_settings(update)
         assert manager.library_directory == lib_dir
+        assert manager.config.library.spectrum_method == SpectrumMethod.CQT
 
     def test_apply_settings_fires_config_change_callbacks(self, tmp_path: Path) -> None:
         manager = _manager(tmp_path / "missing.json")
-        fired: list[str] = []
+        fired: List[str] = []
         manager.add_config_change_callback(lambda: fired.append("changed"))
         update = AudioSettingsUpdate(normalize=True, quantize=False)
         manager.apply_audio_settings(update)

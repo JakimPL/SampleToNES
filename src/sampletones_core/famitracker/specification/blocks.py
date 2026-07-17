@@ -12,7 +12,6 @@ class Block:
     version: int
 
 
-# Block identities (name, version) — vanilla FamiTracker 0.4.6
 BLOCK_PARAMS: Final[Block] = Block("PARAMS", 6)
 BLOCK_INFO: Final[Block] = Block("INFO", 1)
 BLOCK_HEADER: Final[Block] = Block("HEADER", 3)

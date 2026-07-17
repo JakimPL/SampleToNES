@@ -1,0 +1,21 @@
+name: dialog
+tag: global.theme.dialog
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: FrameBg
+        value: .frame
+      - type: color
+        key: FrameBgHovered
+        value: .frame_hovered
+      - type: color
+        key: FrameBgActive
+        value: .frame_active
+      - type: color
+        key: Border
+        value: .border_strong
+      - type: style
+        key: FrameBorderSize
+        x: 1

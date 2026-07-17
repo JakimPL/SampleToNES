@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -31,8 +31,9 @@ def _tree(
             priority_update_status=0,
             priority_gui_action=0,
             priority_schedule=0,
-            priority_add_handler=0,
-            priority_add_node=0,
+            priority_emit=0,
+            queue_budget_seconds=0.005,
+            emit_batch_size=128,
         )
     return TreeLogic(session_manager, audio_device_manager, scheduling=scheduling)
 
@@ -72,14 +73,14 @@ class TestTreeLogicLocking:
 
     def test_lock_fires_lock_state_changed_callback(self) -> None:
         tree = _tree()
-        states: list[bool] = []
+        states: List[bool] = []
         tree.on_lock_state_changed = lambda state: states.append(state)
         tree.lock()
         assert states == [False]
 
     def test_unlock_fires_lock_state_changed_callback(self) -> None:
         tree = _tree()
-        states: list[bool] = []
+        states: List[bool] = []
         tree.on_lock_state_changed = lambda state: states.append(state)
         tree.lock()
         tree.unlock()
@@ -258,7 +259,7 @@ class TestTreeLogicFavorites:
         tmp_path: Path,
     ) -> None:
         tree = _tree()
-        fired: list[FileSystemNode] = []
+        fired: List[FileSystemNode] = []
         tree.on_favorite_changed = lambda node: fired.append(node)
         node = _file_node(tmp_path / "audio.wav")
         tree.toggle_favorite(node)
@@ -268,7 +269,7 @@ class TestTreeLogicFavorites:
 class TestTreeLogicSearch:
     def test_schedule_search_update_fires_on_search_update_needed(self) -> None:
         tree = _tree()
-        fired: list[str] = []
+        fired: List[str] = []
         tree.on_search_update_needed = lambda: fired.append("search")
         tree.schedule_search_update("query")
         assert fired == ["search"]

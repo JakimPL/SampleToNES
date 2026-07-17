@@ -53,32 +53,32 @@ class ApplicationStateManager:
         width: int,
         height: int,
     ) -> None:
-        self.state.window.fullscreen = fullscreen
+        self.state.viewport.fullscreen = fullscreen
         if not fullscreen:
-            self.state.window.x = x
-            self.state.window.y = y
-            self.state.window.width = width
-            self.state.window.height = height
+            self.state.viewport.x = x
+            self.state.viewport.y = y
+            self.state.viewport.width = width
+            self.state.viewport.height = height
 
     @property
     def fullscreen(self) -> bool:
-        return self.state.window.fullscreen
+        return self.state.viewport.fullscreen
 
     @property
     def window_x(self) -> int:
-        return self.state.window.x
+        return self.state.viewport.x
 
     @property
     def window_y(self) -> int:
-        return self.state.window.y
+        return self.state.viewport.y
 
     @property
     def window_width(self) -> int:
-        return self.state.window.width
+        return self.state.viewport.width
 
     @property
     def window_height(self) -> int:
-        return self.state.window.height
+        return self.state.viewport.height
 
     def set_current_tab(self, tab: Tab) -> None:
         self.state.current.tab = tab
@@ -87,12 +87,11 @@ class ApplicationStateManager:
         self.state.advanced_settings = not self.state.advanced_settings
         return self.state.advanced_settings
 
-    def toggle_autoplay(self) -> bool:
-        self.state.autoplay = not self.state.autoplay
-        return self.state.autoplay
+    def is_card_collapsed(self, card_tag: str) -> bool:
+        return self.state.collapsed_cards.get(card_tag, False)
 
-    def set_follow_playback(self, value: bool) -> None:
-        self.state.follow_playback = value
+    def set_card_collapsed(self, card_tag: str, collapsed: bool) -> None:
+        self.state.collapsed_cards[card_tag] = collapsed
 
     def load_current_tab(self) -> Tab:
         return self.state.current.tab
@@ -154,11 +153,3 @@ class ApplicationStateManager:
     @property
     def advanced_settings(self) -> bool:
         return self.state.advanced_settings
-
-    @property
-    def autoplay(self) -> bool:
-        return self.state.autoplay
-
-    @property
-    def follow_playback(self) -> bool:
-        return self.state.follow_playback

@@ -1,26 +1,24 @@
+from typing import Dict
+
 from pydantic import BaseModel, Field
 
 from sampletones_application.config.session.state.current import Current
 from sampletones_application.config.session.state.paths import LastPaths
-from sampletones_application.config.session.state.window import WindowState
+from sampletones_application.config.session.state.window import ViewportState
 
 
 class ApplicationState(BaseModel):
-    window: WindowState = Field(
-        default_factory=WindowState,
+    viewport: ViewportState = Field(
+        default_factory=ViewportState,
         description="The state of the main application window.",
     )
     advanced_settings: bool = Field(
         default=False,
         description="If advanced settings are shown in the config panel.",
     )
-    autoplay: bool = Field(
-        default=True,
-        description="If samples should autoplay when clicked.",
-    )
-    follow_playback: bool = Field(
-        default=True,
-        description="If the sequencer grid follows the playhead during playback.",
+    collapsed_cards: Dict[str, bool] = Field(
+        default_factory=dict,
+        description="Collapsed state of each card, keyed by the card's tag.",
     )
     current: Current = Field(
         default_factory=Current,

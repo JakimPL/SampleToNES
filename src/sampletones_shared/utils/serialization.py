@@ -4,7 +4,7 @@ import json
 from collections.abc import Hashable
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Final, List, Type, TypeVar, Union
+from typing import Any, Dict, Final, List, Mapping, Optional, Type, TypeVar, Union
 
 import numpy as np
 import yaml
@@ -15,6 +15,7 @@ from sampletones_shared.types.data import ModelHashable, SerializedData
 from sampletones_shared.types.path import Pathlike
 
 JSON_INDENT: Final[int] = 2
+YAML_ROOT_STEM: Final[str] = "root"
 HASH_LENGTH: Final[int] = 32
 HASH_PATTERN: Final[str] = rf"^[0-9a-f]{{{HASH_LENGTH}}}$"
 
@@ -106,13 +107,21 @@ def load_yaml(filepath: Pathlike) -> Union[List[Any], SerializedData]:
         return data
 
 
-def load_yaml_model(filepath: Pathlike, model_type: Type[ModelTypeT]) -> ModelTypeT:
+def load_yaml_model(
+    filepath: Pathlike,
+    model_type: Type[ModelTypeT],
+    *,
+    context: Optional[Mapping[str, Any]] = None,
+) -> ModelTypeT:
     """
     Loads and validates a Pydantic model from a YAML file holding a mapping.
 
     Args:
         filepath (Pathlike): Path to the YAML file to load.
         model_type (Type[ModelTypeT]): Model class validating the mapping.
+        context (Optional[Mapping[str, Any]]): Validation context forwarded to
+            ``model_validate``, letting field validators resolve against shared state
+            (e.g. a palette for colour references).
 
     Returns:
         ModelTypeT: The validated model instance.
@@ -124,7 +133,47 @@ def load_yaml_model(filepath: Pathlike, model_type: Type[ModelTypeT]) -> ModelTy
     if not isinstance(raw, dict):
         raise TypeError(f"YAML file {filepath} must contain a mapping, got {type(raw)}")
 
-    return model_type.model_validate(raw)
+    return model_type.model_validate(raw, context=context)
+
+
+def load_yaml_model_dir(
+    directory: Pathlike,
+    model_type: Type[ModelTypeT],
+    *,
+    context: Optional[Mapping[str, Any]] = None,
+) -> ModelTypeT:
+    """
+    Loads and validates a Pydantic model from a directory of YAML fragments.
+
+    Each ``<field>.yaml`` file supplies the value for the model's top-level ``<field>``,
+    so the directory layout mirrors the model's structure one file per field. A file
+    named ``root.yaml`` holds a mapping whose entries become top-level fields directly,
+    carrying the loose scalar fields that own no section file of their own.
+
+    Args:
+        directory (Pathlike): Directory holding the YAML fragment files.
+        model_type (Type[ModelTypeT]): Model class validating the merged mapping.
+        context (Optional[Mapping[str, Any]]): Validation context forwarded to
+            ``model_validate``, letting field validators resolve against shared state
+            (e.g. a palette for colour references).
+
+    Returns:
+        ModelTypeT: The validated model instance.
+
+    Raises:
+        TypeError: If ``root.yaml`` holds anything other than a mapping.
+    """
+    merged: Dict[str, Any] = {}
+    for path in sorted(Path(directory).glob("*.yaml")):
+        content = load_yaml(path)
+        if path.stem == YAML_ROOT_STEM:
+            if not isinstance(content, dict):
+                raise TypeError(f"YAML file {path} must contain a mapping, got {type(content)}")
+            merged.update(content)
+        else:
+            merged[path.stem] = content
+
+    return model_type.model_validate(merged, context=context)
 
 
 def save_binary(filepath: Pathlike, data: bytes) -> None:

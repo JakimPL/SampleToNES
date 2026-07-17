@@ -7,7 +7,7 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
-from sampletones_application.view_model.main.updates import LibrarySettingsUpdate
+from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
 from sampletones_core.library import InstructionLibraryKey
 
 
@@ -28,12 +28,13 @@ def library_manager(
 
 def _set_transformation_gamma(config_manager: ConfigManager, gamma: int) -> None:
     library = config_manager.config.library
-    config_manager.apply_library_settings(
-        LibrarySettingsUpdate(
-            sample_rate=library.sample_rate,
-            nes_frequency=library.nes_frequency,
+    config_manager.apply_advanced_settings(
+        AdvancedSettingsUpdate(
+            max_workers=config_manager.config.general.max_workers,
             spectrum_method=library.spectrum_method,
             transformation_gamma=gamma,
+            library_directory=config_manager.get_library_directory(),
+            reconstructions_directory=config_manager.get_reconstructions_directory(),
         )
     )
 

@@ -1,17 +1,14 @@
-explorer:
-  width: 440
-  height: -1
-
 config:
-  height: 276
+  height: 260
 
 reconstructor:
   drive_format: "%.2f"
 
+advanced:
+  height: 285
+  button_height: 50
+
 converter:
   width: -1
-  height: 252
+  height: 180
   button_height: 45
-
-advanced:
-  height: 148

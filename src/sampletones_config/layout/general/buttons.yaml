@@ -1,0 +1,5 @@
+copy_width: 80
+search_width: -1
+int_width: 30
+frame_rounding: 6
+frame_padding: [10, 4]

@@ -1,0 +1,9 @@
+name: tab_strip
+tag: global.theme.tab_strip
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .tab_strip

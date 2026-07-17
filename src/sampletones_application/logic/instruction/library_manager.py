@@ -152,6 +152,7 @@ class InstructionsLibraryManager(CallbackMixin):
         fragment = data[instruction]
         library_config = data.config
         instruction_data = InstructionPanelData(
+            library_key=self._current_library_key,
             instruction=instruction,
             config=library_config,
             fragment=fragment,
@@ -228,6 +229,9 @@ class InstructionsLibraryManager(CallbackMixin):
     def current_library_key(self) -> Optional[InstructionLibraryKey]:
         return self._current_library_key
 
+    def clear_current_library(self) -> None:
+        self._current_library_key = None
+
     @property
     def creator(self) -> Optional[InstructionsLibraryCreator]:
         return self._creator
@@ -239,6 +243,16 @@ class InstructionsLibraryManager(CallbackMixin):
     def cleanup_creator(self) -> None:
         if self._creator:
             self._creator.cleanup()
+            self._creator = None
+
+    def shutdown(self) -> None:
+        """Tears the library creator's process pool down synchronously for application exit.
+
+        A conversion generates its library first, so this pool is the one still spawning
+        workers when a run is cancelled and the window is closed; this blocks until it has
+        stopped so the process reaps its workers before releasing shared resources."""
+        if self._creator:
+            self._creator.shutdown()
             self._creator = None
 
     def clear_all_libraries(self) -> None:

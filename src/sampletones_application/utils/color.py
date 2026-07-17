@@ -1,8 +1,21 @@
-from typing import Annotated
+from typing import Annotated, Final
 
 from pydantic import BeforeValidator
 
 from sampletones_shared.types.application import ColorRGBA
+
+MAX_CHANNEL_VALUE: Final[int] = 255
+
+
+def with_alpha_fraction(color: ColorRGBA, fraction: float) -> ColorRGBA:
+    """Return ``color`` with its alpha set to ``fraction`` of full opacity.
+
+    ``fraction`` is a value in ``[0, 1]``; ``1`` keeps the colour fully opaque and
+    ``0`` makes it fully transparent, letting callers express a tint strength as a
+    fraction while colours stay 8-bit RGBA tuples.
+    """
+    red, green, blue, _ = color
+    return (red, green, blue, round(fraction * MAX_CHANNEL_VALUE))
 
 
 def parse_hex_color(value: str) -> ColorRGBA:

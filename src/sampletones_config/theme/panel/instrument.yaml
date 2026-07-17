@@ -1,0 +1,9 @@
+name: panel_instrument
+tag: global.theme.panel_instrument
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .recess

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, List, Literal, Union
 
 from pydantic import BaseModel, Field
 
-from sampletones_application.utils.color import RGBA
+from sampletones_application.utils.palette import ColorSource
 
 
 class ThemeColorEntrySpec(BaseModel, frozen=True):
     type: Literal["color"]
     key: str
-    value: RGBA
+    value: ColorSource
     category: str = "Core"
 
 
@@ -31,11 +31,11 @@ ThemeEntrySpec = Annotated[
 class ThemeComponentSpec(BaseModel, frozen=True):
     item_type: str
     enabled: bool = True
-    entries: list[ThemeEntrySpec]
+    entries: List[ThemeEntrySpec]
 
 
 class ThemeSpec(BaseModel, frozen=True):
     name: str
     tag: str
     extends: str | None = None
-    components: list[ThemeComponentSpec]
+    components: List[ThemeComponentSpec]

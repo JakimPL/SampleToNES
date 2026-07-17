@@ -1,9 +1,9 @@
-from typing import Any, Callable
+from typing import Any, Callable, Tuple
 
 import dearpygui.dearpygui as dpg
 
 
-def get_center(width: int, height: int) -> tuple[int, int]:
+def get_center(width: int, height: int) -> Tuple[int, int]:
     x = (dpg.get_viewport_width() - width) / 2
     y = (dpg.get_viewport_height() - height) / 2
     return round(x), round(y)

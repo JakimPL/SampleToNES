@@ -1,7 +1,7 @@
 import re
 import uuid
 from pathlib import Path
-from typing import Callable, Dict, Optional, Pattern, Tuple
+from typing import Dict, Optional, Pattern, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -14,12 +14,13 @@ from sampletones_application.categories.elements.global_ import (
     TracebackElements,
 )
 from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsDetailsElements,
+    ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.tags.general import (
     SUF_BUTTON_CANCEL,
     SUF_BUTTON_OK,
     SUF_BUTTON_SAVE,
@@ -32,24 +33,25 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_PATH_MESSAGE,
+    TAG_GLOBAL_THEME_DIALOG_WINDOW,
 )
-from sampletones_application.constants.reconstructions import (
+from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED,
 )
-from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.trace import GUITraceback
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import center_item, table_wrapper
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_item,
 )
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.callback import Callback, StringCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 
@@ -59,10 +61,14 @@ def get_dialog_tag(base_tag: str) -> str:
     return f"{base_tag}{TAG_SEPARATOR}{dialog_hash}"
 
 
+def _bind_dialog_theme(tag: str) -> None:
+    ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG_WINDOW).bind_to_item(tag)
+
+
 def _show_modal_dialog(
     tag: str,
     title: str,
-    content: Callable[[str], None],
+    content: StringCallback,
     *,
     ok_label: str,
     width: int,
@@ -79,6 +85,7 @@ def _show_modal_dialog(
         autosize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
+        _bind_dialog_theme(tag)
         content(tag)
         dpg.add_separator()
         ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
@@ -174,9 +181,9 @@ class DialogsRenderer:
         ]
         self._ttl_reconstruction_not_loaded = language_manager[
             Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
+            Panel.INSTRUMENTS,
             TextType.TITLE,
-            ReconstructionsDetailsElements.NOT_LOADED_DIALOG,
+            ReconstructionsInstrumentsElements.NOT_LOADED_DIALOG,
         ]
         self._msg_reconstruction_no_data = language_manager[
             Page.GLOBAL,
@@ -215,11 +222,16 @@ class DialogsRenderer:
             GlobalMessageElements.CONFIGURATION_RECOVERY_PATH_PREFIX,
         ]
 
+    @property
+    def default_wrap(self) -> int:
+        """Text wrap width matching the default dialog width, for caller-built content."""
+        return self._default_wrap
+
     def show_modal(
         self,
         tag: str,
         title: str,
-        content: Callable[[str], None],
+        content: StringCallback,
         *,
         width: Optional[int] = None,
         height: Optional[int] = None,
@@ -371,6 +383,7 @@ class DialogsRenderer:
             no_scrollbar=False,
             on_close=lambda: dpg_delete_item(tag),
         ):
+            _bind_dialog_theme(tag)
             if message is not None:
                 dpg.add_text(message, parent=tag, wrap=self._error_wrap)
 
@@ -459,20 +472,36 @@ class DialogsRenderer:
         on_confirm: Callback,
         *,
         ok_label: str,
+        cancel_label: Optional[str] = None,
+        path: Optional[Path] = None,
         opt_out_label: Optional[str] = None,
         on_opt_out: Optional[Callback] = None,
         on_cancel: Optional[Callback] = None,
     ) -> None:
         """Modal confirmation. ``on_confirm``/``on_cancel`` run on the respective choice.
 
+        ``cancel_label`` names the negative button; it falls back to the shared Cancel label.
         When ``opt_out_label`` is given, a checkbox is shown; if it is ticked when the user
         confirms, ``on_opt_out`` runs as well — letting the caller suppress future prompts.
         """
         tag = get_dialog_tag(tag)
         opt_out_tag = f"{tag}{SUF_CHECKBOX}"
+        cancel_label = cancel_label if cancel_label is not None else self._lbl_cancel
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._default_wrap)
+
+            if path is not None:
+                GUIPathText(
+                    tag=f"{tag}{SUF_PATH}",
+                    path=path,
+                    parent=parent,
+                    color=self._col_path,
+                    hover_color=self._col_path_hover,
+                    status_message=self._msg_path,
+                    use_filename_only=True,
+                    status_bar=self._status_bar,
+                )
 
             if opt_out_label is not None:
                 dpg.add_checkbox(
@@ -516,7 +545,7 @@ class DialogsRenderer:
                 )
                 GUIButton(
                     tag=cancel_button_tag,
-                    label=self._lbl_cancel,
+                    label=cancel_label,
                     callback=_on_cancel,
                     width=-1,
                 )
@@ -531,6 +560,7 @@ class DialogsRenderer:
             no_resize=True,
             on_close=lambda: dpg_delete_item(tag),
         ):
+            _bind_dialog_theme(tag)
             content(tag)
 
         FrameCallbackManager.set_frame_callback(
@@ -546,7 +576,7 @@ class DialogsRenderer:
         tag: str,
         title: str,
         initial_value: str,
-        on_submit: Callable[[str], None],
+        on_submit: StringCallback,
         *,
         ok_label: str,
     ) -> None:
@@ -613,6 +643,7 @@ class DialogsRenderer:
             no_resize=True,
             on_close=lambda: dpg_delete_item(tag),
         ):
+            _bind_dialog_theme(tag)
             content(tag)
 
         FrameCallbackManager.set_frame_callback(
@@ -696,6 +727,7 @@ class DialogsRenderer:
             no_resize=True,
             on_close=lambda: dpg_delete_item(tag),
         ):
+            _bind_dialog_theme(tag)
             content(tag)
 
         FrameCallbackManager.set_frame_callback(

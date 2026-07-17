@@ -83,6 +83,25 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self._notify_progress()
         self._cleanup()
 
+    def shutdown(self) -> None:
+        """Stops the pool and reaps its workers on the calling thread before returning.
+
+        Cancelling from the interface tears the pool down on a background thread to keep
+        the interface responsive. At application exit the process is about to release the
+        shared resources the pool's spawned workers rely on, so the teardown runs inline
+        here and returns only once the pool has stopped."""
+        self.status = TaskStatus.CLEANING_UP
+        self.running = False
+        self.cancelling = True
+
+        self._notify_progress()
+        if self.future is not None:
+            self.future.cancel()
+
+        self._stop_pool()
+        self._join_thread()
+        self._reset_status()
+
     def is_running(self) -> bool:
         return self.running
 
@@ -234,7 +253,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
             self.monitor_thread.join(timeout=CANCEL_TIMEOUT)
 
     def _wait_for_cleanup(self) -> None:
-        self._cleanup_pool()
+        self._stop_pool()
         self._join_thread()
         self._reset_status()
 

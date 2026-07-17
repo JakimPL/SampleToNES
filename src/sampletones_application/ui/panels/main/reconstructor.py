@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -9,20 +9,25 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ReconstructorElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.layout.main import ReconstructorLayout
+from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
+    TAG_GLOBAL_THEME_CHANNEL_NOISE,
+    TAG_GLOBAL_THEME_CHANNEL_PULSE1,
+    TAG_GLOBAL_THEME_CHANNEL_PULSE2,
+    TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
 )
-from sampletones_application.constants.main import (
+from sampletones_application.tags.main import (
     PRE_MAIN_RECONSTRUCTOR_GENERATOR,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
-    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
-from sampletones_application.layout.main import ReconstructorLayout
+from sampletones_application.ui.elements.field import labeled_field, subheader
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
@@ -42,13 +47,16 @@ class GUIReconstructorPanel(GUIPanel):
         *,
         layout: ReconstructorLayout,
         input_width: int,
+        label_width: int,
         panel_height: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        initial_collapsed: bool = False,
     ) -> None:
         self._view = initial_view
         self._layout = layout
         self._input_width = input_width
+        self._label_width = label_width
         self._status_bar = status_bar
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
         self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
@@ -110,21 +118,20 @@ class GUIReconstructorPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_RECONSTRUCTOR_PANEL,
-            parent=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
             height=panel_height,
         )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            parent=self.parent,
+        with self._collapsible_card(
+            parent,
+            self._lbl_section_settings,
+            glyph=self._glyphs.headers.reconstruction,
             width=self.width,
-            height=self.height,
-            border=True,
         ):
-            self._create_section_text()
             self._create_generator_selection()
+            dpg.add_separator()
             self._create_drive_slider()
             self._create_tooltips()
 
@@ -134,53 +141,42 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
-    def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_section_settings)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
-
     def _create_generator_selection(self) -> None:
-        dpg.add_separator()
-        dpg.add_text(self._lbl_section_generators)
+        subheader(self._lbl_section_generators)
 
-        dpg.add_checkbox(
-            label=self._lbl_pulse_1,
-            default_value=GeneratorName.PULSE1 in self._view.generators,
-            tag=self._get_generator_checkbox_tag(GeneratorName.PULSE1),
-            callback=self._on_parameter_change,
-        )
-        dpg.add_checkbox(
-            label=self._lbl_pulse_2,
-            default_value=GeneratorName.PULSE2 in self._view.generators,
-            tag=self._get_generator_checkbox_tag(GeneratorName.PULSE2),
-            callback=self._on_parameter_change,
-        )
-        dpg.add_checkbox(
-            label=self._lbl_triangle,
-            default_value=GeneratorName.TRIANGLE in self._view.generators,
-            tag=self._get_generator_checkbox_tag(GeneratorName.TRIANGLE),
-            callback=self._on_parameter_change,
-        )
-        dpg.add_checkbox(
-            label=self._lbl_noise,
-            default_value=GeneratorName.NOISE in self._view.generators,
-            tag=self._get_generator_checkbox_tag(GeneratorName.NOISE),
-            callback=self._on_parameter_change,
-        )
+        with dpg.group():
+            for generator, label, theme_tag in self._generator_chips():
+                checkbox_tag = self._get_generator_checkbox_tag(generator)
+                dpg.add_checkbox(
+                    label=label,
+                    default_value=generator in self._view.generators,
+                    tag=checkbox_tag,
+                    callback=self._on_parameter_change,
+                )
+                ThemeRegistry.get(theme_tag).bind_to_item(checkbox_tag)
+
+    def _generator_chips(self) -> List[Tuple[GeneratorName, str, str]]:
+        return [
+            (GeneratorName.PULSE1, self._lbl_pulse_1, TAG_GLOBAL_THEME_CHANNEL_PULSE1),
+            (GeneratorName.PULSE2, self._lbl_pulse_2, TAG_GLOBAL_THEME_CHANNEL_PULSE2),
+            (GeneratorName.TRIANGLE, self._lbl_triangle, TAG_GLOBAL_THEME_CHANNEL_TRIANGLE),
+            (GeneratorName.NOISE, self._lbl_noise, TAG_GLOBAL_THEME_CHANNEL_NOISE),
+        ]
 
     def _create_drive_slider(self) -> None:
-        dpg.add_separator()
-        dpg.add_slider_float(
-            label=self._lbl_drive,
-            tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
-            min_value=0.0,
-            max_value=MAX_DRIVE,
-            default_value=self._view.drive,
-            width=self._input_width,
-            format=self._layout.drive_format,
-        )
+        with labeled_field(self._lbl_drive, self._label_width):
+            dpg.add_slider_float(
+                tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+                min_value=0.0,
+                max_value=MAX_DRIVE,
+                default_value=self._view.drive,
+                width=self._input_width,
+                format=self._layout.drive_format,
+            )
 
         dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._item_handler_tag)
         self._status_bar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._msg_status_input)
+        FontRegistry.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, Font.MONO)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._tooltip_drive)

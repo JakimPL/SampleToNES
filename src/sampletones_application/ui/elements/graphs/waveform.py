@@ -5,16 +5,16 @@ import numpy as np
 
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.graphs import (
+from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.graphs import (
     SUF_GRAPH_THEME,
     SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_OVERLAY,
 )
-from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
 from sampletones_application.ui.elements.graphs.layers.instruction import (
@@ -31,7 +31,7 @@ from sampletones_application.utils.gui.dpg import (
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import Color, Sender
 
 
 class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
@@ -49,7 +49,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         layout: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
-        label: str = "",
     ):
         self._layout = layout
         self._status_bar = status_bar
@@ -91,17 +90,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             GraphElements.WAVEFORM_NAVIGATION,
         ]
 
-        _label = (
-            label
-            if label
-            else language_manager[
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.WAVEFORM_DISPLAY,
-            ]
-        )
-
         self.reconstruction_autoscale = True
         self._top_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
 
@@ -124,7 +112,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             parent,
             layout.dimensions.width,
             layout.dimensions.height,
-            _label,
+            "",
             (_min_x, _max_x),
             (_min_y, _max_y),
             layout.waveform.zoom_factor,
@@ -232,7 +220,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self,
         waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
-    ) -> Tuple[np.ndarray, np.ndarray, float]:
+    ) -> Tuple[Optional[np.ndarray], np.ndarray, float]:
         if selected_generators is None:
             selected_generators = list(waveform_data.approximations.keys())
 
@@ -240,11 +228,10 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         approximation = waveform_data.partials(selected_generators)
         full_approximation = waveform_data.approximation
 
-        if not self.reconstruction_autoscale:
+        if not self.reconstruction_autoscale or original_audio is None:
             return original_audio, approximation, 1.0
 
-        original_audio_coefficient = waveform_data.coefficient
-        original_audio = original_audio / original_audio_coefficient
+        original_audio = original_audio / waveform_data.coefficient
 
         coefficient = max(
             np.max(np.abs(full_approximation)),
@@ -253,19 +240,27 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         return original_audio, approximation, coefficient
 
-    def _extract_layers(
+    def _display_layers(
         self,
         waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
-    ) -> Tuple[ArrayLayer, ArrayLayer]:
+    ) -> List[Union[ArrayLayer, InstructionLayer]]:
+        """Builds the ordered waveform layers for the current data.
+
+        The original-audio layer joins the reconstruction layer only when the source audio is
+        present, so a detached reconstruction or one whose source file is missing shows the
+        approximation on its own.
+        """
         original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(
             waveform_data,
             selected_generators,
         )
+        reconstruction_layer = self.reconstruction_layer(approximation_data)
+        if original_audio is None:
+            return [reconstruction_layer]
 
         sample_layer = self.sample_layer(original_audio)
-        reconstruction_layer = self.reconstruction_layer(approximation_data)
-        return sample_layer, reconstruction_layer
+        return self._ordered_layers(sample_layer, reconstruction_layer)
 
     def update_waveform_data(
         self,
@@ -276,13 +271,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             return
 
         self.current_data = waveform_data
-        sample_layer, reconstruction_layer = self._extract_layers(
-            waveform_data,
-            selected_generators,
-        )
-
-        for layer in self._ordered_layers(sample_layer, reconstruction_layer):
+        for layer in self._display_layers(waveform_data, selected_generators):
             self.layers[layer.name] = layer
+
         self._update_display()
 
     def load_waveform_data(
@@ -292,12 +283,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     ) -> None:
         self.clear_layers()
         self.current_data = waveform_data
-        sample_layer, reconstruction_layer = self._extract_layers(
-            waveform_data,
-            selected_generators,
-        )
-
-        self._add_reconstruction_layers(reconstruction_layer, sample_layer)
+        for layer in self._display_layers(waveform_data, selected_generators):
+            self.add_layer(layer)
 
     def reconstruction_layer(self, data: np.ndarray) -> ArrayLayer:
         return ArrayLayer(
@@ -316,15 +303,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             line_thickness=self._layout.waveform.sample_thickness,
             max_display_points=self._layout.waveform.max_display_points,
         )
-
-    def _add_reconstruction_layers(
-        self,
-        reconstruction_layer: ArrayLayer,
-        sample_layer: ArrayLayer,
-    ) -> None:
-        for layer in self._ordered_layers(sample_layer, reconstruction_layer):
-            self.add_layer(layer)
-        self._update_display()
 
     def _ordered_layers(
         self,
@@ -351,6 +329,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._reorder_series()
 
     def _reorder_series(self) -> None:
+        if self._lbl_waveform_original not in self.layers:
+            return
+
         sample_layer = self.layers[self._lbl_waveform_original]
         reconstruction_layer = self.layers[self._lbl_waveform_reconstruction]
         for layer in (sample_layer, reconstruction_layer):
@@ -380,34 +361,55 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
+        self._prune_stale_series()
         for layer in self.layers.values():
             series_tag = self._series_tag(layer.name)
-            theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
-            if dpg.does_item_exist(series_tag):
-                dpg.configure_item(
-                    series_tag,
-                    x=layer.x_data,
-                    y=layer.y_data,
-                )
-            else:
-                dpg.add_line_series(
-                    layer.x_data.tolist(),
-                    layer.y_data.tolist(),
-                    label=layer.name,
-                    parent=self.y_axis_tag,
-                    tag=series_tag,
-                )
+            self._upsert_series(series_tag, layer)
+            self._bind_series_theme(series_tag, layer.color)
 
-            if not dpg.does_item_exist(theme_tag):
-                with dpg.theme(tag=theme_tag):
-                    with dpg.theme_component(dpg.mvLineSeries):
-                        dpg.add_theme_color(
-                            dpg.mvPlotCol_Line,
-                            layer.color,
-                            category=dpg.mvThemeCat_Plots,
-                        )
+    def _prune_stale_series(self) -> None:
+        """Aligns the y-axis series with the current layers, keeping the position indicator
+        and overlay rectangle attached across updates."""
+        live_series_tags = {self._series_tag(layer_name) for layer_name in list(self.layers.keys())}
+        preserved_tags = (self.position_indicator_tag, self.overlay_rectangle_tag)
+        for child in dpg.get_item_children(self.y_axis_tag, 1) or []:
+            child_tag = dpg.get_item_alias(child)
+            if child_tag in preserved_tags:
+                continue
 
-            dpg_bind_item_theme(series_tag, theme_tag)
+            if child_tag not in live_series_tags:
+                dpg_delete_item(child)
+
+    def _upsert_series(self, series_tag: str, layer: Union[ArrayLayer, InstructionLayer]) -> None:
+        """Refreshes the points of an existing series, or creates it on the y-axis when new."""
+        if dpg.does_item_exist(series_tag):
+            dpg.configure_item(
+                series_tag,
+                x=layer.x_data,
+                y=layer.y_data,
+            )
+        else:
+            dpg.add_line_series(
+                layer.x_data.tolist(),
+                layer.y_data.tolist(),
+                label=layer.name,
+                parent=self.y_axis_tag,
+                tag=series_tag,
+            )
+
+    def _bind_series_theme(self, series_tag: str, color: Color) -> None:
+        """Creates the line-color theme for a series when new and binds it to the series."""
+        theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
+        if not dpg.does_item_exist(theme_tag):
+            with dpg.theme(tag=theme_tag):
+                with dpg.theme_component(dpg.mvLineSeries):
+                    dpg.add_theme_color(
+                        dpg.mvPlotCol_Line,
+                        color,
+                        category=dpg.mvThemeCat_Plots,
+                    )
+
+        dpg_bind_item_theme(series_tag, theme_tag)
 
     def _add_position_indicator(self) -> None:
         dpg_delete_item(self.position_indicator_tag)

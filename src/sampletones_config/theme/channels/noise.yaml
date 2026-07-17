@@ -1,0 +1,12 @@
+name: channel_noise
+tag: global.theme.channel_noise
+
+components:
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: CheckMark
+        value: .channel_noise
+      - type: color
+        key: Text
+        value: .channel_noise_soft

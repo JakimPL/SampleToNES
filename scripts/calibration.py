@@ -11,19 +11,37 @@ from sampletones_core.calibration.report import write_csv, write_markdown
 from sampletones_core.calibration.runner import build_variants, evaluate_variants
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import DEFAULT_GENERATORS, GeneratorName
+from sampletones_core.paths import USER_PATH_DOCUMENTS
 from sampletones_shared.logger import logger
 
-DEFAULT_OUTPUT_ROOT: Final[Path] = Path.home() / "Documents" / "SampleToNES" / "calibration"
+DEFAULT_OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "calibration"
 DEFAULT_METHODS: Final[str] = "fft,cqt"
 DEFAULT_PERCEPTUAL_EXPONENTS: Final[str] = "1.0"
 DEFAULT_GENERATOR_NAMES: Final[str] = ",".join(generator.value for generator in DEFAULT_GENERATORS)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Reconstruct the calibration corpus and score it with referees.")
-    parser.add_argument("--config", type=Path, default=None, help="Base configuration path.")
-    parser.add_argument("--output", type=Path, default=None, help="Output directory of the run.")
-    parser.add_argument("--methods", type=str, default=DEFAULT_METHODS, help="Comma-separated spectrum methods.")
+    parser = argparse.ArgumentParser(
+        description="Reconstruct the calibration corpus and score it with referees.",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Base configuration path.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output directory of the run.",
+    )
+    parser.add_argument(
+        "--methods",
+        type=str,
+        default=DEFAULT_METHODS,
+        help="Comma-separated spectrum methods.",
+    )
     parser.add_argument(
         "--perceptual-exponents",
         type=str,

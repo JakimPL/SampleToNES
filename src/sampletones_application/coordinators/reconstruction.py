@@ -14,10 +14,6 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
-    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
-    TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
-)
 from sampletones_application.coordinators.reconstructions import (
     ReconstructionsTabCoordinator,
 )
@@ -30,6 +26,10 @@ from sampletones_application.services import (
     ServiceCancelled,
     ServiceError,
     ServiceSuccess,
+)
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+    TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
@@ -72,6 +72,7 @@ class ReconstructionCoordinator:
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
         on_reconstruction_updated: Callable[[RegeneratedInstrument], None],
+        is_reconstruction_embedded: Callable[[], bool],
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
@@ -84,6 +85,7 @@ class ReconstructionCoordinator:
         self._on_tab_switch = on_tab_switch
         self._on_session_state_changed_callback = on_session_state_changed
         self._on_reconstruction_updated_callback = on_reconstruction_updated
+        self._is_reconstruction_embedded = is_reconstruction_embedded
 
         self._reconstruction_manager.session.on_state_changed = self._on_state_changed
         self._regeneration_service.subscribe(self._on_regeneration_result)
@@ -112,6 +114,18 @@ class ReconstructionCoordinator:
     def is_unsaved(self) -> bool:
         return self._reconstruction_manager.session.unsaved_changes
 
+    def is_saveable(self) -> bool:
+        return self._reconstruction_manager.is_file_backed
+
+    def _requires_save_confirmation(self) -> bool:
+        """Reports pending edits that a save prompt can resolve.
+
+        A prompt is warranted only for a standalone reconstruction with unsaved changes. A
+        project-embedded reconstruction has no file of its own, and its edits belong to the
+        project — closing or replacing it loses nothing, so it needs no prompt.
+        """
+        return self.is_unsaved() and not self._is_reconstruction_embedded()
+
     def check_loaded(self) -> bool:
         if not self.is_loaded():
             logger.warning("No reconstruction loaded; cannot proceed")
@@ -121,9 +135,17 @@ class ReconstructionCoordinator:
         return True
 
     def save_as_dialog(self) -> None:
-        filepath = self._reconstruction_manager.filepath
-        if filepath is None:
+        reconstruction_data = self._reconstruction_manager.current_reconstruction
+        if reconstruction_data is None:
             return
+
+        filepath = reconstruction_data.filepath
+        if filepath is not None:
+            default_filename = filepath.name
+            default_path = str(filepath.parent)
+        else:
+            default_filename = f"{reconstruction_data.name}{EXT_FILE_RECONSTRUCTION}"
+            default_path = str(self._session_manager.get_reconstruction_path())
 
         with dpg.file_dialog(
             label=self._language_manager[
@@ -136,31 +158,16 @@ class ReconstructionCoordinator:
             height=self._layout.general.dialogs.file.height,
             callback=self._handle_save_as,
             file_count=1,
-            default_filename=filepath.name,
-            default_path=str(filepath.parent),
+            default_filename=default_filename,
+            default_path=default_path,
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
     @file_dialog_handler
     def _handle_save_as(self, filepath: Path) -> None:
         try:
-            self.save(filepath)
-            self._dialogs.show_info(
-                TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
-                self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.RECONSTRUCTION_SAVED_SUCCESSFULLY,
-                ],
-                self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.RECONSTRUCTION_SAVED,
-                ],
-            )
-        except OSError as exception:
+            self._reconstruction_manager.save_reconstruction_as(filepath)
+        except (OSError, SampleToNESError) as exception:
             logger.error_with_traceback(exception, f"Failed to save reconstruction to {filepath}")
             self._dialogs.show_error(
                 exception,
@@ -171,8 +178,26 @@ class ReconstructionCoordinator:
                     GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED,
                 ],
             )
+            return
 
-        self._session_manager.set_reconstruction_path(filepath)
+        self._session_manager.set_reconstruction_path(filepath.parent)
+        self._session_manager.set_current_reconstruction(filepath)
+        self._tab.display_reconstruction()
+        self._dialogs.show_info(
+            TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
+            self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.MESSAGE,
+                GlobalMessageElements.RECONSTRUCTION_SAVED_SUCCESSFULLY,
+            ],
+            self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.RECONSTRUCTION_SAVED,
+            ],
+        )
 
     def _load_dialog(self) -> None:
         with dpg.file_dialog(
@@ -200,7 +225,7 @@ class ReconstructionCoordinator:
             else:
                 self.load(filepath)
 
-        if self.is_unsaved():
+        if self._requires_save_confirmation():
             self._show_save_confirmation(
                 title=self._language_manager[
                     Page.GLOBAL,
@@ -273,7 +298,7 @@ class ReconstructionCoordinator:
         self._reconstruction_manager.save_reconstruction(filepath)
 
     def close_with_confirmation(self) -> None:
-        if self.is_unsaved():
+        if self._requires_save_confirmation():
             self._show_save_confirmation(
                 title=self._language_manager[
                     Page.GLOBAL,

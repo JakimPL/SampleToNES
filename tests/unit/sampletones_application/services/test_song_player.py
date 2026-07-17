@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
 
-from sampletones_application.services.song_player.player import SongPlayerService
+import numpy as np
+
+from sampletones_application.services.song_player.player import SongPlayerService, _RenderedRow
 from sampletones_application.services.song_player.result import (
     SongPlaybackStopped,
     SongPositionUpdate,
@@ -8,11 +10,11 @@ from sampletones_application.services.song_player.result import (
 from sampletones_core.project.song_position import SongPosition
 
 
-def _make_service(*, is_finished: bool = False) -> SongPlayerService:
+def _make_service(*, is_finished: bool = False, should_loop: bool = False) -> SongPlayerService:
     audio_device_manager = MagicMock()
     synthesizer = MagicMock()
     synthesizer.is_finished = is_finished
-    return SongPlayerService(audio_device_manager, synthesizer)
+    return SongPlayerService(audio_device_manager, synthesizer, should_loop=lambda: should_loop)
 
 
 class TestSongPlayerServiceInitialState:
@@ -53,7 +55,7 @@ class TestSongPlayerServiceSeek:
 
     def test_seek_sets_synthesizer_position_when_alive(self) -> None:
         service = _make_service()
-        service._thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._write_thread = MagicMock(is_alive=MagicMock(return_value=True))
 
         service.seek(2)
 
@@ -61,7 +63,7 @@ class TestSongPlayerServiceSeek:
 
     def test_seek_does_not_reset_voices(self) -> None:
         service = _make_service()
-        service._thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._write_thread = MagicMock(is_alive=MagicMock(return_value=True))
 
         service.seek(2)
 
@@ -78,7 +80,7 @@ class TestSongPlayerServiceRelocate:
 
     def test_relocate_keeps_current_row_when_alive(self) -> None:
         service = _make_service()
-        service._thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._write_thread = MagicMock(is_alive=MagicMock(return_value=True))
         service._synthesizer.row_index = 5
 
         service.relocate(2)
@@ -87,7 +89,7 @@ class TestSongPlayerServiceRelocate:
 
     def test_relocate_does_not_reset_voices(self) -> None:
         service = _make_service()
-        service._thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._write_thread = MagicMock(is_alive=MagicMock(return_value=True))
         service._synthesizer.row_index = 0
 
         service.relocate(2)
@@ -101,16 +103,47 @@ class TestSongPlayerServiceStop:
         service.stop()
         assert service._stop_event.is_set()
 
-    def test_stop_clears_thread_reference(self) -> None:
+    def test_stop_clears_thread_references(self) -> None:
         service = _make_service()
         service.stop()
-        assert service._thread is None
+        assert service._render_thread is None
+        assert service._write_thread is None
 
     def test_stop_is_idempotent_when_already_stopped(self) -> None:
         service = _make_service()
         service.stop()
         service.stop()
-        assert service._thread is None
+        assert service._render_thread is None
+        assert service._write_thread is None
+
+
+class TestSongPlayerServiceLoop:
+    def test_loop_to_start_wraps_when_enabled(self) -> None:
+        service = _make_service(should_loop=True)
+        service._synthesizer.is_finished = False
+
+        looped = service._loop_to_start()
+
+        assert looped is True
+        service._synthesizer.set_position.assert_called_once_with(0, 0)
+        service._synthesizer.reset.assert_called_once()
+
+    def test_loop_to_start_does_nothing_when_disabled(self) -> None:
+        service = _make_service(should_loop=False)
+
+        looped = service._loop_to_start()
+
+        assert looped is False
+        service._synthesizer.set_position.assert_not_called()
+        service._synthesizer.reset.assert_not_called()
+
+    def test_loop_to_start_stops_on_empty_song(self) -> None:
+        service = _make_service(should_loop=True, is_finished=True)
+
+        looped = service._loop_to_start()
+
+        assert looped is False
+        service._synthesizer.reset.assert_not_called()
 
 
 class TestSongPlayerServiceSubscribeAndEmit:
@@ -138,50 +171,109 @@ class TestSongPlayerServiceSubscribeAndEmit:
         assert received_b == [result]
 
 
-class TestSongPlayerServiceRenderAndEmit:
-    def test_render_and_emit_row_emits_position_update(self) -> None:
-        import numpy as np
-
+class TestSongPlayerServicePlayRow:
+    def test_play_row_emits_position_update(self) -> None:
         service = _make_service()
         received = []
         service.subscribe(received.append)
 
         position = SongPosition(order_position=1, row_index=3)
-        service._synthesizer.render_row.return_value = (np.zeros(100, dtype=np.float32), position)
+        row = _RenderedRow(chunk=np.zeros(100, dtype=np.float32), position=position)
 
         mock_stream = MagicMock()
-        service._render_and_emit_row(mock_stream)
+        service._play_row(mock_stream, row)
 
         assert len(received) == 1
         assert isinstance(received[0], SongPositionUpdate)
         assert received[0].position is position
 
-    def test_render_and_emit_row_writes_non_empty_audio(self) -> None:
-        import numpy as np
-
+    def test_play_row_writes_non_empty_audio(self) -> None:
         service = _make_service()
         service.subscribe(lambda result: None)
 
         audio = np.ones(100, dtype=np.float32)
-        position = SongPosition()
-        service._synthesizer.render_row.return_value = (audio, position)
+        row = _RenderedRow(chunk=audio, position=SongPosition())
 
         mock_stream = MagicMock()
-        service._render_and_emit_row(mock_stream)
+        service._play_row(mock_stream, row)
 
         mock_stream.write.assert_called_once_with(audio.tobytes())
 
-    def test_render_and_emit_row_skips_write_for_empty_audio(self) -> None:
-        import numpy as np
-
+    def test_play_row_skips_write_for_empty_audio(self) -> None:
         service = _make_service()
         service.subscribe(lambda result: None)
 
-        empty_audio = np.zeros(0, dtype=np.float32)
-        position = SongPosition()
-        service._synthesizer.render_row.return_value = (empty_audio, position)
+        row = _RenderedRow(chunk=np.zeros(0, dtype=np.float32), position=SongPosition())
 
         mock_stream = MagicMock()
-        service._render_and_emit_row(mock_stream)
+        service._play_row(mock_stream, row)
 
         mock_stream.write.assert_not_called()
+
+
+class TestSongPlayerServicePrefetch:
+    def test_render_loop_ends_when_finished_without_loop(self) -> None:
+        service = _make_service(is_finished=True, should_loop=False)
+
+        service._render_loop()
+
+        assert list(service._buffer) == [None]
+        service._synthesizer.render_row.assert_not_called()
+
+    def test_drain_writes_buffered_rows_then_reports_stopped(self) -> None:
+        service = _make_service()
+        received: list = []
+        service.subscribe(received.append)
+        service._resume_event.set()
+
+        position = SongPosition(order_position=2, row_index=1)
+        service._buffer.append(_RenderedRow(chunk=np.ones(10, dtype=np.float32), position=position))
+        service._buffer.append(None)
+
+        mock_stream = MagicMock()
+        service._drain_to_stream(mock_stream)
+
+        mock_stream.write.assert_called_once()
+        assert isinstance(received[0], SongPositionUpdate)
+        assert received[0].position is position
+        assert isinstance(received[-1], SongPlaybackStopped)
+
+    def test_drain_returns_without_terminal_when_stopping(self) -> None:
+        service = _make_service()
+        received: list = []
+        service.subscribe(received.append)
+        service._resume_event.set()
+        service._stop_event.set()
+        service._buffer.append(_RenderedRow(chunk=np.ones(10, dtype=np.float32), position=SongPosition()))
+
+        mock_stream = MagicMock()
+        service._drain_to_stream(mock_stream)
+
+        mock_stream.write.assert_not_called()
+        assert received == []
+
+    def test_enqueue_row_tracks_queued_samples(self) -> None:
+        service = _make_service()
+        service._prefetch_samples = 100
+
+        service._enqueue_row(_RenderedRow(chunk=np.zeros(30, dtype=np.float32), position=SongPosition()))
+
+        assert service._queued_samples == 30
+        assert len(service._buffer) == 1
+
+    def test_dequeue_releases_queued_samples(self) -> None:
+        service = _make_service()
+        service._prefetch_samples = 100
+        service._enqueue_row(_RenderedRow(chunk=np.zeros(30, dtype=np.float32), position=SongPosition()))
+
+        popped, row = service._dequeue()
+
+        assert popped is True
+        assert row is not None
+        assert service._queued_samples == 0
+
+    def test_dequeue_returns_no_row_after_stop(self) -> None:
+        service = _make_service()
+        service._stop_event.set()
+
+        assert service._dequeue() == (False, None)

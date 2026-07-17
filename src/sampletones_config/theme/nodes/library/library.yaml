@@ -6,4 +6,4 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#dcdcdc"
+        value: .text

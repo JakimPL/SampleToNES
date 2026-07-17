@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from rich.logging import RichHandler
 
-from sampletones_shared.constants.application import SAMPLETONES_NAME
+from sampletones_shared.application import SAMPLETONES_NAME
 from sampletones_shared.meta import SingletonMeta
 from sampletones_shared.types.path import Pathlike
 

@@ -1,15 +1,19 @@
 from pydantic import BaseModel
 
 
-class PlayerPanelLayout(BaseModel, frozen=True):
+class PlayerToolbarLayout(BaseModel, extra="forbid", frozen=True):
+    indent: int
     width: int
     height: int
+    padding: int
+    gap: int
 
 
-class ControlsTableLayout(BaseModel, frozen=True):
+class PlayerButtonLayout(BaseModel, extra="forbid", frozen=True):
     height: int
+    width: int
 
 
-class PlayerLayout(BaseModel, frozen=True):
-    panel: PlayerPanelLayout
-    controls_table: ControlsTableLayout
+class PlayerLayout(BaseModel, extra="forbid", frozen=True):
+    toolbar: PlayerToolbarLayout
+    button: PlayerButtonLayout

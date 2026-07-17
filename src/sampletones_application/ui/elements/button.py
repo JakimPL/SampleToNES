@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import SUF_BUTTON, TAG_GLOBAL_THEME_DEFAULT
+from sampletones_application.tags.general import SUF_BUTTON, TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -98,6 +98,10 @@ class GUIButton:
 
     def set_item_callback(self, callback: Callback) -> None:
         dpg.set_item_callback(self._button_tag, callback)
+
+    def set_theme(self, theme: Theme) -> None:
+        theme.bind_to_item(self._tag)
+        theme.bind_to_item(self._button_tag)
 
     def get_value(self) -> Any:
         return dpg.get_value(self._button_tag)

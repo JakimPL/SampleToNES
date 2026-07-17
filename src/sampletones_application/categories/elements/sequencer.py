@@ -16,8 +16,6 @@ class SequencerModuleElements(AbstractElement):
     ROWS = "rows"
     TEMPO = "tempo"
     SPEED = "speed"
-    PROPERTIES = "properties"
-    EXPORT_MODULE = "export_module"
 
 
 class SequencerGridElements(AbstractElement):
@@ -70,7 +68,6 @@ class SequencerPlayerElements(AbstractElement):
     NO_SONG_LOADED = "no_song_loaded"
     POSITION = "position"
     PLAYBACK_ERROR = "playback_error"
-    FOLLOW_PLAYBACK = "follow_playback"
 
 
 class SequencerInstrumentsElements(AbstractElement):

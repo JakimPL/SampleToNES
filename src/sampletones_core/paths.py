@@ -3,7 +3,7 @@ from typing import Final, Tuple
 
 from platformdirs import user_config_dir, user_data_dir, user_documents_path
 
-from sampletones_shared.constants.application import (
+from sampletones_shared.application import (
     SAMPLETONES_GROUP,
     SAMPLETONES_NAME,
 )
@@ -53,10 +53,11 @@ ICON_UNIX_FILENAME: Final[str] = "sampletones.png"
 
 # Font paths
 FONT_DIRECTORY: Final[str] = "fonts"
-FONT_MAIN: Final[str] = "RobotoMono-Regular.ttf"
-FONT_BOLD: Final[str] = "RobotoMono-Bold.ttf"
-FONT_ITALIC: Final[str] = "RobotoMono-Italic.ttf"
-FONT_BOLD_ITALIC: Final[str] = "RobotoMono-BoldItalic.ttf"
+FONT_SANS_REGULAR: Final[str] = "SourceSans3-Regular.ttf"
+FONT_SANS_BOLD: Final[str] = "SourceSans3-Bold.ttf"
+FONT_SANS_ITALIC: Final[str] = "SourceSans3-Italic.ttf"
+FONT_MONO_REGULAR: Final[str] = "RobotoMono-Regular.ttf"
+FONT_MONO_BOLD: Final[str] = "RobotoMono-Bold.ttf"
 FONT_ICON: Final[str] = "DejaVuSans.ttf"
 
 PROJECTS_DIRECTORY.mkdir(parents=True, exist_ok=True)

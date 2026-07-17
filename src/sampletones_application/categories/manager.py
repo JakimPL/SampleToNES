@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple, Union, overload
+from typing import Dict, Tuple, Union, overload
 
 from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
@@ -11,7 +11,7 @@ TextKeyTuple = Tuple[Page, Panel, TextType, AbstractElement]
 
 class LanguageManager:
     def __init__(self, language_path: Path) -> None:
-        self._data: dict[str, str] = {}
+        self._data: Dict[str, str] = {}
         self.load(language_path)
 
     def load(self, path: Path) -> None:

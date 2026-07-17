@@ -8,7 +8,7 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.data import Metadata
 from sampletones_core.library.data import InstructionLibraryData
-from sampletones_shared.constants.application import SAMPLETONES_LIBRARY_DATA_VERSION
+from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleLibraryDataVersionError,

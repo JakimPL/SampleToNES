@@ -13,15 +13,15 @@ from sampletones_application.config.session.state.state import ApplicationState
 class TestApplicationStateManagerRecovery:
     def test_incompatible_field_preserves_remaining_state(self, tmp_path: Path) -> None:
         path = tmp_path / "state.yaml"
-        path.write_text(yaml.safe_dump({"window": {"width": "huge"}, "autoplay": False}))
+        path.write_text(yaml.safe_dump({"viewport": {"width": "huge"}, "advanced_settings": True}))
         with patch(
             "sampletones_application.config.managers.state.APPLICATION_STATE_PATH",
             path,
         ):
             manager = ApplicationStateManager()
 
-        assert manager.autoplay is False
-        assert manager.window_width == ApplicationState().window.width
+        assert manager.advanced_settings is True
+        assert manager.window_width == ApplicationState().viewport.width
 
 
 class TestApplicationStateManagerInit:
@@ -97,13 +97,6 @@ class TestApplicationStateManagerTabAndAdvanced:
         result = manager.toggle_show_advanced_settings()
         assert result == (not initial)
         assert manager.advanced_settings == (not initial)
-
-    def test_toggle_autoplay_changes_value(self) -> None:
-        manager = ApplicationStateManager()
-        initial = manager.autoplay
-        result = manager.toggle_autoplay()
-        assert result == (not initial)
-        assert manager.autoplay == (not initial)
 
 
 class TestApplicationStateManagerCurrentPaths:

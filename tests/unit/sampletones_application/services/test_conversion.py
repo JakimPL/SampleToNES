@@ -237,11 +237,18 @@ class TestConversionServiceLifecycle:
         conversion_service.cleanup()
         assert conversion_service._converter is None
 
-    def test_cleanup_cancels_running_converter(self, service) -> None:
+    def test_cleanup_disposes_running_converter(self, service) -> None:
         conversion_service, converter, _, _ = service
         converter.is_running.return_value = True
         conversion_service.cleanup()
-        converter.cancel.assert_called_once()
+        converter.cleanup.assert_called_once()
+        assert conversion_service._converter is None
+
+    def test_shutdown_tears_down_converter_synchronously(self, service) -> None:
+        conversion_service, converter, _, _ = service
+        conversion_service.shutdown()
+        converter.shutdown.assert_called_once()
+        assert conversion_service._converter is None
 
     def test_is_running_true_when_converter_running(self, service) -> None:
         conversion_service, converter, _, _ = service

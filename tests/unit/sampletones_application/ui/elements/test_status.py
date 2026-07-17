@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_STATUS
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_STATUS
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme

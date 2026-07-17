@@ -1,42 +1,84 @@
+from typing import Final, Tuple
+
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
+    ContextElements,
     GlobalTemplateElements,
     MenuElements,
+    PlayerElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
+from sampletones_application.layout.glyphs import PlayerGlyphs
+from sampletones_application.layout.player import PlayerLayout
+from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
     TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
+    TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
+    TAG_GLOBAL_MENU_ITEM_FILE_EXPORT_MODULE,
+    TAG_GLOBAL_MENU_ITEM_FILE_NEW_PROJECT,
+    TAG_GLOBAL_MENU_ITEM_FILE_OPEN_PROJECT,
+    TAG_GLOBAL_MENU_ITEM_FILE_PROJECT_PROPERTIES,
+    TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
+    TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
-    TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
-    TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE,
-    TAG_GLOBAL_MENU_ITEM_PROJECT_NEW,
-    TAG_GLOBAL_MENU_ITEM_PROJECT_OPEN,
-    TAG_GLOBAL_MENU_ITEM_PROJECT_PROPERTIES,
-    TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE,
-    TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
-    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
-    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
-    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOAD,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOCATE_AUDIO,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN_IN_EXPLORER,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
     TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+    TAG_GLOBAL_PANEL_PLAYER,
     TAG_GLOBAL_TEXT_MENU_FPS,
 )
+from sampletones_application.tags.player import (
+    SUF_PLAYER_PAUSE,
+    SUF_PLAYER_PLAY,
+    SUF_PLAYER_STOP,
+    SUF_PLAYER_TOOLTIP,
+)
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.panels.player.controls import (
+    create_compact_transport_controls,
+)
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.dpg import (
+    dpg_configure_item,
+    dpg_set_item_label,
+    dpg_set_value,
+)
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
+from sampletones_shared.types.callback import VoidCallback
+
+PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
+    TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
+    TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
+    TAG_GLOBAL_MENU_ITEM_FILE_PROJECT_PROPERTIES,
+    TAG_GLOBAL_MENU_ITEM_FILE_EXPORT_MODULE,
+    TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
+)
+RECONSTRUCTION_ITEM_TAGS: Final[Tuple[str, ...]] = (
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
+)
 
 
 class MenuBar:
@@ -45,203 +87,23 @@ class MenuBar:
         *,
         shortcut_manager: ShortcutManager,
         fps_theme: Theme,
+        player_toolbar_theme: Theme,
+        player_glyphs: PlayerGlyphs,
+        player_layout: PlayerLayout,
         language_manager: LanguageManager,
+        on_play_from_start: VoidCallback,
+        on_pause_or_resume: VoidCallback,
+        on_stop: VoidCallback,
     ) -> None:
         self._shortcut_manager = shortcut_manager
         self._fps_theme = fps_theme
-
-        self._lbl_group_general = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.GROUP_GENERAL,
-        ]
-        self._lbl_group_project = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.GROUP_PROJECT,
-        ]
-        self._lbl_item_project_new = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PROJECT_NEW,
-        ]
-        self._lbl_item_project_open = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PROJECT_OPEN,
-        ]
-        self._lbl_item_project_save = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PROJECT_SAVE,
-        ]
-        self._lbl_item_project_save_as = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PROJECT_SAVE_AS,
-        ]
-        self._lbl_item_project_export_module = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PROJECT_EXPORT_MODULE,
-        ]
-        self._lbl_item_project_properties = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PROJECT_PROPERTIES,
-        ]
-        self._lbl_item_project_close = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PROJECT_CLOSE,
-        ]
-        self._lbl_group_edit = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.GROUP_EDIT,
-        ]
-        self._lbl_item_edit_undo = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_EDIT_UNDO,
-        ]
-        self._lbl_item_edit_redo = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_EDIT_REDO,
-        ]
-        self._lbl_group_reconstruction = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.GROUP_RECONSTRUCTION,
-        ]
-        self._lbl_group_playback = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.GROUP_PLAYBACK,
-        ]
-        self._lbl_group_view = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.GROUP_VIEW,
-        ]
-        self._lbl_item_audio_settings = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_AUDIO_SETTINGS,
-        ]
-        self._lbl_item_exit = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_EXIT,
-        ]
-        self._lbl_item_reconstruction_save_generation_settings = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_SAVE_GENERATION_SETTINGS,
-        ]
-        self._lbl_item_reconstruction_load_generation_settings = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_LOAD_GENERATION_SETTINGS,
-        ]
-        self._lbl_item_reconstruct_file = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
-        ]
-        self._lbl_item_reconstruct_directory = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
-        ]
-        self._lbl_item_reconstruction_save = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_SAVE,
-        ]
-        self._lbl_item_reconstruction_save_as = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_SAVE_AS,
-        ]
-        self._lbl_item_reconstruction_load = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_LOAD,
-        ]
-        self._lbl_item_reconstruction_close = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_CLOSE,
-        ]
-        self._lbl_item_export_wav = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_EXPORT_WAV,
-        ]
-        self._lbl_item_export_ftis = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_RECONSTRUCTION_EXPORT_FTIS,
-        ]
-        self._lbl_item_play_from_start = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PLAYBACK_PLAY_FROM_START,
-        ]
-        self._lbl_item_stop = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PLAYBACK_STOP,
-        ]
-        self._lbl_item_autoplay = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PLAYBACK_AUTOPLAY,
-        ]
-        self._lbl_item_fullscreen = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_VIEW_FULLSCREEN,
-        ]
-        self._lbl_item_show_advanced_settings = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
-        ]
+        self._player_toolbar_theme = player_toolbar_theme
+        self._player_glyphs = player_glyphs
+        self._player_layout = player_layout
+        self._language_manager = language_manager
+        self._on_play_from_start = on_play_from_start
+        self._on_pause_or_resume = on_pause_or_resume
+        self._on_stop = on_stop
         self._tpl_fps = language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -249,202 +111,318 @@ class MenuBar:
             GlobalTemplateElements.FPS,
         ]
 
+        self._play_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_PLAY}"
+        self._pause_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_PAUSE}"
+        self._stop_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_STOP}"
+        self._pause_tooltip_tag = f"{self._pause_button_tag}{SUF_PLAYER_TOOLTIP}"
+        self._lbl_play = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.PLAY,
+        ]
+        self._lbl_pause = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.PAUSE,
+        ]
+        self._lbl_resume = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.RESUME,
+        ]
+        self._lbl_stop = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.STOP,
+        ]
+
+    def _label(self, element: MenuElements) -> str:
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            element,
+        ]
+
+    def _context_label(self, element: ContextElements) -> str:
+        """Resolves a shared context-action label reused between the tree menus and this bar."""
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            element,
+        ]
+
     def create(self, state: MenuBarViewModel) -> None:
         with dpg.menu_bar():
-            with dpg.menu(label=self._lbl_group_general):
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.AUDIO_SETTINGS,
-                    label=self._lbl_item_audio_settings,
-                )
-                dpg.add_separator()
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.EXIT,
-                    label=self._lbl_item_exit,
-                )
-            with dpg.menu(label=self._lbl_group_project):
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.NEW_PROJECT,
-                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_NEW,
-                    label=self._lbl_item_project_new,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.OPEN_PROJECT,
-                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_OPEN,
-                    label=self._lbl_item_project_open,
-                )
-                dpg.add_separator()
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_PROJECT,
-                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE,
-                    label=self._lbl_item_project_save,
-                    enabled=state.project_open,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_PROJECT_AS,
-                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS,
-                    label=self._lbl_item_project_save_as,
-                    enabled=state.project_open,
-                )
-                dpg.add_separator()
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.EXPORT_PROJECT_MODULE,
-                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE,
-                    label=self._lbl_item_project_export_module,
-                    enabled=state.project_open,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.PROJECT_PROPERTIES,
-                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_PROPERTIES,
-                    label=self._lbl_item_project_properties,
-                    enabled=state.project_open,
-                )
-                dpg.add_separator()
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.CLOSE_PROJECT,
-                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
-                    label=self._lbl_item_project_close,
-                    enabled=state.project_open,
-                )
-            with dpg.menu(label=self._lbl_group_edit):
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.UNDO,
-                    tag=TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
-                    label=self._lbl_item_edit_undo,
-                    enabled=state.undo_enabled,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.REDO,
-                    tag=TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
-                    label=self._lbl_item_edit_redo,
-                    enabled=state.redo_enabled,
-                )
-            with dpg.menu(label=self._lbl_group_reconstruction):
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_RECONSTRUCTION,
-                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
-                    label=self._lbl_item_reconstruction_save,
-                    enabled=state.reconstruction_loaded,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_RECONSTRUCTION_AS,
-                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
-                    label=self._lbl_item_reconstruction_save_as,
-                    enabled=state.reconstruction_loaded,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.CLOSE_RECONSTRUCTION,
-                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
-                    label=self._lbl_item_reconstruction_close,
-                    enabled=state.reconstruction_loaded,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_RECONSTRUCTION,
-                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOAD,
-                    label=self._lbl_item_reconstruction_load,
-                    enabled=not state.reconstruction_loaded,
-                )
-                dpg.add_separator()
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.RECONSTRUCT_FILE,
-                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
-                    label=self._lbl_item_reconstruct_file,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.RECONSTRUCT_DIRECTORY,
-                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
-                    label=self._lbl_item_reconstruct_directory,
-                )
-                dpg.add_separator()
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
-                    label=self._lbl_item_export_wav,
-                    enabled=state.reconstruction_loaded,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
-                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
-                    label=self._lbl_item_export_ftis,
-                    enabled=state.reconstruction_loaded,
-                )
-                dpg.add_separator()
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_GENERATION_SETTINGS,
-                    label=self._lbl_item_reconstruction_save_generation_settings,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_GENERATION_SETTINGS,
-                    label=self._lbl_item_reconstruction_load_generation_settings,
-                )
-            with dpg.menu(label=self._lbl_group_playback):
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.PLAY,
-                    tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
-                    label=state.play_label,
-                    enabled=state.play_or_pause_enabled,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.PLAY_FROM_START,
-                    tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
-                    label=self._lbl_item_play_from_start,
-                    enabled=state.play_or_pause_enabled,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.STOP,
-                    tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
-                    label=self._lbl_item_stop,
-                    enabled=state.stop_enabled,
-                )
-                dpg.add_separator()
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.TOGGLE_AUTOPLAY,
-                    tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
-                    label=self._lbl_item_autoplay,
-                    check=True,
-                )
-            with dpg.menu(label=self._lbl_group_view):
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.TOGGLE_ADVANCED_SETTINGS,
-                    tag=TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
-                    label=self._lbl_item_show_advanced_settings,
-                    check=True,
-                )
-                self._shortcut_manager.add_menu_item(
-                    ShortcutId.TOGGLE_FULLSCREEN,
-                    tag=TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
-                    label=self._lbl_item_fullscreen,
-                    check=True,
-                )
+            self._create_file_menu(state)
+            self._create_edit_menu(state)
+            self._create_reconstruction_menu(state)
+            self._create_playback_menu(state)
+            self._create_view_menu()
+            self._create_help_menu()
+            self._create_player_toolbar()
+            self._create_fps_indicator()
 
-            dpg.add_button(
-                label=self._tpl_fps.format(fps=0),
-                tag=TAG_GLOBAL_TEXT_MENU_FPS,
-                width=-1,
-                enabled=False,
+    def _create_file_menu(self, state: MenuBarViewModel) -> None:
+        with dpg.menu(label=self._label(MenuElements.GROUP_FILE)):
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.NEW_PROJECT,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_NEW_PROJECT,
+                label=self._label(MenuElements.ITEM_FILE_NEW_PROJECT),
             )
-            self._fps_theme.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS)
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.OPEN_PROJECT,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_OPEN_PROJECT,
+                label=self._label(MenuElements.ITEM_FILE_OPEN_PROJECT),
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.SAVE_PROJECT,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
+                label=self._label(MenuElements.ITEM_FILE_SAVE_PROJECT),
+                enabled=state.project_open,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.SAVE_PROJECT_AS,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
+                label=self._label(MenuElements.ITEM_FILE_SAVE_PROJECT_AS),
+                enabled=state.project_open,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.PROJECT_PROPERTIES,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_PROJECT_PROPERTIES,
+                label=self._label(MenuElements.ITEM_FILE_PROJECT_PROPERTIES),
+                enabled=state.project_open,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.EXPORT_PROJECT_MODULE,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_EXPORT_MODULE,
+                label=self._label(MenuElements.ITEM_FILE_EXPORT_MODULE),
+                enabled=state.project_open,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.CLOSE_PROJECT,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
+                label=self._label(MenuElements.ITEM_FILE_CLOSE_PROJECT),
+                enabled=state.project_open,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.EXIT,
+                label=self._label(MenuElements.ITEM_FILE_EXIT),
+            )
+
+    def _create_edit_menu(self, state: MenuBarViewModel) -> None:
+        with dpg.menu(label=self._label(MenuElements.GROUP_EDIT)):
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.UNDO,
+                tag=TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
+                label=self._label(MenuElements.ITEM_EDIT_UNDO),
+                enabled=state.undo_enabled,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.REDO,
+                tag=TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
+                label=self._label(MenuElements.ITEM_EDIT_REDO),
+                enabled=state.redo_enabled,
+            )
+
+    def _create_reconstruction_menu(self, state: MenuBarViewModel) -> None:
+        with dpg.menu(label=self._label(MenuElements.GROUP_RECONSTRUCTION)):
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.RECONSTRUCT_FILE,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_RECONSTRUCT_FILE),
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.RECONSTRUCT_DIRECTORY,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY),
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.LOAD_GENERATION_SETTINGS,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_LOAD_GENERATION_SETTINGS),
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.SAVE_GENERATION_SETTINGS,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_SAVE_GENERATION_SETTINGS),
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.OPEN_RECONSTRUCTION,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_OPEN),
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.SAVE_RECONSTRUCTION,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_SAVE),
+                enabled=state.reconstruction_saveable,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.SAVE_RECONSTRUCTION_AS,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_SAVE_AS),
+                enabled=state.reconstruction_loaded,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.CLOSE_RECONSTRUCTION,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_CLOSE),
+                enabled=state.reconstruction_loaded,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
+                label=self._context_label(ContextElements.ADD_TO_SEQUENCER),
+                enabled=state.add_to_sequencer_enabled,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN_IN_EXPLORER,
+                label=self._context_label(ContextElements.OPEN_IN_EXPLORER),
+                enabled=state.open_in_explorer_enabled,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.LOCATE_ORIGINAL_AUDIO,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOCATE_AUDIO,
+                label=self._context_label(ContextElements.LOCATE_ORIGINAL_AUDIO),
+                enabled=state.locate_audio_enabled,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.EXPORT_RECONSTRUCTION_WAV,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_EXPORT_WAV),
+                enabled=state.reconstruction_loaded,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.EXPORT_RECONSTRUCTION_INSTRUMENTS,
+                tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
+                label=self._label(MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS),
+                enabled=state.reconstruction_loaded,
+            )
+
+    def _create_playback_menu(self, state: MenuBarViewModel) -> None:
+        with dpg.menu(label=self._label(MenuElements.GROUP_PLAYBACK)):
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.PLAY,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
+                label=state.play_label,
+                enabled=state.play_or_pause_enabled,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.PLAY_FROM_START,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+                label=self._label(MenuElements.ITEM_PLAYBACK_PLAY_FROM_START),
+                enabled=state.play_or_pause_enabled,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.STOP,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
+                label=self._label(MenuElements.ITEM_PLAYBACK_STOP),
+                enabled=state.stop_enabled,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_AUTOPLAY,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
+                label=self._label(MenuElements.ITEM_PLAYBACK_AUTOPLAY),
+                check=True,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
+                label=self._label(MenuElements.ITEM_PLAYBACK_FOLLOW_PLAYBACK),
+                check=True,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_LOOP_SONG,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
+                label=self._label(MenuElements.ITEM_PLAYBACK_LOOP_SONG),
+                check=True,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.AUDIO_SETTINGS,
+                label=self._label(MenuElements.ITEM_PLAYBACK_AUDIO_SETTINGS),
+            )
+
+    def _create_view_menu(self) -> None:
+        with dpg.menu(label=self._label(MenuElements.GROUP_VIEW)):
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_ADVANCED_SETTINGS,
+                tag=TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+                label=self._label(MenuElements.ITEM_VIEW_SHOW_ADVANCED_SETTINGS),
+                check=True,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_FULLSCREEN,
+                tag=TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
+                label=self._label(MenuElements.ITEM_VIEW_FULLSCREEN),
+                check=True,
+            )
+
+    def _create_help_menu(self) -> None:
+        with dpg.menu(label=self._label(MenuElements.GROUP_HELP)):
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.ABOUT_DIALOG,
+                label=self._label(MenuElements.ITEM_HELP_ABOUT),
+            )
+
+    def _create_player_toolbar(self) -> None:
+        """Builds the transport strip sitting on its own recessed surface beside the menus."""
+        dpg.add_spacer(width=self._player_layout.toolbar.indent)
+        with dpg.child_window(
+            tag=TAG_GLOBAL_PANEL_PLAYER,
+            width=self._player_layout.toolbar.width,
+            height=self._player_layout.toolbar.height,
+            auto_resize_y=False,
+            border=False,
+            no_scrollbar=True,
+            no_scroll_with_mouse=True,
+        ):
+            create_compact_transport_controls(
+                TAG_GLOBAL_PANEL_PLAYER,
+                layout=self._player_layout,
+                glyphs=self._player_glyphs,
+                play_tag=self._play_button_tag,
+                pause_tag=self._pause_button_tag,
+                stop_tag=self._stop_button_tag,
+                play_tooltip=self._lbl_play,
+                pause_tooltip=self._lbl_pause,
+                stop_tooltip=self._lbl_stop,
+                on_play=self._on_play_from_start,
+                on_pause_or_resume=self._on_pause_or_resume,
+                on_stop=self._on_stop,
+            )
+
+        self._player_toolbar_theme.bind_to_item(TAG_GLOBAL_PANEL_PLAYER)
+
+    def _create_fps_indicator(self) -> None:
+        dpg.add_button(
+            label=self._tpl_fps.format(fps=0),
+            tag=TAG_GLOBAL_TEXT_MENU_FPS,
+            width=-1,
+            enabled=False,
+        )
+        self._fps_theme.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS)
+        FontRegistry.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS, Font.MONO_SMALL)
 
     def update(self, state: MenuBarViewModel) -> None:
-        dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE,
-            enabled=state.project_open,
-        )
-        dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS,
-            enabled=state.project_open,
-        )
-        dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_PROJECT_EXPORT_MODULE,
-            enabled=state.project_open,
-        )
-        dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_PROJECT_PROPERTIES,
-            enabled=state.project_open,
-        )
-        dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
-            enabled=state.project_open,
-        )
+        for project_item_tag in PROJECT_ITEM_TAGS:
+            dpg_configure_item(project_item_tag, enabled=state.project_open)
+
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
             enabled=state.undo_enabled,
@@ -454,50 +432,61 @@ class MenuBar:
             enabled=state.redo_enabled,
         )
         dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
-            enabled=state.reconstruction_loaded,
-        )
-        dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
-            enabled=state.reconstruction_loaded,
-        )
-        dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
-            enabled=state.reconstruction_loaded,
-        )
-        dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
-            enabled=state.reconstruction_loaded,
+            enabled=state.reconstruction_saveable,
+        )
+
+        for reconstruction_item_tag in RECONSTRUCTION_ITEM_TAGS:
+            dpg_configure_item(
+                reconstruction_item_tag,
+                enabled=state.reconstruction_loaded,
+            )
+
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
+            enabled=state.add_to_sequencer_enabled,
         )
         dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
-            enabled=state.reconstruction_loaded,
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN_IN_EXPLORER,
+            enabled=state.open_in_explorer_enabled,
         )
         dpg_configure_item(
-            TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
-            enabled=state.play_or_pause_enabled,
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOCATE_AUDIO,
+            enabled=state.locate_audio_enabled,
         )
+
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
             label=state.play_label,
             enabled=state.play_or_pause_enabled,
         )
         dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+            enabled=state.play_or_pause_enabled,
+        )
+        dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
             enabled=state.stop_enabled,
         )
-        dpg_set_value(
-            TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
-            state.autoplay,
-        )
-        dpg_set_value(
-            TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
-            state.fullscreen,
-        )
-        dpg_set_value(
-            TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
-            state.advanced_settings,
-        )
+        self._update_player_toolbar(state)
+
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK, state.follow_playback)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG, state.loop_song)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN, state.fullscreen)
+        dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
+
+    def _update_player_toolbar(self, state: MenuBarViewModel) -> None:
+        dpg_configure_item(self._play_button_tag, enabled=state.play_or_pause_enabled)
+        dpg_configure_item(self._pause_button_tag, enabled=state.pause_enabled)
+        dpg_configure_item(self._stop_button_tag, enabled=state.stop_enabled)
+
+        if state.player_paused:
+            dpg_set_item_label(self._pause_button_tag, self._player_glyphs.resume)
+            dpg_set_value(self._pause_tooltip_tag, self._lbl_resume)
+        else:
+            dpg_set_item_label(self._pause_button_tag, self._player_glyphs.pause)
+            dpg_set_value(self._pause_tooltip_tag, self._lbl_pause)
 
     def update_fps(self, fps: float) -> None:
         dpg_configure_item(

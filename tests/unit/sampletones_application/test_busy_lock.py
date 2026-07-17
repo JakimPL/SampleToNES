@@ -36,5 +36,4 @@ class TestBusyRefreshPropagation:
     def test_refresh_nudges_both_tabs(self) -> None:
         application = _application()
         application._refresh_busy_state()
-        application._reconstructions_tab.refresh_reconstruct_buttons.assert_called_once_with()
         application._instructions_tab.refresh_generate_button.assert_called_once_with()

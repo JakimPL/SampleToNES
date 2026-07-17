@@ -1,0 +1,18 @@
+name: danger_button
+tag: global.theme.danger_button
+
+components:
+  - item_type: Button
+    entries:
+      - type: color
+        key: Button
+        value: .danger
+      - type: color
+        key: ButtonHovered
+        value: .danger_hover
+      - type: color
+        key: ButtonActive
+        value: .danger_active
+      - type: color
+        key: Text
+        value: .on_danger

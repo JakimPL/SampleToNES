@@ -34,8 +34,20 @@ repos:
         pass_filenames: false
         verbose: true
 
-  - repo: local
-    hooks:
+      - id: tag-names
+        name: tag names
+        entry: uv run scripts/check_tag_names.py
+        language: system
+        types: [python]
+        files: ^src/sampletones_application/tags/
+        verbose: true
+
+      - id: yamlfmt
+        name: yamlfmt
+        entry: uv run yamlfmt
+        language: system
+        types: [yaml]
+
       - id: mypy
         name: mypy
         entry: uv run mypy
@@ -45,8 +57,6 @@ repos:
         require_serial: true
         exclude: ^(tests/)
 
-  - repo: local
-    hooks:
       - id: pylint
         name: pylint
         entry: uv run pylint
@@ -56,8 +66,6 @@ repos:
         require_serial: true
         exclude: ^(tests/)
 
-  - repo: local
-    hooks:
       - id: pytest
         name: pytest
         entry: make test

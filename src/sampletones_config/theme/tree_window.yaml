@@ -1,0 +1,9 @@
+name: tree_window
+tag: global.theme.tree_window
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .well

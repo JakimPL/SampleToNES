@@ -12,18 +12,19 @@ from sampletones_application.categories.elements.instructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_LEFT,
-    TAG_GLOBAL_TAB_INSTRUCTIONS,
+from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_PRIMARY_BUTTON,
+    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
-from sampletones_application.constants.instructions import (
+from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS,
+    TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_GENERATING,
+    TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_IDLE,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE,
-    TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING,
-    TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
     TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
@@ -32,21 +33,22 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_TREE,
     TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
 )
-from sampletones_application.layout.behavior import TreeBehavior
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
-from sampletones_application.utils.thread import concurrent
+from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey
@@ -87,20 +89,22 @@ class LibraryLogicProtocol(Protocol):
 
 
 class GUIInstructionsLibraryPanel(GUITreePanel):
+    _NAME_FONT: Font = Font.MONO_SMALL
+
     def __init__(
         self,
         library_logic: LibraryLogicProtocol,
         tree_logic: TreeLogicProtocol,
         shortcut_manager: ShortcutManager,
         *,
-        tree_behavior: TreeBehavior,
+        scheduling: SchedulingBehavior,
+        initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
         is_operation_active: Callable[[], bool],
     ) -> None:
         self._library_logic = library_logic
-        self._tree_behavior = tree_behavior
 
         self._is_operation_active = is_operation_active
 
@@ -109,6 +113,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.on_cancel_generation: Optional[VoidCallback] = None
         self.on_library_selected: Optional[Callable[[InstructionLibraryKey], None]] = None
         self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, LibraryGeneratorName], None]] = None
+        self.on_library_remove_requested: Optional[Callable[[InstructionLibraryKey], None]] = None
 
         self._lbl_generate = language_manager[
             Page.INSTRUCTIONS,
@@ -158,6 +163,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             TextType.LABEL,
             InstructionsLibraryElements.CONTEXT_LOAD_LIBRARY,
         ]
+        self._lbl_ctx_remove_library = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.CONTEXT_REMOVE_LIBRARY,
+        ]
         self._msg_status_node_generator = language_manager[
             Page.INSTRUCTIONS,
             Panel.LIBRARY,
@@ -176,10 +187,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         super().__init__(
             self._library_logic.tree,
             tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
-            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
             tree_logic=tree_logic,
             shortcut_manager=shortcut_manager,
+            scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
                 Panel.BROWSER,
@@ -189,6 +200,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
+        )
+
+        self._enable_horizontal_collapse(
+            initial_collapsed=initial_collapsed,
+            side=CollapseAxis.HORIZONTAL_LEFT,
         )
 
     def _setup_handlers(self) -> None:
@@ -209,37 +225,38 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         super()._setup_handlers()
 
-    def create_panel(self) -> None:
+    def create_panel(self, parent: str) -> None:
         self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
             height=self.height,
-            parent=self.parent,
+            parent=parent,
             border=False,
         ):
-            self._create_section_text()
-            self._create_library_status()
-            self._create_library_controls()
-            self._create_library_tree()
+            with self._collapsible_section(
+                self._lbl_libraries,
+                glyph=self._glyphs.headers.instruction_data,
+            ):
+                self._create_library_status()
+                self._create_library_controls()
+                self._create_library_tree()
 
-    def _create_section_text(self) -> None:
-        section_text = dpg.add_text(self._lbl_libraries)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        self._create_detail_tooltip(TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE)
 
     def _create_library_status(self) -> None:
-        dpg.add_separator()
         text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
-        FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
+        FontRegistry.bind_to_item(text, Font.MONO_SMALL)
 
     def _create_library_controls(self) -> None:
         with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS):
-            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE):
+            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_IDLE):
                 GUIButton(
                     tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
                     label=self._lbl_refresh,
                     width=-1,
                     callback=self._on_refresh_clicked,
+                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
                 )
                 with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE):
                     GUIButton(
@@ -248,18 +265,20 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                         width=-1,
                         callback=self._on_generate_clicked,
                         font=Font.BOLD,
+                        theme=ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON),
                     )
                 attach_disabled_tooltip(
                     TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE,
                     self._tooltip_generate_disabled,
                     tag=TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
                 )
-            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING, show=False):
+            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_GENERATING, show=False):
                 dpg.add_progress_bar(
                     tag=TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
                     width=-1,
                     default_value=0.0,
                 )
+                FontRegistry.bind_to_item(TAG_INSTRUCTIONS_LIBRARY_PROGRESS, Font.MONO)
                 GUIButton(
                     tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
                     label=self._lbl_cancel,
@@ -269,7 +288,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _create_library_tree(self) -> None:
         dpg.add_separator()
-        self.create_search(self.tag)
+        self.create_search(self._body_container)
         with dpg.child_window(
             tag=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
             width=-1,
@@ -295,11 +314,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def update_view(self, view_model: LibraryPanelViewModel) -> None:
         dpg_set_value(TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS, view_model.status_text)
         dpg_configure_item(
-            TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE,
+            TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_IDLE,
             show=view_model.idle_controls_visible,
         )
         dpg_configure_item(
-            TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING,
+            TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_GENERATING,
             show=view_model.generating_controls_visible,
         )
         dpg_configure_item(
@@ -348,16 +367,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def rebuild_tree(self) -> None:
-        if self.locked:
-            return
-
-        self.lock()
-        try:
-            self._library_logic.rebuild_tree()
-            self.build_tree()
-        finally:
-            self.unlock()
-            self._library_logic.update_status()
+        self._launch_rebuild(
+            self._library_logic.rebuild_tree,
+            lambda: self._collect_specs(self.tree_tag),
+            root_tag=self.tree_tag,
+            on_finished=self._library_logic.update_status,
+        )
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         return True
@@ -382,15 +397,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
         should_expand = is_current or self._should_expand_node(node)
         leaf = isinstance(node, GeneratorNode)
-        self._queue_node(
+        self._append_spec(
             node,
             node_tag,
             state.parent,
             leaf=leaf,
             should_expand=should_expand,
             open_on_double_click=True,
-            add_node_priority=self._tree_behavior.priority_add_node,
-            add_handler_priority=self._tree_behavior.priority_add_handler,
         )
 
         state.parent = node_tag
@@ -467,6 +480,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg.add_menu_item(
             label=self._lbl_ctx_load_library,
             callback=lambda: self.call(self.on_library_selected, node.library_key),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_ctx_remove_library,
+            callback=lambda: self.call(self.on_library_remove_requested, node.library_key),
         )
 
     def _show_generator_context_menu(self, node: GeneratorNode) -> None:

@@ -6,18 +6,18 @@ components:
     entries:
       - type: color
         key: Text
-        value: "#ffffff"
+        value: .white
       - type: color
         key: TextDisabled
-        value: "#828282"
+        value: .text_muted
       - type: color
         key: WindowBg
-        value: "#2c2c2c"
+        value: .surface
       - type: color
         key: ChildBg
-        value: "#2c2c2c"
+        value: .surface
   - item_type: Button
     entries:
       - type: color
         key: Button
-        value: "#404060"
+        value: .button

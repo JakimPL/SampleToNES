@@ -2,7 +2,8 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import (
+from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
+from sampletones_application.tags.general import (
     SUF_BUTTON_DECREMENT,
     SUF_BUTTON_INCREMENT,
     SUF_HANDLER_REGISTRY,
@@ -13,8 +14,9 @@ from sampletones_application.constants.general import (
     SUF_TOOLTIP,
     TAG_GLOBAL_THEME_PITCH_STEPPER,
 )
-from sampletones_application.layout.general import PitchStepperLayout
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -136,6 +138,7 @@ class GUIPitchStepper(CallbackMixin):
                         tag=self._value_tag,
                         color=self._value_color,
                     )
+                    FontRegistry.bind_to_item(self._value_tag, Font.MONO)
                 with dpg.table_cell():
                     dpg.add_input_text(
                         tag=self._input_tag,
@@ -143,6 +146,7 @@ class GUIPitchStepper(CallbackMixin):
                         width=-1,
                         on_enter=False,
                     )
+                    FontRegistry.bind_to_item(self._input_tag, Font.MONO)
                 with dpg.table_cell():
                     GUIButton(
                         label="-",
@@ -198,9 +202,15 @@ class GUIPitchStepper(CallbackMixin):
         """Renders update on every step for immediate feedback, while reporting the value only once the
         user settles. Each change supersedes the previous token, so a burst of steps — including a held
         button — collapses into a single ``on_value_changed`` once ``commit_delay`` frames pass with no
-        further change, sparing consumers a reload per step."""
+        further change, sparing consumers a reload per step. The settle posts at ``commit_priority`` (the
+        schedule tier) so it orders alongside the debounced regeneration it triggers rather than below it."""
         self._emit_token += 1
-        CallbackQueue.add(self._emit_settled_value, self._emit_token, delay=self._layout.commit_delay)
+        CallbackQueue.add(
+            self._emit_settled_value,
+            self._emit_token,
+            priority=self._layout.commit_priority,
+            delay=self._layout.commit_delay,
+        )
 
     def _emit_settled_value(self, token: int) -> None:
         if token == self._emit_token:

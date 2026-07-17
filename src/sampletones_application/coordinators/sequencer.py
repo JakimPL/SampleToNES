@@ -18,22 +18,11 @@ from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextT
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import (
-    SUF_PANEL_CENTER,
-    SUF_PANEL_LEFT,
-    SUF_PANEL_RIGHT,
-    TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
-    TAG_GLOBAL_TAB_SEQUENCER,
-    TAG_GLOBAL_TABS,
+from sampletones_application.coordinators.original_audio import OriginalAudioLocator
+from sampletones_application.coordinators.playback import (
+    AudioPlayerProtocol,
+    GuardedPlayer,
 )
-from sampletones_application.constants.sequencer import (
-    TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
-    TAG_SEQUENCER_GRID_PANEL,
-    TAG_SEQUENCER_GRID_PANEL_PLAYER,
-    TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
-    TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
-)
-from sampletones_application.coordinators.playback import AudioPlayerProtocol, GuardedPlayer
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -57,17 +46,40 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.services.song_player.player import SongPlayerService
+from sampletones_application.tags.general import (
+    SUF_PANEL_CENTER,
+    SUF_PANEL_LEFT,
+    SUF_PANEL_RIGHT,
+    TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
+    TAG_GLOBAL_TAB_SEQUENCER,
+    TAG_GLOBAL_TABS,
+    TAG_GLOBAL_THEME_DEFAULT,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
+    TAG_GLOBAL_THEME_PANEL_SURFACE,
+)
+from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
+    TAG_SEQUENCER_BROWSER_PANEL,
+    TAG_SEQUENCER_GRID_PANEL,
+    TAG_SEQUENCER_HISTORY_PANEL,
+    TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
+    TAG_SEQUENCER_INSTRUMENTS_PANEL,
+    TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
+    TAG_SEQUENCER_MODULE_PANEL,
+    TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
+)
+from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
-from sampletones_application.ui.panels.sequencer.actions import GUISequencerActionsPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
-from sampletones_application.ui.panels.sequencer.song_player import GUISongPlayerPanel
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.history import (
@@ -90,8 +102,13 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import StringCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
+
+_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}"
+_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}"
+_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}"
 
 
 class SequencerTabCoordinator:
@@ -104,22 +121,21 @@ class SequencerTabCoordinator:
         browser_manager: BrowserManager,
         project_controller: ProjectController,
         history: HistoryManager,
+        original_audio_locator: OriginalAudioLocator,
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
-        on_edit_sample_requested: Callable[[str], None],
+        on_edit_sample_requested: StringCallback,
         on_tab_switch: Callable[[Tab], None],
-        on_export_module: Callable[[], None],
-        on_open_properties: Callable[[], None],
     ) -> None:
         self._project_controller = project_controller
+        self._session_manager = session_manager
         self._history = history
+        self._original_audio_locator = original_audio_locator
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_tab_switch = on_tab_switch
-        self._on_export_module = on_export_module
-        self._on_open_properties = on_open_properties
         self._layout = layout
         self._language_manager = language_manager
         self._dialogs = dialogs
@@ -204,10 +220,15 @@ class SequencerTabCoordinator:
         ]
         self._nes_frequency_change_acknowledged: bool = False
         self._playing_order: Optional[int] = None
-        self._left_width = layout.general.panels.left.width
-        self._left_height = layout.general.panels.left.height
-        self._instruments_width = layout.sequencer.samples_panel_width
-        self._right_height = layout.general.panels.right.height
+        self._left_width = layout.general.columns.side.width
+        self._left_height = layout.general.columns.side.height
+        self._instruments_width = layout.general.columns.sequencer_right.width
+        self._right_height = layout.general.columns.sequencer_right.height
+        self._rail_width = layout.general.collapse.rail_width
+        self._panel_gap = layout.general.panel_gap
+        self._history_expanded_height = layout.sequencer.history.height
+        self._history_collapsed_footprint = layout.general.collapse.header_bar_height + 2 * self._panel_gap
+        self._inter_card_gap = self._stacked_card_gap()
 
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
             config_manager,
@@ -223,13 +244,14 @@ class SequencerTabCoordinator:
             self._sequencer_browser_logic.tree,
             self._sequencer_tree_logic,
             shortcut_manager,
-            tree_behavior=layout.behavior.sequencer,
+            scheduling=layout.behavior.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
             colors=TreeColors.create(
                 layout.general.colors,
                 accent=layout.general.colors.headers.reconstruction,
             ),
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL),
         )
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
@@ -246,6 +268,7 @@ class SequencerTabCoordinator:
             service=SongPlayerService(
                 audio_device_manager,
                 RowSynthesizer(project_controller, config_manager.config),
+                should_loop=lambda: session_manager.loop_song,
             ),
         )
         self._guarded_player = GuardedPlayer(
@@ -258,14 +281,9 @@ class SequencerTabCoordinator:
                 PlayerElements.AUDIO_PLAYBACK_ERROR,
             ],
         )
-        self._player_panel: GUISongPlayerPanel = GUISongPlayerPanel(
-            tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
-            parent=TAG_SEQUENCER_GRID_PANEL,
-            layout=layout.player,
-            language_manager=language_manager,
-        )
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             layout=layout.sequencer,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_GRID_PANEL),
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
@@ -273,26 +291,28 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.settings,
             layout=layout.sequencer,
             input_width=layout.general.inputs.default_width,
+            label_width=layout.general.inputs.label_width,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_MODULE_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
             shortcut_manager=shortcut_manager,
         )
-        self._sequencer_actions_panel: GUISequencerActionsPanel = GUISequencerActionsPanel(
-            language_manager=language_manager,
-        )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD),
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
             layout=layout.sequencer,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_INSTRUMENTS_PANEL),
             language_manager=language_manager,
             shortcut_manager=shortcut_manager,
         )
         self._sequencer_history_panel: GUISequencerHistoryPanel = GUISequencerHistoryPanel(
             layout=layout.sequencer,
             feature_colors=layout.general.colors.features,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_HISTORY_PANEL),
             language_manager=language_manager,
         )
         self._history_detail: SequencerHistoryDetail = SequencerHistoryDetail(
@@ -303,6 +323,14 @@ class SequencerTabCoordinator:
         self._wire_callbacks()
 
     def _wire_callbacks(self) -> None:
+        for panel in (
+            self._sequencer_order_panel,
+            self._sequencer_grid_panel,
+            self._sequencer_module_panel,
+            self._sequencer_samples_panel,
+            self._sequencer_history_panel,
+        ):
+            panel.set_collapse_handler(self._on_card_collapse_changed)
         self._sequencer_module_panel.on_nes_frequency = self._request_nes_frequency_change
         self._sequencer_module_panel.on_rows_per_pattern = self._undoable(
             HistoryAction.SET_ROWS_PER_PATTERN,
@@ -322,8 +350,6 @@ class SequencerTabCoordinator:
             detail=self._history_detail.value,
             coalesce=self._module_setting_key,
         )
-        self._sequencer_actions_panel.on_open_properties = self._on_open_properties
-        self._sequencer_actions_panel.on_export_module = self._on_export_module
         self._sequencer_grid_panel.on_clear_row = self._undoable(
             HistoryAction.CLEAR_ROW,
             self._on_clear_row,
@@ -427,8 +453,10 @@ class SequencerTabCoordinator:
             self._sequencer_samples_logic.duplicate_sample,
             detail=self._history_detail.duplicate_sample,
         )
+        self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
+        self._sequencer_browser_panel.on_locate_original_audio = self._original_audio_locator.locate
         self._sequencer_browser_panel.on_refresh_tree = self._sequencer_browser_logic.refresh_tree
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
         self._sequencer_tree_logic.on_favorite_changed = self._sequencer_browser_panel.update_favorite_indicator
@@ -437,10 +465,6 @@ class SequencerTabCoordinator:
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_view_changed = self._on_player_view_changed
-        self._player_panel.on_play = self._guarded_player.play
-        self._player_panel.on_pause_or_resume = self._guarded_player.pause_or_resume
-        self._player_panel.on_stop = self._guarded_player.stop
-        self._player_panel.on_follow_changed = self._song_player_logic.set_follow_playback
         self._song_player_logic.on_error = self._on_player_error
 
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
@@ -448,6 +472,51 @@ class SequencerTabCoordinator:
         self._project_controller.on_samples_changed = self._sequencer_samples_logic.push_samples
         self._project_controller.on_project_replaced = self._on_project_replaced
         self._wire_history()
+
+    def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists a card's collapsed state so it restores on the next launch."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+        if card_tag == TAG_SEQUENCER_HISTORY_PANEL:
+            self._sync_samples_height()
+
+    def _on_browser_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+        """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
+        self._session_manager.set_card_collapsed(card_tag, collapsed)
+        self._sync_browser_width()
+
+    def _sync_browser_width(self) -> None:
+        """Shrinks the browser column to the collapse rail when collapsed, else restores its full width."""
+        width = self._rail_width if self._sequencer_browser_panel.collapsed else self._left_width
+        dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
+
+    def _stacked_card_gap(self) -> int:
+        """The rendered vertical gap between two cards stacked in the right column.
+
+        The cards are separated by a ``panel_gap`` spacer, but DearPyGui also lays its ``ItemSpacing.y``
+        on each side of that spacer, so the real gap is the spacer plus two of those spacings. The
+        spacing is read from the base theme, which sets it explicitly, so the gap tracks the theme
+        rather than assuming DearPyGui's built-in default.
+        """
+        spacing = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT).get_style(dpg.mvAll, dpg.mvStyleVar_ItemSpacing)
+        spacing_y = int(spacing[1]) if spacing is not None else 0
+        return self._panel_gap + 2 * spacing_y
+
+    def _sync_samples_height(self) -> None:
+        """Reserves the bottom space the history card and its inter-card gap occupy, so samples fills the rest.
+
+        The samples card fills the right column above the history card by reserving that footprint below
+        it. History carries its own height in both states — filling the reservation while expanded, pinned
+        to its header bar while collapsed — so this only has to size the reservation: the expanded history
+        height, or the collapsed bar footprint. The reservation clears the full inter-card gap (see
+        :meth:`_stacked_card_gap`) so the collapsed bar lands flush at the column bottom instead of an
+        ``ItemSpacing`` short, which would force a scrollbar.
+        """
+        if self._sequencer_history_panel.collapsed:
+            footprint = self._history_collapsed_footprint
+        else:
+            footprint = self._history_expanded_height
+
+        self._sequencer_samples_panel.set_expanded_height(-(self._inter_card_gap + footprint))
 
     def _wire_history(self) -> None:
         self._sequencer_history_panel.on_undo = self.undo
@@ -596,6 +665,7 @@ class SequencerTabCoordinator:
         Called once after the GUI is built so the panels reflect the project the
         application started with (or restored).
         """
+        self._song_player_logic.refresh_view()
         self.refresh()
 
     def refresh(self) -> None:
@@ -606,10 +676,12 @@ class SequencerTabCoordinator:
         self._sequencer_samples_logic.push_samples()
         is_open = self._project_controller.is_open
         self._sequencer_module_panel.set_enabled(is_open)
-        self._sequencer_actions_panel.set_enabled(is_open)
         self._sequencer_grid_panel.set_enabled(is_open)
         self._sequencer_order_panel.set_enabled(is_open)
         self._sequencer_history_panel.set_enabled(is_open)
+
+    def refresh_browser(self) -> None:
+        self._sequencer_browser_panel.refresh()
 
     def _on_song_changed(self) -> None:
         self._sequencer_grid_logic.push_settings()
@@ -624,8 +696,6 @@ class SequencerTabCoordinator:
             self._playing_order = None
             self._sequencer_grid_panel.set_playing_row(None)
             self._sequencer_order_panel.set_playing_position(None)
-
-        self._player_panel.update_view(view_model)
 
     def _on_player_position_changed(self, order_position: int, row_index: int) -> None:
         self._playing_order = order_position
@@ -670,7 +740,11 @@ class SequencerTabCoordinator:
         self._add_reconstruction_with_frequency_check(reconstruction, filepath.stem)
 
     def import_reconstruction_object(self, reconstruction: Reconstruction, name: str) -> None:
-        """Adds an in-memory reconstruction — the one open in the Reconstruction tab — as a sample."""
+        """Adds an in-memory reconstruction — the one open in the Reconstruction tab — as a sample.
+
+        The sample embeds an independent copy, so the open document keeps its own source-audio
+        location and file backing while the project stores a self-contained, detached sample.
+        """
         if not self._project_controller.is_open:
             self._dialogs.show_info(
                 TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
@@ -679,7 +753,7 @@ class SequencerTabCoordinator:
             )
             return
 
-        self._add_reconstruction_with_frequency_check(reconstruction, name)
+        self._add_reconstruction_with_frequency_check(reconstruction.model_copy(deep=True), name)
 
     def _add_reconstruction_with_frequency_check(self, reconstruction: Reconstruction, name: str) -> None:
         """Adds a loaded reconstruction, reconciling its NES frequency with the project's.
@@ -1049,47 +1123,51 @@ class SequencerTabCoordinator:
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
-            with dpg.table(
-                parent=TAG_GLOBAL_TAB_SEQUENCER,
-                header_row=False,
-                resizable=False,
-                policy=dpg.mvTable_SizingStretchProp,
-            ):
-                dpg.add_table_column(width_fixed=True)
-                dpg.add_table_column()
-                dpg.add_table_column(width_fixed=True)
-
-                with dpg.table_row():
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
+            TabColumns.build(
+                panel_gap=self._panel_gap,
+                columns=[
+                    ColumnSpec(
+                        tag=_LEFT_COLUMN_TAG,
+                        build=self._sequencer_browser_panel.create_panel,
+                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
                         width=self._left_width,
                         height=self._left_height,
                         no_scrollbar=True,
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._sequencer_browser_panel.create_panel()
-
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._sequencer_grid_panel.create_panel()
-                        self._player_panel.create_panel()
-                        self._song_player_logic.refresh_view()
-                        self._sequencer_actions_panel.create_panel()
-                        self._sequencer_order_panel.create_panel()
-                        self._sequencer_grid_panel.create_tracker()
-
-                    with dpg.child_window(
-                        tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
+                    ),
+                    ColumnSpec(
+                        tag=_CENTER_COLUMN_TAG,
+                        build=self._build_center_column,
+                        theme=TAG_GLOBAL_THEME_PANEL_GROUND,
+                        border=False,
+                    ),
+                    ColumnSpec(
+                        tag=_RIGHT_COLUMN_TAG,
+                        build=self._build_right_column,
+                        theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         width=self._instruments_width,
                         height=self._right_height,
+                        border=False,
                         no_scrollbar=True,
-                        no_scroll_with_mouse=True,
-                    ):
-                        self._sequencer_module_panel.create_panel()
-                        self._sequencer_samples_panel.create_panel()
-                        self._sequencer_history_panel.create_panel()
+                    ),
+                ],
+            )
+
+        self._sync_browser_width()
+
+    def _build_center_column(self, parent: str) -> None:
+        """Stacks the order table and tracker grid down the centre column."""
+        self._sequencer_order_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        self._sequencer_grid_panel.create_panel(parent)
+
+    def _build_right_column(self, parent: str) -> None:
+        """Stacks the module settings, samples, and history cards in the right column."""
+        self._sequencer_module_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap)
+        self._sequencer_samples_panel.create_panel(parent)
+        dpg.add_spacer(height=self._panel_gap)
+        self._sequencer_history_panel.create_panel(parent)
+        self._sync_samples_height()
 
     @property
     def player(self) -> AudioPlayerProtocol:

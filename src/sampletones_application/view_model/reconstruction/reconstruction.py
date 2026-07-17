@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import FrozenSet
+from typing import Final, FrozenSet, Tuple
 
 from pydantic import BaseModel
 
@@ -21,6 +21,12 @@ class ReconstructionPathState(StrEnum):
     EMPTY = "empty"
 
 
+RECORDED_PATH_STATES: Final[Tuple[ReconstructionPathState, ...]] = (
+    ReconstructionPathState.AVAILABLE,
+    ReconstructionPathState.NOT_FOUND,
+)
+
+
 class ReconstructionPathViewModel(BaseModel, frozen=True):
     state: ReconstructionPathState
     path: str
@@ -29,7 +35,23 @@ class ReconstructionPathViewModel(BaseModel, frozen=True):
 class ReconstructionViewModel(BaseModel, frozen=True):
     reconstruction_loaded: bool
     available_generators: FrozenSet[GeneratorName]
-    audio_source_enabled: bool
-    buttons_enabled: bool
     reconstruction_file: ReconstructionPathViewModel
     original_audio: ReconstructionPathViewModel
+
+    @property
+    def audio_source_enabled(self) -> bool:
+        """The source toggle offers the original audio once its file is present on disk;
+        until then playback stays on the reconstruction."""
+        return self.original_audio.state is ReconstructionPathState.AVAILABLE
+
+    @property
+    def locate_audio_enabled(self) -> bool:
+        """Locating needs a recorded path to point the file explorer at; the file
+        itself may have moved since the reconstruction was generated."""
+        return self.original_audio.state in RECORDED_PATH_STATES
+
+    @property
+    def show_locate_audio_hint(self) -> bool:
+        """The hint explains the disabled locate button, so it appears exactly when a
+        loaded reconstruction keeps no original audio path."""
+        return self.reconstruction_loaded and self.original_audio.state is ReconstructionPathState.NOT_APPLICABLE

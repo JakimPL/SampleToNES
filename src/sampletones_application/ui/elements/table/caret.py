@@ -1,10 +1,11 @@
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.general import CaretLayout
+from sampletones_application.layout.general.caret import CaretLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.utils.gui.dpg import dpg_get_item_parent
 from sampletones_shared.meta import NonInstantiableMeta
 from sampletones_shared.types.application import ColorRGBA, Sender
 
@@ -44,7 +45,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
     _width_padding: float = 0.0
     _rectangle: Optional[Sender] = None
 
-    _owner: Optional[object] = None
+    _owner: Optional[Any] = None
     _widget: Optional[Sender] = None
     _caret_index: int = 0
     _font: Optional[Font] = None
@@ -236,7 +237,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
             if _as_item_id(node) == root_id:
                 return True
 
-            parent = dpg.get_item_parent(node)
+            parent = dpg_get_item_parent(node)
             if not parent:
                 return False
 

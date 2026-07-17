@@ -1,16 +1,48 @@
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Dict, Generator, Optional
 
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.constants.general import TAG_GLOBAL_THEME_DEFAULT
-from sampletones_application.paths import THEME_DIRECTORY
+from sampletones_application.paths import PALETTE_PATH, THEME_DIRECTORY
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.ui.themes.loader import ThemeLoader
 from sampletones_application.ui.themes.spec import ThemeSpec
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_application.utils.palette import Palette
 
 _BASE_NAME = "default"
+
+_SYNTHETIC_BASE = """
+name: default
+tag: synthetic.default
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdcff"
+      - type: color
+        key: WindowBg
+        value: "#242424ff"
+  - item_type: Button
+    entries:
+      - type: color
+        key: Button
+        value: .reference
+  - item_type: Button
+    enabled: false
+    entries:
+      - type: color
+        key: Button
+        value: "#2e2e3cff"
+"""
+_SYNTHETIC_PALETTE = """
+name: test_palette
+
+colors:
+    reference: "#1a1a1a"
+"""
 
 
 def _spec(name: str, *, extends: Optional[str] = None) -> ThemeSpec:
@@ -34,10 +66,13 @@ class TestLoadedInheritance:
     defaults for anything it omits.
     """
 
-    def test_every_theme_carries_the_base_row_background(self) -> None:
+    @pytest.fixture
+    def themes(self) -> Dict[str, Theme]:
+        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, Palette.load(PALETTE_PATH)).load_all()}
+
+    def test_every_theme_carries_the_base_row_background(self, themes: Dict[str, Theme]) -> None:
         dpg.create_context()
         try:
-            themes = {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY).load_all()}
             for theme in themes.values():
                 theme.create()
 
@@ -48,10 +83,9 @@ class TestLoadedInheritance:
         finally:
             dpg.destroy_context()
 
-    def test_a_theme_keeps_its_own_override_on_top_of_the_base(self) -> None:
+    def test_a_theme_keeps_its_own_override_on_top_of_the_base(self, themes: Dict[str, Theme]) -> None:
         dpg.create_context()
         try:
-            themes = {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY).load_all()}
             pattern = themes["sequencer.theme.table_pattern"]
             pattern.create()
 
@@ -59,32 +93,6 @@ class TestLoadedInheritance:
             assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg) is not None
         finally:
             dpg.destroy_context()
-
-
-_SYNTHETIC_BASE = """
-name: default
-tag: synthetic.default
-components:
-  - item_type: All
-    entries:
-      - type: color
-        key: Text
-        value: "#dcdcdcff"
-      - type: color
-        key: WindowBg
-        value: "#242424ff"
-  - item_type: Button
-    entries:
-      - type: color
-        key: Button
-        value: "#363648ff"
-  - item_type: Button
-    enabled: false
-    entries:
-      - type: color
-        key: Button
-        value: "#2e2e3cff"
-"""
 
 
 class TestDisabledStateMirroring:
@@ -98,10 +106,15 @@ class TestDisabledStateMirroring:
 
     @pytest.fixture
     def synthetic_theme(self, tmp_path: Path) -> Generator[Theme, None, None]:
-        (tmp_path / "default.yaml").write_text(_SYNTHETIC_BASE)
+        themes_path = tmp_path / "themes"
+        themes_path.mkdir(parents=True, exist_ok=True)
+        (themes_path / "default.yaml").write_text(_SYNTHETIC_BASE)
+
+        palette_path = tmp_path / "palette.yaml"
+        palette_path.write_text(_SYNTHETIC_PALETTE)
         dpg.create_context()
         try:
-            theme = ThemeLoader(tmp_path).load_all()[0]
+            theme = ThemeLoader(themes_path, Palette.load(palette_path)).load_all()[0]
             theme.create()
             yield theme
         finally:

@@ -1,3 +1,5 @@
+from typing import List
+
 from sampletones_application.logic.project.session import ProjectSession
 
 
@@ -28,7 +30,7 @@ class TestProjectSession:
 
     def test_state_change_callback(self) -> None:
         session = ProjectSession()
-        calls: list[int] = []
+        calls: List[int] = []
         session.on_state_changed = lambda: calls.append(1)
         session.mark_updated()
         session.mark_saved()

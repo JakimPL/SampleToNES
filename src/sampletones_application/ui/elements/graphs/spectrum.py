@@ -5,10 +5,10 @@ import numpy as np
 
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.graphs import SUF_GRAPH_THEME
+from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.graphs import SUF_GRAPH_THEME
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.spectrum import SpectrumLayer
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -37,7 +37,6 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         layout: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
-        label: str = "",
     ) -> None:
         self._layout = layout
         self._status_bar = status_bar
@@ -67,17 +66,6 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             GraphElements.SPECTRUM_NAVIGATION,
         ]
 
-        _label = (
-            label
-            if label
-            else language_manager[
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.SPECTRUM_DISPLAY,
-            ]
-        )
-
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
         self.current_library_fragment: Optional[InstructionLibraryFragment[Any]] = None
@@ -89,7 +77,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             parent,
             layout.dimensions.width,
             layout.dimensions.height,
-            _label,
+            "",
             x_range=(layout.graph.min_x, layout.graph.max_x),
             y_range=(MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2),
             zoom_factor=layout.waveform.zoom_factor,

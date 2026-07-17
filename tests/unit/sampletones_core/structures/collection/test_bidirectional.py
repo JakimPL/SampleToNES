@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Tuple, Union
 
 import pytest
 
@@ -555,7 +555,7 @@ class TestClear:
 
 class TestTypes:
     def test_tuple_as_value(self) -> None:
-        bidirectional = BidirectionalHashMap[tuple[int, ...]]()
+        bidirectional = BidirectionalHashMap[Tuple[int, ...]]()
         bidirectional["point"] = (1, 2, 3)
         assert bidirectional["point"] == (1, 2, 3)
         assert bidirectional[(1, 2, 3)] == "point"

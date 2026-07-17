@@ -96,8 +96,6 @@ class ConfigManager:
             update={
                 "sample_rate": update.sample_rate,
                 "nes_frequency": update.nes_frequency,
-                "spectrum_method": update.spectrum_method,
-                "transformation_gamma": update.transformation_gamma,
             }
         )
         self.config = self.config.model_copy(update={"library": new_library})
@@ -127,7 +125,13 @@ class ConfigManager:
                 "reconstructions_directory": str(update.reconstructions_directory),
             }
         )
-        self.config = self.config.model_copy(update={"general": new_general})
+        new_library = self.config.library.model_copy(
+            update={
+                "spectrum_method": update.spectrum_method,
+                "transformation_gamma": update.transformation_gamma,
+            }
+        )
+        self.config = self.config.model_copy(update={"general": new_general, "library": new_library})
         self.window = Window.from_config(self.config)
         self.library_directory = update.library_directory
         self.reconstructions_directory = update.reconstructions_directory

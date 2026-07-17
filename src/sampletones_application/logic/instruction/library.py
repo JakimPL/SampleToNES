@@ -46,7 +46,9 @@ from sampletones_shared.exceptions import (
     WindowNotAvailableError,
 )
 from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.system.filesystem import remove_path
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
 OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey], None]
@@ -67,18 +69,18 @@ class LibraryLogic(CallbackMixin):
         self._eta_estimator: Optional[ETAEstimator] = None
         self._status_lock = threading.Lock()
 
-        self._lock_function: Optional[Callable[[], None]] = None
-        self._unlock_function: Optional[Callable[[], None]] = None
+        self._lock_function: Optional[VoidCallback] = None
+        self._unlock_function: Optional[VoidCallback] = None
         self._is_locked_function: Optional[Callable[[], bool]] = None
 
-        self.on_rebuild_tree_needed: Optional[Callable[[], None]] = None
-        self.on_generation_state_changed: Optional[Callable[[], None]] = None
+        self.on_rebuild_tree_needed: Optional[VoidCallback] = None
+        self.on_generation_state_changed: Optional[VoidCallback] = None
         self.on_view_changed: Optional[Callable[[LibraryPanelViewModel], None]] = None
         self.on_instruction_loaded: Optional[OnLoadInstructionCallback] = None
         self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
-        self.on_generation_completed: Optional[Callable[[], None]] = None
+        self.on_generation_completed: Optional[VoidCallback] = None
         self.on_generation_error: Optional[Callable[[Exception], None]] = None
-        self.on_generation_cancelled: Optional[Callable[[], None]] = None
+        self.on_generation_cancelled: Optional[VoidCallback] = None
         self.on_load_file_not_found: Optional[Callable[[Path, str], None]] = None
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
@@ -213,8 +215,8 @@ class LibraryLogic(CallbackMixin):
 
     def configure_lock(
         self,
-        lock_function: Callable[[], None],
-        unlock_function: Callable[[], None],
+        lock_function: VoidCallback,
+        unlock_function: VoidCallback,
         is_locked_function: Callable[[], bool],
     ) -> None:
         self._lock_function = lock_function
@@ -271,6 +273,16 @@ class LibraryLogic(CallbackMixin):
         self._library_manager.gather_available_libraries()
         self._sync_with_config_key(load_if_needed=load_if_needed)
         self.call(self.on_rebuild_tree_needed)
+
+    def remove_library(self, library_key: InstructionLibraryKey) -> Path:
+        filepath = self._library_manager.get_path(library_key)
+        remove_path(filepath)
+
+        if self.current_library_key == library_key:
+            self._library_manager.clear_current_library()
+
+        self.refresh_libraries(load_if_needed=False)
+        return filepath
 
     def update_status(self) -> None:
         """Repaints the idle library status; during a generation the progress handlers own the

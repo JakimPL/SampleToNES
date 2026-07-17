@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -22,9 +22,9 @@ from tests.unit.sampletones_application.logic.sequencer.playback.conftest import
 @dataclass
 class SynthesizerContext:
     synthesizer: RowSynthesizer
-    chunks: list[np.ndarray] = field(default_factory=list)
-    tick_snapshots: dict[str, int] = field(default_factory=dict)
-    sample_id_snapshots: dict[str, Optional[str]] = field(default_factory=dict)
+    chunks: List[np.ndarray] = field(default_factory=list)
+    tick_snapshots: Dict[str, int] = field(default_factory=dict)
+    sample_id_snapshots: Dict[str, Optional[str]] = field(default_factory=dict)
 
 
 def _make_context() -> SynthesizerContext:

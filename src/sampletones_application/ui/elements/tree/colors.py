@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Self
 
-from sampletones_application.layout.general import GeneralColors
+from sampletones_application.layout.general.colors import GeneralColors
 from sampletones_shared.types.application import ColorRGBA
 
 

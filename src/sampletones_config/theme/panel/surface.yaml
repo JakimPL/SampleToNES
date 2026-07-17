@@ -1,0 +1,9 @@
+name: panel_surface
+tag: global.theme.panel_surface
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: ChildBg
+        value: .surface

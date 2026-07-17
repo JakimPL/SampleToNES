@@ -3,7 +3,7 @@ import os
 import sys
 import threading
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, Optional, cast
+from typing import Any, Callable, Dict, Generator, List, Optional, cast
 
 import numpy as np
 import pyaudio
@@ -16,6 +16,7 @@ from sampletones_core.constants.audio import (
 )
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.locales import to_utf8
 
@@ -85,6 +86,7 @@ class AudioDeviceManager(CallbackMixin):
         self._audio_data: Optional[np.ndarray] = None
         self._position: int = 0
         self._playing: bool = False
+        self._output_owner: Optional[Any] = None
         self._active_priority: int = 0
         self._paused: bool = False
         self._stop: bool = False
@@ -96,7 +98,7 @@ class AudioDeviceManager(CallbackMixin):
 
         self._position_callback: Optional[Callable[[int], None]] = None
         self.on_playback_error: Optional[OnPlaybackErrorCallback] = None
-        self.on_acquire_output: Optional[Callable[[], None]] = None
+        self.on_acquire_output: Optional[VoidCallback] = None
         self.external_output_priority: Optional[Callable[[], Optional[int]]] = None
 
         self.refresh_devices()
@@ -512,6 +514,7 @@ class AudioDeviceManager(CallbackMixin):
         *,
         update: bool = True,
         priority: int = 0,
+        owner: Optional[Any] = None,
     ) -> None:
         """
         Play audio data.
@@ -528,6 +531,8 @@ class AudioDeviceManager(CallbackMixin):
             audio: Audio data as numpy array (will be converted to float32).
             update: If True, invoke position callback during playback.
             priority: Output-request priority; higher wins. Callers assign the meaning.
+            owner: Identity of the caller owning this playback, matched by :meth:`replace_audio`
+                to swap the live buffer only while its own audio is the one playing.
         """
         external_priority = self.call(self.external_output_priority)
         with self._lock:
@@ -547,6 +552,7 @@ class AudioDeviceManager(CallbackMixin):
             self._audio_data = audio.astype(np.float32)
             self._position = 0
             self._playing = True
+            self._output_owner = owner
             self._active_priority = priority
             self._paused = False
             self._stop = False
@@ -560,6 +566,35 @@ class AudioDeviceManager(CallbackMixin):
         )
 
         self._playback_thread.start()
+
+    def replace_audio(
+        self,
+        audio: np.ndarray,
+        *,
+        owner: Optional[Any] = None,
+    ) -> bool:
+        """
+        Swap the buffer of an in-progress playback without interrupting it.
+
+        The playback loop reads the current buffer afresh on each chunk, so replacing it
+        in place makes the change audible from the next buffer onward. Playback position is
+        preserved and clamped to the new length. The swap applies only while ``owner`` matches
+        the caller that started the active playback, leaving other sources untouched.
+
+        Args:
+            audio: Replacement audio data as numpy array (will be converted to float32).
+            owner: Identity that must match the active playback's owner for the swap to apply.
+
+        Returns:
+            True if a live playback was replaced, False otherwise.
+        """
+        with self._lock:
+            if not self._playing or self._audio_data is None or self._output_owner is not owner:
+                return False
+
+            self._audio_data = audio.astype(np.float32)
+            self._position = min(self._position, len(self._audio_data))
+            return True
 
     def _playback_loop(self, stream: pyaudio.Stream, update: bool) -> None:
         """
@@ -619,7 +654,7 @@ class AudioDeviceManager(CallbackMixin):
         except OSError as exception:
             playback_error = PlaybackError(f"Failed to open audio stream: {exception}")
             self.call(self.on_playback_error, playback_error)
-            raise playback_error from exception
+            return
 
         try:
             self._playback_loop(stream, update)
@@ -643,6 +678,7 @@ class AudioDeviceManager(CallbackMixin):
             self._paused = False
             self._position = 0
             self._audio_data = None
+            self._output_owner = None
 
         if update and self._position_callback is not None:
             self.call(self._position_callback, 0)

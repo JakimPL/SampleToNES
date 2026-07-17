@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional, Protocol
 
@@ -33,6 +34,17 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
 
 
+@dataclass(frozen=True)
+class ConversionSuccess:
+    """The outcome a completed conversion hands to its listener.
+
+    Carries what the follow-up load offer needs: whether a single file or a
+    directory was converted, and where its reconstruction was written."""
+
+    is_file: bool
+    output_path: Optional[Path]
+
+
 class ConversionServiceProtocol(Protocol):
     """The slice of the conversion service the converter logic drives.
 
@@ -48,6 +60,8 @@ class ConversionServiceProtocol(Protocol):
     def cancel(self) -> None: ...
 
     def cleanup(self) -> None: ...
+
+    def shutdown(self) -> None: ...
 
     def is_running(self) -> bool: ...
 
@@ -108,6 +122,30 @@ class ConverterLogic(CallbackMixin):
             TextType.MESSAGE,
             ConverterElements.STATUS_CANCELLED,
         ]
+        self._lbl_convert = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CONVERT_SAMPLE_BUTTON,
+        ]
+        self._lbl_convert_directory = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CONVERT_DIRECTORY_BUTTON,
+        ]
+        self._lbl_cancel = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CANCEL_BUTTON,
+        ]
+        self._tpl_convert_label = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.TEMPLATE,
+            ConverterElements.CONVERT_LABEL_TEMPLATE,
+        ]
         self._tpl_progress = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -130,7 +168,7 @@ class ConverterLogic(CallbackMixin):
         self._service.subscribe(self._on_service_result)
 
         self.on_view_changed: Optional[Callable[[ConverterViewModel], None]] = None
-        self.on_success: Optional[VoidCallback] = None
+        self.on_success: Optional[Callable[[ConversionSuccess], None]] = None
         self.on_error: Optional[Callable[[Exception], None]] = None
         self.on_no_files_to_process: Optional[VoidCallback] = None
         self.on_no_generators: Optional[VoidCallback] = None
@@ -211,7 +249,7 @@ class ConverterLogic(CallbackMixin):
         self.close()
 
     def cleanup(self) -> None:
-        self._service.cleanup()
+        self._service.shutdown()
         self._system_progress.clear()
 
     def _on_service_result(self, result: ConversionResult) -> None:
@@ -259,6 +297,7 @@ class ConverterLogic(CallbackMixin):
     def _handle_library_progress(self, progress: TaskProgress) -> None:
         if self._phase != ConversionPhase.WAITING:
             return
+
         total = max(progress.total, 1)
         fraction = progress.completed / total
         self._emit_view_model(self._msg_generating_library, fraction)
@@ -276,6 +315,7 @@ class ConverterLogic(CallbackMixin):
             logger.error("Invalid path")
             self.call(self.on_error, exception)
             return False
+
         return True
 
     def _wait_for_library_and_start(self) -> None:
@@ -303,12 +343,19 @@ class ConverterLogic(CallbackMixin):
 
         self._phase = ConversionPhase.COMPLETED
         self._emit_view_model(self._msg_completed, 1.0)
-        self.call(self.on_success)
+        self.call(
+            self.on_success,
+            ConversionSuccess(
+                is_file=self._is_file,
+                output_path=self._output_path,
+            ),
+        )
 
     def _on_conversion_error(self, exception: Exception) -> None:
         self._system_progress.error()
         self._phase = ConversionPhase.FAILED
         self._emit_view_model(self._msg_error, 0.0)
+        self._schedule_return_to_idle()
         if isinstance(exception, NoFilesToProcessError):
             self.call(self.on_no_files_to_process)
         else:
@@ -317,12 +364,27 @@ class ConverterLogic(CallbackMixin):
     def _on_cancellation_complete(self) -> None:
         self._phase = ConversionPhase.CANCELLED
         self._emit_view_model(self._msg_cancelled, 0.0)
+        self._schedule_return_to_idle()
+        self.call(self.on_cancelled)
+
+    def _schedule_return_to_idle(self) -> None:
         CallbackQueue.add(
             self.close,
             priority=self._scheduling.priority_schedule,
             delay=self._scheduling.delay_cancel,
         )
-        self.call(self.on_cancelled)
+
+    def _compose_action_label(self, input_path: Optional[Path]) -> str:
+        """The label the single action button shows: the cancel label while a conversion holds
+        resources, otherwise the convert label named after the selected input."""
+        if self._phase in ACTIVE_PHASES:
+            return self._lbl_cancel
+
+        base = self._lbl_convert if self._is_file else self._lbl_convert_directory
+        if input_path is None:
+            return base
+
+        return self._tpl_convert_label.format(base, input_path.name)
 
     def _emit_view_model(
         self,
@@ -333,11 +395,13 @@ class ConverterLogic(CallbackMixin):
         display_output = (
             self._output_path if self._output_path is not None else self._config_manager.get_reconstructions_directory()
         )
+        display_input = input_path if input_path is not None else self._input_path
         view_model = ConverterViewModel(
             phase=self._phase,
             status_text=status_text,
+            action_label=self._compose_action_label(display_input),
             progress=progress,
-            input_path=(input_path if input_path is not None else self._input_path),
+            input_path=display_input,
             output_path=display_output,
             is_file=self._is_file,
             other_operation_active=self._is_operation_active(),
