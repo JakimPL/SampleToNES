@@ -86,13 +86,17 @@ def _write_header_block(writer: BinaryWriter, track: Track) -> None:
             body.write_uint8(track.effect_columns[channel_id] - 1)
 
 
-def _write_instrument_body(writer: BinaryWriter, instrument: Instrument2A03, references: SequenceReferences) -> None:
+def _write_instrument_body(
+    writer: BinaryWriter,
+    instrument: Instrument2A03,
+    references: SequenceReferences,
+) -> None:
     writer.write_int32(SEQUENCE_COUNT_2A03)
     for kind in SequenceKind:
         enabled = instrument.sequences[kind].enabled
         writer.write_uint8(SEQUENCE_ENABLED if enabled else SEQUENCE_DISABLED)
         writer.write_uint8(references.get((instrument.index, kind), 0))
-    # DPCM key-assignment table is empty by design; every key byte is zero
+
     writer.write_bytes(bytes(DPCM_KEY_ASSIGNMENTS * DPCM_KEY_BYTES))
 
 

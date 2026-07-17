@@ -1,7 +1,6 @@
 from enum import IntEnum
 from typing import Final
 
-# Note grid: semitones per octave and the FamiTracker octave count
 NOTE_RANGE: Final[int] = 12
 OCTAVE_RANGE: Final[int] = 8
 
@@ -20,7 +19,6 @@ class NoteValue(IntEnum):
     HALT = 14
 
 
-# Pattern cell sentinels
 EMPTY_NOTE: Final[int] = 0
 EMPTY_INSTRUMENT: Final[int] = 0x40
 EMPTY_VOLUME: Final[int] = 0x10
@@ -28,16 +26,12 @@ EMPTY_EFFECT: Final[int] = 0
 EMPTY_EFFECT_PARAM: Final[int] = 0
 DEFAULT_EFFECT_COLUMNS: Final[int] = 1
 
-# Note-cell octave range and pitch mapping
 MIN_OCTAVE: Final[int] = 0
 MAX_OCTAVE: Final[int] = 7
-# octave = pitch // NOTE_RANGE - PITCH_OCTAVE_OFFSET (consistent with pitch_to_name)
 PITCH_OCTAVE_OFFSET: Final[int] = 2
-# Pitch range representable as C-0..B-7 note cells
 FT_MIN_PITCH: Final[int] = (MIN_OCTAVE + PITCH_OCTAVE_OFFSET) * NOTE_RANGE
 FT_MAX_PITCH: Final[int] = (MAX_OCTAVE + PITCH_OCTAVE_OFFSET) * NOTE_RANGE + (NOTE_RANGE - 1)
 
-# Arrangement limits
 MAX_FRAMES: Final[int] = 128
 MAX_PATTERNS: Final[int] = 128
 MAX_PATTERN_INDEX: Final[int] = MAX_PATTERNS - 1

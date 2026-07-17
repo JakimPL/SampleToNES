@@ -287,7 +287,7 @@ class Reconstruction(DataModel):
             exporter_class = self._get_exporter_class(instructions[0])
             exporter: ExporterUnion = exporter_class()
             self._validate_instructions(exporter, instructions)
-            feature: Features = exporter.to_features(instructions)  # type: ignore
+            feature: Features = exporter.to_features(instructions)  # type: ignore[arg-type]
             features[name] = feature
 
         return features
