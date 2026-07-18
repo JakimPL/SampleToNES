@@ -632,11 +632,11 @@ TAG_GLOBAL_TAB_INSTRUCTIONS = TagName(
     Widget.TAB,
     "instructions",
 )
-TAG_GLOBAL_TAB_RECONSTRUCTIONS = TagName(
+TAG_GLOBAL_TAB_RECONSTRUCTION = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.TAB,
-    "reconstructions",
+    "reconstruction",
 )
 TAG_GLOBAL_TAB_SEQUENCER = TagName(
     Page.GLOBAL,

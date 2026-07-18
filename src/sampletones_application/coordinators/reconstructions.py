@@ -47,7 +47,7 @@ from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_TAB_RECONSTRUCTION,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
     TAG_GLOBAL_THEME_PANEL_SURFACE,
@@ -94,9 +94,9 @@ from sampletones_shared.exceptions import (
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
-_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}"
-_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}"
-_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}"
+_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_LEFT}"
+_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_CENTER}"
+_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_RIGHT}"
 _SIDE_PANEL_COUNT: Final[int] = 2
 
 
@@ -132,7 +132,7 @@ class ReconstructionsTabCoordinator:
             Page.GLOBAL,
             Panel.MENU,
             TextType.LABEL,
-            MenuElements.TAB_RECONSTRUCTIONS,
+            MenuElements.TAB_RECONSTRUCTION,
         ]
         self._left_width = layout.general.columns.side.width
         self._left_height = layout.general.columns.side.height
@@ -462,7 +462,7 @@ class ReconstructionsTabCoordinator:
 
     def create_tab(self) -> None:
         with dpg.tab(
-            tag=TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+            tag=TAG_GLOBAL_TAB_RECONSTRUCTION,
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):

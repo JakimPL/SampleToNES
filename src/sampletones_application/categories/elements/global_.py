@@ -98,7 +98,7 @@ class MenuElements(AbstractElement):
     ITEM_HELP_ABOUT = "item_help_about"
     TAB_MAIN = "tab_main"
     TAB_INSTRUCTIONS = "tab_instructions"
-    TAB_RECONSTRUCTIONS = "tab_reconstructions"
+    TAB_RECONSTRUCTION = "tab_reconstruction"
     TAB_SEQUENCER = "tab_sequencer"
 
 

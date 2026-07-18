@@ -184,7 +184,7 @@ global.menu.label.group_help: "Help"
 global.menu.label.item_help_about: "About"
 global.menu.label.tab_main: "Main"
 global.menu.label.tab_instructions: "Instructions"
-global.menu.label.tab_reconstructions: "Reconstructions"
+global.menu.label.tab_reconstruction: "Reconstruction"
 global.menu.label.tab_sequencer: "Sequencer"
 
 # =============================================================================

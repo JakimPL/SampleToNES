@@ -22,7 +22,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_STATUS_WINDOW,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_TAB_MAIN,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_TAB_RECONSTRUCTION,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_TAB_STRIP,
@@ -48,7 +48,7 @@ from sampletones_shared.types.callback import Callback, PathCallback
 
 _TAB_TAGS: Dict[Tab, str] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
-    Tab.RECONSTRUCTIONS: TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    Tab.RECONSTRUCTIONS: TAG_GLOBAL_TAB_RECONSTRUCTION,
     Tab.SEQUENCER: TAG_GLOBAL_TAB_SEQUENCER,
     Tab.INSTRUCTIONS: TAG_GLOBAL_TAB_INSTRUCTIONS,
 }
@@ -409,7 +409,7 @@ class ApplicationShell:
         ThemeRegistry.get(TAG_GLOBAL_THEME_TAB_STRIP).bind_to_item(tab_container)
         for tab_tag in (
             TAG_GLOBAL_TAB_MAIN,
-            TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+            TAG_GLOBAL_TAB_RECONSTRUCTION,
             TAG_GLOBAL_TAB_SEQUENCER,
             TAG_GLOBAL_TAB_INSTRUCTIONS,
         ):
