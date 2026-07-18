@@ -124,7 +124,8 @@ class CollapseController(CallbackMixin):
 
     @property
     def _restored_height(self) -> int:
-        """The height a vertical card returns to on expand: the fill sentinel for a fill card, else its fixed expanded height."""
+        """The height a vertical card returns to on expand: the fill sentinel for a fill card,
+        else its fixed expanded height."""
         return 0 if self._fill else self._expanded_height
 
     @property

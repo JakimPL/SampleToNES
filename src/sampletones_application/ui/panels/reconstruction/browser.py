@@ -49,6 +49,8 @@ from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 
 class GUIBrowserPanel(GUITreePanel):
+    _MONOSPACE_CONFIG_NODES: bool = True
+
     def __init__(
         self,
         tree: Tree,
@@ -178,7 +180,7 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE):
+        with dpg.child_window(tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE, horizontal_scrollbar=True):
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_reconstructions,

@@ -89,7 +89,8 @@ class LibraryLogicProtocol(Protocol):
 
 
 class GUIInstructionsLibraryPanel(GUITreePanel):
-    _NAME_FONT: Font = Font.MONO_SMALL
+    _NAME_FONT: Font = Font.REGULAR_SMALL
+    _MONOSPACE_CONFIG_NODES: bool = True
 
     def __init__(
         self,
@@ -293,6 +294,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             tag=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
             width=-1,
             height=-1,
+            horizontal_scrollbar=True,
         ):
             with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE):
                 with dpg.tree_node(

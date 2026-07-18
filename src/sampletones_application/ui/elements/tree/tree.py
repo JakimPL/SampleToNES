@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -83,6 +83,7 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
+from sampletones_shared.meta.non_instantiable import NonInstantiableMeta
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import (
     Callback,
@@ -93,8 +94,10 @@ from sampletones_shared.types.callback import (
 from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
-class GUITreePanel(GUIPanel):
+class GUITreePanel(GUIPanel, ABC):
     _NAME_FONT: Font = Font.REGULAR_SMALL
+    _CONFIG_FONT: Font = Font.MONO_SMALL
+    _MONOSPACE_CONFIG_NODES: bool = False
 
     def __init__(
         self,
@@ -120,7 +123,7 @@ class GUITreePanel(GUIPanel):
         self.shortcut_manager = shortcut_manager
 
         self._pending_specs: List[NodeSpec] = []
-        self._emitter = TreeEmitter(scheduling=scheduling, name_font=self._NAME_FONT)
+        self._emitter = TreeEmitter(scheduling=scheduling)
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
@@ -401,6 +404,7 @@ class GUITreePanel(GUIPanel):
                 node_tag=node_tag,
                 parent_tag=parent,
                 label=node.name,
+                name_font=self._resolve_node_name_font(node),
                 leaf=leaf,
                 open_on_arrow=open_on_arrow,
                 open_on_double_click=open_on_double_click,
@@ -628,6 +632,18 @@ class GUITreePanel(GUIPanel):
 
         return self._colors.node
 
+    def _resolve_node_name_font(self, node: TreeNode) -> Font:
+        """Select the label font for a node: monospace for config-bearing nodes where the panel opts in.
+
+        A config-bearing node carries the machine-generated fields a reconstruction or library
+        directory encodes, so a panel that sets ``_MONOSPACE_CONFIG_NODES`` renders those names in
+        the fixed-width font for legibility. Every other node keeps the panel's ``_NAME_FONT``.
+        """
+        if self._MONOSPACE_CONFIG_NODES and self._node_detail_items(node):
+            return self._CONFIG_FONT
+
+        return self._NAME_FONT
+
     def _add_context_menu_text(self, node: TreeNode) -> None:
         is_favorite = self._logic.is_node_favorite(node)
         color = self._node_header_color(node)
@@ -805,7 +821,7 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor: bool = False,
         is_node_expanded: bool = False,
     ) -> None:
-        FontRegistry.bind_to_item(node_tag, self._NAME_FONT)
+        FontRegistry.bind_to_item(node_tag, self._resolve_node_name_font(node))
         theme_tag = self._resolve_node_theme_tag(
             node,
             has_favorite_ancestor=has_favorite_ancestor,

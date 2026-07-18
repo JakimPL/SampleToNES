@@ -243,7 +243,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE):
+        with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE, horizontal_scrollbar=True):
             with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_section,
