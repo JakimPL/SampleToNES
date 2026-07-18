@@ -22,7 +22,7 @@ class GUIWindow(GUIPanel):
     """
 
     def center(self) -> None:
-        center_item(self.tag, self.width, self.height)
+        center_item(self.tag)
 
     def show(self, *args: Any, **kwargs: Any) -> None:
         self.hide()

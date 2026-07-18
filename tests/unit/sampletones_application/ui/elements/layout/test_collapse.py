@@ -295,7 +295,7 @@ def section_panel(dpg_context: None, monkeypatch: pytest.MonkeyPatch) -> _RailPa
     monkeypatch.setattr(dpg, "get_text_size", lambda text, font=0: None)
     GUIPanel.configure_section_header(
         _glyphs(),
-        SectionHeaderLayout(glyph=GlyphLayout(indent=0, width=_RAIL_WIDTH), chevron_offset=8),
+        SectionHeaderLayout(glyph=GlyphLayout(indent=0, width=_RAIL_WIDTH, top_offset=0), chevron_offset=8),
         CollapseLayout(header_bar_height=_HEADER_BAR_HEIGHT, rail_width=_RAIL_WIDTH, rail_title_gap=6),
     )
     panel = _RailPanel(tag=_CARD_TAG)

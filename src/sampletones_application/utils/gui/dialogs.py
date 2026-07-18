@@ -45,12 +45,11 @@ from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.trace import GUITraceback
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.align import center_item, table_wrapper
+from sampletones_application.utils.gui.align import center_when_settled, table_wrapper
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_item,
 )
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.callback import Callback, StringCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
@@ -96,13 +95,7 @@ def _show_modal_dialog(
             width=-1,
         )
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                width,
-                height,
-            )
-        )
+        center_when_settled(tag)
 
 
 class DialogsRenderer:
@@ -435,13 +428,7 @@ class DialogsRenderer:
 
             content(None)
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                self._error_width,
-                self._error_height,
-            )
-        )
+        center_when_settled(tag)
 
     def show_file_not_found(self, filepath: Path, message: str) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
@@ -563,13 +550,7 @@ class DialogsRenderer:
             _bind_dialog_theme(tag)
             content(tag)
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                self._default_width,
-                self._confirmation_height,
-            )
-        )
+        center_when_settled(tag)
 
     def show_text_input(
         self,
@@ -646,13 +627,7 @@ class DialogsRenderer:
             _bind_dialog_theme(tag)
             content(tag)
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                self._default_width,
-                self._text_input_height,
-            )
-        )
+        center_when_settled(tag)
 
     def show_save_confirmation(
         self,
@@ -730,13 +705,7 @@ class DialogsRenderer:
             _bind_dialog_theme(tag)
             content(tag)
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                self._default_width,
-                self._confirmation_height,
-            )
-        )
+        center_when_settled(tag)
 
     def show_reconstruction_not_loaded(self) -> None:
         tag = get_dialog_tag(TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED)
