@@ -10,6 +10,7 @@ from sampletones_application.categories.elements.global_ import (
     GlobalMessageElements,
     GlobalTemplateElements,
     MenuElements,
+    StatusElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.key import TextKey
@@ -62,6 +63,12 @@ from sampletones_application.services import (
     ExportService,
     RegeneratedInstrument,
     RegenerationService,
+    RetunedSample,
+    RetuneResult,
+    SampleRetuneService,
+    ServiceCancelled,
+    ServiceError,
+    ServiceSuccess,
 )
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.tags.general import (
@@ -79,7 +86,9 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.menu import MenuBar
-from sampletones_application.ui.panels.dialogs.audio_settings import GUIAudioSettingsWindow
+from sampletones_application.ui.panels.dialogs.audio_settings import (
+    GUIAudioSettingsWindow,
+)
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
 )
@@ -91,7 +100,9 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.palette import Palette
-from sampletones_application.utils.parallelization.background import stop_background_workers
+from sampletones_application.utils.parallelization.background import (
+    stop_background_workers,
+)
 from sampletones_application.view_model.shared.audio_settings import (
     AudioSettingsViewModel,
 )
@@ -179,6 +190,8 @@ class Application:
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
+        self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
+        self.retune_service.subscribe(self._on_retune_result)
 
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)
@@ -340,6 +353,7 @@ class Application:
             status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
             on_tab_switch=self._set_current_tab,
+            on_nes_frequency_changed=self._retune_samples_for_rate,
         )
 
         self._playback_router = PlaybackRouter(
@@ -790,6 +804,82 @@ class Application:
                 sample.id,
                 outcome.reconstruction,
             )
+
+    def _retune_samples_for_rate(self, nes_frequency: int) -> None:
+        """Refreshes the stored reconstructions of samples left out of sync by a rate change.
+
+        Song playback already follows the new rate; this re-synthesizes only the persistent
+        rendered waveforms the Reconstructions tab edits. Samples already at the target rate are
+        skipped, and the batch runs in the background so the rate change stays responsive.
+        """
+        targets = [
+            (sample.id, sample.reconstruction)
+            for sample in self.project_manager.current.samples
+            if sample.reconstruction.config.nes_frequency != nes_frequency
+        ]
+        if not targets:
+            return
+
+        if not self.retune_service.start(targets, nes_frequency):
+            return
+
+        self.status_bar.set(
+            self.language_manager[
+                Page.GLOBAL,
+                Panel.STATUS,
+                TextType.MESSAGE,
+                StatusElements.RETUNING_SAMPLES,
+            ]
+        )
+        if self._editing_retuned_sample(nes_frequency):
+            self._reconstructions_tab.set_reconstruction_dimmed(True)
+
+    def _editing_retuned_sample(self, nes_frequency: int) -> bool:
+        """Whether the open Reconstructions-tab document is a project sample this batch will retune."""
+        sample = self._owning_project_sample()
+        return sample is not None and sample.reconstruction.config.nes_frequency != nes_frequency
+
+    def _on_retune_result(self, result: RetuneResult) -> None:
+        match result:
+            case ServiceSuccess(value=retuned):
+                self._apply_retuned_sample(retuned)
+            case ServiceError(exception=exception):
+                logger.error_with_traceback(exception, "Sample retune failed")
+            case ServiceCancelled():
+                pass
+
+        if not self.retune_service.is_running():
+            self.status_bar.set("")
+            self._reconstructions_tab.set_reconstruction_dimmed(False)
+
+    def _apply_retuned_sample(self, retuned: RetunedSample) -> None:
+        """Swaps a retuned reconstruction into its sample, folding it into the rate-change undo entry.
+
+        A batch superseded by a newer rate change is discarded by the rate guard, so a stale
+        result neither overwrites the current reconstruction nor appends a stray history entry. The
+        rate-keyed coalesce target rewrites the single ``SET_NES_FREQUENCY`` entry, and a sample
+        open in the Reconstructions tab rebinds so its editor and the project sample stay one object.
+        """
+        project = self.project_manager.current
+        sample = project.samples.get(retuned.sample_id)
+        if sample is None:
+            return
+
+        nes_frequency = retuned.reconstruction.config.nes_frequency
+        if nes_frequency != project.settings.nes_frequency:
+            return
+
+        is_open = sample.reconstruction is self.reconstruction_manager.reconstruction
+        with self.history.transaction(
+            HistoryAction.SET_NES_FREQUENCY,
+            detail=self._sequencer_tab.nes_frequency_detail(nes_frequency),
+            coalesce=(nes_frequency,),
+        ):
+            self.project_controller.replace_sample_reconstruction(retuned.sample_id, retuned.reconstruction)
+
+        if is_open:
+            self.reconstruction_manager.apply_regenerated(retuned.reconstruction)
+            self._reconstructions_tab.update_reconstruction()
 
     def _open_project_properties(self) -> None:
         """Opens the properties dialog seeded with the current project's info.

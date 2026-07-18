@@ -131,6 +131,7 @@ class SequencerTabCoordinator:
         status_bar: GUIStatusBar,
         on_edit_sample_requested: StringCallback,
         on_tab_switch: Callable[[Tab], None],
+        on_nes_frequency_changed: Callable[[int], None],
     ) -> None:
         self._project_controller = project_controller
         self._session_manager = session_manager
@@ -138,6 +139,7 @@ class SequencerTabCoordinator:
         self._original_audio_locator = original_audio_locator
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_tab_switch = on_tab_switch
+        self._on_nes_frequency_changed = on_nes_frequency_changed
         self._layout = layout
         self._language_manager = language_manager
         self._dialogs = dialogs
@@ -194,7 +196,7 @@ class SequencerTabCoordinator:
             Page.GLOBAL,
             Panel.DIALOG,
             TextType.LABEL,
-            DialogElements.CHANGE,
+            DialogElements.CHANGE_AND_RETUNE,
         ]
         self._lbl_dont_ask_again = language_manager[
             Page.GLOBAL,
@@ -1022,11 +1024,25 @@ class SequencerTabCoordinator:
         )
 
     def _perform_nes_frequency_change(self, nes_frequency: int) -> None:
+        """Applies the rate as one undo entry, then requests a retune of the now-stale samples.
+
+        The entry carries a rate-keyed coalesce target so the asynchronous per-sample retune
+        results fold back into this same ``SET_NES_FREQUENCY`` entry: one undo restores both the
+        prior rate and the prior reconstructions, and a later change to a different rate appends
+        a fresh entry instead of replacing this one.
+        """
         with self._history.transaction(
             HistoryAction.SET_NES_FREQUENCY,
             detail=self._history_detail.value(nes_frequency),
+            coalesce=(nes_frequency,),
         ):
             self._sequencer_grid_logic.set_nes_frequency(nes_frequency)
+
+        self._on_nes_frequency_changed(nes_frequency)
+
+    def nes_frequency_detail(self, nes_frequency: int) -> HistoryDetail:
+        """The history detail for a NES-frequency change, so the retune can reuse its undo entry."""
+        return self._history_detail.value(nes_frequency)
 
     def _acknowledge_nes_frequency_changes(self) -> None:
         self._nes_frequency_change_acknowledged = True

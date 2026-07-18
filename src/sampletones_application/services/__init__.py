@@ -15,6 +15,7 @@ from sampletones_application.services.result import (
     ServiceStarted,
     ServiceSuccess,
 )
+from sampletones_application.services.retune import RetunedSample, RetuneResult, SampleRetuneService
 
 __all__ = [
     "ConversionResult",
@@ -27,6 +28,9 @@ __all__ = [
     "RegeneratedInstrument",
     "RegenerationResult",
     "RegenerationService",
+    "RetuneResult",
+    "RetunedSample",
+    "SampleRetuneService",
     "ServiceBase",
     "ServiceCancelled",
     "ServiceError",

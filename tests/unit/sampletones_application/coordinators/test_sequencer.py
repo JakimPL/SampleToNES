@@ -127,10 +127,11 @@ def nes_frequency_coordinator() -> SequencerTabCoordinator:
     instance._project_controller = MagicMock()
     instance._project_controller.has_samples = True
     instance._dialogs = MagicMock()
+    instance._on_nes_frequency_changed = MagicMock()
     instance._nes_frequency_change_acknowledged = False
     instance._ttl_change_nes_frequency = "Change NES frequency"
-    instance._msg_change_nes_frequency = "Re-times samples. Continue?"
-    instance._lbl_change_nes_frequency = "Change"
+    instance._msg_change_nes_frequency = "Reconstructions go out of sync. Retune?"
+    instance._lbl_change_nes_frequency = "Change and retune"
     instance._lbl_dont_ask_again = "Don't ask again"
     return instance
 
@@ -179,6 +180,17 @@ class TestRequestNesFrequencyChange:
         confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
         confirmation["on_confirm"]()
         nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(30)
+
+    def test_applying_requests_a_retune_of_the_samples(
+        self,
+        nes_frequency_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        nes_frequency_coordinator._request_nes_frequency_change(30)
+
+        confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
+        confirmation["on_confirm"]()
+
+        nes_frequency_coordinator._on_nes_frequency_changed.assert_called_once_with(30)
 
     def test_opt_out_acknowledges_for_the_session(
         self,

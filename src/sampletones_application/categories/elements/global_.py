@@ -14,6 +14,7 @@ class DialogElements(AbstractElement):
     UNTITLED = "untitled"
     REMOVE = "remove"
     CHANGE = "change"
+    CHANGE_AND_RETUNE = "change_and_retune"
     DONT_ASK_AGAIN = "dont_ask_again"
     ADD_ANYWAY = "add_anyway"
 
@@ -110,6 +111,7 @@ class StatusElements(AbstractElement):
     INPUT = "input"
     COMBO = "combo"
     NODE_DIRECTORY = "node_directory"
+    RETUNING_SAMPLES = "retuning_samples"
 
 
 class PlayerElements(AbstractElement):
