@@ -24,3 +24,24 @@ def create_selectable_text_theme(color: ColorRGBA) -> int:
                 )
 
     return cast(int, theme)
+
+
+def create_vertical_spacer_theme() -> int:
+    """Builds a theme that collapses item spacing to zero for a vertically stacked group.
+
+    DearPyGui inserts ItemSpacing before each item in a stack. Bound to a section header's
+    marker group, this theme zeroes that spacing so a single leading spacer becomes the exact,
+    sole control over the marker glyph's drop: the spacer's height is how far the marker sits
+    below the group's top. The group stacks only vertically, so zeroing both axes leaves its
+    layout unchanged apart from that gap.
+    """
+    with dpg.theme() as theme:
+        with dpg.theme_component(dpg.mvAll):
+            dpg.add_theme_style(
+                dpg.mvStyleVar_ItemSpacing,
+                0,
+                0,
+                category=dpg.mvThemeCat_Core,
+            )
+
+    return cast(int, theme)

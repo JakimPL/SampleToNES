@@ -45,3 +45,4 @@ class Glyphs(BaseModel, extra="forbid", frozen=True):
 class GlyphLayout(BaseModel, extra="forbid", frozen=True):
     indent: int
     width: int
+    top_offset: int

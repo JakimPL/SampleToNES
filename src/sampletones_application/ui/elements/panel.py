@@ -19,14 +19,13 @@ from sampletones_application.ui.elements.layout.collapse import (
     CollapseAxis,
     CollapseController,
 )
+from sampletones_application.ui.themes.inline import create_vertical_spacer_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-# The rail child-window's inner padding, mirroring the theme WindowPadding it inherits; rail items
-# are centered within the content region this padding leaves, so it must track that style.
 _RAIL_CONTENT_PADDING = 8
 
 
@@ -55,6 +54,7 @@ class GUIPanel(CallbackMixin, ABC):
         self.width = width
         self.height = height
         self._collapse: Optional[CollapseController] = None
+        self._marker_group_theme: Optional[int] = None
 
     @abstractmethod
     def create_panel(self, parent: str) -> None: ...
@@ -90,6 +90,17 @@ class GUIPanel(CallbackMixin, ABC):
         cls._section_header_layout = section_header_layout
         cls._glyph_layout = section_header_layout.glyph
         cls._collapse_layout = collapse_layout
+
+    def _get_marker_group_theme(self) -> int:
+        """Returns this panel's theme that lets a marker's leading spacer set its exact vertical drop.
+
+        The theme is built on first use, when a header renders and the DearPyGui context is live,
+        and held on the panel so it shares the panel's lifetime and its DearPyGui context.
+        """
+        if self._marker_group_theme is None:
+            self._marker_group_theme = create_vertical_spacer_theme()
+
+        return self._marker_group_theme
 
     def _enable_vertical_collapse(
         self,
@@ -210,11 +221,14 @@ class GUIPanel(CallbackMixin, ABC):
 
                 with dpg.table_row():
                     with dpg.table_cell():
-                        marker = dpg.add_text(
-                            marker_glyph,
-                            indent=self._glyph_layout.indent,
-                        )
-                        FontRegistry.bind_to_item(marker, Font.ICON)
+                        with dpg.group() as marker_group:
+                            dpg.add_spacer(height=self._glyph_layout.top_offset)
+                            marker = dpg.add_text(
+                                marker_glyph,
+                                indent=self._glyph_layout.indent,
+                            )
+                            FontRegistry.bind_to_item(marker, Font.ICON)
+                            dpg.bind_item_theme(marker_group, self._get_marker_group_theme())
 
                     with dpg.table_cell():
                         label_text = dpg.add_text(label.upper())

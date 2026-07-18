@@ -1,4 +1,5 @@
 glyph:
-  indent: 4
-  width: 20
+  indent: 8
+  width: 22
+  top_offset: 2
 chevron_offset: 8
