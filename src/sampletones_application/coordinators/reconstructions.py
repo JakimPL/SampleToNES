@@ -489,6 +489,7 @@ class ReconstructionsTabCoordinator:
                         theme=TAG_GLOBAL_THEME_PANEL_GROUND,
                         width=self._instruments_width,
                         height=self._right_height,
+                        no_scrollbar=True,
                         border=False,
                     ),
                 ],

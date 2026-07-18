@@ -83,7 +83,6 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
-from sampletones_shared.meta.non_instantiable import NonInstantiableMeta
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import (
     Callback,
