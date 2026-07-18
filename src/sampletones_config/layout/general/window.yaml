@@ -1,5 +1,7 @@
 width: 1280
 height: 800
+min_width: 1024
+min_height: 640
 position_x: 200
 position_y: 200
 fullscreen: false

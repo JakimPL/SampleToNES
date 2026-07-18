@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec, Union
+from typing import Callable, Final, Optional, ParamSpec, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -69,6 +69,7 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
+from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
@@ -109,6 +110,7 @@ _UndoableParams = ParamSpec("_UndoableParams")
 _LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}"
 _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}"
 _RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}"
+_SIDE_PANEL_COUNT: Final[int] = 2
 
 
 class SequencerTabCoordinator:
@@ -484,9 +486,17 @@ class SequencerTabCoordinator:
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_browser_width()
 
+    def sync_column_widths(self) -> None:
+        """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
+        self._sync_browser_width()
+
     def _sync_browser_width(self) -> None:
-        """Shrinks the browser column to the collapse rail when collapsed, else restores its full width."""
-        width = self._rail_width if self._sequencer_browser_panel.collapsed else self._left_width
+        """Shrinks the browser column to the collapse rail when collapsed, else sizes it to the viewport width."""
+        if self._sequencer_browser_panel.collapsed:
+            width = self._rail_width
+        else:
+            width = expanded_side_width(self._left_width, dpg.get_viewport_client_width(), _SIDE_PANEL_COUNT)
+
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _stacked_card_gap(self) -> int:

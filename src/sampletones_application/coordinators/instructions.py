@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -48,6 +48,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
+from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.instruction.choice import (
@@ -84,6 +85,7 @@ from sampletones_shared.types.callback import VoidCallback
 _LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}"
 _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}"
 _RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}"
+_SIDE_PANEL_COUNT: Final[int] = 2
 
 
 class InstructionsTabCoordinator:
@@ -436,9 +438,16 @@ class InstructionsTabCoordinator:
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_library_width()
 
+    def sync_column_widths(self) -> None:
+        """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
+        self._sync_library_width()
+
     def _sync_library_width(self) -> None:
-        """Shrinks the library column to the collapse rail when collapsed, else restores its full width."""
-        width = self._rail_width if self._library_panel.collapsed else self._left_width
+        """Shrinks the library column to the collapse rail when collapsed, else sizes it to the viewport width."""
+        if self._library_panel.collapsed:
+            width = self._rail_width
+        else:
+            width = expanded_side_width(self._left_width, dpg.get_viewport_client_width(), _SIDE_PANEL_COUNT)
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _update_details_view(self, view_model: InstructionDetailsPanelViewModel) -> None:

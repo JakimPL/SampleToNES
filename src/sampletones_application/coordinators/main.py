@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -49,6 +49,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
+from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
@@ -74,6 +75,7 @@ from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 _LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}"
 _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}"
+_SIDE_PANEL_COUNT: Final[int] = 1
 
 
 class MainTabCoordinator:
@@ -540,9 +542,21 @@ class MainTabCoordinator:
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_explorer_width()
 
+    def sync_column_widths(self) -> None:
+        """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
+        self._sync_explorer_width()
+
     def _sync_explorer_width(self) -> None:
-        """Shrinks the filesystem column to the collapse rail when collapsed, else restores its full width."""
-        width = self._rail_width if self._explorer_panel.collapsed else self._explorer_width
+        """Shrinks the filesystem column to the collapse rail when collapsed, else sizes it to the viewport width."""
+        if self._explorer_panel.collapsed:
+            width = self._rail_width
+        else:
+            width = expanded_side_width(
+                self._explorer_width,
+                dpg.get_viewport_client_width(),
+                _SIDE_PANEL_COUNT,
+            )
+
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _on_config_row_collapse_changed(self, card_tag: str, collapsed: bool) -> None:

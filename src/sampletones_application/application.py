@@ -227,6 +227,8 @@ class Application:
         self._viewport_manager = ViewportManager(
             self.session_manager,
             self.theme,
+            min_width=self.layout.general.window.min_width,
+            min_height=self.layout.general.window.min_height,
             on_fullscreen_state_changed=self._update_menu,
         )
 

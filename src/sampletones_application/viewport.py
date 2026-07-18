@@ -21,10 +21,14 @@ class ViewportManager:
         session_manager: SessionManager,
         theme: Theme,
         *,
+        min_width: int,
+        min_height: int,
         on_fullscreen_state_changed: VoidCallback,
     ) -> None:
         self._session_manager = session_manager
         self._theme = theme
+        self._min_width = min_width
+        self._min_height = min_height
         self._on_fullscreen_state_changed = on_fullscreen_state_changed
 
     def create_viewport(self) -> None:
@@ -46,6 +50,8 @@ class ViewportManager:
             title=SAMPLETONES_NAME,
             width=window_width,
             height=window_height,
+            min_width=self._min_width,
+            min_height=self._min_height,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
             x_pos=window_x,
@@ -120,11 +126,12 @@ class ViewportManager:
         width: int,
         height: int,
     ) -> Tuple[int, int, int, int]:
-        """Cap the window to a fraction of its monitor and clamp it within reserved margins.
+        """Fit the window to its monitor, hold it at the configured minimum, and clamp it within reserved margins.
 
         The size is limited to ``_MAX_WINDOW_MONITOR_RATIO`` of the monitor so the title bar and
-        side panels stay on screen once the decoration frame is added, and the position is nudged
-        inside the resulting margins so every edge lands within the monitor.
+        side panels stay on screen once the decoration frame is added, and held at ``min_width`` /
+        ``min_height`` so a window persisted from an earlier session still opens usably wide. The
+        position is nudged inside the resulting margins so every edge lands within the monitor.
         """
         monitor = self._monitor_for_window(x, y, width, height)
         if monitor is not None:
@@ -139,8 +146,8 @@ class ViewportManager:
 
         usable_w = int(screen_w * _MAX_WINDOW_MONITOR_RATIO)
         usable_h = int(screen_h * _MAX_WINDOW_MONITOR_RATIO)
-        fitted_width = min(width, usable_w)
-        fitted_height = min(height, usable_h)
+        fitted_width = max(self._min_width, min(width, usable_w))
+        fitted_height = max(self._min_height, min(height, usable_h))
 
         margin_x = (screen_w - usable_w) // 2
         margin_y = (screen_h - usable_h) // 2
