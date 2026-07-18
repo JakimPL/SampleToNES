@@ -6,8 +6,12 @@ from typing import List, cast
 import numpy as np
 
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.services.result import ServiceCancelled, ServiceError, ServiceSuccess
-from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from sampletones_application.services.result import (
+    ServiceCancelled,
+    ServiceError,
+    ServiceSuccess,
+)
+from sampletones_application.utils.parallelization.coalescing import LatestWinsExecutor
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones_core.instructions import InstructionUnion
@@ -39,11 +43,17 @@ class RegenerationService(ServiceBase[RegenerationResult]):
     source reconstruction is left intact. Producing a new object lets callers swap
     the edited reconstruction in while any history snapshot that shares the prior
     object stays valid.
+
+    Requests are serialized on a :class:`LatestWinsExecutor`: while a job runs, further
+    requests coalesce to the latest one, so a continuous stream of edits collapses to a
+    single applied result — the final value — instead of dropping whichever edit arrived
+    mid-synthesis. ``is_running`` reports whether that worker is still busy, letting the
+    view fade the reconstruction for the whole span rather than per job.
     """
 
     def __init__(self, priority: int = 0) -> None:
         super().__init__(priority)
-        self._executor = SingleThreadExecutor()
+        self._executor = LatestWinsExecutor()
         self._cancelled: bool = False
 
     def start(
@@ -57,10 +67,18 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         if self._cancelled:
             return False
 
-        def task() -> None:
-            self._run(reconstruction, generator_name, features, feature_key, value)
+        return self._executor.submit(
+            lambda: self._run(
+                reconstruction,
+                generator_name,
+                features,
+                feature_key,
+                value,
+            )
+        )
 
-        return self._executor.execute(task, wait=False)
+    def is_running(self) -> bool:
+        return self._executor.is_running
 
     def cancel(self) -> None:
         self._cancelled = True

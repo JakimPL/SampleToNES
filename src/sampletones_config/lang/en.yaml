@@ -224,6 +224,7 @@ global.graph.label.spectrum_name: "Spectrum"
 global.graph.label.bar_display: "Bar plot display"
 global.graph.message.spectrum_navigation: "Right-click for more options."
 global.graph.message.waveform_navigation: "Drag to navigate waveform. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically. Right-click for more options."
+global.graph.message.waveform_regenerating: "Regenerating reconstruction..."
 
 # =============================================================================
 # Main tab — Explorer

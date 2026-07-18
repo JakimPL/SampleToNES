@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple, Type, Union
+from typing import Tuple, Type, Union
 
 import pytest
 
-from sampletones_application.utils.color import parse_hex_color
+from sampletones_shared.utils.color import parse_hex_color, to_grayscale
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
@@ -154,3 +154,14 @@ class TestParseHexColor(BaseTestSuite):
             return
 
         assert parse_hex_color(test_case.value) == test_case.expected
+
+
+class TestToGrayscale:
+    def test_collapses_rgb_to_luminance(self) -> None:
+        assert to_grayscale((255, 200, 100, 255)) == (205, 205, 205, 255)
+
+    def test_preserves_alpha(self) -> None:
+        assert to_grayscale((255, 200, 100, 40)) == (205, 205, 205, 40)
+
+    def test_gray_stays_gray(self) -> None:
+        assert to_grayscale((128, 128, 128, 255)) == (128, 128, 128, 255)

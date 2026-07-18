@@ -617,6 +617,9 @@ class ReconstructionsTabCoordinator:
     def update_reconstruction(self) -> None:
         self._reconstruction_panel_logic.update_reconstruction()
 
+    def set_reconstruction_dimmed(self, dimmed: bool) -> None:
+        self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
+
     @property
     def player(self) -> AudioPlayerProtocol:
         return self._guarded_player

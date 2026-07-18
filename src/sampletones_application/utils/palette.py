@@ -5,8 +5,8 @@ from typing import Annotated, Dict, Final, Mapping, Optional, Union
 
 from pydantic import BaseModel, BeforeValidator, Field, ValidationInfo, model_validator
 
-from sampletones_application.utils.color import RGBA, parse_hex_color, with_alpha_fraction
 from sampletones_shared.types.application import ColorRGBA
+from sampletones_shared.utils.color import RGBA, parse_hex_color, with_alpha_fraction
 from sampletones_shared.utils.serialization import load_yaml
 
 REFERENCE_PREFIX: Final[str] = "."
@@ -49,6 +49,7 @@ def _parse_reference(value: str) -> Dict[str, object]:
         alpha = float(alpha_text)
         if not 0.0 <= alpha <= 1.0:
             raise ValueError(f"Palette reference alpha must lie within [0, 1], got {alpha} in {value!r}")
+
         parsed["alpha"] = alpha
 
     return parsed
@@ -132,8 +133,3 @@ def _resolve_palette_color(value: object, info: ValidationInfo) -> object:
 
 
 PaletteColor = Annotated[ColorRGBA, BeforeValidator(_resolve_palette_color)]
-"""A colour field accepting a ``#rrggbb`` literal or a ``.token`` palette reference.
-
-References resolve against the :class:`Palette` supplied under ``PALETTE_CONTEXT_KEY`` in
-the Pydantic validation context, so a validated field always holds a concrete RGBA tuple.
-"""

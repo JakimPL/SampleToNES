@@ -335,14 +335,18 @@ class ReconstructionCoordinator:
         data: FeatureValue,
     ) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
-        if reconstruction_data is not None:
-            self._regeneration_service.start(
-                reconstruction_data.reconstruction,
-                generator_name,
-                features,
-                feature_key,
-                data,
-            )
+        if reconstruction_data is None:
+            return
+
+        accepted = self._regeneration_service.start(
+            reconstruction_data.reconstruction,
+            generator_name,
+            features,
+            feature_key,
+            data,
+        )
+        if accepted:
+            self._set_reconstruction_dimmed(True)
 
     def on_reconstruction_loaded(self) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
@@ -394,6 +398,21 @@ class ReconstructionCoordinator:
                 self._dialogs.show_error(exception)
             case ServiceCancelled():
                 logger.info("Regeneration cancelled")
+
+        self._set_reconstruction_dimmed(self._regeneration_service.is_running())
+
+    def _set_reconstruction_dimmed(self, dimmed: bool) -> None:
+        """Fades the reconstruction waveform while the regeneration worker is busy.
+
+        The dim is driven off the service's own ``is_running`` span rather than counted per
+        request, so a continuous edit stream keeps the waveform faded until the worker settles.
+        Each finished result re-reads the live span: while more work is queued it stays faded,
+        and it restores once the worker is idle.
+        """
+        if self._reconstructions_tab is None:
+            return
+
+        self._reconstructions_tab.set_reconstruction_dimmed(dimmed)
 
     def _on_state_changed(self) -> None:
         self._on_session_state_changed_callback()

@@ -23,7 +23,6 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
@@ -35,6 +34,7 @@ from sampletones_application.view_model.shared.history import (
 )
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.color import RGBA
 
 EntryWindow = Tuple[HistoryEntryViewModel, ...]
 

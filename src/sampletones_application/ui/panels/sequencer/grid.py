@@ -42,7 +42,6 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.color import with_alpha_fraction
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -58,6 +57,7 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id
 from sampletones_shared.types.application import Sender
+from sampletones_shared.utils.color import with_alpha_fraction
 
 OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[GeneratorName], SubColumn], None]

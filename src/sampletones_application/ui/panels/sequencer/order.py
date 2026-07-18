@@ -35,7 +35,6 @@ from sampletones_application.ui.panels.sequencer.order_input import (
 )
 from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.color import with_alpha_fraction
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -49,6 +48,7 @@ from sampletones_core.utils.display import display_id
 from sampletones_shared.constants.symbols import MINUS, PLUS
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.color import with_alpha_fraction
 
 OrderKey = Tuple[Optional[GeneratorName], int]
 

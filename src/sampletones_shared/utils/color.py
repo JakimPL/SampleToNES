@@ -18,6 +18,17 @@ def with_alpha_fraction(color: ColorRGBA, fraction: float) -> ColorRGBA:
     return (red, green, blue, round(fraction * MAX_CHANNEL_VALUE))
 
 
+def to_grayscale(color: ColorRGBA) -> ColorRGBA:
+    """Return ``color`` desaturated to its luminance-preserving gray, keeping its alpha.
+
+    The RGB channels collapse to one perceptual-luminance value, so a coloured line reads
+    as an inactive gray while its alpha stays under the caller's separate control.
+    """
+    red, green, blue, alpha = color
+    luminance = round(0.299 * red + 0.587 * green + 0.114 * blue)
+    return (luminance, luminance, luminance, alpha)
+
+
 def parse_hex_color(value: str) -> ColorRGBA:
     """Parse a hex color string to an RGBA tuple.
 
@@ -57,6 +68,7 @@ def parse_hex_color(value: str) -> ColorRGBA:
 def _rgba_validator(value: object) -> ColorRGBA:
     if isinstance(value, str):
         return parse_hex_color(value)
+
     raise ValueError(f"Expected a hex color string (e.g. '#rrggbb'), got {type(value).__name__}: {value!r}")
 
 

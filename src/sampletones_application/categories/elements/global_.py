@@ -135,6 +135,7 @@ class GraphElements(AbstractElement):
     BAR_DISPLAY = "bar_display"
     SPECTRUM_NAVIGATION = "spectrum_navigation"
     WAVEFORM_NAVIGATION = "waveform_navigation"
+    WAVEFORM_REGENERATING = "waveform_regenerating"
 
 
 class GlobalMessageElements(AbstractElement):

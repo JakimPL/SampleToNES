@@ -8,10 +8,7 @@ import pytest
 
 from sampletones_application.services.regeneration import RegenerationService
 from sampletones_application.services.result import ServiceCancelled, ServiceError, ServiceSuccess
-from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-
-_real_executor_execute = SingleThreadExecutor.execute
 
 
 @pytest.fixture
@@ -77,9 +74,14 @@ class TestRegenerationServiceStart:
 
         assert results == []
 
-    def test_start_when_executor_busy_returns_false(self) -> None:
+    def test_start_reports_a_submit_failure(self) -> None:
+        """``start`` propagates the executor's accepted/rejected verdict.
+
+        The coalescing worker owns the launch; ``start`` merely forwards whether the
+        submission was accepted, so a caller can gate on it.
+        """
         service = RegenerationService()
-        with patch.object(service._executor, "execute", return_value=False):
+        with patch.object(service._executor, "submit", return_value=False):
             result = service.start(MagicMock(), MagicMock(), {}, MagicMock(), MagicMock())
 
         assert result is False
@@ -91,6 +93,18 @@ class TestRegenerationServiceStart:
         service.cancel()
 
         assert service._cancelled
+
+
+class TestRegenerationServiceIsRunning:
+    def test_is_running_delegates_to_the_executor(self) -> None:
+        service = RegenerationService()
+        service._executor = MagicMock()
+
+        service._executor.is_running = True
+        assert service.is_running() is True
+
+        service._executor.is_running = False
+        assert service.is_running() is False
 
 
 class TestRegenerationServiceRun:
@@ -250,16 +264,17 @@ class TestRegenerationServiceCancellationConstraints:
         reconstruction = MagicMock()
         reconstruction.config = MagicMock()
 
-        def run() -> None:
-            service._run(reconstruction, synthesis_mocks.generator_name, {}, FeatureKey.VOLUME, 1)
-
-        _real_executor_execute(service._executor, run, wait=False)
+        thread = threading.Thread(
+            target=lambda: service._run(reconstruction, synthesis_mocks.generator_name, {}, FeatureKey.VOLUME, 1),
+        )
+        thread.start()
         task_started.wait(timeout=2.0)
 
         service.cancel()
         task_unblock.set()
 
         done.wait(timeout=2.0)
+        thread.join(timeout=2.0)
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
@@ -287,51 +302,3 @@ class TestRegenerationServiceCancellationConstraints:
         )
 
         assert second_result is False
-
-
-class TestRegenerationServiceHangingTask:
-    """Tests that document the absence of a timeout mechanism.
-
-    When the executor is occupied, start() is silently rejected.  There is no
-    watchdog, retry, or escalation — the caller receives False and must decide
-    what to do.  These tests use mocks so they remain fast and deterministic.
-    """
-
-    def test_no_result_emitted_when_executor_is_busy(self) -> None:
-        service = RegenerationService()
-        results: List[Any] = []
-        service.subscribe(results.append)
-
-        with patch.object(service._executor, "execute", return_value=False):
-            service.start(MagicMock(), MagicMock(), {}, MagicMock(), MagicMock())
-
-        assert results == []
-
-    def test_start_rejected_indefinitely_while_busy(self) -> None:
-        service = RegenerationService()
-
-        with patch.object(service._executor, "execute", return_value=False):
-            outcomes = [service.start(MagicMock(), MagicMock(), {}, MagicMock(), MagicMock()) for _ in range(5)]
-
-        assert all(outcome is False for outcome in outcomes)
-
-    def test_debounce_with_real_thread(self) -> None:
-        """Second task is rejected while the first thread is alive (real threading)."""
-        service = RegenerationService()
-        block = threading.Event()
-        task_started = threading.Event()
-
-        def hanging() -> None:
-            task_started.set()
-            block.wait(timeout=5.0)
-
-        _real_executor_execute(service._executor, hanging, wait=False)
-        task_started.wait(timeout=1.0)
-
-        second = _real_executor_execute(service._executor, lambda: None, wait=False)
-
-        assert second is False
-
-        block.set()
-        if service._executor._thread is not None:
-            service._executor._thread.join(timeout=1.0)

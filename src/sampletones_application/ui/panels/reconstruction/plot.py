@@ -193,6 +193,9 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
 
+    def set_reconstruction_dimmed(self, dimmed: bool) -> None:
+        self.waveform_display.set_reconstruction_dimmed(dimmed)
+
     def set_overlay(self, index: Optional[int]) -> None:
         if self._frame_length is None:
             return

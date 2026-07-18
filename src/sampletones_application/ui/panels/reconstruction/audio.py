@@ -25,7 +25,6 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.view_model.reconstruction.reconstruction import (
@@ -37,6 +36,7 @@ from sampletones_core.constants.enums import AudioSourceType
 from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import PathCallback
+from sampletones_shared.utils.color import RGBA
 
 
 class GUIReconstructionAudioPanel(GUIPanel):

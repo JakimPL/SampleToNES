@@ -32,6 +32,7 @@ from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Color, Sender
+from sampletones_shared.utils.color import to_grayscale, with_alpha_fraction
 
 
 class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
@@ -89,8 +90,15 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             TextType.MESSAGE,
             GraphElements.WAVEFORM_NAVIGATION,
         ]
+        self._msg_regenerating = language_manager[
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.MESSAGE,
+            GraphElements.WAVEFORM_REGENERATING,
+        ]
 
         self.reconstruction_autoscale = True
+        self._reconstruction_dimmed: bool = False
         self._top_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
 
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
@@ -175,7 +183,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)
-        self._status_bar.set(self._msg_navigation)
+        self._status_bar.set(self._msg_regenerating if self._reconstruction_dimmed else self._msg_navigation)
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
         _min_y = self._layout.graph.min_y
@@ -281,10 +289,33 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         waveform_data: WaveformData,
         selected_generators: Optional[List[GeneratorName]] = None,
     ) -> None:
+        self._reconstruction_dimmed = False
         self.clear_layers()
         self.current_data = waveform_data
         for layer in self._display_layers(waveform_data, selected_generators):
             self.add_layer(layer)
+
+    def set_reconstruction_dimmed(self, dimmed: bool) -> None:
+        """Greys the reconstruction line while its audio is being regenerated, restoring it when done.
+
+        Only the reconstruction series is greyed; the original-audio series and the axes keep full
+        strength, so the fade reads as "this waveform is being recomputed", and the status bar shows a
+        regenerating hint for the same span. The state is remembered so an async data update arriving
+        mid-regeneration redraws the reconstruction still greyed.
+        """
+        if self._reconstruction_dimmed == dimmed:
+            return
+
+        self._reconstruction_dimmed = dimmed
+        self._status_bar.set(self._msg_regenerating if dimmed else "")
+
+        layer = self.layers.get(self._lbl_waveform_reconstruction)
+        if layer is None:
+            return
+
+        series_tag = self._series_tag(layer.name)
+        if dpg.does_item_exist(series_tag):
+            self._bind_series_theme(series_tag, self._series_color(layer))
 
     def reconstruction_layer(self, data: np.ndarray) -> ArrayLayer:
         return ArrayLayer(
@@ -344,6 +375,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._update_display()
 
     def clear(self) -> None:
+        self._reconstruction_dimmed = False
         self.clear_layers()
         dpg_delete_children(self.y_axis_tag)
         self._set_overlay_rectangle()
@@ -365,7 +397,21 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         for layer in self.layers.values():
             series_tag = self._series_tag(layer.name)
             self._upsert_series(series_tag, layer)
-            self._bind_series_theme(series_tag, layer.color)
+            self._bind_series_theme(series_tag, self._series_color(layer))
+
+    def _series_color(self, layer: Union[ArrayLayer, InstructionLayer]) -> Color:
+        """Resolves a layer's line colour, greying the reconstruction while a regeneration runs.
+
+        The dimmed reconstruction is desaturated to gray and faded, so the drawn waveform — not just
+        the legend swatch — clearly reads as inactive while its audio is recomputed.
+        """
+        if self._reconstruction_dimmed and layer.name == self._lbl_waveform_reconstruction:
+            return with_alpha_fraction(
+                to_grayscale(self._layout.colors.waveform_reconstruction),
+                self._layout.waveform.reconstruction_dim_opacity,
+            )
+
+        return layer.color
 
     def _prune_stale_series(self) -> None:
         """Aligns the y-axis series with the current layers, keeping the position indicator
@@ -398,8 +444,14 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             )
 
     def _bind_series_theme(self, series_tag: str, color: Color) -> None:
-        """Creates the line-color theme for a series when new and binds it to the series."""
-        theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
+        """Binds a line-color theme to a series, creating one cached theme per colour.
+
+        Keying the theme by colour lets a series switch between colour variants — such as the
+        dimmed reconstruction line during regeneration — by binding the matching cached theme,
+        rather than recolouring a single shared theme in place.
+        """
+        color_part = "_".join(str(channel) for channel in color)
+        theme_tag = f"{series_tag}{SUF_GRAPH_THEME}{TAG_SEPARATOR}{color_part}"
         if not dpg.does_item_exist(theme_tag):
             with dpg.theme(tag=theme_tag):
                 with dpg.theme_component(dpg.mvLineSeries):
