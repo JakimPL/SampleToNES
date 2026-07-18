@@ -49,3 +49,57 @@ class TestKeyDispatchWhileInputFocused:
             manager._handle_key(Mock(), callback)
 
         callback.assert_called_once()
+
+
+class TestModalSuppression:
+    def test_a_pushed_modal_marks_the_dialog_open(self) -> None:
+        manager = ShortcutManager()
+
+        manager.push_modal()
+
+        assert manager.is_dialog_open
+
+    def test_popping_the_last_modal_releases_the_dialog(self) -> None:
+        manager = ShortcutManager()
+        manager.push_modal()
+
+        manager.pop_modal()
+
+        assert not manager.is_dialog_open
+
+    def test_nested_modals_stay_open_until_the_last_pop(self) -> None:
+        manager = ShortcutManager()
+        manager.push_modal()
+        manager.push_modal()
+
+        manager.pop_modal()
+
+        assert manager.is_dialog_open
+
+    def test_pop_without_a_push_stays_closed(self) -> None:
+        manager = ShortcutManager()
+
+        manager.pop_modal()
+
+        assert not manager.is_dialog_open
+
+    def test_open_dialog_suppresses_the_shortcut(self) -> None:
+        manager = ShortcutManager()
+        callback = Mock()
+        manager.push_modal()
+
+        with patch.object(manager, "_modifiers_match", return_value=True):
+            manager._handle_key(Mock(), callback)
+
+        callback.assert_not_called()
+
+    def test_closed_dialog_restores_the_shortcut(self) -> None:
+        manager = ShortcutManager()
+        callback = Mock()
+        manager.push_modal()
+        manager.pop_modal()
+
+        with patch.object(manager, "_modifiers_match", return_value=True):
+            manager._handle_key(Mock(), callback)
+
+        callback.assert_called_once()

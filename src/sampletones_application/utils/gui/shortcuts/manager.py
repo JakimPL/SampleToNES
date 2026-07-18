@@ -15,6 +15,7 @@ class ShortcutManager:
         self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, Callback]] = {}
         self._aliases: Dict[ShortcutId, List[Shortcut]] = {}
         self._focused_input: Optional[Sender] = None
+        self._modal_depth: int = 0
 
         self._handler_registry: Optional[int] = None
         self._focus_handler_tag = TAG_GLOBAL_HANDLER_FOCUS
@@ -45,6 +46,28 @@ class ShortcutManager:
         reaching the tracker tables.
         """
         return self._focused_input is not None
+
+    @property
+    def is_dialog_open(self) -> bool:
+        """Whether a modal dialog currently owns keyboard input.
+
+        A dialog claims the keyboard for its own navigation while it is shown, so shortcut
+        dispatch and the sequencer key handlers consult this to hold every application key
+        action behind the modal until it closes.
+        """
+        return self._modal_depth > 0
+
+    def push_modal(self) -> None:
+        """Registers that a modal dialog has taken over the keyboard.
+
+        Counting depth keeps a dialog opened on top of another dialog from releasing the
+        keyboard until the last one closes.
+        """
+        self._modal_depth += 1
+
+    def pop_modal(self) -> None:
+        """Releases one modal dialog's claim on the keyboard, floored at zero."""
+        self._modal_depth = max(0, self._modal_depth - 1)
 
     def get_shortcut_display(self, shortcut_id: ShortcutId) -> str:
         if shortcut_id in self._shortcuts:
@@ -81,6 +104,9 @@ class ShortcutManager:
         )
 
     def _handle_key(self, shortcut: Shortcut, callback: Callback) -> None:
+        if self.is_dialog_open:
+            return
+
         if not self.is_input_focused and self._modifiers_match(shortcut.modifiers):
             callback()
 
