@@ -88,6 +88,7 @@ class MenuBar:
         shortcut_manager: ShortcutManager,
         fps_theme: Theme,
         player_toolbar_theme: Theme,
+        player_button_theme: Theme,
         player_glyphs: PlayerGlyphs,
         player_layout: PlayerLayout,
         language_manager: LanguageManager,
@@ -98,6 +99,7 @@ class MenuBar:
         self._shortcut_manager = shortcut_manager
         self._fps_theme = fps_theme
         self._player_toolbar_theme = player_toolbar_theme
+        self._player_button_theme = player_button_theme
         self._player_glyphs = player_glyphs
         self._player_layout = player_layout
         self._language_manager = language_manager
@@ -396,6 +398,7 @@ class MenuBar:
                 TAG_GLOBAL_PANEL_PLAYER,
                 layout=self._player_layout,
                 glyphs=self._player_glyphs,
+                button_theme=self._player_button_theme,
                 play_tag=self._play_button_tag,
                 pause_tag=self._pause_button_tag,
                 stop_tag=self._stop_button_tag,

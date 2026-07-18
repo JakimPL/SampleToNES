@@ -6,6 +6,7 @@ from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.player import SUF_PLAYER_TOOLTIP
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.themes.theme import Theme
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -14,6 +15,7 @@ def create_compact_transport_controls(
     *,
     layout: PlayerLayout,
     glyphs: PlayerGlyphs,
+    button_theme: Theme,
     play_tag: str,
     pause_tag: str,
     stop_tag: str,
@@ -38,6 +40,7 @@ def create_compact_transport_controls(
             play_tooltip,
             on_play,
             layout.button,
+            button_theme,
         )
         dpg.add_spacer(width=layout.toolbar.gap)
         _create_icon_button(
@@ -46,6 +49,7 @@ def create_compact_transport_controls(
             pause_tooltip,
             on_pause_or_resume,
             layout.button,
+            button_theme,
         )
         dpg.add_spacer(width=layout.toolbar.gap)
         _create_icon_button(
@@ -54,6 +58,7 @@ def create_compact_transport_controls(
             stop_tooltip,
             on_stop,
             layout.button,
+            button_theme,
         )
         dpg.add_spacer(width=layout.toolbar.padding)
 
@@ -64,6 +69,7 @@ def _create_icon_button(
     tooltip: str,
     callback: VoidCallback,
     button_layout: PlayerButtonLayout,
+    button_theme: Theme,
 ) -> None:
     GUIButton(
         tag=tag,
@@ -71,6 +77,7 @@ def _create_icon_button(
         callback=callback,
         enabled=False,
         font=Font.ICON,
+        theme=button_theme,
         width=button_layout.width,
         height=button_layout.height,
     )

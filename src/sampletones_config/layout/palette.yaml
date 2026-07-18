@@ -92,6 +92,10 @@ colors:
   # player
   player_surface: "#242a44"
   player_border: "#4a90d9"
+  player_button: "#313b61"
+  player_button_hovered: "#3c4876"
+  player_button_active: "#4a5896"
+  player_button_disabled: "#252e4d"
 
   # text
   text: "#e7e7f0"

@@ -69,6 +69,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
+    TAG_GLOBAL_THEME_PLAYER_BUTTON,
     TAG_GLOBAL_THEME_PLAYER_TOOLBAR,
     TAG_GLOBAL_WINDOW_MAIN,
 )
@@ -208,11 +209,13 @@ class Application:
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
         self.fps_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_MENU_FPS)
         self.player_toolbar_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_TOOLBAR)
+        self.player_button_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_BUTTON)
 
         self._menu_bar = MenuBar(
             shortcut_manager=self.shortcut_manager,
             fps_theme=self.fps_theme,
             player_toolbar_theme=self.player_toolbar_theme,
+            player_button_theme=self.player_button_theme,
             player_glyphs=self.layout.glyphs.player,
             player_layout=self.layout.player,
             language_manager=self.language_manager,
