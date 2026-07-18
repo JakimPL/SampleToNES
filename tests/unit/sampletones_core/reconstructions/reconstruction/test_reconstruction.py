@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Final
 from unittest.mock import patch
 
 import pytest
 
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.data import Metadata
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.application import (
@@ -22,6 +23,9 @@ from tests.conftest import ReconstructionFactory
 from tests.suite.arrays import assert_array_equal
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+
+_RETUNED_FREQUENCY: Final[int] = 60
+_FASTER_FREQUENCY: Final[int] = 120
 
 
 class TestRoundTrip:
@@ -185,3 +189,49 @@ class TestDeserializeDataWrapping(BaseTestSuite):
         ):
             with pytest.raises(test_case.expected):
                 Reconstruction.deserialize_data(b"x", source="mem")
+
+
+class TestWithNesFrequency:
+    def test_rebuilds_config(self, reconstruction_factory: ReconstructionFactory) -> None:
+        reconstruction = reconstruction_factory()
+
+        retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
+
+        assert retuned.config.nes_frequency == _RETUNED_FREQUENCY
+        assert retuned.config.frame_length == round(retuned.config.sample_rate / _RETUNED_FREQUENCY)
+
+    def test_resynthesizes_approximation_length(self, reconstruction_factory: ReconstructionFactory) -> None:
+        reconstruction = reconstruction_factory()
+
+        retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
+        faster = reconstruction.with_nes_frequency(_FASTER_FREQUENCY)
+
+        generator_approximation = retuned.approximations[GeneratorName.PULSE1]
+        assert len(retuned.approximation) == len(generator_approximation)
+        assert len(retuned.approximation) == retuned.config.frame_length
+        assert len(faster.approximation) < len(retuned.approximation)
+
+    def test_preserves_instructions(self, reconstruction_factory: ReconstructionFactory) -> None:
+        reconstruction = reconstruction_factory()
+
+        retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
+
+        assert retuned.instructions == reconstruction.instructions
+        assert retuned.coefficient == reconstruction.coefficient
+
+    def test_leaves_original_untouched(self, reconstruction_factory: ReconstructionFactory) -> None:
+        reconstruction = reconstruction_factory()
+        original_frequency = reconstruction.config.nes_frequency
+        original_length = len(reconstruction.approximation)
+
+        reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
+
+        assert reconstruction.config.nes_frequency == original_frequency
+        assert len(reconstruction.approximation) == original_length
+
+    def test_matching_rate_returns_self(self, reconstruction_factory: ReconstructionFactory) -> None:
+        reconstruction = reconstruction_factory()
+
+        retuned = reconstruction.with_nes_frequency(reconstruction.config.nes_frequency)
+
+        assert retuned is reconstruction
