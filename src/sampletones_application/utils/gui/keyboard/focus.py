@@ -25,9 +25,16 @@ def is_field_focused() -> bool:
     keys away from shortcuts and the tracker tables on its own, with no per-input wiring. Reading
     focus at the source also closes the gap where an input that skipped registration let shortcuts
     fire mid-edit.
+
+    DearPyGui keeps reporting the last focused item after the widget behind it is gone, which the
+    sequencer does whenever it rebuilds its tables, so the item is confirmed to still exist before
+    it is queried and a vanished field counts as no field focused.
     """
     item = dpg.get_focused_item()
     if not item:
+        return False
+
+    if not dpg.does_item_exist(item):
         return False
 
     if dpg.get_item_type(item) not in FIELD_ITEM_TYPES:
