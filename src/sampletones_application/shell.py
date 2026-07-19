@@ -368,7 +368,6 @@ class ApplicationShell:
 
     def _setup_handlers(self) -> None:
         self._key_router.bind()
-        self._shortcut_manager.setup_focus_handler()
 
     def _create_main_window(self, on_tab_changed: Callback, initial_menu_state: MenuBarViewModel) -> None:
         with dpg.window(

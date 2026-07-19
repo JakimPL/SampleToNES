@@ -3,6 +3,7 @@ from typing import Callable, Final, List
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.utils.gui.keyboard import focus
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_shared.types.application import Sender
 
@@ -60,6 +61,15 @@ class KeyRouter:
     def is_modal_open(self) -> bool:
         """Whether a modal dialog currently holds the keyboard."""
         return self._modal_depth > 0
+
+    @property
+    def is_field_focused(self) -> bool:
+        """Whether a text or value field is being edited and should keep plain keys for itself.
+
+        The scopes consult this one flag instead of each input reporting its own focus, so a key
+        press stays with the field the user is typing into and reaches shortcuts otherwise.
+        """
+        return focus.is_field_focused()
 
     def push_modal(self) -> None:
         """Registers that a modal dialog has taken over the keyboard.

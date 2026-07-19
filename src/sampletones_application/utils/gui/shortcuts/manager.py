@@ -1,13 +1,11 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.tags.general import TAG_GLOBAL_HANDLER_FOCUS
 from sampletones_application.utils.gui.keyboard import PRIORITY_SHORTCUT, KeyEvent, KeyRouter
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
-from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
 
 
@@ -17,9 +15,6 @@ class ShortcutManager:
         self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, Callback]] = {}
         self._aliases: Dict[ShortcutId, List[Shortcut]] = {}
         self._bindings_by_key: Dict[int, List[Tuple[Shortcut, Callback]]] = {}
-        self._focused_input: Optional[Sender] = None
-
-        self._focus_handler_tag = TAG_GLOBAL_HANDLER_FOCUS
 
     def register(
         self,
@@ -40,13 +35,12 @@ class ShortcutManager:
 
     @property
     def is_input_focused(self) -> bool:
-        """Whether a text or numeric input currently owns keyboard focus.
+        """Whether a text or value field currently owns keyboard focus.
 
-        Registered inputs report focus through the shared focus handler, so both shortcut
-        dispatch and the sequencer key handlers consult this to keep typed characters from
-        reaching the tracker tables.
+        The key router reads focus at the source each key press, so both shortcut dispatch and the
+        sequencer key handlers consult this to keep typed characters with the field they belong to.
         """
-        return self._focused_input is not None
+        return self._router.is_field_focused
 
     @property
     def is_dialog_open(self) -> bool:
@@ -125,31 +119,3 @@ class ShortcutManager:
             and event.shift == (Modifier.SHIFT in required)
             and event.alt == (Modifier.ALT in required)
         )
-
-    def setup_focus_handler(self) -> None:
-        with dpg.item_handler_registry(tag=self._focus_handler_tag):
-            dpg.add_item_activated_handler(callback=self._on_input_focused)
-            dpg.add_item_deactivated_handler(callback=self._on_input_unfocused)
-            dpg.add_item_deactivated_after_edit_handler(callback=self._on_input_unfocused)
-
-    def setup_input_focus_handlers(self, input_tag: str) -> None:
-        if dpg.does_item_exist(input_tag) and dpg.does_item_exist(self._focus_handler_tag):
-            dpg.bind_item_handler_registry(input_tag, self._focus_handler_tag)
-
-    def attach_focus_tracking(self, registry_tag: str) -> None:
-        """Adds focus tracking to an item handler registry the input already binds.
-
-        Inputs that carry their own registry (a commit or rename handler) bind one
-        registry each, so their focus reporting is added into that same registry rather
-        than the shared focus registry.
-        """
-        dpg.add_item_activated_handler(parent=registry_tag, callback=self._on_input_focused)
-        dpg.add_item_deactivated_handler(parent=registry_tag, callback=self._on_input_unfocused)
-        dpg.add_item_deactivated_after_edit_handler(parent=registry_tag, callback=self._on_input_unfocused)
-
-    def _on_input_focused(self, sender: Sender, app_data: Sender) -> None:
-        self._focused_input = app_data
-
-    def _on_input_unfocused(self, sender: Sender, app_data: Sender) -> None:
-        if self._focused_input == app_data:
-            self._focused_input = None

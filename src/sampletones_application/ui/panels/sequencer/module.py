@@ -188,8 +188,6 @@ class GUISequencerModulePanel(GUIPanel):
             self._rows_handler_tag,
             self._on_rows_per_pattern_input,
         )
-        self._shortcut_manager.setup_input_focus_handlers(TAG_SEQUENCER_MODULE_INPUT_TEMPO)
-        self._shortcut_manager.setup_input_focus_handlers(TAG_SEQUENCER_MODULE_INPUT_SPEED)
         show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._tpl_rows_tooltip)
         self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._msg_status_input)
         self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
@@ -216,7 +214,6 @@ class GUISequencerModulePanel(GUIPanel):
         with dpg.item_handler_registry(tag=handler_tag):
             dpg.add_item_deactivated_after_edit_handler(callback=callback)
 
-        self._shortcut_manager.attach_focus_tracking(handler_tag)
         dpg.bind_item_handler_registry(input_tag, handler_tag)
 
     def _on_nes_frequency_input(self, sender: Sender, app_data: int) -> None:

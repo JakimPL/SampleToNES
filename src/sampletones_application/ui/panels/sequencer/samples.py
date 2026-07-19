@@ -173,8 +173,6 @@ class GUISequencerSamplesPanel(GUIPanel):
         with dpg.item_handler_registry(tag=self._rename_handler_tag):
             dpg.add_item_deactivated_handler(callback=self._on_rename_deactivated)
 
-        self._shortcut_manager.attach_focus_tracking(self._rename_handler_tag)
-
     def _create_key_handler(self) -> None:
         with dpg.handler_registry(tag=TAG_SEQUENCER_INSTRUMENTS_HANDLER_KEY):
             dpg.add_key_press_handler(callback=self._on_key_pressed)

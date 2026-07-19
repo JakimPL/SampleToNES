@@ -1,6 +1,10 @@
+from typing import Dict
 from unittest.mock import Mock
 
+import pytest
+
 from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard import focus as focus_module
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -9,37 +13,19 @@ from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 KEY = 65
 
 
+@pytest.fixture(autouse=True)
+def field_focus(monkeypatch: pytest.MonkeyPatch) -> Dict[str, bool]:
+    state = {"focused": False}
+    monkeypatch.setattr(focus_module, "is_field_focused", lambda: state["focused"])
+    return state
+
+
 def _manager() -> ShortcutManager:
     return ShortcutManager(key_router=KeyRouter())
 
 
 def _event(*, ctrl: bool = False, shift: bool = False, alt: bool = False) -> KeyEvent:
     return KeyEvent(key=KEY, ctrl=ctrl, shift=shift, alt=alt)
-
-
-class TestInputFocusTracking:
-    def test_focus_event_marks_input_focused(self) -> None:
-        manager = _manager()
-
-        manager._on_input_focused(sender=1, app_data=42)
-
-        assert manager.is_input_focused
-
-    def test_unfocus_of_focused_widget_releases_focus(self) -> None:
-        manager = _manager()
-        manager._on_input_focused(sender=1, app_data=42)
-
-        manager._on_input_unfocused(sender=1, app_data=42)
-
-        assert not manager.is_input_focused
-
-    def test_unfocus_of_other_widget_keeps_focus(self) -> None:
-        manager = _manager()
-        manager._on_input_focused(sender=1, app_data=42)
-
-        manager._on_input_unfocused(sender=1, app_data=99)
-
-        assert manager.is_input_focused
 
 
 class TestShortcutDispatch:
@@ -77,19 +63,19 @@ class TestShortcutDispatch:
 
 
 class TestFieldFocusGate:
-    def test_focused_input_suppresses_an_opaque_shortcut(self) -> None:
+    def test_focused_input_suppresses_an_opaque_shortcut(self, field_focus: Dict[str, bool]) -> None:
         manager = _manager()
         callback = Mock()
         manager.register(ShortcutId.SAVE_PROJECT, Shortcut(KEY, (Modifier.CTRL,)), callback)
         manager.bind_all()
-        manager._on_input_focused(sender=1, app_data=42)
+        field_focus["focused"] = True
 
         claimed = manager._dispatch(_event(ctrl=True))
 
         assert not claimed
         callback.assert_not_called()
 
-    def test_field_transparent_shortcut_fires_while_focused(self) -> None:
+    def test_field_transparent_shortcut_fires_while_focused(self, field_focus: Dict[str, bool]) -> None:
         manager = _manager()
         callback = Mock()
         manager.register(
@@ -98,12 +84,21 @@ class TestFieldFocusGate:
             callback,
         )
         manager.bind_all()
-        manager._on_input_focused(sender=1, app_data=42)
+        field_focus["focused"] = True
 
         claimed = manager._dispatch(_event(ctrl=True))
 
         assert claimed
         callback.assert_called_once()
+
+    def test_is_input_focused_reflects_the_router(self, field_focus: Dict[str, bool]) -> None:
+        manager = _manager()
+
+        field_focus["focused"] = True
+        assert manager.is_input_focused
+
+        field_focus["focused"] = False
+        assert not manager.is_input_focused
 
 
 class TestModalFacade:

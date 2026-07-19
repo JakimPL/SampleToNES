@@ -165,7 +165,6 @@ class GUIPitchStepper(CallbackMixin):
         ThemeRegistry.get(TAG_GLOBAL_THEME_PITCH_STEPPER).bind_to_item(self._table_tag)
         show_tooltip(self._input_tag, self._tooltip, tag=self._tooltip_tag)
         self._status_bar.bind_to_item(self._input_tag, self._status_message)
-        self._shortcut_manager.setup_input_focus_handlers(self._input_tag)
         self._setup_input_handler()
         self._setup_button_hold_handlers()
 

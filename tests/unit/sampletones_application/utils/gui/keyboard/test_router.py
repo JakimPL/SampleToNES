@@ -1,10 +1,13 @@
 from typing import Callable, List
 
+import pytest
+
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_MODAL,
     PRIORITY_SHORTCUT,
     KeyEvent,
     KeyRouter,
+    focus,
 )
 
 
@@ -97,3 +100,14 @@ class TestModalDepth:
 
         assert not claimed
         assert log == []
+
+
+class TestFieldFocus:
+    def test_field_focus_reflects_the_focus_query(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        router = KeyRouter()
+
+        monkeypatch.setattr(focus, "is_field_focused", lambda: True)
+        assert router.is_field_focused
+
+        monkeypatch.setattr(focus, "is_field_focused", lambda: False)
+        assert not router.is_field_focused

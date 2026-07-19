@@ -689,7 +689,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             )
             FontRegistry.bind_to_item(raw_data_tag, Font.MONO)
 
-        self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
         self._status_bar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
         self._status_bar.bind_to_item(
             raw_data_tag,

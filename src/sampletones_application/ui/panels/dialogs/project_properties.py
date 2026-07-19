@@ -189,8 +189,6 @@ class GUIProjectPropertiesWindow(GUIWindow):
         with labeled_field(label, self._layout.label_width):
             dpg.add_input_text(tag=tag, default_value=value, width=self._layout.input_width)
 
-        self._shortcut_manager.setup_input_focus_handlers(tag)
-
     def _create_comment_field(self) -> None:
         label_id = dpg.add_text(self._lbl_comment)
         FontRegistry.bind_to_item(label_id, Font.BOLD)
@@ -201,7 +199,6 @@ class GUIProjectPropertiesWindow(GUIWindow):
             width=self._layout.input_width,
             height=self._layout.comment_height,
         )
-        self._shortcut_manager.setup_input_focus_handlers(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT)
 
     def _create_metadata(self) -> None:
         self._create_metadata_row(self._lbl_created, self._created_text)

@@ -644,12 +644,6 @@ TAG_GLOBAL_TAB_SEQUENCER = TagName(
     Widget.TAB,
     "sequencer",
 )
-TAG_GLOBAL_HANDLER_FOCUS = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.HANDLER,
-    "focus",
-)
 
 SUF_BUTTON = f"{TAG_SEPARATOR}button"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}{TAG_SEPARATOR}copy"

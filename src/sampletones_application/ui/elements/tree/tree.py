@@ -365,7 +365,6 @@ class GUITreePanel(GUIPanel, ABC):
                 width=-1,
             )
 
-        self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
         self._status_bar.bind_to_item(self._search_input_tag, self._msg_tree_search)
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
