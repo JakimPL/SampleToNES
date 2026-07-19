@@ -1,3 +1,5 @@
+import shutil
+import sys
 from functools import wraps
 from pathlib import Path
 from typing import (
@@ -58,25 +60,51 @@ def _normalize_extensions(extensions: Iterable[str]) -> List[str]:
     return [f"*{extension.removeprefix('*')}" for extension in extensions]
 
 
+def _uses_zenity() -> bool:
+    """
+    Reports whether filedialpy routes dialogs through zenity.
+
+    filedialpy prefers zenity on Linux whenever it is on the ``PATH``, falling back
+    to kdialog or tkinter otherwise. Its GTK file chooser expects each filter as
+    ``NAME | PATTERN``, so detecting this lets the caller format the filter the way
+    that backend renders correctly.
+
+    Returns:
+        bool: ``True`` when zenity is the active Linux backend.
+    """
+    return sys.platform == "linux" and shutil.which("zenity") is not None
+
+
 def _dialog_filter(
     normalized_extensions: List[str],
 ) -> Optional[Union[str, List[str]]]:
     """
-    Returns the extension filter in the shape each filedialpy backend expects.
+    Returns the extension filter in the shape the active filedialpy backend expects.
 
-    The macOS backend calls ``filter.split(" ")`` on this value, so on macOS it
-    must be a single space-joined string (or ``None`` when nothing is configured,
-    which skips filtering); every other backend iterates the list directly.
+    Each backend consumes the filter differently:
+    - macOS calls ``filter.split(" ")``, so it needs a single space-joined string.
+    - zenity renders a filter as ``NAME | PATTERN`` and labels a nameless filter
+      "(None)", so the patterns are supplied as both the name and the pattern list,
+      collapsed into a single filter entry.
+    - the remaining backends iterate the list of patterns directly.
+
+    An empty selection yields ``None`` so every backend skips filtering.
 
     Args:
         normalized_extensions (List[str]): Extensions already prefixed with ``*``.
 
     Returns:
-        Optional[Union[str, List[str]]]: A space-joined string on macOS, otherwise
-        the list unchanged.
+        Optional[Union[str, List[str]]]: The filter shaped for the active backend.
     """
+    if not normalized_extensions:
+        return None
+
     if System.current() is System.MACOS:
-        return " ".join(normalized_extensions) if normalized_extensions else None
+        return " ".join(normalized_extensions)
+
+    if _uses_zenity():
+        patterns = " ".join(normalized_extensions)
+        return [f"{patterns} | {patterns}"]
 
     return normalized_extensions
 
@@ -136,7 +164,7 @@ def save_file_dialog(
         title=title,
         initial_dir=str(initial_dir) if initial_dir else None,
         initial_file=default_filename,
-        filter=normalized_extensions,
+        filter=_dialog_filter(normalized_extensions),
     )
 
     path = _discard_macos_cancel(normalize_path(filepath))

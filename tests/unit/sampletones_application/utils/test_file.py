@@ -79,7 +79,11 @@ class TestSaveFileDialog(BaseTestSuite):
             assert result == Path(test_case.expected)
 
     def test_forwards_normalized_extension_filter(self) -> None:
-        with patch("sampletones_application.utils.file.filedialpy.saveFile") as mock_save:
+        with (
+            patch("sampletones_application.utils.file._uses_zenity", return_value=False),
+            patch("sampletones_application.utils.file.System.current", return_value=System.LINUX),
+            patch("sampletones_application.utils.file.filedialpy.saveFile") as mock_save,
+        ):
             mock_save.return_value = "song.stp"
             save_file_dialog(title="Save", extensions=[".stp"])
 
@@ -125,9 +129,10 @@ class TestMacOSHardening:
 
         assert mock_open.call_args.kwargs["filter"] is None
 
-    def test_open_forwards_list_filter_off_macos(self) -> None:
+    def test_open_forwards_list_filter_without_zenity(self) -> None:
         with (
             patch("sampletones_application.utils.file.System.current", return_value=System.LINUX),
+            patch("sampletones_application.utils.file._uses_zenity", return_value=False),
             patch("sampletones_application.utils.file.filedialpy.openFile") as mock_open,
         ):
             mock_open.return_value = "/home/user/audio.wav"
@@ -164,3 +169,29 @@ class TestMacOSHardening:
             result = open_file_dialog(title="Open", extensions=[".wav"])
 
         assert result == Path.cwd()
+
+
+class TestZenityFilter:
+    """Guards the named-filter format zenity's GTK chooser needs to avoid a "(None)" label."""
+
+    def test_open_supplies_named_filter(self) -> None:
+        with (
+            patch("sampletones_application.utils.file.System.current", return_value=System.LINUX),
+            patch("sampletones_application.utils.file._uses_zenity", return_value=True),
+            patch("sampletones_application.utils.file.filedialpy.openFile") as mock_open,
+        ):
+            mock_open.return_value = "/home/user/audio.wav"
+            open_file_dialog(title="Open", extensions=[".wav", ".mp3"])
+
+        assert mock_open.call_args.kwargs["filter"] == ["*.wav *.mp3 | *.wav *.mp3"]
+
+    def test_save_supplies_named_filter(self) -> None:
+        with (
+            patch("sampletones_application.utils.file.System.current", return_value=System.LINUX),
+            patch("sampletones_application.utils.file._uses_zenity", return_value=True),
+            patch("sampletones_application.utils.file.filedialpy.saveFile") as mock_save,
+        ):
+            mock_save.return_value = "song.stp"
+            save_file_dialog(title="Save", extensions=[".stp"])
+
+        assert mock_save.call_args.kwargs["filter"] == ["*.stp | *.stp"]
