@@ -74,6 +74,11 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
+from sampletones_application.utils.file import (
+    ignore_none_path,
+    save_file_dialog,
+    select_directory_dialog,
+)
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -83,6 +88,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -243,7 +249,19 @@ class ReconstructionsTabCoordinator:
             TextType.MESSAGE,
             ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_FAILED,
         ]
-        _ttl_export_wav = language_manager[
+        self._ttl_export_instrument = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.INSTRUMENTS,
+            TextType.TITLE,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_DIALOG,
+        ]
+        self._ttl_export_instruments = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.INSTRUMENTS,
+            TextType.TITLE,
+            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_DIALOG,
+        ]
+        self._ttl_export_wav = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.INSTRUMENTS,
             TextType.TITLE,
@@ -356,15 +374,6 @@ class ReconstructionsTabCoordinator:
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_plot_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
-        self._reconstruction_audio_panel.on_export_instrument_confirmed = (
-            self._reconstruction_panel_logic.handle_export_instrument_confirmed
-        )
-        self._reconstruction_audio_panel.on_export_instruments_confirmed = (
-            self._reconstruction_panel_logic.handle_export_instruments_confirmed
-        )
-        self._reconstruction_audio_panel.on_export_wav_confirmed = (
-            self._reconstruction_panel_logic.handle_export_wav_confirmed
-        )
         self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
@@ -377,15 +386,9 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_panel_logic.on_waveform_source_changed = (
             self._reconstruction_plot_panel.set_waveform_top_source
         )
-        self._reconstruction_panel_logic.on_open_export_instrument_dialog = (
-            self._reconstruction_audio_panel.open_export_instrument_dialog
-        )
-        self._reconstruction_panel_logic.on_open_export_instruments_dialog = (
-            self._reconstruction_audio_panel.open_export_instruments_dialog
-        )
-        self._reconstruction_panel_logic.on_open_export_wav_dialog = (
-            self._reconstruction_audio_panel.open_export_wav_dialog
-        )
+        self._reconstruction_panel_logic.on_open_export_instrument_dialog = self._open_export_instrument_dialog
+        self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
+        self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
             path, self._msg_locate_audio_failed
         )
@@ -394,7 +397,7 @@ class ReconstructionsTabCoordinator:
             lambda result: self._on_export_result(
                 result,
                 ttl_export_status=_ttl_export_status,
-                ttl_export_wav=_ttl_export_wav,
+                ttl_export_wav=self._ttl_export_wav,
                 msg_export_instrument_success=_msg_export_instrument_success,
                 msg_export_instrument_failed=_msg_export_instrument_failed,
                 msg_export_instruments_success=_msg_export_instruments_success,
@@ -459,6 +462,43 @@ class ReconstructionsTabCoordinator:
         """Fans the reconstruction view model out to the audio and plot cards."""
         self._reconstruction_audio_panel.update_view(view_model)
         self._reconstruction_plot_panel.update_view(view_model)
+
+    def _open_export_instrument_dialog(self, default_filename: str, default_path: str) -> None:
+        filepath = save_file_dialog(
+            title=self._ttl_export_instrument,
+            initial_dir=default_path,
+            default_filename=default_filename,
+            extensions=[EXT_FILE_INSTRUMENT],
+        )
+        self._handle_export_instrument(filepath)
+
+    @ignore_none_path
+    def _handle_export_instrument(self, filepath: Path) -> None:
+        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath)
+
+    def _open_export_instruments_dialog(self, default_path: str) -> None:
+        directory = select_directory_dialog(
+            title=self._ttl_export_instruments,
+            initial_dir=default_path,
+        )
+        self._handle_export_instruments(directory)
+
+    @ignore_none_path
+    def _handle_export_instruments(self, directory: Path) -> None:
+        self._reconstruction_panel_logic.handle_export_instruments_confirmed(directory)
+
+    def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
+        filepath = save_file_dialog(
+            title=self._ttl_export_wav,
+            initial_dir=default_path,
+            default_filename=default_filename,
+            extensions=[EXT_FILE_WAVE],
+        )
+        self._handle_export_wav(filepath)
+
+    @ignore_none_path
+    def _handle_export_wav(self, filepath: Path) -> None:
+        self._reconstruction_panel_logic.handle_export_wav_confirmed(filepath)
 
     def create_tab(self) -> None:
         with dpg.tab(

@@ -59,7 +59,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
         self.on_open_export_instrument_dialog: Optional[Callable[[str, str], None]] = None
-        self.on_open_export_instruments_dialog: Optional[Callable[[str, str], None]] = None
+        self.on_open_export_instruments_dialog: Optional[Callable[[str], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
@@ -156,14 +156,9 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
 
-        default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_instrument_path())
 
-        self.call(
-            self.on_open_export_instruments_dialog,
-            default_filename,
-            default_path,
-        )
+        self.call(self.on_open_export_instruments_dialog, default_path)
 
     def request_export_wav_dialog(self) -> None:
         reconstruction_data = self._reconstruction_data
