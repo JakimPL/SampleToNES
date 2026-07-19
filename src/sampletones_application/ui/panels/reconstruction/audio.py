@@ -40,8 +40,6 @@ class GUIReconstructionAudioPanel(GUIPanel):
         *,
         path_colors: PathColors,
         path_status_color: RGBA,
-        file_dialog_width: int,
-        file_dialog_height: int,
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -49,8 +47,6 @@ class GUIReconstructionAudioPanel(GUIPanel):
         self._status_bar = status_bar
         self._path_colors = path_colors
         self._path_status_color = path_status_color
-        self._file_dialog_width = file_dialog_width
-        self._file_dialog_height = file_dialog_height
 
         self._reconstruction_file_path: GUIPathText
         self._original_audio_path: GUIPathText

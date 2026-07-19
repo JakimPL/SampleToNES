@@ -318,8 +318,6 @@ class MainTabCoordinator:
             button_height=layout.main.advanced.button_height,
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
-            file_dialog_width=layout.general.dialogs.file.width,
-            file_dialog_height=layout.general.dialogs.file.height,
             max_workers_minimum=layout.behavior.main.max_workers_minimum,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_ADVANCED_PANEL),
             language_manager=language_manager,

@@ -54,8 +54,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         button_height: int,
         input_width: int,
         label_width: int,
-        file_dialog_width: int,
-        file_dialog_height: int,
         max_workers_minimum: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -76,8 +74,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._button_height = button_height
         self._input_width = input_width
         self._label_width = label_width
-        self._file_dialog_width = file_dialog_width
-        self._file_dialog_height = file_dialog_height
         self._max_workers_minimum = max_workers_minimum
         self._status_bar = status_bar
         self._path_colors = path_colors

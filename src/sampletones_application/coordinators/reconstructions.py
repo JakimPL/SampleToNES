@@ -331,8 +331,6 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.general.colors.paths,
             path_status_color=layout.general.colors.text.disabled,
-            file_dialog_width=layout.general.dialogs.file.width,
-            file_dialog_height=layout.general.dialogs.file.height,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO),
             language_manager=language_manager,
             status_bar=status_bar,
