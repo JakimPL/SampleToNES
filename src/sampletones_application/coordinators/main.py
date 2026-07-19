@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.elements.main import (
+    AdvancedElements,
     ConverterElements,
     ExplorerElements,
 )
@@ -57,6 +58,7 @@ from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
+from sampletones_application.utils.file import ignore_none_path, select_directory_dialog
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -235,6 +237,18 @@ class MainTabCoordinator:
             TextType.TITLE,
             ExplorerElements.CONVERTER_RUNNING_DIALOG,
         ]
+        self._ttl_library_dialog = language_manager[
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.TITLE,
+            AdvancedElements.SELECT_LIBRARY_DIRECTORY,
+        ]
+        self._ttl_output_dialog = language_manager[
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.TITLE,
+            AdvancedElements.SELECT_OUTPUT_DIRECTORY,
+        ]
 
         self._preview_player: PreviewPlayer = PreviewPlayer(audio_device_manager)
         self._explorer_logic: ExplorerLogic = ExplorerLogic(
@@ -335,7 +349,8 @@ class MainTabCoordinator:
         self._config_panel.on_library_settings_changed = config_manager.apply_library_settings
         self._reconstructor_panel.on_generation_settings_changed = config_manager.apply_generation_settings
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
-        self._advanced_settings_panel.on_library_path_memorized = session_manager.set_library_path
+        self._advanced_settings_panel.on_select_library_directory = self._select_library_directory
+        self._advanced_settings_panel.on_select_output_directory = self._select_output_directory
 
         self._wire_collapse_handlers()
 
@@ -476,6 +491,29 @@ class MainTabCoordinator:
                 reconstructions_directory=self._config_manager.get_reconstructions_directory(),
             )
         )
+
+    def _select_library_directory(self) -> None:
+        directory = select_directory_dialog(
+            title=self._ttl_library_dialog,
+            initial_dir=self._advanced_settings_panel.library_directory,
+        )
+        self._handle_select_library_directory(directory)
+
+    @ignore_none_path
+    def _handle_select_library_directory(self, directory: Path) -> None:
+        self._advanced_settings_panel.change_library_directory(directory)
+        self._session_manager.set_library_path(directory)
+
+    def _select_output_directory(self) -> None:
+        directory = select_directory_dialog(
+            title=self._ttl_output_dialog,
+            initial_dir=self._advanced_settings_panel.reconstructions_directory,
+        )
+        self._handle_select_output_directory(directory)
+
+    @ignore_none_path
+    def _handle_select_output_directory(self, directory: Path) -> None:
+        self._advanced_settings_panel.change_reconstructions_directory(directory)
 
     def create_tab(self) -> None:
         with dpg.tab(
