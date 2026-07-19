@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from sampletones_application.utils.file import open_file_dialog, save_file_dialog
+from sampletones_shared.utils.system.system import System
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -99,3 +100,67 @@ class TestOpenFileDialog:
             result = open_file_dialog(title="Open", extensions=[".wav"])
 
         assert result == Path("/home/user/audio.wav")
+
+
+class TestMacOSHardening:
+    """Guards the macOS-specific filedialpy workarounds without a macOS host."""
+
+    def test_open_forwards_space_joined_filter_on_macos(self) -> None:
+        with (
+            patch("sampletones_application.utils.file.System.current", return_value=System.MACOS),
+            patch("sampletones_application.utils.file.filedialpy.openFile") as mock_open,
+        ):
+            mock_open.return_value = "/home/user/audio.wav"
+            open_file_dialog(title="Open", extensions=[".wav", ".mp3"])
+
+        assert mock_open.call_args.kwargs["filter"] == "*.wav *.mp3"
+
+    def test_open_forwards_none_filter_without_extensions_on_macos(self) -> None:
+        with (
+            patch("sampletones_application.utils.file.System.current", return_value=System.MACOS),
+            patch("sampletones_application.utils.file.filedialpy.openFile") as mock_open,
+        ):
+            mock_open.return_value = "/home/user/audio.wav"
+            open_file_dialog(title="Open")
+
+        assert mock_open.call_args.kwargs["filter"] is None
+
+    def test_open_forwards_list_filter_off_macos(self) -> None:
+        with (
+            patch("sampletones_application.utils.file.System.current", return_value=System.LINUX),
+            patch("sampletones_application.utils.file.filedialpy.openFile") as mock_open,
+        ):
+            mock_open.return_value = "/home/user/audio.wav"
+            open_file_dialog(title="Open", extensions=[".wav", ".mp3"])
+
+        assert mock_open.call_args.kwargs["filter"] == ["*.wav", "*.mp3"]
+
+    def test_open_cancel_returning_cwd_is_discarded_on_macos(self) -> None:
+        with (
+            patch("sampletones_application.utils.file.System.current", return_value=System.MACOS),
+            patch("sampletones_application.utils.file.filedialpy.openFile") as mock_open,
+        ):
+            mock_open.return_value = str(Path.cwd())
+            result = open_file_dialog(title="Open", extensions=[".wav"])
+
+        assert result is None
+
+    def test_save_cancel_returning_cwd_is_discarded_on_macos(self) -> None:
+        with (
+            patch("sampletones_application.utils.file.System.current", return_value=System.MACOS),
+            patch("sampletones_application.utils.file.filedialpy.saveFile") as mock_save,
+        ):
+            mock_save.return_value = str(Path.cwd())
+            result = save_file_dialog(title="Save", extensions=[".stp"])
+
+        assert result is None
+
+    def test_cwd_result_is_kept_off_macos(self) -> None:
+        with (
+            patch("sampletones_application.utils.file.System.current", return_value=System.LINUX),
+            patch("sampletones_application.utils.file.filedialpy.openFile") as mock_open,
+        ):
+            mock_open.return_value = str(Path.cwd())
+            result = open_file_dialog(title="Open", extensions=[".wav"])
+
+        assert result == Path.cwd()

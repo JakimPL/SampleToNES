@@ -8,6 +8,7 @@ from typing import (
     Optional,
     ParamSpec,
     TypeVar,
+    Union,
     cast,
 )
 
@@ -15,6 +16,7 @@ import filedialpy
 
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.system.paths import ensure_suffix, normalize_path
+from sampletones_shared.utils.system.system import System
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -56,23 +58,70 @@ def _normalize_extensions(extensions: Iterable[str]) -> List[str]:
     return [f"*{extension.removeprefix('*')}" for extension in extensions]
 
 
-@_normalize_path
+def _dialog_filter(
+    normalized_extensions: List[str],
+) -> Optional[Union[str, List[str]]]:
+    """
+    Returns the extension filter in the shape each filedialpy backend expects.
+
+    The macOS backend calls ``filter.split(" ")`` on this value, so on macOS it
+    must be a single space-joined string (or ``None`` when nothing is configured,
+    which skips filtering); every other backend iterates the list directly.
+
+    Args:
+        normalized_extensions (List[str]): Extensions already prefixed with ``*``.
+
+    Returns:
+        Optional[Union[str, List[str]]]: A space-joined string on macOS, otherwise
+        the list unchanged.
+    """
+    if System.current() is System.MACOS:
+        return " ".join(normalized_extensions) if normalized_extensions else None
+
+    return normalized_extensions
+
+
+def _discard_macos_cancel(path: Optional[Path]) -> Optional[Path]:
+    """
+    Maps a cancelled macOS file dialog back to "no selection".
+
+    The macOS backend returns the current working directory when the user cancels
+    a save or open-file dialog, whereas Linux and Windows return an empty string.
+    A file dialog only ever yields a file path, so a result equal to the working
+    directory means the dialog was dismissed. Other platforms pass through
+    unchanged.
+
+    Args:
+        path (Optional[Path]): The normalized dialog result.
+
+    Returns:
+        Optional[Path]: ``None`` for a macOS cancellation, otherwise ``path``.
+    """
+    if path is None:
+        return None
+
+    if System.current() is System.MACOS and path.resolve() == Path.cwd().resolve():
+        return None
+
+    return path
+
+
 def open_file_dialog(
     *,
     title: str,
     initial_dir: Optional[Pathlike] = None,
     initial_file: Optional[str] = None,
     extensions: Iterable[str] = (),
-) -> Optional[str]:
+) -> Optional[Path]:
     normalized_extensions = _normalize_extensions(extensions)
     filepath: Optional[str] = filedialpy.openFile(
         title=title,
         initial_dir=str(initial_dir) if initial_dir else None,
         initial_file=initial_file,
-        filter=list(normalized_extensions),
+        filter=_dialog_filter(normalized_extensions),
     )
 
-    return filepath
+    return _discard_macos_cancel(normalize_path(filepath))
 
 
 def save_file_dialog(
@@ -90,7 +139,7 @@ def save_file_dialog(
         filter=normalized_extensions,
     )
 
-    path = normalize_path(filepath)
+    path = _discard_macos_cancel(normalize_path(filepath))
     if path is None:
         return None
 
