@@ -1,13 +1,21 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Final
+from typing import Final, Optional
 
 from sampletones_shared.types.path import GeneralPathlike, Pathlike
 
 from .system import System
 
 DEFAULT_MAX_FILENAME_DISPLAY: Final[int] = 48
+SHORTEN_PATH_LEVELS: Final[int] = 5
+
+
+def normalize_path(path: Optional[GeneralPathlike]) -> Optional[Path]:
+    if not path:
+        return None
+
+    return to_path(path)
 
 
 def to_path(path: GeneralPathlike) -> Path:
@@ -32,7 +40,7 @@ def to_path(path: GeneralPathlike) -> Path:
     return Path(path)
 
 
-def shorten_path(path: GeneralPathlike, levels: int = 5) -> str:
+def shorten_path(path: GeneralPathlike, levels: int = SHORTEN_PATH_LEVELS) -> str:
     """
     Shortens a file path for display by keeping the root, first directory, and last few parts.
 

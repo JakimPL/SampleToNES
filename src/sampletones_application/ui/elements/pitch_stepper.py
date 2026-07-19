@@ -24,6 +24,7 @@ from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_core.utils.pitch_kind import PitchValueKind
+from sampletones_shared.constants.symbols import MINUS, PLUS
 from sampletones_shared.types.application import Color, Sender
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -149,14 +150,14 @@ class GUIPitchStepper(CallbackMixin):
                     FontRegistry.bind_to_item(self._input_tag, Font.MONO)
                 with dpg.table_cell():
                     GUIButton(
-                        label="-",
+                        label=MINUS,
                         tag=self._decrement_button_tag,
                         width=self._layout.button_width,
                         callback=self._on_decrement,
                     )
                 with dpg.table_cell():
                     GUIButton(
-                        label="+",
+                        label=PLUS,
                         tag=self._increment_button_tag,
                         width=self._layout.button_width,
                         callback=self._on_increment,

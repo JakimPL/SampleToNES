@@ -12,7 +12,7 @@ def _view_model(
     follow_playback: bool = True,
     order_position: int = 0,
     row_index: int = 0,
-    error: str | None = None,
+    error: Optional[str] = None,
 ) -> SongPlayerViewModel:
     return SongPlayerViewModel(
         is_loaded=is_loaded,
