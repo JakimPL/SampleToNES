@@ -96,6 +96,12 @@ The composition root composes the per-operation signals into a single *busy auth
 
 A new exclusive operation joins by contributing its `is_active` to the authority and adding a start-time guard; no per-call-site bookkeeping is needed. The authority stores nothing — it is recomputed from the live operations on demand.
 
+### 11. Platform and external-tool differences hide behind a backend Protocol
+
+Where behaviour depends on the operating system, the desktop environment, or an external command-line tool, that variation is expressed as a `Protocol` with one implementation per target, chosen by a runtime factory — never as platform branches scattered through the callers. The factory probes availability (`shutil.which`) and environment (`System.current()`, `XDG_CURRENT_DESKTOP`) and returns the implementation that fits; callers depend only on the Protocol and read identically on every platform.
+
+`utils/file_dialogs/` applies this to native file dialogs: a `FileDialogBackend` Protocol with `kdialog`, `zenity`, and `tkinter` implementations, selected by `select_file_dialog_backend()`. Each tool's quirks stay sealed inside its own implementation — `kdialog` activates the supplied filter, `zenity` lists the filter but leaves the selector on its "(None)" default because its command line offers no way to pre-select one — and the guarantee callers depend on, that a saved file carries the configured extension, is enforced once in the API layer above every backend. `sampletones_core/calibration/referee/` follows the same shape with its `build_referees()` factory.
+
 ---
 
 ## Enforcement
@@ -212,7 +218,8 @@ There are two coordinator kinds:
 `create_tab()` is the sole authority for the tab's layout: it declares the column and card arrangement through the shared `ui/elements/layout` primitives (`TabColumns`, `card()`) and injects each panel's parent container via `create_panel(parent)`. It builds widgets only — initial view population (pushing the first view models, refreshing trees) runs afterwards from the coordinator's post-build initialisation, invoked once the whole tree exists, rather than inside `create_tab()`.
 
 **Contracts:**
-- A coordinator touches DPG only on a narrow, closed surface: inside `create_tab()`; when opening a file dialog and inside its callback decorated with `@file_dialog_handler`; and when building dialog content inside a closure passed to `DialogsRenderer.show_modal`. A dialog that must wait for the next frame is deferred through `FrameCallbackManager`. All other presentation goes through `DialogsRenderer`.
+- A coordinator touches DPG only on a narrow, closed surface: inside `create_tab()`, and when building dialog content inside a closure passed to `DialogsRenderer.show_modal`. A dialog that must wait for the next frame is deferred through `FrameCallbackManager`. All other presentation goes through `DialogsRenderer`.
+- File selection runs through OS-native dialogs, which live outside DPG. A coordinator opens one via `utils/file_dialogs` — a synchronous call that blocks until the user picks a path or cancels — resolves the dialog title and filter name from `LanguageManager`, and routes the returned path through a handler decorated with `@ignore_none_path`, so a cancelled dialog is a silent no-op and each handler body runs with a real path. The backend is chosen at runtime; a coordinator never branches on platform.
 - A coordinator holds no domain state. It delegates reads and writes to the managers and controllers it was given; what it caches is presentation wiring — resolved language strings, panels, logic objects, callbacks.
 - Callbacks received from `Application` as constructor parameters are stored and forwarded as-is. The one sanctioned wrapper is an intent-level guard that a contract requires — e.g. a busy-authority start-time guard (principle 10) wrapping an operation's entry point.
 - Error dialogs, confirmations, and notices are presented here, with text resolved from `LanguageManager` here (see the Error Handling Policy).
@@ -252,7 +259,7 @@ There are two coordinator kinds:
 | `categories/` | `LanguageManager` and the `Page / Panel / TextType / Element` enum hierarchy used as lookup keys |
 | `layout/` | Pydantic models loaded from YAML at startup; injected into coordinators and panels as `LayoutConfig` |
 | `constants/` | DPG widget tags (`TAG_*`) and tag suffix fragments (`SUF_*`) |
-| `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/`, file, colour, threading). DPG-bound helpers live in `utils/gui/` and are off-limits to the non-visual layers |
+| `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/`, colour, threading, and `utils/file_dialogs/` — OS-native file dialogs behind a `FileDialogBackend` Protocol). DPG-bound helpers live in `utils/gui/` and are off-limits to the non-visual layers |
 | `viewport.py` | Manages DPG viewport geometry and fullscreen state |
 
 ---
