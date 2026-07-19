@@ -1,34 +1,23 @@
 from functools import wraps
 from pathlib import Path
-from typing import Callable, Iterable, Optional, ParamSpec, TypeVar
+from typing import (
+    Callable,
+    Concatenate,
+    Iterable,
+    List,
+    Optional,
+    ParamSpec,
+    TypeVar,
+    cast,
+)
 
 import filedialpy
 
-from sampletones_shared.types.application import Sender
-from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.system.paths import normalize_path, to_path
+from sampletones_shared.utils.system.paths import ensure_suffix, normalize_path
 
 P = ParamSpec("P")
 T = TypeVar("T")
-
-
-def file_dialog_handler(
-    func: Callable[[T, Path], None],
-) -> Callable[[T, int, SerializedData], None]:
-    @wraps(func)
-    def wrapper(self: T, sender: Sender, app_data: SerializedData) -> None:
-        if not app_data or "file_path_name" not in app_data:
-            return
-
-        filepath = app_data["file_path_name"]
-        if not filepath:
-            return
-
-        filepath = to_path(filepath)
-        func(self, filepath)
-
-    return wrapper
 
 
 def _normalize_path(
@@ -42,6 +31,31 @@ def _normalize_path(
     return wrapper
 
 
+def ignore_none_path(
+    func: Callable[Concatenate[T, Path, P], None],
+) -> Callable[Concatenate[T, Path | None, P], None]:
+    @wraps(func)
+    def wrapper(
+        self: T,
+        filepath: Path | None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> None:
+        if filepath is None:
+            return
+
+        func(self, filepath, *args, **kwargs)
+
+    return cast(
+        Callable[Concatenate[T, Path | None, P], None],
+        wrapper,
+    )
+
+
+def _normalize_extensions(extensions: Iterable[str]) -> List[str]:
+    return [f"*{extension.removeprefix('*')}" for extension in extensions]
+
+
 @_normalize_path
 def open_file_dialog(
     *,
@@ -50,32 +64,43 @@ def open_file_dialog(
     initial_file: Optional[str] = None,
     extensions: Iterable[str] = (),
 ) -> Optional[str]:
+    normalized_extensions = _normalize_extensions(extensions)
     filepath: Optional[str] = filedialpy.openFile(
         title=title,
         initial_dir=str(initial_dir) if initial_dir else None,
         initial_file=initial_file,
-        filter=list(extensions),
+        filter=list(normalized_extensions),
     )
 
     return filepath
 
 
-@_normalize_path
 def save_file_dialog(
     *,
     title: str,
     initial_dir: Optional[Pathlike] = None,
     default_filename: Optional[str] = None,
     extensions: Iterable[str] = (),
-) -> Optional[str]:
+) -> Optional[Path]:
+    normalized_extensions = _normalize_extensions(extensions)
     filepath: Optional[str] = filedialpy.saveFile(
         title=title,
         initial_dir=str(initial_dir) if initial_dir else None,
         initial_file=default_filename,
-        filter=list(extensions),
+        filter=normalized_extensions,
     )
 
-    return filepath
+    path = normalize_path(filepath)
+    if path is None:
+        return None
+
+    if len(normalized_extensions) == 1:
+        path = ensure_suffix(
+            path,
+            normalized_extensions[0].removeprefix("*"),
+        )
+
+    return path
 
 
 @_normalize_path

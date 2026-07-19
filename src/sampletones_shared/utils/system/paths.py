@@ -40,6 +40,30 @@ def to_path(path: GeneralPathlike) -> Path:
     return Path(path)
 
 
+def ensure_suffix(path: Path, suffix: str) -> Path:
+    """
+    Returns the path with ``suffix`` appended when its name lacks that ending.
+
+    Save dialogs return the raw name the user typed, so this guarantees the file
+    carries its expected extension. A name that already ends with ``suffix``
+    (compared case-insensitively) is returned unchanged; otherwise the suffix is
+    appended to the full name, keeping any incidental dots intact
+    (``my.mix`` becomes ``my.mix.stp`` rather than ``my.stp``).
+
+    Args:
+        path (Path): The path whose extension should be guaranteed.
+        suffix (str): The desired extension, with or without a leading dot.
+
+    Returns:
+        Path: The path ending with the given suffix.
+    """
+    normalized_suffix = suffix if suffix.startswith(".") else f".{suffix}"
+    if path.name.lower().endswith(normalized_suffix.lower()):
+        return path
+
+    return path.with_name(f"{path.name}{normalized_suffix}")
+
+
 def shorten_path(path: GeneralPathlike, levels: int = SHORTEN_PATH_LEVELS) -> str:
     """
     Shortens a file path for display by keeping the root, first directory, and last few parts.

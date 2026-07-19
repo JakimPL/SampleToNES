@@ -11,6 +11,7 @@ import pytest
 from sampletones_shared.types.path import GeneralPathlike
 from sampletones_shared.utils.system.paths import (
     DEFAULT_MAX_FILENAME_DISPLAY,
+    ensure_suffix,
     get_directory,
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
@@ -150,6 +151,76 @@ class TestToPath(BaseTestSuite):
             assert result is test_case.input_path
 
         assert str(result) == test_case.expected
+
+
+class TestEnsureSuffix(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        input_path: str
+        suffix: str
+        expected: str
+
+    test_cases = [
+        TestCase(
+            input_path="song",
+            suffix=".stp",
+            expected="song.stp",
+            label="appends_when_missing",
+        ),
+        TestCase(
+            input_path="song.stp",
+            suffix=".stp",
+            expected="song.stp",
+            label="keeps_matching_suffix",
+        ),
+        TestCase(
+            input_path="song.STP",
+            suffix=".stp",
+            expected="song.STP",
+            label="keeps_matching_suffix_case_insensitively",
+        ),
+        TestCase(
+            input_path="my.mix",
+            suffix=".stp",
+            expected="my.mix.stp",
+            label="appends_after_incidental_dot",
+        ),
+        TestCase(
+            input_path="config.txt",
+            suffix=".json",
+            expected="config.txt.json",
+            label="appends_after_different_extension",
+        ),
+        TestCase(
+            input_path="song",
+            suffix="stp",
+            expected="song.stp",
+            label="normalizes_suffix_without_dot",
+        ),
+        TestCase(
+            input_path="/home/user/song",
+            suffix=".stp",
+            expected="/home/user/song.stp",
+            label="preserves_parent_directory",
+        ),
+        TestCase(
+            input_path="/home/user/song.stp",
+            suffix=".stp",
+            expected="/home/user/song.stp",
+            label="full_path_keeps_matching_suffix",
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_ensure_suffix(self, test_case: TestCase) -> None:
+        result = ensure_suffix(Path(test_case.input_path), test_case.suffix)
+
+        assert isinstance(result, Path)
+        assert result == Path(test_case.expected)
 
 
 class TestShortenPath(BaseTestSuite):

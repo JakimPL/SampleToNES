@@ -28,7 +28,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.file import ignore_none_path
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
@@ -350,7 +350,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         ):
             pass
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_select_library_directory(self, filepath: Path) -> None:
         self.change_library_directory(filepath)
         self.call(self.on_library_path_memorized, filepath)
@@ -375,7 +375,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         ):
             pass
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_select_output_directory(self, directory_path: Path) -> None:
         self.change_reconstructions_directory(directory_path)
 

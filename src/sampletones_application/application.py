@@ -13,7 +13,6 @@ from sampletones_application.categories.elements.global_ import (
     StatusElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.deployment.deployment import (
     DeploymentConfig,
@@ -95,7 +94,11 @@ from sampletones_application.ui.panels.dialogs.project_properties import (
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.file import (
+    ignore_none_path,
+    open_file_dialog,
+    select_directory_dialog,
+)
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
@@ -631,32 +634,19 @@ class Application:
             return
 
         self._instructions_tab.ensure_library_loaded()
-        with dpg.file_dialog(
-            label=self.language_manager[
+
+        filepath = open_file_dialog(
+            title=self.language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.TITLE,
                 GlobalDialogTitleElements.RECONSTRUCT_FILE,
             ],
-            width=self.layout.general.dialogs.file.width,
-            height=self.layout.general.dialogs.file.height,
-            callback=self._handle_reconstruct_file,
-            file_count=1,
-            default_path=str(self.session_manager.get_reconstruction_path()),
-        ):
-            all_file_extensions = ",".join(EXT_FILES_AUDIO)
-            key = TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.ALL_AUDIO_FORMATS,
-            )
-            dpg.add_file_extension(
-                f"{self.language_manager[key]}{{{all_file_extensions}}}",
-                color=(0, 255, 255, 255),
-            )
-            for extension in EXT_FILES_AUDIO:
-                dpg.add_file_extension(extension)
+            initial_dir=self.session_manager.get_reconstruction_path(),
+            extensions=EXT_FILES_AUDIO,
+        )
+
+        self._handle_reconstruct_file(filepath)
 
     def _reconstruct_directory_dialog(self) -> None:
         if self._is_operation_active():
@@ -664,20 +654,18 @@ class Application:
             return
 
         self._instructions_tab.ensure_library_loaded()
-        dpg.add_file_dialog(
-            label=self.language_manager[
+
+        directory = select_directory_dialog(
+            title=self.language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.TITLE,
                 GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY,
             ],
-            width=self.layout.general.dialogs.file.width,
-            height=self.layout.general.dialogs.file.height,
-            callback=self._handle_reconstruct_directory,
-            directory_selector=True,
-            default_path=str(self.session_manager.get_reconstruction_path()),
-            show=True,
+            initial_dir=self.session_manager.get_reconstruction_path(),
         )
+
+        self._handle_reconstruct_directory(directory)
 
     def _is_converter_panel_visible(self) -> bool:
         if self._main_tab is None:
@@ -723,7 +711,7 @@ class Application:
         self._set_current_tab(Tab.INSTRUCTIONS)
         self._update_menu()
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_reconstruct_file(self, filepath: Path) -> None:
         self._reconstruct_file(filepath)
 
@@ -733,7 +721,7 @@ class Application:
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self._reconstruct_directory(directory_path)
 

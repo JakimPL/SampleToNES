@@ -25,7 +25,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.file import ignore_none_path
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
@@ -265,14 +265,14 @@ class GUIReconstructionAudioPanel(GUIPanel):
 
         self.call(self.on_audio_source_changed, audio_source)
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_export_instrument(self, filepath: Path) -> None:
         self.call(self.on_export_instrument_confirmed, filepath)
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_export_instruments(self, filepath: Path) -> None:
         self.call(self.on_export_instruments_confirmed, filepath)
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_wav_export(self, filepath: Path) -> None:
         self.call(self.on_export_wav_confirmed, filepath)
