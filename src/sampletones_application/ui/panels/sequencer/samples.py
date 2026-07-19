@@ -11,7 +11,6 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
-    TAG_SEQUENCER_INSTRUMENTS_HANDLER_KEY,
     TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
     TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_TABLE,
@@ -28,7 +27,11 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_PANEL,
+    KeyEvent,
+    KeyRouter,
+)
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
@@ -47,11 +50,11 @@ class GUISequencerSamplesPanel(GUIPanel):
         *,
         layout: SequencerLayout,
         language_manager: LanguageManager,
-        shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
-        self._shortcut_manager = shortcut_manager
+        self._router = key_router
         self._row_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_TABLE}{SUF_HANDLER_REGISTRY}"
         self._rename_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME}{SUF_HANDLER_REGISTRY}"
         self._selected_sample_id: Optional[str] = None
@@ -174,8 +177,11 @@ class GUISequencerSamplesPanel(GUIPanel):
             dpg.add_item_deactivated_handler(callback=self._on_rename_deactivated)
 
     def _create_key_handler(self) -> None:
-        with dpg.handler_registry(tag=TAG_SEQUENCER_INSTRUMENTS_HANDLER_KEY):
-            dpg.add_key_press_handler(callback=self._on_key_pressed)
+        self._router.register(
+            self._on_key_pressed,
+            priority=PRIORITY_PANEL,
+            active=self._keys_active,
+        )
 
     def _create_samples_table(self) -> None:
         with dpg.child_window(
@@ -309,9 +315,9 @@ class GUISequencerSamplesPanel(GUIPanel):
     def deselect(self) -> None:
         """Drops the sample selection so the panel stops consuming keystrokes.
 
-        Mirrors the grid and order panels: the three share global key handlers, so
-        only the panel holding a selection acts on a keystroke. Selecting a cell in
-        another panel clears this one's selection via this method.
+        Mirrors the grid and order panels: each registers a key-router scope that is active only
+        while it holds a selection, so a single selection across the three decides which one acts
+        on a keystroke. Selecting a cell in another panel clears this one's selection via this method.
         """
         if self._selected_row is not None:
             dpg.unhighlight_table_row(
@@ -322,39 +328,64 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_row = None
         self._selected_sample_id = None
 
-    def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
+    def _keys_active(self) -> bool:
+        """Whether the samples panel owns the next key.
+
+        While a name is being edited the panel keeps the keyboard so Escape can cancel the rename.
+        Otherwise it acts only when a sample is selected and no field or modal holds the keyboard.
+        """
         if self._editing_sample_id is not None:
-            if app_data == dpg.mvKey_Escape:
+            return True
+
+        return (
+            self._selected_sample_id is not None
+            and not self._router.is_field_focused
+            and not self._router.is_modal_open
+        )
+
+    def _on_key_pressed(self, event: KeyEvent) -> bool:
+        """Applies a samples key to the selected sample, reporting whether the panel consumed it."""
+        if self._editing_sample_id is not None:
+            if event.key == dpg.mvKey_Escape:
                 self._cancel_rename()
-            return
+                return True
+            return False
 
-        if self._shortcut_manager.is_input_focused or self._shortcut_manager.is_dialog_open:
-            return
+        sample_id = self._selected_sample_id
+        if sample_id is None:
+            return False
 
-        if self._selected_sample_id is None:
-            return
+        if event.ctrl:
+            return False
 
-        if self._alt_held():
-            self._handle_alt_move(app_data)
-            return
+        if event.alt:
+            return self._handle_alt_move(event.key)
 
-        if app_data == dpg.mvKey_Delete:
-            self.call(self.on_remove_requested, self._selected_sample_id)
-        elif app_data == dpg.mvKey_F2:
-            self._start_rename(self._selected_sample_id)
+        if event.key == dpg.mvKey_Delete:
+            self.call(self.on_remove_requested, sample_id)
+            return True
 
-    def _alt_held(self) -> bool:
-        return bool(dpg.is_key_down(dpg.mvKey_LAlt) or dpg.is_key_down(dpg.mvKey_RAlt))
+        if event.key == dpg.mvKey_F2:
+            self._start_rename(sample_id)
+            return True
 
-    def _handle_alt_move(self, key: int) -> None:
-        """Moves the selected sample up/down/to-top/to-bottom on Alt + arrow / Home / End."""
+        return False
+
+    def _handle_alt_move(self, key: int) -> bool:
+        """Moves the selected sample up/down/to-top/to-bottom on Alt + arrow / Home / End.
+
+        Returns whether the key was an Alt move gesture, so a boundary with nowhere to go still
+        counts as consumed and stays out of the global shortcuts.
+        """
         direction = self._alt_move_direction(key)
         if direction is None or self._selected_sample_id is None or self._selected_row is None:
-            return
+            return False
 
         target = direction.target(self._selected_row, len(self._entries))
         if target is not None:
             self.call(self.on_move_requested, self._selected_sample_id, target)
+
+        return True
 
     def _alt_move_direction(self, key: int) -> Optional[MoveDirection]:
         match key:

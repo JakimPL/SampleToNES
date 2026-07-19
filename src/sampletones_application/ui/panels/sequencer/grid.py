@@ -6,10 +6,7 @@ from sampletones_application.categories.elements.sequencer import SequencerGridE
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.tags.general import (
-    SUF_HANDLER_KEY,
-    SUF_HANDLER_REGISTRY,
-)
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
@@ -43,8 +40,12 @@ from sampletones_application.ui.panels.sequencer.input.state import TrackerInput
 from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_PANEL,
+    KeyEvent,
+    KeyRouter,
+)
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
@@ -56,6 +57,7 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id
+from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.color import with_alpha_fraction
 
@@ -67,8 +69,7 @@ OnCellSelectedCallback = Callable[[int, Optional[GeneratorName]], None]
 OnPlayFromRowCallback = Callable[[int], None]
 OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
 
-SEMITONE_STEP: Final[int] = 1
-OCTAVE_STEP: Final[int] = 12
+
 VOLUME_FINE_STEP: Final[int] = 1
 VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
 
@@ -81,12 +82,12 @@ class GUISequencerGridPanel(GUIPanel):
         *,
         layout: SequencerLayout,
         language_manager: LanguageManager,
-        shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._language_manager = language_manager
-        self._shortcut_manager = shortcut_manager
+        self._router = key_router
 
         widths = layout.tracker.subcolumn_widths
         self._subcolumn_widths: Dict[SubColumn, int] = {
@@ -96,7 +97,6 @@ class GUISequencerGridPanel(GUIPanel):
         }
 
         self._item_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_REGISTRY}"
-        self._key_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_KEY}"
         self._cell_handler_tag = f"{TAG_SEQUENCER_GRID_TABLE_TRACKER}{SUF_HANDLER_REGISTRY}"
 
         self._rows: Dict[Optional[int], Sender] = {}
@@ -212,11 +212,11 @@ class GUISequencerGridPanel(GUIPanel):
             )
         with dpg.item_handler_registry(tag=self._cell_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
-        with dpg.handler_registry(tag=self._key_handler_tag):
-            dpg.add_key_press_handler(
-                parent=self._key_handler_tag,
-                callback=self._on_key_pressed,
-            )
+        self._router.register(
+            self._on_key_pressed,
+            priority=PRIORITY_PANEL,
+            active=self._keys_active,
+        )
 
     def _create_subcolumn_themes(self) -> None:
         subcolumn_colors = self._layout.colors.text
@@ -753,8 +753,8 @@ class GUISequencerGridPanel(GUIPanel):
         for label, delta in (
             (self._lbl_context_transpose_up, SEMITONE_STEP),
             (self._lbl_context_transpose_down, -SEMITONE_STEP),
-            (self._lbl_context_transpose_octave_up, OCTAVE_STEP),
-            (self._lbl_context_transpose_octave_down, -OCTAVE_STEP),
+            (self._lbl_context_transpose_octave_up, OCTAVE_SEMITONES),
+            (self._lbl_context_transpose_octave_down, -OCTAVE_SEMITONES),
         ):
             dpg.add_menu_item(
                 label=label,
@@ -840,22 +840,28 @@ class GUISequencerGridPanel(GUIPanel):
             callback=lambda: self.call(self.on_clear_row, row_index, None),
         )
 
-    def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
-        """Applies a tracker key to the active cell.
+    def _keys_active(self) -> bool:
+        """Whether the grid owns the next key: its cursor is set and nothing else holds the keyboard.
 
-        A Ctrl-modified press belongs to the application's global shortcuts, so the grid
-        yields it to the key router and keeps the plain keys for tracker editing.
+        A focused field or an open modal keeps the keyboard, so the grid stands down while the user
+        types into an input or answers a dialog.
         """
-        if self._shortcut_manager.is_input_focused or self._shortcut_manager.is_dialog_open:
-            return
+        return (
+            self._input_state.cursor is not None
+            and not self._router.is_field_focused
+            and not self._router.is_modal_open
+        )
 
-        if self._input_state.cursor is None:
-            return
+    def _on_key_pressed(self, event: KeyEvent) -> bool:
+        """Applies a tracker key to the active cell, reporting whether the grid consumed it.
 
-        if dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl):
-            return
+        A modifier-carrying press belongs to the application's global shortcuts, so the grid
+        yields it to the lower-priority scopes and keeps the plain keys for tracker editing.
+        """
+        if event.ctrl:
+            return False
 
-        match app_data:
+        match event.key:
             case dpg.mvKey_Up:
                 self._move_row(-1)
             case dpg.mvKey_Down:
@@ -865,8 +871,7 @@ class GUISequencerGridPanel(GUIPanel):
             case dpg.mvKey_Right:
                 self._move_subcolumn(1)
             case dpg.mvKey_Tab:
-                shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
-                self._move_column(-1 if shift_held else 1)
+                self._move_column(-1 if event.shift else 1)
             case dpg.mvKey_Home:
                 self._jump_to_row(0)
             case dpg.mvKey_End:
@@ -886,7 +891,9 @@ class GUISequencerGridPanel(GUIPanel):
             case dpg.mvKey_Escape:
                 self._apply_state(self._input_state.cancel())
             case _:
-                self._handle_printable_key(app_data)
+                return self._handle_printable_key(event.key)
+
+        return True
 
     def _move_row(self, delta: int) -> None:
         self._apply_state(
@@ -928,10 +935,10 @@ class GUISequencerGridPanel(GUIPanel):
 
         return state
 
-    def _handle_printable_key(self, key: int) -> None:
+    def _handle_printable_key(self, key: int) -> bool:
         char = HEX_KEYS.get(key) or SIGN_KEYS.get(key)
         if char is None:
-            return
+            return False
 
         new_state, edit_action = self._input_state.type_char(char)
         if edit_action is not None:
@@ -939,6 +946,7 @@ class GUISequencerGridPanel(GUIPanel):
             new_state = new_state.navigate_row(1, self._current_row_count)
 
         self._apply_state(new_state)
+        return True
 
     def _on_row_number_clicked(
         self,

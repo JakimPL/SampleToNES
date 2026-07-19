@@ -82,6 +82,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
@@ -120,6 +121,7 @@ class SequencerTabCoordinator:
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
         browser_manager: BrowserManager,
         project_controller: ProjectController,
         history: HistoryManager,
@@ -289,7 +291,7 @@ class SequencerTabCoordinator:
             layout=layout.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_GRID_PANEL),
             language_manager=language_manager,
-            shortcut_manager=shortcut_manager,
+            key_router=key_router,
         )
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
             self._sequencer_grid_logic.settings,
@@ -305,13 +307,13 @@ class SequencerTabCoordinator:
             layout=layout.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD),
             language_manager=language_manager,
-            shortcut_manager=shortcut_manager,
+            key_router=key_router,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
             layout=layout.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_INSTRUMENTS_PANEL),
             language_manager=language_manager,
-            shortcut_manager=shortcut_manager,
+            key_router=key_router,
         )
         self._sequencer_history_panel: GUISequencerHistoryPanel = GUISequencerHistoryPanel(
             layout=layout.sequencer,
@@ -1132,8 +1134,9 @@ class SequencerTabCoordinator:
     ) -> None:
         """Drops the order cursor and sample selection when the tracker grid takes focus.
 
-        The tracker, order, and samples panels share global key handlers; mutually
-        exclusive selections ensure only the focused panel consumes keystrokes.
+        The tracker, order, and samples panels each register a key-router scope active only while
+        it holds a selection; keeping a single selection across the three lets only the focused
+        panel consume keystrokes.
         """
         self._sequencer_order_panel.deselect_cell()
         self._sequencer_samples_panel.deselect()

@@ -1,8 +1,10 @@
 from typing import Final
 
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
+
 from .general import MIN_FREQUENCY
 
-BINS_PER_OCTAVE: Final[int] = 12
+BINS_PER_OCTAVE: Final[int] = OCTAVE_SEMITONES
 CQT_CUTOFF_FREQUENCY: Final[float] = MIN_FREQUENCY
 
 CQT_REFERENCE_CONTEXT_FACTOR: Final[int] = 3

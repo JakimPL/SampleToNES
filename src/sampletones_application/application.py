@@ -347,6 +347,7 @@ class Application:
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             shortcut_manager=self.shortcut_manager,
+            key_router=self.key_router,
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,
