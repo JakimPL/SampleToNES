@@ -543,18 +543,6 @@ wheels = [
 ]
 
 [[package]]
-name = "filedialpy"
-version = "1.3.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pywin32", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/40/6d4b4ab11fae6ae94eae2f1a918be6cddc250129ddb1490230c872cb50a9/filedialpy-1.3.4.tar.gz", hash = "sha256:817f7238a40cc15ff6cd52976c4c2076f5fdbd62d501b0a95d578e9a5a646e86", size = 16187, upload-time = "2025-11-24T10:25:38.035Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/5f/d1bc4f35c2e73453bbf9a60e2ac16ffa3d6ec5aae5d5c3437ff90917558c/filedialpy-1.3.4-py3-none-any.whl", hash = "sha256:7cc95848cb2c3cc3759f8fdfc0ac73c968ce8fec89817fe0614871436763380a", size = 18374, upload-time = "2025-11-24T10:25:37.188Z" },
-]
-
-[[package]]
 name = "filelock"
 version = "3.29.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1507,7 +1495,6 @@ source = { editable = "." }
 dependencies = [
     { name = "anytree" },
     { name = "dearpygui" },
-    { name = "filedialpy" },
     { name = "librosa" },
     { name = "msgpack" },
     { name = "numpy" },
@@ -1551,7 +1538,6 @@ requires-dist = [
     { name = "anytree", specifier = "==2.13.0" },
     { name = "cupy-cuda12x", marker = "extra == 'gpu'", specifier = ">=13,<14" },
     { name = "dearpygui", specifier = "==2.3.1" },
-    { name = "filedialpy", specifier = "==1.3.4" },
     { name = "librosa", specifier = "==0.11.0" },
     { name = "msgpack", specifier = "==1.2.1" },
     { name = "numpy", specifier = "==2.4.6" },

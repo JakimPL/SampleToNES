@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
 
 from sampletones_application.categories.elements.global_ import (
+    FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
@@ -23,11 +24,11 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_CONFIG_RECOVERY,
     TAG_GLOBAL_DIALOG_CONFIG_STATUS,
 )
-from sampletones_application.utils.file import (
-    ignore_none_path,
+from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_JSON
 from sampletones_shared.application import SAMPLETONES_VERSION
@@ -75,9 +76,15 @@ class ConfigCoordinator:
                 TextType.TITLE,
                 GlobalDialogTitleElements.SAVE_CONFIG,
             ],
-            initial_dir=self._session_manager.get_config_path(),
+            initial_directory=self._session_manager.get_config_path(),
             default_filename=DEFAULT_CONFIG_FILENAME,
             extensions=[EXT_FILE_JSON],
+            filter_name=self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.CONFIG,
+            ],
         )
 
         self._handle_save(filepath)
@@ -116,8 +123,14 @@ class ConfigCoordinator:
                 TextType.TITLE,
                 GlobalDialogTitleElements.LOAD_CONFIG,
             ],
-            initial_dir=self._session_manager.get_config_path(),
+            initial_directory=self._session_manager.get_config_path(),
             extensions=[EXT_FILE_JSON],
+            filter_name=self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.CONFIG,
+            ],
         )
 
         self._handle_load(filepath)

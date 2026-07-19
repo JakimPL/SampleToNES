@@ -4,6 +4,7 @@ from typing import Optional
 from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
+    FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
@@ -19,7 +20,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_PROJECT_SAVED,
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
 )
-from sampletones_application.utils.file import (
+from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
@@ -155,9 +156,10 @@ class ProjectCoordinator:
         directory = get_directory(path)
         filepath = save_file_dialog(
             title=self._title(GlobalDialogTitleElements.SAVE_PROJECT),
-            initial_dir=directory,
+            initial_directory=directory,
             default_filename=filename,
             extensions=[EXT_FILE_PROJECT],
+            filter_name=self._filter_name(FileFilterElements.PROJECT),
         )
 
         self._handle_save_as(filepath)
@@ -174,9 +176,10 @@ class ProjectCoordinator:
         directory = get_directory(path)
         filepath = save_file_dialog(
             title=self._title(GlobalDialogTitleElements.EXPORT_MODULE),
-            initial_dir=directory,
+            initial_directory=directory,
             default_filename=filename,
             extensions=[EXT_FILE_MODULE],
+            filter_name=self._filter_name(FileFilterElements.MODULE),
         )
 
         self._handle_export_module(filepath)
@@ -184,8 +187,9 @@ class ProjectCoordinator:
     def _open_dialog(self) -> None:
         filepath = open_file_dialog(
             title=self._title(GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT),
-            initial_dir=self._session_manager.get_project_path(),
+            initial_directory=self._session_manager.get_project_path(),
             extensions=[EXT_FILE_PROJECT],
+            filter_name=self._filter_name(FileFilterElements.PROJECT),
         )
 
         self._handle_open(filepath)
@@ -303,3 +307,6 @@ class ProjectCoordinator:
 
     def _label(self, element: AbstractElement) -> str:
         return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.LABEL, element]
+
+    def _filter_name(self, element: AbstractElement) -> str:
+        return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.FILTER, element]

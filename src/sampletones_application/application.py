@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
+    FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
     GlobalTemplateElements,
@@ -94,11 +95,11 @@ from sampletones_application.ui.panels.dialogs.project_properties import (
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.file import (
-    ignore_none_path,
+from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     select_directory_dialog,
 )
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
@@ -642,8 +643,14 @@ class Application:
                 TextType.TITLE,
                 GlobalDialogTitleElements.RECONSTRUCT_FILE,
             ],
-            initial_dir=self.session_manager.get_reconstruction_path(),
+            initial_directory=self.session_manager.get_reconstruction_path(),
             extensions=EXT_FILES_AUDIO,
+            filter_name=self.language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.AUDIO,
+            ],
         )
 
         self._handle_reconstruct_file(filepath)
@@ -662,7 +669,7 @@ class Application:
                 TextType.TITLE,
                 GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY,
             ],
-            initial_dir=self.session_manager.get_reconstruction_path(),
+            initial_directory=self.session_manager.get_reconstruction_path(),
         )
 
         self._handle_reconstruct_directory(directory)

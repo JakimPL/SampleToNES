@@ -210,6 +210,16 @@ class GlobalDialogTitleElements(AbstractElement):
     ABOUT = "about"
 
 
+class FileFilterElements(AbstractElement):
+    PROJECT = "project"
+    RECONSTRUCTION = "reconstruction"
+    MODULE = "module"
+    INSTRUMENT = "instrument"
+    CONFIG = "config"
+    AUDIO = "audio"
+    WAVE = "wave"
+
+
 class GlobalTemplateElements(AbstractElement):
     TIME_ESTIMATION = "time_estimation"
     CONFIGURATION_RECOVERY_INTRO = "configuration_recovery_intro"

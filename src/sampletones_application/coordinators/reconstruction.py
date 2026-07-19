@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
+    FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
@@ -29,11 +30,11 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
-from sampletones_application.utils.file import (
-    ignore_none_path,
+from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
@@ -156,9 +157,15 @@ class ReconstructionCoordinator:
                 TextType.TITLE,
                 GlobalDialogTitleElements.SAVE_RECONSTRUCTION,
             ],
-            initial_dir=default_path,
+            initial_directory=default_path,
             default_filename=default_filename,
             extensions=[EXT_FILE_RECONSTRUCTION],
+            filter_name=self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.RECONSTRUCTION,
+            ],
         )
 
         self._handle_save_as(filepath)
@@ -207,8 +214,14 @@ class ReconstructionCoordinator:
                 TextType.TITLE,
                 ReconstructionsBrowserElements.LOAD_RECONSTRUCTION_DIALOG,
             ],
-            initial_dir=self._session_manager.get_reconstruction_path(),
+            initial_directory=self._session_manager.get_reconstruction_path(),
             extensions=[EXT_FILE_RECONSTRUCTION],
+            filter_name=self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.RECONSTRUCTION,
+            ],
         )
 
         self._handle_load(filepath)

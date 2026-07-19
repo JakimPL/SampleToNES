@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
+    FileFilterElements,
     GlobalMessageElements,
     MenuElements,
     PlayerElements,
@@ -74,11 +75,11 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
-from sampletones_application.utils.file import (
-    ignore_none_path,
+from sampletones_application.utils.file_dialogs.api import (
     save_file_dialog,
     select_directory_dialog,
 )
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -266,6 +267,18 @@ class ReconstructionsTabCoordinator:
             Panel.INSTRUMENTS,
             TextType.TITLE,
             ReconstructionsInstrumentsElements.EXPORT_WAV_DIALOG,
+        ]
+        self._filter_export_instrument = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.FILTER,
+            FileFilterElements.INSTRUMENT,
+        ]
+        self._filter_export_wav = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.FILTER,
+            FileFilterElements.WAVE,
         ]
         _msg_export_wav_success = language_manager[
             Page.RECONSTRUCTIONS,
@@ -464,9 +477,10 @@ class ReconstructionsTabCoordinator:
     def _open_export_instrument_dialog(self, default_filename: str, default_path: str) -> None:
         filepath = save_file_dialog(
             title=self._ttl_export_instrument,
-            initial_dir=default_path,
+            initial_directory=default_path,
             default_filename=default_filename,
             extensions=[EXT_FILE_INSTRUMENT],
+            filter_name=self._filter_export_instrument,
         )
         self._handle_export_instrument(filepath)
 
@@ -477,7 +491,7 @@ class ReconstructionsTabCoordinator:
     def _open_export_instruments_dialog(self, default_path: str) -> None:
         directory = select_directory_dialog(
             title=self._ttl_export_instruments,
-            initial_dir=default_path,
+            initial_directory=default_path,
         )
         self._handle_export_instruments(directory)
 
@@ -488,9 +502,10 @@ class ReconstructionsTabCoordinator:
     def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
         filepath = save_file_dialog(
             title=self._ttl_export_wav,
-            initial_dir=default_path,
+            initial_directory=default_path,
             default_filename=default_filename,
             extensions=[EXT_FILE_WAVE],
+            filter_name=self._filter_export_wav,
         )
         self._handle_export_wav(filepath)
 

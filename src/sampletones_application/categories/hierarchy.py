@@ -9,6 +9,7 @@ class TextType(StrEnum):
     FEEDBACK = "feedback"
     TEMPLATE = "template"
     TOOLTIP = "tooltip"
+    FILTER = "filter"
 
 
 class Widget(StrEnum):

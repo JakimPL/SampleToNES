@@ -58,7 +58,8 @@ from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
-from sampletones_application.utils.file import ignore_none_path, select_directory_dialog
+from sampletones_application.utils.file_dialogs.api import select_directory_dialog
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -493,7 +494,7 @@ class MainTabCoordinator:
     def _select_library_directory(self) -> None:
         directory = select_directory_dialog(
             title=self._ttl_library_dialog,
-            initial_dir=self._advanced_settings_panel.library_directory,
+            initial_directory=self._advanced_settings_panel.library_directory,
         )
         self._handle_select_library_directory(directory)
 
@@ -505,7 +506,7 @@ class MainTabCoordinator:
     def _select_output_directory(self) -> None:
         directory = select_directory_dialog(
             title=self._ttl_output_dialog,
-            initial_dir=self._advanced_settings_panel.reconstructions_directory,
+            initial_directory=self._advanced_settings_panel.reconstructions_directory,
         )
         self._handle_select_output_directory(directory)
 

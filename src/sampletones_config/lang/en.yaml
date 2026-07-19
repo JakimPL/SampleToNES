@@ -45,6 +45,15 @@ global.dialog.title.change_nes_frequency: "Change NES frequency"
 global.dialog.title.frequency_mismatch: "Different NES frequency"
 global.dialog.title.about: "About"
 
+# Global — Dialog file filters
+global.dialog.filter.project: "Project files"
+global.dialog.filter.reconstruction: "Reconstruction files"
+global.dialog.filter.module: "FamiTracker module"
+global.dialog.filter.instrument: "FamiTracker instrument"
+global.dialog.filter.config: "Configuration files"
+global.dialog.filter.audio: "Audio files"
+global.dialog.filter.wave: "WAV audio"
+
 # Global — Dialog messages
 global.dialog.message.tree_no_results: "No results found."
 global.dialog.message.invalid_metadata_error: "Invalid file metadata."
