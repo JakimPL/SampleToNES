@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Final, List
+from typing import Callable, Final, List, Protocol
 
 import dearpygui.dearpygui as dpg
 
@@ -13,6 +13,11 @@ PRIORITY_SHORTCUT: Final = 40
 
 KeyHandler = Callable[[KeyEvent], bool]
 ActivePredicate = Callable[[], bool]
+
+
+class ModalKeyHandler(Protocol):
+    def handle_key(self, event: KeyEvent) -> None:
+        """Acts on one key press while this handler's dialog holds the keyboard."""
 
 
 @dataclass(frozen=True)
@@ -34,8 +39,9 @@ class KeyRouter:
 
     def __init__(self) -> None:
         self._scopes: List[_Scope] = []
-        self._modal_depth: int = 0
+        self._modal_stack: List[ModalKeyHandler] = []
         self._bound: bool = False
+        self.register(self._route_modal, priority=PRIORITY_MODAL, active=lambda: self.is_modal_open)
 
     def bind(self) -> None:
         """Installs the one global key-press handler, once, after the context exists."""
@@ -60,7 +66,7 @@ class KeyRouter:
     @property
     def is_modal_open(self) -> bool:
         """Whether a modal dialog currently holds the keyboard."""
-        return self._modal_depth > 0
+        return bool(self._modal_stack)
 
     @property
     def is_field_focused(self) -> bool:
@@ -71,17 +77,18 @@ class KeyRouter:
         """
         return focus.is_field_focused()
 
-    def push_modal(self) -> None:
-        """Registers that a modal dialog has taken over the keyboard.
+    def push_modal(self, handler: ModalKeyHandler) -> None:
+        """Gives ``handler`` the keyboard as the active modal dialog.
 
-        Counting depth keeps a dialog opened on top of another from releasing the keyboard
-        until the last one closes.
+        Stacking handlers keeps a dialog opened on top of another routing keys until it closes,
+        when the dialog beneath it resumes ownership of the keyboard.
         """
-        self._modal_depth += 1
+        self._modal_stack.append(handler)
 
     def pop_modal(self) -> None:
-        """Releases one modal dialog's claim on the keyboard, floored at zero."""
-        self._modal_depth = max(0, self._modal_depth - 1)
+        """Releases the top modal dialog's claim on the keyboard, ignored when none is open."""
+        if self._modal_stack:
+            self._modal_stack.pop()
 
     def route(self, event: KeyEvent) -> bool:
         """Offers the event to the active scopes, highest priority first, stopping at the
@@ -91,6 +98,15 @@ class KeyRouter:
                 return True
 
         return False
+
+    def _route_modal(self, event: KeyEvent) -> bool:
+        """Hands the key to the dialog on top of the modal stack and claims it.
+
+        A modal dialog owns the keyboard while it is shown, so the press is kept from the panel
+        and shortcut scopes and the active dialog alone decides what its navigation keys do.
+        """
+        self._modal_stack[-1].handle_key(event)
+        return True
 
     def _dispatch(self, sender: Sender, app_data: int) -> None:
         self.route(KeyEvent.capture(app_data))

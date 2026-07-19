@@ -31,7 +31,7 @@ from sampletones_application.utils.gui.dialog_navigation import (
     DialogKeyboardNavigator,
     FocusStop,
 )
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.view_model.shared.project_properties import (
     ProjectPropertiesViewModel,
 )
@@ -56,10 +56,10 @@ class GUIProjectPropertiesWindow(GUIWindow):
         *,
         layout: ProjectPropertiesLayout,
         language_manager: LanguageManager,
-        shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
     ) -> None:
         self._layout = layout
-        self._shortcut_manager = shortcut_manager
+        self._router = key_router
         self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
         self._navigator: Optional[DialogKeyboardNavigator] = None
 
@@ -176,7 +176,7 @@ class GUIProjectPropertiesWindow(GUIWindow):
                 FocusStop.button(TAG_SETTINGS_PROPERTIES_BUTTON_OK, self._commit),
             ],
             on_escape=self.hide,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
         )
         self._navigator.install()
 

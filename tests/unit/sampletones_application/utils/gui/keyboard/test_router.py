@@ -23,6 +23,14 @@ def _recorder(log: List[str], label: str, claims: bool) -> Callable[[KeyEvent], 
     return handle
 
 
+class _RecordingModal:
+    def __init__(self) -> None:
+        self.keys: List[int] = []
+
+    def handle_key(self, event: KeyEvent) -> None:
+        self.keys.append(event.key)
+
+
 class TestRouting:
     def test_higher_priority_scope_is_offered_first(self) -> None:
         router = KeyRouter()
@@ -62,44 +70,66 @@ class TestRouting:
         assert not router.route(_event())
 
 
-class TestModalDepth:
+class TestModal:
     def test_push_marks_modal_open(self) -> None:
         router = KeyRouter()
 
-        router.push_modal()
+        router.push_modal(_RecordingModal())
 
         assert router.is_modal_open
 
     def test_nested_modals_stay_open_until_last_pop(self) -> None:
         router = KeyRouter()
-        router.push_modal()
-        router.push_modal()
+        router.push_modal(_RecordingModal())
+        router.push_modal(_RecordingModal())
 
         router.pop_modal()
 
         assert router.is_modal_open
 
-    def test_pop_floors_at_zero(self) -> None:
+    def test_pop_without_a_modal_stays_closed(self) -> None:
         router = KeyRouter()
 
         router.pop_modal()
 
         assert not router.is_modal_open
 
-    def test_a_modal_gate_suppresses_a_shortcut_scope(self) -> None:
+    def test_an_open_modal_claims_the_key_and_suppresses_lower_scopes(self) -> None:
         router = KeyRouter()
         log: List[str] = []
-        router.register(
-            _recorder(log, "shortcut", True),
-            priority=PRIORITY_SHORTCUT,
-            active=lambda: not router.is_modal_open,
-        )
-        router.push_modal()
+        router.register(_recorder(log, "shortcut", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+        modal = _RecordingModal()
+        router.push_modal(modal)
 
         claimed = router.route(_event())
 
-        assert not claimed
+        assert claimed
         assert log == []
+        assert modal.keys == [_event().key]
+
+    def test_the_topmost_modal_receives_the_key(self) -> None:
+        router = KeyRouter()
+        lower = _RecordingModal()
+        upper = _RecordingModal()
+        router.push_modal(lower)
+        router.push_modal(upper)
+
+        router.route(_event())
+
+        assert upper.keys == [_event().key]
+        assert lower.keys == []
+
+    def test_a_closed_modal_returns_the_keyboard_to_lower_scopes(self) -> None:
+        router = KeyRouter()
+        log: List[str] = []
+        router.register(_recorder(log, "shortcut", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+        router.push_modal(_RecordingModal())
+        router.pop_modal()
+
+        claimed = router.route(_event())
+
+        assert claimed
+        assert log == ["shortcut"]
 
 
 class TestFieldFocus:

@@ -54,7 +54,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_item,
 )
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_shared.types.callback import Callback, StringCallback, VoidCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
@@ -74,7 +74,7 @@ def _install_navigation(
     window_tag: str,
     stops: List[FocusStop],
     on_escape: VoidCallback,
-    shortcut_manager: ShortcutManager,
+    key_router: KeyRouter,
     initial_index: int = 0,
 ) -> DialogKeyboardNavigator:
     """Builds and installs the keyboard navigator that claims the keyboard for ``window_tag``."""
@@ -82,7 +82,7 @@ def _install_navigation(
         window_tag=window_tag,
         stops=stops,
         on_escape=on_escape,
-        shortcut_manager=shortcut_manager,
+        key_router=key_router,
         initial_index=initial_index,
     )
     navigator.install()
@@ -97,7 +97,7 @@ def _show_modal_dialog(
     ok_label: str,
     width: int,
     height: int,
-    shortcut_manager: ShortcutManager,
+    key_router: KeyRouter,
     modal: bool = True,
 ) -> None:
     ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
@@ -136,7 +136,7 @@ def _show_modal_dialog(
             window_tag=tag,
             stops=[FocusStop.button(ok_button_tag, close)],
             on_escape=close,
-            shortcut_manager=shortcut_manager,
+            key_router=key_router,
         )
 
 
@@ -147,11 +147,11 @@ class DialogsRenderer:
         layout: GeneralLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
-        shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
     ) -> None:
         self._language_manager = language_manager
         self._status_bar = status_bar
-        self._shortcut_manager = shortcut_manager
+        self._router = key_router
         self._default_width = layout.dialogs.default.width
         self._default_height = layout.dialogs.default.height
         self._error_width = layout.dialogs.error.width
@@ -279,7 +279,7 @@ class DialogsRenderer:
             title,
             content,
             ok_label=self._lbl_ok,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
             width=width if width is not None else self._default_width,
             height=height if height is not None else self._default_height,
             modal=modal,
@@ -303,7 +303,7 @@ class DialogsRenderer:
             title=title,
             content=content,
             ok_label=self._lbl_ok,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
             width=self._default_width,
             height=self._default_height,
             modal=modal,
@@ -368,7 +368,7 @@ class DialogsRenderer:
             title=self._ttl_config_recovery,
             content=content,
             ok_label=self._lbl_ok,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
             width=self._recovery_width,
             height=self._recovery_height,
             modal=False,
@@ -490,7 +490,7 @@ class DialogsRenderer:
                 FocusStop.button(ok_button_tag, close),
             ],
             on_escape=close,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
             initial_index=1,
         )
         center_when_settled(tag)
@@ -512,7 +512,7 @@ class DialogsRenderer:
             title=self._ttl_file_not_found,
             content=content,
             ok_label=self._lbl_ok,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
             width=self._error_width,
             height=self._default_height,
         )
@@ -627,7 +627,7 @@ class DialogsRenderer:
                 FocusStop.button(cancel_button_tag, _on_cancel),
             ],
             on_escape=_on_cancel,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
         )
         center_when_settled(tag)
 
@@ -718,7 +718,7 @@ class DialogsRenderer:
                 FocusStop.button(cancel_button_tag, _on_cancel),
             ],
             on_escape=_on_cancel,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
         )
         center_when_settled(tag)
 
@@ -810,7 +810,7 @@ class DialogsRenderer:
                 FocusStop.button(cancel_button_tag, _on_cancel),
             ],
             on_escape=_on_cancel,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
             initial_index=1,
         )
         center_when_settled(tag)
@@ -830,7 +830,7 @@ class DialogsRenderer:
             title=self._ttl_reconstruction_not_loaded,
             content=content,
             ok_label=self._lbl_ok,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
             width=self._error_width,
             height=self._default_height,
             modal=False,
@@ -858,7 +858,7 @@ class DialogsRenderer:
             title=title,
             content=content,
             ok_label=self._lbl_ok,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
             width=self._error_width,
             height=self._default_height,
             modal=False,

@@ -332,16 +332,13 @@ class GUISequencerSamplesPanel(GUIPanel):
         """Whether the samples panel owns the next key.
 
         While a name is being edited the panel keeps the keyboard so Escape can cancel the rename.
-        Otherwise it acts only when a sample is selected and no field or modal holds the keyboard.
+        Otherwise it acts only when a sample is selected and no field holds the keyboard; a modal
+        dialog claims keys at a higher priority in the router, so the panel needs no modal check.
         """
         if self._editing_sample_id is not None:
             return True
 
-        return (
-            self._selected_sample_id is not None
-            and not self._router.is_field_focused
-            and not self._router.is_modal_open
-        )
+        return self._selected_sample_id is not None and not self._router.is_field_focused
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies a samples key to the selected sample, reporting whether the panel consumed it."""

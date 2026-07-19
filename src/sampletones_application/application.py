@@ -175,7 +175,7 @@ class Application:
             layout=self.layout.general,
             language_manager=self.language_manager,
             status_bar=self.status_bar,
-            shortcut_manager=self.shortcut_manager,
+            key_router=self.key_router,
         )
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
@@ -217,14 +217,14 @@ class Application:
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
             layout=self.layout.settings,
             language_manager=self.language_manager,
-            shortcut_manager=self.shortcut_manager,
+            key_router=self.key_router,
         )
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
-            shortcut_manager=self.shortcut_manager,
+            key_router=self.key_router,
         )
         self.project_properties_window.on_commit = self._commit_project_properties
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)

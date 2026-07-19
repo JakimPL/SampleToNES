@@ -699,16 +699,13 @@ class GUISequencerOrderPanel(GUIPanel):
         )
 
     def _keys_active(self) -> bool:
-        """Whether the order table owns the next key: its cursor is set and nothing else holds the keyboard.
+        """Whether the order table owns the next key: its cursor is set and no field holds the keyboard.
 
-        A focused field or an open modal keeps the keyboard, so the table stands down while the user
-        types into an input or answers a dialog.
+        A focused field keeps the keyboard, so the table stands down while the user types into an
+        input. A modal dialog claims keys at a higher priority in the router, so the table carries no
+        modal check of its own.
         """
-        return (
-            self._input_state.cursor is not None
-            and not self._router.is_field_focused
-            and not self._router.is_modal_open
-        )
+        return self._input_state.cursor is not None and not self._router.is_field_focused
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies an order key to the active cell, reporting whether the table consumed it.

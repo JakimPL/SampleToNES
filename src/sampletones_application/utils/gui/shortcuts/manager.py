@@ -42,24 +42,6 @@ class ShortcutManager:
         """
         return self._router.is_field_focused
 
-    @property
-    def is_dialog_open(self) -> bool:
-        """Whether a modal dialog currently owns keyboard input.
-
-        A dialog claims the keyboard for its own navigation while it is shown, so shortcut
-        dispatch and the sequencer key handlers consult this to hold every application key
-        action behind the modal until it closes. The claim itself lives on the key router.
-        """
-        return self._router.is_modal_open
-
-    def push_modal(self) -> None:
-        """Registers that a modal dialog has taken over the keyboard."""
-        self._router.push_modal()
-
-    def pop_modal(self) -> None:
-        """Releases one modal dialog's claim on the keyboard."""
-        self._router.pop_modal()
-
     def get_shortcut_display(self, shortcut_id: ShortcutId) -> str:
         if shortcut_id in self._shortcuts:
             shortcut, _ = self._shortcuts[shortcut_id]
@@ -78,8 +60,8 @@ class ShortcutManager:
     def bind_all(self) -> None:
         """Registers the shortcut scope with the key router.
 
-        Bindings are indexed by key so a press resolves in one lookup; the router skips this
-        scope entirely while a modal dialog holds the keyboard.
+        Bindings are indexed by key so a press resolves in one lookup. A modal dialog claims keys
+        at a higher priority, so this scope handles a press whenever no dialog holds the keyboard.
         """
         self._bindings_by_key = {}
         for shortcut_id, (shortcut, callback) in self._shortcuts.items():
@@ -90,7 +72,7 @@ class ShortcutManager:
         self._router.register(
             self._dispatch,
             priority=PRIORITY_SHORTCUT,
-            active=lambda: not self._router.is_modal_open,
+            active=lambda: True,
         )
 
     def _add_binding(self, shortcut: Shortcut, callback: Callback) -> None:

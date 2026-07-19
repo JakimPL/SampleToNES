@@ -25,7 +25,7 @@ from sampletones_application.utils.gui.dialog_navigation import (
     FocusStop,
 )
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.view_model.shared.audio_settings import (
     BUFFER_SIZE_ITEMS,
     AudioDeviceItem,
@@ -42,10 +42,10 @@ class GUIAudioSettingsWindow(GUIWindow):
         *,
         layout: SettingsLayout,
         language_manager: LanguageManager,
-        shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
     ) -> None:
         self._layout = layout
-        self._shortcut_manager = shortcut_manager
+        self._router = key_router
         self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
         self._navigator: Optional[DialogKeyboardNavigator] = None
 
@@ -161,7 +161,7 @@ class GUIAudioSettingsWindow(GUIWindow):
                 FocusStop.button(TAG_SETTINGS_AUDIO_BUTTON_APPLY, self._commit),
             ],
             on_escape=self.hide,
-            shortcut_manager=self._shortcut_manager,
+            key_router=self._router,
         )
         self._navigator.install()
 

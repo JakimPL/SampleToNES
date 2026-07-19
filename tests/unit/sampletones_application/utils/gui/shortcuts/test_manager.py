@@ -99,36 +99,3 @@ class TestFieldFocusGate:
 
         field_focus["focused"] = False
         assert not manager.is_input_focused
-
-
-class TestModalFacade:
-    def test_a_pushed_modal_marks_the_dialog_open(self) -> None:
-        manager = _manager()
-
-        manager.push_modal()
-
-        assert manager.is_dialog_open
-
-    def test_popping_the_last_modal_releases_the_dialog(self) -> None:
-        manager = _manager()
-        manager.push_modal()
-
-        manager.pop_modal()
-
-        assert not manager.is_dialog_open
-
-    def test_nested_modals_stay_open_until_the_last_pop(self) -> None:
-        manager = _manager()
-        manager.push_modal()
-        manager.push_modal()
-
-        manager.pop_modal()
-
-        assert manager.is_dialog_open
-
-    def test_pop_without_a_push_stays_closed(self) -> None:
-        manager = _manager()
-
-        manager.pop_modal()
-
-        assert not manager.is_dialog_open
