@@ -1,5 +1,6 @@
 from typing import Final
 
+# TODO: move to columns.yaml
 _BASELINE_VIEWPORT_WIDTH: Final[int] = 1280
 _CENTER_WEIGHT: Final[int] = 2
 

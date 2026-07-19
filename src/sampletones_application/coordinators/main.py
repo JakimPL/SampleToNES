@@ -237,7 +237,10 @@ class MainTabCoordinator:
         ]
 
         self._preview_player: PreviewPlayer = PreviewPlayer(audio_device_manager)
-        self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager, language_manager=language_manager)
+        self._explorer_logic: ExplorerLogic = ExplorerLogic(
+            config_manager,
+            language_manager=language_manager,
+        )
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             audio_device_manager,

@@ -1,11 +1,11 @@
 side:
-  width: 360
+  width: 300
   height: -1
 instructions_right:
-  width: 360
+  width: 320
   height: -1
 reconstructions_right:
-  width: 420
+  width: 360
   height: -1
 sequencer_right:
   width: 360

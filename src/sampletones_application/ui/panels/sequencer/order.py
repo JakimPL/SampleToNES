@@ -151,7 +151,12 @@ class GUISequencerOrderPanel(GUIPanel):
         }
 
         def _context_label(element: SequencerOrderElements) -> str:
-            return language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, element]
+            return language_manager[
+                Page.SEQUENCER,
+                Panel.ORDER,
+                TextType.LABEL,
+                element,
+            ]
 
         self._lbl_context_play = _context_label(SequencerOrderElements.CONTEXT_PLAY)
         self._lbl_context_duplicate = _context_label(SequencerOrderElements.CONTEXT_DUPLICATE)
