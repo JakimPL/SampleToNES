@@ -14,9 +14,12 @@ class ColumnsLayout(BaseModel, extra="forbid", frozen=True):
     ``side`` sizes the uniform left column — the browser, library, or explorer —
     that every tab carries, so the side panel stays the same size across tabs. Each
     ``*_right`` column sizes one tab's right column, whose width follows the content
-    it holds.
+    it holds. ``baseline_viewport_width`` is the design viewport width at which the
+    side columns sit at their configured widths; surplus width above it widens the
+    side columns (see ``expanded_side_width``).
     """
 
+    baseline_viewport_width: int
     side: ColumnLayout
     instructions_right: ColumnLayout
     reconstructions_right: ColumnLayout

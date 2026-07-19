@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Final, Optional, ParamSpec, Union
+from typing import Callable, Optional, ParamSpec, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -111,7 +111,6 @@ _UndoableParams = ParamSpec("_UndoableParams")
 _LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}"
 _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}"
 _RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}"
-_SIDE_PANEL_COUNT: Final[int] = 2
 
 
 class SequencerTabCoordinator:
@@ -228,6 +227,8 @@ class SequencerTabCoordinator:
         self._playing_order: Optional[int] = None
         self._left_width = layout.general.columns.side.width
         self._left_height = layout.general.columns.side.height
+        self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._side_panel_count: int
         self._instruments_width = layout.general.columns.sequencer_right.width
         self._right_height = layout.general.columns.sequencer_right.height
         self._rail_width = layout.general.collapse.rail_width
@@ -499,7 +500,12 @@ class SequencerTabCoordinator:
         if self._sequencer_browser_panel.collapsed:
             width = self._rail_width
         else:
-            width = expanded_side_width(self._left_width, dpg.get_viewport_client_width(), _SIDE_PANEL_COUNT)
+            width = expanded_side_width(
+                self._left_width,
+                dpg.get_viewport_client_width(),
+                self._baseline_viewport_width,
+                self._side_panel_count,
+            )
 
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
@@ -1152,7 +1158,7 @@ class SequencerTabCoordinator:
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
-            TabColumns.build(
+            self._side_panel_count = TabColumns.build(
                 panel_gap=self._panel_gap,
                 columns=[
                     ColumnSpec(

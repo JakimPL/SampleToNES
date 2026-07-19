@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Final, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -104,7 +104,6 @@ from sampletones_shared.types.callback import PathCallback, VoidCallback
 _LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_LEFT}"
 _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_CENTER}"
 _RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_RIGHT}"
-_SIDE_PANEL_COUNT: Final[int] = 2
 
 
 class ReconstructionsTabCoordinator:
@@ -143,6 +142,8 @@ class ReconstructionsTabCoordinator:
         ]
         self._left_width = layout.general.columns.side.width
         self._left_height = layout.general.columns.side.height
+        self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._side_panel_count: int
         self._instruments_width = layout.general.columns.reconstructions_right.width
         self._right_height = layout.general.columns.reconstructions_right.height
         self._rail_width = layout.general.collapse.rail_width
@@ -519,7 +520,7 @@ class ReconstructionsTabCoordinator:
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
-            TabColumns.build(
+            self._side_panel_count = TabColumns.build(
                 panel_gap=self._panel_gap,
                 columns=[
                     ColumnSpec(
@@ -584,7 +585,8 @@ class ReconstructionsTabCoordinator:
             width = expanded_side_width(
                 self._left_width,
                 dpg.get_viewport_client_width(),
-                _SIDE_PANEL_COUNT,
+                self._baseline_viewport_width,
+                self._side_panel_count,
             )
 
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
@@ -597,7 +599,8 @@ class ReconstructionsTabCoordinator:
             width = expanded_side_width(
                 self._instruments_width,
                 dpg.get_viewport_client_width(),
-                _SIDE_PANEL_COUNT,
+                self._baseline_viewport_width,
+                self._side_panel_count,
             )
 
         dpg_configure_item(_RIGHT_COLUMN_TAG, width=width)

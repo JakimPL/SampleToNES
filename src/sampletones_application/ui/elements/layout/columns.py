@@ -51,8 +51,12 @@ class TabColumns:
         *,
         panel_gap: int,
         columns: Sequence[ColumnSpec],
-    ) -> None:
-        """Builds the ground wrapper and the column row from ``columns``, then binds their themes."""
+    ) -> int:
+        """Builds the ground wrapper and the column row from ``columns``, then binds their themes.
+
+        Returns the number of fixed-width side columns — the ones that hold their width while the
+        centre stretches — which the responsive width sizing shares the viewport's surplus among.
+        """
         with dpg.child_window(
             width=-1,
             height=-panel_gap,
@@ -75,6 +79,7 @@ class TabColumns:
 
         ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(ground_wrapper)
         cls._bind_column_themes(columns)
+        return sum(1 for column in columns if not column.stretches)
 
     @classmethod
     def row(

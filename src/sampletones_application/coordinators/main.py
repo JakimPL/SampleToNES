@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Final, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -78,7 +78,6 @@ from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 _LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}"
 _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}"
-_SIDE_PANEL_COUNT: Final[int] = 1
 
 
 class MainTabCoordinator:
@@ -139,6 +138,8 @@ class MainTabCoordinator:
         ]
         self._explorer_width = layout.general.columns.side.width
         self._explorer_height = layout.general.columns.side.height
+        self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._side_panel_count: int
         self._rail_width = layout.general.collapse.rail_width
         self._panel_gap = layout.general.panel_gap
         self._config_height = layout.main.config.height
@@ -520,7 +521,7 @@ class MainTabCoordinator:
             tag=TAG_GLOBAL_TAB_MAIN,
             parent=TAG_GLOBAL_TABS,
         ):
-            TabColumns.build(
+            self._side_panel_count = TabColumns.build(
                 panel_gap=self._panel_gap,
                 columns=[
                     ColumnSpec(
@@ -594,7 +595,8 @@ class MainTabCoordinator:
             width = expanded_side_width(
                 self._explorer_width,
                 dpg.get_viewport_client_width(),
-                _SIDE_PANEL_COUNT,
+                self._baseline_viewport_width,
+                self._side_panel_count,
             )
 
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)

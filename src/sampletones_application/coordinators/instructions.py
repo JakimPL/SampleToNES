@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Final, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -85,7 +85,6 @@ from sampletones_shared.types.callback import VoidCallback
 _LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}"
 _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}"
 _RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}"
-_SIDE_PANEL_COUNT: Final[int] = 2
 
 
 class InstructionsTabCoordinator:
@@ -123,6 +122,8 @@ class InstructionsTabCoordinator:
         ]
         self._left_width = layout.general.columns.side.width
         self._left_height = layout.general.columns.side.height
+        self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._side_panel_count: int
         self._details_width = layout.general.columns.instructions_right.width
         self._right_height = layout.general.columns.instructions_right.height
         self._panel_gap = layout.general.panel_gap
@@ -447,7 +448,12 @@ class InstructionsTabCoordinator:
         if self._library_panel.collapsed:
             width = self._rail_width
         else:
-            width = expanded_side_width(self._left_width, dpg.get_viewport_client_width(), _SIDE_PANEL_COUNT)
+            width = expanded_side_width(
+                self._left_width,
+                dpg.get_viewport_client_width(),
+                self._baseline_viewport_width,
+                self._side_panel_count,
+            )
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _update_details_view(self, view_model: InstructionDetailsPanelViewModel) -> None:
@@ -470,7 +476,7 @@ class InstructionsTabCoordinator:
             parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
-            TabColumns.build(
+            self._side_panel_count = TabColumns.build(
                 panel_gap=self._panel_gap,
                 columns=[
                     ColumnSpec(
