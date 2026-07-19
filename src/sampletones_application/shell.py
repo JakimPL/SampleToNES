@@ -36,8 +36,9 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_application.utils.gui.shortcuts.keys import Modifier
+from sampletones_application.utils.gui.shortcuts.keys import KEY_PAGE_DOWN, KEY_PAGE_UP, Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
@@ -113,6 +114,7 @@ class ApplicationShell:
         session_manager: SessionManager,
         language_manager: LanguageManager,
         shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
         layout: LayoutConfig,
         theme: Theme,
         viewport_manager: ViewportManager,
@@ -127,6 +129,7 @@ class ApplicationShell:
         self._session_manager = session_manager
         self._language_manager = language_manager
         self._shortcut_manager = shortcut_manager
+        self._key_router = key_router
         self._layout = layout
         self._theme = theme
         self._viewport_manager = viewport_manager
@@ -352,18 +355,19 @@ class ApplicationShell:
         )
         self._shortcut_manager.register(
             ShortcutId.NEXT_TAB,
-            Shortcut(dpg.mvKey_Tab),
+            Shortcut(KEY_PAGE_DOWN, (Modifier.CTRL,), field_transparent=True),
             bindings.next_tab,
         )
         self._shortcut_manager.register(
             ShortcutId.PREVIOUS_TAB,
-            Shortcut(dpg.mvKey_Tab, (Modifier.SHIFT,)),
+            Shortcut(KEY_PAGE_UP, (Modifier.CTRL,), field_transparent=True),
             bindings.previous_tab,
         )
 
         self._shortcut_manager.bind_all()
 
     def _setup_handlers(self) -> None:
+        self._key_router.bind()
         self._shortcut_manager.setup_focus_handler()
 
     def _create_main_window(self, on_tab_changed: Callback, initial_menu_state: MenuBarViewModel) -> None:

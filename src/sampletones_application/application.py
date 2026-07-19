@@ -98,6 +98,7 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.palette import Palette
 from sampletones_application.utils.parallelization.background import (
@@ -164,15 +165,17 @@ class Application:
         self.status_bar = GUIStatusBar(
             display_time=self.layout.behavior.ui.status_bar_display_time,
         )
+        self.key_router: KeyRouter = KeyRouter()
+        self.shortcut_manager: ShortcutManager = ShortcutManager(key_router=self.key_router)
         self.dialogs: DialogsRenderer = DialogsRenderer(
             layout=self.layout.general,
             language_manager=self.language_manager,
             status_bar=self.status_bar,
+            shortcut_manager=self.shortcut_manager,
         )
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
         self.session_manager = SessionManager()
-        self.shortcut_manager: ShortcutManager = ShortcutManager()
 
         self.library_manager = InstructionsLibraryManager(
             self.config_manager,
@@ -374,6 +377,7 @@ class Application:
             session_manager=self.session_manager,
             language_manager=self.language_manager,
             shortcut_manager=self.shortcut_manager,
+            key_router=self.key_router,
             layout=self.layout,
             theme=self.theme,
             viewport_manager=self._viewport_manager,
@@ -1094,11 +1098,10 @@ class Application:
         self._switch_tab(-1)
 
     def _switch_tab(self, step: int) -> None:
-        """Moves to the adjacent tab in declaration order, clamped at the ends without wrapping."""
+        """Moves to the adjacent tab in declaration order, wrapping around at the ends."""
         tabs = list(Tab)
         index = tabs.index(self._shell.get_current_tab())
-        clamped = min(max(index + step, 0), len(tabs) - 1)
-        self._set_current_tab(tabs[clamped])
+        self._set_current_tab(tabs[(index + step) % len(tabs)])
 
     def _get_current_player(self) -> AudioPlayerProtocol:
         return self._shell.get_current_player()

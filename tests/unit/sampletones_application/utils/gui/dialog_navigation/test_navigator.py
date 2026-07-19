@@ -5,6 +5,7 @@ from sampletones_application.utils.gui.dialog_navigation.navigator import (
     DialogKeyboardNavigator,
 )
 from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 
 MODULE = "sampletones_application.utils.gui.dialog_navigation.navigator"
@@ -44,7 +45,7 @@ def _navigator(*, on_escape: MagicMock, manager: ShortcutManager) -> DialogKeybo
 
 class TestKeyDispatch:
     def test_tab_cycles_the_ring_forward(self) -> None:
-        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager())
+        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager(key_router=KeyRouter()))
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg()):
@@ -53,7 +54,7 @@ class TestKeyDispatch:
         navigator._ring.cycle.assert_called_once_with(1)
 
     def test_shift_tab_cycles_the_ring_backward(self) -> None:
-        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager())
+        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager(key_router=KeyRouter()))
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg(shift=True)):
@@ -62,7 +63,7 @@ class TestKeyDispatch:
         navigator._ring.cycle.assert_called_once_with(-1)
 
     def test_enter_activates_the_focused_stop(self) -> None:
-        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager())
+        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager(key_router=KeyRouter()))
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg()):
@@ -72,7 +73,7 @@ class TestKeyDispatch:
 
     def test_escape_runs_the_cancel_action(self) -> None:
         on_escape = MagicMock()
-        navigator = _navigator(on_escape=on_escape, manager=ShortcutManager())
+        navigator = _navigator(on_escape=on_escape, manager=ShortcutManager(key_router=KeyRouter()))
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg()):
@@ -82,7 +83,7 @@ class TestKeyDispatch:
         navigator._ring.cycle.assert_not_called()
 
     def test_key_on_a_closed_dialog_disposes(self) -> None:
-        manager = ShortcutManager()
+        manager = ShortcutManager(key_router=KeyRouter())
         manager.push_modal()
         navigator = _navigator(on_escape=MagicMock(), manager=manager)
         navigator._ring = MagicMock()
@@ -96,7 +97,7 @@ class TestKeyDispatch:
 
 class TestModalClaim:
     def test_install_claims_the_keyboard_and_defers_focus(self) -> None:
-        manager = ShortcutManager()
+        manager = ShortcutManager(key_router=KeyRouter())
         navigator = _navigator(on_escape=MagicMock(), manager=manager)
 
         with (
@@ -111,7 +112,7 @@ class TestModalClaim:
         frame.set_frame_callback.assert_called_once_with(navigator._focus_initial)
 
     def test_dispose_releases_the_keyboard_once(self) -> None:
-        manager = ShortcutManager()
+        manager = ShortcutManager(key_router=KeyRouter())
         manager.push_modal()
         navigator = _navigator(on_escape=MagicMock(), manager=manager)
 
@@ -123,7 +124,7 @@ class TestModalClaim:
         delete.assert_called_once_with(navigator._registry_tag)
 
     def test_focus_initial_delegates_while_the_window_is_present(self) -> None:
-        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager())
+        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager(key_router=KeyRouter()))
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg(exists=True)):
@@ -132,7 +133,7 @@ class TestModalClaim:
         navigator._ring.focus_initial.assert_called_once_with()
 
     def test_focus_initial_skips_a_closed_window(self) -> None:
-        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager())
+        navigator = _navigator(on_escape=MagicMock(), manager=ShortcutManager(key_router=KeyRouter()))
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg(exists=False)):

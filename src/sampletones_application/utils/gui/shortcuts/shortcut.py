@@ -9,8 +9,16 @@ from sampletones_application.utils.gui.shortcuts.keys import (
 
 @dataclass(frozen=True)
 class Shortcut:
+    """A key plus its required modifiers, and whether it fires while a field is focused.
+
+    ``field_transparent`` shortcuts (e.g. switching tabs) outrank text entry and fire even
+    while an input owns the keyboard; the rest stay behind field focus so their keys reach
+    the field.
+    """
+
     key: Optional[int] = None
     modifiers: Tuple[Modifier, ...] = ()
+    field_transparent: bool = False
 
     @property
     def is_bindable(self) -> bool:

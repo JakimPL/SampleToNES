@@ -12,6 +12,10 @@ class Modifier(Enum):
     ALT = "Alt"
 
 
+KEY_PAGE_UP: Final = 517
+KEY_PAGE_DOWN: Final = 518
+
+
 KEY_DISPLAY_NAMES: Dict[int, str] = {
     dpg.mvKey_A: "A",
     dpg.mvKey_B: "B",
@@ -70,8 +74,8 @@ KEY_DISPLAY_NAMES: Dict[int, str] = {
     dpg.mvKey_Insert: "Ins",
     dpg.mvKey_Home: "Home",
     dpg.mvKey_End: "End",
-    dpg.mvKey_Prior: "PgUp",
-    dpg.mvKey_Next: "PgDn",
+    KEY_PAGE_UP: "PgUp",
+    KEY_PAGE_DOWN: "PgDn",
     dpg.mvKey_Up: "Up",
     dpg.mvKey_Down: "Down",
     dpg.mvKey_Left: "Left",

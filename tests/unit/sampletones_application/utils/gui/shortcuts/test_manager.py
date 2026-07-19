@@ -1,18 +1,32 @@
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
+from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
+
+KEY = 65
+
+
+def _manager() -> ShortcutManager:
+    return ShortcutManager(key_router=KeyRouter())
+
+
+def _event(*, ctrl: bool = False, shift: bool = False, alt: bool = False) -> KeyEvent:
+    return KeyEvent(key=KEY, ctrl=ctrl, shift=shift, alt=alt)
 
 
 class TestInputFocusTracking:
     def test_focus_event_marks_input_focused(self) -> None:
-        manager = ShortcutManager()
+        manager = _manager()
 
         manager._on_input_focused(sender=1, app_data=42)
 
         assert manager.is_input_focused
 
     def test_unfocus_of_focused_widget_releases_focus(self) -> None:
-        manager = ShortcutManager()
+        manager = _manager()
         manager._on_input_focused(sender=1, app_data=42)
 
         manager._on_input_unfocused(sender=1, app_data=42)
@@ -20,7 +34,7 @@ class TestInputFocusTracking:
         assert not manager.is_input_focused
 
     def test_unfocus_of_other_widget_keeps_focus(self) -> None:
-        manager = ShortcutManager()
+        manager = _manager()
         manager._on_input_focused(sender=1, app_data=42)
 
         manager._on_input_unfocused(sender=1, app_data=99)
@@ -28,39 +42,80 @@ class TestInputFocusTracking:
         assert manager.is_input_focused
 
 
-class TestKeyDispatchWhileInputFocused:
-    def test_focused_input_suppresses_the_shortcut(self) -> None:
-        manager = ShortcutManager()
+class TestShortcutDispatch:
+    def test_matching_shortcut_fires_and_is_claimed(self) -> None:
+        manager = _manager()
         callback = Mock()
-        manager._on_input_focused(sender=1, app_data=42)
+        manager.register(ShortcutId.SAVE_PROJECT, Shortcut(KEY, (Modifier.CTRL,)), callback)
+        manager.bind_all()
 
-        with patch.object(manager, "_modifiers_match", return_value=True):
-            manager._handle_key(Mock(), callback)
+        claimed = manager._dispatch(_event(ctrl=True))
 
+        assert claimed
+        callback.assert_called_once()
+
+    def test_modifier_mismatch_does_not_fire(self) -> None:
+        manager = _manager()
+        callback = Mock()
+        manager.register(ShortcutId.SAVE_PROJECT, Shortcut(KEY, (Modifier.CTRL,)), callback)
+        manager.bind_all()
+
+        claimed = manager._dispatch(_event(ctrl=False))
+
+        assert not claimed
         callback.assert_not_called()
 
-    def test_released_input_restores_the_shortcut(self) -> None:
-        manager = ShortcutManager()
+    def test_alias_reaches_the_same_callback(self) -> None:
+        manager = _manager()
         callback = Mock()
-        manager._on_input_focused(sender=1, app_data=42)
-        manager._on_input_unfocused(sender=1, app_data=42)
+        manager.register(ShortcutId.REDO, Shortcut(KEY, (Modifier.CTRL,)), callback)
+        manager.register_alias(ShortcutId.REDO, Shortcut(KEY, (Modifier.CTRL, Modifier.SHIFT)))
+        manager.bind_all()
 
-        with patch.object(manager, "_modifiers_match", return_value=True):
-            manager._handle_key(Mock(), callback)
-
+        assert manager._dispatch(_event(ctrl=True, shift=True))
         callback.assert_called_once()
 
 
-class TestModalSuppression:
+class TestFieldFocusGate:
+    def test_focused_input_suppresses_an_opaque_shortcut(self) -> None:
+        manager = _manager()
+        callback = Mock()
+        manager.register(ShortcutId.SAVE_PROJECT, Shortcut(KEY, (Modifier.CTRL,)), callback)
+        manager.bind_all()
+        manager._on_input_focused(sender=1, app_data=42)
+
+        claimed = manager._dispatch(_event(ctrl=True))
+
+        assert not claimed
+        callback.assert_not_called()
+
+    def test_field_transparent_shortcut_fires_while_focused(self) -> None:
+        manager = _manager()
+        callback = Mock()
+        manager.register(
+            ShortcutId.NEXT_TAB,
+            Shortcut(KEY, (Modifier.CTRL,), field_transparent=True),
+            callback,
+        )
+        manager.bind_all()
+        manager._on_input_focused(sender=1, app_data=42)
+
+        claimed = manager._dispatch(_event(ctrl=True))
+
+        assert claimed
+        callback.assert_called_once()
+
+
+class TestModalFacade:
     def test_a_pushed_modal_marks_the_dialog_open(self) -> None:
-        manager = ShortcutManager()
+        manager = _manager()
 
         manager.push_modal()
 
         assert manager.is_dialog_open
 
     def test_popping_the_last_modal_releases_the_dialog(self) -> None:
-        manager = ShortcutManager()
+        manager = _manager()
         manager.push_modal()
 
         manager.pop_modal()
@@ -68,7 +123,7 @@ class TestModalSuppression:
         assert not manager.is_dialog_open
 
     def test_nested_modals_stay_open_until_the_last_pop(self) -> None:
-        manager = ShortcutManager()
+        manager = _manager()
         manager.push_modal()
         manager.push_modal()
 
@@ -77,29 +132,8 @@ class TestModalSuppression:
         assert manager.is_dialog_open
 
     def test_pop_without_a_push_stays_closed(self) -> None:
-        manager = ShortcutManager()
+        manager = _manager()
 
         manager.pop_modal()
 
         assert not manager.is_dialog_open
-
-    def test_open_dialog_suppresses_the_shortcut(self) -> None:
-        manager = ShortcutManager()
-        callback = Mock()
-        manager.push_modal()
-
-        with patch.object(manager, "_modifiers_match", return_value=True):
-            manager._handle_key(Mock(), callback)
-
-        callback.assert_not_called()
-
-    def test_closed_dialog_restores_the_shortcut(self) -> None:
-        manager = ShortcutManager()
-        callback = Mock()
-        manager.push_modal()
-        manager.pop_modal()
-
-        with patch.object(manager, "_modifiers_match", return_value=True):
-            manager._handle_key(Mock(), callback)
-
-        callback.assert_called_once()

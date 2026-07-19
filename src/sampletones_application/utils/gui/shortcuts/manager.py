@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.general import TAG_GLOBAL_HANDLER_FOCUS
+from sampletones_application.utils.gui.keyboard import PRIORITY_SHORTCUT, KeyEvent, KeyRouter
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
@@ -11,13 +12,13 @@ from sampletones_shared.types.callback import Callback
 
 
 class ShortcutManager:
-    def __init__(self) -> None:
+    def __init__(self, *, key_router: KeyRouter) -> None:
+        self._router = key_router
         self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, Callback]] = {}
         self._aliases: Dict[ShortcutId, List[Shortcut]] = {}
+        self._bindings_by_key: Dict[int, List[Tuple[Shortcut, Callback]]] = {}
         self._focused_input: Optional[Sender] = None
-        self._modal_depth: int = 0
 
-        self._handler_registry: Optional[int] = None
         self._focus_handler_tag = TAG_GLOBAL_HANDLER_FOCUS
 
     def register(
@@ -53,21 +54,17 @@ class ShortcutManager:
 
         A dialog claims the keyboard for its own navigation while it is shown, so shortcut
         dispatch and the sequencer key handlers consult this to hold every application key
-        action behind the modal until it closes.
+        action behind the modal until it closes. The claim itself lives on the key router.
         """
-        return self._modal_depth > 0
+        return self._router.is_modal_open
 
     def push_modal(self) -> None:
-        """Registers that a modal dialog has taken over the keyboard.
-
-        Counting depth keeps a dialog opened on top of another dialog from releasing the
-        keyboard until the last one closes.
-        """
-        self._modal_depth += 1
+        """Registers that a modal dialog has taken over the keyboard."""
+        self._router.push_modal()
 
     def pop_modal(self) -> None:
-        """Releases one modal dialog's claim on the keyboard, floored at zero."""
-        self._modal_depth = max(0, self._modal_depth - 1)
+        """Releases one modal dialog's claim on the keyboard."""
+        self._router.pop_modal()
 
     def get_shortcut_display(self, shortcut_id: ShortcutId) -> str:
         if shortcut_id in self._shortcuts:
@@ -85,47 +82,48 @@ class ShortcutManager:
         )
 
     def bind_all(self) -> None:
-        with dpg.handler_registry() as self._handler_registry:
-            for shortcut_id, (shortcut, callback) in self._shortcuts.items():
-                self._bind(shortcut, callback)
-                for alias in self._aliases.get(shortcut_id, []):
-                    self._bind(alias, callback)
+        """Registers the shortcut scope with the key router.
 
-    def _bind(self, shortcut: Shortcut, callback: Callback) -> None:
-        if not shortcut.is_bindable:
-            return
+        Bindings are indexed by key so a press resolves in one lookup; the router skips this
+        scope entirely while a modal dialog holds the keyboard.
+        """
+        self._bindings_by_key = {}
+        for shortcut_id, (shortcut, callback) in self._shortcuts.items():
+            self._add_binding(shortcut, callback)
+            for alias in self._aliases.get(shortcut_id, []):
+                self._add_binding(alias, callback)
 
-        def inner(sender: Sender, app_data: Any, user_data: Any) -> None:
-            self._handle_key(shortcut, callback)
-
-        dpg.add_key_press_handler(
-            key=shortcut.key,
-            callback=inner,
+        self._router.register(
+            self._dispatch,
+            priority=PRIORITY_SHORTCUT,
+            active=lambda: not self._router.is_modal_open,
         )
 
-    def _handle_key(self, shortcut: Shortcut, callback: Callback) -> None:
-        if self.is_dialog_open:
+    def _add_binding(self, shortcut: Shortcut, callback: Callback) -> None:
+        if shortcut.key is None:
             return
 
-        if not self.is_input_focused and self._modifiers_match(shortcut.modifiers):
-            callback()
+        self._bindings_by_key.setdefault(shortcut.key, []).append((shortcut, callback))
+
+    def _dispatch(self, event: KeyEvent) -> bool:
+        """Fires the shortcut matching the event, leaving its key to a focused field
+        unless the shortcut is field-transparent."""
+        for shortcut, callback in self._bindings_by_key.get(event.key, ()):
+            if self._modifiers_match(event, shortcut.modifiers):
+                if self.is_input_focused and not shortcut.field_transparent:
+                    return False
+
+                callback()
+                return True
+
+        return False
 
     @staticmethod
-    def _modifiers_match(required: Tuple[Modifier, ...]) -> bool:
-        ctrl_pressed = dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl)
-        shift_pressed = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
-        alt_pressed = dpg.is_key_down(dpg.mvKey_LAlt) or dpg.is_key_down(dpg.mvKey_RAlt)
-
-        ctrl_required = Modifier.CTRL in required
-        shift_required = Modifier.SHIFT in required
-        alt_required = Modifier.ALT in required
-
-        return all(
-            (
-                ctrl_pressed == ctrl_required,
-                shift_pressed == shift_required,
-                alt_pressed == alt_required,
-            )
+    def _modifiers_match(event: KeyEvent, required: Tuple[Modifier, ...]) -> bool:
+        return (
+            event.ctrl == (Modifier.CTRL in required)
+            and event.shift == (Modifier.SHIFT in required)
+            and event.alt == (Modifier.ALT in required)
         )
 
     def setup_focus_handler(self) -> None:

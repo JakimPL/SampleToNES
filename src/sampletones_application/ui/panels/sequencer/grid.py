@@ -841,10 +841,18 @@ class GUISequencerGridPanel(GUIPanel):
         )
 
     def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
+        """Applies a tracker key to the active cell.
+
+        A Ctrl-modified press belongs to the application's global shortcuts, so the grid
+        yields it to the key router and keeps the plain keys for tracker editing.
+        """
         if self._shortcut_manager.is_input_focused or self._shortcut_manager.is_dialog_open:
             return
 
         if self._input_state.cursor is None:
+            return
+
+        if dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl):
             return
 
         match app_data:

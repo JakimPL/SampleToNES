@@ -1,0 +1,99 @@
+from typing import Callable, List
+
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_MODAL,
+    PRIORITY_SHORTCUT,
+    KeyEvent,
+    KeyRouter,
+)
+
+
+def _event() -> KeyEvent:
+    return KeyEvent(key=1, ctrl=False, shift=False, alt=False)
+
+
+def _recorder(log: List[str], label: str, claims: bool) -> Callable[[KeyEvent], bool]:
+    def handle(event: KeyEvent) -> bool:
+        log.append(label)
+        return claims
+
+    return handle
+
+
+class TestRouting:
+    def test_higher_priority_scope_is_offered_first(self) -> None:
+        router = KeyRouter()
+        log: List[str] = []
+        router.register(_recorder(log, "low", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+        router.register(_recorder(log, "high", True), priority=PRIORITY_MODAL, active=lambda: True)
+
+        router.route(_event())
+
+        assert log == ["high"]
+
+    def test_walk_continues_until_a_scope_claims(self) -> None:
+        router = KeyRouter()
+        log: List[str] = []
+        router.register(_recorder(log, "high", False), priority=PRIORITY_MODAL, active=lambda: True)
+        router.register(_recorder(log, "low", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+
+        claimed = router.route(_event())
+
+        assert claimed
+        assert log == ["high", "low"]
+
+    def test_inactive_scope_is_skipped(self) -> None:
+        router = KeyRouter()
+        log: List[str] = []
+        router.register(_recorder(log, "inactive", True), priority=PRIORITY_MODAL, active=lambda: False)
+        router.register(_recorder(log, "active", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+
+        router.route(_event())
+
+        assert log == ["active"]
+
+    def test_unclaimed_event_reports_not_handled(self) -> None:
+        router = KeyRouter()
+        router.register(_recorder([], "declines", False), priority=PRIORITY_SHORTCUT, active=lambda: True)
+
+        assert not router.route(_event())
+
+
+class TestModalDepth:
+    def test_push_marks_modal_open(self) -> None:
+        router = KeyRouter()
+
+        router.push_modal()
+
+        assert router.is_modal_open
+
+    def test_nested_modals_stay_open_until_last_pop(self) -> None:
+        router = KeyRouter()
+        router.push_modal()
+        router.push_modal()
+
+        router.pop_modal()
+
+        assert router.is_modal_open
+
+    def test_pop_floors_at_zero(self) -> None:
+        router = KeyRouter()
+
+        router.pop_modal()
+
+        assert not router.is_modal_open
+
+    def test_a_modal_gate_suppresses_a_shortcut_scope(self) -> None:
+        router = KeyRouter()
+        log: List[str] = []
+        router.register(
+            _recorder(log, "shortcut", True),
+            priority=PRIORITY_SHORTCUT,
+            active=lambda: not router.is_modal_open,
+        )
+        router.push_modal()
+
+        claimed = router.route(_event())
+
+        assert not claimed
+        assert log == []
