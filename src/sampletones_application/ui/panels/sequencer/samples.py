@@ -330,7 +330,7 @@ class GUISequencerSamplesPanel(GUIPanel):
                 self._cancel_rename()
             return
 
-        if self._shortcut_manager.is_input_focused:
+        if self._shortcut_manager.is_input_focused or self._shortcut_manager.is_dialog_open:
             return
 
         if self._selected_sample_id is None:

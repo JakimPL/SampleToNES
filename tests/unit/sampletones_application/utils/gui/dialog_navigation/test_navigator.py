@@ -1,10 +1,10 @@
 from typing import List
 from unittest.mock import MagicMock, patch
 
-from sampletones_application.utils.gui.dialogs.navigator import (
+from sampletones_application.utils.gui.dialog_navigation.navigator import (
     DialogKeyboardNavigator,
 )
-from sampletones_application.utils.gui.dialogs.stop import FocusStop
+from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 
 MODULE = "sampletones_application.utils.gui.dialog_navigation.navigator"

@@ -3,8 +3,8 @@ from typing import List
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.general import SUF_HANDLER_DIALOG_NAV
-from sampletones_application.utils.gui.dialogs.ring import FocusRing
-from sampletones_application.utils.gui.dialogs.stop import FocusStop
+from sampletones_application.utils.gui.dialog_navigation.ring import FocusRing
+from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_delete_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager

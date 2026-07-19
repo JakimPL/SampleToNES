@@ -2,7 +2,7 @@ from typing import List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.utils.gui.dialogs.stop import FocusStop
+from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 
 
 class FocusRing:

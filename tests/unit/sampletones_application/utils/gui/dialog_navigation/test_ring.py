@@ -1,8 +1,8 @@
 from typing import FrozenSet, List
 from unittest.mock import MagicMock, patch
 
-from sampletones_application.utils.gui.dialogs.ring import FocusRing
-from sampletones_application.utils.gui.dialogs.stop import FocusStop
+from sampletones_application.utils.gui.dialog_navigation.ring import FocusRing
+from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 
 MODULE = "sampletones_application.utils.gui.dialog_navigation.ring"
 

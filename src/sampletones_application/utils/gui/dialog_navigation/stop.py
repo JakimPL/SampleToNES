@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional
 
@@ -20,11 +22,19 @@ class FocusStop:
     activate: Optional[VoidCallback]
 
     @classmethod
-    def button(cls, tag: str, activate: VoidCallback) -> "FocusStop":
+    def button(cls, tag: str, activate: VoidCallback) -> FocusStop:
         """Builds a stop for a :class:`GUIButton`, focusing its inner button item."""
-        return cls(focus_tag=f"{tag}{SUF_BUTTON}", enabled_tag=tag, activate=activate)
+        return cls(
+            focus_tag=f"{tag}{SUF_BUTTON}",
+            enabled_tag=tag,
+            activate=activate,
+        )
 
     @classmethod
-    def field(cls, tag: str) -> "FocusStop":
+    def field(cls, tag: str) -> FocusStop:
         """Builds a stop for a text field or combo, which owns Enter itself."""
-        return cls(focus_tag=tag, enabled_tag=tag, activate=None)
+        return cls(
+            focus_tag=tag,
+            enabled_tag=tag,
+            activate=None,
+        )

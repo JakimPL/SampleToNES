@@ -35,3 +35,5 @@ class ShortcutId(Enum):
     TOGGLE_ADVANCED_SETTINGS = "ToggleAdvancedSettings"
     TOGGLE_FULLSCREEN = "ToggleFullscreen"
     ABOUT_DIALOG = "AboutDialog"
+    NEXT_TAB = "NextTab"
+    PREVIOUS_TAB = "PreviousTab"

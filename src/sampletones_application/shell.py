@@ -90,6 +90,8 @@ class ShortcutBindings:
     toggle_advanced_settings: Callback
     toggle_fullscreen: Callback
     about: Callback
+    next_tab: Callback
+    previous_tab: Callback
 
 
 class ApplicationShell:
@@ -347,6 +349,16 @@ class ApplicationShell:
             ShortcutId.ABOUT_DIALOG,
             Shortcut(),
             bindings.about,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.NEXT_TAB,
+            Shortcut(dpg.mvKey_Tab),
+            bindings.next_tab,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.PREVIOUS_TAB,
+            Shortcut(dpg.mvKey_Tab, (Modifier.SHIFT,)),
+            bindings.previous_tab,
         )
 
         self._shortcut_manager.bind_all()

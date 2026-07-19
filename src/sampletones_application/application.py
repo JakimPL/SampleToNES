@@ -210,6 +210,7 @@ class Application:
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
             layout=self.layout.settings,
             language_manager=self.language_manager,
+            shortcut_manager=self.shortcut_manager,
         )
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
@@ -478,6 +479,8 @@ class Application:
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_fullscreen=self._shell.toggle_fullscreen,
             about=self._open_about_dialog,
+            next_tab=self._next_tab,
+            previous_tab=self._previous_tab,
         )
 
     def _setup_shell(self, bindings: ShortcutBindings) -> None:
@@ -1083,6 +1086,19 @@ class Application:
 
     def _set_current_tab(self, tab: Tab) -> None:
         self._shell.set_current_tab(tab)
+
+    def _next_tab(self) -> None:
+        self._switch_tab(1)
+
+    def _previous_tab(self) -> None:
+        self._switch_tab(-1)
+
+    def _switch_tab(self, step: int) -> None:
+        """Moves to the adjacent tab in declaration order, clamped at the ends without wrapping."""
+        tabs = list(Tab)
+        index = tabs.index(self._shell.get_current_tab())
+        clamped = min(max(index + step, 0), len(tabs) - 1)
+        self._set_current_tab(tabs[clamped])
 
     def _get_current_player(self) -> AudioPlayerProtocol:
         return self._shell.get_current_player()

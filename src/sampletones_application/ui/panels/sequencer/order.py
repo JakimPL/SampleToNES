@@ -651,7 +651,7 @@ class GUISequencerOrderPanel(GUIPanel):
         )
 
     def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
-        if self._shortcut_manager.is_input_focused:
+        if self._shortcut_manager.is_input_focused or self._shortcut_manager.is_dialog_open:
             return
 
         cursor = self._input_state.cursor

@@ -20,7 +20,12 @@ from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
+from sampletones_application.utils.gui.dialog_navigation import (
+    DialogKeyboardNavigator,
+    FocusStop,
+)
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.audio_settings import (
     BUFFER_SIZE_ITEMS,
     AudioDeviceItem,
@@ -37,9 +42,12 @@ class GUIAudioSettingsWindow(GUIWindow):
         *,
         layout: SettingsLayout,
         language_manager: LanguageManager,
+        shortcut_manager: ShortcutManager,
     ) -> None:
         self._layout = layout
+        self._shortcut_manager = shortcut_manager
         self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
+        self._navigator: Optional[DialogKeyboardNavigator] = None
 
         self.on_commit: Optional[Callable[[int, SampleRate, BufferSize], None]] = None
         self.on_refresh_devices: Optional[VoidCallback] = None
@@ -139,6 +147,28 @@ class GUIAudioSettingsWindow(GUIWindow):
             self._dialog_theme.bind_to_item(combo_tag)
 
         self._update_combos()
+        self._install_navigation()
+
+    def _install_navigation(self) -> None:
+        """Wires Tab/Enter/Escape keyboard navigation over the combos and buttons."""
+        self._navigator = DialogKeyboardNavigator(
+            window_tag=self.tag,
+            stops=[
+                FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_DEVICE),
+                FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE),
+                FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE),
+                FocusStop.button(TAG_SETTINGS_AUDIO_BUTTON_REFRESH, self._refresh_devices),
+                FocusStop.button(TAG_SETTINGS_AUDIO_BUTTON_APPLY, self._commit),
+            ],
+            on_escape=self.hide,
+            shortcut_manager=self._shortcut_manager,
+        )
+        self._navigator.install()
+
+    def _teardown(self) -> None:
+        if self._navigator is not None:
+            self._navigator.dispose()
+            self._navigator = None
 
     def _create_device_selection(self) -> None:
         with labeled_field(self._lbl_output_device, self._layout.label_width):
