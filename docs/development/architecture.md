@@ -45,7 +45,7 @@ The load-bearing prohibitions: nothing in `logic/` or `services/` imports `ui/` 
 
 ### 2. DPG stays in the visual layers
 
-Calls into `dearpygui` are confined to `ui/`, `shell.py`, and the narrow coordinator surface defined in the Layer Reference. The `logic/`, `services/`, `view_model/`, and `config/` layers remain DPG-free so they can be instantiated and tested without a running GUI context. This extends past `import dearpygui`: the dpg-bound helpers (`DialogsRenderer`, the `dpg_*` wrappers, fonts, tooltips, shortcuts, frame callbacks) are grouped under `utils/gui/`, and the non-visual layers may use only the dpg-free helpers that live directly under `utils/` (e.g. `utils/callbacks/`).
+Calls into `dearpygui` are confined to `ui/`, `shell.py`, and the narrow coordinator surface defined in the Layer Reference. The `logic/`, `services/`, `view_model/`, and `config/` layers remain DPG-free so they can be instantiated and tested without a running GUI context. This extends past `import dearpygui`: the dpg-bound helpers (`DialogsRenderer`, the `dpg_*` wrappers, fonts, tooltips, shortcuts, keyboard routing, frame callbacks) are grouped under `utils/gui/`, and the non-visual layers may use only the dpg-free helpers that live directly under `utils/` (e.g. `utils/callbacks/`).
 
 ### 3. No UI state in logic
 
@@ -101,6 +101,26 @@ A new exclusive operation joins by contributing its `is_active` to the authority
 Where behaviour depends on the operating system, the desktop environment, or an external command-line tool, that variation is expressed as a `Protocol` with one implementation per target, chosen by a runtime factory — never as platform branches scattered through the callers. The factory probes availability (`shutil.which`) and environment (`System.current()`, `XDG_CURRENT_DESKTOP`) and returns the implementation that fits; callers depend only on the Protocol and read identically on every platform.
 
 `utils/file_dialogs/` applies this to native file dialogs: a `FileDialogBackend` Protocol with `kdialog`, `zenity`, and `tkinter` implementations, selected by `select_file_dialog_backend()`. Each tool's quirks stay sealed inside its own implementation — `kdialog` activates the supplied filter, `zenity` lists the filter but leaves the selector on its "(None)" default because its command line offers no way to pre-select one — and the guarantee callers depend on, that a saved file carries the configured extension, is enforced once in the API layer above every backend. `sampletones_core/calibration/referee/` follows the same shape with its `build_referees()` factory.
+
+### 12. One dispatcher owns the keyboard
+
+DearPyGui gives every key handler the same global reach and no way for one to stop another — or ImGui itself — from also seeing a press. Priority and consume semantics therefore exist only where the application builds them. A single `KeyRouter` (`utils/gui/keyboard/`) owns the one `add_key_press_handler` for the whole application, snapshots the modifier state once into a frozen `KeyEvent`, and offers that event to registered **scopes** from highest priority to lowest. The first active scope whose handler returns `True` claims the press and ends the walk; this software walk is the sole consume mechanism the framework leaves available.
+
+Each keyboard consumer registers one scope through `register(handle, *, priority, active)`, where `active()` reports whether the scope wants keys at this moment and `handle(event) -> bool` acts on the press and reports whether it claimed it. Three priorities order the whole application:
+
+| Priority | Scope | Active when | Behaviour |
+|----------|-------|-------------|-----------|
+| `MODAL` (100) | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
+| `PANEL` (60) | a sequencer sub-panel (grid / order / samples) | that sub-panel holds the cursor or selection | handles its tracker keys and yields the combinations it does not own so a higher-reaching shortcut still wins |
+| `SHORTCUT` (40) | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
+
+Because the router offers a panel the key ahead of the shortcut scope, a panel returns `False` on any combination it does not own — the grid yields every `Ctrl`-modified press — so that field-transparent shortcuts such as `Ctrl+PgDn` / `Ctrl+PgUp` tab-switching reach the shortcut scope even while a grid cursor is set.
+
+**Focus is pulled, not pushed.** Whether a text or value field keeps a plain key for itself is one router query, `is_field_focused`, that reads the focused item from DearPyGui at the moment of the press and counts it only while it is a field type that is actively being edited. Every input is covered by construction, and the router alone holds the rule.
+
+**Modal suppression lives in one place.** The router holds a LIFO stack of modal handlers; `push_modal` / `pop_modal` bracket a dialog's lifetime, and the built-in `MODAL` scope routes each press to the top of the stack. Since `MODAL` outranks the panel and shortcut scopes, the scopes beneath it carry no "a dialog is open" check of their own.
+
+The router is constructed at the composition root and injected into every consumer (principle 7); its one global handler is bound in `shell.py` once the DPG context exists.
 
 ---
 
@@ -245,7 +265,7 @@ There are two coordinator kinds:
 
 **Purpose:** Manages the DPG context lifecycle, the primary window, the tab bar, the shortcut system, and UI utilities (status bar, FPS timer, audio settings window). It performs no domain operations.
 
-`ApplicationShell.setup()` creates the DPG context, registers shortcuts, builds the main window (menu bar + tab bar + status bar), and starts the `CallbackQueue` worker thread. Tab coordinators are passed to the shell so it can call their `create_tab()` methods in sequence.
+`ApplicationShell.setup()` creates the DPG context, registers shortcuts, binds the `KeyRouter`'s single global key-press handler, builds the main window (menu bar + tab bar + status bar), and starts the `CallbackQueue` worker thread. Tab coordinators are passed to the shell so it can call their `create_tab()` methods in sequence.
 
 **Must not import:** `logic/`, `services/`. The shell reaches domain behaviour only through the coordinators and callbacks it was handed.
 
