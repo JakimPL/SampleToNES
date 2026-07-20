@@ -331,7 +331,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 callback=self._handle_export_button_clicked,
                 user_data=generator_name,
             )
-            self._status_bar.bind_to_item(button_tag, self._msg_export_instrument)
+            self._status_bar.bind_to_item(
+                button_tag,
+                self._msg_export_instrument.format(generator=self._generator_labels[generator_name]),
+            )
 
             with dpg.child_window(
                 tag=window_tag,

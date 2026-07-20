@@ -398,7 +398,7 @@ reconstructions.instruments.message.status_sequence: "Edit and press ENTER to ch
 reconstructions.instruments.message.status_copy_sequence: "Copy sequence to clipboard."
 reconstructions.instruments.message.status_generator_toggle: "Click to turn {on_or_off} {generator_name}."
 reconstructions.instruments.message.status_generator_not_available: "{generator_name} is not available."
-reconstructions.instruments.message.status_export_instrument: "Export this generator's instrument as a FamiTracker instrument file."
+reconstructions.instruments.message.status_export_instrument: "Export the {generator} generator's instrument as a FamiTracker instrument file."
 reconstructions.instruments.message.export_instrument_success: "Instrument saved successfully."
 reconstructions.instruments.message.export_instruments_success: "Reconstruction instruments saved successfully."
 reconstructions.instruments.message.export_instrument_failed: "Failed to export instrument."
