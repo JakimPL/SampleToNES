@@ -22,11 +22,11 @@ def _theme_registry() -> Generator[None, None, None]:
 
 def _dpg(
     *,
-    focused: FrozenSet[str] = frozenset(),
+    active: FrozenSet[str] = frozenset(),
     disabled: FrozenSet[str] = frozenset(),
 ) -> MagicMock:
     dpg = MagicMock()
-    dpg.is_item_focused.side_effect = lambda tag: tag in focused
+    dpg.is_item_active.side_effect = lambda tag: tag in active
     dpg.is_item_enabled.side_effect = lambda tag: tag not in disabled
     return dpg
 
@@ -82,10 +82,10 @@ class TestCycle:
 
         dpg.focus_item.assert_called_once_with("ok.button")
 
-    def test_cycle_starts_from_the_clicked_field(self) -> None:
+    def test_cycle_starts_from_the_edited_field(self) -> None:
         ring = FocusRing(_form_stops(MagicMock(), MagicMock()), initial_index=4)
 
-        with patch(f"{MODULE}.dpg", _dpg(focused=frozenset({"author"}))) as dpg:
+        with patch(f"{MODULE}.dpg", _dpg(active=frozenset({"author"}))) as dpg:
             ring.cycle(1)
 
         dpg.focus_item.assert_called_once_with("comment")
@@ -130,11 +130,11 @@ class TestActivateFocused:
         ok.assert_called_once_with()
         cancel.assert_not_called()
 
-    def test_is_left_to_a_focused_field(self) -> None:
+    def test_is_left_to_the_edited_field(self) -> None:
         cancel, ok = MagicMock(), MagicMock()
         ring = FocusRing(_form_stops(cancel, ok), initial_index=4)
 
-        with patch(f"{MODULE}.dpg", _dpg(focused=frozenset({"comment"}))):
+        with patch(f"{MODULE}.dpg", _dpg(active=frozenset({"comment"}))):
             ring.activate_focused()
 
         ok.assert_not_called()

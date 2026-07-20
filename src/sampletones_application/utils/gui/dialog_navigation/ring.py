@@ -10,9 +10,9 @@ from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 class FocusRing:
     """Ordered focus stops a dialog moves keyboard focus through.
 
-    The stop that holds focus is tracked internally and reconciled against the fields and combos
-    that report focus reliably, which keeps the cycle correct whether or not a focused button
-    reports its focus, and lets a focused field keep Enter for itself.
+    The stop that holds focus is tracked internally and reconciled against the field or combo the
+    user is actively editing, which keeps the cycle correct whether or not a focused button reports
+    its focus, and lets the field being typed into keep Enter for itself.
 
     As focus moves onto a button the ring paints it with the focus outline theme and rebinds the
     button's own theme once focus leaves, so the button the user is on carries a visible accent
@@ -33,17 +33,17 @@ class FocusRing:
         self._focus(self._initial_index)
 
     def cycle(self, step: int) -> None:
-        """Moves focus by ``step`` stops, starting from a clicked field or the tracked stop,
+        """Moves focus by ``step`` stops, starting from the field being edited or the tracked stop,
         skipping disabled stops and wrapping around the ring."""
-        focused_field = self._focused_field_index()
-        start = focused_field if focused_field is not None else self._current_index
+        active_field = self._active_field_index()
+        start = active_field if active_field is not None else self._current_index
         target = self._next_enabled_index(start, step)
         if target is not None:
             self._focus(target)
 
     def activate_focused(self) -> None:
-        """Runs the focused button's action, leaving Enter to a field or combo that holds focus."""
-        if self._focused_field_index() is not None:
+        """Runs the focused button's action, leaving Enter to the field or combo being edited."""
+        if self._active_field_index() is not None:
             return
 
         stop = self._stops[self._current_index]
@@ -70,9 +70,9 @@ class FocusRing:
 
         ThemeRegistry.get(stop.base_theme_tag).bind_to_item(stop.focus_tag)
 
-    def _focused_field_index(self) -> Optional[int]:
+    def _active_field_index(self) -> Optional[int]:
         for index, stop in enumerate(self._stops):
-            if stop.activate is None and dpg.is_item_focused(stop.focus_tag):
+            if stop.activate is None and dpg.is_item_active(stop.focus_tag):
                 return index
 
         return None
