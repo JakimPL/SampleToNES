@@ -875,11 +875,11 @@ class GUISequencerGridPanel(GUIPanel):
         yields it to the lower-priority scopes and keeps the plain keys for tracker editing.
         Ctrl+Shift+Space is the exception: it plays the song from the cursor's row.
         """
-        if event.ctrl and event.shift and event.key == dpg.mvKey_Spacebar:
-            cursor = self._input_state.cursor
-            if cursor is None:
-                return False
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return False
 
+        if event.ctrl and event.shift and event.key == dpg.mvKey_Spacebar:
             self.call(self.on_play_from_row, cursor.row)
             return True
 

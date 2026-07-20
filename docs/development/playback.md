@@ -91,8 +91,10 @@ The transport keys reach the application through the single `KeyRouter` handler
 
 **Focus is per-key.** A focused input keeps only the keys it actually consumes. A text or number
 field takes `Space` and `Shift+Space` (space is a character it types) and `Escape` (which cancels
-the field), so those reach the field while it is focused. A modified transport chord
-(`Ctrl+Space`, `Ctrl+Shift+Space`) is never a field character, so it always fires the shortcut, even
+the field), so those reach the field while it is focused. `Ctrl+Space` is never a field character,
+so this global shortcut always fires, even while a field is focused. `Ctrl+Shift+Space` is not a
+global shortcut but a grid action: the sequencer grid claims it only while the grid — not a field —
+holds the keyboard, so it plays from the cursor row when you are editing the grid and stays inert
 while a field is focused. Field-transparent shortcuts (tab switching) keep firing as before.
 
 **Interactive widgets do not hold the keyboard.** After a click, a selectable cell or a transport

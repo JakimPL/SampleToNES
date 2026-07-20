@@ -14,8 +14,8 @@ PAUSED = "paused"
 class FakeSource:
     """A test double for an intentional playback source.
 
-    ``is_playing`` reports engagement — owning the output whether sounding or held paused — matching
-    the ownership-aware convention the real sources follow.
+    ``is_engaged`` reports whether the source owns the output, sounding or held paused; this is the
+    single fact the router reads to decide what a command controls.
     """
 
     def __init__(self, *, loaded: bool = False, state: str = IDLE) -> None:
@@ -45,6 +45,9 @@ class FakeSource:
 
     def is_paused(self) -> bool:
         return self.state == PAUSED
+
+    def is_engaged(self) -> bool:
+        return self.state in (PLAYING, PAUSED)
 
     def is_loaded(self) -> bool:
         return self._loaded

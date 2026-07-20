@@ -74,7 +74,7 @@ class PlaybackRouter:
     @property
     def play_label(self) -> str:
         target = self._target()
-        if target is not None and self._is_engaged(target):
+        if target is not None and target.is_engaged():
             return self._lbl_resume if target.is_paused() else self._lbl_pause
 
         return self._lbl_play
@@ -93,7 +93,7 @@ class PlaybackRouter:
     def is_pause_enabled(self) -> bool:
         """Whether an engaged source is available to pause or resume."""
         target = self._target()
-        return target is not None and self._is_engaged(target)
+        return target is not None and target.is_engaged()
 
     @property
     def is_paused(self) -> bool:
@@ -126,11 +126,7 @@ class PlaybackRouter:
     def _engaged_source(self) -> Optional[AudioPlayerProtocol]:
         """The intentional source that currently owns the device output, if any."""
         for source in self._sources:
-            if self._is_engaged(source):
+            if source.is_engaged():
                 return source
 
         return None
-
-    @staticmethod
-    def _is_engaged(source: AudioPlayerProtocol) -> bool:
-        return source.is_playing() or source.is_paused()

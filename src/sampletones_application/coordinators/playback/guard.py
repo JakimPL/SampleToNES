@@ -44,5 +44,8 @@ class GuardedPlayer:
     def is_paused(self) -> bool:
         return self._player.is_paused()
 
+    def is_engaged(self) -> bool:
+        return self._player.is_engaged()
+
     def is_loaded(self) -> bool:
         return self._player.is_loaded()
