@@ -1,10 +1,12 @@
 from typing import Dict
 from unittest.mock import Mock
 
+import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
 from sampletones_application.utils.gui.keyboard import focus as focus_module
+from sampletones_application.utils.gui.keyboard.focus import FieldKind
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -14,9 +16,9 @@ KEY = 65
 
 
 @pytest.fixture(autouse=True)
-def field_focus(monkeypatch: pytest.MonkeyPatch) -> Dict[str, bool]:
-    state = {"focused": False}
-    monkeypatch.setattr(focus_module, "is_field_focused", lambda: state["focused"])
+def field_kind(monkeypatch: pytest.MonkeyPatch) -> Dict[str, FieldKind]:
+    state = {"kind": FieldKind.NONE}
+    monkeypatch.setattr(focus_module, "focused_field_kind", lambda: state["kind"])
     return state
 
 
@@ -24,8 +26,8 @@ def _manager() -> ShortcutManager:
     return ShortcutManager(key_router=KeyRouter())
 
 
-def _event(*, ctrl: bool = False, shift: bool = False, alt: bool = False) -> KeyEvent:
-    return KeyEvent(key=KEY, ctrl=ctrl, shift=shift, alt=alt)
+def _event(key: int = KEY, *, ctrl: bool = False, shift: bool = False, alt: bool = False) -> KeyEvent:
+    return KeyEvent(key=key, ctrl=ctrl, shift=shift, alt=alt)
 
 
 class TestShortcutDispatch:
@@ -63,19 +65,55 @@ class TestShortcutDispatch:
 
 
 class TestFieldFocusGate:
-    def test_focused_input_suppresses_an_opaque_shortcut(self, field_focus: Dict[str, bool]) -> None:
+    def test_text_field_keeps_a_plain_space(self, field_kind: Dict[str, FieldKind]) -> None:
         manager = _manager()
         callback = Mock()
-        manager.register(ShortcutId.SAVE_PROJECT, Shortcut(KEY, (Modifier.CTRL,)), callback)
+        manager.register(ShortcutId.PLAY, Shortcut(dpg.mvKey_Spacebar), callback)
         manager.bind_all()
-        field_focus["focused"] = True
+        field_kind["kind"] = FieldKind.TEXT_ENTRY
 
-        claimed = manager._dispatch(_event(ctrl=True))
+        claimed = manager._dispatch(_event(dpg.mvKey_Spacebar))
 
         assert not claimed
         callback.assert_not_called()
 
-    def test_field_transparent_shortcut_fires_while_focused(self, field_focus: Dict[str, bool]) -> None:
+    def test_text_field_yields_ctrl_space(self, field_kind: Dict[str, FieldKind]) -> None:
+        manager = _manager()
+        callback = Mock()
+        manager.register(ShortcutId.PLAY_FROM_FRAME, Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)), callback)
+        manager.bind_all()
+        field_kind["kind"] = FieldKind.TEXT_ENTRY
+
+        claimed = manager._dispatch(_event(dpg.mvKey_Spacebar, ctrl=True))
+
+        assert claimed
+        callback.assert_called_once()
+
+    def test_text_field_keeps_its_editing_chord(self, field_kind: Dict[str, FieldKind]) -> None:
+        manager = _manager()
+        callback = Mock()
+        manager.register(ShortcutId.AUDIO_SETTINGS, Shortcut(dpg.mvKey_A, (Modifier.CTRL,)), callback)
+        manager.bind_all()
+        field_kind["kind"] = FieldKind.TEXT_ENTRY
+
+        claimed = manager._dispatch(_event(dpg.mvKey_A, ctrl=True))
+
+        assert not claimed
+        callback.assert_not_called()
+
+    def test_focused_field_keeps_escape(self, field_kind: Dict[str, FieldKind]) -> None:
+        manager = _manager()
+        callback = Mock()
+        manager.register(ShortcutId.STOP, Shortcut(dpg.mvKey_Escape), callback)
+        manager.bind_all()
+        field_kind["kind"] = FieldKind.TEXT_ENTRY
+
+        claimed = manager._dispatch(_event(dpg.mvKey_Escape))
+
+        assert not claimed
+        callback.assert_not_called()
+
+    def test_field_transparent_shortcut_fires_while_focused(self, field_kind: Dict[str, FieldKind]) -> None:
         manager = _manager()
         callback = Mock()
         manager.register(
@@ -84,18 +122,18 @@ class TestFieldFocusGate:
             callback,
         )
         manager.bind_all()
-        field_focus["focused"] = True
+        field_kind["kind"] = FieldKind.TEXT_ENTRY
 
         claimed = manager._dispatch(_event(ctrl=True))
 
         assert claimed
         callback.assert_called_once()
 
-    def test_is_input_focused_reflects_the_router(self, field_focus: Dict[str, bool]) -> None:
+    def test_is_input_focused_reflects_the_router(self, field_kind: Dict[str, FieldKind]) -> None:
         manager = _manager()
 
-        field_focus["focused"] = True
+        field_kind["kind"] = FieldKind.TEXT_ENTRY
         assert manager.is_input_focused
 
-        field_focus["focused"] = False
+        field_kind["kind"] = FieldKind.NONE
         assert not manager.is_input_focused

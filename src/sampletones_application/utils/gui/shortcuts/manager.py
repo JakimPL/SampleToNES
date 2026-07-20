@@ -2,7 +2,12 @@ from typing import Any, Dict, List, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.utils.gui.keyboard import PRIORITY_SHORTCUT, KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_SHORTCUT,
+    KeyEvent,
+    KeyRouter,
+    focus,
+)
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
@@ -82,11 +87,15 @@ class ShortcutManager:
         self._bindings_by_key.setdefault(shortcut.key, []).append((shortcut, callback))
 
     def _dispatch(self, event: KeyEvent) -> bool:
-        """Fires the shortcut matching the event, leaving its key to a focused field
-        unless the shortcut is field-transparent."""
+        """Fires the shortcut matching the event, yielding its key to a focused field that acts on
+        it unless the shortcut is field-transparent.
+
+        A field keeps only the keys it uses, so a text field holds plain Space and its editing keys
+        while Ctrl+Space and Escape still reach playback and Stop from the same field.
+        """
         for shortcut, callback in self._bindings_by_key.get(event.key, ()):
             if self._modifiers_match(event, shortcut.modifiers):
-                if self.is_input_focused and not shortcut.field_transparent:
+                if not shortcut.field_transparent and self._field_consumes(event):
                     return False
 
                 callback()
@@ -95,7 +104,20 @@ class ShortcutManager:
         return False
 
     @staticmethod
-    def _modifiers_match(event: KeyEvent, required: Tuple[Modifier, ...]) -> bool:
+    def _field_consumes(event: KeyEvent) -> bool:
+        return focus.field_consumes_key(
+            focus.focused_field_kind(),
+            event.key,
+            ctrl=event.ctrl,
+            shift=event.shift,
+            alt=event.alt,
+        )
+
+    @staticmethod
+    def _modifiers_match(
+        event: KeyEvent,
+        required: Tuple[Modifier, ...],
+    ) -> bool:
         return (
             event.ctrl == (Modifier.CTRL in required)
             and event.shift == (Modifier.SHIFT in required)
