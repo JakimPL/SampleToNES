@@ -250,7 +250,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         )
         with labeled_field(
             self._lbl_window_pulse_volume,
-            self._layout.instruction_choice.label_width,
+            self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
             dpg.add_slider_int(
@@ -259,11 +259,11 @@ class GUIInstructionChoicePanel(GUIPanel):
                 min_value=1,
                 max_value=MAX_VOLUME,
                 clamped=True,
-                width=self._layout.instruction_choice.input_width,
+                width=self._layout.choice.input_width,
             )
         with labeled_field(
             self._lbl_window_pulse_duty_cycle,
-            self._layout.instruction_choice.label_width,
+            self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
             dpg.add_slider_int(
@@ -272,7 +272,7 @@ class GUIInstructionChoicePanel(GUIPanel):
                 min_value=0,
                 max_value=MAX_DUTY_CYCLE,
                 clamped=True,
-                width=self._layout.instruction_choice.input_width,
+                width=self._layout.choice.input_width,
             )
 
         for tag in [
@@ -300,7 +300,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         )
         with labeled_field(
             self._lbl_window_noise_volume,
-            self._layout.instruction_choice.label_width,
+            self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
             dpg.add_slider_int(
@@ -309,7 +309,7 @@ class GUIInstructionChoicePanel(GUIPanel):
                 min_value=1,
                 max_value=MAX_VOLUME,
                 clamped=True,
-                width=self._layout.instruction_choice.input_width,
+                width=self._layout.choice.input_width,
             )
         dpg.add_checkbox(
             tag=TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,
