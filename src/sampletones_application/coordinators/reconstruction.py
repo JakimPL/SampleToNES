@@ -306,8 +306,13 @@ class ReconstructionCoordinator:
         self._session_manager.set_reconstruction_path(filepath.parent)
         self._tab.load_reconstruction(filepath)
 
-    def save(self, filepath: Optional[Path] = None) -> None:
-        self._reconstruction_manager.save_reconstruction(filepath)
+    def save(self, filepath: Optional[Path] = None) -> bool:
+        """Saves the open reconstruction, reporting whether it was written.
+
+        The exit and close prompts wait on this, so they proceed only once it lands on disk and
+        hold otherwise.
+        """
+        return self._reconstruction_manager.save_reconstruction(filepath)
 
     def close_with_confirmation(self) -> None:
         if self._requires_save_confirmation():
@@ -433,7 +438,7 @@ class ReconstructionCoordinator:
         self,
         title: str,
         message: str,
-        on_save: Callback,
+        on_save: Callable[[], bool],
         on_confirm: Callback,
         ok_label: str,
     ) -> None:

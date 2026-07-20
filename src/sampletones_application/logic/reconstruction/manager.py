@@ -78,17 +78,23 @@ class ReconstructionManager(CallbackMixin):
         self._current_features = feature_data
         self._reconstruction_hash = hash_model(reconstruction)
 
-    def save_reconstruction(self, filepath: Optional[Path] = None) -> None:
+    def save_reconstruction(self, filepath: Optional[Path] = None) -> bool:
+        """Writes the open reconstruction to disk, reporting whether the write happened.
+
+        A reconstruction with neither a supplied nor a stored file path stays in memory and needs
+        'Save as' to choose one, so the call reports that nothing was written.
+        """
         if not self._current_reconstruction:
-            return
+            return False
 
         target_path = filepath or self._current_reconstruction.filepath
         if target_path is None:
             logger.warning("Reconstruction has no file path; use 'Save as' to choose one")
-            return
+            return False
 
         self._write_to_file(self._current_reconstruction.reconstruction, target_path)
         self._session.mark_saved(filepath.name if filepath is not None else None)
+        return True
 
     def save_reconstruction_as(self, filepath: Path) -> None:
         """Saves the open reconstruction to a chosen file and adopts it as a standalone document.

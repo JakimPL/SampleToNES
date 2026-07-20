@@ -1,7 +1,7 @@
 import re
 import uuid
 from pathlib import Path
-from typing import Dict, List, Optional, Pattern, Tuple
+from typing import Callable, Dict, List, Optional, Pattern, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -628,6 +628,7 @@ class DialogsRenderer:
             ],
             on_escape=_on_cancel,
             key_router=self._router,
+            initial_index=1,
         )
         center_when_settled(tag)
 
@@ -728,11 +729,19 @@ class DialogsRenderer:
         tag: str,
         message: str,
         title: str,
-        on_save: Callback,
+        on_save: Callable[[], bool],
         on_confirm: Callback,
         *,
         ok_label: str,
     ) -> None:
+        """Modal save-or-proceed prompt for an unsaved document.
+
+        ``on_save`` writes the document and reports whether it completed; the prompt runs
+        ``on_confirm`` and closes only when the save reports success, so cancelling the save's file
+        dialog leaves the prompt open with the pending action untaken. The middle button runs
+        ``on_confirm`` to proceed without saving, and Cancel — the initially focused button —
+        dismisses the prompt.
+        """
         tag = get_dialog_tag(tag)
         save_button_tag = f"{tag}{SUF_BUTTON_SAVE}"
         ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
@@ -751,8 +760,10 @@ class DialogsRenderer:
             dpg_delete_item(tag)
 
         def _on_save() -> None:
+            if not on_save():
+                return
+
             disable()
-            on_save()
             on_confirm()
             close()
 
@@ -811,7 +822,7 @@ class DialogsRenderer:
             ],
             on_escape=_on_cancel,
             key_router=self._router,
-            initial_index=1,
+            initial_index=2,
         )
         center_when_settled(tag)
 
