@@ -67,8 +67,10 @@ class TestPassThroughs:
     def test_queries_reflect_the_logic(self, guarded_player: GuardedPlayer, player_logic: MagicMock) -> None:
         player_logic.is_playing.return_value = True
         player_logic.is_paused.return_value = False
+        player_logic.is_engaged.return_value = True
         player_logic.is_loaded.return_value = True
 
         assert guarded_player.is_playing() is True
         assert guarded_player.is_paused() is False
+        assert guarded_player.is_engaged() is True
         assert guarded_player.is_loaded() is True

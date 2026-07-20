@@ -231,7 +231,7 @@ Two mechanisms keep the codebase aligned with this document.
 
 There are two coordinator kinds:
 
-*Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations) or `PlaybackRouter` (routes play/pause/stop to the active tab's player).
+*Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations) or `PlaybackRouter` (the single transport over the shared output device, acting on the active tab's source or the engaged one — see `docs/development/playback.md`).
 
 *Tab coordinators* own everything for one tab: they instantiate its panels, logic objects, and tab-scoped services, wire their callbacks together, and provide `create_tab()` — the single method that builds the DPG widget tree for that tab. Tab coordinators present a narrow public API of intent-level methods (`set_input_path`, `display_reconstruction`, …) and keep their panels and logic objects private.
 
