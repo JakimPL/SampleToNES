@@ -90,6 +90,12 @@ class SessionManager:
     def get_reconstruction_path(self) -> Path:
         return self._state_manager.get_reconstruction_path()
 
+    def set_audio_input_path(self, path: Path) -> None:
+        self._state_manager.set_audio_input_path(path)
+
+    def get_audio_input_path(self) -> Path:
+        return self._state_manager.get_audio_input_path()
+
     def set_audio_path(self, path: Path) -> None:
         self._state_manager.set_audio_path(path)
 

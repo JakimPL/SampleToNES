@@ -639,7 +639,7 @@ class Application:
                 TextType.TITLE,
                 GlobalDialogTitleElements.RECONSTRUCT_FILE,
             ],
-            initial_directory=self.session_manager.get_reconstruction_path(),
+            initial_directory=self.session_manager.get_audio_input_path(),
             extensions=EXT_FILES_AUDIO,
             filter_name=self.language_manager[
                 Page.GLOBAL,
@@ -665,7 +665,7 @@ class Application:
                 TextType.TITLE,
                 GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY,
             ],
-            initial_directory=self.session_manager.get_reconstruction_path(),
+            initial_directory=self.session_manager.get_audio_input_path(),
         )
 
         self._handle_reconstruct_directory(directory)
@@ -704,7 +704,7 @@ class Application:
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)
-        self.session_manager.set_reconstruction_path(filepath.parent)
+        self.session_manager.set_audio_input_path(filepath.parent)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
@@ -720,7 +720,7 @@ class Application:
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
         self._main_tab.set_input_path(directory_path, convert=True)
-        self.session_manager.set_reconstruction_path(directory_path)
+        self.session_manager.set_audio_input_path(directory_path)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
