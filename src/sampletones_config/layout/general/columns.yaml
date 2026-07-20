@@ -1,4 +1,5 @@
 baseline_viewport_width: 1280
+center_weight: 2
 side:
   width: 300
   height: -1

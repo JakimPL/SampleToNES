@@ -16,6 +16,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.layers.type import LayerT
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.types.application import Sender
 
 
@@ -64,6 +65,11 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
 
         FontRegistry.bind_to_item(self.plot_tag, Font.MONO_SMALL)
         self._update_axes_limits()
+
+    def set_height(self, height: int) -> None:
+        """Resizes the plot to ``height`` so a viewport-driven caller can grow the graph vertically."""
+        self.height = height
+        dpg_configure_item(self.plot_tag, height=height)
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self.event_handler_tag):

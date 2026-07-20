@@ -228,6 +228,7 @@ class SequencerTabCoordinator:
         self._left_width = layout.general.columns.side.width
         self._left_height = layout.general.columns.side.height
         self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._center_weight = layout.general.columns.center_weight
         self._side_panel_count: int
         self._instruments_width = layout.general.columns.sequencer_right.width
         self._right_height = layout.general.columns.sequencer_right.height
@@ -491,7 +492,7 @@ class SequencerTabCoordinator:
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_browser_width()
 
-    def sync_column_widths(self) -> None:
+    def sync_responsive_layout(self) -> None:
         """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
         self._sync_browser_width()
 
@@ -505,6 +506,7 @@ class SequencerTabCoordinator:
                 dpg.get_viewport_client_width(),
                 self._baseline_viewport_width,
                 self._side_panel_count,
+                self._center_weight,
             )
 
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List, Optional, Protocol
 
 import dearpygui.dearpygui as dpg
 
@@ -48,7 +48,10 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
-from sampletones_application.ui.elements.layout.responsive import expanded_side_width
+from sampletones_application.ui.elements.layout.responsive import (
+    expanded_side_width,
+    stacked_graph_height,
+)
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.instruction.choice import (
@@ -87,6 +90,12 @@ _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}"
 _RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}"
 
 
+class _StackedGraphPanel(Protocol):
+    """A centre-column card whose graph display follows a viewport-driven height."""
+
+    def set_display_height(self, height: int) -> None: ...
+
+
 class InstructionsTabCoordinator:
     def __init__(
         self,
@@ -123,7 +132,11 @@ class InstructionsTabCoordinator:
         self._left_width = layout.general.columns.side.width
         self._left_height = layout.general.columns.side.height
         self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._center_weight = layout.general.columns.center_weight
         self._side_panel_count: int
+        self._baseline_viewport_height = layout.general.window.min_height
+        self._base_graph_height = layout.graphs.dimensions.height
+        self._max_stack_height = layout.graphs.dimensions.max_stack_height
         self._details_width = layout.general.columns.instructions_right.width
         self._right_height = layout.general.columns.instructions_right.height
         self._panel_gap = layout.general.panel_gap
@@ -272,6 +285,7 @@ class InstructionsTabCoordinator:
         )
         self._waveform_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._spectrum_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._graph_panels: List[_StackedGraphPanel] = [self._waveform_panel, self._spectrum_panel]
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
@@ -439,9 +453,10 @@ class InstructionsTabCoordinator:
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_library_width()
 
-    def sync_column_widths(self) -> None:
-        """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
+    def sync_responsive_layout(self) -> None:
+        """Refits this tab's side column and stacked graphs to the current viewport on each resize."""
         self._sync_library_width()
+        self._sync_graph_heights()
 
     def _sync_library_width(self) -> None:
         """Shrinks the library column to the collapse rail when collapsed, else sizes it to the viewport width."""
@@ -453,8 +468,21 @@ class InstructionsTabCoordinator:
                 dpg.get_viewport_client_width(),
                 self._baseline_viewport_width,
                 self._side_panel_count,
+                self._center_weight,
             )
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
+
+    def _sync_graph_heights(self) -> None:
+        """Grows the stacked graphs to share the viewport's vertical surplus equally, filling the centre column."""
+        height = stacked_graph_height(
+            self._base_graph_height,
+            dpg.get_viewport_client_height(),
+            self._baseline_viewport_height,
+            len(self._graph_panels),
+            self._max_stack_height,
+        )
+        for panel in self._graph_panels:
+            panel.set_display_height(height)
 
     def _update_details_view(self, view_model: InstructionDetailsPanelViewModel) -> None:
         """Fans the details view model out to the parameters and choice cards."""
@@ -506,6 +534,7 @@ class InstructionsTabCoordinator:
             )
 
         self._sync_library_width()
+        self._sync_graph_heights()
 
     def _build_display_column(self, parent: str) -> None:
         """Stacks the waveform and spectrum cards down the centre column."""

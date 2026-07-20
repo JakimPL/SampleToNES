@@ -386,19 +386,19 @@ class ApplicationShell:
             self._create_status_bar()
 
         dpg.set_primary_window(TAG_GLOBAL_WINDOW_MAIN, True)
-        dpg.set_viewport_resize_callback(self._sync_responsive_widths)
+        dpg.set_viewport_resize_callback(self._sync_responsive_layout)
 
-    def _sync_responsive_widths(
+    def _sync_responsive_layout(
         self,
         _sender: Optional[Sender] = None,
         _app_data: Optional[Any] = None,
         _user_data: Optional[Any] = None,
     ) -> None:
-        """Refits every tab's side columns to the resized viewport so the centre content keeps the growth."""
-        self._main_tab.sync_column_widths()
-        self._reconstructions_tab.sync_column_widths()
-        self._sequencer_tab.sync_column_widths()
-        self._instructions_tab.sync_column_widths()
+        """Refits every tab's responsive columns and graphs to the resized viewport."""
+        self._main_tab.sync_responsive_layout()
+        self._reconstructions_tab.sync_responsive_layout()
+        self._sequencer_tab.sync_responsive_layout()
+        self._instructions_tab.sync_responsive_layout()
 
     def update_menu(self, state: MenuBarViewModel) -> None:
         self._main_tab.sync_advanced_settings_visibility()
