@@ -45,7 +45,7 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS, Modifier
+from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS, Modifier
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
@@ -901,9 +901,9 @@ class GUISequencerGridPanel(GUIPanel):
                 self._jump_to_row(0)
             case dpg.mvKey_End:
                 self._jump_to_row(self._current_row_count - 1)
-            case dpg.mvKey_Prior:
+            case _ if event.key == KEY_PAGE_UP:
                 self._move_row(-self._layout.tracker.page_size)
-            case dpg.mvKey_Next:
+            case _ if event.key == KEY_PAGE_DOWN:
                 self._move_row(self._layout.tracker.page_size)
             case dpg.mvKey_Return:
                 self._move_row(1)
