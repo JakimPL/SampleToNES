@@ -757,6 +757,9 @@ class GUISequencerOrderPanel(GUIPanel):
             case dpg.mvKey_Insert:
                 self._on_add_clicked()
             case dpg.mvKey_Escape:
+                if not self._input_state.pending:
+                    return False
+
                 self._apply_state(self._input_state.cancel())
             case _:
                 return self._handle_printable_key(event.key)

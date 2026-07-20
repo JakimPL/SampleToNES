@@ -886,6 +886,9 @@ class GUISequencerGridPanel(GUIPanel):
                 self._clear_row()
                 self._move_row(-1)
             case dpg.mvKey_Escape:
+                if not self._input_state.pending:
+                    return False
+
                 self._apply_state(self._input_state.cancel())
             case _:
                 return self._handle_printable_key(event.key)

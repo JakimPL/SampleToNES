@@ -84,3 +84,21 @@ def test_field_consumes_key(case: ConsumeCase) -> None:
     assert (
         focus.field_consumes_key(case.kind, case.key, ctrl=case.ctrl, shift=case.shift, alt=case.alt) is case.expected
     )
+
+
+def test_non_field_item_is_ruled_out_before_its_active_state_is_read(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A focused selectable is ruled out by type, so its missing ``active`` state is never probed.
+
+    Only field widgets report an ``active`` flag; reading it on a selectable raises ``KeyError``, so
+    the type gate must reject non-field items before the active-state query runs.
+    """
+
+    def raise_missing_active(_item: int) -> bool:
+        raise KeyError("active")
+
+    monkeypatch.setattr(dpg, "get_focused_item", lambda: 42)
+    monkeypatch.setattr(dpg, "does_item_exist", lambda _item: True)
+    monkeypatch.setattr(dpg, "get_item_type", lambda _item: "mvAppItemType::mvSelectable")
+    monkeypatch.setattr(dpg, "is_item_active", raise_missing_active)
+
+    assert focus.focused_field_kind() is FieldKind.NONE

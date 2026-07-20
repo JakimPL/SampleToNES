@@ -88,7 +88,9 @@ def focused_field_kind() -> FieldKind:
 
     DearPyGui keeps reporting the last focused item after the widget behind it is gone, which the
     sequencer does whenever it rebuilds its tables, so the item is confirmed to still exist before
-    it is queried and a vanished field counts as no field focused.
+    it is queried and a vanished field counts as no field focused. The item type is checked before
+    its active state because only field types report an ``active`` flag; other focused widgets, such
+    as a selectable or a table, carry no such state to read.
     """
     item = dpg.get_focused_item()
     if not item:
@@ -97,17 +99,18 @@ def focused_field_kind() -> FieldKind:
     if not dpg.does_item_exist(item):
         return FieldKind.NONE
 
+    item_type = dpg.get_item_type(item)
+    if item_type in TEXT_ENTRY_ITEM_TYPES:
+        kind = FieldKind.TEXT_ENTRY
+    elif item_type in CHOICE_ITEM_TYPES:
+        kind = FieldKind.CHOICE
+    else:
+        return FieldKind.NONE
+
     if not dpg.is_item_active(item):
         return FieldKind.NONE
 
-    item_type = dpg.get_item_type(item)
-    if item_type in TEXT_ENTRY_ITEM_TYPES:
-        return FieldKind.TEXT_ENTRY
-
-    if item_type in CHOICE_ITEM_TYPES:
-        return FieldKind.CHOICE
-
-    return FieldKind.NONE
+    return kind
 
 
 def is_field_focused() -> bool:
