@@ -1,10 +1,23 @@
-from typing import FrozenSet, List
+from collections import defaultdict
+from typing import Dict, FrozenSet, Generator, List
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_DEFAULT,
+    TAG_GLOBAL_THEME_FOCUSED_BUTTON,
+)
 from sampletones_application.utils.gui.dialog_navigation.ring import FocusRing
 from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 
 MODULE = "sampletones_application.utils.gui.dialog_navigation.ring"
+
+
+@pytest.fixture(autouse=True)
+def _theme_registry() -> Generator[None, None, None]:
+    with patch(f"{MODULE}.ThemeRegistry"):
+        yield
 
 
 def _dpg(
@@ -76,6 +89,34 @@ class TestCycle:
             ring.cycle(1)
 
         dpg.focus_item.assert_called_once_with("comment")
+
+
+class TestFocusOutline:
+    def test_outlines_the_focused_button_and_restores_the_previous(self) -> None:
+        ring = FocusRing(_form_stops(MagicMock(), MagicMock()), initial_index=3)
+
+        themes: Dict[str, MagicMock] = defaultdict(MagicMock)
+        registry = MagicMock()
+        registry.get.side_effect = lambda tag: themes[tag]
+
+        with patch(f"{MODULE}.dpg", _dpg()), patch(f"{MODULE}.ThemeRegistry", registry):
+            ring.focus_initial()
+            ring.cycle(1)
+
+        themes[TAG_GLOBAL_THEME_FOCUSED_BUTTON].bind_to_item.assert_any_call("cancel.button")
+        themes[TAG_GLOBAL_THEME_FOCUSED_BUTTON].bind_to_item.assert_any_call("ok.button")
+        themes[TAG_GLOBAL_THEME_DEFAULT].bind_to_item.assert_any_call("cancel.button")
+
+    def test_leaves_field_stops_without_an_outline(self) -> None:
+        ring = FocusRing(_form_stops(MagicMock(), MagicMock()), initial_index=0)
+
+        registry = MagicMock()
+
+        with patch(f"{MODULE}.dpg", _dpg()), patch(f"{MODULE}.ThemeRegistry", registry):
+            ring.focus_initial()
+            ring.cycle(1)
+
+        registry.get.assert_not_called()
 
 
 class TestActivateFocused:

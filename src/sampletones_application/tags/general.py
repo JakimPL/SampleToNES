@@ -128,6 +128,12 @@ TAG_GLOBAL_THEME_DANGER_BUTTON = TagName(
     Widget.THEME,
     "danger_button",
 )
+TAG_GLOBAL_THEME_FOCUSED_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "focused_button",
+)
 TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

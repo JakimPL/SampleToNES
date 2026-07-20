@@ -1,0 +1,12 @@
+name: focused_button
+tag: global.theme.focused_button
+
+components:
+  - item_type: Button
+    entries:
+      - type: color
+        key: Border
+        value: .accent
+      - type: style
+        key: FrameBorderSize
+        x: 1
