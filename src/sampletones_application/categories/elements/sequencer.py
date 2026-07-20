@@ -3,6 +3,7 @@ from sampletones_application.categories.abstract import AbstractElement
 
 class SequencerBrowserElements(AbstractElement):
     REFRESH_BUTTON = "refresh_button"
+    STATUS_REFRESH = "status_refresh"
     RECONSTRUCTIONS_TREE = "reconstructions_tree"
     FILE_NOT_FOUND = "file_not_found"
     LOAD_ERROR = "load_error"
@@ -90,6 +91,8 @@ class SequencerHistoryElements(AbstractElement):
     HISTORY_TEXT = "history_text"
     UNDO = "undo"
     REDO = "redo"
+    STATUS_UNDO = "status_undo"
+    STATUS_REDO = "status_redo"
     EMPTY = "empty"
     LOOP_ON = "loop_on"
     LOOP_OFF = "loop_off"

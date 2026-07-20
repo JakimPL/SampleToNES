@@ -109,6 +109,7 @@ class StatusElements(AbstractElement):
     NODE_RECONSTRUCTION = "node_reconstruction"
     NODE_LIBRARY = "node_library"
     TREE_SEARCH = "tree_search"
+    CLEAR_SEARCH = "clear_search"
     INPUT = "input"
     COMBO = "combo"
     NODE_DIRECTORY = "node_directory"
