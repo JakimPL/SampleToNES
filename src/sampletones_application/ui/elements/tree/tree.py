@@ -58,7 +58,6 @@ from sampletones_application.utils.gui.dpg import (
     dpg_get_value,
     dpg_is_item_hovered,
 )
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import (
     create_detail_tooltip,
     populate_detail_tooltip,
@@ -104,7 +103,6 @@ class GUITreePanel(GUIPanel, ABC):
         tag: str,
         tree_tag: str,
         tree_logic: TreeLogicProtocol,
-        shortcut_manager: ShortcutManager,
         width: int = -1,
         height: int = -1,
         *,
@@ -119,7 +117,6 @@ class GUITreePanel(GUIPanel, ABC):
         self._scheduling = scheduling
         self.tree = tree
         self.tree_tag = tree_tag
-        self.shortcut_manager = shortcut_manager
 
         self._pending_specs: List[NodeSpec] = []
         self._emitter = TreeEmitter(scheduling=scheduling)

@@ -63,7 +63,6 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.main.advanced import (
     AdvancedSettingsPanelViewModel,
 )
@@ -98,7 +97,6 @@ class MainTabCoordinator:
         config_manager: ConfigManager,
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
-        shortcut_manager: ShortcutManager,
         library_manager: InstructionsLibraryManager,
         conversion_service: ConversionService,
         on_reconstruct_file: PathCallback,
@@ -266,7 +264,6 @@ class MainTabCoordinator:
         self._explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
             self._explorer_logic,
             self._explorer_tree_logic,
-            shortcut_manager,
             scheduling=layout.behavior.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,

@@ -21,7 +21,6 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_core.utils.pitch_kind import PitchValueKind
 from sampletones_shared.constants.symbols import MINUS, PLUS
@@ -53,7 +52,6 @@ class GUIPitchStepper(CallbackMixin):
         status_bar: GUIStatusBar,
         layout: PitchStepperLayout,
         value_color: Color,
-        shortcut_manager: ShortcutManager,
     ) -> None:
         self.on_value_changed: Optional[Callable[[int], None]] = None
         self._status_bar = status_bar
@@ -66,7 +64,6 @@ class GUIPitchStepper(CallbackMixin):
         self._tooltip = tooltip
         self._status_message = status_message
         self._value_color = value_color
-        self._shortcut_manager = shortcut_manager
 
         self._value = kind.clamp(initial_value)
         self._hold_direction: Optional[int] = None

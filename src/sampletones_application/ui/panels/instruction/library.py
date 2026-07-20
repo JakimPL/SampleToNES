@@ -46,7 +46,6 @@ from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
@@ -96,7 +95,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         library_logic: LibraryLogicProtocol,
         tree_logic: TreeLogicProtocol,
-        shortcut_manager: ShortcutManager,
         *,
         scheduling: SchedulingBehavior,
         initial_collapsed: bool = False,
@@ -190,7 +188,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
             tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
             tree_logic=tree_logic,
-            shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,

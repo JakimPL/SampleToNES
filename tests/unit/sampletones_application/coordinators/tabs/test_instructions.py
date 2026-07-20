@@ -157,7 +157,7 @@ class TestDisplayInstruction:
         coordinator = _display_coordinator()
         instruction_data = MagicMock()
 
-        with patch("sampletones_application.coordinators.instructions.AudioData") as audio_data_cls:
+        with patch("sampletones_application.coordinators.tabs.instructions.AudioData") as audio_data_cls:
             coordinator._display_instruction(instruction_data)
 
         coordinator._waveform_panel.load_library_fragment.assert_called_once_with(instruction_data.fragment)

@@ -72,7 +72,6 @@ from sampletones_application.ui.panels.instruction.waveform import (
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import (
     InstructionDetailsPanelViewModel,
@@ -102,7 +101,6 @@ class InstructionsTabCoordinator:
         config_manager: ConfigManager,
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
-        shortcut_manager: ShortcutManager,
         library_manager: InstructionsLibraryManager,
         on_audio_state_changed: VoidCallback,
         on_generation_state_changed: VoidCallback,
@@ -117,7 +115,6 @@ class InstructionsTabCoordinator:
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
-        self._shortcut_manager = shortcut_manager
         self._library_manager = library_manager
         self._on_audio_state_changed = on_audio_state_changed
         self._is_converter_visible = is_converter_visible
@@ -222,7 +219,6 @@ class InstructionsTabCoordinator:
         self._library_panel = GUIInstructionsLibraryPanel(
             self._library_logic,
             self._library_tree_logic,
-            shortcut_manager,
             scheduling=layout.behavior.scheduling,
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_LIBRARY_PANEL),
             language_manager=language_manager,
@@ -293,7 +289,6 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
         )
         self._instruction_choice_panel = GUIInstructionChoicePanel(
-            shortcut_manager,
             layout=layout.instructions,
             general_layout=layout.general,
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_DETAILS_PANEL),

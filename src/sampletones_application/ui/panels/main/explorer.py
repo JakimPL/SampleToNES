@@ -30,7 +30,6 @@ from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core import paths
 from sampletones_core.structures.tree import (
@@ -73,7 +72,6 @@ class GUIExplorerPanel(GUITreePanel):
         self,
         explorer_logic: ExplorerLogicProtocol,
         tree_logic: TreeLogicProtocol,
-        shortcut_manager: ShortcutManager,
         *,
         scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
@@ -82,7 +80,6 @@ class GUIExplorerPanel(GUITreePanel):
         initial_collapsed: bool = False,
     ) -> None:
         self._explorer_logic = explorer_logic
-        self.shortcut_manager = shortcut_manager
 
         self._lbl_section = language_manager[
             Page.MAIN,
@@ -166,7 +163,6 @@ class GUIExplorerPanel(GUITreePanel):
             tag=TAG_MAIN_EXPLORER_PANEL,
             tree_tag=TAG_MAIN_EXPLORER_TREE,
             tree_logic=tree_logic,
-            shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,

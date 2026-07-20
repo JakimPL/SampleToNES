@@ -83,7 +83,6 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import KeyRouter
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
@@ -119,7 +118,6 @@ class SequencerTabCoordinator:
         config_manager: ConfigManager,
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
-        shortcut_manager: ShortcutManager,
         key_router: KeyRouter,
         browser_manager: BrowserManager,
         project_controller: ProjectController,
@@ -251,7 +249,6 @@ class SequencerTabCoordinator:
         self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
             self._sequencer_browser_logic.tree,
             self._sequencer_tree_logic,
-            shortcut_manager,
             scheduling=layout.behavior.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
@@ -303,7 +300,6 @@ class SequencerTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_MODULE_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
-            shortcut_manager=shortcut_manager,
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,

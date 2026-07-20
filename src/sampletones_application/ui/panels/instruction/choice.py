@@ -34,7 +34,6 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
 )
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import (
@@ -58,7 +57,6 @@ from sampletones_shared.utils.arrays import clamp
 class GUIInstructionChoicePanel(GUIPanel):
     def __init__(
         self,
-        shortcut_manager: ShortcutManager,
         *,
         layout: InstructionsLayout,
         general_layout: GeneralLayout,
@@ -69,7 +67,6 @@ class GUIInstructionChoicePanel(GUIPanel):
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
         self._status_bar = status_bar
-        self._shortcut_manager = shortcut_manager
         self._layout = layout
         self._general_layout = general_layout
         self._item_handler_tag = f"{TAG_INSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
@@ -234,7 +231,6 @@ class GUIInstructionChoicePanel(GUIPanel):
             status_bar=self._status_bar,
             layout=self._general_layout.pitch_stepper,
             value_color=self._general_layout.colors.text.disabled,
-            shortcut_manager=self._shortcut_manager,
         )
         self._pitch_stepper.on_value_changed = self._on_pitch_value_changed
 

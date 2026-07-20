@@ -24,7 +24,6 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.sequencer.settings import (
@@ -48,7 +47,6 @@ class GUISequencerModulePanel(GUIPanel):
         label_width: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
-        shortcut_manager: ShortcutManager,
         initial_collapsed: bool = False,
     ) -> None:
         self._initial_settings = initial_settings
@@ -56,7 +54,6 @@ class GUISequencerModulePanel(GUIPanel):
         self._input_width = input_width
         self._label_width = label_width
         self._status_bar = status_bar
-        self._shortcut_manager = shortcut_manager
         self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
         self._rows_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_ROWS}{SUF_HANDLER_REGISTRY}"
 

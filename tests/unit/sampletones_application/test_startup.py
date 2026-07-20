@@ -33,6 +33,7 @@ _DPG_DISPLAY_FUNCTIONS = [
 ]
 
 _VIEWPORT_CLIENT_WIDTH: Final[int] = 1280
+_VIEWPORT_CLIENT_HEIGHT: Final[int] = 720
 
 
 def _display_patches() -> List[Any]:
@@ -41,6 +42,12 @@ def _display_patches() -> List[Any]:
         patch(
             "dearpygui.dearpygui.get_viewport_client_width",
             return_value=_VIEWPORT_CLIENT_WIDTH,
+        )
+    )
+    display_patches.append(
+        patch(
+            "dearpygui.dearpygui.get_viewport_client_height",
+            return_value=_VIEWPORT_CLIENT_HEIGHT,
         )
     )
     display_patches.append(patch("sampletones_application.utils.callbacks.queue.CallbackQueue.start"))

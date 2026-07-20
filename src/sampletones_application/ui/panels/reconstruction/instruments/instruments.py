@@ -59,7 +59,6 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_value,
 )
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
@@ -87,7 +86,6 @@ OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 class GUIReconstructionInstrumentsPanel(GUIPanel):
     def __init__(
         self,
-        shortcut_manager: ShortcutManager,
         *,
         layout_general: GeneralLayout,
         layout_graphs: GraphsLayout,
@@ -95,7 +93,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
-        self.shortcut_manager = shortcut_manager
         self._status_bar = status_bar
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
@@ -500,7 +497,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             status_bar=self._status_bar,
             layout=self._layout_general.pitch_stepper,
             value_color=self._layout_general.colors.text.disabled,
-            shortcut_manager=self.shortcut_manager,
         )
         stepper.on_value_changed = partial(
             self._on_pitch_value_changed,
