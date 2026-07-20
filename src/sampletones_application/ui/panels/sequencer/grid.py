@@ -902,9 +902,9 @@ class GUISequencerGridPanel(GUIPanel):
             case dpg.mvKey_End:
                 self._jump_to_row(self._current_row_count - 1)
             case _ if event.key == KEY_PAGE_UP:
-                self._move_row(-self._layout.tracker.page_size)
+                self._page(-self._layout.tracker.page_size)
             case _ if event.key == KEY_PAGE_DOWN:
-                self._move_row(self._layout.tracker.page_size)
+                self._page(self._layout.tracker.page_size)
             case dpg.mvKey_Return:
                 self._move_row(1)
             case dpg.mvKey_Delete:
@@ -931,6 +931,11 @@ class GUISequencerGridPanel(GUIPanel):
             )
         )
 
+    def _page(self, delta: int) -> None:
+        """Moves the cursor a page of rows, then scrolls it back into view."""
+        self._move_row(delta)
+        self._scroll_cursor_into_view()
+
     def _jump_to_row(self, index: int) -> None:
         self._apply_state(
             self._committed_state().navigate_row(
@@ -939,12 +944,34 @@ class GUISequencerGridPanel(GUIPanel):
                 absolute=True,
             )
         )
+        self._scroll_cursor_into_view()
 
     def _move_subcolumn(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_subcolumn(delta))
 
     def _move_column(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_column_by(delta))
+
+    def _scroll_cursor_into_view(self) -> None:
+        """Scrolls the tracker so the cursor's row stays on screen after a page or Home/End jump.
+
+        The frame's rows all live in one scrolling table, so a jump wider than the visible band
+        moves the cursor past it. The scroll is set from the cursor's position within the frame,
+        which keeps the row it lands on in view.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None or self._current_row_count <= 1:
+            return
+
+        if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
+            return
+
+        scroll_max = dpg.get_y_scroll_max(TAG_SEQUENCER_GRID_TABLE_TRACKER)
+        if scroll_max <= 0:
+            return
+
+        fraction = cursor.row / (self._current_row_count - 1)
+        dpg.set_y_scroll(TAG_SEQUENCER_GRID_TABLE_TRACKER, fraction * scroll_max)
 
     def _clear_row(self) -> None:
         state, clear_action = self._input_state.clear()

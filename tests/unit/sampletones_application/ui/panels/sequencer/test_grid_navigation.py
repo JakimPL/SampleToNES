@@ -21,20 +21,27 @@ def _panel() -> GUISequencerGridPanel:
 
 
 class TestGridPageNavigation:
-    """PageUp and PageDown jump the cursor a page of rows, matching the key codes DearPyGui delivers."""
+    """PageUp and PageDown jump the cursor a page of rows, matching the key codes DearPyGui delivers,
+    and reveal the row they land on."""
 
-    def test_page_up_moves_up_one_page(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_page_up_moves_up_one_page_and_scrolls(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel = _panel()
         moves: List[int] = []
+        scrolls: List[None] = []
         monkeypatch.setattr(panel, "_move_row", moves.append)
+        monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: scrolls.append(None))
 
         assert panel._on_key_pressed(KeyEvent(key=KEY_PAGE_UP, ctrl=False, shift=False, alt=False)) is True
         assert moves == [-PAGE_SIZE]
+        assert scrolls == [None]
 
-    def test_page_down_moves_down_one_page(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_page_down_moves_down_one_page_and_scrolls(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel = _panel()
         moves: List[int] = []
+        scrolls: List[None] = []
         monkeypatch.setattr(panel, "_move_row", moves.append)
+        monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: scrolls.append(None))
 
         assert panel._on_key_pressed(KeyEvent(key=KEY_PAGE_DOWN, ctrl=False, shift=False, alt=False)) is True
         assert moves == [PAGE_SIZE]
+        assert scrolls == [None]
