@@ -376,6 +376,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_grid_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_grid_panel.on_play_from_row = self._on_grid_play_from_row
+        self._sequencer_grid_panel.on_play_from_frame = self.play_from_current_frame
         self._sequencer_grid_panel.on_adjust_transpose = self._undoable(
             HistoryAction.ADJUST_TRANSPOSE,
             self._on_adjust_transpose,

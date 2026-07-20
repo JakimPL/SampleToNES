@@ -30,6 +30,7 @@ class SequencerGridElements(AbstractElement):
     COLUMN_VOLUME = "column_volume"
     COLUMN_TRANSPOSE = "column_transpose"
     CONTEXT_PLAY = "context_play"
+    CONTEXT_PLAY_FROM_FRAME = "context_play_from_frame"
     CONTEXT_NOTE_OFF = "context_note_off"
     CONTEXT_SET_INSTRUMENT = "context_set_instrument"
     CONTEXT_NO_SAMPLES = "context_no_samples"

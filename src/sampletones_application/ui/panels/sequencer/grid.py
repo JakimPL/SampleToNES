@@ -45,7 +45,8 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
+from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS, Modifier
+from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
@@ -67,6 +68,7 @@ OnSetRowCallback = Callable[[int, Optional[GeneratorName], Optional[str], Option
 OnSetNoteOffCallback = Callable[[int, Optional[GeneratorName]], None]
 OnCellSelectedCallback = Callable[[int, Optional[GeneratorName]], None]
 OnPlayFromRowCallback = Callable[[int], None]
+OnPlayFromFrameCallback = Callable[[], None]
 OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
 
 
@@ -115,6 +117,7 @@ class GUISequencerGridPanel(GUIPanel):
         self.on_set_note_off: Optional[OnSetNoteOffCallback] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
         self.on_play_from_row: Optional[OnPlayFromRowCallback] = None
+        self.on_play_from_frame: Optional[OnPlayFromFrameCallback] = None
         self.on_adjust_transpose: Optional[OnAdjustCallback] = None
         self.on_adjust_volume: Optional[OnAdjustCallback] = None
 
@@ -173,6 +176,12 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._load_context_labels(language_manager)
 
+        self._sc_play_from_here = Shortcut(
+            dpg.mvKey_Spacebar,
+            (Modifier.CTRL, Modifier.SHIFT),
+        ).get_display_string()
+        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)).get_display_string()
+
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,
             height=-1,
@@ -184,6 +193,7 @@ class GUISequencerGridPanel(GUIPanel):
             return language_manager[Page.SEQUENCER, Panel.GRID, TextType.LABEL, element]
 
         self._lbl_context_play = label(SequencerGridElements.CONTEXT_PLAY)
+        self._lbl_context_play_from_frame = label(SequencerGridElements.CONTEXT_PLAY_FROM_FRAME)
         self._lbl_context_note_off = label(SequencerGridElements.CONTEXT_NOTE_OFF)
         self._lbl_context_set_instrument = label(SequencerGridElements.CONTEXT_SET_INSTRUMENT)
         self._lbl_context_no_samples = label(SequencerGridElements.CONTEXT_NO_SAMPLES)
@@ -710,7 +720,16 @@ class GUISequencerGridPanel(GUIPanel):
             header = dpg.add_text(tracker_display.indexed_label(row_index, self._column_labels[generator]))
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
-            add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_from_row, row_index))
+            add_play_menu_item(
+                self._lbl_context_play,
+                lambda: self.call(self.on_play_from_row, row_index),
+                shortcut=self._sc_play_from_here,
+            )
+            add_play_menu_item(
+                self._lbl_context_play_from_frame,
+                lambda: self.call(self.on_play_from_frame),
+                shortcut=self._sc_play_from_frame,
+            )
             dpg.add_separator()
             self._add_instrument_submenu(row_index, generator)
             dpg.add_menu_item(
@@ -854,7 +873,16 @@ class GUISequencerGridPanel(GUIPanel):
 
         A modifier-carrying press belongs to the application's global shortcuts, so the grid
         yields it to the lower-priority scopes and keeps the plain keys for tracker editing.
+        Ctrl+Shift+Space is the exception: it plays the song from the cursor's row.
         """
+        if event.ctrl and event.shift and event.key == dpg.mvKey_Spacebar:
+            cursor = self._input_state.cursor
+            if cursor is None:
+                return False
+
+            self.call(self.on_play_from_row, cursor.row)
+            return True
+
         if event.ctrl:
             return False
 

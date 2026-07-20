@@ -168,6 +168,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._lbl_context_move_start = _context_label(SequencerOrderElements.CONTEXT_MOVE_START)
         self._lbl_context_move_end = _context_label(SequencerOrderElements.CONTEXT_MOVE_END)
 
+        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)).get_display_string()
         self._sc_move_left = Shortcut(dpg.mvKey_Left, (Modifier.ALT,)).get_display_string()
         self._sc_move_right = Shortcut(dpg.mvKey_Right, (Modifier.ALT,)).get_display_string()
         self._sc_move_start = Shortcut(dpg.mvKey_Home, (Modifier.ALT,)).get_display_string()
@@ -660,6 +661,7 @@ class GUISequencerOrderPanel(GUIPanel):
             add_play_menu_item(
                 self._lbl_context_play,
                 lambda: self.call(self.on_play_from_requested, position),
+                shortcut=self._sc_play_from_frame,
             )
             dpg.add_separator()
             dpg.add_menu_item(
