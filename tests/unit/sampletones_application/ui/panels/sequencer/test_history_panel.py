@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
@@ -44,6 +46,7 @@ def panel(layout_config: LayoutConfig) -> GUISequencerHistoryPanel:
         layout=layout_config.sequencer,
         feature_colors=layout_config.general.colors.features,
         language_manager=LanguageManager(LANG_EN),
+        status_bar=MagicMock(),
     )
 
 

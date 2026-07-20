@@ -64,6 +64,12 @@ class GUISequencerBrowserPanel(GUITreePanel):
             TextType.LABEL,
             SequencerBrowserElements.REFRESH_BUTTON,
         ]
+        self._msg_status_refresh = language_manager[
+            Page.SEQUENCER,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            SequencerBrowserElements.STATUS_REFRESH,
+        ]
         self._lbl_reconstructions = language_manager[
             Page.SEQUENCER,
             Panel.BROWSER,
@@ -143,6 +149,10 @@ class GUISequencerBrowserPanel(GUITreePanel):
                 callback=self.rebuild_tree,
                 theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
+        self._status_bar.bind_to_item(
+            TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+            self._msg_status_refresh,
+        )
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)

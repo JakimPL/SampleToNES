@@ -316,6 +316,7 @@ class SequencerTabCoordinator:
             feature_colors=layout.general.colors.features,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_HISTORY_PANEL),
             language_manager=language_manager,
+            status_bar=status_bar,
         )
         self._history_detail: SequencerHistoryDetail = SequencerHistoryDetail(
             self._sequencer_grid_logic,

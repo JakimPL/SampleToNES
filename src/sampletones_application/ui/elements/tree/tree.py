@@ -153,6 +153,12 @@ class GUITreePanel(GUIPanel, ABC):
             TextType.MESSAGE,
             StatusElements.TREE_SEARCH,
         ]
+        self._msg_clear_search = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.CLEAR_SEARCH,
+        ]
         self._msg_node_reconstruction = language_manager[
             Page.GLOBAL,
             Panel.STATUS,
@@ -363,6 +369,7 @@ class GUITreePanel(GUIPanel, ABC):
             )
 
         self._status_bar.bind_to_item(self._search_input_tag, self._msg_tree_search)
+        self._status_bar.bind_to_item(self._search_button_tag, self._msg_clear_search)
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
         return f"{self.tag}{TAG_SEPARATOR}{node_type.value}{SUF_HANDLER_NODE}"

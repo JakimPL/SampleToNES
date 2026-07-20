@@ -77,6 +77,12 @@ class GUIBrowserPanel(GUITreePanel):
             TextType.LABEL,
             ReconstructionsBrowserElements.REFRESH_BUTTON,
         ]
+        self._msg_status_refresh = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.STATUS_REFRESH,
+        ]
         self._lbl_context_load = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.BROWSER,
@@ -174,6 +180,10 @@ class GUIBrowserPanel(GUITreePanel):
                 callback=self.rebuild_tree,
                 theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
+        self._status_bar.bind_to_item(
+            TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+            self._msg_status_refresh,
+        )
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)

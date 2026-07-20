@@ -147,6 +147,18 @@ class GUIExplorerPanel(GUITreePanel):
             TextType.MESSAGE,
             ExplorerElements.STATUS_NODE_AUDIO,
         ]
+        self._msg_status_refresh = language_manager[
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.MESSAGE,
+            ExplorerElements.STATUS_REFRESH,
+        ]
+        self._msg_status_collapse_all = language_manager[
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.MESSAGE,
+            ExplorerElements.STATUS_COLLAPSE_ALL,
+        ]
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
@@ -236,6 +248,8 @@ class GUIExplorerPanel(GUITreePanel):
                 width=-1,
                 callback=self.collapse_all,
             )
+        self._status_bar.bind_to_item(TAG_MAIN_EXPLORER_BUTTON_REFRESH, self._msg_status_refresh)
+        self._status_bar.bind_to_item(TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL, self._msg_status_collapse_all)
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)

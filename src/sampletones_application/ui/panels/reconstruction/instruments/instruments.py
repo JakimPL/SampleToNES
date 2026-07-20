@@ -180,6 +180,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             TextType.MESSAGE,
             ReconstructionsInstrumentsElements.STATUS_COPY_SEQUENCE,
         ]
+        self._msg_export_instrument = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.INSTRUMENTS,
+            TextType.MESSAGE,
+            ReconstructionsInstrumentsElements.STATUS_EXPORT_INSTRUMENT,
+        ]
         tooltip_template = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.INSTRUMENTS,
@@ -325,6 +331,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 callback=self._handle_export_button_clicked,
                 user_data=generator_name,
             )
+            self._status_bar.bind_to_item(button_tag, self._msg_export_instrument)
 
             with dpg.child_window(
                 tag=window_tag,

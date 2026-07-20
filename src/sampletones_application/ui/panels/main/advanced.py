@@ -161,6 +161,18 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             TextType.MESSAGE,
             StatusElements.INPUT,
         ]
+        self._msg_status_select_library = language_manager[
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.MESSAGE,
+            AdvancedElements.STATUS_SELECT_LIBRARY,
+        ]
+        self._msg_status_select_output = language_manager[
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.MESSAGE,
+            AdvancedElements.STATUS_SELECT_OUTPUT,
+        ]
 
         super().__init__(
             tag=TAG_MAIN_ADVANCED_PANEL,
@@ -270,6 +282,10 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 height=self._button_height,
                 callback=self._on_select_library_directory,
             )
+            self._status_bar.bind_to_item(
+                TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
+                self._msg_status_select_library,
+            )
 
             self.library_path_text = GUIPathText(
                 tag=TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
@@ -296,6 +312,10 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 width=-1,
                 height=self._button_height,
                 callback=self._on_select_output_directory,
+            )
+            self._status_bar.bind_to_item(
+                TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
+                self._msg_status_select_output,
             )
 
             self.output_path_text = GUIPathText(

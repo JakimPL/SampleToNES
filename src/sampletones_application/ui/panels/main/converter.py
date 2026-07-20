@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -121,6 +121,19 @@ class GUIConverterPanel(GUIPanel):
             TextType.MESSAGE,
             ConverterElements.STATUS_EMPTY_HINT,
         ]
+        self._msg_status_convert = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_CONVERT,
+        ]
+        self._msg_status_cancel = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_CANCEL,
+        ]
+        self._status_action_message = self._msg_status_convert
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_PANEL,
@@ -173,9 +186,11 @@ class GUIConverterPanel(GUIPanel):
             case ConverterAction.CANCEL:
                 callback: VoidCallback = self._on_cancel_clicked
                 theme = self._theme_cancel
+                self._status_action_message = self._msg_status_cancel
             case ConverterAction.CONVERT:
                 callback = self._on_convert_clicked
                 theme = self._theme_convert
+                self._status_action_message = self._msg_status_convert
 
         dpg_configure_item(
             TAG_MAIN_CONVERTER_BUTTON_ACTION,
@@ -209,6 +224,10 @@ class GUIConverterPanel(GUIPanel):
             self._tooltip_convert_disabled,
             tag=TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
         )
+        self._status_bar.bind_to_item(TAG_MAIN_CONVERTER_BUTTON_ACTION, self._action_status_message)
+
+    def _action_status_message(self, *args: Any, **kwargs: Any) -> str:
+        return self._status_action_message
 
     def _create_summary(self) -> None:
         with dpg.child_window(
