@@ -13,8 +13,8 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.reconstructions import (
-    ReconstructionsTabCoordinator,
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
 )
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -81,7 +81,7 @@ class ReconstructionCoordinator:
         self._session_manager = session_manager
         self._regeneration_service = regeneration_service
         self._audio_device_manager = audio_device_manager
-        self._reconstructions_tab: Optional[ReconstructionsTabCoordinator] = None
+        self._reconstructions_tab: Optional[ReconstructionTabCoordinator] = None
         self._dialogs = dialogs
         self._language_manager = language_manager
         self._layout = layout
@@ -97,11 +97,11 @@ class ReconstructionCoordinator:
             on_reconstruction_closed=self._on_closed,
         )
 
-    def set_reconstructions_tab(self, tab: ReconstructionsTabCoordinator) -> None:
+    def set_reconstructions_tab(self, tab: ReconstructionTabCoordinator) -> None:
         self._reconstructions_tab = tab
 
     @property
-    def _tab(self) -> ReconstructionsTabCoordinator:
+    def _tab(self) -> ReconstructionTabCoordinator:
         if self._reconstructions_tab is None:
             raise RuntimeError("set_reconstructions_tab has not been called")
 

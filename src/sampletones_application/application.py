@@ -21,8 +21,6 @@ from sampletones_application.config.deployment.deployment import (
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.config import ConfigCoordinator
-from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
-from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback import (
     AudioPlayerProtocol,
@@ -32,10 +30,12 @@ from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.coordinators.reconstruction import (
     ReconstructionCoordinator,
 )
-from sampletones_application.coordinators.reconstructions import (
-    ReconstructionsTabCoordinator,
+from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.main import MainTabCoordinator
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
 )
-from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -283,7 +283,7 @@ class Application:
             language_manager=self.language_manager,
         )
 
-        self._reconstructions_tab = ReconstructionsTabCoordinator(
+        self._reconstructions_tab = ReconstructionTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,

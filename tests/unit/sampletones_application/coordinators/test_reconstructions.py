@@ -3,7 +3,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
+)
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -16,10 +18,10 @@ from sampletones_shared.exceptions import (
 
 
 @pytest.fixture
-def coordinator() -> ReconstructionsTabCoordinator:
+def coordinator() -> ReconstructionTabCoordinator:
     """A coordinator with only the collaborators ``load_reconstruction`` touches, bypassing the
     heavy constructor."""
-    instance = object.__new__(ReconstructionsTabCoordinator)
+    instance = object.__new__(ReconstructionTabCoordinator)
     instance._browser_panel = MagicMock()
     instance._reconstruction_manager = MagicMock()
     instance._dialogs = MagicMock()
@@ -50,7 +52,7 @@ class TestLoadReconstructionSurfacesConcreteErrors:
     )
     def test_concrete_error_shows_populated_dialog(
         self,
-        coordinator: ReconstructionsTabCoordinator,
+        coordinator: ReconstructionTabCoordinator,
         error: Exception,
         expected_message: str,
     ) -> None:
@@ -63,7 +65,7 @@ class TestLoadReconstructionSurfacesConcreteErrors:
 
     def test_missing_file_shows_file_not_found_dialog(
         self,
-        coordinator: ReconstructionsTabCoordinator,
+        coordinator: ReconstructionTabCoordinator,
     ) -> None:
         error = FileNotFoundError("gone")
         coordinator._reconstruction_manager.load_reconstruction.side_effect = error
@@ -76,7 +78,7 @@ class TestLoadReconstructionSurfacesConcreteErrors:
 
     def test_incompatible_version_dialog_reports_both_versions(
         self,
-        coordinator: ReconstructionsTabCoordinator,
+        coordinator: ReconstructionTabCoordinator,
     ) -> None:
         error = IncompatibleReconstructionVersionError(
             "mismatch",
@@ -99,7 +101,7 @@ class TestLoadReconstructionTail:
 
     def test_unclassified_load_error_shows_the_generic_dialog(
         self,
-        coordinator: ReconstructionsTabCoordinator,
+        coordinator: ReconstructionTabCoordinator,
     ) -> None:
         error = UnhandledReconstructionError("wrapped")
         coordinator._reconstruction_manager.load_reconstruction.side_effect = error
@@ -111,7 +113,7 @@ class TestLoadReconstructionTail:
 
     def test_unexpected_error_propagates_and_unlocks(
         self,
-        coordinator: ReconstructionsTabCoordinator,
+        coordinator: ReconstructionTabCoordinator,
     ) -> None:
         coordinator._reconstruction_manager.load_reconstruction.side_effect = RuntimeError("bug")
 
@@ -127,7 +129,7 @@ class TestAudioDataChanged:
     player's data and a cleared reconstruction empties the player."""
 
     def test_new_audio_loads_into_the_player(self) -> None:
-        instance = object.__new__(ReconstructionsTabCoordinator)
+        instance = object.__new__(ReconstructionTabCoordinator)
         instance._reconstruction_player_logic = MagicMock()
         audio_data = MagicMock()
 
@@ -137,7 +139,7 @@ class TestAudioDataChanged:
         instance._reconstruction_player_logic.clear_audio.assert_not_called()
 
     def test_cleared_audio_empties_the_player(self) -> None:
-        instance = object.__new__(ReconstructionsTabCoordinator)
+        instance = object.__new__(ReconstructionTabCoordinator)
         instance._reconstruction_player_logic = MagicMock()
 
         instance._on_audio_data_changed(None)
@@ -147,8 +149,8 @@ class TestAudioDataChanged:
 
 
 @pytest.fixture
-def removal_coordinator() -> ReconstructionsTabCoordinator:
-    instance = object.__new__(ReconstructionsTabCoordinator)
+def removal_coordinator() -> ReconstructionTabCoordinator:
+    instance = object.__new__(ReconstructionTabCoordinator)
     instance._dialogs = MagicMock()
     instance._browser_logic = MagicMock()
     instance._browser_panel = MagicMock()
@@ -165,7 +167,7 @@ def removal_coordinator() -> ReconstructionsTabCoordinator:
 class TestRemoveTreeEntries:
     def test_request_remove_reconstruction_prompts_confirmation(
         self,
-        removal_coordinator: ReconstructionsTabCoordinator,
+        removal_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         path = Path("tone.strec")
 
@@ -180,7 +182,7 @@ class TestRemoveTreeEntries:
 
     def test_removing_open_reconstruction_detaches_and_marks_it_dirty(
         self,
-        removal_coordinator: ReconstructionsTabCoordinator,
+        removal_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         path = Path("tone.strec")
         removal_coordinator._reconstruction_manager.filepath = path
@@ -194,7 +196,7 @@ class TestRemoveTreeEntries:
 
     def test_removing_open_directory_detaches_loaded_reconstruction_inside_it(
         self,
-        removal_coordinator: ReconstructionsTabCoordinator,
+        removal_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         directory = Path("set")
         removal_coordinator._reconstruction_manager.filepath = directory / "tone.strec"
@@ -208,7 +210,7 @@ class TestRemoveTreeEntries:
 
     def test_request_remove_directory_prompts_with_path(
         self,
-        removal_coordinator: ReconstructionsTabCoordinator,
+        removal_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         directory = Path("set")
 

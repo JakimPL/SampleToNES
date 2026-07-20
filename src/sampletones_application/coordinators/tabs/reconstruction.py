@@ -106,7 +106,7 @@ _CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_CENTER}"
 _RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_RIGHT}"
 
 
-class ReconstructionsTabCoordinator:
+class ReconstructionTabCoordinator:
     def __init__(
         self,
         config_manager: ConfigManager,

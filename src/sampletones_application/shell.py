@@ -10,13 +10,13 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
-from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.playback import AudioPlayerProtocol
-from sampletones_application.coordinators.reconstructions import (
-    ReconstructionsTabCoordinator,
+from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.main import MainTabCoordinator
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
 )
-from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.tags.general import (
     TAG_GLOBAL_STATUS_WINDOW,
@@ -38,7 +38,11 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_application.utils.gui.shortcuts.keys import KEY_PAGE_DOWN, KEY_PAGE_UP, Modifier
+from sampletones_application.utils.gui.shortcuts.keys import (
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    Modifier,
+)
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
@@ -122,7 +126,7 @@ class ApplicationShell:
         status_bar: GUIStatusBar,
         fps_timer: FPSTimer,
         main_tab: MainTabCoordinator,
-        reconstructions_tab: ReconstructionsTabCoordinator,
+        reconstructions_tab: ReconstructionTabCoordinator,
         sequencer_tab: SequencerTabCoordinator,
         instructions_tab: InstructionsTabCoordinator,
     ) -> None:

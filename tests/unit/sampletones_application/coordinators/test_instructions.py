@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
 from sampletones_shared.exceptions import LibraryDisplayError
 
 
