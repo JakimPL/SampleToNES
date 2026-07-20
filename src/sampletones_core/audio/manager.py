@@ -743,6 +743,16 @@ class AudioDeviceManager(CallbackMixin):
         with self._lock:
             return self._paused
 
+    def is_owned_by(self, owner: Any) -> bool:
+        """Whether ``owner`` holds the live output, whether it is sounding or held paused.
+
+        Ownership tells an intentional source's own playback apart from a preview (owned by
+        nobody) or another source's playback, so a source reports itself engaged only while its
+        audio is the one on the device.
+        """
+        with self._lock:
+            return self._playing and self._output_owner is owner
+
     def open_output_stream(
         self,
         *,

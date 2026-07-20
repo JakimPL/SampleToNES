@@ -360,7 +360,13 @@ class Application:
         )
 
         self._playback_router = PlaybackRouter(
-            current_player_fn=self._get_current_player,
+            sources=(
+                self._reconstructions_tab.player,
+                self._instructions_tab.player,
+                self._sequencer_tab.player,
+            ),
+            active_source_resolver=self._get_active_source,
+            audio_device_manager=self.audio_device_manager,
             language_manager=self.language_manager,
         )
 
@@ -474,6 +480,7 @@ class Application:
             locate_original_audio=self._locate_original_audio,
             play=self._play,
             play_from_start=self._play_from_start,
+            play_from_frame=self._play_from_frame,
             stop=self._stop,
             toggle_autoplay=self._toggle_autoplay,
             toggle_follow_playback=self._toggle_follow_playback,
@@ -541,6 +548,8 @@ class Application:
                 MenuElements.ITEM_PLAYBACK_PLAY,
             ],
             play_or_pause_enabled=False,
+            play_from_start_enabled=False,
+            play_from_frame_enabled=False,
             pause_enabled=False,
             player_paused=False,
             stop_enabled=False,
@@ -550,6 +559,10 @@ class Application:
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )
+
+    def _is_play_from_frame_enabled(self) -> bool:
+        """Playing from the current frame applies to the Sequencer's song, so it needs that tab open."""
+        return self._shell.get_current_tab() == Tab.SEQUENCER and self.project_manager.is_open
 
     def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
         return MenuBarViewModel(
@@ -563,6 +576,8 @@ class Application:
             can_redo=self.history.can_redo,
             play_label=self._playback_router.play_label,
             play_or_pause_enabled=self._playback_router.is_play_enabled,
+            play_from_start_enabled=self._playback_router.is_play_from_start_enabled,
+            play_from_frame_enabled=self._is_play_from_frame_enabled(),
             pause_enabled=self._playback_router.is_pause_enabled,
             player_paused=self._playback_router.is_paused,
             stop_enabled=self._playback_router.is_stop_enabled,
@@ -1093,8 +1108,8 @@ class Application:
         index = tabs.index(self._shell.get_current_tab())
         self._set_current_tab(tabs[(index + step) % len(tabs)])
 
-    def _get_current_player(self) -> AudioPlayerProtocol:
-        return self._shell.get_current_player()
+    def _get_active_source(self) -> Optional[AudioPlayerProtocol]:
+        return self._shell.get_active_source()
 
     def _persist_application_state(self) -> None:
         self.session_manager.set_current_audio_device(self.audio_device_manager)
@@ -1109,6 +1124,14 @@ class Application:
 
     def _play(self) -> None:
         self._playback_router.play()
+        self._update_menu()
+
+    def _play_from_frame(self) -> None:
+        """Plays from the current order frame; available only in the Sequencer tab."""
+        if self._shell.get_current_tab() != Tab.SEQUENCER:
+            return
+
+        self._sequencer_tab.play_from_current_frame()
         self._update_menu()
 
     def _stop(self) -> None:

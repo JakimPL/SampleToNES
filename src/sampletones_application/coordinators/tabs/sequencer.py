@@ -20,7 +20,6 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
-from sampletones_application.coordinators.playback.prioritized import PrioritizedPreviewPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.history.action import HistoryAction
@@ -276,10 +275,7 @@ class SequencerTabCoordinator:
             ),
         )
         self._guarded_player = GuardedPlayer(
-            PrioritizedPreviewPlayer(
-                self._song_player_logic,
-                audio_device_manager=audio_device_manager,
-            ),
+            self._song_player_logic,
             dialogs=dialogs,
             error_message=language_manager[
                 Page.GLOBAL,
@@ -614,6 +610,10 @@ class SequencerTabCoordinator:
     def _on_project_replaced(self) -> None:
         self._history.reset()
         self.refresh()
+
+    def play_from_current_frame(self) -> None:
+        """Plays from the frame the tracker is showing, seeking in place when already playing."""
+        self._on_order_play_from(self._sequencer_grid_logic.frame_index)
 
     def undo(self) -> None:
         self._history.undo()

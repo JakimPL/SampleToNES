@@ -26,6 +26,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_FRAME,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
@@ -327,7 +328,13 @@ class MenuBar:
                 ShortcutId.PLAY_FROM_START,
                 tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
                 label=self._label(MenuElements.ITEM_PLAYBACK_PLAY_FROM_START),
-                enabled=state.play_or_pause_enabled,
+                enabled=state.play_from_start_enabled,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.PLAY_FROM_FRAME,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_FRAME,
+                label=self._label(MenuElements.ITEM_PLAYBACK_PLAY_FROM_FRAME),
+                enabled=state.play_from_frame_enabled,
             )
             self._shortcut_manager.add_menu_item(
                 ShortcutId.STOP,
@@ -465,7 +472,11 @@ class MenuBar:
         )
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
-            enabled=state.play_or_pause_enabled,
+            enabled=state.play_from_start_enabled,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_FRAME,
+            enabled=state.play_from_frame_enabled,
         )
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
@@ -480,7 +491,7 @@ class MenuBar:
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
 
     def _update_player_toolbar(self, state: MenuBarViewModel) -> None:
-        dpg_configure_item(self._play_button_tag, enabled=state.play_or_pause_enabled)
+        dpg_configure_item(self._play_button_tag, enabled=state.play_from_start_enabled)
         dpg_configure_item(self._pause_button_tag, enabled=state.pause_enabled)
         dpg_configure_item(self._stop_button_tag, enabled=state.stop_enabled)
 

@@ -87,6 +87,7 @@ class ShortcutBindings:
     locate_original_audio: Callback
     play: Callback
     play_from_start: Callback
+    play_from_frame: Callback
     stop: Callback
     toggle_autoplay: Callback
     toggle_follow_playback: Callback
@@ -319,8 +320,13 @@ class ApplicationShell:
             bindings.play_from_start,
         )
         self._shortcut_manager.register(
-            ShortcutId.STOP,
+            ShortcutId.PLAY_FROM_FRAME,
             Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)),
+            bindings.play_from_frame,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.STOP,
+            Shortcut(dpg.mvKey_Escape),
             bindings.stop,
         )
         self._shortcut_manager.register(
@@ -512,10 +518,11 @@ class ApplicationShell:
         except KeyError as exception:
             raise SystemError(f"Current tab alias {alias} does not correspond to any known Tab.") from exception
 
-    def get_current_player(self) -> AudioPlayerProtocol:
+    def get_active_source(self) -> Optional[AudioPlayerProtocol]:
+        """The active tab's own playback source, or ``None`` when it owns only previews (Main)."""
         match self.get_current_tab():
             case Tab.MAIN:
-                return self._main_tab.player
+                return None
             case Tab.RECONSTRUCTIONS:
                 return self._reconstructions_tab.player
             case Tab.INSTRUCTIONS:

@@ -13,8 +13,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.playback.preview import PreviewPlayer
-from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
@@ -249,7 +247,6 @@ class MainTabCoordinator:
             AdvancedElements.SELECT_OUTPUT_DIRECTORY,
         ]
 
-        self._preview_player: PreviewPlayer = PreviewPlayer(audio_device_manager)
         self._explorer_logic: ExplorerLogic = ExplorerLogic(
             config_manager,
             language_manager=language_manager,
@@ -608,10 +605,6 @@ class MainTabCoordinator:
         both_collapsed = self._config_panel.collapsed and self._reconstructor_panel.collapsed
         height = 0 if both_collapsed else self._config_height
         dpg_configure_item(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW, height=height)
-
-    @property
-    def player(self) -> AudioPlayerProtocol:
-        return self._preview_player
 
     def is_converter_active(self) -> bool:
         return self._converter_logic.is_active

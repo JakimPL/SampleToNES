@@ -27,6 +27,7 @@ class ShortcutId(Enum):
     LOCATE_ORIGINAL_AUDIO = "LocateOriginalAudio"
     PLAY = "Play"
     PLAY_FROM_START = "PlayFromStart"
+    PLAY_FROM_FRAME = "PlayFromFrame"
     STOP = "Stop"
     TOGGLE_AUTOPLAY = "ToggleAutoplay"
     TOGGLE_FOLLOW_PLAYBACK = "ToggleFollowPlayback"

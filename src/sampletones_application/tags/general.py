@@ -578,6 +578,12 @@ TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY = TagName(
     Widget.MENU,
     "item_playback_play",
 )
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_FRAME = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_play_from_frame",
+)
 TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
