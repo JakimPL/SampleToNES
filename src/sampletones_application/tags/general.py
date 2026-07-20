@@ -248,12 +248,6 @@ TAG_GLOBAL_THEME_TABLE = TagName(
     Widget.THEME,
     "table",
 )
-TAG_GLOBAL_THEME_PITCH_STEPPER = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.THEME,
-    "pitch_stepper",
-)
 TAG_GLOBAL_THEME_PLUS_MINUS_BUTTONS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

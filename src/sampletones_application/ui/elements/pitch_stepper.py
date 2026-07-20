@@ -12,7 +12,7 @@ from sampletones_application.tags.general import (
     SUF_TABLE,
     SUF_TEXT,
     SUF_TOOLTIP,
-    TAG_GLOBAL_THEME_PITCH_STEPPER,
+    TAG_GLOBAL_THEME_PLUS_MINUS_BUTTONS,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -141,7 +141,7 @@ class GUIPitchStepper(CallbackMixin):
                 with dpg.table_cell() as buttons_cell:
                     self._build_buttons(buttons_cell)
 
-        ThemeRegistry.get(TAG_GLOBAL_THEME_PITCH_STEPPER).bind_to_item(self._table_tag)
+        ThemeRegistry.get(TAG_GLOBAL_THEME_PLUS_MINUS_BUTTONS).bind_to_item(self._table_tag)
         show_tooltip(self._input_tag, self._tooltip, tag=self._tooltip_tag)
         self._status_bar.bind_to_item(self._input_tag, self._status_message)
         self._setup_input_handler()
