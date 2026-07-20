@@ -15,10 +15,8 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.playback import (
-    AudioPlayerProtocol,
-    GuardedPlayer,
-)
+from sampletones_application.coordinators.playback.guard import GuardedPlayer
+from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.details import (
     InstructionDetailsPanelLogic,

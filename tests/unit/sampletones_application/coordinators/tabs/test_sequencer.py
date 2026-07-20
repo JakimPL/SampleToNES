@@ -6,7 +6,7 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.coordinators.playback import GuardedPlayer
+from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager

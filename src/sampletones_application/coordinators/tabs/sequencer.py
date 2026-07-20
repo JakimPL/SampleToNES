@@ -19,10 +19,9 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
-from sampletones_application.coordinators.playback import (
-    AudioPlayerProtocol,
-    GuardedPlayer,
-)
+from sampletones_application.coordinators.playback.guard import GuardedPlayer
+from sampletones_application.coordinators.playback.prioritized import PrioritizedPreviewPlayer
+from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -277,7 +276,10 @@ class SequencerTabCoordinator:
             ),
         )
         self._guarded_player = GuardedPlayer(
-            self._song_player_logic,
+            PrioritizedPreviewPlayer(
+                self._song_player_logic,
+                audio_device_manager=audio_device_manager,
+            ),
             dialogs=dialogs,
             error_message=language_manager[
                 Page.GLOBAL,

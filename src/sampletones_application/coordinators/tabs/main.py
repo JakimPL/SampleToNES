@@ -13,10 +13,8 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.playback import (
-    AudioPlayerProtocol,
-    PreviewPlayer,
-)
+from sampletones_application.coordinators.playback.preview import PreviewPlayer
+from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,

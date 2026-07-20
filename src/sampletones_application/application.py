@@ -22,10 +22,8 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
-from sampletones_application.coordinators.playback import (
-    AudioPlayerProtocol,
-    PlaybackRouter,
-)
+from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.coordinators.playback.router import PlaybackRouter
 from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.coordinators.reconstruction import (
     ReconstructionCoordinator,

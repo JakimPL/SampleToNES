@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.coordinators.playback import GuardedPlayer
+from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_shared.exceptions import PlaybackError
 
 GUARDED_COMMANDS = ("play", "pause_or_resume")

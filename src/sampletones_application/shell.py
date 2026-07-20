@@ -10,7 +10,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.playback import AudioPlayerProtocol
+from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
