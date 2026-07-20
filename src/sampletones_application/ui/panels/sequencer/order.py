@@ -5,11 +5,11 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
-    TAG_SEQUENCER_ORDER_BUTTON_ADD,
-    TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
+    TAG_SEQUENCER_ORDER_BUTTON_PAIR,
     TAG_SEQUENCER_ORDER_PANEL,
     TAG_SEQUENCER_ORDER_TABLE,
     TAG_SEQUENCER_ORDER_WINDOW,
@@ -23,6 +23,10 @@ from sampletones_application.ui.elements.context_menu import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.plus_minus_buttons import (
+    GUIPlusMinusButtons,
+    PlusMinusOrder,
+)
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
 from sampletones_application.ui.panels.sequencer.columns import channel_color
@@ -83,12 +87,15 @@ class GUISequencerOrderPanel(GUIPanel):
         self,
         *,
         layout: SequencerLayout,
+        plus_minus_layout: PlusMinusButtonsLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
+        self._plus_minus_layout = plus_minus_layout
         self._router = key_router
+        self._buttons: Optional[GUIPlusMinusButtons] = None
         self._position_count: int = 0
         self._order: EditableCells[OrderKey] = EditableCells()
         self._input_state: OrderInputState = OrderInputState()
@@ -208,18 +215,17 @@ class GUISequencerOrderPanel(GUIPanel):
         self._entry_theme = create_selectable_text_theme(self._layout.colors.text.order)
 
     def _create_button_row(self) -> None:
-        with dpg.group(horizontal=True, parent=self.tag):
-            dpg.add_button(
-                tag=TAG_SEQUENCER_ORDER_BUTTON_ADD,
-                label=PLUS,
-                callback=self._on_add_clicked,
-            )
-            dpg.add_button(
-                tag=TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
-                label=MINUS,
-                callback=self._on_remove_clicked,
-                enabled=False,
-            )
+        buttons = GUIPlusMinusButtons(
+            tag=TAG_SEQUENCER_ORDER_BUTTON_PAIR,
+            parent=self.tag,
+            layout=self._plus_minus_layout,
+            order=PlusMinusOrder.PLUS_FIRST,
+            hold_repeat=False,
+            decrement_enabled=False,
+        )
+        buttons.on_increment = self._on_add_clicked
+        buttons.on_decrement = self._on_remove_clicked
+        self._buttons = buttons
 
     def _create_order_window(self) -> None:
         dpg.add_child_window(
@@ -248,10 +254,8 @@ class GUISequencerOrderPanel(GUIPanel):
         else:
             self._order.reconcile(cell_values, self._render_cell)
 
-        dpg_configure_item(
-            TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
-            enabled=view_model.position_count > 0,
-        )
+        if self._buttons is not None:
+            self._buttons.set_decrement_enabled(view_model.position_count > 0)
 
     def select_position(self, frame: int) -> None:
         """Follows the tracker frame: always updates the unfocused column highlight;

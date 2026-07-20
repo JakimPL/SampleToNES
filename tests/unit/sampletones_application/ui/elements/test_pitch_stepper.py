@@ -13,8 +13,6 @@ LAYOUT = PitchStepperLayout(
     label_width=160,
     value_width=28,
     button_column_width=32,
-    button_width=30,
-    hold_delay=0.075,
     commit_delay=12,
     commit_priority=1,
 )
@@ -68,8 +66,6 @@ def _stepper(*, kind: PitchValueKind, value: int) -> GUIPitchStepper:
     stepper._kind = kind
     stepper._layout = LAYOUT
     stepper._value = kind.clamp(value)
-    stepper._hold_direction = None
-    stepper._hold_timer = None
     stepper._emit_token = 0
     stepper._input_tag = "stepper.input"
     stepper._value_tag = "stepper.input.text"
@@ -184,27 +180,3 @@ class TestDebounce:
         stepper._step(1)
         stale_callback(*stale_args)
         assert reported == []
-
-
-class TestHoldTimer:
-    def test_first_press_arms_timer_without_stepping(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
-        assert stepper._update_hold_timer(False, True, 0.0) is None
-        assert stepper._hold_timer is not None
-
-    def test_repeats_once_the_delay_elapses(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
-        stepper._update_hold_timer(False, True, 0.0)
-        stepper._hold_timer = 0.0
-        assert stepper._update_hold_timer(False, True, 0.01) == 1
-
-    def test_no_button_pressed_returns_none(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
-        assert stepper._update_hold_timer(False, False, 0.05) is None
-
-    def test_release_clears_hold_state(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
-        stepper._update_hold_timer(True, False, 0.0)
-        stepper._on_mouse_release(0, None, None)
-        assert stepper._hold_timer is None
-        assert stepper._hold_direction is None

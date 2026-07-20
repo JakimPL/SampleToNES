@@ -230,6 +230,7 @@ class GUIInstructionChoicePanel(GUIPanel):
             status_message=self._msg_status_input_period if is_period else self._msg_status_input_pitch,
             status_bar=self._status_bar,
             layout=self._general_layout.pitch_stepper,
+            plus_minus_layout=self._general_layout.plus_minus_buttons,
             value_color=self._general_layout.colors.text.disabled,
         )
         self._pitch_stepper.on_value_changed = self._on_pitch_value_changed

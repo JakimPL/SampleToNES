@@ -1,0 +1,10 @@
+name: plus_minus_buttons
+tag: global.theme.plus_minus_buttons
+
+components:
+  - item_type: Table
+    entries:
+      - type: style
+        key: CellPadding
+        x: 2
+        y: 2

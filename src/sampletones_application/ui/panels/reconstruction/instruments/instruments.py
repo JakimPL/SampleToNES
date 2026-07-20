@@ -506,6 +506,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             status_message=self._msg_input_period if is_noise else self._msg_input_pitch,
             status_bar=self._status_bar,
             layout=self._layout_general.pitch_stepper,
+            plus_minus_layout=self._layout_general.plus_minus_buttons,
             value_color=self._layout_general.colors.text.disabled,
         )
         stepper.on_value_changed = partial(

@@ -301,6 +301,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
+            plus_minus_layout=layout.general.plus_minus_buttons,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD),
             language_manager=language_manager,
             key_router=key_router,
