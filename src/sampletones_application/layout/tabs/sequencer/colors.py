@@ -9,8 +9,8 @@ class TrackerColors(BaseModel, extra="forbid", frozen=True):
     One palette feeds the pattern grid, the order table, and the history detail so a
     concept keeps its colour everywhere: ``instrument`` (the note/sample reference,
     yellow like ``sample``), ``transpose``, ``volume``, ``sample``, the ``frame`` and
-    ``row`` indices, and the ``order`` entries. Defining them once keeps the panels in
-    step instead of each carrying its own copy.
+    ``row`` indices, and the ``order`` entries. Defining them once keeps every panel in
+    step.
     """
 
     instrument: PaletteColor
@@ -23,7 +23,7 @@ class TrackerColors(BaseModel, extra="forbid", frozen=True):
 
 
 class HistoryRoleColors(BaseModel, extra="forbid", frozen=True):
-    """Colours for the history-detail token roles that the tracker does not already own.
+    """Colours for the history-detail token roles unique to the detail line.
 
     The instrument/transpose/volume, frame, row, and sample tokens draw from the
     shared :class:`TrackerColors` palette; only the roles unique to the detail line

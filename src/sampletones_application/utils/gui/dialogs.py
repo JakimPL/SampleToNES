@@ -381,7 +381,7 @@ class DialogsRenderer:
         The literal spans of ``template`` are drawn as regular text and each ``{name}``
         placeholder is replaced by ``substitutions[name]`` in bold, so a sentence keeps its
         natural word order in the language file while its dynamic values stand out. The
-        literal spans carry their own spacing, so the row abuts its runs without extra gaps.
+        literal spans carry their own spacing, so the runs sit flush at exactly that spacing.
         """
         group_tag = f"{parent}{SUF_GROUP}"
         with dpg.group(
@@ -737,10 +737,9 @@ class DialogsRenderer:
         """Modal save-or-proceed prompt for an unsaved document.
 
         ``on_save`` writes the document and reports whether it completed; the prompt runs
-        ``on_confirm`` and closes only when the save reports success, so cancelling the save's file
-        dialog leaves the prompt open with the pending action untaken. The middle button runs
-        ``on_confirm`` to proceed without saving, and Cancel — the initially focused button —
-        dismisses the prompt.
+        ``on_confirm`` and closes once the save reports success, so a cancelled save keeps the
+        prompt open for another attempt. The middle button discards the pending changes and runs
+        ``on_confirm`` to proceed, and Cancel — the initially focused button — dismisses the prompt.
         """
         tag = get_dialog_tag(tag)
         save_button_tag = f"{tag}{SUF_BUTTON_SAVE}"

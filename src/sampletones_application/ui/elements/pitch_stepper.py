@@ -36,8 +36,8 @@ class PitchStepperStyle:
 
     A stepper needs only its own dimensions, the plus/minus button dimensions it embeds, and
     the colour of its read-only value readout. Assembling this at the composition root lets a
-    panel that builds steppers receive these three fields rather than the whole
-    :class:`GeneralLayout`, mirroring the :meth:`TreeColors.create` narrowing.
+    panel that builds steppers receive just these three fields, mirroring the
+    :meth:`TreeColors.create` narrowing.
     """
 
     dimensions: PitchStepperLayout
@@ -60,8 +60,8 @@ class GUIPitchStepper(CallbackMixin):
     name, flanked by a :class:`GUIPlusMinusButtons` pair that steps by one and repeats while held. The
     control owns the value it displays, clamps and renders it through its :class:`PitchValueKind`, and
     reports the value through the single ``on_value_changed`` hook once editing settles, so a burst of
-    steps drives one update rather than one per step. ``set_value`` seeds the readout without reporting,
-    so a panel can load a value and then listen for edits.
+    steps collapses into one update. ``set_value`` seeds the readout silently, so a panel can load a
+    value and then listen for edits.
     """
 
     def __init__(
@@ -112,7 +112,7 @@ class GUIPitchStepper(CallbackMixin):
         return self._value
 
     def set_value(self, value: int) -> None:
-        """Seeds the displayed value, clamping it into range and rendering it without reporting a change."""
+        """Seeds the displayed value, clamping it into range and rendering it silently."""
         self._value = self._kind.clamp(value)
         self._render()
 
@@ -210,11 +210,11 @@ class GUIPitchStepper(CallbackMixin):
         self._schedule_emit()
 
     def _schedule_emit(self) -> None:
-        """Renders update on every step for immediate feedback, while reporting the value only once the
-        user settles. Each change supersedes the previous token, so a burst of steps — including a held
-        button — collapses into a single ``on_value_changed`` once ``commit_delay`` frames pass with no
-        further change, sparing consumers a reload per step. The settle posts at ``commit_priority`` (the
-        schedule tier) so it orders alongside the debounced regeneration it triggers rather than below it."""
+        """Renders an update on every step for immediate feedback, reporting the value once the user
+        settles. Each change supersedes the previous token, so a burst of steps — including a held
+        button — collapses into a single ``on_value_changed`` once the value holds steady for
+        ``commit_delay`` frames. The settle posts at ``commit_priority`` (the schedule tier) so it
+        orders alongside the debounced regeneration it triggers."""
         self._emit_token += 1
         CallbackQueue.add(
             self._emit_settled_value,

@@ -130,8 +130,8 @@ class ViewportManager:
 
         The size is limited to ``_MAX_WINDOW_MONITOR_RATIO`` of the monitor so the title bar and
         side panels stay on screen once the decoration frame is added, and held at ``min_width`` /
-        ``min_height`` so a window persisted from an earlier session still opens usably wide. The
-        position is nudged inside the resulting margins so every edge lands within the monitor.
+        ``min_height`` so even a small requested size opens usably wide. The position is nudged
+        inside the resulting margins so every edge lands within the monitor.
         """
         monitor = self._monitor_for_window(x, y, width, height)
         if monitor is not None:

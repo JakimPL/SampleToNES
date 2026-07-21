@@ -72,8 +72,8 @@ class KeyRouter:
     def is_field_focused(self) -> bool:
         """Whether a text or value field is being edited and should keep plain keys for itself.
 
-        The scopes consult this one flag instead of each input reporting its own focus, so a key
-        press stays with the field the user is typing into and reaches shortcuts otherwise.
+        The scopes consult this single flag, so a key press stays with the field the user is
+        typing into and reaches shortcuts otherwise.
         """
         return focus.is_field_focused()
 

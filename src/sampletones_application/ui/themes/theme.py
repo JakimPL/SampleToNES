@@ -25,7 +25,7 @@ class Theme:
         """Index every entry by its merge identity so a value reads back before the DPG theme is created.
 
         The lookup derives from the resolved definition alone, so ``get_color``/``get_style`` answer
-        as soon as the theme is registered, without waiting for the first bind to build the DPG items.
+        as soon as the theme is registered, ahead of the first bind that builds the DPG items.
         """
         dictionary: ThemeDictionary = {}
         for parameter, values in items.items.items():

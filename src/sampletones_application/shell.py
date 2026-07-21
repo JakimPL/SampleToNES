@@ -110,7 +110,8 @@ class ApplicationShell:
       hides it behind a clean boundary.
     - *Runtime* — tab router, shortcut dispatcher, and per-frame UI driver.
 
-    The shell must remain free of domain state — it translates, not decides.
+    The shell stays free of domain state: it translates between the UI and the coordinators,
+    which make the decisions.
     """
 
     def __init__(

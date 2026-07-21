@@ -9,15 +9,15 @@ class LatestWinsExecutor:
     """Runs tasks on a single background thread, keeping only the latest queued task.
 
     While a task runs, submitting another replaces any task still waiting, so a burst of
-    rapid submissions collapses to one trailing run — the latest wins and the final
-    submission is never dropped. The worker drains to the newest pending task before it
-    stops, and ``wait=True`` on the next launch joins a worker still tearing down, so no
-    submission is lost across that hand-off. Built on :class:`SingleThreadExecutor`, so its
-    worker joins at teardown like any other background thread.
+    rapid submissions collapses to one trailing run — the latest wins, and that final
+    submission always runs. The worker drains to the newest pending task before it stops,
+    and ``wait=True`` on the next launch joins a worker still tearing down, so a submission
+    made during that hand-off carries into the next run. Built on :class:`SingleThreadExecutor`,
+    so its worker joins at teardown like any other background thread.
 
     ``is_running`` reports the busy span as a single truth: true from the first submission
-    until the worker drains every queued task and stops. Callers read it to drive activity
-    indication or exclusion instead of tracking busy/idle edges by hand.
+    until the worker drains every queued task and stops. Callers read this single span to
+    drive activity indication or exclusion.
     """
 
     def __init__(self) -> None:
@@ -34,9 +34,9 @@ class LatestWinsExecutor:
     def submit(self, task: VoidCallback) -> bool:
         """Queues ``task`` as the latest work, launching the worker when the queue is idle.
 
-        Returns whether the queue is being served: a task accepted into a running queue
-        returns ``True``; ``False`` signals only that the worker could not be launched at
-        all, which a caller may surface.
+        Returns whether the queue is being served: a task accepted into a running or freshly
+        launched queue returns ``True``; ``False`` reports that the worker failed to launch,
+        which a caller may surface.
         """
         with self._lock:
             self._pending = task
@@ -57,8 +57,8 @@ class LatestWinsExecutor:
 
         Between tasks the worker pops the latest submission under the lock, so a burst
         collapses to a single trailing run. It clears the running flag and exits only once
-        no task remains, closing the window in which a submission could arrive with no
-        worker left to run it.
+        no task remains, so every submission is picked up by the running worker or launches
+        a fresh one.
         """
         while True:
             with self._lock:

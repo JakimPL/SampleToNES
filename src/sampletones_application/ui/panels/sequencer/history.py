@@ -211,8 +211,8 @@ class GUISequencerHistoryPanel(GUIPanel):
         Rows are keyed by entry index: rows leaving the window are removed, rows
         the window gains are inserted at their display position, and rows whose
         text or cursor-relative state changed are repainted in place. Appends,
-        coalesced replacements, window slides, and undo/redo therefore each cost
-        a handful of rows rather than a table rebuild.
+        coalesced replacements, window slides, and undo/redo therefore each touch
+        a handful of rows.
         """
         desired = {entry.index for entry in window}
         for index in list(self._rows):

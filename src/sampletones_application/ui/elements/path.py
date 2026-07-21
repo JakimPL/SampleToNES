@@ -146,8 +146,8 @@ class GUIPathText(CallbackMixin):
     def set_status(self, text: str, color: Color) -> None:
         """Displays a non-path status (missing or not applicable) in a muted colour.
 
-        The path is cleared so the row is inert: clicking opens nothing and hovering
-        keeps the muted colour rather than the interactive highlight.
+        The path is cleared so the row is inert: hovering holds the muted colour and a
+        click has nothing to open.
         """
         self.path = Path()
         self.display_text = text

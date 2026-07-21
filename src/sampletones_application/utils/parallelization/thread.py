@@ -16,7 +16,7 @@ class BackgroundWorkCancelled(Exception):
 
     Long-running tasks poll :meth:`SingleThreadExecutor.is_shutting_down` at their
     cancellation points and raise this to abandon the remaining work, so teardown
-    joins the worker in milliseconds instead of waiting out its natural duration.
+    joins the worker in milliseconds.
     """
 
 
@@ -64,8 +64,8 @@ class SingleThreadExecutor:
         """Signal running background tasks to wind down at their next cancellation point.
 
         Set before :meth:`join_all` at teardown so an in-flight task raises
-        :class:`BackgroundWorkCancelled` and finishes promptly, rather than the join
-        blocking until the task completes on its own.
+        :class:`BackgroundWorkCancelled` and finishes promptly, letting the join
+        return quickly.
         """
         cls._shutdown.set()
 

@@ -17,7 +17,7 @@ class FocusStop:
     comment inserts a line break, and a text-input dialog keeps its own submit-on-Enter).
     ``base_theme_tag`` names the theme a button wears while unfocused; the ring rebinds it once
     the focus outline moves on. Fields leave it empty, marking them as stops the ring styles by
-    their own edit caret rather than an outline.
+    their own edit caret.
     """
 
     focus_tag: str

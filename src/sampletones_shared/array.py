@@ -36,7 +36,7 @@ try:
     import cupy as xp
     import cupy.typing as xp_typing
 
-    CUPY_AVAILABLE = True  # pylint: disable=invalid-name
+    CUPY_AVAILABLE = True  # pylint: disable=invalid-name,
 except (AttributeError, ImportError, ModuleNotFoundError):
     import warnings
 

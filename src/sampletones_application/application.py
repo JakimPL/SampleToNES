@@ -824,8 +824,8 @@ class Application:
         """Refreshes the stored reconstructions of samples left out of sync by a rate change.
 
         Song playback already follows the new rate; this re-synthesizes only the persistent
-        rendered waveforms the Reconstructions tab edits. Samples already at the target rate are
-        skipped, and the batch runs in the background so the rate change stays responsive.
+        rendered waveforms the Reconstructions tab edits, and only for the samples still off the
+        target rate. The batch runs in the background so the rate change stays responsive.
         """
         targets = [
             (sample.id, sample.reconstruction)
@@ -920,7 +920,7 @@ class Application:
         """Applies the properties dialog's values as one undoable gesture.
 
         Only fields that differ from the current project info reach the controller,
-        so confirming the dialog with nothing edited leaves the history untouched.
+        so confirming the dialog with no edits is a no-op.
         """
         info = self.project_controller.project.info
         with self.history.transaction(HistoryAction.EDIT_PROJECT_PROPERTIES):
@@ -1074,8 +1074,8 @@ class Application:
 
         When the reconstruction on screen becomes a project sample — added to the sequencer — its
         source audio and file location are detached. The open document follows so both locations read
-        as not applicable, matching an owned sample. The guard makes this a no-op except at the moment
-        a file-backed reconstruction is added while it is the one on screen.
+        as not applicable, matching an owned sample. The guard lets this run only when a file-backed
+        reconstruction is added while it is the one on screen.
         """
         reconstruction_data = self.reconstruction_manager.current_reconstruction
         if reconstruction_data is None or reconstruction_data.filepath is None:

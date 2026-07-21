@@ -31,8 +31,8 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
     frame follows the callback priority and then insertion order. Individual
     failures are caught and logged so the remaining callbacks still run.
 
-    Non-instantiable by design: it is a shared execution channel, not a
-    dependency to be injected.
+    Non-instantiable by design: it is a shared execution channel reached
+    through its class methods.
     """
 
     _callbacks: List[CallbackTask] = []
@@ -82,8 +82,7 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
         Drains callbacks whose target frame has been reached, newest-priority
         first, until either none remain due or the wall-clock budget is spent;
         callbacks left over are revisited on the next frame. At least one due
-        callback runs per call, so a single long callback cannot be starved by a
-        tight budget.
+        callback runs per call, so even a tight budget makes forward progress.
         """
         deadline = time.perf_counter() + budget_seconds
         while True:
