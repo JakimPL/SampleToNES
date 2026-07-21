@@ -104,13 +104,13 @@ def clamp(
 
 def isfinite(value: Optional[ArrayOrNumeric]) -> bool:
     """
-    Checks if a numeric value is finite (not NaN or infinite).
-    If the value is None, it is considered not finite.
+    Reports whether a numeric value is finite.
 
-    If the argument is an array, checks if all elements are finite recursively.
+    A None value reports as False. An array reports True only when all of its
+    elements are finite.
 
     Args:
-        value: The numeric value to check.
+        value: The numeric value, array, or None to check.
 
     Returns:
         True if the value is finite, False if it is NaN, infinite, or None.
@@ -131,12 +131,13 @@ def isfinite(value: Optional[ArrayOrNumeric]) -> bool:
 
 def isnan(value: Optional[ArrayOrNumeric]) -> bool:
     """
-    Checks if a numeric value is NaN (Not a Number).
+    Reports whether a numeric value is NaN.
 
-    If the argument is an array, checks if all elements are NaN recursively.
+    A None value reports as True. An array reports True only when all of its
+    elements are NaN.
 
     Args:
-        value: The numeric value to check.
+        value: The numeric value, array, or None to check.
 
     Returns:
         True if the value is `None` or NaN, False otherwise.
@@ -242,18 +243,17 @@ def infer_dtype(value: Optional[Numeric], dtype: DTypeLike) -> DTypeLike:
 
 def pad(array: Array, left: int, right: int, value: Any = 0.0) -> Array:
     """
-    Extracts a slice from a 1-dimensional real-valued array
-    with optional padding on either side.
+    Extracts a slice from a 1-dimensional array with optional padding on either side.
 
-    Creates an output array of length (right - left), extracting audio data
-    from the specified range. If the range extends beyond the array bounds,
-    the output is padded with the specified value.
+    Creates an output array of length (right - left), copying the values in that
+    index range. Where the range extends beyond the array bounds, the output is
+    filled with the given padding value.
 
-    If value is NaN or `inf`, the output array will be of float32 dtype to accommodate NaN values,
-    unless the input array is already of a float dtype.
+    A NaN or infinite padding value forces a float32 output dtype so it can hold
+    NaN, keeping the input's dtype when that is already floating point.
 
     Args:
-        audio: The input audio array.
+        array: The input array.
         left: The starting index (can be negative for left padding).
         right: The ending index (can exceed array length for right padding).
         value: The value to use for padding. Defaults to 0.0.
@@ -266,10 +266,10 @@ def pad(array: Array, left: int, right: int, value: Any = 0.0) -> Array:
         ValueError: If left is greater than right, or the array is not 1-dimensional.
 
     Examples:
-        >>> audio = np.array([1, 2, 3, 4, 5])
-        >>> pad(audio, -2, 7, value=0)
+        >>> array = np.array([1, 2, 3, 4, 5])
+        >>> pad(array, -2, 7, value=0)
         array([0, 0, 1, 2, 3, 4, 5, 0, 0])
-        >>> pad(audio, 1, 4, value=0)
+        >>> pad(array, 1, 4, value=0)
         array([2, 3, 4])
     """
     if not isinstance(array, ArrayClasses):

@@ -24,7 +24,7 @@ ModelTypeT = TypeVar("ModelTypeT", bound=BaseModel)
 
 def dump(data: Any) -> str:
     """
-    Serializes data to a compact JSON string without whitespace.
+    Serializes data to a compact JSON string using `,` and `:` separators.
     Sorts keys to ensure consistent output for hashing.
 
     Args:
@@ -81,6 +81,17 @@ def save_yaml(filepath: Pathlike, data: Union[List[Any], SerializedData]) -> Non
 
 
 def save_yaml_atomic(filepath: Pathlike, data: Union[List[Any], SerializedData]) -> None:
+    """
+    Saves data to a YAML file atomically via a temporary file.
+
+    The data is written to a sibling ``.tmp`` file and then moved into place with a
+    single ``replace``, so the target file updates only once the whole write
+    succeeds. The temporary file is removed if the write fails.
+
+    Args:
+        filepath (Pathlike): Path to the output YAML file.
+        data (Union[List[Any], SerializedData]): The data to save. Must be YAML-serializable.
+    """
     path = Path(filepath)
     tmp = path.with_suffix(".tmp")
     try:

@@ -12,6 +12,15 @@ SHORTEN_PATH_LEVELS: Final[int] = 5
 
 
 def normalize_path(path: Optional[GeneralPathlike]) -> Optional[Path]:
+    """
+    Converts a path-like value to a ``Path``, mapping empty input to ``None``.
+
+    Args:
+        path (Optional[GeneralPathlike]): A path-like value, or an empty or ``None`` value.
+
+    Returns:
+        Optional[Path]: The corresponding ``Path``, or ``None`` when the input is empty.
+    """
     if not path:
         return None
 

@@ -18,16 +18,16 @@ from .transformation import Transformation
 
 class PowerMorpher(BaseModel):
     """
-    Provides a range of power-based transformations for FFT spectrum,
-    all of the form `x ^ a`, where `a` is derived from a gamma parameter.
+    Provides a range of power-based transformations of the form `x ^ a`,
+    where `a` is derived from a gamma parameter.
 
     The `a` parameter is mapped from gamma in [0, 1] to [0.25, 4] such that:
-        - `gamma = 0.0 -> a = 0.25`  (flat mapping: makes FFT energies more comparable)
-        - `gamma = 0.5 -> a = 1.0`   (identity: no transformation)
+        - `gamma = 0.0 -> a = 0.25`  (flat mapping: makes values more comparable)
+        - `gamma = 0.5 -> a = 1.0`   (identity: preserves values unchanged)
         - `gamma = 1.0 -> a = 4.0`   (sharp mapping: enhances contrast, similar to low temperature)
 
-    Lower gamma values flatten the dynamic range, making different energy levels more uniform.
-    Higher gamma values expand the dynamic range, emphasizing the most dominant frequencies.
+    Lower gamma values flatten the dynamic range, making different magnitudes more uniform.
+    Higher gamma values expand the dynamic range, emphasizing the largest values.
 
     This class is a wrapper around `Transformation`, providing forward and backward
     transformations based on the power function. Access the transformation via the
@@ -138,7 +138,7 @@ class LogMorpher(BaseModel):
     Attributes:
         gamma: Morphing parameter in [0, 1]. 0 = identity, 1 = log.
         epsilon: Noise floor. Must be positive. Caller is responsible for choosing
-            a value appropriate for the expected spectrum magnitude range.
+            a value appropriate for the expected input magnitude range.
         power: Derived shape parameter λ = 1 - gamma.
         transformation: The forward and backward transformation pair.
     """
@@ -172,9 +172,9 @@ class LogMorpher(BaseModel):
         """
         Yeo-Johnson transformation pair for the current gamma and epsilon.
 
-        The identity branch (gamma = 0) and log branch (gamma = 1) are handled
-        explicitly rather than through the general formula, which is numerically
-        unstable at the boundary values.
+        The identity branch (gamma = 0) and log branch (gamma = 1) use dedicated
+        formulas, since the general formula is numerically unstable at those
+        boundary values.
 
         Returns:
             Transformation: Forward and backward function pair.

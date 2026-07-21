@@ -2,6 +2,12 @@ from typing import Optional, Protocol
 
 
 class LoggerProtocol(Protocol):
+    """The logging surface that callers depend on.
+
+    Both :class:`Logger` and :class:`NullLogger` satisfy this protocol, so code can
+    accept either through this type and stay independent of which one is active.
+    """
+
     def debug(self, message: str) -> None: ...
     def info(self, message: str) -> None: ...
     def warning(self, message: str) -> None: ...
