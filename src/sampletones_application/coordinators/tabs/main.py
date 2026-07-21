@@ -308,7 +308,6 @@ class MainTabCoordinator:
             ),
             layout=layout.tabs.main.advanced,
             inputs=layout.general.inputs,
-            max_workers_minimum=layout.behavior.main.max_workers_minimum,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_ADVANCED_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,

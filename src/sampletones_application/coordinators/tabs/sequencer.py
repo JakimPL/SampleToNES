@@ -137,7 +137,6 @@ class SequencerTabCoordinator:
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
-        self._layout = layout
         self._language_manager = language_manager
         self._dialogs = dialogs
 

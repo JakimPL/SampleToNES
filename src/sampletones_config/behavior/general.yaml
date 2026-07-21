@@ -17,4 +17,3 @@ ui:
 
 main:
   fps_update_interval: 2.0
-  max_workers_minimum: 1

@@ -31,7 +31,6 @@ class UiBehavior(BaseModel, extra="forbid", frozen=True):
 
 class MainBehavior(BaseModel, extra="forbid", frozen=True):
     fps_update_interval: float
-    max_workers_minimum: int
 
 
 class BehaviorConfig(BaseModel, extra="forbid", frozen=True):

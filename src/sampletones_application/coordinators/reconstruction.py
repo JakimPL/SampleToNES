@@ -16,7 +16,6 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
-from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services import (
     RegeneratedInstrument,
@@ -71,7 +70,6 @@ class ReconstructionCoordinator:
         *,
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
-        layout: LayoutConfig,
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
         on_reconstruction_updated: Callable[[RegeneratedInstrument], None],
@@ -84,7 +82,6 @@ class ReconstructionCoordinator:
         self._reconstructions_tab: Optional[ReconstructionTabCoordinator] = None
         self._dialogs = dialogs
         self._language_manager = language_manager
-        self._layout = layout
         self._on_tab_switch = on_tab_switch
         self._on_session_state_changed_callback = on_session_state_changed
         self._on_reconstruction_updated_callback = on_reconstruction_updated

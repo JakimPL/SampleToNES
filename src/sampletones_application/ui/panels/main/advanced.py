@@ -54,7 +54,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         *,
         layout: AdvancedLayout,
         inputs: InputsLayout,
-        max_workers_minimum: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         path_colors: PathColors,
@@ -74,7 +73,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._button_height = layout.button_height
         self._input_width = inputs.default_width
         self._label_width = inputs.label_width
-        self._max_workers_minimum = max_workers_minimum
+        self._max_workers_minimum = layout.max_workers_minimum
         self._status_bar = status_bar
         self._path_colors = path_colors
         self._msg_path = language_manager[

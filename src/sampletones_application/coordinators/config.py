@@ -19,7 +19,6 @@ from sampletones_application.config.managers.outcome import (
     ConfigRecovered,
 )
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.layout import LayoutConfig
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_CONFIG_RECOVERY,
     TAG_GLOBAL_DIALOG_CONFIG_STATUS,
@@ -60,13 +59,11 @@ class ConfigCoordinator:
         *,
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
-        layout: LayoutConfig,
     ) -> None:
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._dialogs = dialogs
         self._language_manager = language_manager
-        self._layout = layout
 
     def save_dialog(self) -> None:
         filepath = save_file_dialog(

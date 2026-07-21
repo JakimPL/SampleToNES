@@ -209,7 +209,7 @@ class Application:
         self.project_controller.on_saved = self.history.mark_saved
         self.history.on_history_changed = self._on_history_changed
 
-        self.fps_timer: FPSTimer = FPSTimer()
+        self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.main.fps_update_interval)
         self._audio_was_playing: bool = False
 
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
@@ -257,7 +257,6 @@ class Application:
             self.session_manager,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
-            layout=self.layout,
             on_tab_switch=self._set_current_tab,
             on_session_state_changed=self._on_project_state_changed,
         )
@@ -269,7 +268,6 @@ class Application:
             self.audio_device_manager,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
-            layout=self.layout,
             on_tab_switch=self._set_current_tab,
             on_session_state_changed=self._on_reconstruction_state_changed,
             on_reconstruction_updated=self._on_reconstruction_updated,
@@ -375,7 +373,6 @@ class Application:
             self.session_manager,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
-            layout=self.layout,
         )
 
         self._shell = ApplicationShell(
