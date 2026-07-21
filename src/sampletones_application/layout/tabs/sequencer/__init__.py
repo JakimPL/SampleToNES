@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.primitives import Dimensions, Padding
+from sampletones_application.layout.primitives import Dimensions
 from sampletones_application.layout.tabs.sequencer.colors import SequencerColors
 from sampletones_application.layout.tabs.sequencer.history import HistoryLayout
 from sampletones_application.layout.tabs.sequencer.order import OrderLayout
@@ -11,7 +11,6 @@ from sampletones_application.layout.tabs.sequencer.tracker import TrackerLayout
 
 
 class SequencerLayout(BaseModel, extra="forbid", frozen=True):
-    cell_padding: Padding
     order: OrderLayout
     table_cells: SequencerTableCells
     tempo: TempoLayout

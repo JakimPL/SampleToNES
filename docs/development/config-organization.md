@@ -1,55 +1,118 @@
 # Configuration Organization
 
-This document describes how _SampleToNES_ stores its configuration: the YAML data
-package `sampletones_config`, the packages that hold the schemas that read it, and the
-rules that decide where a configuration value belongs. It is prescriptive — the
-contracts here bind every configuration file and every loader. Use it as the reference
-when adding or moving a configuration value. It complements
+_SampleToNES_ ships its configuration as a YAML data package, `sampletones_config`. This
+document states the principles that decide where a configuration value belongs and how it
+is read; use it as the reference when adding or moving a value. It sits alongside
 `docs/development/architecture.md` (application layering and ownership) and
 `docs/development/guidelines.md` (coding rules).
 
-The word "configuration" is overloaded in this codebase. **This document governs the
-shipped YAML package `sampletones_config` only.** Two other, unrelated things also carry
-the name and are governed elsewhere:
+"Configuration" names three separate things in this codebase. This document governs the
+first:
 
-- **Runtime user preferences** — mutable, persisted to the user profile
-  (`sampletones_application/config`, e.g. `PlaybackConfig`, `ApplicationState`).
-- **Project generation settings** — serialized as JSON (`sampletones_core/configs`,
-  `config.json`), documented in `docs/formats/configuration.md`.
-
-Neither lives in the YAML package, and neither is governed here.
+- **Shipped configuration** — the `sampletones_config` YAML package: layout, theme,
+  palette, language, behavior, deployment, and calibration. *(This document.)*
+- **Runtime user preferences** — mutable state persisted to the user profile
+  (`sampletones_application/config`, e.g. `PlaybackConfig`, `ApplicationState`), governed
+  by that package.
+- **Project generation settings** — JSON stored beside a project
+  (`sampletones_core/configs`, `config.json`), documented in
+  `docs/formats/configuration.md`.
 
 ---
 
-## The package boundary
+## Principles
 
-`sampletones_config` holds **YAML data and nothing else**. Its `__init__.py` is empty;
-its only programmatic role is to be importable so consumers can resolve its directory
-(`CONFIG_DIRECTORY = Path(sampletones_config.__file__).parent`, with a PyInstaller
-`sys._MEIPASS` fallback for frozen builds).
+### 1. Data and meaning are separate
 
-The schema that validates each file lives in the **consuming** package, never in the
-data package:
+`sampletones_config` carries values; the schema that interprets them lives in the package
+that reads them. The dependency runs one way — a consumer imports the data package only to
+resolve its directory (`CONFIG_DIRECTORY`), and the package itself is pure YAML with an
+empty `__init__.py`. Each schema lives with its reader:
 
 - `sampletones_application` owns the layout, theme, palette, language, behavior, and
   deployment schemas.
 - `sampletones_core` owns the calibration schemas.
 - `sampletones_shared` owns the loader primitives (`load_yaml_model`,
-  `load_yaml_model_dir`), and nothing schema-specific.
+  `load_yaml_model_dir`).
 
-This separation is a rule, not a convenience:
+So the data carries the values and the consumer carries the meaning, and the two evolve
+on their own terms.
 
-- The data package **must not** import a schema, and a schema package **must not** inline
-  data. The three trees stay independent.
-- A file's shape is therefore learned from its schema in the consuming package; the data
-  package carries the values, the consumer carries the meaning.
+### 2. The top level is organized by domain
+
+`sampletones_config` has one top-level directory per schema family and its loader:
+`application`, `behavior`, `calibration`, `lang`, `layout`, `theme`. Each domain owns its
+schema and its load path (see [Domains](#domains)). A new domain is a new top-level
+directory with its own schema owner and loader.
+
+### 3. The config tree mirrors the code
+
+The layout config is shaped like the code that reads it: its directory tree matches the
+`LayoutConfig` model tree, which mirrors the application's feature-area taxonomy across
+`ui/panels/`, `logic/`, and `view_model/`. A value's place in the config therefore
+predicts its place in the code. Three conventions keep the mirror true:
+
+- **A feature area is a directory of fragments.** Each area is a directory loaded by
+  `load_yaml_model_dir`; every `<field>.yaml` supplies the model's `<field>`, and an
+  optional `root.yaml` carries the loose scalars that own no section file. Three
+  cross-cutting resources — `fonts.yaml`, `glyphs.yaml`, `palette.yaml` — are single
+  self-contained files at the `layout/` root, each one resource in one file.
+- **File stem = field = model.** `choice.yaml` fills field `choice`, validated by
+  `ChoiceLayout` in `choice.py`; the three names match within a domain, so one name traces
+  a value from YAML through field to schema. A stem is unique within its domain: the same
+  name may recur across domains as a related-but-distinct resource
+  (`layout/general/plus_minus_buttons.yaml` sizes a widget while
+  `theme/plus_minus_buttons.yaml` styles it — one widget, two domains, loaded separately).
+- **Tabs sit where their coordinators sit.** The four notebook tabs live under
+  `layout/tabs/` (`main`, `instructions`, `reconstruction`, `sequencer`), matching
+  `coordinators/tabs/` and aggregated as `LayoutConfig.tabs`; a tab's configuration is
+  found where its code is. Cross-tab and shared areas stay at the `layout/` root as their
+  own feature areas: `general/`, the plot-element family `graphs/`, the transport toolbar
+  `player/`, and the dialogs `project_properties/` and `settings/`.
+
+### 4. Every value has one home
+
+A value lives in exactly one place, owned by the concept it describes. A tab's own
+geometry — width and height together — lives in that tab's directory. The shared outer
+column skeleton (`side`, `center_weight`) lives in `general/`, since it belongs to every
+tab equally. The values that drive responsive resizing (`baseline_viewport_width`,
+`baseline_viewport_height`, the graph-stack cap) live together in `general/responsive.yaml`
+because they are the input to one scheme. Ownership decides the home: whoever owns the
+concept holds the value, and it appears once.
+
+### 5. Storage shape and consumer shape differ
+
+Principles 1–4 shape the config for **where a value is authored**. What a consumer needs
+is often a different shape, and the two are reconciled at the composition root
+(`Application.__init__`, where the validated `LayoutConfig` already exists). Each consumer
+receives a view built for it:
+
+- A **feature consumer** — a panel or UI element — receives its model whole:
+  `GUIConverterPanel(layout: ConverterLayout)`. The model carries all of that panel's own
+  geometry, so a new field reaches the panel through the model it already holds.
+- A **generic primitive** — the responsive math (`expanded_side_width`,
+  `stacked_graph_height`), the column builders (`ColumnSpec`, `TabColumns`), raw
+  `dpg.configure_item` — receives the plain integers it computes with, since it blends a
+  config value with a live runtime measurement (e.g. `dpg.get_viewport_client_width()`)
+  and works below the level of any layout model.
+- A **tab coordinator** receives a per-tab view. A frozen-dataclass DTO in the
+  `parameters/` package gathers exactly what one tab needs: the shared six-field
+  `TabGeometry` core, the flat integers its primitive sinks consume, and the cohesive
+  feature models it forwards whole (`SchedulingBehavior`, `GraphsLayout`, the tab's own
+  `<Tab>Layout`, the colour blocks). A small factory produces any narrowed slice a consumer
+  needs (`TreeColors.create`, `PitchStepperStyle.from_general`).
+
+The type signals which side of the boundary a value is on: a frozen Pydantic model with
+`extra="forbid"` is a YAML fragment; a `@dataclass(frozen=True)` is a view derived in code.
+The composition root is the one place that knows both shapes, so each deep path from
+storage to consumer is written once, in one factory. (The alternative — handing a
+coordinator the whole `LayoutConfig` to dig scalars out of — is what the DTO layer exists
+to replace: it would copy that path knowledge into every coordinator and couple each to
+the entire tree.)
 
 ---
 
 ## Domains
-
-The top level of `sampletones_config` is grouped by **domain** — one directory per
-schema family and its loader.
 
 | Domain | Directory | Schema owner | How it is loaded |
 |--------|-----------|--------------|------------------|
@@ -61,182 +124,38 @@ schema family and its loader.
 | Theme | `theme/` | `ThemeSpec` (`sampletones_application/ui/themes/spec.py`) | `ThemeLoader.load_all()` → `ThemeRegistry` |
 
 The palette (`layout/palette.yaml` → `Palette`, `sampletones_application/utils/palette.py`)
-is a layout-domain resource loaded first and then injected as validation **context**, so
-any colour field in layout or theme may reference a palette token that resolves against
-the one loaded palette.
+is a layout-domain resource loaded first and injected as validation **context**, so any
+colour field in layout or theme resolves its palette tokens against the one loaded palette.
 
-Layout and theme schemas are `frozen=True, extra="forbid"` — immutable, and a rejection
-of any unknown key. Because loading is eager at the composition root
-(`Application.__init__` → `load_layout_config`, errors wrapped as `SystemError`), a
-YAML↔schema mismatch fails loudly at startup rather than silently at use.
+Layout and theme schemas are `frozen=True, extra="forbid"`, and loading is eager at the
+composition root (`Application.__init__` → `load_layout_config`, wrapped as `SystemError`),
+so a mismatch between YAML and schema surfaces loudly at startup.
 
-**The behavior domain rides along on `LayoutConfig`.** `behavior/` is a first-class
-domain — its own top-level directory, its own schema owner (`BehaviorConfig`), its own
-`load_yaml_model` call. What it does *not* have is a first-class root object: rather than
-returning a separate `BehaviorConfig` alongside `LayoutConfig`, `load_layout_config`
-stores it on `LayoutConfig.behavior`, so consumers reach it as `layout.behavior.*`. This
-ride-along is deliberate, not an accident of P1. Behavior is read at roughly fifteen
-runtime sites (`application.py` and all four tab coordinators read
-`layout.behavior.scheduling`, `.ui`, and `.main`), and `SchedulingBehavior` is imported
-as a type by about ten more modules. Promoting behavior to a standalone root would
-rewrite every one of those access paths for no structural gain — the domain separation
-that P1 cares about (directory, schema, loader) already holds. The single access path is
-the cost of that convenience, and it is documented here so it does not read as a P1
-violation.
+Behavior loads as its own domain — its own directory, schema owner (`BehaviorConfig`), and
+`load_yaml_model` call — and attaches to the layout result as `LayoutConfig.behavior`, so
+consumers reach it as `layout.behavior.*`. A single access path serves the ~15 runtime
+sites across `application.py` and the tab coordinators that read it, and the ~10 modules
+that import `SchedulingBehavior` as a type.
 
 ---
 
-## Principles
+## Loading
 
-### P1 — The top level is grouped by domain
+Two load mechanisms serve the two grouping schemes:
 
-One directory per schema family + loader: `application`, `behavior`, `calibration`,
-`lang`, `layout`, `theme`. A new domain is a new top-level directory with its own schema
-owner and loader.
+- **Field aggregation** (layout, and every domain that mirrors the code).
+  `load_layout_config` builds `LayoutConfig` field by field — `load_yaml_model` for a
+  single-mapping file, `load_yaml_model_dir` for a feature-area directory — so the
+  directory structure and the model structure stay identical (principle 3), validated
+  strictly with `extra="forbid"`.
+- **Tag-graph discovery** (theme). Theme is organized for human navigation, grouped by the
+  widget family it styles (`button/`, `channels/`, `dialog/`, `header/`, `nodes/`,
+  `panel/`, `player/`, `tables/`). `ThemeLoader.load_all()` reads every `*.yaml` under
+  `theme/` recursively, validates each as a `ThemeSpec`, resolves the `extends` inheritance
+  graph, and registers the results in the `ThemeRegistry` singleton keyed by `tag`. Here
+  the directory grouping serves people and the `tag` and `extends` fields carry the load
+  meaning; every theme extends the base `default` unless it names another parent.
 
-### P2 — `layout/` mirrors the application's feature-area taxonomy
-
-The layout tree repeats the same feature-area set the rest of the application already
-uses across `ui/panels/`, `logic/`, and `view_model/`. The four notebook tabs live
-together under `layout/tabs/` — `main`, `instructions`, `reconstruction`, `sequencer` —
-exactly mirroring the `coordinators/tabs/` package, and are aggregated by `TabsLayout`
-under `LayoutConfig.tabs`. The correspondence is **1:1 in three places**: the YAML
-directory (`layout/tabs/<tab>/`), the field on `TabsLayout` (`layout.tabs.<tab>`), and
-the tab coordinator that owns that tab's layout (`coordinators/tabs/<tab>.py`;
-`architecture.md`: _"Tab layout is the coordinator's."_). A tab's configuration is found
-where its code is found.
-
-Everything that is not a notebook tab stays at the `layout/` root as its own feature
-area: the shared `general/`, the plot-element family `graphs/`, the transport toolbar
-`player/`, and the dialogs `project_properties/` and `settings/`. `player` in particular
-is a transport toolbar present across the whole application, not a notebook tab, so it
-does not belong under `tabs/`.
-
-### P3 — A feature area is a directory of fragments
-
-Each feature area is a directory, loaded by `load_yaml_model_dir`: every `<field>.yaml`
-supplies the model's `<field>`, and a `root.yaml` holds the loose scalars that own no
-section file of their own. No feature area is a single flat file.
-
-**Exception:** atomic cross-cutting resource files — `fonts.yaml`, `glyphs.yaml`,
-`palette.yaml` — stay flat at the `layout/` root. Each is a single self-contained
-resource, not a feature area; a directory whose only member would be `root.yaml` adds
-structure without meaning.
-
-### P4 — Geometry belongs to its owner
-
-The shared outer column skeleton (`side`, `center_weight`) and the responsive knobs live
-in `general/`. A tab's own panel geometry — **both width and height** — lives in that
-tab's directory. A single tab's dimensions are never split across a shared file and a
-per-tab file.
-
-### P5 — The responsive baseline has one home
-
-The values that drive responsive resizing (`baseline_viewport_width`,
-`baseline_viewport_height`, the graph-stack cap) live together in one `general/`
-section. They are the input to one scheme and belong in one place, not scattered across
-`columns`, `window`, and `graphs`.
-
-### P6 — File stem = field name = model name
-
-A fragment's file stem equals the Pydantic field it fills, which equals the tag `MODULE`
-where one applies; the schema module is named to match. `choice.yaml` fills field
-`choice` and is validated by `ChoiceLayout` in `choice.py` — no prefix drift between the
-three.
-
-The stem↔field↔model equality is scoped **within a domain**. The same stem may recur in
-two domains as two unrelated resources: `layout/general/plus_minus_buttons.yaml` is a
-dimensions fragment (`PlusMinusButtonsLayout` — button size and spacing), while
-`theme/plus_minus_buttons.yaml` is a `ThemeSpec` that styles the same widget family
-(colours, borders). They share a name because they describe the same widget, not the same
-data, and they are **not** merged: geometry lives in the layout domain, styling in the
-theme domain, and the two are loaded by different paradigms. A shared stem across domains
-is a naming coincidence, not a link.
-
-### P7 — `theme/` groups by UI-element family, and this is a second scheme on purpose
-
-Themes are grouped by the widget family they style (`button/`, `channels/`, `dialog/`,
-`header/`, `nodes/`, `panel/`, `player/`, `tables/`). This differs from the layout
-scheme deliberately: `ThemeLoader.load_all()` discovers every theme with a recursive
-`rglob` and resolves it by its `tag` and its `extends` inheritance graph — so theme
-directories are organizational for humans, and carry no load-order or structural
-meaning. Every theme inherits the base `default` theme unless it names another `extends`.
-
-### P8 — Consumers receive models, not decomposed fields
-
-A panel (or other consumer) built for a specific layout model takes that **model object**,
-not its fields spread into loose scalars: `GUIConverterPanel(layout: ConverterLayout)`,
-never `GUIConverterPanel(width=..., height=...)`. Shared geometry a panel also needs — the
-app-wide input widths in `general/inputs.yaml`, say — is passed the same way, as its model
-(`inputs: InputsLayout`), so the shared value keeps its single home. A panel's own model
-therefore carries all of that panel's geometry: if a panel needs a height, its model owns a
-`height` (P4), rather than borrowing another panel's field through the coordinator. This
-keeps the coordinator a wiring layer — it forwards models, it does not disassemble them —
-and a new field on a model reaches its panel without threading another constructor argument.
-
----
-
-## Loading paradigms
-
-Two paradigms coexist by design, one per grouping scheme:
-
-- **Layout — typed field aggregation.** `load_layout_config` builds `LayoutConfig`
-  field by field: `load_yaml_model` for a single-mapping file, `load_yaml_model_dir` for
-  a feature-area directory. The directory structure mirrors the model structure exactly
-  (P2, P3), and validation is strict (`extra="forbid"`).
-- **Theme — tag-graph discovery.** `ThemeLoader` reads every `*.yaml` under `theme/`
-  recursively, validates each as a `ThemeSpec`, topologically sorts the `extends` graph,
-  merges parent entries under child overrides, and registers the results in the
-  `ThemeRegistry` singleton keyed by `tag`.
-
-Palette, deployment, and calibration each expose a bespoke `.load()` classmethod
-following the same low-level primitives in `sampletones_shared/utils/serialization.py`
-(the one module that calls `yaml.safe_load`).
-
----
-
-## Known deviations
-
-Recorded in `docs/development/bugs-and-todos.md § Architecture` and paid off by the
-configuration-reorganization phases. Until a box is checked, the current tree is out of
-line with a principle above:
-
-- [x] **P3** — `main`, `player`, `settings`, `project_properties` are flat files, not
-  directories of fragments. *(Resolved: each is now a directory of fragments with a
-  mirroring model package, loaded by `load_yaml_model_dir`.)*
-- [x] **P2** — there is no `reconstruction` layout section; the reconstruction tab reads
-  its geometry from `general/columns.yaml` and `graphs/`. *(Resolved: the section is born
-  with its first fragment — `tabs/reconstruction/right_column.yaml` — and a matching
-  `ReconstructionLayout` wired into `TabsLayout`, rather than as an empty directory: a
-  feature area is a directory of fragments, and it had none until geometry moved.)*
-- [x] **P4** — per-tab right-column widths live in the shared `general/columns.yaml`
-  (`instructions_right`, `reconstructions_right`, `sequencer_right`) while the matching
-  heights live in per-tab files. *(Resolved: each tab owns its right column as a
-  `right_column: Dimensions` fragment in its own directory — `tabs/<tab>/right_column.yaml` —
-  and `general/columns.yaml` shrank to the shared skeleton `side` + `center_weight`
-  (`baseline_viewport_width` stays until P5). A tab's width and height are no longer
-  split across a shared file and a per-tab file.)*
-- [x] **P5** — the responsive baseline is split across `general/columns.yaml`
-  (`baseline_viewport_width`), `general/window.yaml` (`min_height`), and
-  `graphs/dimensions.yaml` (`max_stack_height`). *(Resolved: the three baselines live
-  together in `general/responsive.yaml` → `ResponsiveLayout`
-  (`baseline_viewport_width`, `baseline_viewport_height`, `max_stack_height`).
-  `columns.yaml` shrank to the shared skeleton `side` + `center_weight`;
-  `graphs/dimensions.yaml` dropped `max_stack_height`; `window.min_height` no longer
-  doubles as the responsive height baseline — it keeps only its primary role as the
-  viewport minimum.)*
-- [x] **P6** — `tabs/instructions/choice.yaml` (field `choice`) is validated by
-  `InstructionChoiceLayout`, a prefix the stem does not carry. *(Resolved: the model is
-  now `ChoiceLayout` in `choice.py`, so stem `choice` = field `choice` = model
-  `ChoiceLayout`. The `InstructionChoicePanel` widget keeps its name — it is a UI element,
-  not the layout fragment.)*
-- [x] **P1** — `behavior/` is its own domain yet is folded into `LayoutConfig.behavior`
-  rather than owning a first-class aggregate. *(Resolved by decision, not by moving the
-  field: the ride-along is deliberate and documented — see "The behavior domain rides
-  along on `LayoutConfig`" below. Promoting `behavior` to a first-class root object was
-  weighed and deferred because `layout.behavior.*` is read at ~15 runtime sites across
-  `application.py` and all four tab coordinators, and `SchedulingBehavior` is imported as
-  a type by ~10 more modules; changing the access path is a broad refactor of its own, out
-  of scope for this cleanup.)*
-- [x] **Cleanup** — `VERSION_CONFIG_PATH` (`sampletones_application/paths.py`) points at
-  a `version.yaml` that does not exist and is never read. *(Resolved: removed.)*
+Palette, deployment, and calibration each load through a bespoke `.load()` classmethod over
+the same low-level primitives in `sampletones_shared/utils/serialization.py` — the one
+module that calls `yaml.safe_load`.
