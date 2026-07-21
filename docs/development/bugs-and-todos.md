@@ -29,15 +29,3 @@
 ## Bugs
 
 * No refreshing after library generation
-
-## Architecture
-
-Known deviations from the design contracts, recorded here until they are paid off (per
-`architecture.md`). The ledger, not the codebase, is the memory of what is currently out
-of line.
-
-* **Configuration package** — the `sampletones_config` tree does not yet satisfy the
-  rules in `config-organization.md`. The tracked list is that document's
-  § Known deviations checklist (feature-area directories, the missing `reconstruction`
-  section, per-tab geometry ownership, the split responsive baseline, `choice` naming,
-  the `behavior` domain fold-in, and the dead `VERSION_CONFIG_PATH`).

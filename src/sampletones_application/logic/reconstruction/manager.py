@@ -155,7 +155,7 @@ class ReconstructionManager(CallbackMixin):
         CallbackQueue.add(
             self.call,
             self.on_reconstruction_closed,
-            priority=self._scheduling.priority_schedule,
+            priority=self._scheduling.priorities.schedule,
         )
 
     def locate_original_audio(self) -> None:

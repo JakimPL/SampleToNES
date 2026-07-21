@@ -334,7 +334,7 @@ class GUITreePanel(GUIPanel, ABC):
                 tuple(specs),
                 root_tag,
                 partial(self._finish_emit, root_tag, on_finished),
-                priority=self._scheduling.priority_emit,
+                priority=self._scheduling.emit.priority,
             )
             handed_off = True
         finally:

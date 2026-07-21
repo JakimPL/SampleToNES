@@ -70,6 +70,20 @@ of any unknown key. Because loading is eager at the composition root
 (`Application.__init__` → `load_layout_config`, errors wrapped as `SystemError`), a
 YAML↔schema mismatch fails loudly at startup rather than silently at use.
 
+**The behavior domain rides along on `LayoutConfig`.** `behavior/` is a first-class
+domain — its own top-level directory, its own schema owner (`BehaviorConfig`), its own
+`load_yaml_model` call. What it does *not* have is a first-class root object: rather than
+returning a separate `BehaviorConfig` alongside `LayoutConfig`, `load_layout_config`
+stores it on `LayoutConfig.behavior`, so consumers reach it as `layout.behavior.*`. This
+ride-along is deliberate, not an accident of P1. Behavior is read at roughly fifteen
+runtime sites (`application.py` and all four tab coordinators read
+`layout.behavior.scheduling`, `.ui`, and `.main`), and `SchedulingBehavior` is imported
+as a type by about ten more modules. Promoting behavior to a standalone root would
+rewrite every one of those access paths for no structural gain — the domain separation
+that P1 cares about (directory, schema, loader) already holds. The single access path is
+the cost of that convenience, and it is documented here so it does not read as a P1
+violation.
+
 ---
 
 ## Principles
@@ -129,6 +143,15 @@ A fragment's file stem equals the Pydantic field it fills, which equals the tag 
 where one applies; the schema module is named to match. `choice.yaml` fills field
 `choice` and is validated by `ChoiceLayout` in `choice.py` — no prefix drift between the
 three.
+
+The stem↔field↔model equality is scoped **within a domain**. The same stem may recur in
+two domains as two unrelated resources: `layout/general/plus_minus_buttons.yaml` is a
+dimensions fragment (`PlusMinusButtonsLayout` — button size and spacing), while
+`theme/plus_minus_buttons.yaml` is a `ThemeSpec` that styles the same widget family
+(colours, borders). They share a name because they describe the same widget, not the same
+data, and they are **not** merged: geometry lives in the layout domain, styling in the
+theme domain, and the two are loaded by different paradigms. A shared stem across domains
+is a naming coincidence, not a link.
 
 ### P7 — `theme/` groups by UI-element family, and this is a second scheme on purpose
 
@@ -202,9 +225,18 @@ line with a principle above:
   `graphs/dimensions.yaml` dropped `max_stack_height`; `window.min_height` no longer
   doubles as the responsive height baseline — it keeps only its primary role as the
   viewport minimum.)*
-- [ ] **P6** — `tabs/instructions/choice.yaml` (field `choice`) is validated by
-  `InstructionChoiceLayout`, a prefix the stem does not carry.
-- [ ] **P1** — `behavior/` is its own domain yet is folded into `LayoutConfig.behavior`
-  rather than owning a first-class aggregate.
-- [ ] **Cleanup** — `VERSION_CONFIG_PATH` (`sampletones_application/paths.py`) points at
-  a `version.yaml` that does not exist and is never read.
+- [x] **P6** — `tabs/instructions/choice.yaml` (field `choice`) is validated by
+  `InstructionChoiceLayout`, a prefix the stem does not carry. *(Resolved: the model is
+  now `ChoiceLayout` in `choice.py`, so stem `choice` = field `choice` = model
+  `ChoiceLayout`. The `InstructionChoicePanel` widget keeps its name — it is a UI element,
+  not the layout fragment.)*
+- [x] **P1** — `behavior/` is its own domain yet is folded into `LayoutConfig.behavior`
+  rather than owning a first-class aggregate. *(Resolved by decision, not by moving the
+  field: the ride-along is deliberate and documented — see "The behavior domain rides
+  along on `LayoutConfig`" below. Promoting `behavior` to a first-class root object was
+  weighed and deferred because `layout.behavior.*` is read at ~15 runtime sites across
+  `application.py` and all four tab coordinators, and `SchedulingBehavior` is imported as
+  a type by ~10 more modules; changing the access path is a broad refactor of its own, out
+  of scope for this cleanup.)*
+- [x] **Cleanup** — `VERSION_CONFIG_PATH` (`sampletones_application/paths.py`) points at
+  a `version.yaml` that does not exist and is never read. *(Resolved: removed.)*

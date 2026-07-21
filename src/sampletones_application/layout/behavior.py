@@ -1,17 +1,28 @@
 from pydantic import BaseModel
 
 
+class SchedulingDelays(BaseModel, extra="forbid", frozen=True):
+    schedule: int
+    reconstruction_update: int
+    cancel: int
+
+
+class SchedulingPriorities(BaseModel, extra="forbid", frozen=True):
+    update_status: int
+    gui_action: int
+    schedule: int
+
+
+class SchedulingEmit(BaseModel, extra="forbid", frozen=True):
+    priority: int
+    batch_size: int
+
+
 class SchedulingBehavior(BaseModel, extra="forbid", frozen=True):
-    delay_gui_action: int
-    delay_schedule: int
-    delay_reconstruction_update: int
-    delay_cancel: int
-    priority_update_status: int
-    priority_gui_action: int
-    priority_schedule: int
-    priority_emit: int
+    delays: SchedulingDelays
+    priorities: SchedulingPriorities
+    emit: SchedulingEmit
     queue_budget_seconds: float
-    emit_batch_size: int
 
 
 class UiBehavior(BaseModel, extra="forbid", frozen=True):

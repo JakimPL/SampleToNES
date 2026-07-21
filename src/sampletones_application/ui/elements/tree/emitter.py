@@ -82,7 +82,7 @@ class TreeEmitter:
             context.on_finished()
             return
 
-        end = min(index + self._scheduling.emit_batch_size, len(context.specs))
+        end = min(index + self._scheduling.emit.batch_size, len(context.specs))
         with staged_container(context.stage):
             for spec in context.specs[index:end]:
                 self._emit_node(spec, context.root_tag)
@@ -92,7 +92,7 @@ class TreeEmitter:
                 self._emit_batch,
                 context,
                 end,
-                priority=self._scheduling.priority_emit,
+                priority=self._scheduling.emit.priority,
             )
             return
 

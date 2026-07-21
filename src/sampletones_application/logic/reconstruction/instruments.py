@@ -110,8 +110,8 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self._pending_reconstruction_update = update
         CallbackQueue.add(
             self._on_reconstruction_update_scheduled,
-            priority=self._scheduling.priority_schedule,
-            delay=self._scheduling.delay_reconstruction_update,
+            priority=self._scheduling.priorities.schedule,
+            delay=self._scheduling.delays.reconstruction_update,
         )
 
     def _on_reconstruction_update_scheduled(self) -> None:

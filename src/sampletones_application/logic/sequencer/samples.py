@@ -110,8 +110,8 @@ class SequencerSamplesLogic(CallbackMixin):
         self._pending_autoplay_sample = sample_id
         CallbackQueue.add(
             self._execute_autoplay,
-            priority=self._scheduling.priority_schedule,
-            delay=self._scheduling.delay_schedule,
+            priority=self._scheduling.priorities.schedule,
+            delay=self._scheduling.delays.schedule,
         )
 
     def cancel_autoplay(self) -> None:

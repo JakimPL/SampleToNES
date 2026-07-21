@@ -191,7 +191,7 @@ class Application:
             scheduling=self.layout.behavior.scheduling,
         )
 
-        _priority = self.layout.behavior.scheduling.priority_schedule
+        _priority = self.layout.behavior.scheduling.priorities.schedule
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
@@ -1242,7 +1242,7 @@ class Application:
         CallbackQueue.notify_frame()
         CallbackQueue.add(
             self._update_status,
-            priority=self.layout.behavior.scheduling.priority_update_status,
+            priority=self.layout.behavior.scheduling.priorities.update_status,
         )
         CallbackQueue.process(self.layout.behavior.scheduling.queue_budget_seconds)
 

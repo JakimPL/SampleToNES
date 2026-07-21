@@ -4,7 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior import (
+    SchedulingBehavior,
+    SchedulingDelays,
+    SchedulingEmit,
+    SchedulingPriorities,
+)
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_core import paths
@@ -25,16 +30,18 @@ def _tree(
         audio_device_manager = MagicMock()
     if scheduling is None:
         scheduling = SchedulingBehavior(
-            delay_gui_action=0,
-            delay_schedule=0,
-            delay_reconstruction_update=0,
-            delay_cancel=0,
-            priority_update_status=0,
-            priority_gui_action=0,
-            priority_schedule=0,
-            priority_emit=0,
+            delays=SchedulingDelays(
+                schedule=0,
+                reconstruction_update=0,
+                cancel=0,
+            ),
+            priorities=SchedulingPriorities(
+                update_status=0,
+                gui_action=0,
+                schedule=0,
+            ),
+            emit=SchedulingEmit(priority=0, batch_size=128),
             queue_budget_seconds=0.005,
-            emit_batch_size=128,
         )
     return TreeLogic(session_manager, audio_device_manager, scheduling=scheduling)
 
