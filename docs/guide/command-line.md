@@ -32,5 +32,6 @@ executable you made (`./sampletones` on Linux, `sampletones.exe` on Windows).
 | `--version`, `-v` | print the version and exit |
 | `--help`, `-h` | show the full option list |
 
-GPU acceleration is chosen at install time (`make setup GPU=1`), not with a flag —
-see [Installation](installation.md).
+GPU acceleration is selected at setup, not per run: `make setup` detects a supported
+NVIDIA driver and installs the matching build (`make setup GPU=0` forces the CPU
+backend) — see [Installation](installation.md).

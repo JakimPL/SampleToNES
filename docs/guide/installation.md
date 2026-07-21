@@ -18,8 +18,8 @@ Some setups need a little more — each is covered in the relevant section below
   On Windows and macOS they come with the official Python installer and the
   packaged dependencies, so nothing extra is needed.
 - **Running from source** also needs [uv](https://docs.astral.sh/uv/).
-- **GPU acceleration** needs an NVIDIA GPU with a current driver, and on Windows
-  the NVIDIA CUDA Toolkit 12.x.
+- **GPU acceleration** needs an NVIDIA GPU with a current driver. The matching CuPy
+  build is installed for you, so the driver is all you need — on Linux and Windows alike.
 
 ## Standalone build
 
@@ -54,15 +54,18 @@ To update the global command after pulling new changes, re-run `make setup`.
 ## GPU acceleration
 
 _SampleToNES_ can use an NVIDIA GPU (via [CuPy](https://cupy.dev/) and CUDA) to
-speed up instruction-library generation and reconstruction. Enable it with the
-`gpu` extra:
+speed up instruction-library generation and reconstruction. `make setup` detects
+your NVIDIA driver and installs the matching CuPy build automatically:
 
 ```sh
-make setup GPU=1
+make setup          # installs GPU support when a supported driver is present
+make setup GPU=0    # forces the CPU (NumPy) backend
 ```
 
-You need an NVIDIA GPU with a current driver. On Windows, also install the
-[NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) 12.x.
+A current NVIDIA driver is all you need: the CUDA components ship with the CuPy
+build, on Linux and Windows alike. Detection reads the driver's CUDA version —
+version 12 and newer use the default build, version 11 uses a legacy build. On
+macOS, _SampleToNES_ runs on the CPU.
 
 ---
 
