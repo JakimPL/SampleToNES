@@ -52,8 +52,8 @@ class Histogram(DataModel):
     where edges (x_i)_{i=0}^n are strictly increasing,
     and values (d_i)_{i=0}^{n-1} are arbitrary finite numeric values.
 
-    While histograms typically represent non-negative counts or densities,
-    this implementation allows any finite numeric values for mathematical generality.
+    Bin values may be any finite number, signed values included, so the structure
+    represents differences and residuals as readily as counts or densities.
 
     Number of edges must be exactly one more than number of values.
 
@@ -384,8 +384,6 @@ class Histogram(DataModel):
         """
         Apply a function to this histogram's densities along with other histograms.
 
-        Convenience method that calls Histogram.apply with self as the first argument.
-
         Args:
             function: Function to apply to densities.
             *histograms: Additional histograms to use as arguments.
@@ -436,8 +434,6 @@ class Histogram(DataModel):
     ) -> Histogram:
         """
         Reduce this histogram with others using a binary operation on densities.
-
-        Convenience method that calls Histogram.reduce with self as the first argument.
 
         Args:
             function: Binary operation to reduce histograms (e.g., np.add, np.multiply).

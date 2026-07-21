@@ -13,16 +13,14 @@ BidirectionalMapping = Union[
 
 class BidirectionalHashMap(Generic[ValueT]):
     """
-    A generic bidirectional hash map that maps strings to values of type T and vice versa.
-    Assumes a bijective mapping between strings and values of a hashable type T, different than string.
+    A bidirectional hash map between string keys and hashable values, looked up in
+    either direction. The mapping is bijective: each key binds to one value and each
+    value to one key. Keys are strings and values are a hashable type other than
+    ``str``, so a lookup infers its direction from the argument type.
 
-    Internally, it maintains two dictionaries that store the forward and backward mappings.
-
-    Inserting a new key-value pair updates both dictionaries. If a key or value already exists,
-    it raises a ValueError unless it is being updated to the same value/key. Keys must be strings,
-    and values must be of any typ different than string.
-
-    Subscript item retrieval and assignment support both directions.
+    Inserting a key-value pair binds it in both directions. Re-binding a key or value
+    to its current partner is idempotent; binding it to a different partner raises a
+    ValueError. Subscript retrieval and assignment work in both directions.
 
     Examples:
         The following shows the basic usage of the BidirectionalHashMap.

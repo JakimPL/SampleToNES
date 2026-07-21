@@ -14,10 +14,10 @@ from .song import Song
 class ProjectDocument(BaseModel):
     """The single, validated schema for a project's ``project.json``.
 
-    It embeds the real domain :class:`Song` (which now round-trips on its own) and
-    represents samples as lightweight records, since their reconstructions live
-    as separate ``.stn`` members of the archive. ``extra="ignore"`` keeps it
-    forgiving of older or unknown fields; ``format_version`` is the upgrade hook.
+    It embeds the domain :class:`Song` and represents samples as lightweight records,
+    since their reconstructions live as separate ``.stn`` members of the archive.
+    ``extra="ignore"`` lets it accept older or unknown fields, and ``format_version``
+    carries the schema version that drives upgrades.
     """
 
     model_config = ConfigDict(extra="ignore")
