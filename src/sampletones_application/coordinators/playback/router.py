@@ -17,8 +17,8 @@ class PlaybackRouter:
     sounds belong to no source and answer only to Stop. The full contract is documented in
     ``docs/development/playback.md``.
 
-    It holds no playback state of its own; the target is recomputed from the live sources on each
-    call, so the transport tracks tab changes and playback transitions without bookkeeping.
+    It is stateless: the target is recomputed from the live sources on each call, so the transport
+    stays in step with tab changes and playback transitions automatically.
     """
 
     def __init__(

@@ -100,8 +100,7 @@ class SequencerSamplesLogic(CallbackMixin):
         """Plays a sample on demand, regardless of the autoplay setting.
 
         Explicit playback is intentional, so it uses ``NORMAL`` priority and thereby
-        preempts the sequencer song / reconstruction players, unlike the auxiliary
-        single-click preview which yields to them.
+        preempts the sequencer song / reconstruction players.
         """
         self._play_sample(sample_id, priority=PlaybackPriority.NORMAL)
 

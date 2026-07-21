@@ -502,8 +502,8 @@ class SequencerTabCoordinator:
 
         The cards are separated by a ``panel_gap`` spacer, but DearPyGui also lays its ``ItemSpacing.y``
         on each side of that spacer, so the real gap is the spacer plus two of those spacings. The
-        spacing is read from the base theme, which sets it explicitly, so the gap tracks the theme
-        rather than assuming DearPyGui's built-in default.
+        spacing is read from the base theme, which sets it explicitly, so the gap tracks the theme's
+        value.
         """
         spacing = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT).get_style(dpg.mvAll, dpg.mvStyleVar_ItemSpacing)
         spacing_y = int(spacing[1]) if spacing is not None else 0
@@ -516,8 +516,7 @@ class SequencerTabCoordinator:
         it. History carries its own height in both states — filling the reservation while expanded, pinned
         to its header bar while collapsed — so this only has to size the reservation: the expanded history
         height, or the collapsed bar footprint. The reservation clears the full inter-card gap (see
-        :meth:`_stacked_card_gap`) so the collapsed bar lands flush at the column bottom instead of an
-        ``ItemSpacing`` short, which would force a scrollbar.
+        :meth:`_stacked_card_gap`) so the collapsed bar lands flush at the column bottom.
         """
         if self._sequencer_history_panel.collapsed:
             footprint = self._history_collapsed_footprint
@@ -1029,7 +1028,7 @@ class SequencerTabCoordinator:
         The entry carries a rate-keyed coalesce target so the asynchronous per-sample retune
         results fold back into this same ``SET_NES_FREQUENCY`` entry: one undo restores both the
         prior rate and the prior reconstructions, and a later change to a different rate appends
-        a fresh entry instead of replacing this one.
+        a fresh entry.
         """
         with self._history.transaction(
             HistoryAction.SET_NES_FREQUENCY,

@@ -102,10 +102,9 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         """Coalesces a burst of edits into the latest pending update, then hands it off promptly.
 
         The slot keeps only the newest update so events arriving within the short debounce
-        collapse into one. A dedicated, brief delay (rather than the longer shared schedule
-        delay used for autoplay and search) keeps the hand-off responsive; the regeneration
-        service then applies last-wins across whatever it receives, so the final edit of a
-        continuous drag is never lost.
+        collapse into one. A dedicated, brief delay keeps the hand-off responsive; the
+        regeneration service then applies last-wins across whatever it receives, so the final
+        edit of a continuous drag is always applied.
         """
         self._pending_reconstruction_update = update
         CallbackQueue.add(

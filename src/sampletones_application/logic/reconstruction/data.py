@@ -38,7 +38,7 @@ class ReconstructionData:
         The reconstruction tab edits the very same object the project sample
         holds, so changes propagate live. Such a sample lives only in memory,
         hence ``filepath`` is ``None`` and its display name is supplied by the
-        caller (the project sample's name) rather than derived from a file path.
+        caller (the project sample's name).
         """
         return cls._assemble(
             reconstruction,

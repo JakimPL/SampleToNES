@@ -19,7 +19,7 @@ def fingerprint_project(
     The hash covers the full project state; each sample's reconstruction content
     enters through ``reconstruction_hash``, so the caller decides between a
     memoized digest (capture, where copy-on-write keeps it valid) and a fresh one
-    (verification, where staleness would mask a divergence).
+    (verification, where recomputing from scratch catches any divergence).
     """
     parts: List[str] = [
         project.metadata.model_dump_json(),
@@ -44,10 +44,10 @@ class ReconstructionHashCache:
     object's lifetime, so one hash per object suffices and capture-time
     fingerprinting collapses to hashing the light structure. Each entry stores a
     strong reference to its reconstruction alongside the digest: the reference
-    keeps the object alive, so its ``id()`` can never be recycled onto a
-    different object while the entry exists. :meth:`prune` drops entries for
-    reconstructions that no longer appear in any given project, releasing the
-    references and bounding the cache by what the history retains.
+    keeps the object alive, so its ``id()`` stays bound to that object for as
+    long as the entry exists. :meth:`prune` keeps only entries whose
+    reconstruction still appears in one of the given projects, releasing the rest
+    and bounding the cache by what the history retains.
     """
 
     def __init__(self, *, reconstruction_hash: ReconstructionHash) -> None:
