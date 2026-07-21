@@ -49,8 +49,10 @@ from sampletones_application.logic.project.title.document import (
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.parameters import (
+    InstructionsTabParameters,
     MainTabParameters,
     ReconstructionTabParameters,
+    SequencerTabParameters,
 )
 from sampletones_application.paths import (
     BEHAVIOR_DIRECTORY,
@@ -314,7 +316,7 @@ class Application:
             on_generation_state_changed=self._on_library_operation_changed,
             is_operation_active=self._is_operation_active,
             is_converter_visible=self._is_converter_panel_visible,
-            layout=self.layout,
+            layout=InstructionsTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
@@ -352,7 +354,7 @@ class Application:
             project_controller=self.project_controller,
             history=self.history,
             original_audio_locator=self._original_audio_locator,
-            layout=self.layout,
+            layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,

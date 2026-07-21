@@ -21,7 +21,6 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.snapshot import HistoryEntry
@@ -43,6 +42,7 @@ from sampletones_application.logic.sequencer.playback.song_player import SongPla
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.player import SongPlayerService
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
@@ -69,7 +69,6 @@ from sampletones_application.tags.sequencer import (
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
@@ -122,7 +121,7 @@ class SequencerTabCoordinator:
         history: HistoryManager,
         original_audio_locator: OriginalAudioLocator,
         *,
-        layout: LayoutConfig,
+        layout: SequencerTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
@@ -220,17 +219,12 @@ class SequencerTabCoordinator:
         ]
         self._nes_frequency_change_acknowledged: bool = False
         self._playing_order: Optional[int] = None
-        self._left_width = layout.general.columns.side.width
-        self._left_height = layout.general.columns.side.height
-        self._baseline_viewport_width = layout.general.responsive.baseline_viewport_width
-        self._center_weight = layout.general.columns.center_weight
+        self._geometry = layout.geometry
         self._side_panel_count: int
-        self._instruments_width = layout.tabs.sequencer.right_column.width
-        self._right_height = layout.tabs.sequencer.right_column.height
-        self._rail_width = layout.general.collapse.rail_width
-        self._panel_gap = layout.general.panel_gap
-        self._history_expanded_height = layout.tabs.sequencer.history.height
-        self._history_collapsed_footprint = layout.general.collapse.header_bar_height + 2 * self._panel_gap
+        self._instruments_width = layout.right_column_width
+        self._right_height = layout.right_column_height
+        self._history_expanded_height = layout.history_height
+        self._history_collapsed_footprint = layout.header_bar_height + 2 * self._geometry.panel_gap
         self._inter_card_gap = self._stacked_card_gap()
 
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
@@ -241,18 +235,15 @@ class SequencerTabCoordinator:
         self._sequencer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             audio_device_manager,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
         )
         self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
             self._sequencer_browser_logic.tree,
             self._sequencer_tree_logic,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
-            colors=TreeColors.create(
-                layout.general.colors,
-                accent=layout.general.colors.headers.reconstruction,
-            ),
+            colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL),
         )
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(project_controller)
@@ -261,7 +252,7 @@ class SequencerTabCoordinator:
             project_controller,
             session_manager,
             audio_device_manager,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
         )
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
             audio_device_manager,
@@ -284,35 +275,35 @@ class SequencerTabCoordinator:
             ],
         )
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
-            layout=layout.tabs.sequencer,
+            layout=layout.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_GRID_PANEL),
             language_manager=language_manager,
             key_router=key_router,
         )
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
             self._sequencer_grid_logic.settings,
-            layout=layout.tabs.sequencer,
-            inputs=layout.general.inputs,
+            layout=layout.sequencer,
+            inputs=layout.inputs,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_MODULE_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
-            layout=layout.tabs.sequencer,
-            plus_minus_layout=layout.general.plus_minus_buttons,
+            layout=layout.sequencer,
+            plus_minus_layout=layout.plus_minus,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD),
             language_manager=language_manager,
             key_router=key_router,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
-            layout=layout.tabs.sequencer,
+            layout=layout.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_INSTRUMENTS_PANEL),
             language_manager=language_manager,
             key_router=key_router,
         )
         self._sequencer_history_panel: GUISequencerHistoryPanel = GUISequencerHistoryPanel(
-            layout=layout.tabs.sequencer,
-            feature_colors=layout.general.colors.features,
+            layout=layout.sequencer,
+            feature_colors=layout.feature_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_HISTORY_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -494,14 +485,14 @@ class SequencerTabCoordinator:
     def _sync_browser_width(self) -> None:
         """Shrinks the browser column to the collapse rail when collapsed, else sizes it to the viewport width."""
         if self._sequencer_browser_panel.collapsed:
-            width = self._rail_width
+            width = self._geometry.rail_width
         else:
             width = expanded_side_width(
-                self._left_width,
+                self._geometry.side_width,
                 dpg.get_viewport_client_width(),
-                self._baseline_viewport_width,
+                self._geometry.baseline_viewport_width,
                 self._side_panel_count,
-                self._center_weight,
+                self._geometry.center_weight,
             )
 
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
@@ -516,7 +507,7 @@ class SequencerTabCoordinator:
         """
         spacing = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT).get_style(dpg.mvAll, dpg.mvStyleVar_ItemSpacing)
         spacing_y = int(spacing[1]) if spacing is not None else 0
-        return self._panel_gap + 2 * spacing_y
+        return self._geometry.panel_gap + 2 * spacing_y
 
     def _sync_samples_height(self) -> None:
         """Reserves the bottom space the history card and its inter-card gap occupy, so samples fills the rest.
@@ -1160,14 +1151,14 @@ class SequencerTabCoordinator:
             label=self._tab_label,
         ):
             self._side_panel_count = TabColumns.build(
-                panel_gap=self._panel_gap,
+                panel_gap=self._geometry.panel_gap,
                 columns=[
                     ColumnSpec(
                         tag=_LEFT_COLUMN_TAG,
                         build=self._sequencer_browser_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
-                        width=self._left_width,
-                        height=self._left_height,
+                        width=self._geometry.side_width,
+                        height=self._geometry.side_height,
                         no_scrollbar=True,
                     ),
                     ColumnSpec(
@@ -1193,15 +1184,15 @@ class SequencerTabCoordinator:
     def _build_center_column(self, parent: str) -> None:
         """Stacks the order table and tracker grid down the centre column."""
         self._sequencer_order_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._sequencer_grid_panel.create_panel(parent)
 
     def _build_right_column(self, parent: str) -> None:
         """Stacks the module settings, samples, and history cards in the right column."""
         self._sequencer_module_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap)
+        dpg.add_spacer(height=self._geometry.panel_gap)
         self._sequencer_samples_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap)
+        dpg.add_spacer(height=self._geometry.panel_gap)
         self._sequencer_history_panel.create_panel(parent)
         self._sync_samples_height()
 

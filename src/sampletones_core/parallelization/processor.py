@@ -142,7 +142,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
 
         try:
             tasks = self._create_tasks()
-        except Exception as exception:  # TODO: reraise
+        except Exception as exception:
             self._stop_with_error(exception)
             return
 
@@ -181,7 +181,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         except CancelledError:
             self._finalize_cancellation()
             return
-        except Exception as exception:  # TODO: reraise
+        except Exception as exception:
             self._stop_with_error(exception)
             return
         finally:
