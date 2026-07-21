@@ -139,6 +139,18 @@ scheme deliberately: `ThemeLoader.load_all()` discovers every theme with a recur
 directories are organizational for humans, and carry no load-order or structural
 meaning. Every theme inherits the base `default` theme unless it names another `extends`.
 
+### P8 — Consumers receive models, not decomposed fields
+
+A panel (or other consumer) built for a specific layout model takes that **model object**,
+not its fields spread into loose scalars: `GUIConverterPanel(layout: ConverterLayout)`,
+never `GUIConverterPanel(width=..., height=...)`. Shared geometry a panel also needs — the
+app-wide input widths in `general/inputs.yaml`, say — is passed the same way, as its model
+(`inputs: InputsLayout`), so the shared value keeps its single home. A panel's own model
+therefore carries all of that panel's geometry: if a panel needs a height, its model owns a
+`height` (P4), rather than borrowing another panel's field through the coordinator. This
+keeps the coordinator a wiring layer — it forwards models, it does not disassemble them —
+and a new field on a model reaches its panel without threading another constructor argument.
+
 ---
 
 ## Loading paradigms
@@ -181,9 +193,15 @@ line with a principle above:
   and `general/columns.yaml` shrank to the shared skeleton `side` + `center_weight`
   (`baseline_viewport_width` stays until P5). A tab's width and height are no longer
   split across a shared file and a per-tab file.)*
-- [ ] **P5** — the responsive baseline is split across `general/columns.yaml`
+- [x] **P5** — the responsive baseline is split across `general/columns.yaml`
   (`baseline_viewport_width`), `general/window.yaml` (`min_height`), and
-  `graphs/dimensions.yaml` (`max_stack_height`).
+  `graphs/dimensions.yaml` (`max_stack_height`). *(Resolved: the three baselines live
+  together in `general/responsive.yaml` → `ResponsiveLayout`
+  (`baseline_viewport_width`, `baseline_viewport_height`, `max_stack_height`).
+  `columns.yaml` shrank to the shared skeleton `side` + `center_weight`;
+  `graphs/dimensions.yaml` dropped `max_stack_height`; `window.min_height` no longer
+  doubles as the responsive height baseline — it keeps only its primary role as the
+  viewport minimum.)*
 - [ ] **P6** — `tabs/instructions/choice.yaml` (field `choice`) is validated by
   `InstructionChoiceLayout`, a prefix the stem does not carry.
 - [ ] **P1** — `behavior/` is its own domain yet is folded into `LayoutConfig.behavior`

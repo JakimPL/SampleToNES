@@ -9,13 +9,11 @@ class ColumnsLayout(BaseModel, extra="forbid", frozen=True):
     ``side`` sizes the uniform left column — the browser, library, or explorer —
     that every tab carries, so the side panel stays the same size across tabs;
     each tab's own right column lives in that tab's section (``<tab>.right_column``).
-    A column ``height`` of -1 fills the tab vertically. ``baseline_viewport_width``
-    is the design viewport width at which the side columns sit at their configured
-    widths; surplus width above it widens the side columns (see ``expanded_side_width``).
-    ``center_weight`` is the share of that surplus the stretching centre column claims
-    against each side column's single share.
+    A column ``height`` of -1 fills the tab vertically. ``center_weight`` is the
+    share of the surplus width the stretching centre column claims against each side
+    column's single share as the viewport grows past the responsive baseline (see
+    ``ResponsiveLayout`` and ``expanded_side_width``).
     """
 
-    baseline_viewport_width: int
     center_weight: int
     side: Dimensions

@@ -9,7 +9,8 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ReconstructorElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.tabs.main import ReconstructorLayout
+from sampletones_application.layout.general.inputs import InputsLayout
+from sampletones_application.layout.tabs.main.reconstructor import ReconstructorLayout
 from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
     TAG_GLOBAL_THEME_CHANNEL_NOISE,
@@ -46,17 +47,15 @@ class GUIReconstructorPanel(GUIPanel):
         initial_view: ReconstructorPanelViewModel,
         *,
         layout: ReconstructorLayout,
-        input_width: int,
-        label_width: int,
-        panel_height: int,
+        inputs: InputsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._view = initial_view
         self._layout = layout
-        self._input_width = input_width
-        self._label_width = label_width
+        self._input_width = inputs.default_width
+        self._label_width = inputs.label_width
         self._status_bar = status_bar
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
         self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
@@ -118,7 +117,7 @@ class GUIReconstructorPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_RECONSTRUCTOR_PANEL,
-            height=panel_height,
+            height=layout.height,
         )
         self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 

@@ -126,12 +126,12 @@ class InstructionsTabCoordinator:
         ]
         self._left_width = layout.general.columns.side.width
         self._left_height = layout.general.columns.side.height
-        self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._baseline_viewport_width = layout.general.responsive.baseline_viewport_width
         self._center_weight = layout.general.columns.center_weight
         self._side_panel_count: int
-        self._baseline_viewport_height = layout.general.window.min_height
+        self._baseline_viewport_height = layout.general.responsive.baseline_viewport_height
         self._base_graph_height = layout.graphs.dimensions.height
-        self._max_stack_height = layout.graphs.dimensions.max_stack_height
+        self._max_stack_height = layout.general.responsive.max_stack_height
         self._details_width = layout.tabs.instructions.right_column.width
         self._right_height = layout.tabs.instructions.right_column.height
         self._panel_gap = layout.general.panel_gap

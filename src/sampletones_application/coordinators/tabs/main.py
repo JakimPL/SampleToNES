@@ -132,7 +132,7 @@ class MainTabCoordinator:
         ]
         self._explorer_width = layout.general.columns.side.width
         self._explorer_height = layout.general.columns.side.height
-        self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._baseline_viewport_width = layout.general.responsive.baseline_viewport_width
         self._center_weight = layout.general.columns.center_weight
         self._side_panel_count: int
         self._rail_width = layout.general.collapse.rail_width
@@ -281,9 +281,8 @@ class MainTabCoordinator:
                 sample_rate=_config.library.sample_rate,
                 nes_frequency=_config.library.nes_frequency,
             ),
-            input_width=layout.general.inputs.default_width,
-            label_width=layout.general.inputs.label_width,
-            panel_height=layout.tabs.main.config.height,
+            layout=layout.tabs.main.config,
+            inputs=layout.general.inputs,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONFIG_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -294,9 +293,7 @@ class MainTabCoordinator:
                 drive=_config.generation.drive,
             ),
             layout=layout.tabs.main.reconstructor,
-            input_width=layout.general.inputs.default_width,
-            label_width=layout.general.inputs.label_width,
-            panel_height=layout.tabs.main.config.height,
+            inputs=layout.general.inputs,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_RECONSTRUCTOR_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -309,10 +306,8 @@ class MainTabCoordinator:
                 library_directory=config_manager.get_library_directory(),
                 reconstructions_directory=config_manager.get_reconstructions_directory(),
             ),
-            panel_height=layout.tabs.main.advanced.height,
-            button_height=layout.tabs.main.advanced.button_height,
-            input_width=layout.general.inputs.default_width,
-            label_width=layout.general.inputs.label_width,
+            layout=layout.tabs.main.advanced,
+            inputs=layout.general.inputs,
             max_workers_minimum=layout.behavior.main.max_workers_minimum,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_ADVANCED_PANEL),
             language_manager=language_manager,

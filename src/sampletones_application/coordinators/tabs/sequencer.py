@@ -223,7 +223,7 @@ class SequencerTabCoordinator:
         self._playing_order: Optional[int] = None
         self._left_width = layout.general.columns.side.width
         self._left_height = layout.general.columns.side.height
-        self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
+        self._baseline_viewport_width = layout.general.responsive.baseline_viewport_width
         self._center_weight = layout.general.columns.center_weight
         self._side_panel_count: int
         self._instruments_width = layout.tabs.sequencer.right_column.width
@@ -293,8 +293,7 @@ class SequencerTabCoordinator:
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
             self._sequencer_grid_logic.settings,
             layout=layout.tabs.sequencer,
-            input_width=layout.general.inputs.default_width,
-            label_width=layout.general.inputs.label_width,
+            inputs=layout.general.inputs,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_MODULE_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,

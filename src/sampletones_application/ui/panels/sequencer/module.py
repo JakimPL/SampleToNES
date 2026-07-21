@@ -8,6 +8,7 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
@@ -43,16 +44,15 @@ class GUISequencerModulePanel(GUIPanel):
         initial_settings: SequencerSettingsViewModel,
         *,
         layout: SequencerLayout,
-        input_width: int,
-        label_width: int,
+        inputs: InputsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._initial_settings = initial_settings
         self._layout = layout
-        self._input_width = input_width
-        self._label_width = label_width
+        self._input_width = inputs.default_width
+        self._label_width = inputs.label_width
         self._status_bar = status_bar
         self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
         self._rows_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_ROWS}{SUF_HANDLER_REGISTRY}"
