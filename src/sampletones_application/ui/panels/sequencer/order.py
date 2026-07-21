@@ -6,7 +6,7 @@ from sampletones_application.categories.elements.sequencer import SequencerOrder
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
-from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_ORDER_BUTTON_PAIR,

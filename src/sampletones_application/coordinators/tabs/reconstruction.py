@@ -141,8 +141,8 @@ class ReconstructionTabCoordinator:
         self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
         self._center_weight = layout.general.columns.center_weight
         self._side_panel_count: int
-        self._instruments_width = layout.general.columns.reconstructions_right.width
-        self._right_height = layout.general.columns.reconstructions_right.height
+        self._instruments_width = layout.tabs.reconstruction.right_column.width
+        self._right_height = layout.tabs.reconstruction.right_column.height
         self._rail_width = layout.general.collapse.rail_width
         self._panel_gap = layout.general.panel_gap
         self._ttl_remove_reconstruction = language_manager[

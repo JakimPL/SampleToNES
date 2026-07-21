@@ -5,12 +5,10 @@ from sampletones_application.layout.fonts import FontsLayout
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.glyphs import Glyphs
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.layout.instructions import InstructionsLayout
-from sampletones_application.layout.main import MainLayout
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.layout.project_properties import ProjectPropertiesLayout
-from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.layout.settings import SettingsLayout
+from sampletones_application.layout.tabs import TabsLayout
 
 
 class LayoutConfig(BaseModel, extra="forbid", frozen=True):
@@ -18,10 +16,8 @@ class LayoutConfig(BaseModel, extra="forbid", frozen=True):
     fonts: FontsLayout
     glyphs: Glyphs
     graphs: GraphsLayout
-    instructions: InstructionsLayout
-    main: MainLayout
+    tabs: TabsLayout
     player: PlayerLayout
     project_properties: ProjectPropertiesLayout
-    sequencer: SequencerLayout
     settings: SettingsLayout
     behavior: BehaviorConfig

@@ -83,12 +83,20 @@ owner and loader.
 ### P2 — `layout/` mirrors the application's feature-area taxonomy
 
 The layout tree repeats the same feature-area set the rest of the application already
-uses across `ui/panels/`, `logic/`, and `view_model/`: a shared `general/` plus one
-directory per tab — `main`, `instructions`, `reconstruction`, `sequencer`, `player`.
-The correspondence is **1:1 in three places**: the YAML directory, the field on
-`LayoutConfig`, and the tab coordinator that owns that tab's layout
-(`architecture.md`: _"Tab layout is the coordinator's."_). A tab's configuration is
-found where its code is found.
+uses across `ui/panels/`, `logic/`, and `view_model/`. The four notebook tabs live
+together under `layout/tabs/` — `main`, `instructions`, `reconstruction`, `sequencer` —
+exactly mirroring the `coordinators/tabs/` package, and are aggregated by `TabsLayout`
+under `LayoutConfig.tabs`. The correspondence is **1:1 in three places**: the YAML
+directory (`layout/tabs/<tab>/`), the field on `TabsLayout` (`layout.tabs.<tab>`), and
+the tab coordinator that owns that tab's layout (`coordinators/tabs/<tab>.py`;
+`architecture.md`: _"Tab layout is the coordinator's."_). A tab's configuration is found
+where its code is found.
+
+Everything that is not a notebook tab stays at the `layout/` root as its own feature
+area: the shared `general/`, the plot-element family `graphs/`, the transport toolbar
+`player/`, and the dialogs `project_properties/` and `settings/`. `player` in particular
+is a transport toolbar present across the whole application, not a notebook tab, so it
+does not belong under `tabs/`.
 
 ### P3 — A feature area is a directory of fragments
 
@@ -161,18 +169,22 @@ line with a principle above:
 - [x] **P3** — `main`, `player`, `settings`, `project_properties` are flat files, not
   directories of fragments. *(Resolved: each is now a directory of fragments with a
   mirroring model package, loaded by `load_yaml_model_dir`.)*
-- [ ] **P2** — there is no `reconstruction` layout section; the reconstruction tab reads
-  its geometry from `general/columns.yaml` and `graphs/`. *(The section is born with its
-  first fragment — `reconstruction/columns.yaml` — when geometry moves, rather than as an
-  empty directory: a feature area is a directory of fragments, and it has none until
-  then.)*
-- [ ] **P4** — per-tab right-column widths live in the shared `general/columns.yaml`
+- [x] **P2** — there is no `reconstruction` layout section; the reconstruction tab reads
+  its geometry from `general/columns.yaml` and `graphs/`. *(Resolved: the section is born
+  with its first fragment — `tabs/reconstruction/right_column.yaml` — and a matching
+  `ReconstructionLayout` wired into `TabsLayout`, rather than as an empty directory: a
+  feature area is a directory of fragments, and it had none until geometry moved.)*
+- [x] **P4** — per-tab right-column widths live in the shared `general/columns.yaml`
   (`instructions_right`, `reconstructions_right`, `sequencer_right`) while the matching
-  heights live in per-tab files.
+  heights live in per-tab files. *(Resolved: each tab owns its right column as a
+  `right_column: Dimensions` fragment in its own directory — `tabs/<tab>/right_column.yaml` —
+  and `general/columns.yaml` shrank to the shared skeleton `side` + `center_weight`
+  (`baseline_viewport_width` stays until P5). A tab's width and height are no longer
+  split across a shared file and a per-tab file.)*
 - [ ] **P5** — the responsive baseline is split across `general/columns.yaml`
   (`baseline_viewport_width`), `general/window.yaml` (`min_height`), and
   `graphs/dimensions.yaml` (`max_stack_height`).
-- [ ] **P6** — `instructions/choice.yaml` (field `choice`) is validated by
+- [ ] **P6** — `tabs/instructions/choice.yaml` (field `choice`) is validated by
   `InstructionChoiceLayout`, a prefix the stem does not carry.
 - [ ] **P1** — `behavior/` is its own domain yet is folded into `LayoutConfig.behavior`
   rather than owning a first-class aggregate.

@@ -137,7 +137,7 @@ class MainTabCoordinator:
         self._side_panel_count: int
         self._rail_width = layout.general.collapse.rail_width
         self._panel_gap = layout.general.panel_gap
-        self._config_height = layout.main.config.height
+        self._config_height = layout.tabs.main.config.height
         _msg_converter_error = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -283,7 +283,7 @@ class MainTabCoordinator:
             ),
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
-            panel_height=layout.main.config.height,
+            panel_height=layout.tabs.main.config.height,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONFIG_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -293,10 +293,10 @@ class MainTabCoordinator:
                 generators=frozenset(_config.generation.generators),
                 drive=_config.generation.drive,
             ),
-            layout=layout.main.reconstructor,
+            layout=layout.tabs.main.reconstructor,
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
-            panel_height=layout.main.config.height,
+            panel_height=layout.tabs.main.config.height,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_RECONSTRUCTOR_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -309,8 +309,8 @@ class MainTabCoordinator:
                 library_directory=config_manager.get_library_directory(),
                 reconstructions_directory=config_manager.get_reconstructions_directory(),
             ),
-            panel_height=layout.main.advanced.height,
-            button_height=layout.main.advanced.button_height,
+            panel_height=layout.tabs.main.advanced.height,
+            button_height=layout.tabs.main.advanced.button_height,
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
             max_workers_minimum=layout.behavior.main.max_workers_minimum,
@@ -327,7 +327,7 @@ class MainTabCoordinator:
             is_operation_active=is_operation_active,
         )
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
-            layout=layout.main.converter,
+            layout=layout.tabs.main.converter,
             path_colors=layout.general.colors.paths,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
             language_manager=language_manager,

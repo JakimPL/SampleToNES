@@ -132,8 +132,8 @@ class InstructionsTabCoordinator:
         self._baseline_viewport_height = layout.general.window.min_height
         self._base_graph_height = layout.graphs.dimensions.height
         self._max_stack_height = layout.graphs.dimensions.max_stack_height
-        self._details_width = layout.general.columns.instructions_right.width
-        self._right_height = layout.general.columns.instructions_right.height
+        self._details_width = layout.tabs.instructions.right_column.width
+        self._right_height = layout.tabs.instructions.right_column.height
         self._panel_gap = layout.general.panel_gap
         self._rail_width = layout.general.collapse.rail_width
         self._msg_display_error = language_manager[
@@ -283,11 +283,11 @@ class InstructionsTabCoordinator:
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
-            layout=layout.instructions,
+            layout=layout.tabs.instructions,
             language_manager=language_manager,
         )
         self._instruction_choice_panel = GUIInstructionChoicePanel(
-            layout=layout.instructions,
+            layout=layout.tabs.instructions,
             general_layout=layout.general,
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_DETAILS_PANEL),
             language_manager=language_manager,

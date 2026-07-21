@@ -3,12 +3,3 @@ center_weight: 2
 side:
   width: 300
   height: -1
-instructions_right:
-  width: 340
-  height: -1
-reconstructions_right:
-  width: 360
-  height: -1
-sequencer_right:
-  width: 360
-  height: -1

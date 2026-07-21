@@ -10,7 +10,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
 from sampletones_application.layout.general import GeneralLayout
-from sampletones_application.layout.instructions import InstructionsLayout
+from sampletones_application.layout.tabs.instructions import InstructionsLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,

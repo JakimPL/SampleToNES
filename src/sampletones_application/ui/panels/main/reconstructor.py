@@ -9,7 +9,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.main import ReconstructorElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.main import ReconstructorLayout
+from sampletones_application.layout.tabs.main import ReconstructorLayout
 from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
     TAG_GLOBAL_THEME_CHANNEL_NOISE,

@@ -226,11 +226,11 @@ class SequencerTabCoordinator:
         self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
         self._center_weight = layout.general.columns.center_weight
         self._side_panel_count: int
-        self._instruments_width = layout.general.columns.sequencer_right.width
-        self._right_height = layout.general.columns.sequencer_right.height
+        self._instruments_width = layout.tabs.sequencer.right_column.width
+        self._right_height = layout.tabs.sequencer.right_column.height
         self._rail_width = layout.general.collapse.rail_width
         self._panel_gap = layout.general.panel_gap
-        self._history_expanded_height = layout.sequencer.history.height
+        self._history_expanded_height = layout.tabs.sequencer.history.height
         self._history_collapsed_footprint = layout.general.collapse.header_bar_height + 2 * self._panel_gap
         self._inter_card_gap = self._stacked_card_gap()
 
@@ -285,14 +285,14 @@ class SequencerTabCoordinator:
             ],
         )
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
-            layout=layout.sequencer,
+            layout=layout.tabs.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_GRID_PANEL),
             language_manager=language_manager,
             key_router=key_router,
         )
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
             self._sequencer_grid_logic.settings,
-            layout=layout.sequencer,
+            layout=layout.tabs.sequencer,
             input_width=layout.general.inputs.default_width,
             label_width=layout.general.inputs.label_width,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_MODULE_PANEL),
@@ -300,20 +300,20 @@ class SequencerTabCoordinator:
             status_bar=status_bar,
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
-            layout=layout.sequencer,
+            layout=layout.tabs.sequencer,
             plus_minus_layout=layout.general.plus_minus_buttons,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD),
             language_manager=language_manager,
             key_router=key_router,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
-            layout=layout.sequencer,
+            layout=layout.tabs.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_INSTRUMENTS_PANEL),
             language_manager=language_manager,
             key_router=key_router,
         )
         self._sequencer_history_panel: GUISequencerHistoryPanel = GUISequencerHistoryPanel(
-            layout=layout.sequencer,
+            layout=layout.tabs.sequencer,
             feature_colors=layout.general.colors.features,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_HISTORY_PANEL),
             language_manager=language_manager,

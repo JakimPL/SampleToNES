@@ -8,7 +8,7 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
