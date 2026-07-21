@@ -1,7 +1,9 @@
-from typing import Any, Callable, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Optional, Self
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.tags.general import (
@@ -22,9 +24,33 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.palette import PaletteColor
 from sampletones_core.utils.pitch_kind import PitchValueKind
 from sampletones_shared.types.application import Color
 from sampletones_shared.utils.callbacks import CallbackMixin
+
+
+@dataclass(frozen=True)
+class PitchStepperStyle:
+    """The styling a pitch stepper draws itself with, narrowed from the general layout.
+
+    A stepper needs only its own dimensions, the plus/minus button dimensions it embeds, and
+    the colour of its read-only value readout. Assembling this at the composition root lets a
+    panel that builds steppers receive these three fields rather than the whole
+    :class:`GeneralLayout`, mirroring the :meth:`TreeColors.create` narrowing.
+    """
+
+    dimensions: PitchStepperLayout
+    plus_minus: PlusMinusButtonsLayout
+    value_color: PaletteColor
+
+    @classmethod
+    def from_general(cls, general: GeneralLayout) -> Self:
+        return cls(
+            dimensions=general.pitch_stepper,
+            plus_minus=general.plus_minus_buttons,
+            value_color=general.colors.text.disabled,
+        )
 
 
 class GUIPitchStepper(CallbackMixin):

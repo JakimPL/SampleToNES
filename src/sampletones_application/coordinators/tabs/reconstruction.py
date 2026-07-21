@@ -22,7 +22,6 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.instruments import (
@@ -35,6 +34,7 @@ from sampletones_application.logic.reconstruction.reconstruction import (
 )
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_application.parameters.reconstruction import ReconstructionTabParameters
 from sampletones_application.services.export import (
     ExportError,
     ExportKind,
@@ -62,7 +62,6 @@ from sampletones_application.tags.reconstructions import (
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.reconstruction.audio import (
     GUIReconstructionAudioPanel,
 )
@@ -120,7 +119,7 @@ class ReconstructionTabCoordinator:
         is_operation_active: Callable[[], bool],
         original_audio_locator: OriginalAudioLocator,
         *,
-        layout: LayoutConfig,
+        layout: ReconstructionTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
@@ -136,15 +135,10 @@ class ReconstructionTabCoordinator:
             TextType.LABEL,
             MenuElements.TAB_RECONSTRUCTION,
         ]
-        self._left_width = layout.general.columns.side.width
-        self._left_height = layout.general.columns.side.height
-        self._baseline_viewport_width = layout.general.responsive.baseline_viewport_width
-        self._center_weight = layout.general.columns.center_weight
+        self._geometry = layout.geometry
         self._side_panel_count: int
-        self._instruments_width = layout.tabs.reconstruction.right_column.width
-        self._right_height = layout.tabs.reconstruction.right_column.height
-        self._rail_width = layout.general.collapse.rail_width
-        self._panel_gap = layout.general.panel_gap
+        self._instruments_width = layout.right_column_width
+        self._right_height = layout.right_column_height
         self._ttl_remove_reconstruction = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.BROWSER,
@@ -304,18 +298,15 @@ class ReconstructionTabCoordinator:
         self._browser_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             audio_device_manager,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
         )
         self._browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self._browser_logic.tree,
             self._browser_tree_logic,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
-            colors=TreeColors.create(
-                layout.general.colors,
-                accent=layout.general.colors.headers.reconstruction,
-            ),
+            colors=layout.tree_colors,
             is_operation_active=is_operation_active,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
@@ -339,8 +330,8 @@ class ReconstructionTabCoordinator:
             ],
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
-            path_colors=layout.general.colors.paths,
-            path_status_color=layout.general.colors.text.disabled,
+            path_colors=layout.path_colors,
+            path_status_color=layout.path_status_color,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -360,7 +351,9 @@ class ReconstructionTabCoordinator:
             export_service,
         )
         self._reconstruction_instruments_panel: GUIReconstructionInstrumentsPanel = GUIReconstructionInstrumentsPanel(
-            layout_general=layout.general,
+            pitch_stepper_style=layout.pitch_stepper_style,
+            copy_width=layout.copy_width,
+            feature_colors=layout.feature_colors,
             layout_graphs=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,
@@ -369,7 +362,7 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_panel.set_collapse_handler(self._on_instruments_collapse_changed)
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
             reconstruction_manager,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
         )
 
         self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
@@ -516,14 +509,14 @@ class ReconstructionTabCoordinator:
             label=self._tab_label,
         ):
             self._side_panel_count = TabColumns.build(
-                panel_gap=self._panel_gap,
+                panel_gap=self._geometry.panel_gap,
                 columns=[
                     ColumnSpec(
                         tag=_LEFT_COLUMN_TAG,
                         build=self._browser_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
-                        width=self._left_width,
-                        height=self._left_height,
+                        width=self._geometry.side_width,
+                        height=self._geometry.side_height,
                         no_scrollbar=True,
                     ),
                     ColumnSpec(
@@ -550,7 +543,7 @@ class ReconstructionTabCoordinator:
     def _build_reconstruction_column(self, parent: str) -> None:
         """Stacks the audio and plot cards down the centre column."""
         self._reconstruction_audio_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -575,14 +568,14 @@ class ReconstructionTabCoordinator:
     def _sync_browser_width(self) -> None:
         """Shrinks the browser column to the collapse rail when collapsed, else sizes it to the viewport width."""
         if self._browser_panel.collapsed:
-            width = self._rail_width
+            width = self._geometry.rail_width
         else:
             width = expanded_side_width(
-                self._left_width,
+                self._geometry.side_width,
                 dpg.get_viewport_client_width(),
-                self._baseline_viewport_width,
+                self._geometry.baseline_viewport_width,
                 self._side_panel_count,
-                self._center_weight,
+                self._geometry.center_weight,
             )
 
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
@@ -590,14 +583,14 @@ class ReconstructionTabCoordinator:
     def _sync_instruments_width(self) -> None:
         """Shrinks the instruments column to the collapse rail when collapsed, else sizes it to the viewport width."""
         if self._reconstruction_instruments_panel.collapsed:
-            width = self._rail_width
+            width = self._geometry.rail_width
         else:
             width = expanded_side_width(
                 self._instruments_width,
                 dpg.get_viewport_client_width(),
-                self._baseline_viewport_width,
+                self._geometry.baseline_viewport_width,
                 self._side_panel_count,
-                self._center_weight,
+                self._geometry.center_weight,
             )
 
         dpg_configure_item(_RIGHT_COLUMN_TAG, width=width)

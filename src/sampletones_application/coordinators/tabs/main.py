@@ -13,7 +13,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.tabs.parameters import MainTabParameters
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
@@ -23,6 +22,7 @@ from sampletones_application.logic.main.converter import (
 )
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_application.parameters.main import MainTabParameters
 from sampletones_application.services.conversion import ConversionService
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,

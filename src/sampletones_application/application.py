@@ -30,7 +30,6 @@ from sampletones_application.coordinators.reconstruction import (
 )
 from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
-from sampletones_application.coordinators.tabs.parameters import MainTabParameters
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
@@ -49,6 +48,10 @@ from sampletones_application.logic.project.title.document import (
 )
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.parameters import (
+    MainTabParameters,
+    ReconstructionTabParameters,
+)
 from sampletones_application.paths import (
     BEHAVIOR_DIRECTORY,
     DEPLOYMENT_CONFIG_PATH,
@@ -294,7 +297,7 @@ class Application:
             on_reconstruction_instrument_updated=self._regenerate_instrument,
             is_operation_active=self._is_operation_active,
             original_audio_locator=self._original_audio_locator,
-            layout=self.layout,
+            layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
