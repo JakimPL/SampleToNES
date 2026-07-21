@@ -1,9 +1,6 @@
 from pydantic import BaseModel
 
-
-class DialogSizeLayout(BaseModel, extra="forbid", frozen=True):
-    width: int
-    height: int
+from sampletones_application.layout.primitives import Dimensions
 
 
 class DialogSizeNoWidth(BaseModel, extra="forbid", frozen=True):
@@ -11,9 +8,9 @@ class DialogSizeNoWidth(BaseModel, extra="forbid", frozen=True):
 
 
 class DialogsLayout(BaseModel, extra="forbid", frozen=True):
-    default: DialogSizeLayout
-    error: DialogSizeLayout
-    recovery: DialogSizeLayout
+    default: Dimensions
+    error: Dimensions
+    recovery: Dimensions
     confirmation: DialogSizeNoWidth
     text_input: DialogSizeNoWidth
-    traceback: DialogSizeLayout
+    traceback: Dimensions

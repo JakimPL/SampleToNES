@@ -24,12 +24,12 @@ def load_layout_config(layout_directory: Path, behavior_directory: Path, palette
         glyphs=load_yaml_model(layout_directory / "glyphs.yaml", Glyphs, context=context),
         graphs=load_yaml_model_dir(layout_directory / "graphs", GraphsLayout, context=context),
         instructions=load_yaml_model_dir(layout_directory / "instructions", InstructionsLayout, context=context),
-        main=load_yaml_model(layout_directory / "main.yaml", MainLayout, context=context),
-        player=load_yaml_model(layout_directory / "player.yaml", PlayerLayout, context=context),
-        project_properties=load_yaml_model(
-            layout_directory / "project_properties.yaml", ProjectPropertiesLayout, context=context
+        main=load_yaml_model_dir(layout_directory / "main", MainLayout, context=context),
+        player=load_yaml_model_dir(layout_directory / "player", PlayerLayout, context=context),
+        project_properties=load_yaml_model_dir(
+            layout_directory / "project_properties", ProjectPropertiesLayout, context=context
         ),
         sequencer=load_yaml_model_dir(layout_directory / "sequencer", SequencerLayout, context=context),
-        settings=load_yaml_model(layout_directory / "settings.yaml", SettingsLayout, context=context),
+        settings=load_yaml_model_dir(layout_directory / "settings", SettingsLayout, context=context),
         behavior=load_yaml_model(behavior_directory / "general.yaml", BehaviorConfig, context=context),
     )

@@ -1,7 +1,8 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.layout.glyphs import PlayerGlyphs
-from sampletones_application.layout.player import PlayerButtonLayout, PlayerLayout
+from sampletones_application.layout.player import PlayerLayout
+from sampletones_application.layout.primitives import Dimensions
 from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.player import SUF_PLAYER_TOOLTIP
 from sampletones_application.ui.elements.button import GUIButton
@@ -68,7 +69,7 @@ def _create_icon_button(
     glyph: str,
     tooltip: str,
     callback: VoidCallback,
-    button_layout: PlayerButtonLayout,
+    button_layout: Dimensions,
     button_theme: Theme,
 ) -> None:
     GUIButton(

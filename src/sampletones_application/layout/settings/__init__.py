@@ -1,12 +1,9 @@
 from pydantic import BaseModel
 
-
-class SettingsWindowLayout(BaseModel, extra="forbid", frozen=True):
-    width: int
-    height: int
+from sampletones_application.layout.primitives import Dimensions
 
 
 class SettingsLayout(BaseModel, extra="forbid", frozen=True):
-    window: SettingsWindowLayout
+    window: Dimensions
     combo_width: int
     label_width: int

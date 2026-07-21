@@ -158,10 +158,14 @@ Recorded in `docs/development/bugs-and-todos.md § Architecture` and paid off by
 configuration-reorganization phases. Until a box is checked, the current tree is out of
 line with a principle above:
 
-- [ ] **P3** — `main`, `player`, `settings`, `project_properties` are flat files, not
-  directories of fragments.
+- [x] **P3** — `main`, `player`, `settings`, `project_properties` are flat files, not
+  directories of fragments. *(Resolved: each is now a directory of fragments with a
+  mirroring model package, loaded by `load_yaml_model_dir`.)*
 - [ ] **P2** — there is no `reconstruction` layout section; the reconstruction tab reads
-  its geometry from `general/columns.yaml` and `graphs/`.
+  its geometry from `general/columns.yaml` and `graphs/`. *(The section is born with its
+  first fragment — `reconstruction/columns.yaml` — when geometry moves, rather than as an
+  empty directory: a feature area is a directory of fragments, and it has none until
+  then.)*
 - [ ] **P4** — per-tab right-column widths live in the shared `general/columns.yaml`
   (`instructions_right`, `reconstructions_right`, `sequencer_right`) while the matching
   heights live in per-tab files.

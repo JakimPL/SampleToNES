@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.settings import SettingsWindowLayout
+from sampletones_application.layout.primitives import Dimensions
 
 
 class ProjectPropertiesLayout(BaseModel, extra="forbid", frozen=True):
-    window: SettingsWindowLayout
+    window: Dimensions
     label_width: int
     input_width: int
     comment_height: int
