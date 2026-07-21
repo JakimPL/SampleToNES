@@ -374,7 +374,7 @@ A coordinator must catch precisely: broad catches (`except Exception`, bare `exc
 
 ### UI layer — errors arrive as data
 
-Panels perform no error handling. All error conditions arrive as data through coordinator-wired callbacks (`on_error: Optional[Callable[[Exception], None]]`), and a panel may display an error state derived from a view model. Dialog presentation likewise belongs to the coordinator: the panel fires an intent hook, the coordinator presents (see the `ui/` contracts). Two kinds of catches are permitted inside `ui/`: widget-level input-validation guards — parsing user keystrokes into a value or `None` — and rendering classification guards, where a panel whose rendering can fail on degenerate data catches those concrete error types and re-raises them as one typed domain error for its coordinator to catch (`display_instruction` raises `LibraryDisplayError`).
+Panels perform no error handling. All error conditions arrive as data through coordinator-wired callbacks (`on_error: Optional[Callable[[Exception], None]]`), and a panel may display an error state derived from a view model. Dialog presentation likewise belongs to the coordinator: the panel fires an intent hook, the coordinator presents (see the `ui/` contracts). The one catch permitted inside `ui/` is the widget-level input-validation guard — parsing user keystrokes into a value or `None`. Classifying a rendering failure into a typed domain error, and recovering from it, is a coordinator concern: `InstructionsTabCoordinator._render_instruction` catches the concrete plotting failures (`KeyError`, `IndexError`, `ValueError`) and re-raises them as one `LibraryDisplayError`, which its recovery boundary `_on_instruction_loaded` presents.
 
 ### Summary
 

@@ -55,4 +55,4 @@ sr_44100_nf_30_ws_13579_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
 | `ws_13579` | FFT window size (samples) |
 | `tg_0` | transformation gamma 0 |
 | `sm_cqt` | spectrum method (`fft` / `logfft` / `cqt`) |
-| `ch_384e…` | a hash of the full configuration |
+| `ch_384e…` | a hash of the library configuration section |
