@@ -184,8 +184,7 @@ which keeps each oscillator continuous across frames.
 
 ### 5.1 Greedy (per-frame)
 
-The greedy selector — shipped in 0.2.3 and still available — treats every frame
-independently:
+The greedy selector treats every frame independently:
 
 ```
 remaining = {enabled channels}

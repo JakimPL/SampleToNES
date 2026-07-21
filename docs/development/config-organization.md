@@ -105,10 +105,9 @@ receives a view built for it:
 The type signals which side of the boundary a value is on: a frozen Pydantic model with
 `extra="forbid"` is a YAML fragment; a `@dataclass(frozen=True)` is a view derived in code.
 The composition root is the one place that knows both shapes, so each deep path from
-storage to consumer is written once, in one factory. (The alternative — handing a
-coordinator the whole `LayoutConfig` to dig scalars out of — is what the DTO layer exists
-to replace: it would copy that path knowledge into every coordinator and couple each to
-the entire tree.)
+storage to consumer is written once, in one factory. This is what the DTO layer is for: a
+coordinator depends only on the narrowed view handed to it, and the knowledge of where
+each value sits in the tree stays in the factory.
 
 ---
 
