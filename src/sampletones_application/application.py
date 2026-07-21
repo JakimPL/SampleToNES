@@ -30,6 +30,7 @@ from sampletones_application.coordinators.reconstruction import (
 )
 from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
+from sampletones_application.coordinators.tabs.parameters import MainTabParameters
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
@@ -328,7 +329,7 @@ class Application:
             on_load_library=self._load_library,
             is_operation_active=self._is_operation_active,
             on_busy_state_changed=self._refresh_busy_state,
-            layout=self.layout,
+            layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,

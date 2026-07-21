@@ -13,7 +13,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.coordinators.tabs.parameters import MainTabParameters
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
@@ -48,7 +48,6 @@ from sampletones_application.tags.main import (
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter import GUIConverterPanel
@@ -102,7 +101,7 @@ class MainTabCoordinator:
         is_operation_active: Callable[[], bool],
         on_busy_state_changed: VoidCallback,
         *,
-        layout: LayoutConfig,
+        layout: MainTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
@@ -130,14 +129,9 @@ class MainTabCoordinator:
             TextType.LABEL,
             MenuElements.TAB_MAIN,
         ]
-        self._explorer_width = layout.general.columns.side.width
-        self._explorer_height = layout.general.columns.side.height
-        self._baseline_viewport_width = layout.general.responsive.baseline_viewport_width
-        self._center_weight = layout.general.columns.center_weight
+        self._geometry = layout.geometry
         self._side_panel_count: int
-        self._rail_width = layout.general.collapse.rail_width
-        self._panel_gap = layout.general.panel_gap
-        self._config_height = layout.tabs.main.config.height
+        self._config_height = layout.config_height
         _msg_converter_error = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -254,18 +248,15 @@ class MainTabCoordinator:
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             audio_device_manager,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
         )
         self._explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
             self._explorer_logic,
             self._explorer_tree_logic,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
-            colors=TreeColors.create(
-                layout.general.colors,
-                accent=layout.general.colors.paths.hover,
-            ),
+            colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_EXPLORER_PANEL),
         )
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
@@ -281,8 +272,8 @@ class MainTabCoordinator:
                 sample_rate=_config.library.sample_rate,
                 nes_frequency=_config.library.nes_frequency,
             ),
-            layout=layout.tabs.main.config,
-            inputs=layout.general.inputs,
+            layout=layout.main.config,
+            inputs=layout.inputs,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONFIG_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -292,8 +283,8 @@ class MainTabCoordinator:
                 generators=frozenset(_config.generation.generators),
                 drive=_config.generation.drive,
             ),
-            layout=layout.tabs.main.reconstructor,
-            inputs=layout.general.inputs,
+            layout=layout.main.reconstructor,
+            inputs=layout.inputs,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_RECONSTRUCTOR_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -306,23 +297,23 @@ class MainTabCoordinator:
                 library_directory=config_manager.get_library_directory(),
                 reconstructions_directory=config_manager.get_reconstructions_directory(),
             ),
-            layout=layout.tabs.main.advanced,
-            inputs=layout.general.inputs,
+            layout=layout.main.advanced,
+            inputs=layout.inputs,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_ADVANCED_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
-            path_colors=layout.general.colors.paths,
+            path_colors=layout.path_colors,
         )
         self._converter_logic: ConverterLogic = ConverterLogic(
             config_manager,
             conversion_service,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
             language_manager=language_manager,
             is_operation_active=is_operation_active,
         )
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
-            layout=layout.tabs.main.converter,
-            path_colors=layout.general.colors.paths,
+            layout=layout.main.converter,
+            path_colors=layout.path_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -509,14 +500,14 @@ class MainTabCoordinator:
             parent=TAG_GLOBAL_TABS,
         ):
             self._side_panel_count = TabColumns.build(
-                panel_gap=self._panel_gap,
+                panel_gap=self._geometry.panel_gap,
                 columns=[
                     ColumnSpec(
                         tag=_LEFT_COLUMN_TAG,
                         build=self._explorer_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
-                        width=self._explorer_width,
-                        height=self._explorer_height,
+                        width=self._geometry.side_width,
+                        height=self._geometry.side_height,
                         no_scrollbar=True,
                     ),
                     ColumnSpec(
@@ -533,7 +524,7 @@ class MainTabCoordinator:
     def _build_center(self, parent: str) -> None:
         """Stacks the config and reconstructor cards side by side, then the advanced and converter cards below."""
         TabColumns.row(
-            panel_gap=self._panel_gap,
+            panel_gap=self._geometry.panel_gap,
             height=self._config_height,
             tag=TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
             columns=[
@@ -548,9 +539,9 @@ class MainTabCoordinator:
             ],
         )
         self._sync_config_row_height()
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._advanced_settings_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._converter_panel.create_panel(parent)
 
     def _wire_collapse_handlers(self) -> None:
@@ -577,14 +568,14 @@ class MainTabCoordinator:
     def _sync_explorer_width(self) -> None:
         """Shrinks the filesystem column to the collapse rail when collapsed, else sizes it to the viewport width."""
         if self._explorer_panel.collapsed:
-            width = self._rail_width
+            width = self._geometry.rail_width
         else:
             width = expanded_side_width(
-                self._explorer_width,
+                self._geometry.side_width,
                 dpg.get_viewport_client_width(),
-                self._baseline_viewport_width,
+                self._geometry.baseline_viewport_width,
                 self._side_panel_count,
-                self._center_weight,
+                self._geometry.center_weight,
             )
 
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
