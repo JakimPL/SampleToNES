@@ -34,7 +34,6 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
 )
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import (
@@ -58,7 +57,6 @@ from sampletones_shared.utils.arrays import clamp
 class GUIInstructionChoicePanel(GUIPanel):
     def __init__(
         self,
-        shortcut_manager: ShortcutManager,
         *,
         layout: InstructionsLayout,
         general_layout: GeneralLayout,
@@ -69,7 +67,6 @@ class GUIInstructionChoicePanel(GUIPanel):
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
         self._status_bar = status_bar
-        self._shortcut_manager = shortcut_manager
         self._layout = layout
         self._general_layout = general_layout
         self._item_handler_tag = f"{TAG_INSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
@@ -233,8 +230,8 @@ class GUIInstructionChoicePanel(GUIPanel):
             status_message=self._msg_status_input_period if is_period else self._msg_status_input_pitch,
             status_bar=self._status_bar,
             layout=self._general_layout.pitch_stepper,
+            plus_minus_layout=self._general_layout.plus_minus_buttons,
             value_color=self._general_layout.colors.text.disabled,
-            shortcut_manager=self._shortcut_manager,
         )
         self._pitch_stepper.on_value_changed = self._on_pitch_value_changed
 
@@ -250,7 +247,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         )
         with labeled_field(
             self._lbl_window_pulse_volume,
-            self._layout.instruction_choice.label_width,
+            self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
             dpg.add_slider_int(
@@ -259,11 +256,11 @@ class GUIInstructionChoicePanel(GUIPanel):
                 min_value=1,
                 max_value=MAX_VOLUME,
                 clamped=True,
-                width=self._layout.instruction_choice.input_width,
+                width=self._layout.choice.input_width,
             )
         with labeled_field(
             self._lbl_window_pulse_duty_cycle,
-            self._layout.instruction_choice.label_width,
+            self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
             dpg.add_slider_int(
@@ -272,7 +269,7 @@ class GUIInstructionChoicePanel(GUIPanel):
                 min_value=0,
                 max_value=MAX_DUTY_CYCLE,
                 clamped=True,
-                width=self._layout.instruction_choice.input_width,
+                width=self._layout.choice.input_width,
             )
 
         for tag in [
@@ -300,7 +297,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         )
         with labeled_field(
             self._lbl_window_noise_volume,
-            self._layout.instruction_choice.label_width,
+            self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
             dpg.add_slider_int(
@@ -309,7 +306,7 @@ class GUIInstructionChoicePanel(GUIPanel):
                 min_value=1,
                 max_value=MAX_VOLUME,
                 clamped=True,
-                width=self._layout.instruction_choice.input_width,
+                width=self._layout.choice.input_width,
             )
         dpg.add_checkbox(
             tag=TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,

@@ -1,7 +1,7 @@
 import re
 import uuid
 from pathlib import Path
-from typing import Dict, Optional, Pattern, Tuple
+from typing import Callable, Dict, List, Optional, Pattern, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -45,13 +45,17 @@ from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.trace import GUITraceback
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.align import center_item, table_wrapper
+from sampletones_application.utils.gui.align import center_when_settled, table_wrapper
+from sampletones_application.utils.gui.dialog_navigation import (
+    DialogKeyboardNavigator,
+    FocusStop,
+)
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_item,
 )
-from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_shared.types.callback import Callback, StringCallback
+from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_shared.types.callback import Callback, StringCallback, VoidCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 
@@ -65,6 +69,26 @@ def _bind_dialog_theme(tag: str) -> None:
     ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG_WINDOW).bind_to_item(tag)
 
 
+def _install_navigation(
+    *,
+    window_tag: str,
+    stops: List[FocusStop],
+    on_escape: VoidCallback,
+    key_router: KeyRouter,
+    initial_index: int = 0,
+) -> DialogKeyboardNavigator:
+    """Builds and installs the keyboard navigator that claims the keyboard for ``window_tag``."""
+    navigator = DialogKeyboardNavigator(
+        window_tag=window_tag,
+        stops=stops,
+        on_escape=on_escape,
+        key_router=key_router,
+        initial_index=initial_index,
+    )
+    navigator.install()
+    return navigator
+
+
 def _show_modal_dialog(
     tag: str,
     title: str,
@@ -73,8 +97,18 @@ def _show_modal_dialog(
     ok_label: str,
     width: int,
     height: int,
+    key_router: KeyRouter,
     modal: bool = True,
 ) -> None:
+    ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+    navigator: Optional[DialogKeyboardNavigator] = None
+
+    def close() -> None:
+        if navigator is not None:
+            navigator.dispose()
+
+        dpg_delete_item(tag)
+
     with dpg.window(
         label=title,
         tag=tag,
@@ -83,25 +117,26 @@ def _show_modal_dialog(
         min_size=(width, height),
         no_resize=True,
         autosize=True,
-        on_close=lambda: dpg_delete_item(tag),
+        on_close=close,
     ):
         _bind_dialog_theme(tag)
         content(tag)
         dpg.add_separator()
-        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
         GUIButton(
             tag=ok_button_tag,
             label=ok_label,
-            callback=lambda: dpg_delete_item(tag),
+            callback=close,
             width=-1,
         )
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                width,
-                height,
-            )
+        center_when_settled(tag)
+
+    if modal:
+        navigator = _install_navigation(
+            window_tag=tag,
+            stops=[FocusStop.button(ok_button_tag, close)],
+            on_escape=close,
+            key_router=key_router,
         )
 
 
@@ -112,9 +147,11 @@ class DialogsRenderer:
         layout: GeneralLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        key_router: KeyRouter,
     ) -> None:
         self._language_manager = language_manager
         self._status_bar = status_bar
+        self._router = key_router
         self._default_width = layout.dialogs.default.width
         self._default_height = layout.dialogs.default.height
         self._error_width = layout.dialogs.error.width
@@ -242,6 +279,7 @@ class DialogsRenderer:
             title,
             content,
             ok_label=self._lbl_ok,
+            key_router=self._router,
             width=width if width is not None else self._default_width,
             height=height if height is not None else self._default_height,
             modal=modal,
@@ -265,6 +303,7 @@ class DialogsRenderer:
             title=title,
             content=content,
             ok_label=self._lbl_ok,
+            key_router=self._router,
             width=self._default_width,
             height=self._default_height,
             modal=modal,
@@ -329,6 +368,7 @@ class DialogsRenderer:
             title=self._ttl_config_recovery,
             content=content,
             ok_label=self._lbl_ok,
+            key_router=self._router,
             width=self._recovery_width,
             height=self._recovery_height,
             modal=False,
@@ -367,12 +407,22 @@ class DialogsRenderer:
             if trailing:
                 dpg.add_text(trailing, parent=group_tag)
 
+    # TODO: refactor
     def show_error(
         self,
         exception: Exception,
         message: Optional[str] = None,
     ) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)
+        show_button_tag = f"{tag}{SUF_BUTTON_SHOW_TRACEBACK}"
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        navigator: Optional[DialogKeyboardNavigator] = None
+
+        def close() -> None:
+            if navigator is not None:
+                navigator.dispose()
+
+            dpg_delete_item(tag)
 
         with dpg.window(
             label=self._ttl_error,
@@ -381,7 +431,7 @@ class DialogsRenderer:
             min_size=(self._error_width, self._error_height),
             autosize=True,
             no_scrollbar=False,
-            on_close=lambda: dpg_delete_item(tag),
+            on_close=close,
         ):
             _bind_dialog_theme(tag)
             if message is not None:
@@ -409,17 +459,15 @@ class DialogsRenderer:
 
             dpg.add_separator()
 
+            def toggle_traceback() -> None:
+                traceback.toggle_visibility()
+                dpg_configure_item(
+                    show_button_tag,
+                    label=(self._lbl_traceback_show if not traceback.visible else self._lbl_traceback_hide),
+                )
+
             @table_wrapper(columns=2)
             def content(_: None) -> None:
-                show_button_tag = f"{tag}{SUF_BUTTON_SHOW_TRACEBACK}"
-
-                def toggle_traceback() -> None:
-                    traceback.toggle_visibility()
-                    dpg_configure_item(
-                        show_button_tag,
-                        label=(self._lbl_traceback_show if not traceback.visible else self._lbl_traceback_hide),
-                    )
-
                 GUIButton(
                     tag=show_button_tag,
                     label=self._lbl_traceback_show,
@@ -427,21 +475,25 @@ class DialogsRenderer:
                     callback=toggle_traceback,
                 )
                 GUIButton(
-                    tag=f"{tag}{SUF_BUTTON_OK}",
+                    tag=ok_button_tag,
                     label=self._lbl_ok,
-                    callback=lambda: dpg_delete_item(tag),
+                    callback=close,
                     width=-1,
                 )
 
             content(None)
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                self._error_width,
-                self._error_height,
-            )
+        navigator = _install_navigation(
+            window_tag=tag,
+            stops=[
+                FocusStop.button(show_button_tag, toggle_traceback),
+                FocusStop.button(ok_button_tag, close),
+            ],
+            on_escape=close,
+            key_router=self._router,
+            initial_index=1,
         )
+        center_when_settled(tag)
 
     def show_file_not_found(self, filepath: Path, message: str) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
@@ -460,10 +512,12 @@ class DialogsRenderer:
             title=self._ttl_file_not_found,
             content=content,
             ok_label=self._lbl_ok,
+            key_router=self._router,
             width=self._error_width,
             height=self._default_height,
         )
 
+    # TODO: refactor
     def show_confirmation(
         self,
         tag: str,
@@ -487,6 +541,34 @@ class DialogsRenderer:
         tag = get_dialog_tag(tag)
         opt_out_tag = f"{tag}{SUF_CHECKBOX}"
         cancel_label = cancel_label if cancel_label is not None else self._lbl_cancel
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+        navigator: Optional[DialogKeyboardNavigator] = None
+
+        def disable() -> None:
+            dpg_configure_item(ok_button_tag, enabled=False)
+            dpg_configure_item(cancel_button_tag, enabled=False)
+
+        def close() -> None:
+            if navigator is not None:
+                navigator.dispose()
+
+            dpg_delete_item(tag)
+
+        def _on_confirm() -> None:
+            disable()
+            if opt_out_label is not None and on_opt_out is not None and dpg.get_value(opt_out_tag):
+                on_opt_out()
+
+            on_confirm()
+            close()
+
+        def _on_cancel() -> None:
+            disable()
+            if on_cancel is not None:
+                on_cancel()
+
+            close()
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._default_wrap)
@@ -509,31 +591,6 @@ class DialogsRenderer:
                     tag=opt_out_tag,
                     parent=parent,
                 )
-
-            ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
-            cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
-
-            def disable() -> None:
-                dpg_configure_item(ok_button_tag, enabled=False)
-                dpg_configure_item(cancel_button_tag, enabled=False)
-
-            def close() -> None:
-                dpg_delete_item(tag)
-
-            def _on_confirm() -> None:
-                disable()
-                if opt_out_label is not None and on_opt_out is not None and dpg.get_value(opt_out_tag):
-                    on_opt_out()
-
-                on_confirm()
-                close()
-
-            def _on_cancel() -> None:
-                disable()
-                if on_cancel is not None:
-                    on_cancel()
-
-                close()
 
             @table_wrapper(columns=2)
             def buttons(_: None) -> None:
@@ -558,19 +615,24 @@ class DialogsRenderer:
             modal=True,
             min_size=(self._default_width, self._confirmation_height),
             no_resize=True,
-            on_close=lambda: dpg_delete_item(tag),
+            on_close=close,
         ):
             _bind_dialog_theme(tag)
             content(tag)
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                self._default_width,
-                self._confirmation_height,
-            )
+        navigator = _install_navigation(
+            window_tag=tag,
+            stops=[
+                FocusStop.button(ok_button_tag, _on_confirm),
+                FocusStop.button(cancel_button_tag, _on_cancel),
+            ],
+            on_escape=_on_cancel,
+            key_router=self._router,
+            initial_index=1,
         )
+        center_when_settled(tag)
 
+    # TODO: refactor
     def show_text_input(
         self,
         tag: str,
@@ -586,29 +648,32 @@ class DialogsRenderer:
         cancelling or closing discards it. The caller owns any validation of the value.
         """
         tag = get_dialog_tag(tag)
+        input_tag = f"{tag}{SUF_INPUT}"
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+        navigator: Optional[DialogKeyboardNavigator] = None
+
+        def disable() -> None:
+            dpg_configure_item(ok_button_tag, enabled=False)
+            dpg_configure_item(cancel_button_tag, enabled=False)
+
+        def close() -> None:
+            if navigator is not None:
+                navigator.dispose()
+
+            dpg_delete_item(tag)
+
+        def _on_submit() -> None:
+            value = dpg.get_value(input_tag)
+            disable()
+            on_submit(value)
+            close()
+
+        def _on_cancel() -> None:
+            disable()
+            close()
 
         def content(parent: str) -> None:
-            input_tag = f"{tag}{SUF_INPUT}"
-            ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
-            cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
-
-            def disable() -> None:
-                dpg_configure_item(ok_button_tag, enabled=False)
-                dpg_configure_item(cancel_button_tag, enabled=False)
-
-            def close() -> None:
-                dpg_delete_item(tag)
-
-            def _on_submit() -> None:
-                value = dpg.get_value(input_tag)
-                disable()
-                on_submit(value)
-                close()
-
-            def _on_cancel() -> None:
-                disable()
-                close()
-
             dpg.add_input_text(
                 tag=input_tag,
                 parent=parent,
@@ -641,60 +706,78 @@ class DialogsRenderer:
             modal=True,
             min_size=(self._default_width, self._text_input_height),
             no_resize=True,
-            on_close=lambda: dpg_delete_item(tag),
+            on_close=close,
         ):
             _bind_dialog_theme(tag)
             content(tag)
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                self._default_width,
-                self._text_input_height,
-            )
+        navigator = _install_navigation(
+            window_tag=tag,
+            stops=[
+                FocusStop.field(input_tag),
+                FocusStop.button(ok_button_tag, _on_submit),
+                FocusStop.button(cancel_button_tag, _on_cancel),
+            ],
+            on_escape=_on_cancel,
+            key_router=self._router,
         )
+        center_when_settled(tag)
 
+    # TODO: refactor
     def show_save_confirmation(
         self,
         tag: str,
         message: str,
         title: str,
-        on_save: Callback,
+        on_save: Callable[[], bool],
         on_confirm: Callback,
         *,
         ok_label: str,
     ) -> None:
+        """Modal save-or-proceed prompt for an unsaved document.
+
+        ``on_save`` writes the document and reports whether it completed; the prompt runs
+        ``on_confirm`` and closes only when the save reports success, so cancelling the save's file
+        dialog leaves the prompt open with the pending action untaken. The middle button runs
+        ``on_confirm`` to proceed without saving, and Cancel — the initially focused button —
+        dismisses the prompt.
+        """
         tag = get_dialog_tag(tag)
+        save_button_tag = f"{tag}{SUF_BUTTON_SAVE}"
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+        navigator: Optional[DialogKeyboardNavigator] = None
+
+        def disable() -> None:
+            dpg_configure_item(save_button_tag, enabled=False)
+            dpg_configure_item(ok_button_tag, enabled=False)
+            dpg_configure_item(cancel_button_tag, enabled=False)
+
+        def close() -> None:
+            if navigator is not None:
+                navigator.dispose()
+
+            dpg_delete_item(tag)
+
+        def _on_save() -> None:
+            if not on_save():
+                return
+
+            disable()
+            on_confirm()
+            close()
+
+        def _on_confirm() -> None:
+            disable()
+            on_confirm()
+            close()
+
+        def _on_cancel() -> None:
+            disable()
+            close()
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._default_wrap)
-
-            save_button_tag = f"{tag}{SUF_BUTTON_SAVE}"
-            ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
-            cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
-
-            def disable() -> None:
-                dpg_configure_item(save_button_tag, enabled=False)
-                dpg_configure_item(ok_button_tag, enabled=False)
-                dpg_configure_item(cancel_button_tag, enabled=False)
-
-            def close() -> None:
-                dpg_delete_item(tag)
-
-            def _on_save() -> None:
-                disable()
-                on_save()
-                on_confirm()
-                close()
-
-            def _on_confirm() -> None:
-                disable()
-                on_confirm()
-                close()
-
-            def _on_cancel() -> None:
-                disable()
-                close()
 
             @table_wrapper(columns=3)
             def buttons(_: None) -> None:
@@ -725,18 +808,23 @@ class DialogsRenderer:
             modal=True,
             min_size=(self._default_width, self._confirmation_height),
             no_resize=True,
-            on_close=lambda: dpg_delete_item(tag),
+            on_close=close,
         ):
             _bind_dialog_theme(tag)
             content(tag)
 
-        FrameCallbackManager.set_frame_callback(
-            lambda: center_item(
-                tag,
-                self._default_width,
-                self._confirmation_height,
-            )
+        navigator = _install_navigation(
+            window_tag=tag,
+            stops=[
+                FocusStop.button(save_button_tag, _on_save),
+                FocusStop.button(ok_button_tag, _on_confirm),
+                FocusStop.button(cancel_button_tag, _on_cancel),
+            ],
+            on_escape=_on_cancel,
+            key_router=self._router,
+            initial_index=2,
         )
+        center_when_settled(tag)
 
     def show_reconstruction_not_loaded(self) -> None:
         tag = get_dialog_tag(TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED)
@@ -753,6 +841,7 @@ class DialogsRenderer:
             title=self._ttl_reconstruction_not_loaded,
             content=content,
             ok_label=self._lbl_ok,
+            key_router=self._router,
             width=self._error_width,
             height=self._default_height,
             modal=False,
@@ -780,6 +869,7 @@ class DialogsRenderer:
             title=title,
             content=content,
             ok_label=self._lbl_ok,
+            key_router=self._router,
             width=self._error_width,
             height=self._default_height,
             modal=False,

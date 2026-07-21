@@ -14,6 +14,7 @@ class DialogElements(AbstractElement):
     UNTITLED = "untitled"
     REMOVE = "remove"
     CHANGE = "change"
+    CHANGE_AND_RETUNE = "change_and_retune"
     DONT_ASK_AGAIN = "dont_ask_again"
     ADD_ANYWAY = "add_anyway"
 
@@ -85,6 +86,7 @@ class MenuElements(AbstractElement):
     ITEM_PLAYBACK_PAUSE = "item_playback_pause"
     ITEM_PLAYBACK_RESUME = "item_playback_resume"
     ITEM_PLAYBACK_PLAY_FROM_START = "item_playback_play_from_start"
+    ITEM_PLAYBACK_PLAY_FROM_FRAME = "item_playback_play_from_frame"
     ITEM_PLAYBACK_STOP = "item_playback_stop"
     ITEM_PLAYBACK_AUTOPLAY = "item_playback_autoplay"
     ITEM_PLAYBACK_FOLLOW_PLAYBACK = "item_playback_follow_playback"
@@ -97,7 +99,7 @@ class MenuElements(AbstractElement):
     ITEM_HELP_ABOUT = "item_help_about"
     TAB_MAIN = "tab_main"
     TAB_INSTRUCTIONS = "tab_instructions"
-    TAB_RECONSTRUCTIONS = "tab_reconstructions"
+    TAB_RECONSTRUCTION = "tab_reconstruction"
     TAB_SEQUENCER = "tab_sequencer"
 
 
@@ -107,9 +109,11 @@ class StatusElements(AbstractElement):
     NODE_RECONSTRUCTION = "node_reconstruction"
     NODE_LIBRARY = "node_library"
     TREE_SEARCH = "tree_search"
+    CLEAR_SEARCH = "clear_search"
     INPUT = "input"
     COMBO = "combo"
     NODE_DIRECTORY = "node_directory"
+    RETUNING_SAMPLES = "retuning_samples"
 
 
 class PlayerElements(AbstractElement):
@@ -135,6 +139,7 @@ class GraphElements(AbstractElement):
     BAR_DISPLAY = "bar_display"
     SPECTRUM_NAVIGATION = "spectrum_navigation"
     WAVEFORM_NAVIGATION = "waveform_navigation"
+    WAVEFORM_REGENERATING = "waveform_regenerating"
 
 
 class GlobalMessageElements(AbstractElement):
@@ -205,6 +210,16 @@ class GlobalDialogTitleElements(AbstractElement):
     CHANGE_NES_FREQUENCY = "change_nes_frequency"
     FREQUENCY_MISMATCH = "frequency_mismatch"
     ABOUT = "about"
+
+
+class FileFilterElements(AbstractElement):
+    PROJECT = "project"
+    RECONSTRUCTION = "reconstruction"
+    MODULE = "module"
+    INSTRUMENT = "instrument"
+    CONFIG = "config"
+    AUDIO = "audio"
+    WAVE = "wave"
 
 
 class GlobalTemplateElements(AbstractElement):

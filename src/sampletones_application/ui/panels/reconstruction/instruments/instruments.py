@@ -59,7 +59,6 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_value,
 )
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
@@ -87,7 +86,6 @@ OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 class GUIReconstructionInstrumentsPanel(GUIPanel):
     def __init__(
         self,
-        shortcut_manager: ShortcutManager,
         *,
         layout_general: GeneralLayout,
         layout_graphs: GraphsLayout,
@@ -95,7 +93,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
-        self.shortcut_manager = shortcut_manager
         self._status_bar = status_bar
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
@@ -183,6 +180,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             TextType.MESSAGE,
             ReconstructionsInstrumentsElements.STATUS_COPY_SEQUENCE,
         ]
+        self._msg_export_instrument = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.INSTRUMENTS,
+            TextType.MESSAGE,
+            ReconstructionsInstrumentsElements.STATUS_EXPORT_INSTRUMENT,
+        ]
         tooltip_template = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.INSTRUMENTS,
@@ -240,35 +243,20 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
 
     def create_panel(self, parent: str) -> None:
-        with card(parent, self.tag, auto_resize_y=True):
+        with card(
+            parent,
+            self.tag,
+            auto_resize_y=False,
+            height=-1,
+            no_scrollbar=True,
+        ):
             with self._collapsible_section(
                 self._lbl_section,
                 glyph=self._glyphs.headers.instruments,
             ):
                 self._create_content()
 
-        self._apply_collapse_sizing(self.collapsed)
         self._setup_mouse_event_handler()
-
-    def set_collapse_handler(self, callback: Callable[[str, bool], None]) -> None:
-        """Size the card on each collapse toggle before handing the toggle to the coordinator.
-
-        The card hugs its content while expanded and fills the column while collapsed, so the
-        docked rail spans the full column height rather than a short stub.
-        """
-
-        def handler(card_tag: str, collapsed: bool) -> None:
-            self._apply_collapse_sizing(collapsed)
-            callback(card_tag, collapsed)
-
-        super().set_collapse_handler(handler)
-
-    def _apply_collapse_sizing(self, collapsed: bool) -> None:
-        """Fill the column vertically while collapsed for a full-height rail, else hug the content."""
-        if collapsed:
-            dpg_configure_item(self.tag, auto_resize_y=False, height=-1)
-        else:
-            dpg_configure_item(self.tag, auto_resize_y=True, height=0)
 
     def _create_content(self) -> None:
         dpg.add_text(
@@ -343,12 +331,15 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 callback=self._handle_export_button_clicked,
                 user_data=generator_name,
             )
+            self._status_bar.bind_to_item(
+                button_tag,
+                self._msg_export_instrument.format(generator=self._generator_labels[generator_name]),
+            )
 
             with dpg.child_window(
                 tag=window_tag,
                 parent=tab_tag,
-                auto_resize_y=True,
-                no_scroll_with_mouse=True,
+                height=-1,
             ):
                 self._create_generator_content(generator_name, window_tag)
 
@@ -389,7 +380,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             )
             self.generator_plots[generator_name][feature_key] = plot
 
-    def _apply_pitch_display(self, generator_name: GeneratorName, value: int) -> None:
+    def _apply_pitch_display(
+        self,
+        generator_name: GeneratorName,
+        value: int,
+    ) -> None:
         stepper = self._pitch_steppers.get(generator_name)
         if stepper is not None:
             stepper.set_value(value)
@@ -428,7 +423,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         raw_data_text = self._format_data(data)
         dpg_set_value(raw_data_tag, raw_data_text)
 
-    def update_view(self, view_model: ReconstructionInstrumentsViewModel) -> None:
+    def update_view(
+        self,
+        view_model: ReconstructionInstrumentsViewModel,
+    ) -> None:
         is_loaded = view_model.reconstruction_loaded
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
@@ -438,7 +436,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             is_available = generator_name in view_model.available_generators
             dpg_configure_item(tab_tag, show=is_available)
 
-    def update_feature_data(self, generators: Optional[Dict[GeneratorName, Features]]) -> None:
+    def update_feature_data(
+        self,
+        generators: Optional[Dict[GeneratorName, Features]],
+    ) -> None:
         if generators is None:
             return
 
@@ -449,12 +450,20 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
             self._update_generator_feature_data(generator_name, generator_features)
 
-    def _update_generator_feature_data(self, generator_name: GeneratorName, generator_features: Features) -> None:
+    def _update_generator_feature_data(
+        self,
+        generator_name: GeneratorName,
+        generator_features: Features,
+    ) -> None:
         initial_pitch = cast(int, generator_features[FeatureKey.INITIAL_PITCH])
         self._apply_pitch_display(generator_name, initial_pitch)
 
         for feature_key in self._generator_features(generator_name):
-            self._update_generator_feature_display(generator_name, generator_features, feature_key)
+            self._update_generator_feature_display(
+                generator_name,
+                generator_features,
+                feature_key,
+            )
 
     def _update_generator_feature_display(
         self,
@@ -466,7 +475,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._update_generator_plot(generator_name, feature_key, feature)
         self._update_raw_data_text(generator_name, feature_key, feature)
 
-    def _feature_array(self, generator_features: Features, feature_key: FeatureKey) -> np.ndarray:
+    def _feature_array(
+        self,
+        generator_features: Features,
+        feature_key: FeatureKey,
+    ) -> np.ndarray:
         feature = cast(Optional[np.ndarray], generator_features.get(feature_key))
         if feature is None:
             return np.array([], dtype=np.int8)
@@ -475,7 +488,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _pitch_kind(self, generator_name: GeneratorName) -> PitchValueKind:
         return PERIOD_VALUE_KIND if generator_name == GeneratorName.NOISE else PITCH_VALUE_KIND
 
-    def _create_pitch_stepper(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
+    def _create_pitch_stepper(
+        self,
+        generator_name: GeneratorName,
+        initial_pitch: int,
+        parent: str,
+    ) -> None:
         is_noise = generator_name == GeneratorName.NOISE
         kind = self._pitch_kind(generator_name)
         stepper = GUIPitchStepper(
@@ -488,13 +506,20 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             status_message=self._msg_input_period if is_noise else self._msg_input_pitch,
             status_bar=self._status_bar,
             layout=self._layout_general.pitch_stepper,
+            plus_minus_layout=self._layout_general.plus_minus_buttons,
             value_color=self._layout_general.colors.text.disabled,
-            shortcut_manager=self.shortcut_manager,
         )
-        stepper.on_value_changed = partial(self._on_pitch_value_changed, generator_name)
+        stepper.on_value_changed = partial(
+            self._on_pitch_value_changed,
+            generator_name,
+        )
         self._pitch_steppers[generator_name] = stepper
 
-    def _on_pitch_value_changed(self, generator_name: GeneratorName, value: int) -> None:
+    def _on_pitch_value_changed(
+        self,
+        generator_name: GeneratorName,
+        value: int,
+    ) -> None:
         self.call(self.on_pitch_value_changed, generator_name, value)
 
     def _on_mouse_move(self, sender: Sender, app_data: Tuple[int, int]) -> None:
@@ -516,8 +541,21 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         parent: str,
     ) -> GUIBarGraph:
         config = self._feature_plot_config(generator_name, feature_key)
-        plot = self._add_bar_plot(parent, config, data, generator_name, feature_key)
-        self._add_raw_data_text(parent, generator_name, feature_key, config, plot, data)
+        plot = self._add_bar_plot(
+            parent,
+            config,
+            data,
+            generator_name,
+            feature_key,
+        )
+        self._add_raw_data_text(
+            parent,
+            generator_name,
+            feature_key,
+            config,
+            plot,
+            data,
+        )
         return plot
 
     def _calculate_plot_limits(
@@ -604,7 +642,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dpg_set_value(raw_data_tag, self._format_data(data))
         self.call(self.on_bar_data_changed, generator_name, feature_key, data)
 
-    def _on_bar_point_hovered(self, label: Optional[str], index: Optional[int]) -> None:
+    def _on_bar_point_hovered(
+        self,
+        label: Optional[str],
+        index: Optional[int],
+    ) -> None:
         self.call(self.on_reconstruction_instrument_hovered, index)
         if label is not None:
             self._status_bar.set(self._msg_bar.format(instrument_feature=label))
@@ -618,7 +660,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         plot: GUIBarGraph,
         data: np.ndarray,
     ) -> None:
-        text_group_tag = self._get_feature_text_group_tag(generator_name, feature_key)
+        text_group_tag = self._get_feature_text_group_tag(
+            generator_name,
+            feature_key,
+        )
         raw_data_text = self._format_data(data)
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
         copy_button_tag = f"{text_group_tag}{SUF_BUTTON_COPY}"
@@ -628,7 +673,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 tag=copy_button_tag,
                 label=self._lbl_copy,
                 width=self._layout_general.buttons.copy_width,
-                callback=lambda: self._on_copy_button_clicked(raw_data_text, copy_button_tag),
+                callback=lambda: self._on_copy_button_clicked(
+                    raw_data_text,
+                    copy_button_tag,
+                ),
             )
 
             dpg.add_input_text(
@@ -648,7 +696,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             )
             FontRegistry.bind_to_item(raw_data_tag, Font.MONO)
 
-        self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
         self._status_bar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
         self._status_bar.bind_to_item(
             raw_data_tag,
@@ -665,6 +712,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> None:
         generator_name, feature_key, config, plot = user_data
         data_range = config.data_range if config.data_range is not None else (-128, 127)
+
         try:
             raw_data_items = app_data.strip().split()
             raw_data = np.array(
@@ -679,7 +727,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         dpg.set_value(sender, self._format_data(raw_data))
         self.call(self.on_raw_data_changed, generator_name, feature_key, raw_data)
-
         self._load_plot_data(plot, generator_name, feature_key, config, raw_data)
 
     def _format_data(self, data: np.ndarray) -> str:
@@ -704,4 +751,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
-        copy_to_clipboard(text, self._lbl_copy, button_tag, copied_label=self._lbl_copied)
+        copy_to_clipboard(
+            text,
+            self._lbl_copy,
+            button_tag,
+            copied_label=self._lbl_copied,
+        )

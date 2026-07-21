@@ -1,0 +1,45 @@
+name: player_button
+tag: global.theme.player_button
+
+components:
+  - item_type: Button
+    entries:
+      - type: color
+        key: Button
+        value: .player_button
+      - type: color
+        key: ButtonHovered
+        value: .player_button_hovered
+      - type: color
+        key: ButtonActive
+        value: .player_button_active
+  - item_type: Button
+    enabled: false
+    entries:
+      - type: color
+        key: Text
+        value: .text_disabled
+      - type: color
+        key: Button
+        value: .player_button_disabled
+      - type: color
+        key: ButtonHovered
+        value: .player_button_disabled
+      - type: color
+        key: ButtonActive
+        value: .player_button_disabled
+  - item_type: All
+    enabled: false
+    entries:
+      - type: color
+        key: Text
+        value: .text_disabled
+      - type: color
+        key: Button
+        value: .player_button_disabled
+      - type: color
+        key: ButtonHovered
+        value: .player_button_disabled
+      - type: color
+        key: ButtonActive
+        value: .player_button_disabled

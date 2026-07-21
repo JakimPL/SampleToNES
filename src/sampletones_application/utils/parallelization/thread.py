@@ -3,10 +3,12 @@ from __future__ import annotations
 import threading
 import time
 from functools import wraps
-from typing import Any, Callable, List, Optional, Set, cast
+from typing import Any, Callable, Final, List, Optional, Set, cast
 
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import CallbackT, VoidCallback
+
+CONCURRENT_EXECUTOR_NAME: Final[str] = "_concurrent_executor"
 
 
 class BackgroundWorkCancelled(Exception):
@@ -120,10 +122,9 @@ def concurrent(
     def decorator(function: CallbackT) -> CallbackT:
         method_class = function.__qualname__.split(".")[0]
         method_name = function.__name__
+        executor_attribute = f"{CONCURRENT_EXECUTOR_NAME}_{method_class}"
         if method_bound:
-            executor_attribute = f"_concurrent_executor_{method_class}_{method_name}"
-        else:
-            executor_attribute = f"_concurrent_executor_{method_class}"
+            executor_attribute += f"_{method_name}"
 
         @wraps(function)
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:

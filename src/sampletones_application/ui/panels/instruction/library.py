@@ -46,7 +46,6 @@ from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
@@ -89,13 +88,13 @@ class LibraryLogicProtocol(Protocol):
 
 
 class GUIInstructionsLibraryPanel(GUITreePanel):
-    _NAME_FONT: Font = Font.MONO_SMALL
+    _NAME_FONT: Font = Font.REGULAR_SMALL
+    _MONOSPACE_CONFIG_NODES: bool = True
 
     def __init__(
         self,
         library_logic: LibraryLogicProtocol,
         tree_logic: TreeLogicProtocol,
-        shortcut_manager: ShortcutManager,
         *,
         scheduling: SchedulingBehavior,
         initial_collapsed: bool = False,
@@ -181,6 +180,24 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             TextType.MESSAGE,
             InstructionsLibraryElements.STATUS_NODE_LIBRARY,
         ]
+        self._msg_status_generate = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATE,
+        ]
+        self._msg_status_cancel_generation = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_CANCEL_GENERATION,
+        ]
+        self._msg_status_refresh = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_REFRESH,
+        ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -189,7 +206,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
             tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
             tree_logic=tree_logic,
-            shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
@@ -285,6 +301,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     width=-1,
                     callback=self._on_cancel_clicked,
                 )
+        self._status_bar.bind_to_item(TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES, self._msg_status_refresh)
+        self._status_bar.bind_to_item(TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY, self._msg_status_generate)
+        self._status_bar.bind_to_item(
+            TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
+            self._msg_status_cancel_generation,
+        )
 
     def _create_library_tree(self) -> None:
         dpg.add_separator()
@@ -293,6 +315,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             tag=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
             width=-1,
             height=-1,
+            horizontal_scrollbar=True,
         ):
             with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE):
                 with dpg.tree_node(

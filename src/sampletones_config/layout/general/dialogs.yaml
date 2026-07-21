@@ -7,9 +7,6 @@ error:
 recovery:
   width: 640
   height: 120
-file:
-  width: 720
-  height: 400
 confirmation:
   height: 130
 text_input:

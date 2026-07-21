@@ -9,6 +9,7 @@ from sampletones_application.layout.general.dialogs import DialogsLayout
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.menu import MenuLayout
 from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
+from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.layout.general.section_header import SectionHeaderLayout
 from sampletones_application.layout.general.status_bar import StatusBarLayout
 from sampletones_application.layout.general.tables import TablesLayout
@@ -25,6 +26,7 @@ class GeneralLayout(BaseModel, extra="forbid", frozen=True):
     buttons: ButtonsLayout
     tables: TablesLayout
     pitch_stepper: PitchStepperLayout
+    plus_minus_buttons: PlusMinusButtonsLayout
     menu: MenuLayout
     caret: CaretLayout
     section_header: SectionHeaderLayout

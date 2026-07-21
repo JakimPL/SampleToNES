@@ -22,8 +22,8 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.color import RGBA
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
@@ -35,6 +35,7 @@ from sampletones_application.view_model.shared.history import (
 )
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.color import RGBA
 
 EntryWindow = Tuple[HistoryEntryViewModel, ...]
 
@@ -76,10 +77,12 @@ class GUISequencerHistoryPanel(GUIPanel):
         layout: SequencerLayout,
         feature_colors: FeatureColors,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._feature_colors = feature_colors
+        self._status_bar = status_bar
         self._rows: Dict[int, _EntryRow] = {}
         self._table: Optional[int] = None
 
@@ -104,6 +107,18 @@ class GUISequencerHistoryPanel(GUIPanel):
             Panel.HISTORY,
             TextType.LABEL,
             SequencerHistoryElements.REDO,
+        ]
+        self._msg_status_undo = language_manager[
+            Page.SEQUENCER,
+            Panel.HISTORY,
+            TextType.MESSAGE,
+            SequencerHistoryElements.STATUS_UNDO,
+        ]
+        self._msg_status_redo = language_manager[
+            Page.SEQUENCER,
+            Panel.HISTORY,
+            TextType.MESSAGE,
+            SequencerHistoryElements.STATUS_REDO,
         ]
         self._lbl_empty = language_manager[
             Page.SEQUENCER,
@@ -158,6 +173,8 @@ class GUISequencerHistoryPanel(GUIPanel):
                         callback=self._on_redo_clicked,
                         width=-1,
                     )
+        self._status_bar.bind_to_item(TAG_SEQUENCER_HISTORY_BUTTON_UNDO, self._msg_status_undo)
+        self._status_bar.bind_to_item(TAG_SEQUENCER_HISTORY_BUTTON_REDO, self._msg_status_redo)
 
     def update_view(self, view_model: HistoryViewModel) -> None:
         self._update_actions(view_model)

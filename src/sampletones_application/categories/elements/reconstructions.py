@@ -3,6 +3,7 @@ from sampletones_application.categories.abstract import AbstractElement
 
 class ReconstructionsBrowserElements(AbstractElement):
     REFRESH_BUTTON = "refresh_button"
+    STATUS_REFRESH = "status_refresh"
     RECONSTRUCTIONS_TREE = "reconstructions_tree"
     CONTEXT_LOAD_RECONSTRUCTION = "context_load_reconstruction"
     CONTEXT_REMOVE_RECONSTRUCTION = "context_remove_reconstruction"
@@ -55,6 +56,7 @@ class ReconstructionsInstrumentsElements(AbstractElement):
     STATUS_COPY_SEQUENCE = "status_copy_sequence"
     STATUS_GENERATOR_TOGGLE = "status_generator_toggle"
     STATUS_GENERATOR_NOT_AVAILABLE = "status_generator_not_available"
+    STATUS_EXPORT_INSTRUMENT = "status_export_instrument"
     EXPORT_INSTRUMENT_SUCCESS = "export_instrument_success"
     EXPORT_INSTRUMENTS_SUCCESS = "export_instruments_success"
     EXPORT_INSTRUMENT_FAILED = "export_instrument_failed"

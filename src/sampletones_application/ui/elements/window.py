@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Any
 
 import dearpygui.dearpygui as dpg
@@ -10,7 +10,7 @@ from sampletones_application.utils.gui.align import center_item
 from sampletones_application.utils.gui.dpg import dpg_delete_item
 
 
-class GUIWindow(GUIPanel):
+class GUIWindow(GUIPanel, ABC):
     """
     A ``GUIPanel`` whose widget tree is rebuilt on each appearance.
 
@@ -22,7 +22,7 @@ class GUIWindow(GUIPanel):
     """
 
     def center(self) -> None:
-        center_item(self.tag, self.width, self.height)
+        center_item(self.tag)
 
     def show(self, *args: Any, **kwargs: Any) -> None:
         self.hide()
@@ -33,7 +33,16 @@ class GUIWindow(GUIPanel):
         self.center()
 
     def hide(self) -> None:
+        self._teardown()
         dpg_delete_item(self.tag)
+
+    def _teardown(self) -> None:
+        """Releases resources tied to the current appearance before its tree is deleted.
+
+        The default does nothing; a window that installs per-appearance handlers such as a
+        keyboard navigator overrides this to dispose them, keeping setup and teardown
+        symmetric across every reopen.
+        """
 
     def create_panel(self, parent: str) -> None:
         """Satisfy the panel contract for a top-level window, which owns its own

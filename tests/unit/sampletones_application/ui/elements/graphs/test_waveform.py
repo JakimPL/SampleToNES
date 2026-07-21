@@ -1,4 +1,6 @@
+from types import SimpleNamespace
 from typing import Any, Dict, List
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -94,7 +96,18 @@ def _graph() -> GUIWaveformGraph:
     graph.position_indicator_tag = "indicator"
     graph.overlay_rectangle_tag = "overlay"
     graph.layers = {}
+    graph._reconstruction_dimmed = False
+    graph._lbl_waveform_reconstruction = "Reconstruction"
+    graph._status_bar = MagicMock()
+    graph._msg_regenerating = "Regenerating reconstruction..."
     return graph
+
+
+def _with_layout(graph: GUIWaveformGraph, opacity: float = 0.4) -> None:
+    graph._layout = SimpleNamespace(  # type: ignore[assignment]
+        colors=SimpleNamespace(waveform_reconstruction=(255, 200, 100, 255)),
+        waveform=SimpleNamespace(reconstruction_dim_opacity=opacity),
+    )
 
 
 class TestWaveformUpdateDisplay:
@@ -124,3 +137,65 @@ class TestWaveformUpdateDisplay:
 
         assert fake_dpg.alias_to_id["indicator"] not in fake_dpg.deleted
         assert fake_dpg.alias_to_id["overlay"] not in fake_dpg.deleted
+
+
+class TestWaveformReconstructionDim:
+    def test_series_color_is_untouched_when_not_dimmed(self) -> None:
+        graph = _graph()
+        layer = _Layer("Reconstruction")
+
+        assert graph._series_color(layer) == layer.color
+
+    def test_series_color_greys_the_reconstruction_when_dimmed(self) -> None:
+        graph = _graph()
+        _with_layout(graph, opacity=0.4)
+        graph._reconstruction_dimmed = True
+
+        faded = graph._series_color(_Layer("Reconstruction"))
+
+        gray = round(0.299 * 255 + 0.587 * 200 + 0.114 * 100)
+        assert faded == (gray, gray, gray, round(0.4 * 255))
+
+    def test_series_color_leaves_other_layers_opaque_when_dimmed(self) -> None:
+        graph = _graph()
+        _with_layout(graph)
+        graph._reconstruction_dimmed = True
+        layer = _Layer("Sample Name")
+
+        assert graph._series_color(layer) == layer.color
+
+    def test_set_dimmed_rebinds_the_reconstruction_series_once(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = _graph()
+        _with_layout(graph)
+        graph.layers = {"Reconstruction": _Layer("Reconstruction")}
+        series_tag = graph._series_tag("Reconstruction")
+        fake_dpg.set_children("axis", [series_tag])
+        binds: List[str] = []
+        monkeypatch.setattr(waveform_module, "dpg_bind_item_theme", lambda tag, theme: binds.append(theme))
+
+        graph.set_reconstruction_dimmed(True)
+        assert graph._reconstruction_dimmed is True
+        assert len(binds) == 1
+
+        graph.set_reconstruction_dimmed(True)
+        assert len(binds) == 1
+
+    def test_set_dimmed_without_reconstruction_layer_is_a_noop(self) -> None:
+        graph = _graph()
+
+        graph.set_reconstruction_dimmed(True)
+
+        assert graph._reconstruction_dimmed is True
+
+    def test_set_dimmed_shows_then_clears_the_status_message(self) -> None:
+        graph = _graph()
+
+        graph.set_reconstruction_dimmed(True)
+        graph._status_bar.set.assert_called_with("Regenerating reconstruction...")
+
+        graph.set_reconstruction_dimmed(False)
+        graph._status_bar.set.assert_called_with("")

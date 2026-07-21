@@ -27,6 +27,7 @@ class ShortcutId(Enum):
     LOCATE_ORIGINAL_AUDIO = "LocateOriginalAudio"
     PLAY = "Play"
     PLAY_FROM_START = "PlayFromStart"
+    PLAY_FROM_FRAME = "PlayFromFrame"
     STOP = "Stop"
     TOGGLE_AUTOPLAY = "ToggleAutoplay"
     TOGGLE_FOLLOW_PLAYBACK = "ToggleFollowPlayback"
@@ -35,3 +36,5 @@ class ShortcutId(Enum):
     TOGGLE_ADVANCED_SETTINGS = "ToggleAdvancedSettings"
     TOGGLE_FULLSCREEN = "ToggleFullscreen"
     ABOUT_DIALOG = "AboutDialog"
+    NEXT_TAB = "NextTab"
+    PREVIOUS_TAB = "PreviousTab"

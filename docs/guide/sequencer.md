@@ -29,16 +29,31 @@ columns are the **Sample** and the four channels — **Pulse 1**, **Pulse 2**,
 **Triangle**, **Noise** — each carrying a note, volume, and transpose. Click a cell
 and type on your keyboard to enter a note, piano-style. Right-clicking a cell opens
 the rest of the operations — **Set instrument**, **Note off**, **Clear cell** and
-**Clear row**, transpose and volume adjustments, and **Play from here** to audition
-from that row. The transport below the grid plays the song, and **Follow playback**
-scrolls the grid to keep pace.
+**Clear row**, transpose and volume adjustments, **Play from here** to audition from
+the cursor row, and **Play from this frame** to start at the top of the shown frame.
 
 ## Arranging the song
 
 A song plays a sequence of patterns, and the **Order** grid sets that sequence —
 one column per position, with a row for the master and each channel. Type an entry
 to place a pattern, or right-click a frame to **Insert frame**, **Duplicate**,
-**Clear frame**, **Remove**, move it, or **Play from here**.
+**Clear frame**, **Remove**, move it, or **Play from this frame**.
+
+## Playing the song
+
+The transport below the grid plays the song, and **Follow playback** scrolls the
+grid to keep pace. The keyboard drives playback throughout the tab:
+
+| Key | Action |
+|-----|--------|
+| `Space` | Play, or pause and resume what is playing |
+| `Shift+Space` | Play from the start |
+| `Ctrl+Space` | Play from the frame currently shown |
+| `Ctrl+Shift+Space` | Play from the cursor's row in the pattern grid |
+| `Escape` | Stop |
+
+`Escape` silences everything, including a sample preview. The same commands sit on
+the **Playback** menu and the transport buttons.
 
 ## Timing and properties
 

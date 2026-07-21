@@ -151,6 +151,14 @@ class SongPlayerLogic(CallbackMixin):
     def is_paused(self) -> bool:
         return self._service.is_paused
 
+    def is_engaged(self) -> bool:
+        """Whether the song holds the live output, sounding or held paused.
+
+        The service reports ``is_playing`` only while sounding, so engagement reads the stream's
+        liveness instead, which stays true across a pause.
+        """
+        return self._service.alive
+
     def is_loaded(self) -> bool:
         return self._project_controller.is_open
 

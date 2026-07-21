@@ -4,7 +4,6 @@ from typing import Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.layout.behavior import SchedulingBehavior
-from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -46,11 +45,15 @@ class TreeEmitter:
     in flight and each emission runs to completion.
     """
 
-    def __init__(self, *, scheduling: SchedulingBehavior, name_font: Font) -> None:
+    def __init__(self, *, scheduling: SchedulingBehavior) -> None:
         self._scheduling = scheduling
-        self._name_font = name_font
 
-    def emit(self, specs: Tuple[NodeSpec, ...], root_tag: str, on_finished: VoidCallback) -> None:
+    def emit(
+        self,
+        specs: Tuple[NodeSpec, ...],
+        root_tag: str,
+        on_finished: VoidCallback,
+    ) -> None:
         """Clear ``root_tag`` and stage the specs under it, then run ``on_finished``.
 
         Runs on the main thread. An empty spec list clears the tree and finishes
@@ -116,7 +119,7 @@ class TreeEmitter:
             bullet=spec.leaf,
             user_data=(spec.node, spec.node_tag),
         )
-        FontRegistry.bind_to_item(spec.node_tag, self._name_font)
+        FontRegistry.bind_to_item(spec.node_tag, spec.name_font)
         ThemeRegistry.get(spec.theme_tag).bind_to_item(spec.node_tag)
         self._bind_handler(spec.node_tag, spec.handler_tag)
 

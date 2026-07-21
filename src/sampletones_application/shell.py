@@ -10,19 +10,19 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
-from sampletones_application.coordinators.main import MainTabCoordinator
-from sampletones_application.coordinators.playback import AudioPlayerProtocol
-from sampletones_application.coordinators.reconstructions import (
-    ReconstructionsTabCoordinator,
+from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.main import MainTabCoordinator
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
 )
-from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.tags.general import (
     TAG_GLOBAL_STATUS_WINDOW,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_TAB_MAIN,
-    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_TAB_RECONSTRUCTION,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_TAB_STRIP,
@@ -36,8 +36,13 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_application.utils.gui.shortcuts.keys import Modifier
+from sampletones_application.utils.gui.shortcuts.keys import (
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    Modifier,
+)
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
@@ -48,7 +53,7 @@ from sampletones_shared.types.callback import Callback, PathCallback
 
 _TAB_TAGS: Dict[Tab, str] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
-    Tab.RECONSTRUCTIONS: TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    Tab.RECONSTRUCTIONS: TAG_GLOBAL_TAB_RECONSTRUCTION,
     Tab.SEQUENCER: TAG_GLOBAL_TAB_SEQUENCER,
     Tab.INSTRUCTIONS: TAG_GLOBAL_TAB_INSTRUCTIONS,
 }
@@ -82,6 +87,7 @@ class ShortcutBindings:
     locate_original_audio: Callback
     play: Callback
     play_from_start: Callback
+    play_from_frame: Callback
     stop: Callback
     toggle_autoplay: Callback
     toggle_follow_playback: Callback
@@ -90,6 +96,8 @@ class ShortcutBindings:
     toggle_advanced_settings: Callback
     toggle_fullscreen: Callback
     about: Callback
+    next_tab: Callback
+    previous_tab: Callback
 
 
 class ApplicationShell:
@@ -111,6 +119,7 @@ class ApplicationShell:
         session_manager: SessionManager,
         language_manager: LanguageManager,
         shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
         layout: LayoutConfig,
         theme: Theme,
         viewport_manager: ViewportManager,
@@ -118,13 +127,14 @@ class ApplicationShell:
         status_bar: GUIStatusBar,
         fps_timer: FPSTimer,
         main_tab: MainTabCoordinator,
-        reconstructions_tab: ReconstructionsTabCoordinator,
+        reconstructions_tab: ReconstructionTabCoordinator,
         sequencer_tab: SequencerTabCoordinator,
         instructions_tab: InstructionsTabCoordinator,
     ) -> None:
         self._session_manager = session_manager
         self._language_manager = language_manager
         self._shortcut_manager = shortcut_manager
+        self._key_router = key_router
         self._layout = layout
         self._theme = theme
         self._viewport_manager = viewport_manager
@@ -310,8 +320,13 @@ class ApplicationShell:
             bindings.play_from_start,
         )
         self._shortcut_manager.register(
-            ShortcutId.STOP,
+            ShortcutId.PLAY_FROM_FRAME,
             Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)),
+            bindings.play_from_frame,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.STOP,
+            Shortcut(dpg.mvKey_Escape),
             bindings.stop,
         )
         self._shortcut_manager.register(
@@ -348,11 +363,21 @@ class ApplicationShell:
             Shortcut(),
             bindings.about,
         )
+        self._shortcut_manager.register(
+            ShortcutId.NEXT_TAB,
+            Shortcut(KEY_PAGE_DOWN, (Modifier.CTRL,), field_transparent=True),
+            bindings.next_tab,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.PREVIOUS_TAB,
+            Shortcut(KEY_PAGE_UP, (Modifier.CTRL,), field_transparent=True),
+            bindings.previous_tab,
+        )
 
         self._shortcut_manager.bind_all()
 
     def _setup_handlers(self) -> None:
-        self._shortcut_manager.setup_focus_handler()
+        self._key_router.bind()
 
     def _create_main_window(self, on_tab_changed: Callback, initial_menu_state: MenuBarViewModel) -> None:
         with dpg.window(
@@ -371,6 +396,19 @@ class ApplicationShell:
             self._create_status_bar()
 
         dpg.set_primary_window(TAG_GLOBAL_WINDOW_MAIN, True)
+        dpg.set_viewport_resize_callback(self._sync_responsive_layout)
+
+    def _sync_responsive_layout(
+        self,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
+    ) -> None:
+        """Refits every tab's responsive columns and graphs to the resized viewport."""
+        self._main_tab.sync_responsive_layout()
+        self._reconstructions_tab.sync_responsive_layout()
+        self._sequencer_tab.sync_responsive_layout()
+        self._instructions_tab.sync_responsive_layout()
 
     def update_menu(self, state: MenuBarViewModel) -> None:
         self._main_tab.sync_advanced_settings_visibility()
@@ -396,7 +434,7 @@ class ApplicationShell:
         ThemeRegistry.get(TAG_GLOBAL_THEME_TAB_STRIP).bind_to_item(tab_container)
         for tab_tag in (
             TAG_GLOBAL_TAB_MAIN,
-            TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+            TAG_GLOBAL_TAB_RECONSTRUCTION,
             TAG_GLOBAL_TAB_SEQUENCER,
             TAG_GLOBAL_TAB_INSTRUCTIONS,
         ):
@@ -480,10 +518,11 @@ class ApplicationShell:
         except KeyError as exception:
             raise SystemError(f"Current tab alias {alias} does not correspond to any known Tab.") from exception
 
-    def get_current_player(self) -> AudioPlayerProtocol:
+    def get_active_source(self) -> Optional[AudioPlayerProtocol]:
+        """The active tab's own playback source, or ``None`` when it owns only previews (Main)."""
         match self.get_current_tab():
             case Tab.MAIN:
-                return self._main_tab.player
+                return None
             case Tab.RECONSTRUCTIONS:
                 return self._reconstructions_tab.player
             case Tab.INSTRUCTIONS:

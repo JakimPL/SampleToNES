@@ -24,11 +24,22 @@ def context_menu() -> Iterator[None]:
         yield
 
 
-def add_play_menu_item(label: str, on_play: VoidCallback) -> None:
+def add_play_menu_item(
+    label: str,
+    on_play: VoidCallback,
+    shortcut: str = "",
+) -> None:
     """Add the shared "Play" context-menu item; the caller supplies the play action.
 
     The samples panel and every file browser expose the same Play affordance over
     different sources (an in-memory sample, a reconstruction or audio file). Routing
     them all through one builder keeps the item from drifting apart across panels.
+
+    ``shortcut`` is shown as the item's accelerator hint when the action has a bound key,
+    and left blank for sources reached only by clicking.
     """
-    dpg.add_menu_item(label=label, callback=on_play)
+    dpg.add_menu_item(
+        label=label,
+        shortcut=shortcut,
+        callback=on_play,
+    )

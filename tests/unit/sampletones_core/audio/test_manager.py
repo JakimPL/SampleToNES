@@ -97,3 +97,37 @@ class TestPriorityArbitration:
             manager.play(np.zeros(4, dtype=np.float32), priority=_HIGH)
 
         thread.assert_called_once()
+
+
+class TestOwnership:
+    """Ownership tells a source's own playback apart from a preview or another source's output."""
+
+    def test_owned_while_playing_and_owner_matches(self) -> None:
+        manager = _manager()
+        owner = object()
+        manager._output_owner = owner
+        manager._playing = True
+
+        assert manager.is_owned_by(owner) is True
+
+    def test_not_owned_when_idle(self) -> None:
+        manager = _manager()
+        owner = object()
+        manager._output_owner = owner
+        manager._playing = False
+
+        assert manager.is_owned_by(owner) is False
+
+    def test_not_owned_by_a_different_owner(self) -> None:
+        manager = _manager()
+        manager._output_owner = object()
+        manager._playing = True
+
+        assert manager.is_owned_by(object()) is False
+
+    def test_preview_owned_by_nobody_is_not_owned_by_a_source(self) -> None:
+        manager = _manager()
+        manager._output_owner = None
+        manager._playing = True
+
+        assert manager.is_owned_by(object()) is False

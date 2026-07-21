@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
@@ -5,6 +7,7 @@ from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY, PALETTE_PATH
+from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
 from sampletones_application.utils.palette import Palette
 from sampletones_application.view_model.sequencer.history import (
@@ -23,12 +26,27 @@ def sequencer_layout(layout_config: LayoutConfig) -> SequencerLayout:
     return layout_config.sequencer
 
 
+@pytest.fixture(autouse=True)
+def configure_panel_class(layout_config: LayoutConfig) -> None:
+    """Binds the glyph, section-header, and collapse geometry the panel class reads on construction.
+
+    The application performs this once at startup; mirroring it here lets a panel built in this module
+    stand on its own configuration rather than whatever an earlier test left on the shared class.
+    """
+    GUIPanel.configure_section_header(
+        layout_config.glyphs,
+        layout_config.general.section_header,
+        layout_config.general.collapse,
+    )
+
+
 @pytest.fixture
 def panel(layout_config: LayoutConfig) -> GUISequencerHistoryPanel:
     return GUISequencerHistoryPanel(
         layout=layout_config.sequencer,
         feature_colors=layout_config.general.colors.features,
         language_manager=LanguageManager(LANG_EN),
+        status_bar=MagicMock(),
     )
 
 

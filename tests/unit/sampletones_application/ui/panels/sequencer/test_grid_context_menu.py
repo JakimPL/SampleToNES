@@ -5,7 +5,7 @@ import pytest
 
 from sampletones_application.ui.panels.sequencer import grid as grid_module
 from sampletones_application.ui.panels.sequencer.grid import (
-    OCTAVE_STEP,
+    OCTAVE_SEMITONES,
     SEMITONE_STEP,
     VOLUME_COARSE_STEP,
     VOLUME_FINE_STEP,
@@ -88,7 +88,7 @@ class TestMenuDispatchPreservesPayload:
         panel._add_transpose_items(2, GeneratorName.PULSE1)
         recorder.dispatch_as_dpg()
 
-        assert deltas == [SEMITONE_STEP, -SEMITONE_STEP, OCTAVE_STEP, -OCTAVE_STEP]
+        assert deltas == [SEMITONE_STEP, -SEMITONE_STEP, OCTAVE_SEMITONES, -OCTAVE_SEMITONES]
 
     def test_volume_items_pass_the_configured_step(self, recorder: _MenuItemRecorder) -> None:
         panel = _panel()

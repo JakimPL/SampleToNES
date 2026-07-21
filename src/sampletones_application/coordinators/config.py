@@ -1,11 +1,12 @@
 import json
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Final
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
 
 from sampletones_application.categories.elements.global_ import (
+    FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
@@ -23,7 +24,11 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_CONFIG_RECOVERY,
     TAG_GLOBAL_DIALOG_CONFIG_STATUS,
 )
-from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.file_dialogs.api import (
+    open_file_dialog,
+    save_file_dialog,
+)
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_JSON
 from sampletones_shared.application import SAMPLETONES_VERSION
@@ -44,6 +49,8 @@ _LOAD_EXCEPTIONS = (
     ValidationError,
 )
 
+DEFAULT_CONFIG_FILENAME: Final[str] = "config"
+
 
 class ConfigCoordinator:
     def __init__(
@@ -62,23 +69,27 @@ class ConfigCoordinator:
         self._layout = layout
 
     def save_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self._language_manager[
+        filepath = save_file_dialog(
+            title=self._language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.TITLE,
                 GlobalDialogTitleElements.SAVE_CONFIG,
             ],
-            width=self._layout.general.dialogs.file.width,
-            height=self._layout.general.dialogs.file.height,
-            callback=self._handle_save,
-            file_count=1,
-            default_filename="config",
-            default_path=str(self._session_manager.get_config_path()),
-        ):
-            dpg.add_file_extension(EXT_FILE_JSON)
+            initial_directory=self._session_manager.get_config_path(),
+            default_filename=DEFAULT_CONFIG_FILENAME,
+            extensions=[EXT_FILE_JSON],
+            filter_name=self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.CONFIG,
+            ],
+        )
 
-    @file_dialog_handler
+        self._handle_save(filepath)
+
+    @ignore_none_path
     def _handle_save(self, filepath: Path) -> None:
         try:
             self._config_manager.save_config_to_file(filepath)
@@ -105,22 +116,26 @@ class ConfigCoordinator:
         self._session_manager.set_config_path(filepath)
 
     def load_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self._language_manager[
+        filepath = open_file_dialog(
+            title=self._language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.TITLE,
                 GlobalDialogTitleElements.LOAD_CONFIG,
             ],
-            width=self._layout.general.dialogs.file.width,
-            height=self._layout.general.dialogs.file.height,
-            callback=self._handle_load,
-            file_count=1,
-            default_path=str(self._session_manager.get_config_path()),
-        ):
-            dpg.add_file_extension(EXT_FILE_JSON)
+            initial_directory=self._session_manager.get_config_path(),
+            extensions=[EXT_FILE_JSON],
+            filter_name=self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.CONFIG,
+            ],
+        )
 
-    @file_dialog_handler
+        self._handle_load(filepath)
+
+    @ignore_none_path
     def _handle_load(self, filepath: Path) -> None:
         try:
             self._config_manager.load_config_from_file(filepath)

@@ -1,6 +1,6 @@
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, Callable, Generator
+from typing import Any, Callable, Final, Generator, List
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
@@ -8,7 +8,9 @@ import pytest
 
 from sampletones_application.application import Application
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.utils.parallelization.background import stop_background_workers
+from sampletones_application.utils.parallelization.background import (
+    stop_background_workers,
+)
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.reconstructions import Reconstruction
 
@@ -24,10 +26,32 @@ _DPG_DISPLAY_FUNCTIONS = [
     "set_viewport_height",
     "set_viewport_title",
     "set_viewport_decorated",
+    "set_viewport_resize_callback",
     "toggle_viewport_fullscreen",
     "set_exit_callback",
     "set_primary_window",
 ]
+
+_VIEWPORT_CLIENT_WIDTH: Final[int] = 1280
+_VIEWPORT_CLIENT_HEIGHT: Final[int] = 720
+
+
+def _display_patches() -> List[Any]:
+    display_patches = [patch(f"dearpygui.dearpygui.{name}", return_value=None) for name in _DPG_DISPLAY_FUNCTIONS]
+    display_patches.append(
+        patch(
+            "dearpygui.dearpygui.get_viewport_client_width",
+            return_value=_VIEWPORT_CLIENT_WIDTH,
+        )
+    )
+    display_patches.append(
+        patch(
+            "dearpygui.dearpygui.get_viewport_client_height",
+            return_value=_VIEWPORT_CLIENT_HEIGHT,
+        )
+    )
+    display_patches.append(patch("sampletones_application.utils.callbacks.queue.CallbackQueue.start"))
+    return display_patches
 
 
 class TestGUIStartup:
@@ -40,11 +64,8 @@ class TestGUIStartup:
         dpg.destroy_context()
 
     def test_initialises_without_error(self) -> None:
-        dearpygui_patches = [patch(f"dearpygui.dearpygui.{name}", return_value=None) for name in _DPG_DISPLAY_FUNCTIONS]
-        callback_patches = [patch("sampletones_application.utils.callbacks.queue.CallbackQueue.start")]
-        all_patches = dearpygui_patches + callback_patches
         with ExitStack() as stack:
-            for p in all_patches:
+            for p in _display_patches():
                 stack.enter_context(p)
 
             Application()
@@ -53,12 +74,9 @@ class TestGUIStartup:
 @pytest.fixture
 def app() -> Generator[Any, Application, Any]:
     dpg.create_context()
-    dearpygui_patches = [patch(f"dearpygui.dearpygui.{name}", return_value=None) for name in _DPG_DISPLAY_FUNCTIONS]
-    callback_patches = [patch("sampletones_application.utils.callbacks.queue.CallbackQueue.start")]
-    all_patches = dearpygui_patches + callback_patches
     try:
         with ExitStack() as stack:
-            for p in all_patches:
+            for p in _display_patches():
                 stack.enter_context(p)
             yield Application()
     finally:

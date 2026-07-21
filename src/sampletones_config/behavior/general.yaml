@@ -1,6 +1,7 @@
 scheduling:
   delay_gui_action: 2
   delay_schedule: 12
+  delay_reconstruction_update: 1
   delay_cancel: 30
   priority_update_status: 0
   priority_gui_action: 2

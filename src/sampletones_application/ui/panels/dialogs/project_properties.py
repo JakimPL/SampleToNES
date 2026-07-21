@@ -27,7 +27,11 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.dialog_navigation import (
+    DialogKeyboardNavigator,
+    FocusStop,
+)
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.view_model.shared.project_properties import (
     ProjectPropertiesViewModel,
 )
@@ -52,11 +56,12 @@ class GUIProjectPropertiesWindow(GUIWindow):
         *,
         layout: ProjectPropertiesLayout,
         language_manager: LanguageManager,
-        shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
     ) -> None:
         self._layout = layout
-        self._shortcut_manager = shortcut_manager
+        self._router = key_router
         self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
+        self._navigator: Optional[DialogKeyboardNavigator] = None
 
         self.on_commit: Optional[Callable[[str, str, str], None]] = None
 
@@ -157,11 +162,32 @@ class GUIProjectPropertiesWindow(GUIWindow):
         ):
             self._dialog_theme.bind_to_item(input_tag)
 
+        self._install_navigation()
+
+    def _install_navigation(self) -> None:
+        """Wires Tab/Enter/Escape keyboard navigation over the form's fields and buttons."""
+        self._navigator = DialogKeyboardNavigator(
+            window_tag=self.tag,
+            stops=[
+                FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_TITLE),
+                FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR),
+                FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT),
+                FocusStop.button(TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL, self.hide),
+                FocusStop.button(TAG_SETTINGS_PROPERTIES_BUTTON_OK, self._commit),
+            ],
+            on_escape=self.hide,
+            key_router=self._router,
+        )
+        self._navigator.install()
+
+    def _teardown(self) -> None:
+        if self._navigator is not None:
+            self._navigator.dispose()
+            self._navigator = None
+
     def _create_text_field(self, tag: str, label: str, value: str) -> None:
         with labeled_field(label, self._layout.label_width):
             dpg.add_input_text(tag=tag, default_value=value, width=self._layout.input_width)
-
-        self._shortcut_manager.setup_input_focus_handlers(tag)
 
     def _create_comment_field(self) -> None:
         label_id = dpg.add_text(self._lbl_comment)
@@ -173,7 +199,6 @@ class GUIProjectPropertiesWindow(GUIWindow):
             width=self._layout.input_width,
             height=self._layout.comment_height,
         )
-        self._shortcut_manager.setup_input_focus_handlers(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT)
 
     def _create_metadata(self) -> None:
         self._create_metadata_row(self._lbl_created, self._created_text)

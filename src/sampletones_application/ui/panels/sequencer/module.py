@@ -24,7 +24,6 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.sequencer.settings import (
@@ -48,7 +47,6 @@ class GUISequencerModulePanel(GUIPanel):
         label_width: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
-        shortcut_manager: ShortcutManager,
         initial_collapsed: bool = False,
     ) -> None:
         self._initial_settings = initial_settings
@@ -56,7 +54,6 @@ class GUISequencerModulePanel(GUIPanel):
         self._input_width = input_width
         self._label_width = label_width
         self._status_bar = status_bar
-        self._shortcut_manager = shortcut_manager
         self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
         self._rows_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_ROWS}{SUF_HANDLER_REGISTRY}"
 
@@ -188,8 +185,6 @@ class GUISequencerModulePanel(GUIPanel):
             self._rows_handler_tag,
             self._on_rows_per_pattern_input,
         )
-        self._shortcut_manager.setup_input_focus_handlers(TAG_SEQUENCER_MODULE_INPUT_TEMPO)
-        self._shortcut_manager.setup_input_focus_handlers(TAG_SEQUENCER_MODULE_INPUT_SPEED)
         show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._tpl_rows_tooltip)
         self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._msg_status_input)
         self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
@@ -216,7 +211,6 @@ class GUISequencerModulePanel(GUIPanel):
         with dpg.item_handler_registry(tag=handler_tag):
             dpg.add_item_deactivated_after_edit_handler(callback=callback)
 
-        self._shortcut_manager.attach_focus_tracking(handler_tag)
         dpg.bind_item_handler_registry(input_tag, handler_tag)
 
     def _on_nes_frequency_input(self, sender: Sender, app_data: int) -> None:

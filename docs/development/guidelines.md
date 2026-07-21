@@ -30,6 +30,8 @@
 1. If new code duplicates existing logic, extract the shared rule first and make both call sites use it.
 1. Do not overload with a single module with too many different responsibilities.
 1. Prefer subpackages over flatten directory structure.
+1. Isolate platform-, desktop-, or external-tool-specific behaviour behind a `Protocol` with one implementation per target, selected by a runtime factory that probes availability and environment. Callers depend on the Protocol and must not branch on platform themselves.
+1. Wrap a third-party library or OS tool whose behaviour differs across platforms behind our own typed interface, and encode each quirk inside the matching implementation. A comment naming the third-party behaviour is warranted there.
 
 ## Type Hints
 

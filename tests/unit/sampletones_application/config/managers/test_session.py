@@ -115,6 +115,12 @@ class TestSessionManagerPaths:
         result = session.get_reconstruction_path()
         assert isinstance(result, Path)
 
+    def test_set_and_get_audio_input_path(self, tmp_path: Path) -> None:
+        session = SessionManager()
+        session.set_audio_input_path(tmp_path / "clip.wav")
+        result = session.get_audio_input_path()
+        assert isinstance(result, Path)
+
     def test_set_and_get_audio_path(self, tmp_path: Path) -> None:
         session = SessionManager()
         session.set_audio_path(tmp_path / "audio.wav")

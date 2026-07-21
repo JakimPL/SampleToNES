@@ -128,6 +128,12 @@ TAG_GLOBAL_THEME_DANGER_BUTTON = TagName(
     Widget.THEME,
     "danger_button",
 )
+TAG_GLOBAL_THEME_FOCUSED_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "focused_button",
+)
 TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -194,6 +200,12 @@ TAG_GLOBAL_THEME_PLAYER_TOOLBAR = TagName(
     Widget.THEME,
     "player_toolbar",
 )
+TAG_GLOBAL_THEME_PLAYER_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "player_button",
+)
 TAG_GLOBAL_THEME_CHANNEL_PULSE1 = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -236,11 +248,11 @@ TAG_GLOBAL_THEME_TABLE = TagName(
     Widget.THEME,
     "table",
 )
-TAG_GLOBAL_THEME_PITCH_STEPPER = TagName(
+TAG_GLOBAL_THEME_PLUS_MINUS_BUTTONS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.THEME,
-    "pitch_stepper",
+    "plus_minus_buttons",
 )
 TAG_GLOBAL_THEME_TOOLTIP = TagName(
     Page.GLOBAL,
@@ -566,6 +578,12 @@ TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY = TagName(
     Widget.MENU,
     "item_playback_play",
 )
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_FRAME = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_play_from_frame",
+)
 TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -626,11 +644,11 @@ TAG_GLOBAL_TAB_INSTRUCTIONS = TagName(
     Widget.TAB,
     "instructions",
 )
-TAG_GLOBAL_TAB_RECONSTRUCTIONS = TagName(
+TAG_GLOBAL_TAB_RECONSTRUCTION = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.TAB,
-    "reconstructions",
+    "reconstruction",
 )
 TAG_GLOBAL_TAB_SEQUENCER = TagName(
     Page.GLOBAL,
@@ -638,14 +656,9 @@ TAG_GLOBAL_TAB_SEQUENCER = TagName(
     Widget.TAB,
     "sequencer",
 )
-TAG_GLOBAL_HANDLER_FOCUS = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.HANDLER,
-    "focus",
-)
 
 SUF_BUTTON = f"{TAG_SEPARATOR}button"
+SUF_BUTTONS = f"{TAG_SEPARATOR}buttons"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}{TAG_SEPARATOR}copy"
 SUF_BUTTON_OK = f"{SUF_BUTTON}{TAG_SEPARATOR}ok"
 SUF_BUTTON_SAVE = f"{SUF_BUTTON}{TAG_SEPARATOR}save"
@@ -660,7 +673,6 @@ SUF_HANDLER_REGISTRY = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}registry"
 SUF_HANDLER_STATUS = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}status"
 SUF_HANDLER_FOCUS = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}focus"
 SUF_HANDLER_NODE = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}node"
-SUF_HANDLER_KEY = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}key"
 SUF_HANDLER_DETAIL_TOOLTIP = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}detail_tooltip"
 SUF_LABEL = f"{TAG_SEPARATOR}label"
 SUF_PATH = f"{TAG_SEPARATOR}path"

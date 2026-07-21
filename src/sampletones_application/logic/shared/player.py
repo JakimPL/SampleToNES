@@ -65,6 +65,10 @@ class PlayerLogic(CallbackMixin):
     def is_paused(self) -> bool:
         return self._audio_player.is_paused
 
+    def is_engaged(self) -> bool:
+        """Whether this player owns the live output, sounding or held paused."""
+        return self._audio_player.is_playing
+
     def _on_position_changed(self, position: int) -> None:
         self._emit_view()
         self.call(self.on_position_changed, position)

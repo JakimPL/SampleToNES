@@ -1,11 +1,10 @@
 from pathlib import Path
 from typing import Optional
 
-import dearpygui.dearpygui as dpg
-
 from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
+    FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
@@ -21,11 +20,22 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_PROJECT_SAVED,
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
 )
-from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.file_dialogs.api import (
+    open_file_dialog,
+    save_file_dialog,
+)
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_MODULE, EXT_FILE_PROJECT
-from sampletones_shared.constants.project import DEFAULT_MODULE_FILENAME, DEFAULT_PROJECT_FILENAME
-from sampletones_shared.exceptions import LoadProjectError, SampleToNESError, SerializationError
+from sampletones_shared.constants.project import (
+    DEFAULT_MODULE_FILENAME,
+    DEFAULT_PROJECT_FILENAME,
+)
+from sampletones_shared.exceptions import (
+    LoadProjectError,
+    SampleToNESError,
+    SerializationError,
+)
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
 from sampletones_shared.utils.system.paths import get_directory
@@ -111,6 +121,7 @@ class ProjectCoordinator:
     def close_with_confirmation(self) -> None:
         if not self._project_controller.is_open:
             return
+
         if self.is_unsaved:
             self._dialogs.show_save_confirmation(
                 tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
@@ -133,68 +144,74 @@ class ProjectCoordinator:
             ok_label=self._label(DialogElements.EXIT),
         )
 
-    def save(self) -> None:
+    def save(self) -> bool:
+        """Saves the project to its current file, prompting for one when it has none.
+
+        Reports whether the project was written, so a caller waiting on the save (the exit and
+        close prompts) proceeds only once it lands on disk and holds when the user cancels.
+        """
         filepath = self._session_manager.current_project
         if filepath is None:
-            self.save_as_dialog()
-        else:
-            self._save(filepath)
+            return self.save_as_dialog()
 
-    def save_as_dialog(self) -> None:
+        return self._save(filepath)
+
+    def save_as_dialog(self) -> bool:
+        """Prompts for a destination and saves the project there, reporting whether it was written."""
         path = self._session_manager.get_project_path()
         filename = path.name if path.is_file() else DEFAULT_PROJECT_FILENAME
         directory = get_directory(path)
-        with dpg.file_dialog(
-            label=self._title(GlobalDialogTitleElements.SAVE_PROJECT),
-            width=self._layout.general.dialogs.file.width,
-            height=self._layout.general.dialogs.file.height,
-            callback=self._handle_save_as,
-            file_count=1,
+        filepath = save_file_dialog(
+            title=self._title(GlobalDialogTitleElements.SAVE_PROJECT),
+            initial_directory=directory,
             default_filename=filename,
-            default_path=str(directory),
-        ):
-            dpg.add_file_extension(EXT_FILE_PROJECT)
+            extensions=[EXT_FILE_PROJECT],
+            filter_name=self._filter_name(FileFilterElements.PROJECT),
+        )
+
+        return self._handle_save_as(filepath)
+
+    def _get_project_filename(self) -> str:
+        return f"{self.project_name}{EXT_FILE_MODULE}" if self.project_name else DEFAULT_MODULE_FILENAME
 
     def export_module_dialog(self) -> None:
         if not self._project_controller.is_open:
             return
 
         path = self._session_manager.get_project_path()
-        filename = f"{self.project_name}{EXT_FILE_MODULE}" if self.project_name else DEFAULT_MODULE_FILENAME
+        filename = self._get_project_filename()
         directory = get_directory(path)
-        with dpg.file_dialog(
-            label=self._title(GlobalDialogTitleElements.EXPORT_MODULE),
-            width=self._layout.general.dialogs.file.width,
-            height=self._layout.general.dialogs.file.height,
-            callback=self._handle_export_module,
-            file_count=1,
+        filepath = save_file_dialog(
+            title=self._title(GlobalDialogTitleElements.EXPORT_MODULE),
+            initial_directory=directory,
             default_filename=filename,
-            default_path=str(directory),
-        ):
-            dpg.add_file_extension(EXT_FILE_MODULE)
+            extensions=[EXT_FILE_MODULE],
+            filter_name=self._filter_name(FileFilterElements.MODULE),
+        )
+
+        self._handle_export_module(filepath)
 
     def _open_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self._title(GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT),
-            width=self._layout.general.dialogs.file.width,
-            height=self._layout.general.dialogs.file.height,
-            callback=self._handle_open,
-            file_count=1,
-            default_path=str(self._session_manager.get_project_path()),
-        ):
-            dpg.add_file_extension(EXT_FILE_PROJECT)
+        filepath = open_file_dialog(
+            title=self._title(GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT),
+            initial_directory=self._session_manager.get_project_path(),
+            extensions=[EXT_FILE_PROJECT],
+            filter_name=self._filter_name(FileFilterElements.PROJECT),
+        )
 
-    @file_dialog_handler
+        self._handle_open(filepath)
+
+    @ignore_none_path
     def _handle_open(self, filepath: Path) -> None:
         self._session_manager.set_project_path(filepath.parent)
         self._load(filepath)
 
-    @file_dialog_handler
-    def _handle_save_as(self, filepath: Path) -> None:
+    @ignore_none_path(default=False)
+    def _handle_save_as(self, filepath: Path) -> bool:
         self._session_manager.set_project_path(filepath.parent)
-        self._save(filepath)
+        return self._save(filepath)
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_export_module(self, filepath: Path) -> None:
         self._export_module(filepath)
 
@@ -218,7 +235,7 @@ class ProjectCoordinator:
         self._session_manager.set_current_project(filepath)
         self._on_tab_switch(Tab.SEQUENCER)
 
-    def _save(self, filepath: Path) -> None:
+    def _save(self, filepath: Path) -> bool:
         try:
             self._project_controller.save(filepath)
         except (SerializationError, OSError) as exception:
@@ -227,7 +244,7 @@ class ProjectCoordinator:
                 exception,
                 self._message(GlobalMessageElements.PROJECT_SAVE_FAILED),
             )
-            return
+            return False
 
         self._session_manager.set_current_project(filepath)
         self._dialogs.show_info(
@@ -235,6 +252,7 @@ class ProjectCoordinator:
             self._message(GlobalMessageElements.PROJECT_SAVED_SUCCESSFULLY),
             self._title(GlobalDialogTitleElements.PROJECT_SAVED),
         )
+        return True
 
     def _export_module(self, filepath: Path) -> None:
         try:
@@ -291,3 +309,6 @@ class ProjectCoordinator:
 
     def _label(self, element: AbstractElement) -> str:
         return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.LABEL, element]
+
+    def _filter_name(self, element: AbstractElement) -> str:
+        return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.FILTER, element]

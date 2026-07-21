@@ -30,7 +30,6 @@ from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core import paths
 from sampletones_core.structures.tree import (
@@ -73,7 +72,6 @@ class GUIExplorerPanel(GUITreePanel):
         self,
         explorer_logic: ExplorerLogicProtocol,
         tree_logic: TreeLogicProtocol,
-        shortcut_manager: ShortcutManager,
         *,
         scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
@@ -82,7 +80,6 @@ class GUIExplorerPanel(GUITreePanel):
         initial_collapsed: bool = False,
     ) -> None:
         self._explorer_logic = explorer_logic
-        self.shortcut_manager = shortcut_manager
 
         self._lbl_section = language_manager[
             Page.MAIN,
@@ -150,6 +147,18 @@ class GUIExplorerPanel(GUITreePanel):
             TextType.MESSAGE,
             ExplorerElements.STATUS_NODE_AUDIO,
         ]
+        self._msg_status_refresh = language_manager[
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.MESSAGE,
+            ExplorerElements.STATUS_REFRESH,
+        ]
+        self._msg_status_collapse_all = language_manager[
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.MESSAGE,
+            ExplorerElements.STATUS_COLLAPSE_ALL,
+        ]
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
@@ -166,7 +175,6 @@ class GUIExplorerPanel(GUITreePanel):
             tag=TAG_MAIN_EXPLORER_PANEL,
             tree_tag=TAG_MAIN_EXPLORER_TREE,
             tree_logic=tree_logic,
-            shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
@@ -240,10 +248,12 @@ class GUIExplorerPanel(GUITreePanel):
                 width=-1,
                 callback=self.collapse_all,
             )
+        self._status_bar.bind_to_item(TAG_MAIN_EXPLORER_BUTTON_REFRESH, self._msg_status_refresh)
+        self._status_bar.bind_to_item(TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL, self._msg_status_collapse_all)
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE):
+        with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE, horizontal_scrollbar=True):
             with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_section,

@@ -34,7 +34,6 @@ from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -49,11 +48,12 @@ from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 
 class GUIBrowserPanel(GUITreePanel):
+    _MONOSPACE_CONFIG_NODES: bool = True
+
     def __init__(
         self,
         tree: Tree,
         tree_logic: TreeLogicProtocol,
-        shortcut_manager: ShortcutManager,
         *,
         scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
@@ -76,6 +76,12 @@ class GUIBrowserPanel(GUITreePanel):
             Panel.BROWSER,
             TextType.LABEL,
             ReconstructionsBrowserElements.REFRESH_BUTTON,
+        ]
+        self._msg_status_refresh = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.STATUS_REFRESH,
         ]
         self._lbl_context_load = language_manager[
             Page.RECONSTRUCTIONS,
@@ -109,7 +115,6 @@ class GUIBrowserPanel(GUITreePanel):
             tag=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
             tree_tag=TAG_RECONSTRUCTIONS_BROWSER_TREE,
             tree_logic=tree_logic,
-            shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
                 Page.GLOBAL,
@@ -175,10 +180,14 @@ class GUIBrowserPanel(GUITreePanel):
                 callback=self.rebuild_tree,
                 theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
+        self._status_bar.bind_to_item(
+            TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+            self._msg_status_refresh,
+        )
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE):
+        with dpg.child_window(tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE, horizontal_scrollbar=True):
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_reconstructions,

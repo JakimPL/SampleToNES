@@ -144,6 +144,24 @@ class TestApplicationStateManagerLastPaths:
         manager.set_reconstruction_path(tmp_path / "rec.json")
         assert isinstance(manager.get_reconstruction_path(), Path)
 
+    def test_set_audio_input_path_stores_directory(self, tmp_path: Path) -> None:
+        manager = ApplicationStateManager()
+        manager.set_audio_input_path(tmp_path / "clip.wav")
+        assert isinstance(manager.get_audio_input_path(), Path)
+
+    def test_audio_input_and_reconstruction_paths_are_independent(self, tmp_path: Path) -> None:
+        manager = ApplicationStateManager()
+        reconstruction_directory = tmp_path / "reconstructions"
+        audio_directory = tmp_path / "audio"
+        reconstruction_directory.mkdir()
+        audio_directory.mkdir()
+
+        manager.set_reconstruction_path(reconstruction_directory / "rec.stn")
+        manager.set_audio_input_path(audio_directory / "clip.wav")
+
+        assert manager.get_reconstruction_path() == reconstruction_directory
+        assert manager.get_audio_input_path() == audio_directory
+
     def test_set_audio_path_stores_directory(self, tmp_path: Path) -> None:
         manager = ApplicationStateManager()
         manager.set_audio_path(tmp_path / "audio.wav")

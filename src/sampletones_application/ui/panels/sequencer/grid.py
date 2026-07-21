@@ -6,10 +6,7 @@ from sampletones_application.categories.elements.sequencer import SequencerGridE
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.tags.general import (
-    SUF_HANDLER_KEY,
-    SUF_HANDLER_REGISTRY,
-)
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
@@ -42,10 +39,14 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.themes.inline import create_selectable_text_theme
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.color import with_alpha_fraction
 from sampletones_application.utils.gui.dpg import dpg_delete_children
-from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, SIGN_KEYS
-from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_PANEL,
+    KeyEvent,
+    KeyRouter,
+)
+from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS, Modifier
+from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
@@ -57,7 +58,9 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id
+from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from sampletones_shared.types.application import Sender
+from sampletones_shared.utils.color import with_alpha_fraction
 
 OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[GeneratorName], SubColumn], None]
@@ -65,10 +68,10 @@ OnSetRowCallback = Callable[[int, Optional[GeneratorName], Optional[str], Option
 OnSetNoteOffCallback = Callable[[int, Optional[GeneratorName]], None]
 OnCellSelectedCallback = Callable[[int, Optional[GeneratorName]], None]
 OnPlayFromRowCallback = Callable[[int], None]
+OnPlayFromFrameCallback = Callable[[], None]
 OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
 
-SEMITONE_STEP: Final[int] = 1
-OCTAVE_STEP: Final[int] = 12
+
 VOLUME_FINE_STEP: Final[int] = 1
 VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
 
@@ -81,12 +84,12 @@ class GUISequencerGridPanel(GUIPanel):
         *,
         layout: SequencerLayout,
         language_manager: LanguageManager,
-        shortcut_manager: ShortcutManager,
+        key_router: KeyRouter,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._language_manager = language_manager
-        self._shortcut_manager = shortcut_manager
+        self._router = key_router
 
         widths = layout.tracker.subcolumn_widths
         self._subcolumn_widths: Dict[SubColumn, int] = {
@@ -96,7 +99,6 @@ class GUISequencerGridPanel(GUIPanel):
         }
 
         self._item_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_REGISTRY}"
-        self._key_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_KEY}"
         self._cell_handler_tag = f"{TAG_SEQUENCER_GRID_TABLE_TRACKER}{SUF_HANDLER_REGISTRY}"
 
         self._rows: Dict[Optional[int], Sender] = {}
@@ -115,6 +117,7 @@ class GUISequencerGridPanel(GUIPanel):
         self.on_set_note_off: Optional[OnSetNoteOffCallback] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
         self.on_play_from_row: Optional[OnPlayFromRowCallback] = None
+        self.on_play_from_frame: Optional[OnPlayFromFrameCallback] = None
         self.on_adjust_transpose: Optional[OnAdjustCallback] = None
         self.on_adjust_volume: Optional[OnAdjustCallback] = None
 
@@ -173,6 +176,12 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._load_context_labels(language_manager)
 
+        self._sc_play_from_here = Shortcut(
+            dpg.mvKey_Spacebar,
+            (Modifier.CTRL, Modifier.SHIFT),
+        ).get_display_string()
+        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)).get_display_string()
+
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,
             height=-1,
@@ -184,6 +193,7 @@ class GUISequencerGridPanel(GUIPanel):
             return language_manager[Page.SEQUENCER, Panel.GRID, TextType.LABEL, element]
 
         self._lbl_context_play = label(SequencerGridElements.CONTEXT_PLAY)
+        self._lbl_context_play_from_frame = label(SequencerGridElements.CONTEXT_PLAY_FROM_FRAME)
         self._lbl_context_note_off = label(SequencerGridElements.CONTEXT_NOTE_OFF)
         self._lbl_context_set_instrument = label(SequencerGridElements.CONTEXT_SET_INSTRUMENT)
         self._lbl_context_no_samples = label(SequencerGridElements.CONTEXT_NO_SAMPLES)
@@ -212,11 +222,11 @@ class GUISequencerGridPanel(GUIPanel):
             )
         with dpg.item_handler_registry(tag=self._cell_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
-        with dpg.handler_registry(tag=self._key_handler_tag):
-            dpg.add_key_press_handler(
-                parent=self._key_handler_tag,
-                callback=self._on_key_pressed,
-            )
+        self._router.register(
+            self._on_key_pressed,
+            priority=PRIORITY_PANEL,
+            active=self._keys_active,
+        )
 
     def _create_subcolumn_themes(self) -> None:
         subcolumn_colors = self._layout.colors.text
@@ -710,7 +720,16 @@ class GUISequencerGridPanel(GUIPanel):
             header = dpg.add_text(tracker_display.indexed_label(row_index, self._column_labels[generator]))
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
-            add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_from_row, row_index))
+            add_play_menu_item(
+                self._lbl_context_play,
+                lambda: self.call(self.on_play_from_row, row_index),
+                shortcut=self._sc_play_from_here,
+            )
+            add_play_menu_item(
+                self._lbl_context_play_from_frame,
+                lambda: self.call(self.on_play_from_frame),
+                shortcut=self._sc_play_from_frame,
+            )
             dpg.add_separator()
             self._add_instrument_submenu(row_index, generator)
             dpg.add_menu_item(
@@ -753,8 +772,8 @@ class GUISequencerGridPanel(GUIPanel):
         for label, delta in (
             (self._lbl_context_transpose_up, SEMITONE_STEP),
             (self._lbl_context_transpose_down, -SEMITONE_STEP),
-            (self._lbl_context_transpose_octave_up, OCTAVE_STEP),
-            (self._lbl_context_transpose_octave_down, -OCTAVE_STEP),
+            (self._lbl_context_transpose_octave_up, OCTAVE_SEMITONES),
+            (self._lbl_context_transpose_octave_down, -OCTAVE_SEMITONES),
         ):
             dpg.add_menu_item(
                 label=label,
@@ -840,14 +859,34 @@ class GUISequencerGridPanel(GUIPanel):
             callback=lambda: self.call(self.on_clear_row, row_index, None),
         )
 
-    def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
-        if self._shortcut_manager.is_input_focused:
-            return
+    def _keys_active(self) -> bool:
+        """Whether the grid owns the next key: its cursor is set and no field holds the keyboard.
 
-        if self._input_state.cursor is None:
-            return
+        A focused field keeps the keyboard, so the grid stands down while the user types into an
+        input. A modal dialog claims keys at a higher priority in the router, so the grid carries no
+        modal check of its own.
+        """
+        return self._input_state.cursor is not None and not self._router.is_field_focused
 
-        match app_data:
+    def _on_key_pressed(self, event: KeyEvent) -> bool:
+        """Applies a tracker key to the active cell, reporting whether the grid consumed it.
+
+        A modifier-carrying press belongs to the application's global shortcuts, so the grid
+        yields it to the lower-priority scopes and keeps the plain keys for tracker editing.
+        Ctrl+Shift+Space is the exception: it plays the song from the cursor's row.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return False
+
+        if event.ctrl and event.shift and event.key == dpg.mvKey_Spacebar:
+            self.call(self.on_play_from_row, cursor.row)
+            return True
+
+        if event.ctrl:
+            return False
+
+        match event.key:
             case dpg.mvKey_Up:
                 self._move_row(-1)
             case dpg.mvKey_Down:
@@ -857,16 +896,15 @@ class GUISequencerGridPanel(GUIPanel):
             case dpg.mvKey_Right:
                 self._move_subcolumn(1)
             case dpg.mvKey_Tab:
-                shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
-                self._move_column(-1 if shift_held else 1)
+                self._move_column(-1 if event.shift else 1)
             case dpg.mvKey_Home:
                 self._jump_to_row(0)
             case dpg.mvKey_End:
                 self._jump_to_row(self._current_row_count - 1)
-            case dpg.mvKey_Prior:
-                self._move_row(-self._layout.tracker.page_size)
-            case dpg.mvKey_Next:
-                self._move_row(self._layout.tracker.page_size)
+            case _ if event.key == KEY_PAGE_UP:
+                self._page(-self._layout.tracker.page_size)
+            case _ if event.key == KEY_PAGE_DOWN:
+                self._page(self._layout.tracker.page_size)
             case dpg.mvKey_Return:
                 self._move_row(1)
             case dpg.mvKey_Delete:
@@ -876,9 +914,14 @@ class GUISequencerGridPanel(GUIPanel):
                 self._clear_row()
                 self._move_row(-1)
             case dpg.mvKey_Escape:
+                if not self._input_state.pending:
+                    return False
+
                 self._apply_state(self._input_state.cancel())
             case _:
-                self._handle_printable_key(app_data)
+                return self._handle_printable_key(event.key)
+
+        return True
 
     def _move_row(self, delta: int) -> None:
         self._apply_state(
@@ -888,6 +931,11 @@ class GUISequencerGridPanel(GUIPanel):
             )
         )
 
+    def _page(self, delta: int) -> None:
+        """Moves the cursor a page of rows, then scrolls it back into view."""
+        self._move_row(delta)
+        self._scroll_cursor_into_view()
+
     def _jump_to_row(self, index: int) -> None:
         self._apply_state(
             self._committed_state().navigate_row(
@@ -896,12 +944,34 @@ class GUISequencerGridPanel(GUIPanel):
                 absolute=True,
             )
         )
+        self._scroll_cursor_into_view()
 
     def _move_subcolumn(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_subcolumn(delta))
 
     def _move_column(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_column_by(delta))
+
+    def _scroll_cursor_into_view(self) -> None:
+        """Scrolls the tracker so the cursor's row stays on screen after a page or Home/End jump.
+
+        The frame's rows all live in one scrolling table, so a jump wider than the visible band
+        moves the cursor past it. The scroll is set from the cursor's position within the frame,
+        which keeps the row it lands on in view.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None or self._current_row_count <= 1:
+            return
+
+        if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
+            return
+
+        scroll_max = dpg.get_y_scroll_max(TAG_SEQUENCER_GRID_TABLE_TRACKER)
+        if scroll_max <= 0:
+            return
+
+        fraction = cursor.row / (self._current_row_count - 1)
+        dpg.set_y_scroll(TAG_SEQUENCER_GRID_TABLE_TRACKER, fraction * scroll_max)
 
     def _clear_row(self) -> None:
         state, clear_action = self._input_state.clear()
@@ -920,10 +990,10 @@ class GUISequencerGridPanel(GUIPanel):
 
         return state
 
-    def _handle_printable_key(self, key: int) -> None:
+    def _handle_printable_key(self, key: int) -> bool:
         char = HEX_KEYS.get(key) or SIGN_KEYS.get(key)
         if char is None:
-            return
+            return False
 
         new_state, edit_action = self._input_state.type_char(char)
         if edit_action is not None:
@@ -931,6 +1001,7 @@ class GUISequencerGridPanel(GUIPanel):
             new_state = new_state.navigate_row(1, self._current_row_count)
 
         self._apply_state(new_state)
+        return True
 
     def _on_row_number_clicked(
         self,

@@ -140,23 +140,11 @@ TAG_SEQUENCER_ORDER_WINDOW = TagName(
     Widget.WINDOW,
     "order",
 )
-TAG_SEQUENCER_ORDER_BUTTON_ADD = TagName(
+TAG_SEQUENCER_ORDER_BUTTON_PAIR = TagName(
     Page.SEQUENCER,
     Panel.ORDER,
     Widget.BUTTON,
-    "add",
-)
-TAG_SEQUENCER_ORDER_BUTTON_REMOVE = TagName(
-    Page.SEQUENCER,
-    Panel.ORDER,
-    Widget.BUTTON,
-    "remove",
-)
-TAG_SEQUENCER_ORDER_HANDLER_KEY = TagName(
-    Page.SEQUENCER,
-    Panel.ORDER,
-    Widget.HANDLER,
-    "key",
+    "pair",
 )
 TAG_SEQUENCER_INSTRUMENTS_PANEL = TagName(
     Page.SEQUENCER,
@@ -181,12 +169,6 @@ TAG_SEQUENCER_INSTRUMENTS_THEME_ROW = TagName(
     Panel.INSTRUMENTS,
     Widget.THEME,
     "row",
-)
-TAG_SEQUENCER_INSTRUMENTS_HANDLER_KEY = TagName(
-    Page.SEQUENCER,
-    Panel.INSTRUMENTS,
-    Widget.HANDLER,
-    "key",
 )
 TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE = TagName(
     Page.SEQUENCER,

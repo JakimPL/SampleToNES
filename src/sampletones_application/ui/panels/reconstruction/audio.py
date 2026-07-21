@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
@@ -8,7 +7,6 @@ from sampletones_application.categories.elements.global_ import (
 )
 from sampletones_application.categories.elements.reconstructions import (
     ReconstructionPanelElements,
-    ReconstructionsInstrumentsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -25,8 +23,6 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.color import RGBA
-from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
@@ -34,9 +30,8 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 from sampletones_core.constants.enums import AudioSourceType
-from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import PathCallback
+from sampletones_shared.utils.color import RGBA
 
 
 class GUIReconstructionAudioPanel(GUIPanel):
@@ -45,8 +40,6 @@ class GUIReconstructionAudioPanel(GUIPanel):
         *,
         path_colors: PathColors,
         path_status_color: RGBA,
-        file_dialog_width: int,
-        file_dialog_height: int,
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -54,16 +47,11 @@ class GUIReconstructionAudioPanel(GUIPanel):
         self._status_bar = status_bar
         self._path_colors = path_colors
         self._path_status_color = path_status_color
-        self._file_dialog_width = file_dialog_width
-        self._file_dialog_height = file_dialog_height
 
         self._reconstruction_file_path: GUIPathText
         self._original_audio_path: GUIPathText
 
         self.on_audio_source_changed: Optional[Callable[[AudioSourceType], None]] = None
-        self.on_export_instrument_confirmed: Optional[PathCallback] = None
-        self.on_export_instruments_confirmed: Optional[PathCallback] = None
-        self.on_export_wav_confirmed: Optional[PathCallback] = None
 
         self._lbl_audio_source = language_manager[
             Page.RECONSTRUCTIONS,
@@ -83,24 +71,6 @@ class GUIReconstructionAudioPanel(GUIPanel):
             Panel.RECONSTRUCTION,
             TextType.LABEL,
             ReconstructionPanelElements.RECONSTRUCTION_RADIO,
-        ]
-        self._ttl_export_wav = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_WAV_DIALOG,
-        ]
-        self._ttl_export_instrument = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_DIALOG,
-        ]
-        self._ttl_export_instruments = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_DIALOG,
         ]
 
         super().__init__(
@@ -162,43 +132,6 @@ class GUIReconstructionAudioPanel(GUIPanel):
         )
         if not view_model.audio_source_enabled:
             dpg_set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, self._lbl_reconstruction_radio)
-
-    def open_export_instrument_dialog(self, default_filename: str, default_path: str) -> None:
-        with dpg.file_dialog(
-            label=self._ttl_export_instrument,
-            width=self._file_dialog_width,
-            height=self._file_dialog_height,
-            callback=self._handle_export_instrument,
-            file_count=1,
-            default_filename=default_filename,
-            default_path=default_path,
-        ):
-            dpg.add_file_extension(EXT_FILE_INSTRUMENT)
-
-    def open_export_instruments_dialog(self, default_filename: str, default_path: str) -> None:
-        with dpg.file_dialog(
-            label=self._ttl_export_instruments,
-            width=self._file_dialog_width,
-            height=self._file_dialog_height,
-            callback=self._handle_export_instruments,
-            file_count=1,
-            directory_selector=True,
-            default_filename=default_filename,
-            default_path=default_path,
-        ):
-            pass
-
-    def open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
-        with dpg.file_dialog(
-            label=self._ttl_export_wav,
-            width=self._file_dialog_width,
-            height=self._file_dialog_height,
-            callback=self._handle_wav_export,
-            file_count=1,
-            default_filename=default_filename,
-            default_path=default_path,
-        ):
-            dpg.add_file_extension(EXT_FILE_WAVE)
 
     def _render_path(self, path_widget: GUIPathText, view_model: ReconstructionPathViewModel) -> None:
         match view_model.state:
@@ -264,15 +197,3 @@ class GUIReconstructionAudioPanel(GUIPanel):
             audio_source = AudioSourceType.RECONSTRUCTION
 
         self.call(self.on_audio_source_changed, audio_source)
-
-    @file_dialog_handler
-    def _handle_export_instrument(self, filepath: Path) -> None:
-        self.call(self.on_export_instrument_confirmed, filepath)
-
-    @file_dialog_handler
-    def _handle_export_instruments(self, filepath: Path) -> None:
-        self.call(self.on_export_instruments_confirmed, filepath)
-
-    @file_dialog_handler
-    def _handle_wav_export(self, filepath: Path) -> None:
-        self.call(self.on_export_wav_confirmed, filepath)

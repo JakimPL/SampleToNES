@@ -126,6 +126,12 @@ class ApplicationStateManager:
     def get_reconstruction_path(self) -> Path:
         return self.state.last_paths.reconstruction
 
+    def set_audio_input_path(self, path: Path) -> None:
+        self.state.last_paths.audio_input = get_directory(path)
+
+    def get_audio_input_path(self) -> Path:
+        return self.state.last_paths.audio_input
+
     def set_audio_path(self, path: Path) -> None:
         self.state.last_paths.audio = get_directory(path)
 

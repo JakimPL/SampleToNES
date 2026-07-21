@@ -5,8 +5,14 @@ components:
   - item_type: All
     entries:
       - type: color
-        key: TabSelected
+        key: Tab
         value: .recess
+      - type: color
+        key: TabHovered
+        value: .ground/0.75
+      - type: color
+        key: TabSelected
+        value: .ground
       - type: color
         key: TabDimmedSelected
         value: .recess

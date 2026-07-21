@@ -28,7 +28,6 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
@@ -43,7 +42,7 @@ from sampletones_core.configs.display import (
 from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import PathCallback, VoidCallback
+from sampletones_shared.types.callback import VoidCallback
 
 
 class GUIAdvancedSettingsPanel(GUIPanel):
@@ -55,8 +54,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         button_height: int,
         input_width: int,
         label_width: int,
-        file_dialog_width: int,
-        file_dialog_height: int,
         max_workers_minimum: int,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -64,7 +61,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         initial_collapsed: bool = False,
     ) -> None:
         self.on_advanced_settings_changed: Optional[Callable[[AdvancedSettingsUpdate], None]] = None
-        self.on_library_path_memorized: Optional[PathCallback] = None
+        self.on_select_library_directory: Optional[VoidCallback] = None
+        self.on_select_output_directory: Optional[VoidCallback] = None
         self.on_update_library_directory: Optional[VoidCallback] = None
         self.on_update_output_directory: Optional[VoidCallback] = None
 
@@ -76,8 +74,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._button_height = button_height
         self._input_width = input_width
         self._label_width = label_width
-        self._file_dialog_width = file_dialog_width
-        self._file_dialog_height = file_dialog_height
         self._max_workers_minimum = max_workers_minimum
         self._status_bar = status_bar
         self._path_colors = path_colors
@@ -165,17 +161,17 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             TextType.MESSAGE,
             StatusElements.INPUT,
         ]
-        self._ttl_library_dialog = language_manager[
+        self._msg_status_select_library = language_manager[
             Page.MAIN,
             Panel.ADVANCED,
-            TextType.TITLE,
-            AdvancedElements.SELECT_LIBRARY_DIRECTORY,
+            TextType.MESSAGE,
+            AdvancedElements.STATUS_SELECT_LIBRARY,
         ]
-        self._ttl_output_dialog = language_manager[
+        self._msg_status_select_output = language_manager[
             Page.MAIN,
             Panel.ADVANCED,
-            TextType.TITLE,
-            AdvancedElements.SELECT_OUTPUT_DIRECTORY,
+            TextType.MESSAGE,
+            AdvancedElements.STATUS_SELECT_OUTPUT,
         ]
 
         super().__init__(
@@ -284,7 +280,11 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 label=self._lbl_select_library,
                 width=-1,
                 height=self._button_height,
-                callback=self._select_library_directory_dialog,
+                callback=self._on_select_library_directory,
+            )
+            self._status_bar.bind_to_item(
+                TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
+                self._msg_status_select_library,
             )
 
             self.library_path_text = GUIPathText(
@@ -311,7 +311,11 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 parent=TAG_MAIN_ADVANCED_GROUP_RECONSTRUCTIONS_DIRECTORY,
                 width=-1,
                 height=self._button_height,
-                callback=self._select_output_directory_dialog,
+                callback=self._on_select_output_directory,
+            )
+            self._status_bar.bind_to_item(
+                TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
+                self._msg_status_select_output,
             )
 
             self.output_path_text = GUIPathText(
@@ -339,21 +343,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             self._tooltip_max_workers,
         )
 
-    def _select_library_directory_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self._ttl_library_dialog,
-            width=self._file_dialog_width,
-            height=self._file_dialog_height,
-            callback=self._handle_select_library_directory,
-            directory_selector=True,
-            default_path=str(self._library_directory),
-        ):
-            pass
-
-    @file_dialog_handler
-    def _handle_select_library_directory(self, filepath: Path) -> None:
-        self.change_library_directory(filepath)
-        self.call(self.on_library_path_memorized, filepath)
+    def _on_select_library_directory(self) -> None:
+        self.call(self.on_select_library_directory)
 
     def change_library_directory(self, directory_path: Path) -> None:
         self._library_directory = directory_path
@@ -364,20 +355,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
         self.call(self.on_update_library_directory)
 
-    def _select_output_directory_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self._ttl_output_dialog,
-            width=self._file_dialog_width,
-            height=self._file_dialog_height,
-            callback=self._handle_select_output_directory,
-            directory_selector=True,
-            default_path=str(self._output_directory),
-        ):
-            pass
-
-    @file_dialog_handler
-    def _handle_select_output_directory(self, directory_path: Path) -> None:
-        self.change_reconstructions_directory(directory_path)
+    def _on_select_output_directory(self) -> None:
+        self.call(self.on_select_output_directory)
 
     def change_reconstructions_directory(self, directory_path: Path) -> None:
         self._output_directory = directory_path
@@ -387,6 +366,14 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             self.output_path_text.set_path(directory_path)
 
         self.call(self.on_update_output_directory)
+
+    @property
+    def library_directory(self) -> Path:
+        return self._library_directory
+
+    @property
+    def reconstructions_directory(self) -> Path:
+        return self._output_directory
 
     def update_view(self, view_model: AdvancedSettingsPanelViewModel) -> None:
         self._library_directory = view_model.library_directory

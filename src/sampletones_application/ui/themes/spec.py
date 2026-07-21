@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, List, Literal, Union
+from typing import Annotated, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -37,5 +37,5 @@ class ThemeComponentSpec(BaseModel, frozen=True):
 class ThemeSpec(BaseModel, frozen=True):
     name: str
     tag: str
-    extends: str | None = None
+    extends: Optional[str] = None
     components: List[ThemeComponentSpec]

@@ -100,11 +100,16 @@ class AudioPlayer(CallbackMixin):
 
     @property
     def is_playing(self) -> bool:
-        return self.audio_device_manager.is_playing()
+        """Whether this player owns the live output, sounding or held paused.
+
+        Engagement is read from ownership so the player reports itself active only while its own
+        audio is on the device, leaving a preview or another source's playback to their owners.
+        """
+        return self.audio_device_manager.is_owned_by(self)
 
     @property
     def is_paused(self) -> bool:
-        return self.audio_device_manager.is_paused()
+        return self.audio_device_manager.is_owned_by(self) and self.audio_device_manager.is_paused()
 
     def _notify_audio_state_changed(self) -> None:
         self.call(self.on_change_audio_state)

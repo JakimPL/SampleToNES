@@ -18,6 +18,7 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
+from sampletones_core.generators.maps import GENERATOR_CLASSES
 from sampletones_core.instructions import (
     InstructionUnion,
     get_instruction_by_type,
@@ -77,7 +78,10 @@ class Reconstruction(DataModel):
         return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
 
     @classmethod
-    def _parse_instructions(cls, data: Dict[str, SerializedData]) -> Dict[str, List[InstructionUnion]]:
+    def _parse_instructions(
+        cls,
+        data: Dict[str, SerializedData],
+    ) -> Dict[str, List[InstructionUnion]]:
         parsed_instructions = {}
         for name, instructions_data in data.items():
             instruction_class = get_instruction_by_type(instructions_data["type"])
@@ -135,7 +139,7 @@ class Reconstruction(DataModel):
             return None
 
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
-        approximation = np.sum(np.array(list(approximations.values())), axis=0)
+        approximation = cls._sum_approximations(list(approximations.values()))
 
         return cls.create(
             approximation=approximation,
@@ -153,58 +157,37 @@ class Reconstruction(DataModel):
         partial_approximation: np.ndarray,
     ) -> None:
         partial_approximation = np.trim_zeros(partial_approximation, trim="b")
-        trimmed_approximation = np.trim_zeros(self.approximation, trim="b")
-        max_length = max(len(trimmed_approximation), len(partial_approximation))
+        max_length = max(
+            len(partial_approximation),
+            *(len(np.trim_zeros(audio, trim="b")) for audio in self.approximations.values()),
+        )
 
-        array = np.zeros(max_length, dtype=np.float32)
-        array[: len(partial_approximation)] = partial_approximation
+        rendered = {
+            name: partial_approximation if name == generator_name else audio
+            for name, audio in self.approximations.items()
+        }
+        self.approximations_data = self._build_approximations_data(rendered, max_length)
+        self.instructions_data = [
+            (
+                InstructionsItem.create(generator_name=generator_name, instructions=instructions)
+                if item.generator_name == generator_name
+                else item
+            )
+            for item in self.instructions_data
+        ]
+        self._invalidate_derived_caches(self)
+        self.approximation = self._sum_approximations([item.approximation for item in self.approximations_data])
 
-        for item in self.approximations.values():
-            item_length = len(np.trim_zeros(item, trim="b"))
-            max_length = max(max_length, item_length)
-
-        new_approximations_data: List[ApproximationsItem] = []
-        for approximation in self.approximations_data:
-            if approximation.generator_name == generator_name:
-                array = pad(array, 0, max_length)
-                new_approximations_data.append(
-                    ApproximationsItem(
-                        generator_name=approximation.generator_name,
-                        approximation=array,
-                    )
-                )
-            else:
-                item_array = pad(approximation.approximation, 0, max_length)
-                new_approximations_data.append(
-                    ApproximationsItem(
-                        generator_name=approximation.generator_name,
-                        approximation=item_array,
-                    )
-                )
-
-        new_instructions_data: List[InstructionsItem] = []
-        for instruction in self.instructions_data:
-            if instruction.generator_name == generator_name:
-                new_instructions_data.append(
-                    InstructionsItem.create(
-                        generator_name=generator_name,
-                        instructions=instructions,
-                    )
-                )
-            else:
-                new_instructions_data.append(instruction)
-
-        self.approximations_data = new_approximations_data
-        self.instructions_data = new_instructions_data
-        self.__dict__.pop("approximations", None)
-        self.__dict__.pop("instructions", None)
-        approximations = list(self.approximations.values())
-        self.approximation = np.sum(np.array(approximations), axis=0)
-
-    def get_generator_approximation(self, generator_name: GeneratorName) -> np.ndarray:
+    def get_generator_approximation(
+        self,
+        generator_name: GeneratorName,
+    ) -> np.ndarray:
         return self.approximations.get(generator_name, np.array([], dtype=np.float32))
 
-    def get_generator_instructions(self, generator_name: GeneratorName) -> List[InstructionUnion]:
+    def get_generator_instructions(
+        self,
+        generator_name: GeneratorName,
+    ) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])
 
     def detach_source(self) -> None:
@@ -217,10 +200,99 @@ class Reconstruction(DataModel):
         """
         self.audio_filepath = None
 
+    def with_nes_frequency(self, nes_frequency: int) -> Reconstruction:
+        """Returns a copy retuned to ``nes_frequency`` by re-rendering its audio.
+
+        A project runs every embedded sample at one change rate, so a reconstruction joining a
+        project adopts that rate. The frozen ``config`` is rebuilt at the new rate and each
+        generator's approximation is re-synthesized from its stored instructions at the matching
+        frame length, re-timing the audio; the instructions and coefficient carry over. The
+        original instance is returned when it already runs at ``nes_frequency``.
+        """
+        if self.config.nes_frequency == nes_frequency:
+            return self
+
+        library = self.config.library.model_copy(update={"nes_frequency": nes_frequency})
+        config = self.config.model_copy(update={"library": library})
+        return self._resynthesized(config)
+
+    def _resynthesized(self, config: Config) -> Reconstruction:
+        """Re-renders every generator's approximation from its instructions at ``config``.
+
+        Each instruction spans ``config.frame_length`` samples, so re-rendering at a new frame
+        length re-times the audio. Per-generator arrays are padded to a common length and summed;
+        the mixer weight is baked into each generator's output, so a plain sum reproduces the
+        stored approximation shape. Drive is left at unity to match the regeneration path.
+        """
+        rendered: Dict[GeneratorName, np.ndarray] = {}
+        for generator_name, instructions in self.instructions.items():
+            generator = GENERATOR_CLASSES[generator_name](config, generator_name.value)
+            if instructions:
+                rendered[generator_name] = np.concatenate(
+                    [generator(instruction, save=True) for instruction in instructions]  # type: ignore[arg-type]
+                )
+            else:
+                rendered[generator_name] = np.zeros(0, dtype=np.float32)
+
+        max_length = max((len(audio) for audio in rendered.values()), default=0)
+        approximations_data = self._build_approximations_data(rendered, max_length)
+        approximation = self._sum_approximations([item.approximation for item in approximations_data])
+
+        retuned: Reconstruction = self.model_copy(
+            update={
+                "config": config,
+                "approximations_data": approximations_data,
+                "approximation": approximation,
+            }
+        )
+        self._invalidate_derived_caches(retuned)
+        return retuned
+
+    @staticmethod
+    def _sum_approximations(arrays: Sequence[np.ndarray]) -> np.ndarray:
+        """Mixes equal-length per-generator approximations into one waveform.
+
+        Returns an empty float array when no generator contributes, so a reconstruction with no
+        rendered audio still carries a valid approximation.
+        """
+        if not arrays:
+            return np.zeros(0, dtype=np.float32)
+
+        mixed: np.ndarray = np.sum(np.array(arrays), axis=0).astype(np.float32)
+        return mixed
+
+    @staticmethod
+    def _build_approximations_data(
+        rendered: Mapping[GeneratorName, np.ndarray],
+        length: int,
+    ) -> List[ApproximationsItem]:
+        """Pads each generator's audio to ``length`` and pairs it with its generator name.
+
+        A shared length lets the per-generator arrays stack and sum into the mixed approximation.
+        """
+        return [
+            ApproximationsItem(
+                generator_name=name,
+                approximation=pad(audio, 0, length),
+            )
+            for name, audio in rendered.items()
+        ]
+
+    @staticmethod
+    def _invalidate_derived_caches(reconstruction: Reconstruction) -> None:
+        """Drops the memoized per-generator views so they recompute from their backing data."""
+        reconstruction.__dict__.pop("approximations", None)
+        reconstruction.__dict__.pop("instructions", None)
+
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
         binary = load_binary(path)
-        return cls.deserialize_data(binary, source=Path(path), validation=cls.validate_metadata, fast=fast)
+        return cls.deserialize_data(
+            binary,
+            source=Path(path),
+            validation=cls.validate_metadata,
+            fast=fast,
+        )
 
     @classmethod
     def deserialize_data(

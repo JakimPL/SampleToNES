@@ -106,7 +106,7 @@ class TestHandleSave:
         config_manager.save_config_to_file.side_effect = error
         coordinator = _coordinator(config_manager)
 
-        coordinator._handle_save(0, {"file_path_name": str(tmp_path / "config.json")})
+        coordinator._handle_save(tmp_path / "config.json")
 
         coordinator._dialogs.show_error.assert_called_once()
         assert coordinator._dialogs.show_error.call_args.args[0] is error
@@ -117,6 +117,6 @@ class TestHandleSave:
         coordinator = _coordinator(config_manager)
 
         with pytest.raises(RuntimeError):
-            coordinator._handle_save(0, {"file_path_name": str(tmp_path / "config.json")})
+            coordinator._handle_save(tmp_path / "config.json")
 
         coordinator._dialogs.show_error.assert_not_called()

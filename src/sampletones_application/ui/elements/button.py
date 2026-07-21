@@ -69,6 +69,11 @@ class GUIButton:
         return cls._REGISTRY.get(tag)
 
     @classmethod
+    def hover_tag(cls, tag: str) -> str:
+        button = cls.get(tag)
+        return button.button_tag if button is not None else tag
+
+    @classmethod
     def delete(cls, tag: Sender) -> None:
         tag = dpg.get_item_alias(tag)
         if tag in cls._REGISTRY:
@@ -122,3 +127,7 @@ class GUIButton:
     @property
     def tag(self) -> str:
         return self._tag
+
+    @property
+    def button_tag(self) -> str:
+        return self._button_tag

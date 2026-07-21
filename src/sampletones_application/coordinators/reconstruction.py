@@ -1,10 +1,9 @@
 from pathlib import Path
 from typing import Callable, Optional
 
-import dearpygui.dearpygui as dpg
-
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
+    FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
@@ -14,8 +13,8 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.reconstructions import (
-    ReconstructionsTabCoordinator,
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
 )
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -31,7 +30,11 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
-from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.file_dialogs.api import (
+    open_file_dialog,
+    save_file_dialog,
+)
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
@@ -78,7 +81,7 @@ class ReconstructionCoordinator:
         self._session_manager = session_manager
         self._regeneration_service = regeneration_service
         self._audio_device_manager = audio_device_manager
-        self._reconstructions_tab: Optional[ReconstructionsTabCoordinator] = None
+        self._reconstructions_tab: Optional[ReconstructionTabCoordinator] = None
         self._dialogs = dialogs
         self._language_manager = language_manager
         self._layout = layout
@@ -94,11 +97,11 @@ class ReconstructionCoordinator:
             on_reconstruction_closed=self._on_closed,
         )
 
-    def set_reconstructions_tab(self, tab: ReconstructionsTabCoordinator) -> None:
+    def set_reconstructions_tab(self, tab: ReconstructionTabCoordinator) -> None:
         self._reconstructions_tab = tab
 
     @property
-    def _tab(self) -> ReconstructionsTabCoordinator:
+    def _tab(self) -> ReconstructionTabCoordinator:
         if self._reconstructions_tab is None:
             raise RuntimeError("set_reconstructions_tab has not been called")
 
@@ -147,23 +150,27 @@ class ReconstructionCoordinator:
             default_filename = f"{reconstruction_data.name}{EXT_FILE_RECONSTRUCTION}"
             default_path = str(self._session_manager.get_reconstruction_path())
 
-        with dpg.file_dialog(
-            label=self._language_manager[
+        filepath = save_file_dialog(
+            title=self._language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.TITLE,
                 GlobalDialogTitleElements.SAVE_RECONSTRUCTION,
             ],
-            width=self._layout.general.dialogs.file.width,
-            height=self._layout.general.dialogs.file.height,
-            callback=self._handle_save_as,
-            file_count=1,
+            initial_directory=default_path,
             default_filename=default_filename,
-            default_path=default_path,
-        ):
-            dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
+            extensions=[EXT_FILE_RECONSTRUCTION],
+            filter_name=self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.RECONSTRUCTION,
+            ],
+        )
 
-    @file_dialog_handler
+        self._handle_save_as(filepath)
+
+    @ignore_none_path
     def _handle_save_as(self, filepath: Path) -> None:
         try:
             self._reconstruction_manager.save_reconstruction_as(filepath)
@@ -200,21 +207,26 @@ class ReconstructionCoordinator:
         )
 
     def _load_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self._language_manager[
+        filepath = open_file_dialog(
+            title=self._language_manager[
                 Page.RECONSTRUCTIONS,
                 Panel.BROWSER,
                 TextType.TITLE,
                 ReconstructionsBrowserElements.LOAD_RECONSTRUCTION_DIALOG,
             ],
-            width=self._layout.general.dialogs.file.width,
-            height=self._layout.general.dialogs.file.height,
-            callback=self._handle_load,
-            file_count=1,
-            default_path=str(self._session_manager.get_reconstruction_path()),
-        ):
-            dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
+            initial_directory=self._session_manager.get_reconstruction_path(),
+            extensions=[EXT_FILE_RECONSTRUCTION],
+            filter_name=self._language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                FileFilterElements.RECONSTRUCTION,
+            ],
+        )
 
+        self._handle_load(filepath)
+
+    @ignore_none_path
     def load(self, filepath: Path) -> None:
         return self._tab.load_reconstruction(filepath)
 
@@ -289,13 +301,18 @@ class ReconstructionCoordinator:
             ],
         )
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_load(self, filepath: Path) -> None:
         self._session_manager.set_reconstruction_path(filepath.parent)
         self._tab.load_reconstruction(filepath)
 
-    def save(self, filepath: Optional[Path] = None) -> None:
-        self._reconstruction_manager.save_reconstruction(filepath)
+    def save(self, filepath: Optional[Path] = None) -> bool:
+        """Saves the open reconstruction, reporting whether it was written.
+
+        The exit and close prompts wait on this, so they proceed only once it lands on disk and
+        hold otherwise.
+        """
+        return self._reconstruction_manager.save_reconstruction(filepath)
 
     def close_with_confirmation(self) -> None:
         if self._requires_save_confirmation():
@@ -335,14 +352,18 @@ class ReconstructionCoordinator:
         data: FeatureValue,
     ) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
-        if reconstruction_data is not None:
-            self._regeneration_service.start(
-                reconstruction_data.reconstruction,
-                generator_name,
-                features,
-                feature_key,
-                data,
-            )
+        if reconstruction_data is None:
+            return
+
+        accepted = self._regeneration_service.start(
+            reconstruction_data.reconstruction,
+            generator_name,
+            features,
+            feature_key,
+            data,
+        )
+        if accepted:
+            self._set_reconstruction_dimmed(True)
 
     def on_reconstruction_loaded(self) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
@@ -395,6 +416,21 @@ class ReconstructionCoordinator:
             case ServiceCancelled():
                 logger.info("Regeneration cancelled")
 
+        self._set_reconstruction_dimmed(self._regeneration_service.is_running())
+
+    def _set_reconstruction_dimmed(self, dimmed: bool) -> None:
+        """Fades the reconstruction waveform while the regeneration worker is busy.
+
+        The dim is driven off the service's own ``is_running`` span rather than counted per
+        request, so a continuous edit stream keeps the waveform faded until the worker settles.
+        Each finished result re-reads the live span: while more work is queued it stays faded,
+        and it restores once the worker is idle.
+        """
+        if self._reconstructions_tab is None:
+            return
+
+        self._reconstructions_tab.set_reconstruction_dimmed(dimmed)
+
     def _on_state_changed(self) -> None:
         self._on_session_state_changed_callback()
 
@@ -402,7 +438,7 @@ class ReconstructionCoordinator:
         self,
         title: str,
         message: str,
-        on_save: Callback,
+        on_save: Callable[[], bool],
         on_confirm: Callback,
         ok_label: str,
     ) -> None:

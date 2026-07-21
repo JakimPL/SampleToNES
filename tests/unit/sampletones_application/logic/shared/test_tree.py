@@ -27,6 +27,7 @@ def _tree(
         scheduling = SchedulingBehavior(
             delay_gui_action=0,
             delay_schedule=0,
+            delay_reconstruction_update=0,
             delay_cancel=0,
             priority_update_status=0,
             priority_gui_action=0,

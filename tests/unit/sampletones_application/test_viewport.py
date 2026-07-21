@@ -11,9 +11,15 @@ _TOGGLE_FULLSCREEN = "dearpygui.dearpygui.toggle_viewport_fullscreen"
 _PRIMARY = Monitor(x=0, y=0, width=1920, height=1080)
 _SECONDARY = Monitor(x=1920, y=0, width=2560, height=1440)
 
+_MIN_WIDTH = 1024
+_MIN_HEIGHT = 640
+
 
 def _manager() -> ViewportManager:
-    return ViewportManager.__new__(ViewportManager)
+    manager = ViewportManager.__new__(ViewportManager)
+    manager._min_width = _MIN_WIDTH
+    manager._min_height = _MIN_HEIGHT
+    return manager
 
 
 def _usable_bounds(monitor: Monitor) -> Tuple[int, int, int, int]:
@@ -87,6 +93,18 @@ class TestFitWindowToMonitor:
 
         assert width < _PRIMARY.width
         assert height < _PRIMARY.height
+
+    def test_window_below_minimum_is_held_at_minimum(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            "sampletones_application.viewport.get_monitors",
+            lambda: [_PRIMARY],
+        )
+        manager = _manager()
+
+        _, _, width, height = manager._fit_window_to_monitor(300, 200, 800, 500)
+
+        assert width >= _MIN_WIDTH
+        assert height >= _MIN_HEIGHT
 
     def test_falls_back_to_screen_dimensions_without_monitors(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(

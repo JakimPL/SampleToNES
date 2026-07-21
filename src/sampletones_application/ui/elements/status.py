@@ -118,9 +118,10 @@ class GUIStatusBar:
     ) -> str:
         message_function = self.create_message_function(message_or_function)
         handler_tag = f"{tag}{SUF_HANDLER_STATUS}"
+        hover_tag = GUIButton.hover_tag(tag)
 
         def on_mouse_action(sender: Sender, app_data: Any, user_data: str) -> None:
-            if dpg_is_item_hovered(tag):
+            if dpg_is_item_hovered(hover_tag):
                 message = message_function(sender, app_data, user_data)
                 self.set(message)
 

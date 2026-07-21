@@ -6,13 +6,14 @@ from pydantic import ValidationError
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
+    FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
     GlobalTemplateElements,
     MenuElements,
+    StatusElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.deployment.deployment import (
     DeploymentConfig,
@@ -20,21 +21,19 @@ from sampletones_application.config.deployment.deployment import (
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.config import ConfigCoordinator
-from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
-from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
-from sampletones_application.coordinators.playback import (
-    AudioPlayerProtocol,
-    PlaybackRouter,
-)
+from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.coordinators.playback.router import PlaybackRouter
 from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.coordinators.reconstruction import (
     ReconstructionCoordinator,
 )
-from sampletones_application.coordinators.reconstructions import (
-    ReconstructionsTabCoordinator,
+from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.main import MainTabCoordinator
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
 )
-from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -62,6 +61,12 @@ from sampletones_application.services import (
     ExportService,
     RegeneratedInstrument,
     RegenerationService,
+    RetunedSample,
+    RetuneResult,
+    SampleRetuneService,
+    ServiceCancelled,
+    ServiceError,
+    ServiceSuccess,
 )
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.tags.general import (
@@ -69,6 +74,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
+    TAG_GLOBAL_THEME_PLAYER_BUTTON,
     TAG_GLOBAL_THEME_PLAYER_TOOLBAR,
     TAG_GLOBAL_WINDOW_MAIN,
 )
@@ -78,19 +84,28 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.menu import MenuBar
-from sampletones_application.ui.panels.dialogs.audio_settings import GUIAudioSettingsWindow
+from sampletones_application.ui.panels.dialogs.audio_settings import (
+    GUIAudioSettingsWindow,
+)
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.file_dialogs.api import (
+    open_file_dialog,
+    select_directory_dialog,
+)
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.palette import Palette
-from sampletones_application.utils.parallelization.background import stop_background_workers
+from sampletones_application.utils.parallelization.background import (
+    stop_background_workers,
+)
 from sampletones_application.view_model.shared.audio_settings import (
     AudioSettingsViewModel,
 )
@@ -152,15 +167,17 @@ class Application:
         self.status_bar = GUIStatusBar(
             display_time=self.layout.behavior.ui.status_bar_display_time,
         )
+        self.key_router: KeyRouter = KeyRouter()
+        self.shortcut_manager: ShortcutManager = ShortcutManager(key_router=self.key_router)
         self.dialogs: DialogsRenderer = DialogsRenderer(
             layout=self.layout.general,
             language_manager=self.language_manager,
             status_bar=self.status_bar,
+            key_router=self.key_router,
         )
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
         self.session_manager = SessionManager()
-        self.shortcut_manager: ShortcutManager = ShortcutManager()
 
         self.library_manager = InstructionsLibraryManager(
             self.config_manager,
@@ -178,6 +195,8 @@ class Application:
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
+        self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
+        self.retune_service.subscribe(self._on_retune_result)
 
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)
@@ -196,23 +215,26 @@ class Application:
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
             layout=self.layout.settings,
             language_manager=self.language_manager,
+            key_router=self.key_router,
         )
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
-            shortcut_manager=self.shortcut_manager,
+            key_router=self.key_router,
         )
         self.project_properties_window.on_commit = self._commit_project_properties
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
         self.fps_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_MENU_FPS)
         self.player_toolbar_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_TOOLBAR)
+        self.player_button_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_PLAYER_BUTTON)
 
         self._menu_bar = MenuBar(
             shortcut_manager=self.shortcut_manager,
             fps_theme=self.fps_theme,
             player_toolbar_theme=self.player_toolbar_theme,
+            player_button_theme=self.player_button_theme,
             player_glyphs=self.layout.glyphs.player,
             player_layout=self.layout.player,
             language_manager=self.language_manager,
@@ -224,6 +246,8 @@ class Application:
         self._viewport_manager = ViewportManager(
             self.session_manager,
             self.theme,
+            min_width=self.layout.general.window.min_width,
+            min_height=self.layout.general.window.min_height,
             on_fullscreen_state_changed=self._update_menu,
         )
 
@@ -257,11 +281,10 @@ class Application:
             language_manager=self.language_manager,
         )
 
-        self._reconstructions_tab = ReconstructionsTabCoordinator(
+        self._reconstructions_tab = ReconstructionTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
-            shortcut_manager=self.shortcut_manager,
             reconstruction_manager=self.reconstruction_manager,
             browser_manager=self.browser_manager,
             export_service=self.export_service,
@@ -284,7 +307,6 @@ class Application:
             config_manager=self.config_manager,
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
-            shortcut_manager=self.shortcut_manager,
             library_manager=self.library_manager,
             on_audio_state_changed=self._update_menu,
             on_generation_state_changed=self._on_library_operation_changed,
@@ -300,7 +322,6 @@ class Application:
             config_manager=self.config_manager,
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
-            shortcut_manager=self.shortcut_manager,
             library_manager=self.library_manager,
             conversion_service=self.conversion_service,
             on_reconstruct_file=self._reconstruct_file,
@@ -324,7 +345,7 @@ class Application:
             config_manager=self.config_manager,
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
-            shortcut_manager=self.shortcut_manager,
+            key_router=self.key_router,
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,
@@ -335,10 +356,17 @@ class Application:
             status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
             on_tab_switch=self._set_current_tab,
+            on_nes_frequency_changed=self._retune_samples_for_rate,
         )
 
         self._playback_router = PlaybackRouter(
-            current_player_fn=self._get_current_player,
+            sources=(
+                self._reconstructions_tab.player,
+                self._instructions_tab.player,
+                self._sequencer_tab.player,
+            ),
+            active_source_resolver=self._get_active_source,
+            audio_device_manager=self.audio_device_manager,
             language_manager=self.language_manager,
         )
 
@@ -354,6 +382,7 @@ class Application:
             session_manager=self.session_manager,
             language_manager=self.language_manager,
             shortcut_manager=self.shortcut_manager,
+            key_router=self.key_router,
             layout=self.layout,
             theme=self.theme,
             viewport_manager=self._viewport_manager,
@@ -451,6 +480,7 @@ class Application:
             locate_original_audio=self._locate_original_audio,
             play=self._play,
             play_from_start=self._play_from_start,
+            play_from_frame=self._play_from_frame,
             stop=self._stop,
             toggle_autoplay=self._toggle_autoplay,
             toggle_follow_playback=self._toggle_follow_playback,
@@ -459,6 +489,8 @@ class Application:
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_fullscreen=self._shell.toggle_fullscreen,
             about=self._open_about_dialog,
+            next_tab=self._next_tab,
+            previous_tab=self._previous_tab,
         )
 
     def _setup_shell(self, bindings: ShortcutBindings) -> None:
@@ -516,6 +548,8 @@ class Application:
                 MenuElements.ITEM_PLAYBACK_PLAY,
             ],
             play_or_pause_enabled=False,
+            play_from_start_enabled=False,
+            play_from_frame_enabled=False,
             pause_enabled=False,
             player_paused=False,
             stop_enabled=False,
@@ -525,6 +559,10 @@ class Application:
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )
+
+    def _is_play_from_frame_enabled(self) -> bool:
+        """Playing from the current frame applies to the Sequencer's song, so it needs that tab open."""
+        return self._shell.get_current_tab() == Tab.SEQUENCER and self.project_manager.is_open
 
     def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
         return MenuBarViewModel(
@@ -538,6 +576,8 @@ class Application:
             can_redo=self.history.can_redo,
             play_label=self._playback_router.play_label,
             play_or_pause_enabled=self._playback_router.is_play_enabled,
+            play_from_start_enabled=self._playback_router.is_play_from_start_enabled,
+            play_from_frame_enabled=self._is_play_from_frame_enabled(),
             pause_enabled=self._playback_router.is_pause_enabled,
             player_paused=self._playback_router.is_paused,
             stop_enabled=self._playback_router.is_stop_enabled,
@@ -604,32 +644,25 @@ class Application:
             return
 
         self._instructions_tab.ensure_library_loaded()
-        with dpg.file_dialog(
-            label=self.language_manager[
+
+        filepath = open_file_dialog(
+            title=self.language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.TITLE,
                 GlobalDialogTitleElements.RECONSTRUCT_FILE,
             ],
-            width=self.layout.general.dialogs.file.width,
-            height=self.layout.general.dialogs.file.height,
-            callback=self._handle_reconstruct_file,
-            file_count=1,
-            default_path=str(self.session_manager.get_reconstruction_path()),
-        ):
-            all_file_extensions = ",".join(EXT_FILES_AUDIO)
-            key = TextKey(
+            initial_directory=self.session_manager.get_audio_input_path(),
+            extensions=EXT_FILES_AUDIO,
+            filter_name=self.language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.ALL_AUDIO_FORMATS,
-            )
-            dpg.add_file_extension(
-                f"{self.language_manager[key]}{{{all_file_extensions}}}",
-                color=(0, 255, 255, 255),
-            )
-            for extension in EXT_FILES_AUDIO:
-                dpg.add_file_extension(extension)
+                TextType.FILTER,
+                FileFilterElements.AUDIO,
+            ],
+        )
+
+        self._handle_reconstruct_file(filepath)
 
     def _reconstruct_directory_dialog(self) -> None:
         if self._is_operation_active():
@@ -637,20 +670,18 @@ class Application:
             return
 
         self._instructions_tab.ensure_library_loaded()
-        dpg.add_file_dialog(
-            label=self.language_manager[
+
+        directory = select_directory_dialog(
+            title=self.language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.TITLE,
                 GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY,
             ],
-            width=self.layout.general.dialogs.file.width,
-            height=self.layout.general.dialogs.file.height,
-            callback=self._handle_reconstruct_directory,
-            directory_selector=True,
-            default_path=str(self.session_manager.get_reconstruction_path()),
-            show=True,
+            initial_directory=self.session_manager.get_audio_input_path(),
         )
+
+        self._handle_reconstruct_directory(directory)
 
     def _is_converter_panel_visible(self) -> bool:
         if self._main_tab is None:
@@ -686,7 +717,7 @@ class Application:
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)
-        self.session_manager.set_reconstruction_path(filepath.parent)
+        self.session_manager.set_audio_input_path(filepath.parent)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
@@ -696,17 +727,17 @@ class Application:
         self._set_current_tab(Tab.INSTRUCTIONS)
         self._update_menu()
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_reconstruct_file(self, filepath: Path) -> None:
         self._reconstruct_file(filepath)
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
         self._main_tab.set_input_path(directory_path, convert=True)
-        self.session_manager.set_reconstruction_path(directory_path)
+        self.session_manager.set_audio_input_path(directory_path)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
-    @file_dialog_handler
+    @ignore_none_path
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self._reconstruct_directory(directory_path)
 
@@ -785,6 +816,82 @@ class Application:
                 sample.id,
                 outcome.reconstruction,
             )
+
+    def _retune_samples_for_rate(self, nes_frequency: int) -> None:
+        """Refreshes the stored reconstructions of samples left out of sync by a rate change.
+
+        Song playback already follows the new rate; this re-synthesizes only the persistent
+        rendered waveforms the Reconstructions tab edits. Samples already at the target rate are
+        skipped, and the batch runs in the background so the rate change stays responsive.
+        """
+        targets = [
+            (sample.id, sample.reconstruction)
+            for sample in self.project_manager.current.samples
+            if sample.reconstruction.config.nes_frequency != nes_frequency
+        ]
+        if not targets:
+            return
+
+        if not self.retune_service.start(targets, nes_frequency):
+            return
+
+        self.status_bar.set(
+            self.language_manager[
+                Page.GLOBAL,
+                Panel.STATUS,
+                TextType.MESSAGE,
+                StatusElements.RETUNING_SAMPLES,
+            ]
+        )
+        if self._editing_retuned_sample(nes_frequency):
+            self._reconstructions_tab.set_reconstruction_dimmed(True)
+
+    def _editing_retuned_sample(self, nes_frequency: int) -> bool:
+        """Whether the open Reconstructions-tab document is a project sample this batch will retune."""
+        sample = self._owning_project_sample()
+        return sample is not None and sample.reconstruction.config.nes_frequency != nes_frequency
+
+    def _on_retune_result(self, result: RetuneResult) -> None:
+        match result:
+            case ServiceSuccess(value=retuned):
+                self._apply_retuned_sample(retuned)
+            case ServiceError(exception=exception):
+                logger.error_with_traceback(exception, "Sample retune failed")
+            case ServiceCancelled():
+                pass
+
+        if not self.retune_service.is_running():
+            self.status_bar.set("")
+            self._reconstructions_tab.set_reconstruction_dimmed(False)
+
+    def _apply_retuned_sample(self, retuned: RetunedSample) -> None:
+        """Swaps a retuned reconstruction into its sample, folding it into the rate-change undo entry.
+
+        A batch superseded by a newer rate change is discarded by the rate guard, so a stale
+        result neither overwrites the current reconstruction nor appends a stray history entry. The
+        rate-keyed coalesce target rewrites the single ``SET_NES_FREQUENCY`` entry, and a sample
+        open in the Reconstructions tab rebinds so its editor and the project sample stay one object.
+        """
+        project = self.project_manager.current
+        sample = project.samples.get(retuned.sample_id)
+        if sample is None:
+            return
+
+        nes_frequency = retuned.reconstruction.config.nes_frequency
+        if nes_frequency != project.settings.nes_frequency:
+            return
+
+        is_open = sample.reconstruction is self.reconstruction_manager.reconstruction
+        with self.history.transaction(
+            HistoryAction.SET_NES_FREQUENCY,
+            detail=self._sequencer_tab.nes_frequency_detail(nes_frequency),
+            coalesce=(nes_frequency,),
+        ):
+            self.project_controller.replace_sample_reconstruction(retuned.sample_id, retuned.reconstruction)
+
+        if is_open:
+            self.reconstruction_manager.apply_regenerated(retuned.reconstruction)
+            self._reconstructions_tab.update_reconstruction()
 
     def _open_project_properties(self) -> None:
         """Opens the properties dialog seeded with the current project's info.
@@ -989,8 +1096,20 @@ class Application:
     def _set_current_tab(self, tab: Tab) -> None:
         self._shell.set_current_tab(tab)
 
-    def _get_current_player(self) -> AudioPlayerProtocol:
-        return self._shell.get_current_player()
+    def _next_tab(self) -> None:
+        self._switch_tab(1)
+
+    def _previous_tab(self) -> None:
+        self._switch_tab(-1)
+
+    def _switch_tab(self, step: int) -> None:
+        """Moves to the adjacent tab in declaration order, wrapping around at the ends."""
+        tabs = list(Tab)
+        index = tabs.index(self._shell.get_current_tab())
+        self._set_current_tab(tabs[(index + step) % len(tabs)])
+
+    def _get_active_source(self) -> Optional[AudioPlayerProtocol]:
+        return self._shell.get_active_source()
 
     def _persist_application_state(self) -> None:
         self.session_manager.set_current_audio_device(self.audio_device_manager)
@@ -1005,6 +1124,14 @@ class Application:
 
     def _play(self) -> None:
         self._playback_router.play()
+        self._update_menu()
+
+    def _play_from_frame(self) -> None:
+        """Plays from the current order frame; available only in the Sequencer tab."""
+        if self._shell.get_current_tab() != Tab.SEQUENCER:
+            return
+
+        self._sequencer_tab.play_from_current_frame()
         self._update_menu()
 
     def _stop(self) -> None:

@@ -80,7 +80,7 @@ class TestReconstructionManagerSaveReconstruction:
     ) -> None:
         reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
         save_path = tmp_path / "saved.stn"
-        reconstruction_manager.save_reconstruction(save_path)
+        assert reconstruction_manager.save_reconstruction(save_path)
         assert save_path.exists()
 
     def test_save_with_no_path_and_no_filepath_is_no_op(
@@ -89,14 +89,14 @@ class TestReconstructionManagerSaveReconstruction:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
-        reconstruction_manager.save_reconstruction()
+        assert not reconstruction_manager.save_reconstruction()
 
     def test_save_when_nothing_loaded_is_no_op(
         self,
         reconstruction_manager: ReconstructionManager,
         tmp_path: Path,
     ) -> None:
-        reconstruction_manager.save_reconstruction(tmp_path / "out.stn")
+        assert not reconstruction_manager.save_reconstruction(tmp_path / "out.stn")
 
 
 class TestReconstructionManagerIsFileBacked:

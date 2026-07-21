@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class SchedulingBehavior(BaseModel, extra="forbid", frozen=True):
     delay_gui_action: int
     delay_schedule: int
+    delay_reconstruction_update: int
     delay_cancel: int
     priority_update_status: int
     priority_gui_action: int
