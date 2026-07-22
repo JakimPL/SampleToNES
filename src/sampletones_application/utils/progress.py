@@ -1,4 +1,5 @@
 import sys
+from typing import Any, Optional
 
 from sampletones_shared.application import SAMPLETONES_NAME
 from sampletones_shared.logger import logger
@@ -6,7 +7,8 @@ from sampletones_shared.logger import logger
 
 class SystemProgress:
     def __init__(self) -> None:
-        self.progress = None
+        self.progress: Optional[Any] = None
+        self.progress_type: Any = None
         self.value = 0
         self.maximum = 0
 
@@ -16,14 +18,15 @@ class SystemProgress:
 
         try:
             import win32gui
-            from PyTaskbar import Progress
+            from PyTaskbar import ProgressType, TaskbarProgress
 
             hwnd = win32gui.FindWindow(SAMPLETONES_NAME, None)
             if not hwnd:
                 logger.warning("Could not find application window handle for progress bar")
                 return
 
-            self.progress = Progress(hwnd)
+            self.progress = TaskbarProgress(hwnd)
+            self.progress_type = ProgressType
         except (ImportError, ModuleNotFoundError) as exception:
             logger.warning(f"Could not import Windows progress bar dependencies: {exception}")
         except Exception as exception:  # pylint: disable=broad-except
@@ -32,7 +35,7 @@ class SystemProgress:
     def error(self) -> None:
         if self.progress is not None:
             try:
-                self.progress.set_progress_type(15)
+                self.progress.set_progress_type(self.progress_type.ERROR)
             except Exception as exception:  # pylint: disable=broad-except
                 self._fallback(exception)
 
@@ -41,7 +44,7 @@ class SystemProgress:
             self.value = 0
             self.maximum = maximum
             try:
-                self.progress.set_progress_type(0)
+                self.progress.set_progress_type(self.progress_type.NORMAL)
                 self.progress.set_progress(0, self.maximum)
             except Exception as exception:  # pylint: disable=broad-except
                 self._fallback(exception)
@@ -58,7 +61,7 @@ class SystemProgress:
     def clear(self) -> None:
         if self.progress is not None:
             try:
-                self.progress.set_progress(0, 1)
+                self.progress.set_progress_type(self.progress_type.NOPROGRESS)
             except Exception as exception:  # pylint: disable=broad-except
                 self._fallback(exception)
 
