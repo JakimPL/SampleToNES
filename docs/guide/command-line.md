@@ -5,7 +5,7 @@ interface, to generate a library, or to open a file directly in the app. Run it
 with no arguments to launch the GUI as usual.
 
 The command is `sampletones` when installed from source; a standalone build is the
-executable you made (`./sampletones` on Linux, `sampletones.exe` on Windows).
+executable you made (`./bin/sampletones` on Linux, `bin\sampletones.exe` on Windows).
 
 ## Common tasks
 
