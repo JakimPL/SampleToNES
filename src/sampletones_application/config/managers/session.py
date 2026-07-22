@@ -121,6 +121,9 @@ class SessionManager:
     def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
         self._config_manager.set_current_audio_device(audio_device_manager)
 
+    def set_master_gain(self, value: float) -> None:
+        self._config_manager.set_master_gain(value)
+
     def save_config(self) -> None:
         self._config_manager.save()
         self._state_manager.save()
@@ -160,6 +163,10 @@ class SessionManager:
     @property
     def current_buffer_size(self) -> BufferSize:
         return self._config_manager.current_buffer_size
+
+    @property
+    def master_gain(self) -> float:
+        return self._config_manager.master_gain
 
     @property
     def advanced_settings(self) -> bool:

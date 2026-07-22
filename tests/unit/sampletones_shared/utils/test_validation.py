@@ -185,12 +185,12 @@ class TestRecoveryOnRealModels:
         assert recovered.model.generation.drive == Config().generation.drive
         assert set(recovered.dropped) == {("generation", "drive"), ("obsolete_field",)}
 
-    def test_application_config_keeps_favorites_when_volume_invalid(self) -> None:
-        raw = {"audio": {"volume": 5.0}, "favorites": {"paths": ["/x/y"]}}
+    def test_application_config_keeps_favorites_when_master_gain_invalid(self) -> None:
+        raw = {"audio": {"master_gain": 5.0}, "favorites": {"paths": ["/x/y"]}}
         recovered = validate_with_recovery(ApplicationConfig, raw)
-        assert recovered.model.audio.volume == ApplicationConfig().audio.volume
+        assert recovered.model.audio.master_gain == ApplicationConfig().audio.master_gain
         assert Path("/x/y") in recovered.model.favorites.paths
-        assert ("audio", "volume") in recovered.dropped
+        assert ("audio", "master_gain") in recovered.dropped
 
     def test_application_state_keeps_flags_when_viewport_invalid(self) -> None:
         raw = {"viewport": {"width": "huge"}, "advanced_settings": True}

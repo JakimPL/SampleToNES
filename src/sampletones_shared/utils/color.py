@@ -1,8 +1,10 @@
 from typing import Annotated, Final
 
+import numpy as np
 from pydantic import BeforeValidator
 
 from sampletones_shared.types.application import ColorRGBA
+from sampletones_shared.utils.arrays import clamp
 
 MAX_CHANNEL_VALUE: Final[int] = 255
 
@@ -16,6 +18,19 @@ def with_alpha_fraction(color: ColorRGBA, fraction: float) -> ColorRGBA:
     """
     red, green, blue, _ = color
     return (red, green, blue, round(fraction * MAX_CHANNEL_VALUE))
+
+
+def blend(start: ColorRGBA, end: ColorRGBA, fraction: float) -> ColorRGBA:
+    """Linearly interpolate between two colours, channel by channel.
+
+    ``fraction`` is clamped to ``[0, 1]``: ``0`` returns ``start`` and ``1`` returns ``end``, with
+    every RGBA channel mixed in proportion so a scalar can drive a colour along a gradient.
+    """
+    ratio = clamp(fraction, 0.0, 1.0)
+    start_channels = np.array(start, dtype=np.float64)
+    end_channels = np.array(end, dtype=np.float64)
+    channels = np.rint(start_channels + (end_channels - start_channels) * ratio).astype(int)
+    return (int(channels[0]), int(channels[1]), int(channels[2]), int(channels[3]))
 
 
 def to_grayscale(color: ColorRGBA) -> ColorRGBA:

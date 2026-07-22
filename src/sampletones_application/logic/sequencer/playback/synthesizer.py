@@ -4,10 +4,11 @@ from typing import Dict, FrozenSet, List, Optional, Tuple
 import numpy as np
 
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_core.audio import clip_audio_inplace
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_PITCH, MAX_VOLUME, MIN_PITCH
-from sampletones_core.generators.maps import GENERATOR_CLASSES, MIXER_LEVELS
+from sampletones_core.generators.maps import GENERATOR_CLASSES
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -194,11 +195,9 @@ class RowSynthesizer:
                 ticks_per_row,
                 chunk_length,
             )
-            mixer_level = MIXER_LEVELS[self._channel_states[generator_name].generator.class_name()]
-            mixed += channel_audio * mixer_level
+            mixed += channel_audio
 
-        np.clip(mixed, -1.0, 1.0, out=mixed)
-        return mixed
+        return clip_audio_inplace(mixed)
 
     def _render_channel(
         self,

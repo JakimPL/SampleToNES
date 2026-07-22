@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 
 from sampletones_core.audio.processing import (
+    amplitude_to_decibels,
     clip_audio,
+    clip_audio_inplace,
     interpolate,
     minmax_decimate,
     normalize,
@@ -18,6 +20,23 @@ from tests.suite.arrays import assert_array_equal
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
+
+
+class TestAmplitudeToDecibels:
+    """Unity is 0 dB, each doubling adds ~6 dB, and silence has no finite level."""
+
+    def test_unity_is_zero_db(self) -> None:
+        assert amplitude_to_decibels(1.0) == pytest.approx(0.0)
+
+    def test_doubling_adds_about_six_db(self) -> None:
+        assert amplitude_to_decibels(2.0) == pytest.approx(6.0206, abs=1e-4)
+
+    def test_halving_drops_about_six_db(self) -> None:
+        assert amplitude_to_decibels(0.5) == pytest.approx(-6.0206, abs=1e-4)
+
+    def test_silence_is_negative_infinity(self) -> None:
+        assert amplitude_to_decibels(0.0) == float("-inf")
+        assert amplitude_to_decibels(-0.5) == float("-inf")
 
 
 class TestClipAudio(BaseTestSuite):
@@ -100,6 +119,50 @@ class TestClipAudio(BaseTestSuite):
 
         result = clip_audio(test_case.audio)
         np.testing.assert_array_equal(result, test_case.expected)
+
+
+class TestClipAudioInplace(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        audio: np.ndarray
+        expected: np.ndarray
+
+    test_cases = [
+        TestCase(
+            label="clips_above_and_below",
+            audio=np.array([1.5, -1.5, 0.5], dtype=np.float32),
+            expected=np.array([1.0, -1.0, 0.5], dtype=np.float32),
+        ),
+        TestCase(
+            label="leaves_in_range_untouched",
+            audio=np.array([0.25, -0.75, 0.0], dtype=np.float32),
+            expected=np.array([0.25, -0.75, 0.0], dtype=np.float32),
+        ),
+        TestCase(
+            label="float64_preserves_dtype",
+            audio=np.array([2.0, -3.0], dtype=np.float64),
+            expected=np.array([1.0, -1.0], dtype=np.float64),
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_clips_and_preserves_dtype(self, test_case: TestCase) -> None:
+        result = clip_audio_inplace(test_case.audio)
+        np.testing.assert_array_equal(result, test_case.expected)
+        assert result.dtype == test_case.expected.dtype
+
+    def test_returns_the_same_array_object(self) -> None:
+        audio = np.array([1.5, -1.5], dtype=np.float32)
+        assert clip_audio_inplace(audio) is audio
+
+    def test_mutates_in_place(self) -> None:
+        audio = np.array([2.0, -2.0, 0.5], dtype=np.float32)
+        clip_audio_inplace(audio)
+        np.testing.assert_array_equal(audio, np.array([1.0, -1.0, 0.5], dtype=np.float32))
 
 
 class TestStereoToMono(BaseTestSuite):
@@ -492,12 +555,12 @@ class TestMinmaxDecimate(BaseTestSuite):
             minmax_decimate,
             test_case.expected,
             test_case.data,
-            test_case.num_buckets,
+            num_buckets=test_case.num_buckets,
         ):
             return
 
         assert isinstance(test_case.expected, tuple)
-        x_result, y_result = minmax_decimate(test_case.data, test_case.num_buckets)
+        x_result, y_result = minmax_decimate(test_case.data, num_buckets=test_case.num_buckets)
         assert_array_equal(x_result, test_case.expected[0])
         assert_array_equal(y_result, test_case.expected[1])
 
@@ -729,9 +792,9 @@ class TestQuantize(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_quantize(self, test_case: TestCase) -> None:
-        if expect_error(quantize, test_case.expected, test_case.audio, test_case.levels):
+        if expect_error(quantize, test_case.expected, test_case.audio, levels=test_case.levels):
             return
 
         assert isinstance(test_case.expected, np.ndarray)
-        result = quantize(test_case.audio, test_case.levels)
+        result = quantize(test_case.audio, levels=test_case.levels)
         np.testing.assert_allclose(result, test_case.expected, rtol=1e-5)

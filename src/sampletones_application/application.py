@@ -225,6 +225,7 @@ class Application:
         )
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
+        self.audio_settings_window.on_master_gain_changed = self.session_manager.set_master_gain
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
@@ -934,7 +935,10 @@ class Application:
     def _open_audio_settings(self) -> None:
         """Opens the audio settings dialog seeded with the device manager's state."""
         self.audio_settings_window.open(
-            AudioSettingsViewModel.from_device_manager(self.audio_device_manager),
+            AudioSettingsViewModel.from_device_manager(
+                self.audio_device_manager,
+                master_gain=self.session_manager.master_gain,
+            ),
         )
 
     def _open_about_dialog(self) -> None:
@@ -978,7 +982,10 @@ class Application:
         """Re-enumerates the output devices and repaints the open dialog in place."""
         self.audio_device_manager.refresh_devices()
         self.audio_settings_window.update_view(
-            AudioSettingsViewModel.from_device_manager(self.audio_device_manager),
+            AudioSettingsViewModel.from_device_manager(
+                self.audio_device_manager,
+                master_gain=self.session_manager.master_gain,
+            ),
         )
 
     def _apply_audio_settings(

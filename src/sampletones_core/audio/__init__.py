@@ -3,7 +3,9 @@ from .io import load_audio, read_wave, write_wave
 from .manager import CHANNELS, FORMAT, AudioDeviceManager
 from .processing import (
     active_frame_level,
+    amplitude_to_decibels,
     clip_audio,
+    clip_audio_inplace,
     interpolate,
     minmax_decimate,
     normalize,
@@ -22,7 +24,9 @@ __all__ = [
     "AudioDevice",
     "AudioDeviceManager",
     "active_frame_level",
+    "amplitude_to_decibels",
     "clip_audio",
+    "clip_audio_inplace",
     "read_wave",
     "load_audio",
     "write_wave",

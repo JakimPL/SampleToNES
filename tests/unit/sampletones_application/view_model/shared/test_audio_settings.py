@@ -8,9 +8,16 @@ from sampletones_application.view_model.shared.audio_settings import (
     BUFFER_SIZE_ITEMS,
     AudioDeviceItem,
     AudioSettingsViewModel,
+    MasterGainReadout,
 )
 from sampletones_core.audio import AudioDevice, CurrentDevice
 from sampletones_core.constants.audio import BUFFER_SIZES, BufferSize
+from sampletones_shared.constants.audio import UNITY_GAIN
+
+DEVICE_LABEL_FORMAT = "{index}: {name}"
+SAMPLE_RATE_FORMAT = "{rate} Hz"
+DECIBEL_FORMAT = "{decibels:+.1f} dB"
+SILENT_LABEL = "-∞ dB"
 
 
 def _device(index: int, name: str) -> AudioDevice:
@@ -31,12 +38,13 @@ def _view_model(
     devices: Dict[int, AudioDevice],
     current_device: CurrentDevice,
     buffer_size: BufferSize,
+    master_gain: float = UNITY_GAIN,
 ) -> AudioSettingsViewModel:
     audio_device_manager = MagicMock()
     audio_device_manager.list_devices.return_value = devices
     audio_device_manager.get_current_device.return_value = current_device
     audio_device_manager.buffer_size = buffer_size
-    return AudioSettingsViewModel.from_device_manager(audio_device_manager)
+    return AudioSettingsViewModel.from_device_manager(audio_device_manager, master_gain=master_gain)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -86,12 +94,19 @@ class TestFromDeviceManager:
         assert view_model.current_sample_rate == case.current_device.sample_rate
         assert view_model.buffer_size == case.buffer_size
 
+    def test_carries_the_master_gain(self) -> None:
+        view_model = _view_model({0: _device(0, "Speakers")}, MAPPING_CASES[0].current_device, 512, master_gain=1.5)
+
+        assert view_model.master_gain == 1.5
+
     @pytest.mark.parametrize("case", MAPPING_CASES, ids=lambda case: case.label)
     def test_current_device_label_matches_the_projected_item(self, case: MappingCase) -> None:
         view_model = _view_model(case.devices, case.current_device, case.buffer_size)
 
-        assert view_model.current_device_label == case.current_device_label
-        assert view_model.device_labels == [device.label for device in view_model.devices]
+        assert view_model.current_device_label(DEVICE_LABEL_FORMAT) == case.current_device_label
+        assert view_model.device_labels(DEVICE_LABEL_FORMAT) == [
+            device.label(DEVICE_LABEL_FORMAT) for device in view_model.devices
+        ]
 
 
 class TestAudioDeviceItem:
@@ -109,9 +124,9 @@ class TestAudioDeviceItem:
     def test_labels_pair_with_their_values(self) -> None:
         item = AudioDeviceItem.from_device(_device(3, "Headphones"))
 
-        assert item.label == "3: Headphones"
-        assert item.sample_rate_labels == ("22050 Hz", "44100 Hz", "48000 Hz")
-        assert item.default_sample_rate_label == "44100 Hz"
+        assert item.label(DEVICE_LABEL_FORMAT) == "3: Headphones"
+        assert item.sample_rate_labels(SAMPLE_RATE_FORMAT) == ("22050 Hz", "44100 Hz", "48000 Hz")
+        assert item.default_sample_rate_label(SAMPLE_RATE_FORMAT) == "44100 Hz"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -145,7 +160,7 @@ class TestCurrentDevice:
         current_item = view_model.current_device
         if case.expected_index is None:
             assert current_item is None
-            assert view_model.current_device_label == ""
+            assert view_model.current_device_label(DEVICE_LABEL_FORMAT) == ""
         else:
             assert current_item is not None
             assert current_item.device_index == case.expected_index
@@ -157,3 +172,32 @@ class TestBufferSizeItems:
     def test_items_cover_the_supported_sizes(self) -> None:
         assert list(BUFFER_SIZE_ITEMS.values()) == list(BUFFER_SIZES)
         assert all(BUFFER_SIZE_ITEMS[str(size)] == size for size in BUFFER_SIZES)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReadoutCase:
+    label: str
+    gain: float
+    db_label: str
+    clip_fraction: float
+
+
+READOUT_CASES = [
+    ReadoutCase(label="silence", gain=0.0, db_label="-∞ dB", clip_fraction=0.0),
+    ReadoutCase(label="attenuation", gain=0.5, db_label="-6.0 dB", clip_fraction=0.0),
+    ReadoutCase(label="unity", gain=1.0, db_label="+0.0 dB", clip_fraction=0.0),
+    ReadoutCase(label="boost", gain=1.5, db_label="+3.5 dB", clip_fraction=0.5),
+    ReadoutCase(label="maximum", gain=2.0, db_label="+6.0 dB", clip_fraction=1.0),
+]
+
+
+class TestMasterGainReadout:
+    """The readout projects a linear gain to the decibel label a slider shows and the boost
+    fraction a warning gradient follows: ``0`` at unity or quieter, ramping to ``1`` at maximum."""
+
+    @pytest.mark.parametrize("case", READOUT_CASES, ids=lambda case: case.label)
+    def test_projects_the_gain(self, case: ReadoutCase) -> None:
+        readout = MasterGainReadout.for_gain(case.gain, decibel_format=DECIBEL_FORMAT, silent_label=SILENT_LABEL)
+
+        assert readout.db_label == case.db_label
+        assert readout.clip_fraction == pytest.approx(case.clip_fraction)

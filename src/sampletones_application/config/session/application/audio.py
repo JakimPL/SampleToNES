@@ -2,6 +2,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE, BufferSize
+from sampletones_shared.constants.audio import (
+    DEFAULT_MASTER_GAIN,
+    MAX_MASTER_GAIN,
+    MIN_MASTER_GAIN,
+)
 
 
 class AudioConfig(BaseModel):
@@ -15,11 +20,11 @@ class AudioConfig(BaseModel):
         default=DEFAULT_BUFFER_SIZE,
         description="The audio buffer size in samples.",
     )
-    volume: float = Field(
-        default=0.8,
-        ge=0.0,
-        le=1.0,
-        description="The master volume level (0.0 to 1.0).",
+    master_gain: float = Field(
+        default=DEFAULT_MASTER_GAIN,
+        ge=MIN_MASTER_GAIN,
+        le=MAX_MASTER_GAIN,
+        description="The linear master playback gain applied to song playback.",
     )
 
     def set_audio_settings(self, audio_device_manager: AudioDeviceManager) -> None:
