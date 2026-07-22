@@ -23,12 +23,14 @@ class ViewportManager:
         *,
         min_width: int,
         min_height: int,
+        vsync: bool,
         on_fullscreen_state_changed: VoidCallback,
     ) -> None:
         self._session_manager = session_manager
         self._theme = theme
         self._min_width = min_width
         self._min_height = min_height
+        self._vsync = vsync
         self._on_fullscreen_state_changed = on_fullscreen_state_changed
 
     def create_viewport(self) -> None:
@@ -58,6 +60,7 @@ class ViewportManager:
             y_pos=window_y,
             decorated=True,
             disable_close=True,
+            vsync=self._vsync,
         )
 
         color = self._theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
