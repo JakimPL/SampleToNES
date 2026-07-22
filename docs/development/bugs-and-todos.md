@@ -15,8 +15,7 @@
 
 ### Tracker
 
-* Selection: copy, cut, delete and paste
-* Selection operations on patterns
+* Selection operations on patterns and orders
 
 ### Workflow
 
