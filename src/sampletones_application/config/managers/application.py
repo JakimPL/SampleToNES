@@ -66,6 +66,13 @@ class ApplicationConfigManager:
         return self.config.audio.buffer_size
 
     @property
+    def master_gain(self) -> float:
+        return self.config.audio.master_gain
+
+    def set_master_gain(self, value: float) -> None:
+        self.config.audio.master_gain = value
+
+    @property
     def favorites(self) -> Set[Path]:
         return self.config.favorites.paths
 

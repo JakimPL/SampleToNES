@@ -262,6 +262,7 @@ class SequencerTabCoordinator:
                 audio_device_manager,
                 RowSynthesizer(project_controller, config_manager.config),
                 should_loop=lambda: session_manager.loop_song,
+                master_gain=lambda: session_manager.master_gain,
             ),
         )
         self._guarded_player = GuardedPlayer(

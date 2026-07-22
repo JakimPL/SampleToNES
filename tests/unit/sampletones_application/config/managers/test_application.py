@@ -10,16 +10,16 @@ from sampletones_application.config.session.application.config import Applicatio
 
 
 class TestApplicationConfigManagerRecovery:
-    def test_incompatible_volume_preserves_favorites(self, tmp_path: Path) -> None:
+    def test_incompatible_master_gain_preserves_favorites(self, tmp_path: Path) -> None:
         path = tmp_path / "config.yaml"
-        path.write_text(yaml.safe_dump({"audio": {"volume": 5.0}, "favorites": {"paths": ["/x/y"]}}))
+        path.write_text(yaml.safe_dump({"audio": {"master_gain": 5.0}, "favorites": {"paths": ["/x/y"]}}))
         with patch(
             "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
             path,
         ):
             manager = ApplicationConfigManager()
 
-        assert manager.config.audio.volume == ApplicationConfig().audio.volume
+        assert manager.config.audio.master_gain == ApplicationConfig().audio.master_gain
         assert Path("/x/y") in manager.favorites
 
     def test_invalid_history_budget_recovers_to_default(self, tmp_path: Path) -> None:
@@ -64,6 +64,13 @@ class TestApplicationConfigManagerPlayback:
         assert manager.loop_song is True
         manager.set_loop_song(False)
         assert manager.loop_song is False
+
+    def test_set_master_gain_round_trips(self, tmp_path: Path) -> None:
+        manager = self._manager(tmp_path)
+        manager.set_master_gain(1.5)
+        assert manager.master_gain == 1.5
+        manager.set_master_gain(0.0)
+        assert manager.master_gain == 0.0
 
 
 class TestApplicationConfigManagerSave:

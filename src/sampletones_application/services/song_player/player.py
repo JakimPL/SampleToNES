@@ -3,12 +3,16 @@ from __future__ import annotations
 import threading
 from collections import deque
 from dataclasses import dataclass
-from typing import Callable, Deque, Final, FrozenSet, Optional, Tuple
+from typing import Callable, Deque, FrozenSet, Optional, Tuple
 
 import numpy as np
 import pyaudio
 
 from sampletones_application.services.base import ServiceBase
+from sampletones_application.services.song_player.constants import (
+    PREFETCH_SECONDS,
+    STOP_POLL_TIMEOUT,
+)
 from sampletones_application.services.song_player.protocol import RowSynthesizerProtocol
 from sampletones_application.services.song_player.result import (
     SongPlaybackError,
@@ -19,10 +23,8 @@ from sampletones_application.services.song_player.result import (
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
+from sampletones_shared.constants.audio import UNITY_GAIN
 from sampletones_shared.logger import logger
-
-PREFETCH_SECONDS: Final[float] = 0.25
-STOP_POLL_TIMEOUT: Final[float] = 0.05
 
 
 @dataclass(frozen=True)
@@ -51,12 +53,14 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         synthesizer: RowSynthesizerProtocol,
         *,
         should_loop: Callable[[], bool],
+        master_gain: Callable[[], float],
         priority: int = 0,
     ) -> None:
         super().__init__(priority)
         self._audio_device_manager = audio_device_manager
         self._synthesizer = synthesizer
         self._should_loop = should_loop
+        self._master_gain = master_gain
         self._stop_event = threading.Event()
         self._resume_event = threading.Event()
         self._render_thread: Optional[threading.Thread] = None
@@ -215,9 +219,25 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
     def _play_row(self, stream: pyaudio.Stream, row: _RenderedRow) -> None:
         if len(row.chunk):
-            stream.write(row.chunk.tobytes())
+            stream.write(self._scale_to_gain(row.chunk).tobytes())
 
         self._emit(SongPositionUpdate(position=row.position))
+
+    def _scale_to_gain(self, chunk: np.ndarray) -> np.ndarray:
+        """Scales one row by the live master gain, clipped to the output stream's range.
+
+        The gain is read per row so a slider change is heard on the next row handed to the
+        device rather than after the render-ahead buffer drains. Clipping holds a boost above
+        unity within the float stream's [-1, 1] range, so the drive into the clip is the
+        audible cost of the boost.
+        """
+        gain = self._master_gain()
+        if gain == UNITY_GAIN:
+            return chunk
+
+        scaled = chunk * np.float32(gain)
+        np.clip(scaled, -1.0, 1.0, out=scaled)
+        return scaled
 
     def _emit_terminal(self) -> None:
         if self._playback_error is not None:

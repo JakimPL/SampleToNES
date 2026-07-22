@@ -10,11 +10,21 @@ from sampletones_application.services.song_player.result import (
 from sampletones_core.project.song_position import SongPosition
 
 
-def _make_service(*, is_finished: bool = False, should_loop: bool = False) -> SongPlayerService:
+def _make_service(
+    *,
+    is_finished: bool = False,
+    should_loop: bool = False,
+    master_gain: float = 1.0,
+) -> SongPlayerService:
     audio_device_manager = MagicMock()
     synthesizer = MagicMock()
     synthesizer.is_finished = is_finished
-    return SongPlayerService(audio_device_manager, synthesizer, should_loop=lambda: should_loop)
+    return SongPlayerService(
+        audio_device_manager,
+        synthesizer,
+        should_loop=lambda: should_loop,
+        master_gain=lambda: master_gain,
+    )
 
 
 class TestSongPlayerServiceInitialState:
@@ -209,6 +219,50 @@ class TestSongPlayerServicePlayRow:
         service._play_row(mock_stream, row)
 
         mock_stream.write.assert_not_called()
+
+
+class TestSongPlayerServiceMasterGain:
+    def test_unity_gain_leaves_samples_unchanged(self) -> None:
+        service = _make_service(master_gain=1.0)
+
+        chunk = np.array([-0.5, 0.25, 0.75], dtype=np.float32)
+        scaled = service._scale_to_gain(chunk)
+
+        assert scaled is chunk
+
+    def test_gain_scales_samples_below_the_clip(self) -> None:
+        service = _make_service(master_gain=2.0)
+
+        chunk = np.array([-0.25, 0.1, 0.4], dtype=np.float32)
+        scaled = service._scale_to_gain(chunk)
+
+        assert scaled.dtype == np.float32
+        np.testing.assert_allclose(scaled, [-0.5, 0.2, 0.8], rtol=1e-6)
+
+    def test_gain_clips_boosted_samples_to_range(self) -> None:
+        service = _make_service(master_gain=2.0)
+
+        chunk = np.array([-0.9, 0.6, 1.0], dtype=np.float32)
+        scaled = service._scale_to_gain(chunk)
+
+        np.testing.assert_allclose(scaled, [-1.0, 1.0, 1.0], rtol=1e-6)
+
+    def test_gain_is_read_per_row(self) -> None:
+        gain = {"value": 1.0}
+        audio_device_manager = MagicMock()
+        synthesizer = MagicMock()
+        service = SongPlayerService(
+            audio_device_manager,
+            synthesizer,
+            should_loop=lambda: False,
+            master_gain=lambda: gain["value"],
+        )
+
+        chunk = np.array([0.5], dtype=np.float32)
+        assert service._scale_to_gain(chunk) is chunk
+
+        gain["value"] = 2.0
+        np.testing.assert_allclose(service._scale_to_gain(chunk), [1.0], rtol=1e-6)
 
 
 class TestSongPlayerServicePrefetch:
