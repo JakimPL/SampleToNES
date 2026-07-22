@@ -65,7 +65,7 @@ make setup          # installs GPU support when a supported driver is present
 make setup GPU=0    # forces the CPU (NumPy) backend
 ```
 
-A current NVIDIA driver is all you need: the CUDA components ship with the CuPy build, on Linux and Windows alike. Detection reads the driver's CUDA version — 12 and newer use the default build, 11 uses a legacy build — and on macOS _SampleToNES_ runs on the CPU.
+A current NVIDIA driver is all you need — the CUDA components ship with the CuPy build, on Linux and Windows alike. On macOS the app runs on the CPU.
 
 ## Usage
 
