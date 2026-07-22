@@ -15,6 +15,7 @@
 
 ### Tracker
 
+* Basic shapes as instruments
 * Selection operations on patterns and orders
 
 ### Workflow
