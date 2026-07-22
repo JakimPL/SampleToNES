@@ -20,7 +20,6 @@
 
 ### Workflow
 
-* Volume mixer
 * Waveform construction preview for single-file conversion
 * Selection and trimming for a reconstruction (reconstruction editing)
 
