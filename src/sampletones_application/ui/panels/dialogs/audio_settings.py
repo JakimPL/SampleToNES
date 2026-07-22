@@ -13,10 +13,14 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE,
     TAG_SETTINGS_AUDIO_COMBO_DEVICE,
     TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
+    TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN,
+    TAG_SETTINGS_AUDIO_TEXT_MASTER_GAIN_DB,
     TAG_SETTINGS_AUDIO_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.field import labeled_field
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
@@ -30,10 +34,17 @@ from sampletones_application.view_model.shared.audio_settings import (
     BUFFER_SIZE_ITEMS,
     AudioDeviceItem,
     AudioSettingsViewModel,
+    MasterGainReadout,
 )
 from sampletones_core.constants.audio import BufferSize, SampleRate
-from sampletones_shared.types.application import Sender
+from sampletones_shared.constants.audio import (
+    DEFAULT_MASTER_GAIN,
+    MAX_MASTER_GAIN,
+    MIN_MASTER_GAIN,
+)
+from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.color import blend
 
 
 class GUIAudioSettingsWindow(GUIWindow):
@@ -51,6 +62,7 @@ class GUIAudioSettingsWindow(GUIWindow):
 
         self.on_commit: Optional[Callable[[int, SampleRate, BufferSize], None]] = None
         self.on_refresh_devices: Optional[VoidCallback] = None
+        self.on_master_gain_changed: Optional[Callable[[float], None]] = None
 
         self._devices_by_label: Dict[str, AudioDeviceItem] = {}
         self._sample_rates_by_label: Dict[str, SampleRate] = {}
@@ -58,6 +70,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._current_device_label: str = ""
         self._current_sample_rate_label: str = ""
         self._current_buffer_size_label: str = ""
+        self._master_gain: float = DEFAULT_MASTER_GAIN
 
         self._ttl_audio = language_manager[
             Page.SETTINGS,
@@ -71,17 +84,47 @@ class GUIAudioSettingsWindow(GUIWindow):
             TextType.LABEL,
             AudioSettingsElements.OUTPUT_DEVICE,
         ]
+        self._fmt_device_label = language_manager[
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.TEMPLATE,
+            AudioSettingsElements.DEVICE_LABEL,
+        ]
         self._lbl_sample_rate = language_manager[
             Page.SETTINGS,
             Panel.AUDIO,
             TextType.LABEL,
             AudioSettingsElements.SAMPLE_RATE,
         ]
+        self._fmt_sample_rate = language_manager[
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.TEMPLATE,
+            AudioSettingsElements.SAMPLE_RATE_LABEL,
+        ]
         self._lbl_buffer_size = language_manager[
             Page.SETTINGS,
             Panel.AUDIO,
             TextType.LABEL,
             AudioSettingsElements.BUFFER_SIZE,
+        ]
+        self._lbl_master_gain = language_manager[
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.LABEL,
+            AudioSettingsElements.MASTER_GAIN,
+        ]
+        self._fmt_master_gain_db = language_manager[
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.TEMPLATE,
+            AudioSettingsElements.MASTER_GAIN_DB,
+        ]
+        self._lbl_master_gain_silent = language_manager[
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.MESSAGE,
+            AudioSettingsElements.MASTER_GAIN_SILENT,
         ]
         self._lbl_apply_button = language_manager[
             Page.SETTINGS,
@@ -111,16 +154,19 @@ class GUIAudioSettingsWindow(GUIWindow):
         """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
 
     def update_view(self, view_model: AudioSettingsViewModel) -> None:
-        """Re-seeds the values and repaints the combos of the open window."""
+        """Re-seeds the values and repaints the combos and master-gain readout of the open window."""
         self._seed(view_model)
         self._update_combos()
+        dpg_set_value(TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN, self._master_gain)
+        self._render_master_gain_readout(self._master_gain)
 
     def _seed(self, view_model: AudioSettingsViewModel) -> None:
-        self._devices_by_label = {device.label: device for device in view_model.devices}
-        self._device_items = view_model.device_labels
-        self._current_device_label = view_model.current_device_label
-        self._current_sample_rate_label = view_model.current_sample_rate_label
+        self._devices_by_label = {device.label(self._fmt_device_label): device for device in view_model.devices}
+        self._device_items = view_model.device_labels(self._fmt_device_label)
+        self._current_device_label = view_model.current_device_label(self._fmt_device_label)
+        self._current_sample_rate_label = view_model.current_sample_rate_label(self._fmt_sample_rate)
         self._current_buffer_size_label = view_model.buffer_size_label
+        self._master_gain = view_model.master_gain
 
     def create_window(self) -> None:
         with dpg.window(
@@ -136,6 +182,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             self._create_device_selection()
             self._create_sample_rate_selection()
             self._create_buffer_size_selection()
+            self._create_master_gain_slider()
             dpg.add_separator()
             self._create_action_buttons()
 
@@ -157,6 +204,7 @@ class GUIAudioSettingsWindow(GUIWindow):
                 FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_DEVICE),
                 FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE),
                 FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE),
+                FocusStop.field(TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN),
                 FocusStop.button(TAG_SETTINGS_AUDIO_BUTTON_REFRESH, self._refresh_devices),
                 FocusStop.button(TAG_SETTINGS_AUDIO_BUTTON_APPLY, self._commit),
             ],
@@ -198,6 +246,62 @@ class GUIAudioSettingsWindow(GUIWindow):
                 width=self._layout.combo_width,
             )
 
+    def _create_master_gain_slider(self) -> None:
+        """Lays out the live master-gain slider beside a decibel readout that reddens toward clipping.
+
+        The slider carries the linear gain; the readout projects it to decibels and tints from neutral
+        toward red as the gain drives past unity, warning that a boost is clipping into the output range.
+        """
+        readout = self._master_gain_readout(self._master_gain)
+        with labeled_field(self._lbl_master_gain, self._layout.label_width):
+            dpg.add_slider_float(
+                tag=TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN,
+                min_value=MIN_MASTER_GAIN,
+                max_value=MAX_MASTER_GAIN,
+                default_value=self._master_gain,
+                width=self._layout.combo_width,
+                format="%.2f",
+                callback=self._on_master_gain_changed,
+            )
+            dpg.add_text(
+                readout.db_label,
+                tag=TAG_SETTINGS_AUDIO_TEXT_MASTER_GAIN_DB,
+                color=self._clip_warning_color(readout.clip_fraction),
+            )
+
+        FontRegistry.bind_to_item(TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN, Font.MONO)
+
+    def _on_master_gain_changed(self, _sender: Sender, app_data: float) -> None:
+        """Applies the slider's gain live and repaints the decibel readout.
+
+        The gain is pushed straight to the callback so the change is heard on the next row the
+        player writes rather than after the render-ahead buffer drains.
+        """
+        gain = float(app_data)
+        self._master_gain = gain
+        self._render_master_gain_readout(gain)
+        self.call(self.on_master_gain_changed, gain)
+
+    def _render_master_gain_readout(self, gain: float) -> None:
+        readout = self._master_gain_readout(gain)
+        dpg_set_value(TAG_SETTINGS_AUDIO_TEXT_MASTER_GAIN_DB, readout.db_label)
+        dpg_configure_item(
+            TAG_SETTINGS_AUDIO_TEXT_MASTER_GAIN_DB,
+            color=self._clip_warning_color(readout.clip_fraction),
+        )
+
+    def _master_gain_readout(self, gain: float) -> MasterGainReadout:
+        return MasterGainReadout.for_gain(
+            gain,
+            decibel_format=self._fmt_master_gain_db,
+            silent_label=self._lbl_master_gain_silent,
+        )
+
+    def _clip_warning_color(self, clip_fraction: float) -> ColorRGBA:
+        """Reddens the readout colour along the layout gradient by the projected boost fraction."""
+        colors = self._layout.master_gain
+        return blend(colors.label_color, colors.clip_color, clip_fraction)
+
     @table_wrapper(columns=2)
     def _create_action_buttons(self) -> None:
         GUIButton(
@@ -227,20 +331,21 @@ class GUIAudioSettingsWindow(GUIWindow):
             dpg_set_value(TAG_SETTINGS_AUDIO_COMBO_DEVICE, "")
             return
 
-        self._sample_rates_by_label = dict(zip(device.sample_rate_labels, device.sample_rates))
+        self._sample_rates_by_label = dict(zip(device.sample_rate_labels(self._fmt_sample_rate), device.sample_rates))
         sample_rate_items = list(self._sample_rates_by_label)
-        dpg_set_value(TAG_SETTINGS_AUDIO_COMBO_DEVICE, device.label)
+        dpg_set_value(TAG_SETTINGS_AUDIO_COMBO_DEVICE, device.label(self._fmt_device_label))
         dpg_configure_item(
             TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
             items=sample_rate_items,
         )
 
         current_sample_rate_label = dpg.get_value(TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE)
+        default_sample_rate_label = device.default_sample_rate_label(self._fmt_sample_rate)
         if current_sample_rate_label not in sample_rate_items:
-            if device.default_sample_rate_label in sample_rate_items:
+            if default_sample_rate_label in sample_rate_items:
                 dpg_set_value(
                     TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
-                    device.default_sample_rate_label,
+                    default_sample_rate_label,
                 )
             elif sample_rate_items:
                 dpg_set_value(

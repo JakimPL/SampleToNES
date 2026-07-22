@@ -3,7 +3,7 @@ from typing import Tuple, Type, Union
 
 import pytest
 
-from sampletones_shared.utils.color import parse_hex_color, to_grayscale
+from sampletones_shared.utils.color import blend, parse_hex_color, to_grayscale
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
@@ -165,3 +165,23 @@ class TestToGrayscale:
 
     def test_gray_stays_gray(self) -> None:
         assert to_grayscale((128, 128, 128, 255)) == (128, 128, 128, 255)
+
+
+class TestBlend:
+    START = (0, 0, 0, 0)
+    END = (100, 200, 40, 255)
+
+    def test_zero_fraction_returns_start(self) -> None:
+        assert blend(self.START, self.END, 0.0) == self.START
+
+    def test_one_fraction_returns_end(self) -> None:
+        assert blend(self.START, self.END, 1.0) == self.END
+
+    def test_halfway_mixes_each_channel(self) -> None:
+        assert blend(self.START, self.END, 0.5) == (50, 100, 20, 128)
+
+    def test_clamps_below_zero(self) -> None:
+        assert blend(self.START, self.END, -1.0) == self.START
+
+    def test_clamps_above_one(self) -> None:
+        assert blend(self.START, self.END, 2.0) == self.END

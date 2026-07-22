@@ -31,6 +31,7 @@
 * Backward compatibility: library/reconstruction upgrade scheme
 * Respecting FamiTracker limitations
 * Per-tab undo routing
+* View-model display text via `LanguageManager` (principle 8): the project-properties timestamp (`view_model/shared/project_properties.py`) and the sequencer-grid cell string (`view_model/sequencer/grid.py`) are still hardcoded formats. Resolve the template in the panel and pass it into the projection, as the audio-settings dialog now does for its device/sample-rate/decibel labels.
 
 ## Bugs
 

@@ -25,6 +25,18 @@ TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE = TagName(
     Widget.COMBO,
     "buffer_size",
 )
+TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN = TagName(
+    Page.SETTINGS,
+    Panel.AUDIO,
+    Widget.SLIDER,
+    "master_gain",
+)
+TAG_SETTINGS_AUDIO_TEXT_MASTER_GAIN_DB = TagName(
+    Page.SETTINGS,
+    Panel.AUDIO,
+    Widget.TEXT,
+    "master_gain_db",
+)
 TAG_SETTINGS_AUDIO_BUTTON_APPLY = TagName(
     Page.SETTINGS,
     Panel.AUDIO,

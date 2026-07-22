@@ -1,3 +1,4 @@
+import math
 from typing import Tuple, cast
 
 import librosa
@@ -50,6 +51,24 @@ def clip_audio_inplace(audio: np.ndarray) -> np.ndarray:
         The same array instance, with its samples clipped to [-1.0, 1.0].
     """
     return np.clip(audio, -1.0, 1.0, out=audio)
+
+
+def amplitude_to_decibels(amplitude: float) -> float:
+    """Convert a linear amplitude ratio to decibels.
+
+    Unity amplitude is 0 dB and each doubling adds about 6 dB (``20·log10``). A non-positive
+    amplitude has no finite level and returns negative infinity, the decibel value of silence.
+
+    Args:
+        amplitude: A linear amplitude ratio.
+
+    Returns:
+        The level in decibels, or negative infinity for silence.
+    """
+    if amplitude <= 0.0:
+        return float("-inf")
+
+    return 20.0 * math.log10(amplitude)
 
 
 def to_mono(audio: np.ndarray) -> np.ndarray:
@@ -244,6 +263,7 @@ def normalize(
 def active_frame_level(
     audio: np.ndarray,
     frame_length: int,
+    *,
     percentile: float = COEFFICIENT_PERCENTILE,
     audibility_floor: float = COEFFICIENT_AUDIBILITY_FLOOR,
 ) -> float:
@@ -289,7 +309,11 @@ def active_frame_level(
     return float(np.percentile(audible, percentile))
 
 
-def quantize(audio: np.ndarray, levels: int = QUANTIZATION_LEVELS) -> np.ndarray:
+def quantize(
+    audio: np.ndarray,
+    *,
+    levels: int = QUANTIZATION_LEVELS,
+) -> np.ndarray:
     """
     Quantize audio to a discrete number of amplitude levels.
 
