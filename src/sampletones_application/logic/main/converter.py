@@ -334,8 +334,8 @@ class ConverterLogic(CallbackMixin):
     def _start_conversion(self) -> None:
         assert self._input_path is not None, "Input path is not set"
         config = self._config_manager.config.model_copy()
-        self._service.start(config, self._input_path)
         self._system_progress.initialize()
+        self._service.start(config, self._input_path)
 
     def _on_conversion_complete(self, output_path: Path) -> None:
         if output_path.exists():
