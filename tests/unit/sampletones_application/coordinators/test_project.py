@@ -25,7 +25,6 @@ def project_coordinator() -> ProjectCoordinator:
         MagicMock(),
         dialogs=MagicMock(),
         language_manager=MagicMock(),
-        layout=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
     )

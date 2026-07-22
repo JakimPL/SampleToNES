@@ -10,9 +10,9 @@ def create_stage() -> Sender:
     """Create a detached staging container and return its tag.
 
     Widgets built into a stage stay off the rendered item tree, so a large
-    subtree can be assembled across several frames without the growing tree
-    being laid out and drawn each frame. :func:`attach_staged_item` moves the
-    finished roots into their live parent in one step.
+    subtree can be assembled across several frames while layout and drawing wait
+    until it is live. :func:`attach_staged_item` moves the finished roots into
+    their live parent in one step.
     """
     stage: Sender = dpg.add_stage()
     return stage
@@ -22,8 +22,8 @@ def create_stage() -> Sender:
 def staged_container(stage: Sender) -> Iterator[None]:
     """Push ``stage`` as the active container so parentless items land in it.
 
-    Items created with an explicit parent still honour that parent; only items
-    left without one are captured by the stage.
+    Items created with an explicit parent still honour that parent; the stage
+    captures the parentless ones.
     """
     dpg.push_container_stack(stage)
     try:

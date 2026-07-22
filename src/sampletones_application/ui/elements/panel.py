@@ -72,7 +72,7 @@ class GUIPanel(CallbackMixin, ABC):
         """The container new body content attaches to: the collapse body group when collapsible, else the card.
 
         A collapsible card hides its body group to collapse, so content built with an explicit parent
-        must target that group rather than the card, or it stays visible when the card collapses.
+        must target that group to collapse along with the card.
         """
         if self._collapse is not None:
             return self._collapse.body_tag
@@ -183,7 +183,8 @@ class GUIPanel(CallbackMixin, ABC):
         """Render this panel's section header: a compact accent-toned label with a leading marker.
 
         The marker is a purpose glyph when ``glyph`` is given, otherwise the shared accent tick,
-        so a header can signal what its card is for while headers without a glyph stay uniform.
+        so a header with a purpose glyph signals what its card is for while the rest share the
+        accent tick and stay uniform.
         A fixed-width marker column keeps the label starting at the same offset regardless of the
         glyph's own width. Every panel opens with the same header treatment, so defining it on the
         base keeps the tabs consistent and gives one place to restyle every header at once. ``parent``
@@ -261,8 +262,8 @@ class GUIPanel(CallbackMixin, ABC):
         """Open this panel's card and frame its content with the collapsible header in one step.
 
         The card's tag, height, and auto-resize follow the collapse controller, so the card and its
-        controller stay in step; the panel supplies only the width, scrollbar, and initial visibility
-        the controller does not own. A controller must be enabled first via ``_enable_vertical_collapse``.
+        controller stay in step; the panel supplies the remaining width, scrollbar, and initial
+        visibility. A controller must be enabled first via ``_enable_vertical_collapse``.
         ``card_theme`` picks the card surface, so a primary card stands out from its siblings while the
         rest keep the shared surface by default.
         """

@@ -19,7 +19,6 @@ def _coordinator(config_manager: MagicMock) -> ConfigCoordinator:
         MagicMock(),
         dialogs=MagicMock(),
         language_manager=MagicMock(),
-        layout=MagicMock(),
     )
 
 

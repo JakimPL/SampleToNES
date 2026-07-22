@@ -16,7 +16,6 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
-from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services import (
     RegeneratedInstrument,
@@ -57,9 +56,8 @@ class ReconstructionCoordinator:
     - Menu bar instrument regeneration flows through it so that all
       reconstruction mutations remain centralised.
 
-    The separate ``set_reconstructions_tab`` call is a consequence of a mutual
-    dependency that prevents passing the tab in the constructor; ``_tab`` asserts
-    that this second step has been completed before first use.
+    The reconstructions tab is wired in after construction through
+    ``set_reconstructions_tab``; ``_tab`` asserts it is present before first use.
     """
 
     def __init__(
@@ -71,7 +69,6 @@ class ReconstructionCoordinator:
         *,
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
-        layout: LayoutConfig,
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
         on_reconstruction_updated: Callable[[RegeneratedInstrument], None],
@@ -84,7 +81,6 @@ class ReconstructionCoordinator:
         self._reconstructions_tab: Optional[ReconstructionTabCoordinator] = None
         self._dialogs = dialogs
         self._language_manager = language_manager
-        self._layout = layout
         self._on_tab_switch = on_tab_switch
         self._on_session_state_changed_callback = on_session_state_changed
         self._on_reconstruction_updated_callback = on_reconstruction_updated
@@ -421,10 +417,9 @@ class ReconstructionCoordinator:
     def _set_reconstruction_dimmed(self, dimmed: bool) -> None:
         """Fades the reconstruction waveform while the regeneration worker is busy.
 
-        The dim is driven off the service's own ``is_running`` span rather than counted per
-        request, so a continuous edit stream keeps the waveform faded until the worker settles.
-        Each finished result re-reads the live span: while more work is queued it stays faded,
-        and it restores once the worker is idle.
+        The dim tracks the service's own ``is_running`` span, so a continuous edit stream keeps
+        the waveform faded until the worker settles. Each finished result re-reads the live span:
+        while more work is queued it stays faded, and it restores once the worker is idle.
         """
         if self._reconstructions_tab is None:
             return

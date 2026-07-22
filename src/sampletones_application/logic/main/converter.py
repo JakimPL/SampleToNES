@@ -325,8 +325,8 @@ class ConverterLogic(CallbackMixin):
         if not self.call(self.is_library_available):
             CallbackQueue.add(
                 self._wait_for_library_and_start,
-                priority=self._scheduling.priority_schedule,
-                delay=self._scheduling.delay_schedule,
+                priority=self._scheduling.priorities.schedule,
+                delay=self._scheduling.delays.schedule,
             )
         else:
             self._start_conversion()
@@ -370,8 +370,8 @@ class ConverterLogic(CallbackMixin):
     def _schedule_return_to_idle(self) -> None:
         CallbackQueue.add(
             self.close,
-            priority=self._scheduling.priority_schedule,
-            delay=self._scheduling.delay_cancel,
+            priority=self._scheduling.priorities.schedule,
+            delay=self._scheduling.delays.cancel,
         )
 
     def _compose_action_label(self, input_path: Optional[Path]) -> str:

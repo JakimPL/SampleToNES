@@ -8,17 +8,27 @@ ifeq ($(UNAME_S),Windows)
 	RUN_SCRIPT :=
 	BUILD_SCRIPT := install.bat
 	EXECUTABLE := sampletones.exe
+	PYTHON := python
 else
 	SCRIPTS_DIR := scripts/linux
 	SCRIPT_EXT := .sh
 	RUN_SCRIPT := bash
 	BUILD_SCRIPT := ./install.sh
 	EXECUTABLE := sampletones
+	PYTHON := python3
+endif
+
+GPU ?= auto
+GPU_EXTRA :=
+ifeq ($(filter 0,$(GPU)),)
+ifneq ($(filter setup,$(MAKECMDGOALS)),)
+	GPU_EXTRA := $(shell $(PYTHON) scripts/detect_cuda.py --extra)
+endif
 endif
 
 help:
 	@echo "Available targets:"
-	@echo "  make setup       - Set up development environment (uv; append GPU=1 for CUDA support)"
+	@echo "  make setup       - Set up development environment (uv); GPU auto-detected, GPU=0 forces CPU"
 	@echo "  make pre-commit  - Install pre-commit hooks"
 	@echo "  make system-deps - Install system packages required to build and run (Debian-based)"
 	@echo "  make build       - Compile standalone executable (respects current deployment config)"
@@ -31,8 +41,8 @@ help:
 	@echo "  make run         - Run SampleToNES application"
 
 setup:
-	uv sync --group dev $(if $(filter 1,$(GPU)),--extra gpu,)
-	uv tool install --force $(if $(filter 1,$(GPU)),".[gpu]",.)
+	uv sync --group dev $(if $(GPU_EXTRA),--extra $(GPU_EXTRA),)
+	uv tool install --force $(if $(GPU_EXTRA),".[$(GPU_EXTRA)]",.)
 
 install:
 	make setup

@@ -31,7 +31,6 @@ def calculate_cqt_spectrum(
 
     Args:
         audio: Input audio as a numpy array.
-        fft_size: Size of the FFT.
         sample_rate: Sampling rate in Hz.
         cutoff: Minimum frequency in Hz.
         bins_per_octave: Number of bins per octave.
@@ -41,7 +40,8 @@ def calculate_cqt_spectrum(
         Histogram with log-spaced frequency edges and normalized CQT energy values.
 
     Raises:
-        TypeError: If fft_config or sampling have incorrect types.
+        TypeError: If `audio` is not a numeric numpy array.
+        ValueError: If `audio` is not one-dimensional.
     """
     validate_audio_array(audio)
     n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
@@ -76,17 +76,14 @@ def calculate_cqt_spectrum_columns(
     """
     Compute one CQT power-spectrum histogram per frame of a whole signal.
 
-    Shares the bins, energy normalization and edges of calculate_cqt_spectrum, but
-    returns a per-frame column instead of a single aggregated frame. The matching
-    target and the candidate references are both built from this function so they
-    share an identical feature-extraction contract and stay directly comparable
+    Uses the same bins, energy normalization and edges as `calculate_cqt_spectrum`,
+    producing one histogram per frame. The matching target and the candidate
+    references both come from this function, so their features stay comparable
     bin-by-bin.
 
-    The transform centers column ``i`` on sample ``i * hop_length``, whereas the matching
-    pipeline indexes a fragment by its center (the FFT path analyses a window centered on the
-    frame). The signal is therefore advanced by half a hop before transforming, so column ``i``
-    represents the frame centered on ``(i + 0.5) * hop_length`` and the per-frame timing matches
-    the FFT path exactly.
+    The signal is advanced by half a hop before transforming, so column ``i``
+    represents the frame centered on ``(i + 0.5) * hop_length``. This aligns the
+    per-frame timing with the FFT path, which analyses a window centered on each frame.
 
     Args:
         audio: Input audio as a numpy array.
@@ -98,6 +95,10 @@ def calculate_cqt_spectrum_columns(
 
     Returns:
         One Histogram per frame, all sharing the same log-spaced edges.
+
+    Raises:
+        TypeError: If `audio` is not a numeric numpy array.
+        ValueError: If `audio` is not one-dimensional.
     """
     validate_audio_array(audio)
     n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)

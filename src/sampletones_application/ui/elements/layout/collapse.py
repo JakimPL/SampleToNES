@@ -40,8 +40,7 @@ class CollapseController(CallbackMixin):
     header bar while collapsed, so its collapsed size holds regardless of what the owner
     reserves. A horizontal card only hides its body and swaps in a rail; the owning coordinator
     reclaims the freed width, which it learns through ``on_toggle``. The card's tag is the
-    persistence key, so the collapsible set is defined by which panels build a controller
-    rather than by a central registry.
+    persistence key, so the collapsible set is defined by which panels build a controller.
     """
 
     def __init__(
@@ -145,7 +144,7 @@ class CollapseController(CallbackMixin):
         """The strip's affordance glyph, pointing toward the collapse direction for the card's axis.
 
         A docked card's strip only shows while expanded and collapsing pulls it toward its dock edge,
-        so a horizontal strip points at that edge and never flips. A vertical strip stays in place, so
+        so a horizontal strip points at that edge in both states. A vertical strip stays in place, so
         it flips between the expanded and collapsed markers with the state.
         """
         if self.axis is CollapseAxis.HORIZONTAL_LEFT:

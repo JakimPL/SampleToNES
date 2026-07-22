@@ -9,7 +9,7 @@ from sampletones_application.categories.elements.sequencer import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import FeatureColors
-from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_REDO,
     TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
@@ -211,8 +211,8 @@ class GUISequencerHistoryPanel(GUIPanel):
         Rows are keyed by entry index: rows leaving the window are removed, rows
         the window gains are inserted at their display position, and rows whose
         text or cursor-relative state changed are repainted in place. Appends,
-        coalesced replacements, window slides, and undo/redo therefore each cost
-        a handful of rows rather than a table rebuild.
+        coalesced replacements, window slides, and undo/redo therefore each touch
+        a handful of rows.
         """
         desired = {entry.index for entry in window}
         for index in list(self._rows):

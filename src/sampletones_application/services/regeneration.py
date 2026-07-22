@@ -24,8 +24,7 @@ class RegeneratedInstrument:
     """A regeneration result paired with the generator and feature that changed.
 
     Carrying the request context alongside the fresh reconstruction lets the
-    history record which channel and feature an edit touched, which the finished
-    reconstruction alone no longer reveals.
+    history record which channel and feature an edit touched.
     """
 
     reconstruction: Reconstruction
@@ -46,9 +45,8 @@ class RegenerationService(ServiceBase[RegenerationResult]):
 
     Requests are serialized on a :class:`LatestWinsExecutor`: while a job runs, further
     requests coalesce to the latest one, so a continuous stream of edits collapses to a
-    single applied result — the final value — instead of dropping whichever edit arrived
-    mid-synthesis. ``is_running`` reports whether that worker is still busy, letting the
-    view fade the reconstruction for the whole span rather than per job.
+    single applied result — the final value. ``is_running`` reports whether that worker is
+    still busy, letting the view fade the reconstruction for the whole busy span.
     """
 
     def __init__(self, priority: int = 0) -> None:

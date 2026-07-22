@@ -45,7 +45,7 @@ its character.
 ### NES frequency
 
 How many times per second a program updates the channels — for example 60 Hz on
-NTSC or 50 Hz on PAL. _SampleToNES_ supports 15–600 Hz, and this rate sets the
+NTSC or 50 Hz on PAL. _SampleToNES_ supports 15–300 Hz, and this rate sets the
 reconstruction's frame rate.
 
 ### NTSC / PAL

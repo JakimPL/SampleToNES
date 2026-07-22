@@ -14,6 +14,24 @@ from sampletones_core.types.feature import FeatureMap, FeatureValue
 
 
 class Features(BaseModel):
+    """
+    The per-dimension envelopes describing one FamiTracker instrument.
+
+    Each field is the frame-by-frame envelope for one dimension — volume, arpeggio,
+    pitch, hi-pitch, and duty cycle — alongside the ``initial_pitch`` the pitch envelope
+    is relative to. An optional dimension is absent when the channel does not use it.
+    The mapping interface (subscript, ``get``, ``keys``/``items``/``values``, ``in``)
+    exposes the envelopes keyed by :class:`FeatureKey`, passing over absent ones.
+
+    Attributes:
+        initial_pitch: Reference pitch the pitch envelope is measured against.
+        volume: Volume envelope.
+        arpeggio: Arpeggio (relative pitch) envelope.
+        pitch: Pitch envelope, or ``None`` when unused.
+        hi_pitch: Fine-pitch envelope, or ``None`` when unused.
+        duty_cycle: Duty-cycle envelope, or ``None`` when unused.
+    """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     initial_pitch: int
@@ -28,6 +46,14 @@ class Features(BaseModel):
         cls,
         feature_map: FeatureMap,
     ) -> Features:
+        """Builds features from a raw feature map.
+
+        Args:
+            feature_map: The per-dimension arrays keyed by :class:`FeatureKey`.
+
+        Returns:
+            Features: The features carrying those envelopes.
+        """
         return cls(
             initial_pitch=cast(int, feature_map[FeatureKey.INITIAL_PITCH]),
             volume=cast(np.ndarray, feature_map[FeatureKey.VOLUME]),
@@ -80,6 +106,17 @@ class Features(BaseModel):
         return [value for value in self.feature_map.values() if value is not None]
 
     def save(self, filepath: Path, instrument_name: str) -> None:
+        """Writes the features to a FamiTracker instrument (``.fti``) file.
+
+        Builds a single 2A03 instrument from the envelopes and serializes it.
+
+        Args:
+            filepath: Destination path for the ``.fti`` file.
+            instrument_name: Name stored in the instrument.
+
+        Raises:
+            IOError: If the file cannot be written.
+        """
         sequences = features_to_instrument_sequences(
             volume=self.volume,
             arpeggio=self.arpeggio,

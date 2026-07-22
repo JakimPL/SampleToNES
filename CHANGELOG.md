@@ -8,6 +8,7 @@
 * Improved the general layout of the application.
 * Changed the internal file formats (`.stn`, `.ins`).
 * Switched to `uv` as the package manager.
+* Detect the NVIDIA driver at setup and install the matching _CuPy_ build automatically, on Linux and Windows.
 
 ## v0.2.3 [2026-01-09]
 

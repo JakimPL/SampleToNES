@@ -14,7 +14,7 @@ class Scorer:
     `spectral_costs` ranks the whole candidate stack by the phase-independent
     spectral term, producing the shortlist. `aligned_cost` completes the criterion
     for one shortlisted candidate, evaluating the temporal term on the candidate's
-    phase-aligned waveform so it measures shape rather than the accident of phase.
+    phase-aligned waveform so it reflects the waveform shape at its best phase alignment.
     """
 
     def __init__(self, config: Config, window: Window, signal_length: int) -> None:
@@ -79,6 +79,15 @@ class Scorer:
 
     @staticmethod
     def top_k(costs: np.ndarray, k: int) -> np.ndarray:
+        """The indices of the ``k`` lowest costs, ordered best first.
+
+        Args:
+            costs: One cost per candidate.
+            k: How many candidates to keep; clamped to the number available.
+
+        Returns:
+            np.ndarray: The selected indices, sorted by ascending cost.
+        """
         count = min(k, int(costs.shape[0]))
         partitioned = np.argpartition(costs, count - 1)[:count]
         return partitioned[np.argsort(costs[partitioned])]

@@ -29,17 +29,15 @@ MultaryTransformation: TypeAlias = Callable[..., T]
 
 def get_array_module(array: Array) -> ModuleType:
     """
-    Get the appropriate array module (NumPy or CuPy) based on the input array type.
-    If a built-in array type is provided, it returns NumPy.
+    Gets the array module (NumPy or CuPy) matching the input array type.
+
+    A CuPy ndarray resolves to the CuPy module; every other value resolves to NumPy.
 
     Args:
-        Input array which can be either a NumPy ndarray or a CuPy ndarray.
+        array: Input array, either a NumPy ndarray or a CuPy ndarray.
 
     Returns:
         The corresponding array module (np or xp).
-
-    Raises:
-        TypeError: If the input array is neither a NumPy ndarray nor a CuPy ndarray
     """
     module: ModuleType
     if isinstance(array, xp.ndarray):

@@ -8,7 +8,7 @@ class FieldKind(Enum):
     """What a focused widget does with a key press, which decides the keys it keeps for itself.
 
     ``TEXT_ENTRY`` inserts typed characters (text and number inputs); ``CHOICE`` navigates a list
-    without inserting characters (an open combo); ``NONE`` is anything else, which keeps no keys.
+    of options (an open combo); ``NONE`` is any other focus, which yields every key.
     """
 
     NONE = "none"
@@ -82,9 +82,7 @@ def focused_field_kind() -> FieldKind:
 
     The focused item is read straight from DearPyGui on each key press and counts only while it is
     a field type that is actively being edited, so every input the user types into keeps its keys
-    on its own with no per-input wiring. A combo counts only while its popup is open, when it owns
-    the arrows and Escape. Reading focus at the source also closes the gap where an input that
-    skipped registration let shortcuts fire mid-edit.
+    on its own. A combo counts only while its popup is open, when it owns the arrows and Escape.
 
     DearPyGui keeps reporting the last focused item after the widget behind it is gone, which the
     sequencer does whenever it rebuilds its tables, so the item is confirmed to still exist before
@@ -116,8 +114,8 @@ def focused_field_kind() -> FieldKind:
 def is_field_focused() -> bool:
     """Whether any field is editing the keyboard, so plain keys stay with it.
 
-    The scopes consult this one flag instead of each input reporting its own focus, so a key press
-    stays with the field the user is typing into and reaches the panels and shortcuts otherwise.
+    The scopes consult this single flag, so a key press stays with the field the user is typing
+    into and reaches the panels and shortcuts otherwise.
     """
     return focused_field_kind() is not FieldKind.NONE
 

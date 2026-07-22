@@ -11,7 +11,6 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.tags.general import (
@@ -60,7 +59,6 @@ class ProjectCoordinator:
         *,
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
-        layout: LayoutConfig,
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
     ) -> None:
@@ -69,7 +67,6 @@ class ProjectCoordinator:
         self._session_manager = session_manager
         self._dialogs = dialogs
         self._language_manager = language_manager
-        self._layout = layout
         self._on_tab_switch = on_tab_switch
         self._project_manager.session.on_state_changed = on_session_state_changed
 

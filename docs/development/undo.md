@@ -73,7 +73,7 @@ the language re-renders past entries correctly.
 The entry budget is a persisted user preference
 (`ApplicationConfig.history.budget`, default 500, lower bound 1). Strict
 checking and log level are deployment knobs
-(`behavior/deployment.yaml` → `DeploymentConfig`); the deployment model is
+(`application/deployment.yaml` → `DeploymentConfig`); the deployment model is
 authoritative from YAML with no field defaults. The history panel renders a
 window of `layout.sequencer.history.max_rendered_entries` rows around the
 cursor and repaints rows in place via an index-keyed diff.

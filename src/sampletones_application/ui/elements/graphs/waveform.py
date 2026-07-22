@@ -447,8 +447,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """Binds a line-color theme to a series, creating one cached theme per colour.
 
         Keying the theme by colour lets a series switch between colour variants — such as the
-        dimmed reconstruction line during regeneration — by binding the matching cached theme,
-        rather than recolouring a single shared theme in place.
+        dimmed reconstruction line during regeneration — by binding the matching cached theme.
         """
         color_part = "_".join(str(channel) for channel in color)
         theme_tag = f"{series_tag}{SUF_GRAPH_THEME}{TAG_SEPARATOR}{color_part}"

@@ -10,7 +10,7 @@ class KeyEvent:
     """A key press together with the modifier state captured at the moment it fired.
 
     The router snapshots the modifiers once per event, so every scope reads the same
-    ``ctrl``/``shift``/``alt`` state instead of re-polling ``is_key_down`` on its own.
+    ``ctrl``/``shift``/``alt`` state.
     """
 
     key: int

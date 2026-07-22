@@ -66,7 +66,7 @@ class TreeLogic(CallbackMixin):
         """
         callback = self.on_lock_state_changed
         if callback is not None:
-            CallbackQueue.add(callback, is_unlocked, priority=self._scheduling.priority_gui_action)
+            CallbackQueue.add(callback, is_unlocked, priority=self._scheduling.priorities.gui_action)
 
     @property
     def locked(self) -> bool:
@@ -77,8 +77,8 @@ class TreeLogic(CallbackMixin):
         self._pending_autoplay_node = node
         CallbackQueue.add(
             self._execute_autoplay,
-            priority=self._scheduling.priority_schedule,
-            delay=self._scheduling.delay_schedule,
+            priority=self._scheduling.priorities.schedule,
+            delay=self._scheduling.delays.schedule,
         )
 
     def cancel_autoplay(self) -> None:
@@ -160,8 +160,8 @@ class TreeLogic(CallbackMixin):
         self._pending_search_query = query
         CallbackQueue.add(
             self._execute_search_update,
-            priority=self._scheduling.priority_schedule,
-            delay=self._scheduling.delay_schedule,
+            priority=self._scheduling.priorities.schedule,
+            delay=self._scheduling.delays.schedule,
         )
 
     def _execute_search_update(self) -> None:

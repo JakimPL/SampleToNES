@@ -18,10 +18,10 @@ from .base import FeatureExtractor
 
 class CQTFeatureExtractor(FeatureExtractor):
     """
-    Whole-signal extraction for the `cqt` method: the constant-Q window spans several
-    frames, so the transform is computed once over the whole signal (one column per
-    frame, each centered on its hop position) rather than per fragment. Frames are aligned
-    to their own time position; `windowed_frames` is used only for the frame count.
+    Whole-signal extraction for the `cqt` method. The constant-Q window spans several
+    frames, so the transform runs once over the whole signal, yielding one column per
+    frame centered on its hop position. Each frame is aligned to its own time position,
+    and `windowed_frames` supplies the frame count.
     """
 
     def _frame_features(self, audio: np.ndarray, windowed_frames: List[np.ndarray]) -> List[Histogram]:

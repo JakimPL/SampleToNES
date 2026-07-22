@@ -373,7 +373,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         Called whenever a long operation starts or finishes. The button stays enabled only while the
         panel is unlocked and no conversion or library generation is running, leaving the rest of the
-        panel usable during such an operation. The cancel button is left alone so a generation can
+        panel usable during such an operation. The cancel button stays enabled so a generation can
         always be cancelled."""
         self._apply_action_button_states()
 

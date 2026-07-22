@@ -48,6 +48,12 @@ from sampletones_application.logic.project.title.document import (
 )
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.parameters import (
+    InstructionsTabParameters,
+    MainTabParameters,
+    ReconstructionTabParameters,
+    SequencerTabParameters,
+)
 from sampletones_application.paths import (
     BEHAVIOR_DIRECTORY,
     DEPLOYMENT_CONFIG_PATH,
@@ -191,7 +197,7 @@ class Application:
             scheduling=self.layout.behavior.scheduling,
         )
 
-        _priority = self.layout.behavior.scheduling.priority_schedule
+        _priority = self.layout.behavior.scheduling.priorities.schedule
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
@@ -209,7 +215,7 @@ class Application:
         self.project_controller.on_saved = self.history.mark_saved
         self.history.on_history_changed = self._on_history_changed
 
-        self.fps_timer: FPSTimer = FPSTimer()
+        self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.main.fps_update_interval)
         self._audio_was_playing: bool = False
 
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
@@ -257,7 +263,6 @@ class Application:
             self.session_manager,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
-            layout=self.layout,
             on_tab_switch=self._set_current_tab,
             on_session_state_changed=self._on_project_state_changed,
         )
@@ -269,7 +274,6 @@ class Application:
             self.audio_device_manager,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
-            layout=self.layout,
             on_tab_switch=self._set_current_tab,
             on_session_state_changed=self._on_reconstruction_state_changed,
             on_reconstruction_updated=self._on_reconstruction_updated,
@@ -295,7 +299,7 @@ class Application:
             on_reconstruction_instrument_updated=self._regenerate_instrument,
             is_operation_active=self._is_operation_active,
             original_audio_locator=self._original_audio_locator,
-            layout=self.layout,
+            layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
@@ -312,7 +316,7 @@ class Application:
             on_generation_state_changed=self._on_library_operation_changed,
             is_operation_active=self._is_operation_active,
             is_converter_visible=self._is_converter_panel_visible,
-            layout=self.layout,
+            layout=InstructionsTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
@@ -330,7 +334,7 @@ class Application:
             on_load_library=self._load_library,
             is_operation_active=self._is_operation_active,
             on_busy_state_changed=self._refresh_busy_state,
-            layout=self.layout,
+            layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
@@ -350,7 +354,7 @@ class Application:
             project_controller=self.project_controller,
             history=self.history,
             original_audio_locator=self._original_audio_locator,
-            layout=self.layout,
+            layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
@@ -375,7 +379,6 @@ class Application:
             self.session_manager,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
-            layout=self.layout,
         )
 
         self._shell = ApplicationShell(
@@ -821,8 +824,8 @@ class Application:
         """Refreshes the stored reconstructions of samples left out of sync by a rate change.
 
         Song playback already follows the new rate; this re-synthesizes only the persistent
-        rendered waveforms the Reconstructions tab edits. Samples already at the target rate are
-        skipped, and the batch runs in the background so the rate change stays responsive.
+        rendered waveforms the Reconstructions tab edits, and only for the samples still off the
+        target rate. The batch runs in the background so the rate change stays responsive.
         """
         targets = [
             (sample.id, sample.reconstruction)
@@ -917,7 +920,7 @@ class Application:
         """Applies the properties dialog's values as one undoable gesture.
 
         Only fields that differ from the current project info reach the controller,
-        so confirming the dialog with nothing edited leaves the history untouched.
+        so confirming the dialog with no edits is a no-op.
         """
         info = self.project_controller.project.info
         with self.history.transaction(HistoryAction.EDIT_PROJECT_PROPERTIES):
@@ -1071,8 +1074,8 @@ class Application:
 
         When the reconstruction on screen becomes a project sample — added to the sequencer — its
         source audio and file location are detached. The open document follows so both locations read
-        as not applicable, matching an owned sample. The guard makes this a no-op except at the moment
-        a file-backed reconstruction is added while it is the one on screen.
+        as not applicable, matching an owned sample. The guard lets this run only when a file-backed
+        reconstruction is added while it is the one on screen.
         """
         reconstruction_data = self.reconstruction_manager.current_reconstruction
         if reconstruction_data is None or reconstruction_data.filepath is None:
@@ -1242,7 +1245,7 @@ class Application:
         CallbackQueue.notify_frame()
         CallbackQueue.add(
             self._update_status,
-            priority=self.layout.behavior.scheduling.priority_update_status,
+            priority=self.layout.behavior.scheduling.priorities.update_status,
         )
         CallbackQueue.process(self.layout.behavior.scheduling.queue_budget_seconds)
 

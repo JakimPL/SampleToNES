@@ -20,8 +20,8 @@ class Transformation(NamedTuple):
     Facilitates operations of the general form:
         `f[ op ( f^-1(x_i), i = 1 ... n) ]`
 
-    Function `f` is called forward transformation, which sends FFT features to a transformed space,
-    while `f^-1`, its inverse called backward transformation, brings the transformed features
+    Function `f` is called forward transformation, which sends values to a transformed space,
+    while `f^-1`, its inverse called backward transformation, brings the transformed values
     back to the original space.
 
     Operations are performed in the original space after applying the backward transformation,
@@ -45,7 +45,7 @@ class Transformation(NamedTuple):
         *arrays: ArrayOrNumeric,
     ) -> ArrayOrNumeric:
         """
-        Apply a multary operation on FFT features with transformations.
+        Apply a multary operation on values through the transformation.
 
         `f[ op ( f⁻¹(x₁), f⁻¹(x₂), ..., f⁻¹(xₙ) ) ]`
 
@@ -64,7 +64,7 @@ class Transformation(NamedTuple):
         *arrays: ArrayOrNumeric,
     ) -> ArrayOrNumeric:
         """
-        Reduce multiple FFT features using a binary operation with transformations.
+        Reduce multiple values using a binary operation through the transformation.
 
             `f[ reduce( op, f⁻¹(x₁), f⁻¹(x₂), ..., f⁻¹(xₙ) ) ]`
 
@@ -167,7 +167,7 @@ class Transformation(NamedTuple):
         *arrays: ArrayOrNumeric,
     ) -> ArrayOrNumeric:
         """
-        Add multiple FFT features with transformations.
+        Add multiple values through the transformation.
 
             `f[ f⁻¹(x₁) + f⁻¹(x₂) + ... + f⁻¹(xₙ) ]`
 
@@ -186,7 +186,7 @@ class Transformation(NamedTuple):
         array2: ArrayOrNumeric,
     ) -> ArrayOrNumeric:
         """
-        Subtract two FFT features with transformations.
+        Subtract two values through the transformation.
 
             `f[ f⁻¹(x₁) - f⁻¹(x₂) ]`
 
@@ -204,7 +204,7 @@ class Transformation(NamedTuple):
         *arrays: ArrayOrNumeric,
     ) -> ArrayOrNumeric:
         """
-        Multiply multiple FFT features with transformations.
+        Multiply multiple values through the transformation.
 
             `f[ f⁻¹(x₁) ⋅ f⁻¹(x₂) ⋅ ... ⋅ f⁻¹(xₙ) ]`
 
@@ -222,7 +222,7 @@ class Transformation(NamedTuple):
         array2: ArrayOrNumeric,
     ) -> ArrayOrNumeric:
         """
-        Divide two FFT features with transformations.
+        Divide two values through the transformation.
 
             `f[ f⁻¹(x₁) / f⁻¹(x₂) ]`
 

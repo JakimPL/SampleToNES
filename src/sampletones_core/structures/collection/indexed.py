@@ -26,22 +26,16 @@ T = TypeVar("T", bound=ModelHashable)
 
 class IndexedCollection(Generic[T]):
     """
-    A generic collection that maintains both positional order and hash-based access,
-    for immutable hashable objects. Each item is stored with a unique hash and a stable integer
+    A collection of immutable hashable objects that keeps both positional order and
+    hash-based access. Each item is stored under a unique hash and a stable integer
     index, so the collection holds each distinct item (by hash) at most once.
 
-    Collection items must keep a stable hash while they are stored in the collection; changing it
-    may lead to inconsistent behavior.
+    Items must keep a stable hash for as long as they are stored; a changing hash
+    leaves the collection inconsistent. Inserting or removing an item shifts only the
+    affected indices and leaves every hash stable.
 
-    Internally, this class uses a dictionary for item storage and a BidirectionalHashMap to track the
-    mapping between item hashes and their positional indices. When items are inserted or removed,
-    only the affected indices are updated, and the hashes remain stable.
-
-    Subscript access supports both integer indices (including negative indices) and hash strings.
-    Items are uniquely identified by their hash, computed via the calculate_hash function.
-
-    Item membership can be checked using the `in` operator, which checks for the presence of an item
-    based on its hash, not its position nor equality.
+    Subscript access accepts integer indices (including negative ones) and hash strings,
+    and the `in` operator tests membership by the item's hash.
 
     Examples:
         The following shows basic usage of IndexedCollection.

@@ -16,7 +16,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
 from sampletones_application.constants.global_ import TAG_SEPARATOR
-from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.layout.general.colors import FeatureColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.general import (
     SUF_BUTTON_COPY,
@@ -47,7 +47,7 @@ from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
+from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper, PitchStepperStyle
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.reconstruction.instruments.config import (
     FeaturePlotConfig,
@@ -87,7 +87,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def __init__(
         self,
         *,
-        layout_general: GeneralLayout,
+        pitch_stepper_style: PitchStepperStyle,
+        copy_width: int,
+        feature_colors: FeatureColors,
         layout_graphs: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -103,10 +105,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.mouse_item_handler_tag = f"{TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self._graphs: Dict[str, GUIBarGraph] = {}
-        self._layout_general = layout_general
+        self._pitch_stepper_style = pitch_stepper_style
+        self._copy_width = copy_width
         self._layout_graphs = layout_graphs
         self._feature_plot_configs = make_feature_plot_configs(
-            layout_general.colors.features,
+            feature_colors,
             language_manager,
         )
 
@@ -505,9 +508,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             tooltip=self._period_tooltip if is_noise else self._pitch_tooltip,
             status_message=self._msg_input_period if is_noise else self._msg_input_pitch,
             status_bar=self._status_bar,
-            layout=self._layout_general.pitch_stepper,
-            plus_minus_layout=self._layout_general.plus_minus_buttons,
-            value_color=self._layout_general.colors.text.disabled,
+            layout=self._pitch_stepper_style.dimensions,
+            plus_minus_layout=self._pitch_stepper_style.plus_minus,
+            value_color=self._pitch_stepper_style.value_color,
         )
         stepper.on_value_changed = partial(
             self._on_pitch_value_changed,
@@ -672,7 +675,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             GUIButton(
                 tag=copy_button_tag,
                 label=self._lbl_copy,
-                width=self._layout_general.buttons.copy_width,
+                width=self._copy_width,
                 callback=lambda: self._on_copy_button_clicked(
                     raw_data_text,
                     copy_button_tag,

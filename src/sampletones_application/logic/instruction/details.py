@@ -1,7 +1,7 @@
 from typing import Callable, Optional
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.instructions import InstructionsLayout
+from sampletones_application.layout.tabs.instructions import InstructionsLayout
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.instruction.table import InstructionTableLogic as _InstructionTableLogic
 from sampletones_application.utils.callbacks.queue import CallbackQueue

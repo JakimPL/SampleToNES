@@ -17,7 +17,10 @@ def converter_logic() -> ConverterLogic:
     config_manager.get_reconstructions_directory.return_value = Path("/tmp/reconstructions")
     service = MagicMock()
     service.is_running.return_value = False
-    scheduling = MagicMock(priority_schedule=0, delay_schedule=0, delay_cancel=0)
+    scheduling = MagicMock(
+        priorities=MagicMock(schedule=0),
+        delays=MagicMock(schedule=0, cancel=0),
+    )
     language_manager = MagicMock()
     language_manager.__getitem__.return_value = "message"
 

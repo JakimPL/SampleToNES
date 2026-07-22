@@ -11,7 +11,7 @@ class KDialogBackend:
     File dialogs backed by KDE's ``kdialog`` (Qt).
 
     ``kdialog`` activates the supplied filter, so the file-type selector opens on the
-    chosen type rather than an unfiltered default.
+    chosen type.
     """
 
     def open_file(

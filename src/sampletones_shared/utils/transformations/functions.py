@@ -5,13 +5,13 @@ from sampletones_shared.types.array import ArrayOrNumeric
 
 def identity(x: ArrayOrNumeric) -> ArrayOrNumeric:
     """
-    Identity function.
+    Returns the argument unchanged, serving as the no-op transformation.
 
     Args:
         x: Input value or array.
 
     Returns:
-        Same as input.
+        The input, unchanged.
     """
     return x
 
@@ -32,13 +32,13 @@ def energy(x: ArrayOrNumeric) -> ArrayOrNumeric:
 
 def exp(x: ArrayOrNumeric) -> ArrayOrNumeric:
     """
-    Exponential function.
+    Computes the element-wise natural exponential `e^x`.
 
     Args:
         x: Input value or array.
 
     Returns:
-        ArrayOrScalar: Exponential of the input.
+        Exponential of the input.
     """
     array: ArrayOrNumeric = np.exp(x)
     return array
@@ -46,7 +46,7 @@ def exp(x: ArrayOrNumeric) -> ArrayOrNumeric:
 
 def power(x: ArrayOrNumeric, a: float) -> ArrayOrNumeric:
     """
-    Power function.
+    Raises the input to the power `a` (`x^a`).
 
     Args:
         x: Input value or array.
@@ -61,7 +61,7 @@ def power(x: ArrayOrNumeric, a: float) -> ArrayOrNumeric:
 
 def power_inverse(x: ArrayOrNumeric, a: float) -> ArrayOrNumeric:
     """
-    Inverse power function.
+    Raises the input to the reciprocal power `1 / a` (`x^(1/a)`), inverting `power`.
 
     Args:
         x: Input value or array.
@@ -114,7 +114,7 @@ def yeo_johnson_inverse(
 
     Args:
         y: Transformed value or array.
-        power: Shape parameter λ ∈ (0, 1].
+        exponent: Shape parameter λ ∈ (0, 1].
         epsilon: Noise floor used in the forward transformation.
 
     Returns:

@@ -212,9 +212,8 @@ def active_frame_level(
 
     Returns the ``percentile``-th percentile of the per-frame peak amplitudes over
     frames whose peak exceeds ``audibility_floor`` times the global peak. Anchoring to
-    the typical audible frame rather than the single loudest sample keeps a lone
-    transient from dragging the rest of the signal below the matchable range, while
-    long silences are excluded by the floor. Falls back to the global peak when no
+    the typical audible frame keeps the reference stable when the signal holds a lone
+    loud transient or long stretches of silence. Falls back to the global peak when no
     frame is audible or the audio is shorter than one frame.
 
     Args:

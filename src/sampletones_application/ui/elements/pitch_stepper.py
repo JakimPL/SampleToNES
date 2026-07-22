@@ -1,7 +1,9 @@
-from typing import Any, Callable, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Optional, Self
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.tags.general import (
@@ -22,9 +24,33 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.palette import PaletteColor
 from sampletones_core.utils.pitch_kind import PitchValueKind
 from sampletones_shared.types.application import Color
 from sampletones_shared.utils.callbacks import CallbackMixin
+
+
+@dataclass(frozen=True)
+class PitchStepperStyle:
+    """The styling a pitch stepper draws itself with, narrowed from the general layout.
+
+    A stepper needs only its own dimensions, the plus/minus button dimensions it embeds, and
+    the colour of its read-only value readout. Assembling this at the composition root lets a
+    panel that builds steppers receive just these three fields, mirroring the
+    :meth:`TreeColors.create` narrowing.
+    """
+
+    dimensions: PitchStepperLayout
+    plus_minus: PlusMinusButtonsLayout
+    value_color: PaletteColor
+
+    @classmethod
+    def from_general(cls, general: GeneralLayout) -> Self:
+        return cls(
+            dimensions=general.pitch_stepper,
+            plus_minus=general.plus_minus_buttons,
+            value_color=general.colors.text.disabled,
+        )
 
 
 class GUIPitchStepper(CallbackMixin):
@@ -34,8 +60,8 @@ class GUIPitchStepper(CallbackMixin):
     name, flanked by a :class:`GUIPlusMinusButtons` pair that steps by one and repeats while held. The
     control owns the value it displays, clamps and renders it through its :class:`PitchValueKind`, and
     reports the value through the single ``on_value_changed`` hook once editing settles, so a burst of
-    steps drives one update rather than one per step. ``set_value`` seeds the readout without reporting,
-    so a panel can load a value and then listen for edits.
+    steps collapses into one update. ``set_value`` seeds the readout silently, so a panel can load a
+    value and then listen for edits.
     """
 
     def __init__(
@@ -86,7 +112,7 @@ class GUIPitchStepper(CallbackMixin):
         return self._value
 
     def set_value(self, value: int) -> None:
-        """Seeds the displayed value, clamping it into range and rendering it without reporting a change."""
+        """Seeds the displayed value, clamping it into range and rendering it silently."""
         self._value = self._kind.clamp(value)
         self._render()
 
@@ -184,11 +210,11 @@ class GUIPitchStepper(CallbackMixin):
         self._schedule_emit()
 
     def _schedule_emit(self) -> None:
-        """Renders update on every step for immediate feedback, while reporting the value only once the
-        user settles. Each change supersedes the previous token, so a burst of steps — including a held
-        button — collapses into a single ``on_value_changed`` once ``commit_delay`` frames pass with no
-        further change, sparing consumers a reload per step. The settle posts at ``commit_priority`` (the
-        schedule tier) so it orders alongside the debounced regeneration it triggers rather than below it."""
+        """Renders an update on every step for immediate feedback, reporting the value once the user
+        settles. Each change supersedes the previous token, so a burst of steps — including a held
+        button — collapses into a single ``on_value_changed`` once the value holds steady for
+        ``commit_delay`` frames. The settle posts at ``commit_priority`` (the schedule tier) so it
+        orders alongside the debounced regeneration it triggers."""
         self._emit_token += 1
         CallbackQueue.add(
             self._emit_settled_value,

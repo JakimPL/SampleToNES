@@ -28,11 +28,12 @@ dependencies = [
 sampletones = "sampletones.__main__:main"
 
 [project.optional-dependencies]
-gpu = [
-    "cupy-cuda12x>=13,<14",
-    "nvidia-cuda-runtime-cu12; sys_platform == 'linux'",
-    "nvidia-cuda-nvrtc-cu12; sys_platform == 'linux'",
-    "nvidia-cublas-cu12; sys_platform == 'linux'",
+gpu = ["cupy-cuda12x[ctk]>=14,<15"]
+gpu-cuda11 = [
+    "cupy-cuda11x>=13,<14",
+    "nvidia-cuda-runtime-cu11; sys_platform == 'linux'",
+    "nvidia-cuda-nvrtc-cu11; sys_platform == 'linux'",
+    "nvidia-cublas-cu11; sys_platform == 'linux'",
 ]
 
 [dependency-groups]
@@ -53,6 +54,14 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv]
+conflicts = [
+    [
+        { extra = "gpu" },
+        { extra = "gpu-cuda11" },
+    ],
+]
 
 [tool.hatch.build.targets.wheel]
 packages = [

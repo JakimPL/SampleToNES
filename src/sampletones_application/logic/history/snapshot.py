@@ -16,10 +16,10 @@ def snapshot_project(project: Project) -> Project:
 
     The song, settings, metadata and sample shells are deep-copied so later edits
     to the live project leave the snapshot untouched. Each sample's reconstruction
-    is shared by reference: reconstruction edits are copy-on-write (they install a
-    fresh reconstruction rather than mutating in place), so a shared reconstruction
-    stays valid for the life of the snapshot while the multi-megabyte audio arrays
-    are never duplicated.
+    is shared by reference, so the snapshot reuses those multi-megabyte audio
+    arrays. Reconstruction edits are copy-on-write — each installs a fresh
+    reconstruction — so the shared reconstruction stays valid for the life of the
+    snapshot.
     """
     shared_reconstructions: Dict[int, object] = {
         id(sample.reconstruction): sample.reconstruction for sample in project.samples

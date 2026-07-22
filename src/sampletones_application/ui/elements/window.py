@@ -39,8 +39,8 @@ class GUIWindow(GUIPanel, ABC):
     def _teardown(self) -> None:
         """Releases resources tied to the current appearance before its tree is deleted.
 
-        The default does nothing; a window that installs per-appearance handlers such as a
-        keyboard navigator overrides this to dispose them, keeping setup and teardown
+        The base implementation is a no-op; a window that installs per-appearance handlers such
+        as a keyboard navigator overrides this to dispose them, keeping setup and teardown
         symmetric across every reopen.
         """
 

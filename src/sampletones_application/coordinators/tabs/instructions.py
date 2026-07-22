@@ -17,7 +17,6 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.details import (
     InstructionDetailsPanelLogic,
 )
@@ -27,6 +26,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_application.parameters.instructions import InstructionsTabParameters
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -51,7 +51,6 @@ from sampletones_application.ui.elements.layout.responsive import (
     stacked_graph_height,
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.instruction.choice import (
     GUIInstructionChoicePanel,
 )
@@ -105,7 +104,7 @@ class InstructionsTabCoordinator:
         is_operation_active: Callable[[], bool],
         is_converter_visible: Callable[[], bool],
         *,
-        layout: LayoutConfig,
+        layout: InstructionsTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
@@ -124,18 +123,13 @@ class InstructionsTabCoordinator:
             TextType.LABEL,
             MenuElements.TAB_INSTRUCTIONS,
         ]
-        self._left_width = layout.general.columns.side.width
-        self._left_height = layout.general.columns.side.height
-        self._baseline_viewport_width = layout.general.columns.baseline_viewport_width
-        self._center_weight = layout.general.columns.center_weight
+        self._geometry = layout.geometry
         self._side_panel_count: int
-        self._baseline_viewport_height = layout.general.window.min_height
-        self._base_graph_height = layout.graphs.dimensions.height
-        self._max_stack_height = layout.graphs.dimensions.max_stack_height
-        self._details_width = layout.general.columns.instructions_right.width
-        self._right_height = layout.general.columns.instructions_right.height
-        self._panel_gap = layout.general.panel_gap
-        self._rail_width = layout.general.collapse.rail_width
+        self._baseline_viewport_height = layout.baseline_viewport_height
+        self._base_graph_height = layout.base_graph_height
+        self._max_stack_height = layout.max_stack_height
+        self._details_width = layout.right_column_width
+        self._right_height = layout.right_column_height
         self._msg_display_error = language_manager[
             Page.INSTRUCTIONS,
             Panel.LIBRARY,
@@ -212,19 +206,16 @@ class InstructionsTabCoordinator:
         self._library_tree_logic = TreeLogic(
             session_manager,
             audio_device_manager,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
         )
         self._library_panel = GUIInstructionsLibraryPanel(
             self._library_logic,
             self._library_tree_logic,
-            scheduling=layout.behavior.scheduling,
+            scheduling=layout.scheduling,
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_LIBRARY_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
-            colors=TreeColors.create(
-                layout.general.colors,
-                accent=layout.general.colors.headers.library,
-            ),
+            colors=layout.tree_colors,
             is_operation_active=is_operation_active,
         )
         self._library_panel.set_collapse_handler(self._on_library_collapse_changed)
@@ -288,14 +279,14 @@ class InstructionsTabCoordinator:
         )
         self._instruction_choice_panel = GUIInstructionChoicePanel(
             layout=layout.instructions,
-            general_layout=layout.general,
+            pitch_stepper_style=layout.pitch_stepper_style,
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_DETAILS_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._instruction_parameters_panel = GUIInstructionParametersPanel(
-            table_colors=layout.general.colors.tables,
-            table_layout=layout.general.tables,
+            table_colors=layout.table_colors,
+            table_layout=layout.tables,
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD),
             language_manager=language_manager,
         )
@@ -454,14 +445,14 @@ class InstructionsTabCoordinator:
     def _sync_library_width(self) -> None:
         """Shrinks the library column to the collapse rail when collapsed, else sizes it to the viewport width."""
         if self._library_panel.collapsed:
-            width = self._rail_width
+            width = self._geometry.rail_width
         else:
             width = expanded_side_width(
-                self._left_width,
+                self._geometry.side_width,
                 dpg.get_viewport_client_width(),
-                self._baseline_viewport_width,
+                self._geometry.baseline_viewport_width,
                 self._side_panel_count,
-                self._center_weight,
+                self._geometry.center_weight,
             )
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
@@ -498,14 +489,14 @@ class InstructionsTabCoordinator:
             label=self._tab_label,
         ):
             self._side_panel_count = TabColumns.build(
-                panel_gap=self._panel_gap,
+                panel_gap=self._geometry.panel_gap,
                 columns=[
                     ColumnSpec(
                         tag=_LEFT_COLUMN_TAG,
                         build=self._library_panel.create_panel,
                         theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
-                        width=self._left_width,
-                        height=self._left_height,
+                        width=self._geometry.side_width,
+                        height=self._geometry.side_height,
                         no_scrollbar=True,
                     ),
                     ColumnSpec(
@@ -532,13 +523,13 @@ class InstructionsTabCoordinator:
     def _build_display_column(self, parent: str) -> None:
         """Stacks the waveform and spectrum cards down the centre column."""
         self._waveform_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._spectrum_panel.create_panel(parent)
 
     def _build_details_column(self, parent: str) -> None:
         """Stacks the instruction-choice and parameters cards down the right column."""
         self._instruction_choice_panel.create_panel(parent)
-        dpg.add_spacer(height=self._panel_gap, parent=parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._instruction_parameters_panel.create_panel(parent)
 
     def initialize(self) -> None:

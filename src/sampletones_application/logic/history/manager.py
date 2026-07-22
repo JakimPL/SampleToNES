@@ -21,8 +21,8 @@ class HistoryManager(CallbackMixin):
     """Records project edits as an undoable stack of whole-project snapshots.
 
     The live project always equals a restoration of ``entries[cursor]``. Undo and
-    redo move the cursor and reinstall the snapshot there; they never mutate a
-    stored snapshot, so any sequence of undos and redos that returns the cursor to
+    redo move the cursor and reinstall the snapshot there, leaving every stored
+    snapshot intact, so any sequence of undos and redos that returns the cursor to
     an index reproduces that index's exact state by construction.
 
     Edits are grouped into one entry per gesture by wrapping coordinator intent
@@ -78,8 +78,8 @@ class HistoryManager(CallbackMixin):
         fresh baseline entry — the state undo can always return to — and a clean
         session makes that baseline the save point: undoing back to it later
         reinstates the on-disk content. With every project closed the stack
-        empties, so the panel reports no history. Restores driven by undo/redo
-        are excluded so they never clear the stack they navigate.
+        empties, so the panel reports no history. A restore driven by undo/redo
+        returns early here, preserving the stack it navigates.
         """
         if self._restoring:
             return
@@ -116,15 +116,15 @@ class HistoryManager(CallbackMixin):
     ) -> Iterator[None]:
         """Groups every mutation of one user gesture into a single history entry.
 
-        Nested scopes coalesce into the outermost transaction, and a gesture that
-        changes nothing records no entry. The commit runs on scope exit even when
+        Nested scopes coalesce into the outermost transaction, and only a gesture
+        that changes the project records an entry. The commit runs on scope exit even when
         the gesture raises: the mutations that already landed are part of the live
         project, so recording them preserves the invariant that the live project
         equals a restoration of ``entries[cursor]``.
 
         ``coalesce`` names the gesture's target. Consecutive commits that share
-        the same action and target replace the previous entry instead of
-        appending, so a continuous interaction — a graph drag, repeated edits of
+        the same action and target replace the previous entry, so a continuous
+        interaction — a graph drag, repeated edits of
         one cell — records a single entry whose undo restores the state before
         the first gesture of the run. Any undo, redo, or jump breaks the run.
         """
@@ -310,7 +310,7 @@ class HistoryManager(CallbackMixin):
             )
 
     def _prune_hash_cache(self) -> None:
-        """Drops memoized hashes for reconstructions the history no longer retains.
+        """Prunes the hash cache to the reconstructions the history still retains.
 
         Runs wherever snapshots are discarded — reset, redo-branch truncation,
         budget eviction, and coalescing replacement — keeping the cache bounded

@@ -15,6 +15,5 @@ LANG_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "lang"
 THEME_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "theme"
 
 LANG_EN: Final[Path] = LANG_DIRECTORY / "en.yaml"
-VERSION_CONFIG_PATH: Final[Path] = APPLICATION_DIRECTORY / "version.yaml"
 DEPLOYMENT_CONFIG_PATH: Final[Path] = APPLICATION_DIRECTORY / "deployment.yaml"
 APPLICATION_STATE_PATH: Final[Path] = USER_PATH_CONFIG / "state.yaml"

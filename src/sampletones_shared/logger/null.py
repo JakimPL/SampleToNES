@@ -7,6 +7,13 @@ from sampletones_shared.meta import SingletonMeta
 
 
 class NullLogger(metaclass=SingletonMeta):
+    """A logger that accepts every call and discards it.
+
+    Stands in for :class:`Logger` where logging output is suppressed (tests,
+    headless runs), matching the :class:`LoggerProtocol` surface so callers work
+    against either interchangeably.
+    """
+
     def __init__(self, level: int = logging.INFO) -> None:
         pass
 

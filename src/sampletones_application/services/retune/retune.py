@@ -21,7 +21,7 @@ class SampleRetuneService(ServiceBase[RetuneResult]):
 
     Requests run on a :class:`LatestWinsExecutor`, so a fresh rate change supersedes an
     in-flight batch: the newest batch runs once the current one finishes, and the caller
-    discards results whose rate no longer matches the project.
+    keeps only the results whose rate matches the project's current rate.
     """
 
     def __init__(self, priority: int = 0) -> None:

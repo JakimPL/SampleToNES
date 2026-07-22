@@ -228,9 +228,9 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
     def _enqueue_row(self, row: _RenderedRow) -> None:
         """Appends a rendered row once the buffered look-ahead falls below the target.
 
-        Bounding the buffer by queued audio duration (rather than a fixed row count) holds a
-        constant real-time cushion whatever the row length, so short high-tempo rows stay as
-        well-buffered as long ones while the render-ahead latency stays bounded.
+        Bounding the buffer by queued audio duration holds a constant real-time cushion
+        whatever the row length, so short high-tempo rows stay as well-buffered as long ones
+        while the render-ahead latency stays bounded.
         """
         with self._buffer_condition:
             while not self._stop_event.is_set() and self._queued_samples >= self._prefetch_samples:
@@ -279,8 +279,8 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         """Wraps the playhead back to the song start when looping is on; reports whether it looped.
 
         A song with no orders stays finished after the wrap, so looping reports ``False`` there and
-        playback stops instead of spinning. Resetting mirrors a fresh ``start`` so the loop replays
-        the song from clean channel state.
+        playback stops. Resetting mirrors a fresh ``start`` so the loop replays the song from clean
+        channel state.
         """
         if not self._should_loop():
             return False

@@ -9,8 +9,7 @@ from sampletones_application.categories.elements.instructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
-from sampletones_application.layout.general import GeneralLayout
-from sampletones_application.layout.instructions import InstructionsLayout
+from sampletones_application.layout.tabs.instructions import InstructionsLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,
@@ -28,7 +27,7 @@ from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
+from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper, PitchStepperStyle
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -59,7 +58,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         self,
         *,
         layout: InstructionsLayout,
-        general_layout: GeneralLayout,
+        pitch_stepper_style: PitchStepperStyle,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
@@ -68,7 +67,7 @@ class GUIInstructionChoicePanel(GUIPanel):
 
         self._status_bar = status_bar
         self._layout = layout
-        self._general_layout = general_layout
+        self._pitch_stepper_style = pitch_stepper_style
         self._item_handler_tag = f"{TAG_INSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
         self._current_instruction_data: Optional[InstructionPanelData] = None
         self._pitch_stepper: Optional[GUIPitchStepper] = None
@@ -229,9 +228,9 @@ class GUIInstructionChoicePanel(GUIPanel):
             tooltip=self._period_tooltip if is_period else self._pitch_tooltip,
             status_message=self._msg_status_input_period if is_period else self._msg_status_input_pitch,
             status_bar=self._status_bar,
-            layout=self._general_layout.pitch_stepper,
-            plus_minus_layout=self._general_layout.plus_minus_buttons,
-            value_color=self._general_layout.colors.text.disabled,
+            layout=self._pitch_stepper_style.dimensions,
+            plus_minus_layout=self._pitch_stepper_style.plus_minus,
+            value_color=self._pitch_stepper_style.value_color,
         )
         self._pitch_stepper.on_value_changed = self._on_pitch_value_changed
 

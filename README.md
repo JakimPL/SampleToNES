@@ -11,7 +11,7 @@ A built-in sequencer lets you arrange the reconstructed samples into patterns an
 It supports:
 
 * loading common audio formats: WAV, MP3, FLAC, OGG, AIFF, and AU
-* a wide range of NES frequencies, from 15 Hz to 600 Hz, including the two most common standards:
+* a wide range of NES frequencies, from 15 Hz to 300 Hz, including the two most common standards:
     * NTSC (60 Hz)
     * PAL (50 Hz)
 * various sample rates, from 8000 Hz to 192,000 Hz
@@ -58,13 +58,14 @@ To update the global command after pulling new changes, re-run `make setup` (or 
 
 ### GPU acceleration
 
-_SampleToNES_ can use an NVIDIA GPU (via [_CuPy_](https://cupy.dev/) and CUDA) to speed up instruction-library generation and reconstruction. Enable it with the `gpu` extra:
+_SampleToNES_ can use an NVIDIA GPU (via [_CuPy_](https://cupy.dev/) and CUDA) to speed up instruction-library generation and reconstruction. `make setup` detects your NVIDIA driver and installs the matching CuPy build automatically:
 
 ```sh
-make setup GPU=1
+make setup          # installs GPU support when a supported driver is present
+make setup GPU=0    # forces the CPU (NumPy) backend
 ```
 
-You need an NVIDIA GPU with a current driver. On Windows, also install the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) 12.x.
+A current NVIDIA driver is all you need — the CUDA components ship with the CuPy build, on Linux and Windows alike. On macOS the app runs on the CPU.
 
 ## Usage
 

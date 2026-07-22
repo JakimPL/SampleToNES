@@ -3,7 +3,12 @@ from unittest.mock import patch
 
 import pytest
 
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior import (
+    SchedulingBehavior,
+    SchedulingDelays,
+    SchedulingEmit,
+    SchedulingPriorities,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_shared.types.callback import VoidCallback
@@ -45,14 +50,16 @@ def synchronous_executor() -> Iterator[None]:
 def scheduling() -> SchedulingBehavior:
     """Scheduling behaviour with every delay collapsed to zero for deterministic tests."""
     return SchedulingBehavior(
-        delay_gui_action=0,
-        delay_schedule=0,
-        delay_reconstruction_update=0,
-        delay_cancel=0,
-        priority_update_status=0,
-        priority_gui_action=0,
-        priority_schedule=0,
-        priority_emit=0,
+        delays=SchedulingDelays(
+            schedule=0,
+            reconstruction_update=0,
+            cancel=0,
+        ),
+        priorities=SchedulingPriorities(
+            update_status=0,
+            gui_action=0,
+            schedule=0,
+        ),
+        emit=SchedulingEmit(priority=0, batch_size=128),
         queue_budget_seconds=0.005,
-        emit_batch_size=128,
     )

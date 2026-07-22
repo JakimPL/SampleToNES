@@ -2,6 +2,8 @@ from typing import Optional, Type, Union
 
 import numpy as np
 
+from sampletones_shared.logger import logger
+
 
 def _preload_cuda_libraries() -> None:
     """Make CUDA libraries shipped as ``nvidia-*-cu12`` wheels discoverable by CuPy.
@@ -36,12 +38,12 @@ try:
     import cupy as xp
     import cupy.typing as xp_typing
 
-    CUPY_AVAILABLE = True  # pylint: disable=invalid-name
+    CUPY_AVAILABLE = True  # pylint: disable=invalid-name,
+    logger.info(f"CuPy {xp.__version__} is active")
 except (AttributeError, ImportError, ModuleNotFoundError):
     import warnings
 
     from sampletones_shared.exceptions import CuPyNotInstalledWarning
-    from sampletones_shared.logger import logger
 
     def _format_warning_no_location(
         message: Union[Warning, str],

@@ -334,7 +334,7 @@ class GUITreePanel(GUIPanel, ABC):
                 tuple(specs),
                 root_tag,
                 partial(self._finish_emit, root_tag, on_finished),
-                priority=self._scheduling.priority_emit,
+                priority=self._scheduling.emit.priority,
             )
             handed_off = True
         finally:
@@ -465,8 +465,8 @@ class GUITreePanel(GUIPanel, ABC):
     def _update_detail_tooltip(self, user_data: Any) -> None:
         """Reveals the detail tooltip for a hovered node that carries details, hiding it otherwise.
 
-        The reveal is gated on a change of owning node so the tooltip content is rebuilt once per node
-        rather than on every hover frame.
+        The reveal is gated on a change of owning node, so the tooltip content is rebuilt once per
+        node.
         """
         if not isinstance(user_data, tuple):
             return

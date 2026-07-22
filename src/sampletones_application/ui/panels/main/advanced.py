@@ -8,6 +8,8 @@ from sampletones_application.categories.elements.main import AdvancedElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import PathColors
+from sampletones_application.layout.general.inputs import InputsLayout
+from sampletones_application.layout.tabs.main.advanced import AdvancedLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
@@ -50,11 +52,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self,
         initial_view: AdvancedSettingsPanelViewModel,
         *,
-        panel_height: int,
-        button_height: int,
-        input_width: int,
-        label_width: int,
-        max_workers_minimum: int,
+        layout: AdvancedLayout,
+        inputs: InputsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         path_colors: PathColors,
@@ -71,10 +70,10 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._max_workers: int = initial_view.max_workers
         self._spectrum_method: SpectrumMethod = initial_view.spectrum_method
         self._transformation_gamma: int = initial_view.transformation_gamma
-        self._button_height = button_height
-        self._input_width = input_width
-        self._label_width = label_width
-        self._max_workers_minimum = max_workers_minimum
+        self._button_height = layout.button_height
+        self._input_width = inputs.default_width
+        self._label_width = inputs.label_width
+        self._max_workers_minimum = layout.max_workers_minimum
         self._status_bar = status_bar
         self._path_colors = path_colors
         self._msg_path = language_manager[
@@ -176,7 +175,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_MAIN_ADVANCED_PANEL,
-            height=panel_height,
+            height=layout.height,
         )
         self._enable_vertical_collapse(
             initial_collapsed=initial_collapsed,

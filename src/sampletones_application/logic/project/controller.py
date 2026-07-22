@@ -80,13 +80,12 @@ class ProjectController(CallbackMixin):
     def replace_project(self, project: Project, *, clean: bool) -> None:
         """Installs a project restored from history and rebuilds every dependent view.
 
-        Undo and redo route through here rather than the fine-grained mutators: the
-        whole project is swapped at once, so ``on_project_replaced`` fires to rebuild
-        the tabs wholesale, mirroring how loading a project refreshes them. The
-        fine-grained ``on_mutation`` signal stays silent because a restore is not a
-        new user edit to record. ``clean`` reports whether the restored state is the
-        one last saved to disk, letting the session drop the unsaved-changes flag
-        when undo returns exactly to the save point.
+        Undo and redo install the whole project at once here: ``on_project_replaced``
+        fires to rebuild the tabs wholesale, mirroring how loading a project refreshes
+        them. The fine-grained ``on_mutation`` signal fires only for new user edits, so
+        reinstalling a recorded snapshot leaves it quiet. ``clean`` reports whether the
+        restored state is the one last saved to disk, letting the session drop the
+        unsaved-changes flag when undo returns exactly to the save point.
         """
         self._project_manager.install(project, clean=clean)
         self.call(self.on_project_replaced)
@@ -142,7 +141,7 @@ class ProjectController(CallbackMixin):
         """Embeds a reconstruction as a project sample, detaching its local source-audio origin.
 
         A project is a self-contained, shareable artifact, so a sample keeps only the reconstruction
-        itself and the display name given here — never the author's local audio path.
+        itself and the display name given here.
         """
         reconstruction.detach_source()
         sample = Sample(name=name, reconstruction=reconstruction)
@@ -377,10 +376,9 @@ class ProjectController(CallbackMixin):
     def _touch(self) -> None:
         """Stamps the project as modified and signals the mutation to the history.
 
-        ``on_mutation`` is invoked through a direct ``None`` check rather than
-        :meth:`CallbackMixin.call` because the hook legitimately stays unwired in
-        history-free contexts (tests, tools) and ``call`` would log a warning for
-        every mutation there.
+        ``on_mutation`` is invoked through a direct ``None`` check so mutations stay
+        silent in history-free contexts (tests, tools), where the hook is intentionally
+        unwired and :meth:`CallbackMixin.call` would log a warning for each one.
         """
         self.project.info.touch()
         self._project_manager.mark_updated()

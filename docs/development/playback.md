@@ -36,8 +36,8 @@ sounding or held paused. Engagement is read from **ownership** (`AudioDeviceMana
 owner of the live stream), so a source reports itself engaged only while *its own* audio is the one
 on the device. A sounding preview leaves every intentional source disengaged.
 
-This ownership test is the single fact the transport and the toolbar read; the raw
-device-is-playing flag alone is never used to decide what a command controls.
+This ownership test is the single fact the transport and the toolbar read to decide what
+a command controls.
 
 ## The transport target
 
@@ -95,7 +95,7 @@ the field), so those reach the field while it is focused. `Ctrl+Space` is never 
 so this global shortcut always fires, even while a field is focused. `Ctrl+Shift+Space` is not a
 global shortcut but a grid action: the sequencer grid claims it only while the grid — not a field —
 holds the keyboard, so it plays from the cursor row when you are editing the grid and stays inert
-while a field is focused. Field-transparent shortcuts (tab switching) keep firing as before.
+while a field is focused. Field-transparent shortcuts (tab switching) fire whether or not a field is focused.
 
 **Interactive widgets do not hold the keyboard.** After a click, a selectable cell or a transport
 button releases keyboard focus, so a transport key is delivered to the router rather than being

@@ -5,6 +5,8 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.main import ConfigPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.inputs import InputsLayout
+from sampletones_application.layout.tabs.main.config import ConfigLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
@@ -35,16 +37,15 @@ class GUIConfigPanel(GUIPanel):
         self,
         initial_view: ConfigPanelViewModel,
         *,
-        input_width: int,
-        label_width: int,
-        panel_height: int,
+        layout: ConfigLayout,
+        inputs: InputsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._view = initial_view
-        self._input_width = input_width
-        self._label_width = label_width
+        self._input_width = inputs.default_width
+        self._label_width = inputs.label_width
         self._status_bar = status_bar
         self.on_audio_settings_changed: Optional[Callable[[AudioSettingsUpdate], None]] = None
         self.on_library_settings_changed: Optional[Callable[[LibrarySettingsUpdate], None]] = None
@@ -112,7 +113,7 @@ class GUIConfigPanel(GUIPanel):
         ]
         super().__init__(
             tag=TAG_MAIN_CONFIG_PANEL,
-            height=panel_height,
+            height=layout.height,
         )
         self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 

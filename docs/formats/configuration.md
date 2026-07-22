@@ -22,7 +22,7 @@ Audio preprocessing and housekeeping.
 | `quantization_levels` | number of levels when quantizing | integer ≥ 3 |
 | `min_pitch`, `max_pitch` | lowest and highest pitch the reconstruction may use | 1–127 |
 | `coefficient_percentile` | percentile of frame levels used to set the [working level](../concepts/reconstruction.md) | 0–100 |
-| `coefficient_audibility_floor` | floor applied when estimating the working level | 0–1 |
+| `coefficient_audibility_floor` | floor applied when estimating the working level | 0 < value ≤ 1 |
 | `max_workers` | worker processes used during reconstruction | integer ≥ 1 |
 | `library_directory` | where instruction libraries are stored | path |
 | `reconstructions_directory` | where reconstructions are written (alias: `output_directory`) | path |
@@ -34,7 +34,7 @@ change any of these and a different library is selected or generated.
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `nes_frequency` | instruction change rate in Hz (alias: `change_rate`) | 15–600 |
+| `nes_frequency` | instruction change rate in Hz (alias: `change_rate`) | 15–300 |
 | `sample_rate` | audio sample rate in Hz | 8000–192000 |
 | `spectrum_method` | how the spectrum is computed | `fft` / `logfft` / `cqt` |
 | `transformation_gamma` | feature-space scaling (0 keeps the power spectrum, 100 is logarithmic) | 0–100 |
@@ -49,7 +49,7 @@ top-level keys and groups the scoring controls into `calculation`, `weights`,
 | Key | Meaning | Values |
 | --- | --- | --- |
 | `generators` | channels used | list of `pulse1`, `pulse2`, `triangle`, `noise` |
-| `drive` | how hard the channels are pushed (alias: `mixer`) | > 0 |
+| `drive` | how hard the channels are pushed (alias: `mixer`) | 0 < value ≤ 5 |
 | `reset_phase` | reset oscillator phase within each instruction | `true` / `false` |
 | `final_regeneration` | re-render the chosen instructions at the end to keep oscillators continuous | `true` / `false` |
 

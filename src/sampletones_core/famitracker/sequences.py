@@ -43,12 +43,9 @@ def features_to_instrument_sequences(
 ) -> Dict[SequenceKind, InstrumentSequence]:
     """Builds the five 2A03 sequences from per-dimension envelope arrays.
 
-    Each dimension becomes an :class:`InstrumentSequence`; a dimension with no data
-    becomes a disabled (empty) sequence. When ``loop`` is set, every populated
+    Each dimension becomes an :class:`InstrumentSequence`; a dimension passed as
+    ``None`` becomes a disabled (empty) sequence. When ``loop`` is set, every populated
     sequence loops from its first item so the instrument sustains on a held note.
-
-    Raw arrays are taken directly (rather than a ``Features`` instance) to keep this
-    module free of a dependency on the exporter layer.
     """
     arrays: Dict[SequenceKind, Optional[np.ndarray]] = {
         SequenceKind.VOLUME: volume,

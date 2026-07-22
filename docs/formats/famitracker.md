@@ -77,15 +77,17 @@ marker `END`.
 - **`PARAMS`** (v6): expansion chip `uint8` (`0` = 2A03/none) · channel count `int32`
   (`5`) · machine `int32` (`0` = NTSC, `1` = PAL) · engine speed `int32` (`0` = machine
   default, otherwise a refresh rate in Hz) · vibrato style `int32` · highlight first
-  `int32` · highlight second `int32`.
+  `int32` · highlight second `int32` · speed split point `int32` (the row where the
+  tempo/speed interpretation splits, `speed_split_point`).
 - **`INFO`** (v1): title, author and copyright, each a fixed **32-byte** NUL-padded
   string, in that order.
 - **`HEADER`** (v3): track count as `uint8` holding `count − 1`; then each track's
   title as a NUL-terminated string; then, for each channel, a channel id `uint8`
-  followed by one effect-column-count `uint8` per track. Channel ids: square1 `0`,
+  followed by one effect-column count per track, each a `uint8` holding `count − 1`.
+  Channel ids: square1 `0`,
   square2 `1`, triangle `2`, noise `3`, DPCM `4`.
 - **`INSTRUMENTS`** (v6): instrument count `int32`; then per instrument: index
-  `int32`, type `uint8` (`1` = 2A03), body, name length `int32`, name bytes. The 2A03
+  `int32`, type `uint8` (`1` = 2A03), body, name length `uint32`, name bytes. The 2A03
   body is: sequence count `int32` (`5`); per sequence an enabled `uint8` and a
   sequence index `uint8`; then the DPCM key-assignment table across the note range,
   all zero here.
@@ -119,7 +121,7 @@ note sounds. The `.fti` file stores the sequences inline; the `.ftm` module pool
 them in the `SEQUENCES` block and references them by index, so identical sequences
 are stored once.
 
-The five sequence kinds, in slot order (`SequenceKind` in `constants.py`):
+The five sequence kinds, in slot order (`SequenceKind` in `specification/sequences.py`):
 
 | Slot | Kind | Meaning |
 | --- | --- | --- |

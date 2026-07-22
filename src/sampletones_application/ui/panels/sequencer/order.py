@@ -6,7 +6,7 @@ from sampletones_application.categories.elements.sequencer import SequencerOrder
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
-from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_ORDER_BUTTON_PAIR,
@@ -210,7 +210,7 @@ class GUISequencerOrderPanel(GUIPanel):
         """Colours every pattern entry with one readable colour.
 
         The theme targets only the selectable text, so it leaves every other colour to
-        the global theme rather than shadowing it.
+        the global theme.
         """
         self._entry_theme = create_selectable_text_theme(self._layout.colors.text.order)
 
@@ -417,10 +417,10 @@ class GUISequencerOrderPanel(GUIPanel):
     def _tint_channel_rows(self) -> None:
         """Washes each channel row with a light tint of its identity colour.
 
-        Uses a row highlight, not per-cell tints, so it sits on a layer beneath the
-        position and cursor highlights — those keep working and a cleared cursor cell
-        falls back to the row tint instead of a bare patch. This is the transposed
-        analog of the tracker grid's per-channel column tint, sharing the fraction.
+        Uses a row highlight so it sits on a layer beneath the position and cursor
+        highlights, which keep working; a cleared cursor cell falls back to the row
+        tint. This is the transposed analog of the tracker grid's per-channel column
+        tint, sharing the fraction.
         """
         channels = self._layout.colors.channels
         fraction = self._layout.tracker.channel_column_tint

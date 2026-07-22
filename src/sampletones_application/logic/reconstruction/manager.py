@@ -63,7 +63,7 @@ class ReconstructionManager(CallbackMixin):
         """Makes ``reconstruction_data`` the open document and refreshes its derived state.
 
         The coefficient and cached features track whichever reconstruction is open, so every
-        rebinding funnels through here to recompute them in one place rather than at each site.
+        rebinding funnels through here to recompute them in one place.
         """
         self._current_reconstruction = reconstruction_data
         self._coefficient = reconstruction_data.reconstruction.coefficient
@@ -155,7 +155,7 @@ class ReconstructionManager(CallbackMixin):
         CallbackQueue.add(
             self.call,
             self.on_reconstruction_closed,
-            priority=self._scheduling.priority_schedule,
+            priority=self._scheduling.priorities.schedule,
         )
 
     def locate_original_audio(self) -> None:

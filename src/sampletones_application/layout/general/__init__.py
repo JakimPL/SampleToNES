@@ -10,6 +10,7 @@ from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.menu import MenuLayout
 from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
+from sampletones_application.layout.general.responsive import ResponsiveLayout
 from sampletones_application.layout.general.section_header import SectionHeaderLayout
 from sampletones_application.layout.general.status_bar import StatusBarLayout
 from sampletones_application.layout.general.tables import TablesLayout
@@ -20,6 +21,7 @@ class GeneralLayout(BaseModel, extra="forbid", frozen=True):
     window: WindowLayout
     panel_gap: int
     columns: ColumnsLayout
+    responsive: ResponsiveLayout
     status_bar: StatusBarLayout
     dialogs: DialogsLayout
     inputs: InputsLayout
