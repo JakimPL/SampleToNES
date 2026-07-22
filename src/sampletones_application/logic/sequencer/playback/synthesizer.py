@@ -4,6 +4,7 @@ from typing import Dict, FrozenSet, List, Optional, Tuple
 import numpy as np
 
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_core.audio import clip_audio_inplace
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_PITCH, MAX_VOLUME, MIN_PITCH
@@ -196,8 +197,7 @@ class RowSynthesizer:
             )
             mixed += channel_audio
 
-        np.clip(mixed, -1.0, 1.0, out=mixed)
-        return mixed
+        return clip_audio_inplace(mixed)
 
     def _render_channel(
         self,

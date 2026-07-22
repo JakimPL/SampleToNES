@@ -20,7 +20,7 @@ from sampletones_application.services.song_player.result import (
     SongPlayerResult,
     SongPositionUpdate,
 )
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio import AudioDeviceManager, clip_audio_inplace
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.constants.audio import UNITY_GAIN
@@ -236,8 +236,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             return chunk
 
         scaled = chunk * np.float32(gain)
-        np.clip(scaled, -1.0, 1.0, out=scaled)
-        return scaled
+        return clip_audio_inplace(scaled)
 
     def _emit_terminal(self) -> None:
         if self._playback_error is not None:

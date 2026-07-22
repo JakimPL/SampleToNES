@@ -33,6 +33,25 @@ def clip_audio(audio: np.ndarray) -> np.ndarray:
     return cast(np.ndarray, np.clip(audio, -1.0, 1.0))
 
 
+def clip_audio_inplace(audio: np.ndarray) -> np.ndarray:
+    """
+    Clip a float audio array to [-1.0, 1.0] in place and return the same array.
+
+    The optimized counterpart to :func:`clip_audio` for hot paths: it writes the clipped
+    samples back into ``audio`` through ``out=audio``, reusing the buffer instead of
+    allocating a new one, and trusts the caller in place of validation. The caller owns
+    the trade-off — every holder of ``audio`` observes the mutation.
+
+    Args:
+        audio: A writable floating-point array, clipped in place. A non-float or
+            read-only array raises from numpy rather than corrupting silently.
+
+    Returns:
+        The same array instance, with its samples clipped to [-1.0, 1.0].
+    """
+    return np.clip(audio, -1.0, 1.0, out=audio)
+
+
 def to_mono(audio: np.ndarray) -> np.ndarray:
     """
     Convert stereo or multi-channel audio to mono by averaging channels.
@@ -82,7 +101,11 @@ def resample(
     if original_sample_rate == target_sample_rate:
         return audio
 
-    return librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
+    return librosa.resample(
+        audio,
+        orig_sr=original_sample_rate,
+        target_sr=target_sample_rate,
+    )
 
 
 def interpolate(audio: np.ndarray, target_length: int) -> np.ndarray:
@@ -116,11 +139,19 @@ def interpolate(audio: np.ndarray, target_length: int) -> np.ndarray:
 
     original_indices = np.arange(original_length)
     new_indices = np.linspace(0, original_length - 1, target_length)
-    interpolated_data: np.ndarray = np.interp(new_indices, original_indices, audio)
+    interpolated_data: np.ndarray = np.interp(
+        new_indices,
+        original_indices,
+        audio,
+    )
     return interpolated_data.astype(np.float32)
 
 
-def minmax_decimate(audio: np.ndarray, num_buckets: int) -> Tuple[np.ndarray, np.ndarray]:
+def minmax_decimate(
+    audio: np.ndarray,
+    *,
+    num_buckets: int,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Decimate audio data using min-max downsampling for visualization.
 
@@ -168,7 +199,11 @@ def minmax_decimate(audio: np.ndarray, num_buckets: int) -> Tuple[np.ndarray, np
     return np.repeat(starts.astype(float), 2), y_values
 
 
-def normalize(audio: np.ndarray, nan_value: float = 0.0) -> np.ndarray:
+def normalize(
+    audio: np.ndarray,
+    *,
+    nan_value: float = 0.0,
+) -> np.ndarray:
     """
     Normalize audio to [-1.0, 1.0] range 32-bit float array,
     based on peak amplitude.
@@ -193,7 +228,12 @@ def normalize(audio: np.ndarray, nan_value: float = 0.0) -> np.ndarray:
     if audio.size == 0:
         return audio
 
-    audio = np.nan_to_num(audio, nan=nan_value, posinf=nan_value, neginf=nan_value)
+    audio = np.nan_to_num(
+        audio,
+        nan=nan_value,
+        posinf=nan_value,
+        neginf=nan_value,
+    )
     peak = float(np.max(np.abs(audio))) if audio.size > 0 else 0.0
     if peak > 0.0:
         audio /= peak
@@ -237,7 +277,10 @@ def active_frame_level(
     if frame_count == 0:
         return peak
 
-    frames = audio[: frame_count * frame_length].reshape(frame_count, frame_length)
+    frames = audio[: frame_count * frame_length].reshape(
+        frame_count,
+        frame_length,
+    )
     frame_peaks = np.max(np.abs(frames), axis=1)
     audible = frame_peaks[frame_peaks > audibility_floor * peak]
     if audible.size == 0:

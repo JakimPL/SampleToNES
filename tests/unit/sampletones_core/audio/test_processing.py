@@ -7,6 +7,7 @@ import pytest
 
 from sampletones_core.audio.processing import (
     clip_audio,
+    clip_audio_inplace,
     interpolate,
     minmax_decimate,
     normalize,
@@ -100,6 +101,50 @@ class TestClipAudio(BaseTestSuite):
 
         result = clip_audio(test_case.audio)
         np.testing.assert_array_equal(result, test_case.expected)
+
+
+class TestClipAudioInplace(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        audio: np.ndarray
+        expected: np.ndarray
+
+    test_cases = [
+        TestCase(
+            label="clips_above_and_below",
+            audio=np.array([1.5, -1.5, 0.5], dtype=np.float32),
+            expected=np.array([1.0, -1.0, 0.5], dtype=np.float32),
+        ),
+        TestCase(
+            label="leaves_in_range_untouched",
+            audio=np.array([0.25, -0.75, 0.0], dtype=np.float32),
+            expected=np.array([0.25, -0.75, 0.0], dtype=np.float32),
+        ),
+        TestCase(
+            label="float64_preserves_dtype",
+            audio=np.array([2.0, -3.0], dtype=np.float64),
+            expected=np.array([1.0, -1.0], dtype=np.float64),
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_clips_and_preserves_dtype(self, test_case: TestCase) -> None:
+        result = clip_audio_inplace(test_case.audio)
+        np.testing.assert_array_equal(result, test_case.expected)
+        assert result.dtype == test_case.expected.dtype
+
+    def test_returns_the_same_array_object(self) -> None:
+        audio = np.array([1.5, -1.5], dtype=np.float32)
+        assert clip_audio_inplace(audio) is audio
+
+    def test_mutates_in_place(self) -> None:
+        audio = np.array([2.0, -2.0, 0.5], dtype=np.float32)
+        clip_audio_inplace(audio)
+        np.testing.assert_array_equal(audio, np.array([1.0, -1.0, 0.5], dtype=np.float32))
 
 
 class TestStereoToMono(BaseTestSuite):
