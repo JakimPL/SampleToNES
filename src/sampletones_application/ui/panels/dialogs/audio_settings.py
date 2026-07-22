@@ -19,8 +19,6 @@ from sampletones_application.tags.settings import (
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.field import labeled_field
-from sampletones_application.ui.elements.fonts.font import Font
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
@@ -259,8 +257,8 @@ class GUIAudioSettingsWindow(GUIWindow):
                 min_value=MIN_MASTER_GAIN,
                 max_value=MAX_MASTER_GAIN,
                 default_value=self._master_gain,
-                width=self._layout.combo_width,
-                format="%.2f",
+                width=self._layout.master_gain.slider_width,
+                format="",
                 callback=self._on_master_gain_changed,
             )
             dpg.add_text(
@@ -268,8 +266,6 @@ class GUIAudioSettingsWindow(GUIWindow):
                 tag=TAG_SETTINGS_AUDIO_TEXT_MASTER_GAIN_DB,
                 color=self._clip_warning_color(readout.clip_fraction),
             )
-
-        FontRegistry.bind_to_item(TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN, Font.MONO)
 
     def _on_master_gain_changed(self, _sender: Sender, app_data: float) -> None:
         """Applies the slider's gain live and repaints the decibel readout.
