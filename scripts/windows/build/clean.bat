@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+call "%~dp0..\lib\root.bat" || exit /b 1
+
 echo Cleaning build artifacts...
 if exist bin rmdir /s /q bin 2>nul
 if exist build rmdir /s /q build 2>nul

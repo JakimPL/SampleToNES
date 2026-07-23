@@ -2,6 +2,8 @@
 
 set -e
 
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/root.sh"
+
 RELEASE_HOOK_ARGS=()
 for arg in "$@"; do
     if [[ "$arg" == "--release" ]]; then

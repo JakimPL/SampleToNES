@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+call "%~dp0..\lib\root.bat" || exit /b 1
+
 set RELEASE_HOOK=
 :parse_args
 if "%~1"=="" goto build
