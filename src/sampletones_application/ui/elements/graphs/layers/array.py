@@ -12,7 +12,6 @@ class ArrayLayer(Layer):
     data: np.ndarray
     name: str
     color: Color
-    line_thickness: float
     max_display_points: int
 
     def __post_init__(self) -> None:

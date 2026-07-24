@@ -84,15 +84,6 @@ class CollapseController(CallbackMixin):
     def expanded_height(self) -> int:
         return self._expanded_height
 
-    @property
-    def collapsed_height(self) -> Optional[int]:
-        """The card's measured height while collapsed to its header bar, once the strip has rendered.
-
-        Reads as ``None`` until the strip lays out, since the bar height derives from the rendered
-        strip offset. A coordinator that reserves space for a collapsed sibling waits for a value.
-        """
-        return self._collapsed_height
-
     def set_expanded_height(self, height: int) -> None:
         """Retune the height the card returns to when expanded, applying it live for an expanded vertical card."""
         self._expanded_height = height

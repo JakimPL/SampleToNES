@@ -27,7 +27,6 @@ from sampletones_shared.types.application import Sender
 
 
 class FontRegistry:
-    _LAYOUT: FontsLayout
     _REGISTRY: Dict[Font, FontData] = {}
     _SPECS: Dict[Font, Tuple[str, FontResource, Typeface, Step]] = {
         Font.REGULAR: (TAG_GLOBAL_FONT_REGULAR, FontResource.REGULAR, Typeface.SANS, Step.MEDIUM),
@@ -48,7 +47,6 @@ class FontRegistry:
 
     @classmethod
     def setup(cls, layout: FontsLayout) -> None:
-        cls._LAYOUT = layout
         cls._REGISTRY = {
             font: FontData(tag, layout.size_for(typeface, step), resource)
             for font, (tag, resource, typeface, step) in cls._SPECS.items()

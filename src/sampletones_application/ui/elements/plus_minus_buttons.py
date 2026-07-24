@@ -76,10 +76,6 @@ class GUIPlusMinusButtons(CallbackMixin):
 
         self._build(increment_enabled=increment_enabled, decrement_enabled=decrement_enabled)
 
-    def set_increment_enabled(self, enabled: bool) -> None:
-        if self._increment_button is not None:
-            self._increment_button.set_enabled(enabled)
-
     def set_decrement_enabled(self, enabled: bool) -> None:
         if self._decrement_button is not None:
             self._decrement_button.set_enabled(enabled)

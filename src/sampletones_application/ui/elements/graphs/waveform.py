@@ -126,16 +126,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             layout.waveform.zoom_factor,
         )
 
-    @property
-    def sample_length(self) -> int:
-        if isinstance(self.current_data, InstructionLibraryFragment):
-            return len(self.current_data.data)
-
-        if isinstance(self.current_data, WaveformData):
-            return len(self.current_data.approximation)
-
-        return 0
-
     def _create_content(self) -> None:
         _min_y = self._layout.graph.min_y
         _max_y = self._layout.graph.max_y
@@ -217,7 +207,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 data=fragment,
                 name=self._lbl_sample_name,
                 color=self._layout.colors.waveform_sample,
-                line_thickness=self._layout.waveform.sample_thickness,
             )
         )
 
@@ -322,7 +311,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             data=data,
             name=self._lbl_waveform_reconstruction,
             color=self._layout.colors.waveform_reconstruction,
-            line_thickness=self._layout.waveform.reconstruction_thickness,
             max_display_points=self._layout.waveform.max_display_points,
         )
 
@@ -331,7 +319,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             data=data,
             name=self._lbl_waveform_original,
             color=self._layout.colors.waveform_sample,
-            line_thickness=self._layout.waveform.sample_thickness,
             max_display_points=self._layout.waveform.max_display_points,
         )
 

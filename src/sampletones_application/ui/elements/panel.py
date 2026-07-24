@@ -60,10 +60,6 @@ class GUIPanel(CallbackMixin, ABC):
     def create_panel(self, parent: str) -> None: ...
 
     @property
-    def collapse(self) -> Optional[CollapseController]:
-        return self._collapse
-
-    @property
     def collapsed(self) -> bool:
         return self._collapse is not None and self._collapse.collapsed
 

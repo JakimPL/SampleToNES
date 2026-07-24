@@ -484,17 +484,6 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._update_caret()
 
-    def select_cell(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
-        new_state = TrackerInputState(
-            cursor=TrackerCursor(row_index, generator, SubColumn.INSTRUMENT),
-            pending="",
-        )
-        self._apply_state(new_state)
-
     def deselect_cell(self) -> None:
         cursor = self._input_state.cursor
         if cursor is not None:
@@ -975,11 +964,6 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _clear_row(self) -> None:
         state, clear_action = self._input_state.clear()
-        self._handle_clear_action(clear_action)
-        self._apply_state(state)
-
-    def _clear_subcolumn(self) -> None:
-        state, clear_action = self._input_state.clear_subcolumn()
         self._handle_clear_action(clear_action)
         self._apply_state(state)
 

@@ -68,7 +68,6 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
 
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
-        self.current_library_fragment: Optional[InstructionLibraryFragment[Any]] = None
 
         self.themes: Dict[Color, str] = {}
 
@@ -122,7 +121,6 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         frame_length: int,
     ) -> None:
         self.clear_layers()
-        self.current_library_fragment = fragment
 
         self.add_layer(
             SpectrumLayer(

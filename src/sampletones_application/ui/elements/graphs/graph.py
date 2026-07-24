@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Optional, Tuple
+from typing import Any, Dict, Generic, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.graphs import (
-    SUF_GRAPH_CONTROLS,
     SUF_GRAPH_INFO,
     SUF_GRAPH_LEGEND,
     SUF_GRAPH_PLOT,
@@ -37,7 +36,6 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         self.x_axis_tag = f"{tag}{SUF_GRAPH_X_AXIS}"
         self.y_axis_tag = f"{tag}{SUF_GRAPH_Y_AXIS}"
         self.legend_tag = f"{tag}{SUF_GRAPH_LEGEND}"
-        self.controls_tag = f"{tag}{SUF_GRAPH_CONTROLS}"
         self.info_tag = f"{tag}{SUF_GRAPH_INFO}"
         self.event_handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
 
@@ -47,7 +45,6 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         self._default_x_range = self._x_range
         self._default_y_range = self._y_range
 
-        self._handlers: List[Sender] = []
         self.layers: Dict[str, LayerT] = {}
         self.current_data: Optional[Any] = None
 

@@ -414,9 +414,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if not isinstance(node, (LibraryNode, GeneratorNode)):
             return
 
-        if isinstance(node, LibraryNode):
-            state.special_node = node
-
         is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
         should_expand = is_current or self._should_expand_node(node)
         leaf = isinstance(node, GeneratorNode)
