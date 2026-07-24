@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-from sampletones_core.constants.general import APU_CLOCK
 from sampletones_core.timers.implementation.phase import PhaseTimer
 
 INVALID_PHASE_INITIALS = [
@@ -30,22 +29,6 @@ class TestFrequencyToTimer:
     )
     def test_timer_value_correct(self, frequency: float, expected: int) -> None:
         assert PhaseTimer.frequency_to_timer(frequency) == expected
-
-
-class TestTimerToFrequency:
-    @pytest.mark.parametrize(
-        "timer, expected",
-        [
-            (0, 0.0),
-            (-1, 0.0),
-        ],
-        ids=["zero_timer_returns_zero", "negative_timer_returns_zero"],
-    )
-    def test_zero_or_negative_returns_zero(self, timer: int, expected: float) -> None:
-        assert PhaseTimer.timer_to_frequency(timer) == expected
-
-    def test_timer_253_gives_approx_440hz(self) -> None:
-        assert PhaseTimer.timer_to_frequency(253) == pytest.approx(APU_CLOCK / (16 * 254))
 
 
 class TestGetTimerTicks:

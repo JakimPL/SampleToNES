@@ -8,7 +8,6 @@ from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
 from sampletones_core.fft.cqt.geometry import (
     calculate_wavelet_lengths,
     quality_factor,
-    reliable_frequency_floor,
     resolvable_bins,
 )
 from sampletones_core.fft.utils import calculate_n_bins
@@ -75,40 +74,6 @@ class TestCalculateWaveletLengths(BaseTestSuite):
         assert lengths[1] == pytest.approx(2.0 * lengths[0], abs=1.0)
 
 
-class TestReliableFrequencyFloor(BaseTestSuite):
-    @dataclass(frozen=True, kw_only=True)
-    class TestCase(BaseAutolabelTestCase):
-        sample_rate: int
-        signal_length: int
-        expected: float
-
-        @property
-        def label(self) -> str:
-            return f"rate_{self.sample_rate}_len_{self.signal_length}"
-
-    test_cases = [
-        TestCase(sample_rate=11025, signal_length=3395, expected=54.6124),
-        TestCase(sample_rate=11025, signal_length=848, expected=218.6428),
-        TestCase(sample_rate=22050, signal_length=6248, expected=59.3499),
-    ]
-
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_reliable_frequency_floor(self, test_case: TestCase) -> None:
-        floor = reliable_frequency_floor(test_case.sample_rate, test_case.signal_length, bins_per_octave=12)
-        assert floor == pytest.approx(test_case.expected, rel=1e-4)
-
-    def test_floor_inverts_wavelet_length(self) -> None:
-        sample_rate, signal_length = 16000, 4000
-        floor = reliable_frequency_floor(sample_rate, signal_length, bins_per_octave=12)
-        wavelet_length = calculate_wavelet_lengths(np.array([floor]), sample_rate, bins_per_octave=12)
-        assert wavelet_length[0] == pytest.approx(signal_length, abs=1.0)
-
-    def test_shorter_signal_raises_the_floor(self) -> None:
-        short = reliable_frequency_floor(11025, 848, bins_per_octave=12)
-        long = reliable_frequency_floor(11025, 3395, bins_per_octave=12)
-        assert short > long
-
-
 class TestResolvableBins(BaseTestSuite):
     CUTOFF = 1789773.0 / 0x8000
 
@@ -145,6 +110,6 @@ class TestResolvableBins(BaseTestSuite):
 
     def test_boundary_frequency_is_resolvable(self) -> None:
         sample_rate, signal_length = 16000, 4000
-        floor = reliable_frequency_floor(sample_rate, signal_length, bins_per_octave=12)
+        floor = quality_factor(12) * sample_rate / signal_length
         mask = resolvable_bins(np.array([floor]), sample_rate, signal_length, bins_per_octave=12)
         assert bool(mask[0])

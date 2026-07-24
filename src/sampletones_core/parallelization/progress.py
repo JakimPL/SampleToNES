@@ -49,14 +49,6 @@ class ETAEstimator:
 
         return f"{seconds_remaining}s"
 
-    def get_percent_string(self) -> str:
-        if self._total == 0:
-            return "100%"
-
-        percent = int(self._processed_items * 100 / self._total)
-        percent = max(0, min(100, percent))
-        return f"{percent}%"
-
     def _get_estimation_measurements_samples(self, ems: Union[float, int]) -> int:
         if isinstance(ems, float):
             ems = round(ems * self._total)

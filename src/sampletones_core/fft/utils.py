@@ -45,19 +45,6 @@ def calculate_n_bins(
     return n_bins
 
 
-def rectangle_window(length: int) -> np.ndarray:
-    """
-    Create a rectangular (uniform) window.
-
-    Args:
-        length: Window length.
-
-    Returns:
-        Array of ones with the specified length.
-    """
-    return np.ones(length, dtype=np.float32)
-
-
 @lru_cache(maxsize=128)
 def _resolution_floored_edges(
     maximum: float,

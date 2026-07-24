@@ -50,8 +50,6 @@ class TestReconstructionConverterInit:
             tmp_path / "song.wav",
             is_file=True,
         )
-        assert converter.total_files == 0
-        assert converter.completed_files == 0
 
 
 class TestReconstructionConverterStart:
@@ -157,32 +155,6 @@ class TestReconstructionConverterProcessResults:
 
 
 class TestReconstructionConverterNotifyProgress:
-    def test_total_files_updated_from_total_tasks(
-        self,
-        config: Config,
-        tmp_path: Path,
-    ) -> None:
-        converter = ReconstructionConverter(config, tmp_path, is_file=False)
-        converter.total_tasks = 5
-        converter._notify_progress()
-        assert converter.total_files == 5
-
-    def test_completed_files_updated_from_completed_tasks(
-        self,
-        config: Config,
-        tmp_path: Path,
-    ) -> None:
-        converter = ReconstructionConverter(config, tmp_path, is_file=False)
-        converter.total_tasks = 3
-        converter.completed_tasks = 3
-        converter.audio_files = [
-            tmp_path / "a.wav",
-            tmp_path / "b.wav",
-            tmp_path / "c.wav",
-        ]
-        converter._notify_progress()
-        assert converter.completed_files == 3
-
     def test_current_file_set_after_first_completion(
         self,
         config: Config,

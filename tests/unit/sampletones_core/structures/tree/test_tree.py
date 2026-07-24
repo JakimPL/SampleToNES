@@ -113,20 +113,6 @@ class TestTreeFilter:
                 assert not tree.is_node_visible(node), f"{node.name!r} should be hidden for query {case.query!r}"
 
 
-class TestTreeFindNode:
-    def test_returns_none_for_empty_tree(self) -> None:
-        t = Tree()
-        assert t.find_node(lambda node: node.name == "x") is None
-
-    def test_returns_matching_node(self, tree: Tree, all_nodes: list) -> None:
-        expected = next(n for n in all_nodes if n.name == "leaf_ab")
-        result = tree.find_node(lambda node: node.name == "leaf_ab")
-        assert result is expected
-
-    def test_returns_none_when_not_found(self, tree: Tree) -> None:
-        assert tree.find_node(lambda node: node.name == "xyz") is None
-
-
 class TestTreeCollectLeaves:
     def test_returns_empty_for_empty_tree(self) -> None:
         assert Tree().collect_leaves() == []

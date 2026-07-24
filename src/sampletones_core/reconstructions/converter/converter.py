@@ -31,8 +31,6 @@ class ReconstructionConverter(TaskProcessor[Path]):
         self.is_file: bool = is_file
         self.audio_files: List[Path] = []
 
-        self.total_files = 0
-        self.completed_files = 0
         self.current_file: Optional[str] = None
 
     def start(self) -> None:
@@ -74,8 +72,6 @@ class ReconstructionConverter(TaskProcessor[Path]):
         return self.input_path
 
     def _notify_progress(self) -> None:
-        self.total_files = self.total_tasks
-        self.completed_files = self.completed_tasks
         if self.completed_tasks > 0 and self.completed_tasks <= len(self.audio_files):
             self.current_file = str(self.audio_files[self.completed_tasks - 1])
             self.current_item = self.current_file

@@ -127,21 +127,11 @@ class AudioDeviceManager(CallbackMixin):
         Enumerate and refresh the list of available audio output devices.
 
         Queries PyAudio for all available devices, filters for output-capable devices,
-        determines supported sample rates for each device, and identifies default
-        input/output devices. Only devices with supported sample rates are kept.
+        and determines supported sample rates for each device. Only devices with
+        supported sample rates are kept.
         """
         self.reinitialize()
         assert self._pyaudio is not None, "PyAudio instance is not initialized"
-
-        try:
-            default_input_index = int(self._pyaudio.get_default_input_device_info()["index"])
-        except IOError:
-            default_input_index = -1
-
-        try:
-            default_output_index = int(self._pyaudio.get_default_output_device_info()["index"])
-        except IOError:
-            default_output_index = -1
 
         self._devices = {}
         for i in range(self._pyaudio.get_device_count()):
@@ -163,10 +153,6 @@ class AudioDeviceManager(CallbackMixin):
             self._devices[i] = AudioDevice(
                 index=i,
                 name=device_name,
-                is_input=int(info["maxInputChannels"]) > 0,
-                is_output=True,
-                is_default_input=i == default_input_index,
-                is_default_output=i == default_output_index,
                 default_sample_rate=cast(SampleRate, default_sample_rate),
                 supported_sample_rates=supported_rates,
                 host_api=host_api,

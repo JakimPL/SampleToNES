@@ -6,7 +6,6 @@ import pytest
 
 from sampletones_core.fft.utils import (
     calculate_n_bins,
-    rectangle_window,
     to_resolution_floored_log_bands,
 )
 from tests.suite.base import BaseTestSuite
@@ -103,36 +102,6 @@ class TestCalculateNBins(BaseTestSuite):
             )
             assert result == test_case.expected
             assert isinstance(result, int)
-
-
-class TestRectangleWindow(BaseTestSuite):
-    @dataclass(frozen=True, kw_only=True)
-    class TestCase(BaseAutolabelTestCase):
-        length: int
-        expected: Any = None
-
-        @property
-        def label(self) -> str:
-            return f"length_{self.length}"
-
-    test_cases = [
-        TestCase(length=1),
-        TestCase(length=10),
-        TestCase(length=128),
-        TestCase(length=1024),
-        TestCase(length=4096),
-    ]
-
-    @pytest.mark.parametrize(
-        "test_case",
-        test_cases,
-        ids=lambda test_case: test_case.label,
-    )
-    def test_rectangle_window(self, test_case: TestCase) -> None:
-        result = rectangle_window(test_case.length)
-        assert result.shape == (test_case.length,)
-        assert result.dtype == np.dtype(np.float32)
-        assert np.all(result == 1.0)
 
 
 class TestToResolutionFlooredLogBands(BaseTestSuite):

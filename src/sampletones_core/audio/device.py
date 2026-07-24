@@ -38,10 +38,6 @@ class AudioDevice(BaseModel):
 
     index: int = Field(..., description="Device index")
     name: str = Field(..., description="Device name")
-    is_input: bool = Field(..., description="Whether the device is an input device")
-    is_output: bool = Field(..., description="Whether the device is an output device")
-    is_default_input: bool = Field(..., description="Whether the device is the default input device")
-    is_default_output: bool = Field(..., description="Whether the device is the default output device")
     default_sample_rate: SampleRate = Field(..., description="Default sample rate of the device")
     supported_sample_rates: List[SampleRate] = Field(..., description="List of supported sample rates for the device")
     host_api: int = Field(..., description="Host API index")

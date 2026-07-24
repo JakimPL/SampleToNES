@@ -16,7 +16,7 @@ from sampletones_core.reconstructions.reconstructor.worker import ReconstructorW
 def _candidate_approximations(
     worker: ReconstructorWorker,
 ) -> Tuple[Tuple[InstructionUnion, ...], Fragment]:
-    remaining_generators = worker.get_remaining_generators()
+    remaining_generators = dict(worker.generators.items())
     remaining_generator_classes = worker.get_remaining_generator_classes(remaining_generators)
     return worker.candidate_provider.candidates(remaining_generator_classes)
 

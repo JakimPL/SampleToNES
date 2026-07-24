@@ -24,10 +24,6 @@ def _device(index: int, name: str) -> AudioDevice:
     return AudioDevice(
         index=index,
         name=name,
-        is_input=False,
-        is_output=True,
-        is_default_input=False,
-        is_default_output=index == 0,
         default_sample_rate=44100,
         supported_sample_rates=[22050, 44100, 48000],
         host_api=0,

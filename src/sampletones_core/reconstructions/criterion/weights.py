@@ -66,8 +66,9 @@ def _reliability_mask(
     Per-bin factor that zeroes constant-Q bins the target signal is too short to resolve.
 
     A constant-Q bin needs a full wavelet of `Q * sample_rate / frequency` samples; over a
-    target of `signal_length` samples only bins at or above `reliable_frequency_floor` reach
-    that resolution. Zeroing the rest keeps the weighted loss on the bins both the target and
+    target of `signal_length` samples only bins at or above the reliable frequency floor
+    (`Q * sample_rate / signal_length`) reach that resolution. Zeroing the rest keeps the
+    weighted loss on the bins both the target and
     the candidates measure. Other spectrum methods resolve every bin uniformly and keep a
     factor of one.
 

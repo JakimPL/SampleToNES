@@ -15,7 +15,7 @@ class TestTwoStageScoring:
         worker: ReconstructorWorker,
         synthetic_fragment: Fragment,
     ) -> None:
-        remaining_generators = worker.get_remaining_generators()
+        remaining_generators = dict(worker.generators.items())
         remaining_generator_classes = worker.get_remaining_generator_classes(remaining_generators)
         scored = worker.selector._score_candidates(synthetic_fragment, remaining_generator_classes)
 
@@ -41,7 +41,7 @@ class TestTwoStageScoring:
         library_fragment = library_data[instruction]
         shifted_target = library_fragment.get_fragment(library_fragment.length // 4, config, window)
 
-        remaining_generators = worker.get_remaining_generators()
+        remaining_generators = dict(worker.generators.items())
         remaining_generator_classes = worker.get_remaining_generator_classes(remaining_generators)
         scored = worker.selector._score_candidates(shifted_target, remaining_generator_classes)
 

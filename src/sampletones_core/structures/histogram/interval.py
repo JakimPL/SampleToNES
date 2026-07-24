@@ -148,40 +148,6 @@ class Interval(NamedTuple):
 
         return bool(self.left <= other.left and self.right >= other.right)
 
-    def relative_measure(self, other: Self) -> Float:
-        """
-        The fraction of this interval covered by another interval.
-
-        Computes:
-            `μ(other) = λ(self ∩ other) / λ(self)`
-
-        where `λ` is the standard length of a subset of the real line.
-
-        Args:
-            other: The interval to compute relative measure with.
-
-        Returns:
-            Fraction of this interval covered by other, in [0, 1].
-            Returns 0.0 if this interval is empty.
-
-        Raises:
-            TypeError: If other is not an Interval.
-
-        Examples:
-            >>> interval = Interval(3.0, 7.0)
-            >>> interval.relative_measure(Interval(4.0, 6.0))
-            0.5
-            >>> interval.relative_measure(Interval(6.0, 15.0))
-            0.25
-        """
-        if not isinstance(other, Interval):
-            raise TypeError(f"Expected Interval, got {type(other)}")
-
-        if not bool(self):
-            return self.zero
-
-        return self.intersection(other).length / self.length
-
     def float(self) -> Interval:
         """
         Convert the interval endpoints to regular floats.

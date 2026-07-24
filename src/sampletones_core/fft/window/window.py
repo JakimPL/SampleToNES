@@ -50,14 +50,6 @@ class Window(DataModel):
         """
         return float(np.mean(np.square(self.envelope)))
 
-    @cached_property
-    def backward_frames(self) -> int:
-        return -(self.left_offset // self.config.frame_length)
-
-    @cached_property
-    def forward_frames(self) -> int:
-        return -(-(self.size + self.left_offset) // self.config.frame_length)
-
     @classmethod
     def from_config(
         cls,

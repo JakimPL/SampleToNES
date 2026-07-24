@@ -1,24 +1,12 @@
 from typing import Final, Optional, Union
 
-from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
-from sampletones_core.utils.frequencies import period_to_name, pitch_to_name
 
 DEFAULT_DISPLAY_LENGTH: Final[int] = 2
 NOTE_OFF: Final[str] = "~~"
-
-
-def display_pitch(value: Optional[int], generator: GeneratorName) -> str:
-    if value is None:
-        return "..."
-
-    if generator == GeneratorName.NOISE:
-        return period_to_name(value)
-
-    return pitch_to_name(value)
 
 
 def display_value(
@@ -71,13 +59,6 @@ def display_command(
             return display_sample(samples=samples, sample_id=command.sample_id)
         case None:
             return display_sample(samples=samples, sample_id=None)
-
-
-def display_pattern_label(label: Optional[str]) -> str:
-    if label is None:
-        return "—"
-
-    return label
 
 
 def display_volume(value: Optional[int]) -> str:

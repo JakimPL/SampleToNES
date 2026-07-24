@@ -19,10 +19,7 @@ from sampletones_core.exporters import (
     Features,
 )
 from sampletones_core.generators.maps import GENERATOR_CLASSES
-from sampletones_core.instructions import (
-    InstructionUnion,
-    get_instruction_by_type,
-)
+from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.application import (
     SAMPLETONES_NAME,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
@@ -76,20 +73,6 @@ class Reconstruction(DataModel):
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
         return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
-
-    @classmethod
-    def _parse_instructions(
-        cls,
-        data: Dict[str, SerializedData],
-    ) -> Dict[str, List[InstructionUnion]]:
-        parsed_instructions = {}
-        for name, instructions_data in data.items():
-            instruction_class = get_instruction_by_type(instructions_data["type"])
-            parsed_instructions[name] = [
-                instruction_class(**instruction) for instruction in instructions_data["instructions"]
-            ]
-
-        return parsed_instructions
 
     @classmethod
     def create(
@@ -177,12 +160,6 @@ class Reconstruction(DataModel):
         ]
         self._invalidate_derived_caches(self)
         self.approximation = self._sum_approximations([item.approximation for item in self.approximations_data])
-
-    def get_generator_approximation(
-        self,
-        generator_name: GeneratorName,
-    ) -> np.ndarray:
-        return self.approximations.get(generator_name, np.array([], dtype=np.float32))
 
     def get_generator_instructions(
         self,

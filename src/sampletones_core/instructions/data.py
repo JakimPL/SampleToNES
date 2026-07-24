@@ -32,10 +32,6 @@ class InstructionData(DataModel, Generic[InstructionT]):
             instruction=instruction,
         )
 
-    @property
-    def instruction_type(self) -> type:
-        return INSTRUCTION_CLASS_MAP[self.instruction_class]
-
     @classmethod
     def union_map(cls) -> Dict[int, Type[DataModel]]:
         return {
