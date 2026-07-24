@@ -21,9 +21,5 @@ class InstructionPanelData(BaseModel):
         return self.fragment.frequency if self.fragment else None
 
     @property
-    def has_audio_data(self) -> bool:
-        return self.fragment is not None and not self.fragment.empty
-
-    @property
     def generator_class_name(self) -> GeneratorClassName:
         return self.fragment.generator_class

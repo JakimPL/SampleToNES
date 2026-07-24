@@ -12,9 +12,5 @@ class InstructionTableData(BaseModel):
     parameter_rows: Tuple[TableCell, ...]
 
     @property
-    def has_data(self) -> bool:
-        return len(self.general_rows) > 0
-
-    @property
     def has_parameters(self) -> bool:
         return len(self.parameter_rows) > 0
