@@ -520,13 +520,6 @@ class GUIExplorerPanel(GUITreePanel):
             callback=lambda: self._context_reconstruct_directory(node),
         )
 
-    def _add_context_menu_reconstruction_file(self, node: FileSystemNode) -> None:
-        dpg.add_separator()
-        dpg.add_menu_item(
-            label=self._lbl_ctx_reconstruct_file,
-            callback=lambda: self._context_reconstruct_file(node),
-        )
-
     def _add_context_menu_set_directory_items(self, node: FileSystemNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(

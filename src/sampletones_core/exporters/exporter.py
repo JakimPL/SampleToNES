@@ -10,9 +10,7 @@ from sampletones_core.instructions import (
     InstructionT,
     InstructionTypeUnion,
 )
-from sampletones_core.timers import PhaseTimer
 from sampletones_core.types.feature import FeatureMap
-from sampletones_core.utils.frequencies import pitch_to_frequency
 from sampletones_shared.utils.arrays import trim
 
 from .feature import Features
@@ -221,19 +219,6 @@ class Exporter(ABC, Generic[InstructionT]):
             raise NotImplementedError("Subclasses must define _ATTRIBUTE_MAP")
 
         return cls._ATTRIBUTE_MAP.get(feature_key)
-
-    @staticmethod
-    def pitch_to_timer(pitch: int) -> int:
-        """Converts a MIDI pitch to its NES timer period.
-
-        Args:
-            pitch: The MIDI pitch.
-
-        Returns:
-            int: The timer period that sounds the pitch.
-        """
-        frequency = pitch_to_frequency(pitch)
-        return PhaseTimer.frequency_to_timer(frequency)
 
     @classmethod
     @abstractmethod

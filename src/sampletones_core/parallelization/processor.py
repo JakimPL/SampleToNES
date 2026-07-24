@@ -18,7 +18,6 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 
 T = TypeVar("T")
 
-TIMEOUT: Final[float] = 1.0
 CANCEL_TIMEOUT: Final[float] = 5.0
 STOP_TIMEOUT: Final[float] = 2.0
 

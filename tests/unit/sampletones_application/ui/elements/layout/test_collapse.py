@@ -131,7 +131,6 @@ class TestVerticalCollapse:
         assert dpg.get_item_configuration(controller.card_tag)["height"] == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
         assert dpg.get_item_configuration(controller.card_tag)["no_scrollbar"] is True
         assert dpg.get_value(controller.chevron_tag) == _COLLAPSED_GLYPH
-        assert controller.collapsed_height == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
 
     def test_expanding_shows_the_body_and_restores_the_fixed_height(
         self, dpg_context: None, rendered_strip_padding: None
@@ -199,7 +198,6 @@ class TestFillVerticalCollapse:
         assert dpg.get_item_configuration(controller.card_tag)["height"] == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
         assert dpg.get_item_configuration(controller.card_tag)["no_scrollbar"] is True
         assert dpg.get_value(controller.chevron_tag) == _COLLAPSED_GLYPH
-        assert controller.collapsed_height == _HEADER_BAR_HEIGHT + 2 * _STRIP_PADDING
 
     def test_expanding_shows_the_body_and_restores_the_fill_height(
         self, dpg_context: None, rendered_strip_padding: None
@@ -313,7 +311,7 @@ class TestHorizontalRailTitle:
                 with section_panel._collapsible_section(_RAIL_LABEL, glyph=_RAIL_GLYPH):
                     dpg.add_text("body")
 
-        controller = section_panel.collapse
+        controller = section_panel._collapse
         assert controller is not None
         (rail_content,) = dpg.get_item_children(controller.rail_tag, 1)
         rail_texts = [dpg.get_value(item) for item in dpg.get_item_children(rail_content, 1)]

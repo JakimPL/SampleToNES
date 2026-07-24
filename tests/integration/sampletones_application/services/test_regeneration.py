@@ -58,7 +58,7 @@ class TestRegenerationServicePipeline:
 
         emitted = results[0].value
         assert emitted.reconstruction is not reconstruction_data.reconstruction
-        assert len(emitted.reconstruction.get_generator_approximation(GeneratorName.PULSE1)) > 0
+        assert len(emitted.reconstruction.approximations.get(GeneratorName.PULSE1, np.array([], dtype=np.float32))) > 0
         assert emitted.generator_name is GeneratorName.PULSE1
         assert emitted.feature_key is FeatureKey.VOLUME
 
@@ -73,7 +73,9 @@ class TestRegenerationServicePipeline:
             pulse_features.volume,
         )
 
-        approximation = reconstruction_data.reconstruction.get_generator_approximation(GeneratorName.PULSE1)
+        approximation = reconstruction_data.reconstruction.approximations.get(
+            GeneratorName.PULSE1, np.array([], dtype=np.float32)
+        )
         assert len(approximation) > 0
 
     def test_run_updates_reconstruction_instructions(self, reconstruction_data, pulse_features) -> None:

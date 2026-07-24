@@ -8,55 +8,21 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import GeneratorUnion
-from sampletones_core.instructions import PulseInstruction
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.reconstructor import reconstruct
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 
 class TestReconstructorWorkerHelpers:
-    def test_get_remaining_generators_returns_all_generators(
-        self,
-        worker: ReconstructorWorker,
-        generators: Dict[GeneratorName, GeneratorUnion],
-    ) -> None:
-        remaining = worker.get_remaining_generators()
-        assert set(remaining.keys()) == set(generators.keys())
-
-    def test_get_remaining_generators_returns_independent_copy(
-        self,
-        worker: ReconstructorWorker,
-    ) -> None:
-        remaining = worker.get_remaining_generators()
-        key = next(iter(remaining))
-        del remaining[key]
-        assert key in worker.generators
-
     def test_get_remaining_generator_classes_maps_by_class_name(
         self,
         worker: ReconstructorWorker,
         generators: Dict[GeneratorName, GeneratorUnion],
     ) -> None:
-        remaining = worker.get_remaining_generators()
+        remaining = dict(worker.generators.items())
         by_class = worker.get_remaining_generator_classes(remaining)
         expected_class_names = {gen.class_name() for gen in generators.values()}
         assert set(by_class.keys()) == expected_class_names
-
-    def test_serialize_instructions_is_deterministic(self) -> None:
-        instructions = (
-            PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=0),
-            PulseInstruction(on=True, pitch=72, volume=15, duty_cycle=1),
-        )
-        first = ReconstructorWorker._serialize_instructions(instructions)
-        second = ReconstructorWorker._serialize_instructions(instructions)
-        assert first == second
-
-    def test_serialize_instructions_differs_for_different_instructions(self) -> None:
-        instructions_a = (PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=0),)
-        instructions_b = (PulseInstruction(on=True, pitch=72, volume=15, duty_cycle=1),)
-        assert ReconstructorWorker._serialize_instructions(
-            instructions_a
-        ) != ReconstructorWorker._serialize_instructions(instructions_b)
 
 
 class TestReconstructorWorkerIntegration:

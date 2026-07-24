@@ -3,15 +3,14 @@ from __future__ import annotations
 import heapq
 import threading
 import time
-from functools import wraps
-from typing import Any, Callable, List, Optional, Union, cast
+from typing import Any, List
 
 from sampletones_application.utils.callbacks.priority import CallbackPriority
 from sampletones_application.utils.callbacks.task import CallbackTask
 from sampletones_shared.exceptions import CallbackQueueStop
 from sampletones_shared.logger import logger
 from sampletones_shared.meta import NonInstantiableMeta
-from sampletones_shared.types.callback import Callback, CallbackT
+from sampletones_shared.types.callback import Callback
 
 
 class CallbackQueue(metaclass=NonInstantiableMeta):
@@ -129,27 +128,3 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
                 f"Error executing callback {getattr(callback, '__name__', str(callback))}",
             )
             return False
-
-
-def queued(
-    method: Optional[CallbackT] = None,
-    *,
-    priority: int,
-    delay: int = 0,
-) -> Union[CallbackT, Callable[[CallbackT], CallbackT]]:
-    def decorator(function: CallbackT) -> CallbackT:
-
-        @wraps(function)
-        def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
-            CallbackQueue.add(
-                function,
-                self,
-                *args,
-                priority=priority,
-                delay=delay,
-                **kwargs,
-            )
-
-        return cast(CallbackT, wrapper)
-
-    return decorator if method is None else decorator(method)

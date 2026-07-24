@@ -1,7 +1,3 @@
 bar_plot: .graph_bar
-bar_plot_zero_line: .plot_zero_line
-waveform_default: .white
 waveform_sample: .waveform_sample
 waveform_reconstruction: .waveform_reconstruction
-waveform_position_indicator: .white
-waveform_overlay: .waveform_overlay

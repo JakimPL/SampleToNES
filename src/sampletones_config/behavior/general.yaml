@@ -17,3 +17,5 @@ ui:
 
 main:
   fps_update_interval: 2.0
+  vsync: true
+  max_fps: 60

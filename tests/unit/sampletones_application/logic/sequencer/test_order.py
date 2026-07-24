@@ -47,17 +47,9 @@ class TestOrderMutations:
         for generator in GeneratorName.items():
             assert _order_column(logic, generator) == [None]
 
-    def test_add_to_order_appends_an_empty_frame(self) -> None:
-        logic = _logic()
-
-        logic.add_to_order()
-
-        for generator in GeneratorName.items():
-            assert _order_column(logic, generator) == [0, None]
-
     def test_remove_from_order_drops_the_frame(self) -> None:
         logic = _logic()
-        logic.add_to_order()
+        logic.insert_frame(1)
 
         logic.remove_from_order(0)
 
@@ -95,7 +87,7 @@ class TestOrderFrameOps:
 
     def test_move_frame_reorders(self) -> None:
         logic = _logic()
-        logic.add_to_order()
+        logic.insert_frame(1)
         logic.set_order_entry(GeneratorName.PULSE1, 0, 1)
         logic.set_order_entry(GeneratorName.PULSE1, 1, 2)
 
@@ -107,7 +99,7 @@ class TestOrderFrameOps:
 class TestBuildOrder:
     def test_position_count_matches_order_length(self) -> None:
         logic = _logic()
-        logic.add_to_order()
+        logic.insert_frame(1)
 
         view_model = logic.build_order()
 

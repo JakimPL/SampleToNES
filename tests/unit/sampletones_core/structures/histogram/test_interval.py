@@ -440,122 +440,6 @@ class TestContains(BaseTestSuite):
         assert test_case.interval1.contains(test_case.interval2) == test_case.expected
 
 
-class TestRelativeMeasure(BaseTestSuite):
-    @dataclass(frozen=True, kw_only=True)
-    class TestCase(BaseAutolabelTestCase):
-        expected: Union[Float, Type[Exception]]
-        interval1: Interval
-        interval2: Union[Interval, str]
-        match: Optional[str] = None
-
-        @property
-        def label(self) -> str:
-            error_suffix = "_error" if isinstance(self.expected, type) and issubclass(self.expected, Exception) else ""
-            interval2_str = (
-                f"[{self.interval2.left},{self.interval2.right}]"
-                if isinstance(self.interval2, Interval)
-                else str(self.interval2)
-            )
-            return f"[{self.interval1.left},{self.interval1.right}]_measure_{interval2_str}{error_suffix}"
-
-    test_cases = [
-        TestCase(
-            interval1=Interval(0.0, 10.0),
-            interval2=Interval(0.0, 10.0),
-            expected=1.0,
-        ),
-        TestCase(
-            interval1=Interval(0.0, 10.0),
-            interval2=Interval(0.0, 5.0),
-            expected=0.5,
-        ),
-        TestCase(
-            interval1=Interval(0.0, 10.0),
-            interval2=Interval(5.0, 10.0),
-            expected=0.5,
-        ),
-        TestCase(
-            interval1=Interval(3.0, 7.0),
-            interval2=Interval(4.0, 6.0),
-            expected=0.5,
-        ),
-        TestCase(
-            interval1=Interval(3.0, 7.0),
-            interval2=Interval(6.0, 15.0),
-            expected=0.25,
-        ),
-        TestCase(
-            interval1=Interval(0.0, 10.0),
-            interval2=Interval(15.0, 20.0),
-            expected=0.0,
-        ),
-        TestCase(
-            interval1=Interval(np.float32(2.0), np.float32(8.0)),
-            interval2=Interval(np.float32(3.0), np.float32(5.0)),
-            expected=np.float32(1.0 / 3.0),
-        ),
-        TestCase(
-            interval1=Interval(np.float64(0.0), np.float64(100.0)),
-            interval2=Interval(np.float64(25.0), np.float64(75.0)),
-            expected=np.float64(0.5),
-        ),
-        TestCase(
-            interval1=Interval(-np.inf, 0.0),
-            interval2=Interval(-10.0, 0.0),
-            expected=0.0,
-        ),
-        TestCase(
-            interval1=Interval(0.0, np.inf),
-            interval2=Interval(0.0, 100.0),
-            expected=0.0,
-        ),
-        TestCase(
-            interval1=Interval(-np.inf, np.inf),
-            interval2=Interval(0.0, 10.0),
-            expected=0.0,
-        ),
-        TestCase(
-            interval1=Interval(5.0, 3.0),
-            interval2=Interval(1.0, 10.0),
-            expected=0.0,
-        ),
-        TestCase(
-            interval1=Interval(1.0, 10.0),
-            interval2=Interval(5.0, 3.0),
-            expected=0.0,
-        ),
-        TestCase(
-            interval1=Interval(5.0, 3.0),
-            interval2=Interval(8.0, 6.0),
-            expected=0.0,
-        ),
-        TestCase(
-            interval1=Interval(1.0, 5.0),
-            interval2="not_interval",
-            expected=TypeError,
-            match="Expected Interval",
-        ),
-    ]
-
-    @pytest.mark.parametrize(
-        "test_case",
-        test_cases,
-        ids=lambda test_case: test_case.label,
-    )
-    def test_relative_measure(self, test_case: TestCase) -> None:
-        other = test_case.interval2 if isinstance(test_case.interval2, Interval) else test_case.interval2
-
-        if not expect_error(
-            test_case.interval1.relative_measure,
-            test_case.expected,
-            other,
-            match=test_case.match,
-        ):
-            assert isinstance(other, Interval)
-            result = test_case.interval1.relative_measure(other)
-            assert_array_equal(result, test_case.expected)
-
-
 class TestFloat(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseAutolabelTestCase):
@@ -712,18 +596,6 @@ class TestEdgeCases:
         invalid = Interval(5.0, 3.0)
         assert valid.contains(invalid) is True
 
-    def test_relative_measure_of_two_invalid_intervals(self) -> None:
-        invalid1 = Interval(5.0, 3.0)
-        invalid2 = Interval(8.0, 6.0)
-        result = invalid1.relative_measure(invalid2)
-        assert_array_equal(result, 0.0)
-
-    def test_relative_measure_valid_with_invalid_other(self) -> None:
-        valid = Interval(1.0, 10.0)
-        invalid = Interval(5.0, 3.0)
-        result = valid.relative_measure(invalid)
-        assert_array_equal(result, 0.0)
-
     def test_float_preserves_invalid_interval(self) -> None:
         invalid = Interval(np.float32(10.0), np.float32(5.0))
         result = invalid.float()
@@ -762,12 +634,6 @@ class TestEdgeCases:
         bounded = Interval(0.0, 10.0)
         assert unbounded.contains(bounded) is True
         assert bounded.contains(unbounded) is False
-
-    def test_relative_measure_with_unbounded_self(self) -> None:
-        unbounded = Interval(-np.inf, np.inf)
-        bounded = Interval(0.0, 10.0)
-        result = unbounded.relative_measure(bounded)
-        assert_array_equal(result, 0.0)
 
     def test_interval_with_nan_left(self) -> None:
         interval = Interval(np.nan, 5.0)

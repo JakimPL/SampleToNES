@@ -1,6 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
+call "%~dp0..\lib\root.bat" || exit /b 1
+
 set "EXTRAS="
 
 :parse_args

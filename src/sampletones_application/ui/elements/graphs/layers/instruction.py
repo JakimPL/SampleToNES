@@ -14,7 +14,6 @@ class InstructionLayer(Layer):
     data: InstructionLibraryFragment[Any]
     name: str
     color: Color
-    line_thickness: float
 
     def __post_init__(self) -> None:
         mixer = MIXER_LEVELS[self.data.generator_class]

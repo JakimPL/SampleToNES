@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+call "%~dp0..\lib\root.bat" || exit /b 1
+
 set RELEASE_HOOK=
 :parse_args
 if "%~1"=="" goto build
@@ -17,7 +19,7 @@ pip install pyinstaller || exit /b
 
 pyinstaller --name sampletones ^
     --onefile ^
-    --distpath . ^
+    --distpath bin ^
     --icon "src\sampletones_assets\icons\sampletones.ico" ^
     --add-data "src\sampletones_assets\icons;assets\icons" ^
     --add-data "src\sampletones_assets\fonts;assets\fonts" ^
@@ -26,8 +28,8 @@ pyinstaller --name sampletones ^
     %RELEASE_HOOK% ^
     "src\sampletones\__main__.py" || exit /b
 
-if exist sampletones.exe (
-    echo Build complete: .\sampletones.exe
+if exist bin\sampletones.exe (
+    echo Build complete: .\bin\sampletones.exe
 ) else (
     echo Build failed.
     exit /b 1

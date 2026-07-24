@@ -104,12 +104,6 @@ TAG_GLOBAL_THEME_DEFAULT = TagName(
     Widget.THEME,
     "default",
 )
-TAG_GLOBAL_THEME_CONVERTER = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.THEME,
-    "converter",
-)
 TAG_GLOBAL_THEME_PRIMARY_BUTTON = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -332,12 +326,6 @@ TAG_GLOBAL_THEME_TRACEBACK = TagName(
     Widget.THEME,
     "traceback",
 )
-TAG_GLOBAL_BUTTON_OK = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.BUTTON,
-    "ok",
-)
 TAG_GLOBAL_DIALOG_CONFIG_STATUS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -349,12 +337,6 @@ TAG_GLOBAL_DIALOG_CONFIG_RECOVERY = TagName(
     Panel.IMPLICIT,
     Widget.DIALOG,
     "config_recovery",
-)
-TAG_GLOBAL_DIALOG_RECONSTRUCTION_STATUS = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.DIALOG,
-    "reconstruction_status",
 )
 TAG_GLOBAL_DIALOG_FILE_NOT_FOUND = TagName(
     Page.GLOBAL,
@@ -385,18 +367,6 @@ TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED = TagName(
     Panel.IMPLICIT,
     Widget.DIALOG,
     "reconstruction_saved",
-)
-TAG_GLOBAL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.DIALOG,
-    "close_unsaved_reconstruction",
-)
-TAG_GLOBAL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.DIALOG,
-    "load_unsaved_reconstruction",
 )
 TAG_GLOBAL_DIALOG_ABOUT = TagName(
     Page.GLOBAL,
@@ -671,7 +641,6 @@ SUF_GROUP = f"{TAG_SEPARATOR}group"
 SUF_GROUP_TRACEBACK = f"{TAG_SEPARATOR}group{TAG_SEPARATOR}traceback"
 SUF_HANDLER_REGISTRY = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}registry"
 SUF_HANDLER_STATUS = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}status"
-SUF_HANDLER_FOCUS = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}focus"
 SUF_HANDLER_NODE = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}node"
 SUF_HANDLER_DETAIL_TOOLTIP = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}detail_tooltip"
 SUF_LABEL = f"{TAG_SEPARATOR}label"
@@ -688,7 +657,6 @@ SUF_PANEL_LEFT = f"{TAG_SEPARATOR}panel{TAG_SEPARATOR}left"
 SUF_PANEL_CENTER = f"{TAG_SEPARATOR}panel{TAG_SEPARATOR}center"
 SUF_PANEL_RIGHT = f"{TAG_SEPARATOR}panel{TAG_SEPARATOR}right"
 SUF_COLLAPSE_STRIP = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}strip"
-SUF_COLLAPSE_HEADER = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}header"
 SUF_COLLAPSE_BODY = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}body"
 SUF_COLLAPSE_RAIL = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}rail"
 SUF_COLLAPSE_CHEVRON = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}chevron"

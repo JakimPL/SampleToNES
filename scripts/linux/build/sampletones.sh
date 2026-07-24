@@ -2,6 +2,8 @@
 
 set -e
 
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/root.sh"
+
 EXTRAS=()
 for arg in "$@"; do
     case $arg in

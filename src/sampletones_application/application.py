@@ -105,6 +105,7 @@ from sampletones_application.utils.file_dialogs.api import (
 )
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.fps import FPSTimer
+from sampletones_application.utils.frame_limiter import FrameLimiter
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -216,6 +217,7 @@ class Application:
         self.history.on_history_changed = self._on_history_changed
 
         self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.main.fps_update_interval)
+        self.frame_limiter: FrameLimiter = FrameLimiter(self.layout.behavior.main.max_fps)
         self._audio_was_playing: bool = False
 
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
@@ -255,6 +257,7 @@ class Application:
             self.theme,
             min_width=self.layout.general.window.min_width,
             min_height=self.layout.general.window.min_height,
+            vsync=self.layout.behavior.main.vsync,
             on_fullscreen_state_changed=self._update_menu,
         )
 
@@ -1269,6 +1272,7 @@ class Application:
             while dpg.is_dearpygui_running():
                 self.frame()
                 self._post_frame()
+                self.frame_limiter.tick()
         except KeyboardInterrupt:
             return
         finally:

@@ -20,10 +20,6 @@ class Shortcut:
     modifiers: Tuple[Modifier, ...] = ()
     field_transparent: bool = False
 
-    @property
-    def is_bindable(self) -> bool:
-        return self.key is not None
-
     def get_display_string(self) -> str:
         if self.key is None:
             return ""

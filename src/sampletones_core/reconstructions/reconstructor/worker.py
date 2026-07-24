@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
@@ -9,11 +9,10 @@ from sampletones_core.generators import (
     GeneratorUnion,
     get_remaining_generator_classes,
 )
-from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 
 from .approximation import ApproximationData
-from .candidates import CandidateProvider, SerializedInstructions, serialize_instructions
+from .candidates import CandidateProvider
 from .phase import PHASE_ALIGNERS, PhaseAligner
 from .scorer import Scorer
 from .selector import SELECTORS, Selector
@@ -66,17 +65,8 @@ class ReconstructorWorker:
     def reconstruct(self, fragment: Fragment) -> Dict[GeneratorName, ApproximationData]:
         return self.selector.reconstruct_fragment(fragment)
 
-    def get_remaining_generators(self) -> Dict[GeneratorName, GeneratorUnion]:
-        return dict(self.generators.items())
-
     def get_remaining_generator_classes(
         self,
         remaining_generators: Dict[GeneratorName, GeneratorUnion],
     ) -> Dict[GeneratorClassName, GeneratorUnion]:
         return get_remaining_generator_classes(remaining_generators)
-
-    @staticmethod
-    def _serialize_instructions(
-        instructions: Tuple[InstructionUnion, ...],
-    ) -> SerializedInstructions:
-        return serialize_instructions(instructions)

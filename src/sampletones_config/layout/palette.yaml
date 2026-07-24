@@ -170,7 +170,7 @@ colors:
   feature_duty_cycle: "#ffc864"
 
   # layout: caret overlay
-  caret_fill: "#4488ff80"
+  caret_fill: "#8888ff80"
   caret_border: "#88bbffff"
 
   # layout: graphs and waveforms

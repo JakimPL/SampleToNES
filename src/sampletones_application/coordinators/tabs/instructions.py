@@ -557,9 +557,6 @@ class InstructionsTabCoordinator:
         except (SampleToNESError, OSError) as exception:
             logger.warning(f"Could not load library from {logger.format_path(filepath)}: {exception}")
 
-    def close_instruction(self) -> None:
-        self._close_instruction()
-
     def is_library_generating(self) -> bool:
         return self._library_logic.is_library_generating()
 

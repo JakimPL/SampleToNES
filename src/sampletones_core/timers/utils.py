@@ -12,8 +12,13 @@ def get_frequency_table(config: Config) -> Dict[int, float]:
         nes_frequency=config.library.nes_frequency,
     )
     frequencies = {}
+
     for note in range(config.general.min_pitch, config.general.max_pitch + 1):
-        frequency = pitch_to_frequency(note, config.library.a4_frequency, config.library.a4_pitch)
+        frequency = pitch_to_frequency(
+            note,
+            config.library.a4_frequency,
+            config.library.a4_pitch,
+        )
         timer.frequency = frequency
         frequencies[note] = timer.frequency
 

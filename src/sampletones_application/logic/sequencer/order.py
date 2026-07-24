@@ -47,10 +47,6 @@ class SequencerOrderLogic(CallbackMixin):
         for generator in GeneratorName.items():
             self._controller.set_order_entry(generator, position, pattern_index)
 
-    def add_to_order(self) -> None:
-        """Appends one empty frame (all channels silent) to the order."""
-        self._controller.append_frame()
-
     def remove_from_order(self, position: int) -> None:
         self._controller.remove_frame(position)
 

@@ -7,5 +7,4 @@ class WindowLayout(BaseModel, extra="forbid", frozen=True):
     min_width: int
     min_height: int
     position_x: int
-    position_y: int
     fullscreen: bool

@@ -2,6 +2,8 @@
 
 set -e
 
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/root.sh"
+
 if [[ -d ".venv-build" ]]; then
     echo "Virtual environment already exists. Activating..."
     source .venv-build/bin/activate

@@ -128,12 +128,3 @@ class TestFieldFocusGate:
 
         assert claimed
         callback.assert_called_once()
-
-    def test_is_input_focused_reflects_the_router(self, field_kind: Dict[str, FieldKind]) -> None:
-        manager = _manager()
-
-        field_kind["kind"] = FieldKind.TEXT_ENTRY
-        assert manager.is_input_focused
-
-        field_kind["kind"] = FieldKind.NONE
-        assert not manager.is_input_focused

@@ -2,6 +2,8 @@
 
 set -e
 
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/root.sh"
+
 RELEASE_HOOK_ARGS=()
 for arg in "$@"; do
     if [[ "$arg" == "--release" ]]; then
@@ -14,7 +16,7 @@ pip install pyinstaller
 echo "Building executable..."
 pyinstaller --name sampletones \
     --onefile \
-    --distpath . \
+    --distpath ./bin \
     --icon "src/sampletones_assets/icons/sampletones.png" \
     --add-data "src/sampletones_assets/icons:assets/icons" \
     --add-data "src/sampletones_assets/fonts:assets/fonts" \
@@ -23,8 +25,8 @@ pyinstaller --name sampletones \
     "${RELEASE_HOOK_ARGS[@]}" \
     "src/sampletones/__main__.py"
 
-if [[ -f sampletones ]]; then
-    echo "Build complete: ./sampletones"
+if [[ -f bin/sampletones ]]; then
+    echo "Build complete: ./bin/sampletones"
 else
     echo "Build failed."
 fi

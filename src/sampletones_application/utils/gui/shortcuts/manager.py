@@ -38,22 +38,6 @@ class ShortcutManager:
         """
         self._aliases.setdefault(shortcut_id, []).append(shortcut)
 
-    @property
-    def is_input_focused(self) -> bool:
-        """Whether a text or value field currently owns keyboard focus.
-
-        The key router reads focus at the source each key press, so both shortcut dispatch and the
-        sequencer key handlers consult this to keep typed characters with the field they belong to.
-        """
-        return self._router.is_field_focused
-
-    def get_shortcut_display(self, shortcut_id: ShortcutId) -> str:
-        if shortcut_id in self._shortcuts:
-            shortcut, _ = self._shortcuts[shortcut_id]
-            return shortcut.get_display_string()
-
-        return ""
-
     def add_menu_item(self, shortcut_id: ShortcutId, **kwargs: Any) -> None:
         shortcut, callback = self._shortcuts[shortcut_id]
         dpg.add_menu_item(

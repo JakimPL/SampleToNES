@@ -15,7 +15,6 @@ from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_shared.types.application import Color, Sender
-from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import (
@@ -64,8 +63,6 @@ class GUIPathText(CallbackMixin):
         self.label_tag = f"{tag}{SUF_LABEL}"
         self.handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
         self.group_tag = f"{tag}{SUF_GROUP}"
-
-        self.on_path_hovered: Optional[VoidCallback] = None
 
         self._create_text()
         self._create_handler()

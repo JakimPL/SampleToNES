@@ -9,6 +9,7 @@ __pycache__/
 .venv-build/
 .vscode/
 
+bin/
 build/
 dist/
 wheels/

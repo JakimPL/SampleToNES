@@ -28,7 +28,6 @@ from sampletones_application.tags.general import (
     SUF_CHECKBOX,
     SUF_DIALOG_INFO,
     SUF_GROUP,
-    SUF_INPUT,
     SUF_PATH,
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
@@ -157,7 +156,6 @@ class DialogsRenderer:
         self._error_width = layout.dialogs.error.width
         self._error_height = layout.dialogs.error.height
         self._confirmation_height = layout.dialogs.confirmation.height
-        self._text_input_height = layout.dialogs.text_input.height
         self._default_wrap = layout.dialogs.default.width - 10
         self._error_wrap = layout.dialogs.error.width - 10
         self._col_text_error = layout.colors.text.error
@@ -629,97 +627,6 @@ class DialogsRenderer:
             on_escape=_on_cancel,
             key_router=self._router,
             initial_index=1,
-        )
-        center_when_settled(tag)
-
-    # TODO: refactor
-    def show_text_input(
-        self,
-        tag: str,
-        title: str,
-        initial_value: str,
-        on_submit: StringCallback,
-        *,
-        ok_label: str,
-    ) -> None:
-        """Prompt for a single line of text, delivering the entered value to ``on_submit``.
-
-        Submitting via the OK button or Enter reads the field and invokes ``on_submit``;
-        cancelling or closing discards it. The caller owns any validation of the value.
-        """
-        tag = get_dialog_tag(tag)
-        input_tag = f"{tag}{SUF_INPUT}"
-        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
-        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
-        navigator: Optional[DialogKeyboardNavigator] = None
-
-        def disable() -> None:
-            dpg_configure_item(ok_button_tag, enabled=False)
-            dpg_configure_item(cancel_button_tag, enabled=False)
-
-        def close() -> None:
-            if navigator is not None:
-                navigator.dispose()
-
-            dpg_delete_item(tag)
-
-        def _on_submit() -> None:
-            value = dpg.get_value(input_tag)
-            disable()
-            on_submit(value)
-            close()
-
-        def _on_cancel() -> None:
-            disable()
-            close()
-
-        def content(parent: str) -> None:
-            dpg.add_input_text(
-                tag=input_tag,
-                parent=parent,
-                default_value=initial_value,
-                width=-1,
-                on_enter=True,
-                callback=_on_submit,
-            )
-
-            @table_wrapper(columns=2)
-            def buttons(_: None) -> None:
-                GUIButton(
-                    tag=ok_button_tag,
-                    label=ok_label,
-                    callback=_on_submit,
-                    width=-1,
-                )
-                GUIButton(
-                    tag=cancel_button_tag,
-                    label=self._lbl_cancel,
-                    callback=_on_cancel,
-                    width=-1,
-                )
-
-            buttons(None)
-
-        with dpg.window(
-            label=title,
-            tag=tag,
-            modal=True,
-            min_size=(self._default_width, self._text_input_height),
-            no_resize=True,
-            on_close=close,
-        ):
-            _bind_dialog_theme(tag)
-            content(tag)
-
-        navigator = _install_navigation(
-            window_tag=tag,
-            stops=[
-                FocusStop.field(input_tag),
-                FocusStop.button(ok_button_tag, _on_submit),
-                FocusStop.button(cancel_button_tag, _on_cancel),
-            ],
-            on_escape=_on_cancel,
-            key_router=self._router,
         )
         center_when_settled(tag)
 

@@ -397,9 +397,5 @@ def sanitize_period(name: str) -> str:
     return "".join([character for character in sanitize(name) if character in "0123456789ABCDEF"])
 
 
-MIN_AVAILABLE_FREQUENCY = pitch_to_frequency(MIN_PITCH)
-MAX_AVAILABLE_FREQUENCY = pitch_to_frequency(MAX_PITCH)
-NAME_TO_PITCH = {pitch_to_name(pitch): pitch for pitch in range(MIN_PITCH, MAX_PITCH + 1)}
-NAME_TO_PERIOD = {period_to_name(period): period for period in range(len(NOISE_PERIODS))}
 SANITIZED_NAME_TO_PITCH = {sanitize_pitch(pitch_to_name(pitch)): pitch for pitch in range(MIN_PITCH, MAX_PITCH + 1)}
 SANITIZED_NAME_TO_PERIOD = {sanitize_period(period_to_name(period)): period for period in range(len(NOISE_PERIODS))}

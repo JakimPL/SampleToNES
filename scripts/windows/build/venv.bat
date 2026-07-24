@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+call "%~dp0..\lib\root.bat" || exit /b 1
+
 if exist ".venv-build" (
     echo Virtual environment already exists. Activating...
     call .venv-build\Scripts\activate || exit /b

@@ -3,10 +3,8 @@ from enum import StrEnum, auto
 
 class TextType(StrEnum):
     LABEL = "label"
-    HINT = "hint"
     TITLE = "title"
     MESSAGE = "message"
-    FEEDBACK = "feedback"
     TEMPLATE = "template"
     TOOLTIP = "tooltip"
     FILTER = "filter"
@@ -19,7 +17,6 @@ class Widget(StrEnum):
     DIALOG = "dialog"
     FONT = "font"
     GROUP = "group"
-    HANDLER = "handler"
     HEADER = "header"
     INPUT = "input"
     MENU = "menu"
@@ -96,9 +93,3 @@ class Panel(StrEnum):
     # Settings
     AUDIO = auto()
     PROPERTIES = auto()
-
-    # Prototype
-    PAGE = auto()
-    LABEL_INPUT = auto()
-    MULTIPLIER = auto()
-    RESULT = auto()

@@ -1,7 +1,6 @@
 from typing import Callable, Dict, Optional, Sequence
 
 from anytree import PreOrderIter
-from anytree.search import findall
 
 from .node import TreeNode
 
@@ -64,16 +63,6 @@ class Tree:
             return True
 
         return self._node_visibility.get(node, False)
-
-    def find_node(
-        self,
-        predicate: Callable[[TreeNode], bool],
-    ) -> Optional[TreeNode]:
-        if not self.root:
-            return None
-
-        results = findall(self.root, filter_=predicate)
-        return results[0] if results else None
 
     def collect_leaves(self) -> Sequence[TreeNode]:
         if not self.root:

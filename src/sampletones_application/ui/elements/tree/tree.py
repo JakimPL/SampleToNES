@@ -757,12 +757,6 @@ class GUITreePanel(GUIPanel, ABC):
             callback=lambda: self._context_mark_as_favorite(node),
         )
 
-    def clear_selection(self) -> None:
-        if self._selected_node_tag is not None and dpg.does_item_exist(self._selected_node_tag):
-            dpg.set_value(self._selected_node_tag, False)
-
-        self._selected_node_tag = None
-
     def _on_add_to_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return

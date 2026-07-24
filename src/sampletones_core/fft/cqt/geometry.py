@@ -45,30 +45,6 @@ def calculate_wavelet_lengths(
     return lengths
 
 
-def reliable_frequency_floor(
-    sample_rate: int,
-    signal_length: int,
-    bins_per_octave: int = BINS_PER_OCTAVE,
-) -> float:
-    """
-    Lowest center frequency a signal of ``signal_length`` samples resolves at constant Q.
-
-    Inverting the wavelet-length relation ``Q * sample_rate / f = signal_length`` gives
-    ``f = Q * sample_rate / signal_length``: a bin's full wavelet fits within the signal at or
-    above this frequency. Content below it is measured over less than one wavelet, so its energy
-    is under-resolved and the low bins report a smeared, under-read estimate.
-
-    Args:
-        sample_rate: Sampling rate in Hz.
-        signal_length: Number of samples available for the transform.
-        bins_per_octave: Number of bins per octave.
-
-    Returns:
-        The lowest reliably-resolved frequency in Hz.
-    """
-    return quality_factor(bins_per_octave) * sample_rate / signal_length
-
-
 def resolvable_bins(
     frequencies: np.ndarray,
     sample_rate: int,
