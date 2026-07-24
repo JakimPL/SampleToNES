@@ -1,6 +1,5 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 
 TAG_INSTRUCTIONS_LIBRARY_PANEL = TagName(
     Page.INSTRUCTIONS,
@@ -74,12 +73,6 @@ TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE = TagName(
     Widget.WINDOW,
     "tree",
 )
-TAG_INSTRUCTIONS_LIBRARY_DIALOG_LIBRARY_NOT_LOADED = TagName(
-    Page.INSTRUCTIONS,
-    Panel.LIBRARY,
-    Widget.DIALOG,
-    "library_not_loaded",
-)
 TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION = TagName(
     Page.INSTRUCTIONS,
     Panel.LIBRARY,
@@ -103,12 +96,6 @@ TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE = TagName(
     Panel.LIBRARY,
     Widget.TOOLTIP,
     "generate",
-)
-TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_PLAYER = TagName(
-    Page.INSTRUCTIONS,
-    Panel.INSTRUCTION,
-    Widget.PANEL,
-    "instruction_player",
 )
 TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_WAVEFORM = TagName(
     Page.INSTRUCTIONS,
@@ -175,12 +162,6 @@ TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS = TagName(
     Panel.DETAILS,
     Widget.HEADER,
     "parameters",
-)
-TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS_SECTION = TagName(
-    Page.INSTRUCTIONS,
-    Panel.DETAILS,
-    Widget.HEADER,
-    "parameters_section",
 )
 TAG_INSTRUCTIONS_LIBRARY_THEME = TagName(
     Page.INSTRUCTIONS,
@@ -260,5 +241,3 @@ TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES = TagName(
     Widget.GROUP,
     "tables",
 )
-
-SUF_INSTRUCTION_DETAILS_TABLE = f"{TAG_SEPARATOR}table"

@@ -44,12 +44,6 @@ TAG_SEQUENCER_GRID_PANEL = TagName(
     Widget.PANEL,
     "grid",
 )
-TAG_SEQUENCER_GRID_PANEL_GRID_PLAYER = TagName(
-    Page.SEQUENCER,
-    Panel.GRID,
-    Widget.PANEL,
-    "grid_player",
-)
 TAG_SEQUENCER_GRID_TABLE_TRACKER = TagName(
     Page.SEQUENCER,
     Panel.GRID,
