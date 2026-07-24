@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, cast
+from typing import Dict, Optional, cast
 
 import numpy as np
 
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.types.feature import FeatureValue
 
 
 @dataclass(frozen=True)
@@ -38,34 +37,5 @@ class FeatureData:
 
         return cls(generators=generators)
 
-    def get_generator_names(self) -> List[GeneratorName]:
-        return list(self.generators.keys())
-
-    def has_generator(self, generator_name: GeneratorName) -> bool:
-        return generator_name in self.generators
-
     def get_generator_features(self, generator_name: GeneratorName) -> Optional[Features]:
         return self.generators.get(generator_name)
-
-    def get_feature_for_generator(
-        self,
-        generator_name: GeneratorName,
-        feature_key: FeatureKey,
-    ) -> Optional[FeatureValue]:
-        features = self.get_generator_features(generator_name)
-        return features.get(feature_key) if features else None
-
-    def has_feature_for_generator(
-        self,
-        generator_name: GeneratorName,
-        feature_key: FeatureKey,
-    ) -> bool:
-        features = self.get_generator_features(generator_name)
-        return features.get(feature_key) is not None if features else False
-
-    def get_first_generator_with_feature(self, feature_key: FeatureKey) -> Optional[GeneratorName]:
-        for generator_name, features in self.generators.items():
-            if features.get(feature_key) is not None:
-                return generator_name
-
-        return None

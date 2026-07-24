@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 from sampletones_application.categories.elements.instructions import (
     InstructionsLibraryElements,
@@ -11,12 +11,10 @@ from sampletones_application.view_model.instruction.data import InstructionPanel
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.fft import Window
-from sampletones_core.instructions import Instruction
 from sampletones_core.instructions.types import InstructionUnion
 from sampletones_core.library import (
     InstructionLibrary,
     InstructionLibraryData,
-    InstructionLibraryFragment,
     InstructionLibraryKey,
     create_key_from_filename,
     get_display_name_from_key,
@@ -36,8 +34,6 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
-
-InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
 
 OnGenerationProgressCallback = Callable[[TaskStatus, TaskProgress], None]
 OnGenerationErrorCallback = Callable[[Exception], None]
@@ -96,9 +92,6 @@ class InstructionsLibraryManager(CallbackMixin):
 
         self._library_files = new_library_files
         return self._library_files
-
-    def get_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
-        return self._library_files.copy()
 
     def get_library_key(self, library_key: Optional[InstructionLibraryKey] = None) -> Optional[InstructionLibraryKey]:
         if library_key is None:
@@ -162,9 +155,6 @@ class InstructionsLibraryManager(CallbackMixin):
 
     def get_path(self, library_key: InstructionLibraryKey) -> Path:
         return self._library.get_path(library_key)
-
-    def get_library_data(self, library_key: InstructionLibraryKey) -> Optional[InstructionLibraryData]:
-        return self._library.data.get(library_key)
 
     def sync_with_config_key(self, config_key: InstructionLibraryKey) -> Optional[InstructionLibraryKey]:
         if self.library_exists_for_key(config_key):
@@ -255,11 +245,6 @@ class InstructionsLibraryManager(CallbackMixin):
             self._creator.shutdown()
             self._creator = None
 
-    def clear_all_libraries(self) -> None:
-        self._library.purge()
-        self._library_files.clear()
-        self._current_library_key = None
-
     def _is_library_file(self, filename: str) -> bool:
         """Whether ``filename`` parses as a library filename, per the field schema that builds it.
 
@@ -299,17 +284,3 @@ class InstructionsLibraryManager(CallbackMixin):
                 generator_name=generator_name,
                 parent=parent,
             )
-
-    def refresh_library_node(self, library_key: InstructionLibraryKey) -> None:
-        if not self._tree.root:
-            return
-
-        library_node = self._tree.find_node(
-            lambda node: isinstance(node, LibraryNode) and node.library_key == library_key
-        )
-
-        if library_node and isinstance(library_node, LibraryNode):
-            for child in list(library_node.children):
-                child.parent = None
-
-            self._build_generator_nodes(library_node)

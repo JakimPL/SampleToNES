@@ -172,14 +172,6 @@ class ExplorerManager:
     def is_directory_expanded(self, directory_path: Path) -> bool:
         return self._expanded_directories.get(directory_path, False)
 
-    def collapse_directory(self, directory_path: Path) -> None:
-        if directory_path in self._expanded_directories:
-            del self._expanded_directories[directory_path]
-
-    def clear_directory_children(self, directory_node: FileSystemNode) -> None:
-        for child in list(directory_node.children):
-            child.parent = None
-
     def _get_filesystems(self) -> List[Path]:
         system = System.current()
 
