@@ -11,7 +11,6 @@ class ExplorerElements(AbstractElement):
     CONTEXT_RECONSTRUCT_DIRECTORY = "context_reconstruct_directory"
     CONTEXT_SET_LIBRARY_DIRECTORY = "context_set_library_directory"
     CONTEXT_SET_OUTPUT_DIRECTORY = "context_set_output_directory"
-    NODE_DUMMY = "node_dummy"
     STATUS_REFRESH = "status_refresh"
     STATUS_COLLAPSE_ALL = "status_collapse_all"
     STATUS_NODE_AUDIO_NO_AUTOPLAY = "status_node_audio_no_autoplay"
@@ -54,8 +53,6 @@ class ConverterElements(AbstractElement):
     STATUS_CONVERT = "status_convert"
     STATUS_CANCEL = "status_cancel"
     STATUS_ERROR = "status_error"
-    STATUS_SUCCESS = "status_success"
-    STATUS_CONFIG_NOT_AVAILABLE = "status_config_not_available"
     STATUS_RECONSTRUCTION_COMPLETED = "status_reconstruction_completed"
     STATUS_NO_FILES = "status_no_files"
     STATUS_NO_GENERATORS = "status_no_generators"
@@ -74,7 +71,6 @@ class ConverterElements(AbstractElement):
     CANCEL_DIALOG = "cancel_dialog"
     CANCEL_PROMPT = "cancel_prompt"
     PROGRESS_TEMPLATE = "progress_template"
-    COMPLETE_TEMPLATE = "complete_template"
     CONVERT_LABEL_TEMPLATE = "convert_label_template"
 
 

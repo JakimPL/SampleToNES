@@ -1,5 +1,4 @@
 rows: 64
-row_height: 20
 page_size: 16
 channel_column_tint: 0.09
 subcolumn_widths:

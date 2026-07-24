@@ -117,7 +117,6 @@ class MainTabCoordinator:
         self._on_reconstruct_file = on_reconstruct_file
         self._on_reconstruct_directory = on_reconstruct_directory
         self._on_load_reconstruction = on_load_reconstruction
-        self._on_load_library = on_load_library
         self._is_operation_active = is_operation_active
         self._on_busy_state_changed = on_busy_state_changed
         self._on_refresh_trees = on_refresh_trees

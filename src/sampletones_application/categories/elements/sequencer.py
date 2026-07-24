@@ -7,7 +7,6 @@ class SequencerBrowserElements(AbstractElement):
     RECONSTRUCTIONS_TREE = "reconstructions_tree"
     FILE_NOT_FOUND = "file_not_found"
     LOAD_ERROR = "load_error"
-    STATUS_SEARCH = "status_search"
     LOAD_RECONSTRUCTION_DIALOG = "load_reconstruction_dialog"
 
 
@@ -27,9 +26,6 @@ class SequencerGridElements(AbstractElement):
     COLUMN_PULSE_2 = "column_pulse_2"
     COLUMN_TRIANGLE = "column_triangle"
     COLUMN_NOISE = "column_noise"
-    COLUMN_NOTE = "column_note"
-    COLUMN_VOLUME = "column_volume"
-    COLUMN_TRANSPOSE = "column_transpose"
     CONTEXT_PLAY = "context_play"
     CONTEXT_PLAY_FROM_FRAME = "context_play_from_frame"
     CONTEXT_NOTE_OFF = "context_note_off"
@@ -64,12 +60,6 @@ class SequencerOrderElements(AbstractElement):
     CONTEXT_MOVE_RIGHT = "context_move_right"
     CONTEXT_MOVE_START = "context_move_start"
     CONTEXT_MOVE_END = "context_move_end"
-
-
-class SequencerPlayerElements(AbstractElement):
-    NO_SONG_LOADED = "no_song_loaded"
-    POSITION = "position"
-    PLAYBACK_ERROR = "playback_error"
 
 
 class SequencerInstrumentsElements(AbstractElement):

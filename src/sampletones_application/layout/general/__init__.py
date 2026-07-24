@@ -7,7 +7,6 @@ from sampletones_application.layout.general.colors import GeneralColors
 from sampletones_application.layout.general.columns import ColumnsLayout
 from sampletones_application.layout.general.dialogs import DialogsLayout
 from sampletones_application.layout.general.inputs import InputsLayout
-from sampletones_application.layout.general.menu import MenuLayout
 from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.layout.general.responsive import ResponsiveLayout
@@ -29,7 +28,6 @@ class GeneralLayout(BaseModel, extra="forbid", frozen=True):
     tables: TablesLayout
     pitch_stepper: PitchStepperLayout
     plus_minus_buttons: PlusMinusButtonsLayout
-    menu: MenuLayout
     caret: CaretLayout
     section_header: SectionHeaderLayout
     collapse: CollapseLayout

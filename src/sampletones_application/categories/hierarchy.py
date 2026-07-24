@@ -3,7 +3,6 @@ from enum import StrEnum, auto
 
 class TextType(StrEnum):
     LABEL = "label"
-    HINT = "hint"
     TITLE = "title"
     MESSAGE = "message"
     FEEDBACK = "feedback"
@@ -96,9 +95,3 @@ class Panel(StrEnum):
     # Settings
     AUDIO = auto()
     PROPERTIES = auto()
-
-    # Prototype
-    PAGE = auto()
-    LABEL_INPUT = auto()
-    MULTIPLIER = auto()
-    RESULT = auto()

@@ -6,5 +6,4 @@ class BarPlotLayout(BaseModel, extra="forbid", frozen=True):
     min_y: float
     max_y: float
     bar_weight: float
-    zero_line_thickness: float
     hover_alpha: int

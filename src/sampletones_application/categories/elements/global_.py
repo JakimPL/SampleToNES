@@ -13,7 +13,6 @@ class DialogElements(AbstractElement):
     NO = "no"
     UNTITLED = "untitled"
     REMOVE = "remove"
-    CHANGE = "change"
     CHANGE_AND_RETUNE = "change_and_retune"
     DONT_ASK_AGAIN = "dont_ask_again"
     ADD_ANYWAY = "add_anyway"
@@ -121,9 +120,6 @@ class PlayerElements(AbstractElement):
     PAUSE = "pause"
     RESUME = "resume"
     STOP = "stop"
-    POSITION_PREFIX = "position_prefix"
-    SAMPLES_SUFFIX = "samples_suffix"
-    NO_AUDIO_LOADED = "no_audio_loaded"
     AUDIO_PLAYBACK_ERROR = "audio_playback_error"
 
 
@@ -166,7 +162,6 @@ class GlobalMessageElements(AbstractElement):
     EXIT_UNSAVED_PROJECT = "exit_unsaved_project"
     CONFIGURATION_SAVED_SUCCESSFULLY = "configuration_saved_successfully"
     CONFIGURATION_LOADED_SUCCESSFULLY = "configuration_loaded_successfully"
-    CONFIGURATION_SAVE_ERROR = "configuration_save_error"
     CONFIGURATION_LOAD_ERROR = "configuration_load_error"
     CONFIGURATION_INVALID_ERROR = "configuration_invalid_error"
     CONFIGURATION_PARSE_ERROR = "configuration_parse_error"
@@ -174,7 +169,6 @@ class GlobalMessageElements(AbstractElement):
     CONFIGURATION_RECOVERY_LIST_HEADER = "configuration_recovery_list_header"
     CONFIGURATION_RECOVERY_PATH_PREFIX = "configuration_recovery_path_prefix"
     AUDIO_PLAYBACK_ERROR = "audio_playback_error"
-    ALL_AUDIO_FORMATS = "all_audio_formats"
     NO_PROJECT_OPEN = "no_project_open"
     REMOVE_SAMPLE = "remove_sample"
     CHANGE_NES_FREQUENCY = "change_nes_frequency"
