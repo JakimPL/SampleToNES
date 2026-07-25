@@ -28,6 +28,12 @@ It supports:
 
 ## Installation
 
+### Standalone bundle
+
+The easiest way to use _SampleToNES_ is to download the release package for your platform from the
+[releases page](https://github.com/JakimPL/SampleToNES/releases), extract it, and run
+`sampletones` from inside the extracted folder. On Linux you may need `chmod +x sampletones`.
+
 ### Requirements
 
 - Windows, macOS, or Linux
@@ -57,10 +63,9 @@ PyPI. Install them first:
 ```sh
 sudo apt-get install libportaudio2 libasound2 python3-tk    # Debian/Ubuntu
 ```
+### Building the executable yourself
 
-### Standalone executable
-
-The easiest way to use _SampleToNES_ — a ready-to-run build. You only need Python 3.12.
+You only need Python 3.12.
 
 #### Windows
 
@@ -127,7 +132,11 @@ Internals — the reconstruction algorithms, file formats, the Python API, and d
 _SampleToNES_ is released under the [MIT License](https://github.com/JakimPL/SampleToNES/blob/main/LICENSE).
 
 The bundled fonts are third-party works under their own licenses (SIL Open Font License 1.1
-and the Bitstream Vera license) and are not covered by the MIT License. See
-[`THIRD-PARTY-NOTICES.md`](https://github.com/JakimPL/SampleToNES/blob/main/THIRD-PARTY-NOTICES.md) for full attribution, along with notes on
-the LGPL-licensed runtime dependencies and what they mean for redistributing standalone
-executable builds.
+and the Bitstream Vera license) and are not covered by the MIT License.
+
+The standalone bundles on the [releases page](https://github.com/JakimPL/SampleToNES/releases)
+additionally contain the Python runtime and every dependency, including several LGPL-licensed
+libraries. [`THIRD-PARTY-NOTICES.md`](https://github.com/JakimPL/SampleToNES/blob/main/THIRD-PARTY-NOTICES.md)
+lists everything they redistribute and what its license requires; the full license texts are in
+[`THIRD-PARTY-LICENSES.txt`](https://github.com/JakimPL/SampleToNES/blob/main/THIRD-PARTY-LICENSES.txt)
+and ship inside each bundle.

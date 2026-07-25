@@ -1,7 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
+setlocal EnableExtensions
 
-call "%~dp0..\lib\root.bat" || exit /b 1
+set "SCRIPT_DIR=%~dp0"
+call "%SCRIPT_DIR%\..\lib\root.bat" || exit /b 1
+
+set "PROJECT_DIR=%SCRIPT_DIR%..\..\.."
+set "VENV_DIR=%PROJECT_DIR%\.venv-build"
+set "VENV_PY=%VENV_DIR%\Scripts\python.exe"
 
 set "EXTRAS="
 
@@ -26,13 +32,13 @@ goto parse_args
 
 :install
 echo Installing dependencies...
-pip install --upgrade pip
+"%VENV_PY%" -m pip install --upgrade pip
 
 if defined EXTRAS (
     echo Installing with extras: !EXTRAS!
-    pip install ".[!EXTRAS!]"
+    "%VENV_PY%" -m pip install ".[!EXTRAS!]"
 ) else (
-    pip install .
+    "%VENV_PY%" -m pip install .
 )
 
 echo sampletones Python package installed successfully.

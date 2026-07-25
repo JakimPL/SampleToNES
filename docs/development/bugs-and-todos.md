@@ -12,11 +12,14 @@
 * Tree navigation using keys
 * Waveform LOD for zooming
 * Keybindings options
+* Tracker cell shortcuts
 
 ### Tracker
 
 * Basic shapes as instruments
 * Selection operations on patterns and orders
+* Solo/mute channels
+* Replace/swap sample
 
 ### Workflow
 
@@ -35,3 +38,4 @@
 ## Bugs
 
 * No refreshing after library generation
+* Triangle transposed by one semitone
