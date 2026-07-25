@@ -1,4 +1,8 @@
-# SampleToNES v0.3.0
+# SampleToNES
+
+[![PyPI](https://img.shields.io/pypi/v/sampletones.svg)](https://pypi.org/project/sampletones/)
+[![Python](https://img.shields.io/pypi/pyversions/sampletones.svg)](https://pypi.org/project/sampletones/)
+[![License](https://img.shields.io/pypi/l/sampletones.svg)](https://github.com/JakimPL/SampleToNES/blob/main/LICENSE)
 
 ## Overview
 
@@ -27,7 +31,32 @@ It supports:
 ### Requirements
 
 - Windows, macOS, or Linux
-- Python 3.12 (https://www.python.org/downloads/)
+- Python 3.12 or newer (https://www.python.org/downloads/)
+
+### From PyPI
+
+The quickest way to get the `sampletones` command. Because _SampleToNES_ is an application
+rather than a library, installing it into its own isolated environment is recommended:
+
+```sh
+uv tool install sampletones      # or: pipx install sampletones
+sampletones                      # launch the GUI
+```
+
+A plain `pip install sampletones` into an active virtual environment works too.
+
+To install with GPU support, request the `gpu` extra (see [GPU acceleration](#gpu-acceleration)):
+
+```sh
+uv tool install "sampletones[gpu]"
+```
+
+On Linux, audio playback and file dialogs rely on system libraries that cannot come from
+PyPI. Install them first:
+
+```sh
+sudo apt-get install libportaudio2 libasound2 python3-tk    # Debian/Ubuntu
+```
 
 ### Standalone executable
 
@@ -91,4 +120,14 @@ Run `sampletones --help` for all options.
 
 ## Documentation
 
-Internals — the reconstruction algorithms, file formats, the Python API, and developer notes — live in [`docs/`](docs/).
+Internals — the reconstruction algorithms, file formats, the Python API, and developer notes — live in [`docs/`](https://github.com/JakimPL/SampleToNES/tree/main/docs).
+
+## License
+
+_SampleToNES_ is released under the [MIT License](https://github.com/JakimPL/SampleToNES/blob/main/LICENSE).
+
+The bundled fonts are third-party works under their own licenses (SIL Open Font License 1.1
+and the Bitstream Vera license) and are not covered by the MIT License. See
+[`THIRD-PARTY-NOTICES.md`](https://github.com/JakimPL/SampleToNES/blob/main/THIRD-PARTY-NOTICES.md) for full attribution, along with notes on
+the LGPL-licensed runtime dependencies and what they mean for redistributing standalone
+executable builds.
