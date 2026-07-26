@@ -39,3 +39,4 @@
 
 * No refreshing after library generation
 * Triangle transposed by one semitone
+* Window title unsupported characters
