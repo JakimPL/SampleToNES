@@ -63,6 +63,7 @@ Issues = "https://github.com/JakimPL/SampleToNES/issues"
 sampletones = "sampletones.__main__:main"
 
 [project.optional-dependencies]
+build = ["pyinstaller>=6.21,<7"]
 gpu = ["cupy-cuda12x[ctk]>=14,<15"]
 gpu-cuda11 = [
     "cupy-cuda11x>=13,<14",

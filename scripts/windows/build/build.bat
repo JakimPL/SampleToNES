@@ -23,9 +23,25 @@ shift
 goto parse_args
 
 :build
-echo Building executable...
-"%VENV_PY%" -m pip install pyinstaller || exit /b
+if "%RELEASE%"=="1" (
+    set EXECUTABLE=bin\sampletones\sampletones.exe
+) else (
+    set EXECUTABLE=bin\sampletones.exe
+)
 
+call "%SCRIPT_DIR%preflight.bat" %* || exit /b 1
+
+if exist "bin\sampletones.exe" (
+    echo Removing the previous artifact: bin\sampletones.exe
+    del /Q "bin\sampletones.exe" || exit /b 1
+)
+
+if exist "bin\sampletones\" (
+    echo Removing the previous artifact: bin\sampletones
+    rmdir /S /Q "bin\sampletones" || exit /b 1
+)
+
+echo Building executable...
 "%VENV_PY%" -m PyInstaller --name sampletones ^
     %BUNDLE_MODE% ^
     --noconfirm ^
@@ -38,14 +54,15 @@ echo Building executable...
     %RELEASE_HOOK% ^
     "src\sampletones\__main__.py" || exit /b
 
-if "%RELEASE%"=="1" (
-    set EXECUTABLE=bin\sampletones\sampletones.exe
-) else (
-    set EXECUTABLE=bin\sampletones.exe
+if not exist "%EXECUTABLE%" (
+    echo Build failed: PyInstaller produced no executable at %EXECUTABLE%.>&2
+    exit /b 1
 )
 
-if not exist "%EXECUTABLE%" (
-    echo Build failed.
+echo Verifying the bundle...
+"%EXECUTABLE%" --self-check
+if errorlevel 1 (
+    echo Build failed: %EXECUTABLE% did not pass its self-check.>&2
     exit /b 1
 )
 

@@ -21,9 +21,20 @@ for arg in "$@"; do
     fi
 done
 
-echo "Building executable..."
-"$VENV_PY" -m pip install pyinstaller
+if [[ "${RELEASE}" == "1" ]]; then
+    EXECUTABLE="bin/sampletones/sampletones"
+else
+    EXECUTABLE="bin/sampletones"
+fi
 
+bash "$SCRIPT_DIR/preflight.sh" "$@"
+
+if [[ -e "${PROJECT_DIR}/bin/sampletones" ]]; then
+    echo "Removing the previous artifact: ./bin/sampletones"
+    rm -rf "${PROJECT_DIR}/bin/sampletones"
+fi
+
+echo "Building executable..."
 "$VENV_PY" -m PyInstaller --name sampletones \
     "${BUNDLE_ARGS[@]}" \
     --noconfirm \
@@ -36,14 +47,14 @@ echo "Building executable..."
     "${RELEASE_HOOK_ARGS[@]}" \
     "src/sampletones/__main__.py"
 
-if [[ "${RELEASE}" == "1" ]]; then
-    EXECUTABLE="bin/sampletones/sampletones"
-else
-    EXECUTABLE="bin/sampletones"
+if [[ ! -x "${EXECUTABLE}" ]]; then
+    echo "Build failed: PyInstaller produced no executable at ./${EXECUTABLE}." >&2
+    exit 1
 fi
 
-if [[ ! -x "${EXECUTABLE}" ]]; then
-    echo "Build failed."
+echo "Verifying the bundle..."
+if ! "${PROJECT_DIR}/${EXECUTABLE}" --self-check; then
+    echo "Build failed: ./${EXECUTABLE} did not pass its self-check." >&2
     exit 1
 fi
 
