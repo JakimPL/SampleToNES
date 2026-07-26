@@ -1,5 +1,4 @@
 import sys
-import tkinter
 from typing import Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
@@ -13,6 +12,8 @@ from sampletones_shared.application import SAMPLETONES_NAME
 from sampletones_shared.types.callback import VoidCallback
 
 _MAX_WINDOW_MONITOR_RATIO: Final[float] = 0.9
+_FALLBACK_SCREEN_WIDTH: Final[int] = 1920
+_FALLBACK_SCREEN_HEIGHT: Final[int] = 1080
 
 
 class ViewportManager:
@@ -111,12 +112,8 @@ class ViewportManager:
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:
-        _root = tkinter.Tk()
-        _root.withdraw()
-        window_width = int(_root.winfo_screenwidth())
-        window_height = int(_root.winfo_screenheight())
-        _root.destroy()
-        return window_width, window_height
+        """Screen dimensions assumed while the platform reports no monitor, sized for a common desktop."""
+        return _FALLBACK_SCREEN_WIDTH, _FALLBACK_SCREEN_HEIGHT
 
     @staticmethod
     def _get_monitors() -> List[Monitor]:
