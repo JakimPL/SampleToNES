@@ -27,6 +27,9 @@ HELP_HELP = """Show this help message and exit"""
 
 HELP_VERSION = "Show application version information"
 
+HELP_SELF_CHECK = """Verify that the imports, bundled resources
+    and configuration files this build ships are all usable"""
+
 
 @dataclass(frozen=True)
 class ProgramArguments:
@@ -37,6 +40,7 @@ class ProgramArguments:
     help: bool = False
     version: bool = False
     generate: bool = False
+    self_check: bool = False
 
 
 def _load_config(config_path: Optional[Path]) -> "Config":
@@ -89,6 +93,11 @@ def main() -> None:
         action="store_true",
         help=HELP_VERSION,
     )
+    parser.add_argument(
+        "--self-check",
+        action="store_true",
+        help=HELP_SELF_CHECK,
+    )
     args: ProgramArguments = ProgramArguments(**vars(parser.parse_args()))
 
     if args.help:
@@ -101,6 +110,11 @@ def main() -> None:
         )
 
         return print(SAMPLETONES_NAME_VERSION)
+
+    if args.self_check:
+        from sampletones.self_check import run_self_check
+
+        raise SystemExit(run_self_check())
 
     config_path = Path(args.config) if args.config else None
     output_path = Path(args.output) if args.output else None

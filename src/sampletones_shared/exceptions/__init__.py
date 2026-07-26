@@ -2,6 +2,7 @@ from .audio import PlaybackError, UnsupportedAudioFormatError
 from .base import SampleToNESError
 from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning
+from .dialog import FileDialogUnavailableError
 from .library import (
     IncompatibleLibraryDataVersionError,
     InstructionTypeMismatchError,
@@ -74,4 +75,5 @@ __all__ = [
     "CuPyNotInstalledWarning",
     "CallbackQueueStop",
     "IncompleteHistogramRebinningWarning",
+    "FileDialogUnavailableError",
 ]

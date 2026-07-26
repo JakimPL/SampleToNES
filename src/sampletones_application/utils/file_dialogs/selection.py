@@ -4,9 +4,9 @@ import shutil
 from typing import Final, Optional
 
 from sampletones_application.utils.file_dialogs.backend import FileDialogBackend
-from sampletones_application.utils.file_dialogs.errors import FileDialogUnavailableError
 from sampletones_application.utils.file_dialogs.kdialog import KDialogBackend
 from sampletones_application.utils.file_dialogs.zenity import ZenityBackend
+from sampletones_shared.exceptions import FileDialogUnavailableError
 from sampletones_shared.utils.system.system import System
 
 KDIALOG: Final[str] = "kdialog"

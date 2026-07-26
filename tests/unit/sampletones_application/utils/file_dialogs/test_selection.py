@@ -4,11 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
-from sampletones_application.utils.file_dialogs.errors import FileDialogUnavailableError
 from sampletones_application.utils.file_dialogs.kdialog import KDialogBackend
 from sampletones_application.utils.file_dialogs.selection import select_file_dialog_backend
 from sampletones_application.utils.file_dialogs.tkinter_backend import TkinterBackend
 from sampletones_application.utils.file_dialogs.zenity import ZenityBackend
+from sampletones_shared.exceptions import FileDialogUnavailableError
 from sampletones_shared.utils.system.system import System
 
 MODULE = "sampletones_application.utils.file_dialogs.selection"
