@@ -20,6 +20,7 @@ executable you made (`./bin/sampletones` on Linux, `bin\sampletones.exe` on Wind
   saved one yet).
 * **Generate a library and exit** — `sampletones --generate --config my-config.json`
 * **Check the version** — `sampletones --version`
+* **Check that a build works** — `sampletones --self-check`
 
 ## Options
 
@@ -30,6 +31,7 @@ executable you made (`./bin/sampletones` on Linux, `bin\sampletones.exe` on Wind
 | `--config`, `-c` | path to a configuration `.json` (default: your saved `config.json`) |
 | `--generate`, `-g` | build the instruction library for the configuration, then exit |
 | `--version`, `-v` | print the version and exit |
+| `--self-check` | verify that this build's imports, bundled resources, and configuration files are all usable, then exit |
 | `--help`, `-h` | show the full option list |
 
 GPU acceleration is selected at setup, not per run: `make setup` detects a supported
