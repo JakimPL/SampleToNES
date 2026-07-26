@@ -1,6 +1,5 @@
 __pycache__/
 .claude/
-.github/
 .idea/
 .ipynb_checkpoints/
 .mypy_cache/
@@ -38,7 +37,6 @@ sampletones
 !uv.lock
 
 *.json
-*.txt
 *.log
 
 *.wav

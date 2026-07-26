@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Generator, Tuple
+from typing import Any, Iterator, Tuple
 
 import numpy as np
 
@@ -41,7 +41,7 @@ class SpectrumLayer(Layer):
         object.__setattr__(self, "x_data", np.array((0.0, 1.0), dtype=np.float32))
         object.__setattr__(self, "y_data", np.array(frequencies, dtype=np.float32))
 
-    def __iter__(self) -> Generator[Tuple[float, float, int]]:
+    def __iter__(self) -> Iterator[Tuple[float, float, int]]:
         for item in zip(self.frequencies, self.bandwidths, self.brightness):
             frequency: float
             bandwidth: float

@@ -5,7 +5,6 @@ from functools import cached_property, reduce
 from types import ModuleType
 from typing import (
     Dict,
-    Generator,
     Iterator,
     List,
     Optional,
@@ -477,7 +476,7 @@ class Histogram(DataModel):
         if len(histograms) == 1:
             return histograms[0]
 
-        densities: Generator[ArrayOrNumeric] = (histogram.densities for histogram in histograms)
+        densities: Iterator[ArrayOrNumeric] = (histogram.densities for histogram in histograms)
         new_density = reduce(function, densities)
         return cls._from_density(new_density, histograms[0])
 
