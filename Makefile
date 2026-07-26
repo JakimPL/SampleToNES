@@ -18,6 +18,17 @@ else
 	PYTHON := python3
 endif
 
+BUILD_COMMAND := $(RUN_SCRIPT) $(BUILD_SCRIPT)
+RELEASE_COMMAND := $(RUN_SCRIPT) $(BUILD_SCRIPT) --release
+SYSTEM_DEPS_COMMAND := bash scripts/linux/build/dependencies.sh
+
+ifeq ($(UNAME_S),Darwin)
+	MACOS_SOURCE_ONLY := bash scripts/macos/source_only.sh
+	BUILD_COMMAND := $(MACOS_SOURCE_ONLY) 'make build'
+	RELEASE_COMMAND := $(MACOS_SOURCE_ONLY) 'make release'
+	SYSTEM_DEPS_COMMAND := $(MACOS_SOURCE_ONLY) 'make system-deps'
+endif
+
 GPU ?= auto
 GPU_EXTRA :=
 ifeq ($(filter 0,$(GPU)),)
@@ -49,13 +60,13 @@ install:
 	make build
 
 build:
-	$(RUN_SCRIPT) $(BUILD_SCRIPT)
+	$(BUILD_COMMAND)
 
 release:
-	$(RUN_SCRIPT) $(BUILD_SCRIPT) --release
+	$(RELEASE_COMMAND)
 
 system-deps:
-	bash scripts/linux/build/dependencies.sh
+	$(SYSTEM_DEPS_COMMAND)
 
 run:
 	uv run sampletones
