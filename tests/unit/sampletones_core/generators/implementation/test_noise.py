@@ -3,9 +3,18 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
-from sampletones_core.constants.general import MAX_VOLUME, MIXER_NOISE
+from sampletones_core.constants.general import (
+    MAX_VOLUME,
+    MIXER_NOISE,
+    MIXER_PULSE,
+    NOISE_PERIODS,
+)
 from sampletones_core.generators.implementation.noise import NoiseGenerator
+from sampletones_core.generators.implementation.pulse import PulseGenerator
 from sampletones_core.instructions import NoiseInstruction, PulseInstruction
+from tests.suite.noise import tone_frequency
+
+FASTEST_PERIOD = len(NOISE_PERIODS) - 1
 
 
 def _count_sign_changes(arr: np.ndarray) -> int:
@@ -20,6 +29,11 @@ def config() -> Config:
 @pytest.fixture
 def generator(config: Config) -> NoiseGenerator:
     return NoiseGenerator(config, GeneratorName.NOISE)
+
+
+@pytest.fixture
+def pulse_generator(config: Config) -> PulseGenerator:
+    return PulseGenerator(config, GeneratorName.PULSE1)
 
 
 class TestNoiseGeneratorCall:
@@ -60,8 +74,47 @@ class TestNoiseApply:
         signal = np.array([1.0, -1.0], dtype=np.float32)
         instruction = NoiseInstruction(on=True, period=3, volume=MAX_VOLUME, short=False)
         result = generator.apply(signal, instruction)
-        expected_scale = np.float32(MIXER_NOISE * 0.5)
+        expected_scale = np.float32(MIXER_NOISE)
         np.testing.assert_array_almost_equal(result, [expected_scale, -expected_scale])
+
+
+class TestNoiseMixerBalance:
+    def test_noise_to_pulse_level_ratio_matches_the_nes_mixer(
+        self,
+        generator: NoiseGenerator,
+        pulse_generator: PulseGenerator,
+    ) -> None:
+        signal = np.array([1.0, -1.0], dtype=np.float32)
+        noise = generator.apply(signal, NoiseInstruction(on=True, period=3, volume=MAX_VOLUME, short=False))
+        pulse = pulse_generator.apply(signal, PulseInstruction(on=True, pitch=60, volume=MAX_VOLUME, duty_cycle=2))
+        ratio = float(np.max(np.abs(noise))) / float(np.max(np.abs(pulse)))
+        assert ratio == pytest.approx(MIXER_NOISE / MIXER_PULSE)
+
+
+class TestNoiseLibrarySample:
+    @pytest.mark.parametrize("short", [False, True], ids=["long", "short"])
+    def test_sample_spans_whole_shift_register_cycles(
+        self,
+        generator: NoiseGenerator,
+        config: Config,
+        short: bool,
+    ) -> None:
+        instruction = NoiseInstruction(on=True, period=FASTEST_PERIOD, volume=MAX_VOLUME, short=short)
+        sample = generator.generate_sample(instruction)
+        cycle_samples = config.library.sample_rate / tone_frequency(FASTEST_PERIOD, short)
+        cycles = len(sample.array) / cycle_samples
+        assert cycles == pytest.approx(round(cycles), abs=0.05)
+
+    def test_sample_halves_match_for_a_two_cycle_sample(self, generator: NoiseGenerator, config: Config) -> None:
+        instruction = NoiseInstruction(on=True, period=FASTEST_PERIOD, volume=MAX_VOLUME, short=False)
+        cycle_samples = int(config.library.sample_rate / tone_frequency(FASTEST_PERIOD, False))
+        generator.reset()
+        rendered = np.concatenate(
+            [generator(instruction, save=True) for _ in range(int(np.ceil(2 * cycle_samples / generator.frame_length)))]
+        )
+        first = rendered[:cycle_samples]
+        second = rendered[cycle_samples : 2 * cycle_samples]
+        assert float(np.corrcoef(first, second)[0, 1]) > 0.99
 
 
 class TestNoiseGeneratorSetTimer:
