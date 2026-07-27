@@ -329,6 +329,7 @@ class SequencerTabCoordinator:
         self._wire_collapse_handlers()
         self._wire_module_callbacks()
         self._wire_grid_callbacks()
+        self._wire_channels_callbacks()
         self._wire_order_callbacks()
         self._wire_samples_callbacks()
         self._wire_browser_callbacks()
@@ -408,6 +409,17 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
+
+    def _wire_channels_callbacks(self) -> None:
+        """Connects the tracker's column headers to the mute set the song player reads.
+
+        Muting is a monitoring gesture, so these hooks reach the channels logic directly and
+        record no history entry.
+        """
+        self._sequencer_channels_logic.on_channels_changed = self._sequencer_grid_panel.update_channels
+        self._sequencer_grid_panel.on_channel_mute_toggled = self._sequencer_channels_logic.toggle
+        self._sequencer_grid_panel.on_channel_soloed = self._sequencer_channels_logic.solo
+        self._sequencer_grid_panel.on_channels_toggled = self._sequencer_channels_logic.toggle_all
 
     def _wire_order_callbacks(self) -> None:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
@@ -727,6 +739,7 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.refresh()
         self._sequencer_order_logic.refresh()
         self._sequencer_samples_logic.push_samples()
+        self._sequencer_channels_logic.push_channels()
         is_open = self._project_controller.is_open
         self._sequencer_module_panel.set_enabled(is_open)
         self._sequencer_grid_panel.set_enabled(is_open)

@@ -198,6 +198,9 @@ colors:
   sample_column: "#22ccff2c"
   sample_divider: "#22ccff24"
 
+  # layout: muted channel column
+  channel_muted: "#0a081210"
+
   # layout: history detail
   history_future: "#808080ff"
   history_channel: "#88bbffff"

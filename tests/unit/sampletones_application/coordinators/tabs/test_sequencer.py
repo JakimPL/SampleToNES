@@ -15,6 +15,9 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.channels import ALL_CHANNELS, SequencerChannelsLogic
 from sampletones_application.paths import LANG_EN
+from sampletones_application.ui.panels.sequencer import grid as grid_module
+from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
 from sampletones_application.view_model.sequencer.samples import SampleSelection
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
@@ -831,6 +834,89 @@ class TestChannelMuteLifetime:
         coordinator._project_controller.close()
 
         assert channels.active_channels == ALL_CHANNELS
+
+
+@pytest.fixture
+def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
+    """A coordinator joining the real channels logic to a real grid panel.
+
+    The panel's colour cues reach DearPyGui, which holds no context here, so the table is
+    reported absent and the panel stops once it has recorded the mute set — which is what
+    the wiring is read for. Modifiers are reported as held nowhere; a test that needs Ctrl
+    says so.
+    """
+    monkeypatch.setattr(grid_module.dpg, "does_item_exist", lambda item: False)
+    monkeypatch.setattr(grid_module.dpg, "set_value", lambda item, value: None)
+    monkeypatch.setattr(grid_module, "capture_modifiers", lambda: NO_MODIFIERS)
+
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._sequencer_channels_logic = SequencerChannelsLogic()
+    instance._sequencer_grid_panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
+    instance._sequencer_grid_panel._current_channels = None
+    instance._wire_channels_callbacks()
+    return instance
+
+
+class TestChannelHeaderWiring:
+    """A header click reaches the mute set, and the panel is told about it in the same gesture."""
+
+    def test_header_click_silences_that_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.TRIANGLE}
+        assert panel._is_muted(GeneratorName.TRIANGLE)
+
+    def test_a_second_click_returns_the_channel_to_the_mix(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+        assert not panel._is_muted(GeneratorName.TRIANGLE)
+
+    def test_ctrl_header_click_solos_that_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(grid_module, "capture_modifiers", lambda: CTRL)
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, GeneratorName.PULSE2)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset({GeneratorName.PULSE2})
+
+    def test_sample_header_click_silences_every_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, None)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
+        assert all(panel._is_muted(generator) for generator in GeneratorName.items())
+
+    def test_sample_header_click_restores_every_channel_from_full_silence(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, None)
+        panel._on_header_clicked(0, True, None)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+        assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
 
 
 class TestHistoryDelegation:

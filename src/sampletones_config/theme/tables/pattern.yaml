@@ -14,6 +14,12 @@ components:
       - type: color
         key: HeaderActive
         value: .transparent
+      - type: color
+        key: TableRowBg
+        value: .table_row_alt
+      - type: color
+        key: TableRowBgAlt
+        value: .table_row
   - item_type: All
     entries:
       - type: color

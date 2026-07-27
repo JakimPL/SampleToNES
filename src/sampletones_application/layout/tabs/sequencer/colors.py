@@ -69,6 +69,17 @@ class SampleColors(BaseModel, extra="forbid", frozen=True):
     divider: PaletteColor
 
 
+class MutedColors(BaseModel, extra="forbid", frozen=True):
+    """Colours marking a channel the song player silences.
+
+    ``column`` is the neutral shade its column takes in place of the channel's identity
+    tint, so the whole column recedes; ``text`` is the shade its header label takes.
+    """
+
+    column: PaletteColor
+    text: PaletteColor
+
+
 class HistoryColors(BaseModel, extra="forbid", frozen=True):
     """Colours for the history detail: the dimmed tint of future (redoable) entries
     and the per-role token palette.
@@ -83,9 +94,11 @@ class SequencerColors(BaseModel, extra="forbid", frozen=True):
     cell_cursor: PaletteColor
     cursor_row: PaletteColor
     playback_row: PaletteColor
+    header_row: PaletteColor
     label: PaletteColor
     order: OrderColors
     sample: SampleColors
+    muted: MutedColors
     history: HistoryColors
     text: TrackerColors
     channels: ChannelColors

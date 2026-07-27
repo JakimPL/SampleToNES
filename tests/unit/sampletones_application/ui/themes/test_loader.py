@@ -70,16 +70,27 @@ class TestLoadedInheritance:
     def themes(self) -> Dict[str, Theme]:
         return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, Palette.load(PALETTE_PATH)).load_all()}
 
-    def test_every_theme_carries_the_base_row_background(self, themes: Dict[str, Theme]) -> None:
+    def test_every_theme_carries_the_base_table_border(self, themes: Dict[str, Theme]) -> None:
         dpg.create_context()
         try:
             for theme in themes.values():
                 theme.create()
 
-            base_background = themes[TAG_GLOBAL_THEME_DEFAULT].get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg)
-            assert base_background is not None
+            base_border = themes[TAG_GLOBAL_THEME_DEFAULT].get_color(dpg.mvTable, dpg.mvThemeCol_TableBorderStrong)
+            assert base_border is not None
             for theme in themes.values():
-                assert theme.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg) == base_background
+                assert theme.get_color(dpg.mvTable, dpg.mvThemeCol_TableBorderStrong) == base_border
+        finally:
+            dpg.destroy_context()
+
+    def test_every_theme_resolves_a_row_background(self, themes: Dict[str, Theme]) -> None:
+        dpg.create_context()
+        try:
+            for theme in themes.values():
+                theme.create()
+
+            for theme in themes.values():
+                assert theme.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg) is not None
         finally:
             dpg.destroy_context()
 
@@ -91,6 +102,29 @@ class TestLoadedInheritance:
 
             assert pattern.get_style(dpg.mvTable, dpg.mvStyleVar_CellPadding) is not None
             assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg) is not None
+        finally:
+            dpg.destroy_context()
+
+    def test_the_tracker_theme_swaps_the_base_row_stripes(self, themes: Dict[str, Theme]) -> None:
+        """The tracker's clickable header is an ordinary row, which advances DearPyGui's
+        zebra counter, so the tracker theme swaps the two stripes to land pattern row 0 on
+        the shade every other table gives its first row.
+        """
+        dpg.create_context()
+        try:
+            base = themes[TAG_GLOBAL_THEME_DEFAULT]
+            pattern = themes["sequencer.theme.table_pattern"]
+            base.create()
+            pattern.create()
+
+            assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg) == base.get_color(
+                dpg.mvTable,
+                dpg.mvThemeCol_TableRowBgAlt,
+            )
+            assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBgAlt) == base.get_color(
+                dpg.mvTable,
+                dpg.mvThemeCol_TableRowBg,
+            )
         finally:
             dpg.destroy_context()
 

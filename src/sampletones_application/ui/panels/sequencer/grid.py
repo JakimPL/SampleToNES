@@ -26,9 +26,13 @@ from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import display as tracker_display
 from sampletones_application.ui.panels.sequencer.columns import (
     DIVIDER_TABLE_COLUMN,
+    HEADER_TABLE_ROW,
+    HEADER_TABLE_ROWS,
     SAMPLE_TABLE_COLUMN,
+    TRACKER_TABLE_COLUMNS,
     channel_color,
     tracker_table_column,
+    tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
@@ -45,9 +49,17 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT, Modifier
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    CTRL,
+    CTRL_SHIFT,
+    Modifier,
+    capture_modifiers,
+)
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
@@ -60,7 +72,8 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import ColorRGBA, Sender
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.color import with_alpha_fraction
 
 OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
@@ -71,12 +84,12 @@ OnCellSelectedCallback = Callable[[int, Optional[GeneratorName]], None]
 OnPlayFromRowCallback = Callable[[int], None]
 OnPlayFromFrameCallback = Callable[[], None]
 OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
+OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
+OnChannelSoloedCallback = Callable[[GeneratorName], None]
 
 
 VOLUME_FINE_STEP: Final[int] = 1
 VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
-
-FROZEN_HEADER_ROWS: Final[int] = 1
 
 
 class GUISequencerGridPanel(GUIPanel):
@@ -103,14 +116,19 @@ class GUISequencerGridPanel(GUIPanel):
         self._cell_handler_tag = f"{TAG_SEQUENCER_GRID_TABLE_TRACKER}{SUF_HANDLER_REGISTRY}"
 
         self._rows: Dict[Optional[int], Sender] = {}
+        self._header_cells: Dict[Optional[GeneratorName], Sender] = {}
         self._editable_cells: EditableCells[CellKey] = EditableCells()
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
         self._playing_row: Optional[int] = None
         self._input_state: TrackerInputState = TrackerInputState()
         self._subcolumn_themes: Dict[SubColumn, int] = {}
+        self._muted_subcolumn_themes: Dict[SubColumn, int] = {}
         self._row_number_theme: int = 0
+        self._header_theme: int = 0
+        self._muted_header_theme: int = 0
         self._current_samples: Optional[SequencerSamplesViewModel] = None
+        self._current_channels: Optional[SequencerChannelsViewModel] = None
 
         self.on_clear_row: Optional[OnClearRowCallback] = None
         self.on_clear_subcolumn: Optional[OnClearSubcolumnCallback] = None
@@ -121,6 +139,9 @@ class GUISequencerGridPanel(GUIPanel):
         self.on_play_from_frame: Optional[OnPlayFromFrameCallback] = None
         self.on_adjust_transpose: Optional[OnAdjustCallback] = None
         self.on_adjust_volume: Optional[OnAdjustCallback] = None
+        self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
+        self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
+        self.on_channels_toggled: Optional[VoidCallback] = None
 
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 
@@ -212,7 +233,7 @@ class GUISequencerGridPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        self._create_subcolumn_themes()
+        self._create_themes()
         self._create_tracker_view(parent)
 
     def _setup_handlers(self) -> None:
@@ -229,19 +250,49 @@ class GUISequencerGridPanel(GUIPanel):
             active=self._keys_active,
         )
 
+    def _create_themes(self) -> None:
+        self._create_subcolumn_themes()
+        self._create_header_themes()
+        self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
+
     def _create_subcolumn_themes(self) -> None:
+        """Builds each subcolumn's text theme in its full and its dimmed colour.
+
+        The dimmed variant keeps the subcolumn's own hue at reduced alpha, so a silenced
+        channel's values stay readable and editable while the others are worked on.
+        """
         subcolumn_colors = self._layout.colors.text
         theme_colors = {
             SubColumn.INSTRUMENT: subcolumn_colors.instrument,
             SubColumn.TRANSPOSE: subcolumn_colors.transpose,
             SubColumn.VOLUME: subcolumn_colors.volume,
         }
+        fraction = self._layout.tracker.muted_text_fraction
         for subcolumn, color in theme_colors.items():
             self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color)
+            self._muted_subcolumn_themes[subcolumn] = create_selectable_text_theme(
+                with_alpha_fraction(color, fraction),
+            )
 
-        self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
+    def _create_header_themes(self) -> None:
+        """Builds the two shades a channel's header label takes: audible and silenced."""
+        self._header_theme = create_selectable_text_theme(self._layout.colors.label)
+        self._muted_header_theme = create_selectable_text_theme(self._layout.colors.muted.text)
 
     def _create_tracker_view(self, parent: str) -> None:
+        """Builds the tracker card and the empty table its rows are filled into.
+
+        The column labels are carried by a row of widgets (see :meth:`_build_header_row`) that
+        ``freeze_rows`` pins at the top, which makes each channel's label a click target for
+        muting. ``no_clip`` lets a label wider than its column draw across the boundary the way
+        a table header does, so the header keeps the size and position it has always had.
+
+        That header row is an ordinary table row, and DearPyGui advances the zebra-stripe
+        counter on every ordinary row, so the tracker's own theme
+        (``sequencer.theme.table_pattern``) carries ``TableRowBg`` and ``TableRowBgAlt``
+        swapped. The swap lands pattern row 0 on the same stripe it takes in every other
+        table, and the header row's own stripe sits under an opaque header shade.
+        """
         with self._collapsible_card(parent, self._lbl_tracker, glyph=self._glyphs.headers.tracker):
             dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER)
             with dpg.child_window(
@@ -254,7 +305,7 @@ class GUISequencerGridPanel(GUIPanel):
                 with dpg.table(
                     tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
                     width=0,
-                    header_row=True,
+                    header_row=False,
                     resizable=False,
                     borders_innerH=False,
                     borders_innerV=True,
@@ -262,32 +313,31 @@ class GUISequencerGridPanel(GUIPanel):
                     borders_outerV=True,
                     scrollX=False,
                     scrollY=True,
-                    freeze_rows=FROZEN_HEADER_ROWS,
+                    freeze_rows=HEADER_TABLE_ROWS,
                     row_background=True,
                     policy=dpg.mvTable_SizingFixedFit,
                 ):
                     FontRegistry.bind_to_item(dpg.last_item(), Font.MONO_BOLD)
                     dpg.add_table_column(width_stretch=True)
                     dpg.add_table_column(
-                        label=self._lbl_col_row,
                         width_fixed=True,
                         init_width_or_weight=self._layout.table_cells.row,
+                        no_clip=True,
                     )
                     dpg.add_table_column(
-                        label=self._lbl_col_sample,
                         width_fixed=True,
                         init_width_or_weight=self._layout.table_cells.sample,
+                        no_clip=True,
                     )
                     dpg.add_table_column(
                         width_fixed=True,
                         init_width_or_weight=self._layout.table_cells.divider,
-                        no_header_label=True,
                     )
-                    for generator in GeneratorName.items():
+                    for _ in GeneratorName.items():
                         dpg.add_table_column(
-                            label=self._column_labels[generator],
                             width_fixed=True,
                             init_width_or_weight=self._layout.table_cells.generator,
+                            no_clip=True,
                         )
                     dpg.add_table_column(width_stretch=True)
 
@@ -316,7 +366,8 @@ class GUISequencerGridPanel(GUIPanel):
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self._highlight_sample_column()
-        self._tint_channel_columns()
+        self._highlight_header_row()
+        self._apply_channel_cues()
         self._update_cursor()
         self._apply_playing_row_highlight()
 
@@ -349,22 +400,44 @@ class GUISequencerGridPanel(GUIPanel):
             self._layout.colors.sample.divider,
         )
 
+    def _highlight_header_row(self) -> None:
+        """Gives the widget header row the background a table header carries.
+
+        The shade is laid cell by cell so it covers the sample and channel column washes,
+        which DearPyGui draws over a row highlight; the header then reads as one band with
+        the column tints beginning below it.
+        """
+        for column in range(TRACKER_TABLE_COLUMNS):
+            dpg.highlight_table_cell(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                HEADER_TABLE_ROW,
+                column,
+                color=self._layout.colors.header_row,
+            )
+
     def _tint_channel_columns(self) -> None:
         """Washes each channel's column with a faint tint of its identity colour.
 
         Reapplied after each rebuild alongside the sample column so the tint survives
         row replacement, giving the tracker the same per-channel identity the order
-        table carries in its row labels.
+        table carries in its row labels. A silenced channel trades that identity for a
+        neutral dark shade, so its column recedes as a whole.
         """
-        channels = self._layout.colors.channels
-        fraction = self._layout.tracker.channel_column_tint
         for generator in GeneratorName.items():
-            tint = with_alpha_fraction(channel_color(channels, generator), fraction)
             dpg.highlight_table_column(
                 TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 tracker_table_column(generator),
-                tint,
+                self._channel_column_tint(generator),
             )
+
+    def _channel_column_tint(self, generator: GeneratorName) -> ColorRGBA:
+        if self._is_muted(generator):
+            return self._layout.colors.muted.column
+
+        return with_alpha_fraction(
+            channel_color(self._layout.colors.channels, generator),
+            self._layout.tracker.channel_column_tint,
+        )
 
     def _compute_cell_values(
         self,
@@ -394,8 +467,50 @@ class GUISequencerGridPanel(GUIPanel):
     def _build_table(self, view_model: SequencerGridViewModel) -> None:
         self._rows = {}
         self._current_row_count = len(view_model.rows)
+        self._build_header_row()
         for row in view_model.rows:
             self._build_table_row(row)
+
+    def _build_header_row(self) -> None:
+        """Builds the header as the table's first row, with each channel label a click target.
+
+        A rebuild replaces every row of the table, so the header is raised here, ahead of the
+        pattern rows, and lands on the row ``freeze_rows`` pins in place. The cells are
+        positional like a pattern row's, so the labels line up with the columns they name.
+        """
+        self._header_cells = {}
+        row_id = dpg.add_table_row(parent=TAG_SEQUENCER_GRID_TABLE_TRACKER)
+        self._add_empty_cell(row_id)
+        self._add_header_label_cell(row_id)
+        self._add_header_selectable(row_id, None)
+        self._add_empty_cell(row_id)
+        for generator in GeneratorName.items():
+            self._add_header_selectable(row_id, generator)
+
+    def _add_header_label_cell(self, row_id: Sender) -> None:
+        """Places the row-number column's label, which names a column the user reads only."""
+        label_cell = dpg.add_table_cell(parent=row_id)
+        dpg.add_text(self._lbl_col_row, parent=label_cell)
+
+    def _add_header_selectable(
+        self,
+        row_id: Sender,
+        generator: Optional[GeneratorName],
+    ) -> None:
+        """Places one clickable column label: a channel's mute target, or the master target.
+
+        The selectable takes its width from its label, which is what lets a label wider than
+        its column draw in full, and it carries its channel so the click knows which column
+        it landed on.
+        """
+        header_cell = dpg.add_table_cell(parent=row_id)
+        selectable = dpg.add_selectable(
+            parent=header_cell,
+            label=self._column_labels[generator],
+            user_data=generator,
+            callback=self._on_header_clicked,
+        )
+        self._header_cells[generator] = selectable
 
     def _build_table_row(self, row: SequencerRowViewModel) -> None:
         """Builds one tracker row.
@@ -522,6 +637,49 @@ class GUISequencerGridPanel(GUIPanel):
     def update_samples(self, view_model: SequencerSamplesViewModel) -> None:
         self._current_samples = view_model
 
+    def update_channels(self, view_model: SequencerChannelsViewModel) -> None:
+        """Shows which channels the song player silences.
+
+        The model is kept so a rebuilt table takes the cue again, the way the column tints do,
+        and so a table still waiting for its rows picks it up once they arrive.
+        """
+        self._current_channels = view_model
+        self._apply_channel_cues()
+
+    def _apply_channel_cues(self) -> None:
+        """Marks each silenced channel down its whole column: label, background, and cell text.
+
+        The three cues land together because they read as one: the column recedes as a unit
+        while its values stay legible, so the channel is visibly out of the mix and still open
+        for editing.
+        """
+        if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
+            return
+
+        self._tint_channel_columns()
+        self._bind_header_themes()
+        for generator in GeneratorName.items():
+            self._bind_channel_cell_themes(generator)
+
+    def _bind_header_themes(self) -> None:
+        for generator, selectable in self._header_cells.items():
+            muted = generator is not None and self._is_muted(generator)
+            dpg.bind_item_theme(
+                selectable,
+                self._muted_header_theme if muted else self._header_theme,
+            )
+
+    def _bind_channel_cell_themes(self, generator: GeneratorName) -> None:
+        themes = self._muted_subcolumn_themes if self._is_muted(generator) else self._subcolumn_themes
+        for row_index in range(self._current_row_count):
+            for subcolumn in SubColumn:
+                cell_id = self._editable_cells.widget((row_index, generator, subcolumn))
+                if cell_id is not None:
+                    dpg.bind_item_theme(cell_id, themes[subcolumn])
+
+    def _is_muted(self, generator: GeneratorName) -> bool:
+        return self._current_channels is not None and self._current_channels.is_muted(generator)
+
     def set_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_SEQUENCER_GRID_GROUP_TRACKER, enabled=enabled)
 
@@ -635,15 +793,16 @@ class GUISequencerGridPanel(GUIPanel):
         row_index: int,
         generator: Optional[GeneratorName],
     ) -> None:
+        table_row = tracker_table_row(row_index)
         dpg.highlight_table_row(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
-            row_index,
+            table_row,
             color=self._layout.colors.cursor_row,
         )
         column_index = tracker_table_column(generator)
         dpg.highlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
-            row_index,
+            table_row,
             column_index,
             color=self._layout.colors.cell_cursor,
         )
@@ -653,14 +812,15 @@ class GUISequencerGridPanel(GUIPanel):
         row_index: int,
         generator: Optional[GeneratorName],
     ) -> None:
+        table_row = tracker_table_row(row_index)
         dpg.unhighlight_table_row(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
-            row_index,
+            table_row,
         )
         col_idx = tracker_table_column(generator)
         dpg.unhighlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
-            row_index,
+            table_row,
             col_idx,
         )
 
@@ -678,6 +838,28 @@ class GUISequencerGridPanel(GUIPanel):
             pending="",
         )
         self._apply_state(new_state)
+
+    def _on_header_clicked(
+        self,
+        sender: Sender,
+        app_data: bool,
+        user_data: Optional[GeneratorName],
+    ) -> None:
+        """Routes a header click: a channel label mutes, Ctrl held solos, the sample label
+        switches every channel at once.
+
+        The selectable is released as the click is handled, so the header behaves as a button
+        that reflects the mix through its colour, and the edit cursor stays where it is.
+        """
+        dpg.set_value(sender, False)
+        if user_data is None:
+            self.call(self.on_channels_toggled)
+            return
+
+        if Modifier.CTRL in capture_modifiers():
+            self.call(self.on_channel_soloed, user_data)
+        else:
+            self.call(self.on_channel_mute_toggled, user_data)
 
     def _on_cell_right_clicked(
         self,
@@ -1025,7 +1207,7 @@ class GUISequencerGridPanel(GUIPanel):
 
         dpg.highlight_table_row(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
-            row_index,
+            tracker_table_row(row_index),
             color=self._layout.colors.pattern_highlight,
         )
 
@@ -1035,13 +1217,16 @@ class GUISequencerGridPanel(GUIPanel):
 
         dpg.unhighlight_table_row(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
-            row_index,
+            tracker_table_row(row_index),
         )
         self._highlighted_row = None
 
     def set_playing_row(self, row_index: Optional[int]) -> None:
         if self._playing_row is not None and self._playing_row < self._live_row_count():
-            dpg.unhighlight_table_row(TAG_SEQUENCER_GRID_TABLE_TRACKER, self._playing_row)
+            dpg.unhighlight_table_row(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                tracker_table_row(self._playing_row),
+            )
 
         self._playing_row = row_index
         self._apply_playing_row_highlight()
@@ -1056,19 +1241,20 @@ class GUISequencerGridPanel(GUIPanel):
         if self._playing_row is not None and self._playing_row < self._live_row_count():
             dpg.highlight_table_row(
                 TAG_SEQUENCER_GRID_TABLE_TRACKER,
-                self._playing_row,
+                tracker_table_row(self._playing_row),
                 color=self._layout.colors.playback_row,
             )
 
     def _live_row_count(self) -> int:
-        """The table's current row count, read live from DearPyGui.
+        """The table's current pattern-row count, read live from DearPyGui.
 
         The cached ``_current_row_count`` reflects the last build on this thread; a concurrent
         rebuild on another thread can leave it stale, so row-index-bounded DearPyGui calls read the
-        actual children directly.
+        actual children directly. The count covers the pattern rows that follow the header row,
+        so it compares against a pattern row index.
         """
         if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
             return 0
 
         rows = dpg.get_item_children(TAG_SEQUENCER_GRID_TABLE_TRACKER, slot=1)
-        return len(rows) if rows else 0
+        return len(rows) - HEADER_TABLE_ROWS if rows else 0
