@@ -38,5 +38,5 @@
 ## Bugs
 
 * No refreshing after library generation
-* Triangle transposed by one semitone
+* Ctrl+A shortcut interferes with input dialogs
 * Window title unsupported characters

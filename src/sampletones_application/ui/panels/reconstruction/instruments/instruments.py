@@ -25,6 +25,7 @@ from sampletones_application.tags.general import (
     SUF_TEXT,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_INVALID,
+    TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
     TAG_GLOBAL_THEME_PANEL_INSTRUMENT,
 )
@@ -69,6 +70,7 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
+from sampletones_core.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
 from sampletones_core.features import GENERATOR_KIND, supported_features
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
@@ -105,6 +107,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.mouse_item_handler_tag = f"{TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self._graphs: Dict[str, GUIBarGraph] = {}
+        self._sequence_lengths: Dict[Tuple[GeneratorName, FeatureKey], int] = {}
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
         self._layout_graphs = layout_graphs
@@ -115,6 +118,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
         self.invalid_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_INVALID)
+        self.warning_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_WARNING)
 
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
@@ -176,6 +180,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             Panel.INSTRUMENTS,
             TextType.MESSAGE,
             ReconstructionsInstrumentsElements.STATUS_SEQUENCE,
+        ]
+        self._msg_sequence_too_long = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.INSTRUMENTS,
+            TextType.MESSAGE,
+            ReconstructionsInstrumentsElements.STATUS_SEQUENCE_TOO_LONG,
         ]
         self._msg_copy_sequence = language_manager[
             Page.RECONSTRUCTIONS,
@@ -425,6 +435,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
         raw_data_text = self._format_data(data)
         dpg_set_value(raw_data_tag, raw_data_text)
+        self._apply_input_theme(generator_name, feature_key, len(data))
 
     def update_view(
         self,
@@ -702,10 +713,44 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._status_bar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
         self._status_bar.bind_to_item(
             raw_data_tag,
-            self._msg_sequence.format(
-                instrument_feature=feature_key.capitalized,
-            ),
+            partial(self._sequence_status_message, generator_name, feature_key),
         )
+
+    def _sequence_status_message(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        *args: Any,
+        **kwargs: Any,
+    ) -> str:
+        """Describes the sequence input, naming the export limit once a sequence passes it."""
+        item_count = self._sequence_lengths.get((generator_name, feature_key), 0)
+        if item_count > MAX_SEQUENCE_ITEMS:
+            return self._msg_sequence_too_long.format(
+                instrument_feature=feature_key.capitalized,
+                items=item_count,
+                limit=MAX_SEQUENCE_ITEMS,
+            )
+
+        return self._msg_sequence.format(instrument_feature=feature_key.capitalized)
+
+    def _apply_input_theme(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        item_count: int,
+    ) -> None:
+        """Colours the sequence input by how a FamiTracker export treats its length.
+
+        A sequence longer than ``MAX_SEQUENCE_ITEMS`` exports its opening items, so the
+        input carries the warning colour to show which part of the envelope reaches a
+        FamiTracker file.
+        """
+        self._sequence_lengths[(generator_name, feature_key)] = item_count
+        text_group_tag = self._get_feature_text_group_tag(generator_name, feature_key)
+        raw_data_tag = self._get_feature_text_tag(text_group_tag)
+        theme = self.warning_input_theme if item_count > MAX_SEQUENCE_ITEMS else self.theme
+        theme.bind_to_item(raw_data_tag)
 
     def _parse_raw_data_input(
         self,
@@ -722,12 +767,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 [clamp(int(value), *data_range) for value in raw_data_items],
                 dtype=np.int8,
             )
-            self.theme.bind_to_item(sender)
         except ValueError:
             logger.error(f"Invalid {generator_name.name} data input for {feature_key.name}: {app_data}")
             self.invalid_input_theme.bind_to_item(sender)
             return
 
+        self._apply_input_theme(generator_name, feature_key, len(raw_data))
         dpg.set_value(sender, self._format_data(raw_data))
         self.call(self.on_raw_data_changed, generator_name, feature_key, raw_data)
         self._load_plot_data(plot, generator_name, feature_key, config, raw_data)

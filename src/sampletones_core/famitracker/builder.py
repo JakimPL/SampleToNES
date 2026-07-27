@@ -18,7 +18,7 @@ from sampletones_core.famitracker.notes import (
     pitch_to_note_cell,
     resolve_machine,
 )
-from sampletones_core.famitracker.sequences import features_to_instrument_sequences
+from sampletones_core.famitracker.sequences.features import features_to_instrument_sequences
 from sampletones_core.famitracker.specification.channels import (
     CHANNEL_COUNT_2A03,
     GENERATOR_NAME_TO_CHANNEL_ID,

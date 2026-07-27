@@ -108,6 +108,7 @@ colors:
   transparent: "#00000000"
   border_strong: "#565f78"
   input_invalid: "#c0504a64"
+  input_warning: "#c0884a64"
 
   # plot lines
   plot_zero_line: "#c8c8c8"

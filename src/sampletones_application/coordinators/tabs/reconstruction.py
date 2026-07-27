@@ -15,6 +15,7 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsBrowserElements,
     ReconstructionsInstrumentsElements,
 )
+from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -35,13 +36,12 @@ from sampletones_application.logic.reconstruction.reconstruction import (
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.reconstruction import ReconstructionTabParameters
-from sampletones_application.services.export import (
-    ExportError,
-    ExportKind,
-    ExportResult,
-    ExportService,
-    ExportSuccess,
-)
+from sampletones_application.services.export.error import ExportError
+from sampletones_application.services.export.kind import ExportKind
+from sampletones_application.services.export.result import ExportResult
+from sampletones_application.services.export.service import ExportService
+from sampletones_application.services.export.success import ExportSuccess
+from sampletones_application.services.export.truncation import ExportTruncation
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -212,36 +212,7 @@ class ReconstructionTabCoordinator:
             TextType.TEMPLATE,
             ReconstructionsBrowserElements.INCOMPATIBLE_VERSION_TEMPLATE,
         ]
-        _ttl_export_status = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_STATUS_DIALOG,
-        ]
-        _msg_export_instrument_success = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_SUCCESS,
-        ]
-        _msg_export_instrument_failed = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_FAILED,
-        ]
-        _msg_export_instruments_success = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_SUCCESS,
-        ]
-        _msg_export_instruments_failed = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_FAILED,
-        ]
+        self._export_messages = ExportMessages.build(language_manager)
         self._ttl_export_instrument = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.INSTRUMENTS,
@@ -254,12 +225,6 @@ class ReconstructionTabCoordinator:
             TextType.TITLE,
             ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_DIALOG,
         ]
-        self._ttl_export_wav = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_WAV_DIALOG,
-        ]
         self._filter_export_instrument = language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -271,18 +236,6 @@ class ReconstructionTabCoordinator:
             Panel.DIALOG,
             TextType.FILTER,
             FileFilterElements.WAVE,
-        ]
-        _msg_export_wav_success = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.MESSAGE,
-            ReconstructionPanelElements.EXPORT_WAV_SUCCESS,
-        ]
-        _msg_export_wav_failed = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.MESSAGE,
-            ReconstructionPanelElements.EXPORT_WAV_FAILED,
         ]
         self._msg_locate_audio_failed = language_manager[
             Page.RECONSTRUCTIONS,
@@ -393,19 +346,7 @@ class ReconstructionTabCoordinator:
             path, self._msg_locate_audio_failed
         )
 
-        export_service.subscribe(
-            lambda result: self._on_export_result(
-                result,
-                ttl_export_status=_ttl_export_status,
-                ttl_export_wav=self._ttl_export_wav,
-                msg_export_instrument_success=_msg_export_instrument_success,
-                msg_export_instrument_failed=_msg_export_instrument_failed,
-                msg_export_instruments_success=_msg_export_instruments_success,
-                msg_export_instruments_failed=_msg_export_instruments_failed,
-                msg_export_wav_success=_msg_export_wav_success,
-                msg_export_wav_failed=_msg_export_wav_failed,
-            )
-        )
+        export_service.subscribe(self._on_export_result)
 
         self._reconstruction_instruments_logic.on_view_changed = self._reconstruction_instruments_panel.update_view
         self._reconstruction_instruments_logic.on_feature_data_changed = (
@@ -431,32 +372,55 @@ class ReconstructionTabCoordinator:
             self._reconstruction_instruments_logic.handle_raw_data_changed
         )
 
-    def _on_export_result(
-        self,
-        result: ExportResult,
-        *,
-        ttl_export_status: str,
-        ttl_export_wav: str,
-        msg_export_instrument_success: str,
-        msg_export_instrument_failed: str,
-        msg_export_instruments_success: str,
-        msg_export_instruments_failed: str,
-        msg_export_wav_success: str,
-        msg_export_wav_failed: str,
-    ) -> None:
+    def _on_export_result(self, result: ExportResult) -> None:
+        messages = self._export_messages
         match result:
             case ExportSuccess(kind=ExportKind.WAV, filepath=fp):
-                self._dialogs.show_message_with_path(ttl_export_wav, msg_export_wav_success, fp)
-            case ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=fp):
-                self._dialogs.show_message_with_path(ttl_export_status, msg_export_instrument_success, fp)
-            case ExportSuccess(kind=ExportKind.INSTRUMENTS, filepath=fp):
-                self._dialogs.show_message_with_path(ttl_export_status, msg_export_instruments_success, fp)
+                self._dialogs.show_message_with_path(messages.wav_title, messages.wav_success, fp)
+            case ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=fp, truncation=truncation):
+                self._dialogs.show_message_with_path(
+                    messages.status_title,
+                    self._export_message(messages.instrument_success, messages.instrument_truncated, truncation),
+                    fp,
+                )
+            case ExportSuccess(kind=ExportKind.INSTRUMENTS, filepath=fp, truncation=truncation):
+                self._dialogs.show_message_with_path(
+                    messages.status_title,
+                    self._export_message(messages.instruments_success, messages.instruments_truncated, truncation),
+                    fp,
+                )
             case ExportError(kind=ExportKind.WAV, exception=exception):
-                self._dialogs.show_error(exception, msg_export_wav_failed)
+                self._dialogs.show_error(exception, messages.wav_failed)
             case ExportError(kind=ExportKind.INSTRUMENT, exception=exception):
-                self._dialogs.show_error(exception, msg_export_instrument_failed)
+                self._dialogs.show_error(exception, messages.instrument_failed)
             case ExportError(kind=ExportKind.INSTRUMENTS, exception=exception):
-                self._dialogs.show_error(exception, msg_export_instruments_failed)
+                self._dialogs.show_error(exception, messages.instruments_failed)
+
+    def _export_message(
+        self,
+        success: str,
+        shortened: str,
+        truncation: Optional[ExportTruncation],
+    ) -> str:
+        """Follows the success line with the frames the FamiTracker sequence limit left out.
+
+        Args:
+            success: The message shown for a complete export.
+            shortened: The template describing what a shortened export carries.
+            truncation: The shortening the export underwent, or ``None`` when it fit whole.
+
+        Returns:
+            str: The message for the export result dialog.
+        """
+        if truncation is None:
+            return success
+
+        note = shortened.format(
+            frames=truncation.frames,
+            source_frames=truncation.source_frames,
+            instruments=truncation.instruments,
+        )
+        return f"{success}\n\n{note}"
 
     def _update_reconstruction_view(self, view_model: ReconstructionViewModel) -> None:
         """Fans the reconstruction view model out to the audio and plot cards."""
@@ -490,7 +454,7 @@ class ReconstructionTabCoordinator:
 
     def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
         filepath = save_file_dialog(
-            title=self._ttl_export_wav,
+            title=self._export_messages.wav_title,
             initial_directory=default_path,
             default_filename=default_filename,
             extensions=[EXT_FILE_WAVE],

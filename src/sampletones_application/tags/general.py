@@ -308,6 +308,12 @@ TAG_GLOBAL_THEME_INPUT_INVALID = TagName(
     Widget.THEME,
     "input_invalid",
 )
+TAG_GLOBAL_THEME_INPUT_WARNING = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "input_warning",
+)
 TAG_GLOBAL_THEME_MENU_FPS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -3,11 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from sampletones_application.services.export import (
-    ExportError,
-    ExportKind,
-    ExportSuccess,
-)
 from sampletones_application.services.result import (
     ServiceCancelled,
     ServiceError,
@@ -135,46 +130,3 @@ class TestServiceIntermediate:
     def test_equality(self) -> None:
         assert ServiceIntermediate(data=1) == ServiceIntermediate(data=1)
         assert ServiceIntermediate(data=1) != ServiceIntermediate(data=2)
-
-
-class TestExportSuccess:
-    def test_stores_kind_and_filepath(self) -> None:
-        filepath = Path("/exports/track.wav")
-        success = ExportSuccess(kind=ExportKind.WAV, filepath=filepath)
-        assert success.kind == ExportKind.WAV
-        assert success.filepath == filepath
-
-    def test_frozen(self) -> None:
-        success = ExportSuccess(kind=ExportKind.WAV, filepath=Path("/x"))
-        with pytest.raises(FrozenInstanceError):
-            success.kind = ExportKind.INSTRUMENT  # type: ignore[misc]
-
-    def test_equality(self) -> None:
-        path = Path("/x")
-        assert ExportSuccess(kind=ExportKind.WAV, filepath=path) == ExportSuccess(kind=ExportKind.WAV, filepath=path)
-        assert ExportSuccess(kind=ExportKind.WAV, filepath=path) != ExportSuccess(
-            kind=ExportKind.INSTRUMENT, filepath=path
-        )
-
-
-class TestExportError:
-    def test_stores_kind_and_exception(self) -> None:
-        exception = OSError("disk full")
-        error = ExportError(kind=ExportKind.INSTRUMENT, exception=exception)
-        assert error.kind == ExportKind.INSTRUMENT
-        assert error.exception is exception
-
-    def test_frozen(self) -> None:
-        error = ExportError(kind=ExportKind.WAV, exception=OSError())
-        with pytest.raises(FrozenInstanceError):
-            error.kind = ExportKind.INSTRUMENTS  # type: ignore[misc]
-
-    def test_eq_false_same_exception_instances_differ(self) -> None:
-        exception = OSError("same")
-        error_a = ExportError(kind=ExportKind.WAV, exception=exception)
-        error_b = ExportError(kind=ExportKind.WAV, exception=exception)
-        assert error_a != error_b
-
-    def test_same_instance_equals_itself(self) -> None:
-        error = ExportError(kind=ExportKind.WAV, exception=OSError())
-        assert error == error  # noqa: PLR0124

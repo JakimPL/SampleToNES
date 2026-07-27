@@ -11,8 +11,8 @@ from sampletones_core.famitracker.model.module import (
     Track,
 )
 from sampletones_core.famitracker.model.pattern import PatternData
-from sampletones_core.famitracker.sequences import (
-    PooledSequence,
+from sampletones_core.famitracker.sequences.pooled import PooledSequence
+from sampletones_core.famitracker.sequences.pooling import (
     SequenceReferences,
     build_sequence_pool,
 )

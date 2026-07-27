@@ -3,9 +3,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.categories.export import ExportMessages
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
+from sampletones_application.paths import LANG_EN
+from sampletones_application.services.export.kind import ExportKind
+from sampletones_application.services.export.success import ExportSuccess
+from sampletones_application.services.export.truncation import ExportTruncation
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -219,3 +225,72 @@ class TestRemoveTreeEntries:
         confirmation = removal_coordinator._dialogs.show_confirmation.call_args.kwargs
         assert confirmation["message"] == "Remove this directory and all included reconstructions?"
         assert confirmation["path"] == directory
+
+
+@pytest.fixture
+def export_coordinator() -> ReconstructionTabCoordinator:
+    """A coordinator with only the collaborators ``_on_export_result`` touches."""
+    instance = object.__new__(ReconstructionTabCoordinator)
+    instance._dialogs = MagicMock()
+    instance._export_messages = ExportMessages.build(LanguageManager(LANG_EN))
+    return instance
+
+
+def _shown_message(coordinator: ReconstructionTabCoordinator) -> str:
+    _, message, _ = coordinator._dialogs.show_message_with_path.call_args.args
+    return message
+
+
+class TestExportResultReportsTruncation:
+    def test_a_complete_instrument_export_shows_the_success_message(
+        self,
+        export_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        export_coordinator._on_export_result(
+            ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=Path("lead.fti"), truncation=None)
+        )
+
+        assert _shown_message(export_coordinator) == export_coordinator._export_messages.instrument_success
+
+    def test_a_shortened_instrument_export_names_both_frame_counts(
+        self,
+        export_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        export_coordinator._on_export_result(
+            ExportSuccess(
+                kind=ExportKind.INSTRUMENT,
+                filepath=Path("lead.fti"),
+                truncation=ExportTruncation(frames=252, source_frames=300, instruments=1),
+            )
+        )
+
+        message = _shown_message(export_coordinator)
+        assert export_coordinator._export_messages.instrument_success in message
+        assert "300" in message
+        assert "252" in message
+
+    def test_a_shortened_reconstruction_export_counts_the_instruments(
+        self,
+        export_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        export_coordinator._on_export_result(
+            ExportSuccess(
+                kind=ExportKind.INSTRUMENTS,
+                filepath=Path("instruments"),
+                truncation=ExportTruncation(frames=252, source_frames=410, instruments=3),
+            )
+        )
+
+        message = _shown_message(export_coordinator)
+        assert export_coordinator._export_messages.instruments_success in message
+        assert "3" in message
+
+    def test_a_wav_export_shows_its_own_message(
+        self,
+        export_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        export_coordinator._on_export_result(
+            ExportSuccess(kind=ExportKind.WAV, filepath=Path("track.wav"), truncation=None)
+        )
+
+        assert _shown_message(export_coordinator) == export_coordinator._export_messages.wav_success

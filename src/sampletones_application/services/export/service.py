@@ -1,38 +1,19 @@
-from __future__ import annotations
-
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
 from sampletones_application.services.base import ServiceBase
+from sampletones_application.services.export.error import ExportError
+from sampletones_application.services.export.kind import ExportKind
+from sampletones_application.services.export.result import ExportResult
+from sampletones_application.services.export.success import ExportSuccess
+from sampletones_application.services.export.truncation import ExportTruncation
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.audio import write_wave
 from sampletones_core.exporters import Features
+from sampletones_core.famitracker.sequences.truncation import SequenceTruncation
 from sampletones_shared.logger import logger
-
-
-class ExportKind(str, Enum):
-    WAV = "wav"
-    INSTRUMENT = "instrument"
-    INSTRUMENTS = "instruments"
-
-
-@dataclass(frozen=True)
-class ExportSuccess:
-    kind: ExportKind
-    filepath: Path
-
-
-@dataclass(frozen=True, eq=False)
-class ExportError:
-    kind: ExportKind
-    exception: Exception
-
-
-ExportResult = ExportSuccess | ExportError
 
 
 class ExportService(ServiceBase[ExportResult]):
@@ -50,7 +31,7 @@ class ExportService(ServiceBase[ExportResult]):
             try:
                 write_wave(filepath, sample_rate, audio)
                 logger.info(f"Exported reconstruction to WAV: {logger.format_path(filepath)}")
-                self._emit(ExportSuccess(kind=ExportKind.WAV, filepath=filepath))
+                self._emit(ExportSuccess(kind=ExportKind.WAV, filepath=filepath, truncation=None))
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error_with_traceback(exception, f"Failed to export reconstruction to WAV: {filepath}")
                 self._emit(ExportError(kind=ExportKind.WAV, exception=exception))
@@ -65,9 +46,15 @@ class ExportService(ServiceBase[ExportResult]):
     ) -> None:
         def task() -> None:
             try:
-                feature.save(filepath, instrument_name)
+                truncation = feature.save(filepath, instrument_name)
                 logger.info(f"Exported FamiTracker instrument: {logger.format_path(filepath)}")
-                self._emit(ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=filepath))
+                self._emit(
+                    ExportSuccess(
+                        kind=ExportKind.INSTRUMENT,
+                        filepath=filepath,
+                        truncation=ExportTruncation.summarize([truncation]),
+                    )
+                )
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
                 self._emit(ExportError(kind=ExportKind.INSTRUMENT, exception=exception))
@@ -82,10 +69,17 @@ class ExportService(ServiceBase[ExportResult]):
         def task() -> None:
             try:
                 directory.mkdir(parents=True, exist_ok=True)
+                truncations: List[Optional[SequenceTruncation]] = []
                 for filepath, instrument_name, feature in exports:
-                    feature.save(filepath, instrument_name)
+                    truncations.append(feature.save(filepath, instrument_name))
                     logger.info(f"Exported FamiTracker instrument: {logger.format_path(filepath)}")
-                self._emit(ExportSuccess(kind=ExportKind.INSTRUMENTS, filepath=directory))
+                self._emit(
+                    ExportSuccess(
+                        kind=ExportKind.INSTRUMENTS,
+                        filepath=directory,
+                        truncation=ExportTruncation.summarize(truncations),
+                    )
+                )
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error_with_traceback(exception, f"Failed to export instruments to: {directory}")
                 self._emit(ExportError(kind=ExportKind.INSTRUMENTS, exception=exception))

@@ -1,0 +1,9 @@
+name: input_warning
+tag: global.theme.input_warning
+
+components:
+  - item_type: InputText
+    entries:
+      - type: color
+        key: FrameBg
+        value: .input_warning
