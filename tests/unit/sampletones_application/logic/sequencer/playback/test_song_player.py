@@ -8,7 +8,6 @@ from sampletones_application.services.song_player.result import (
     SongPositionUpdate,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
-from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import make_controller
 
@@ -51,7 +50,6 @@ class TestPlay:
         logic._service.start.assert_called_once_with(
             order_position=0,
             row_index=0,
-            active_channels=logic._active_channels,
         )
 
     def test_play_clears_previous_error_in_emitted_view(self) -> None:
@@ -82,7 +80,6 @@ class TestPlayFrom:
         logic._service.start.assert_called_once_with(
             order_position=2,
             row_index=4,
-            active_channels=logic._active_channels,
         )
 
     def test_play_from_stores_specified_position(self) -> None:
@@ -282,19 +279,6 @@ class TestOnServiceResult:
         logic._on_service_result(SongPlaybackError(error=error))
 
         assert errors == [error]
-
-
-class TestActiveChannels:
-    def test_set_active_channels_is_used_on_next_start(self) -> None:
-        logic = _make_logic(is_open=True)
-        _capture_views(logic)
-        channels = frozenset({GeneratorName.PULSE1, GeneratorName.TRIANGLE})
-
-        logic.set_active_channels(channels)
-        logic.play()
-
-        _, kwargs = logic._service.start.call_args
-        assert kwargs["active_channels"] == channels
 
 
 class TestOnProjectReplaced:

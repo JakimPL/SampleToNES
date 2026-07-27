@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -37,17 +38,28 @@ from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.keyboard import KeyRouter
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    ALT,
+    CTRL,
+    CTRL_ALT,
+    CTRL_ALT_SHIFT,
+    CTRL_SHIFT,
+    SHIFT,
+)
+from sampletones_application.utils.gui.shortcuts.ids import (
+    CHANNEL_SHORTCUT_IDS,
+    ShortcutId,
+)
 from sampletones_application.utils.gui.shortcuts.keys import (
     KEY_PAGE_DOWN,
     KEY_PAGE_UP,
-    Modifier,
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback, PathCallback
 
@@ -92,6 +104,8 @@ class ShortcutBindings:
     toggle_autoplay: Callback
     toggle_follow_playback: Callback
     toggle_loop_song: Callback
+    toggle_channel: Callable[[GeneratorName], None]
+    unmute_all_channels: Callback
     audio_settings: Callback
     toggle_advanced_settings: Callback
     toggle_fullscreen: Callback
@@ -192,57 +206,57 @@ class ApplicationShell:
     def _register_shortcuts(self, bindings: ShortcutBindings) -> None:
         self._shortcut_manager.register(
             ShortcutId.NEW_PROJECT,
-            Shortcut(dpg.mvKey_N, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_N, CTRL),
             bindings.new_project,
         )
         self._shortcut_manager.register(
             ShortcutId.OPEN_PROJECT,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_O, CTRL),
             bindings.open_project,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_PROJECT,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_S, CTRL),
             bindings.save_project,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_PROJECT_AS,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_S, CTRL_SHIFT),
             bindings.save_project_as,
         )
         self._shortcut_manager.register(
             ShortcutId.EXPORT_PROJECT_MODULE,
-            Shortcut(dpg.mvKey_M, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_M, CTRL),
             bindings.export_project_module,
         )
         self._shortcut_manager.register(
             ShortcutId.PROJECT_PROPERTIES,
-            Shortcut(dpg.mvKey_P, (Modifier.ALT,)),
+            Shortcut(dpg.mvKey_P, ALT),
             bindings.project_properties,
         )
         self._shortcut_manager.register(
             ShortcutId.CLOSE_PROJECT,
-            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_W, CTRL),
             bindings.close_project,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT)),
+            Shortcut(dpg.mvKey_S, CTRL_ALT),
             bindings.save_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_RECONSTRUCTION_AS,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_S, CTRL_ALT_SHIFT),
             bindings.save_reconstruction_as,
         )
         self._shortcut_manager.register(
             ShortcutId.OPEN_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.ALT)),
+            Shortcut(dpg.mvKey_O, CTRL_ALT),
             bindings.open_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.CLOSE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_W, (Modifier.CTRL, Modifier.ALT)),
+            Shortcut(dpg.mvKey_W, CTRL_ALT),
             bindings.close_reconstruction,
         )
         self._shortcut_manager.register(
@@ -257,32 +271,32 @@ class ApplicationShell:
         )
         self._shortcut_manager.register(
             ShortcutId.AUDIO_SETTINGS,
-            Shortcut(dpg.mvKey_A, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_A, CTRL),
             bindings.audio_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.EXIT,
-            Shortcut(dpg.mvKey_F4, (Modifier.ALT,)),
+            Shortcut(dpg.mvKey_F4, ALT),
             bindings.exit,
         )
         self._shortcut_manager.register(
             ShortcutId.RECONSTRUCT_FILE,
-            Shortcut(dpg.mvKey_R, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_R, CTRL),
             bindings.reconstruct_file,
         )
         self._shortcut_manager.register(
             ShortcutId.RECONSTRUCT_DIRECTORY,
-            Shortcut(dpg.mvKey_R, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_R, CTRL_SHIFT),
             bindings.reconstruct_directory,
         )
         self._shortcut_manager.register(
             ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-            Shortcut(dpg.mvKey_E, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_E, CTRL),
             bindings.export_wav,
         )
         self._shortcut_manager.register(
             ShortcutId.EXPORT_RECONSTRUCTION_INSTRUMENTS,
-            Shortcut(dpg.mvKey_I, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_I, CTRL),
             bindings.export_instruments,
         )
         self._shortcut_manager.register(
@@ -307,7 +321,7 @@ class ApplicationShell:
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_ADVANCED_SETTINGS,
-            Shortcut(dpg.mvKey_A, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_A, CTRL_SHIFT),
             bindings.toggle_advanced_settings,
         )
         self._shortcut_manager.register(
@@ -317,12 +331,12 @@ class ApplicationShell:
         )
         self._shortcut_manager.register(
             ShortcutId.PLAY_FROM_START,
-            Shortcut(dpg.mvKey_Spacebar, (Modifier.SHIFT,)),
+            Shortcut(dpg.mvKey_Spacebar, SHIFT),
             bindings.play_from_start,
         )
         self._shortcut_manager.register(
             ShortcutId.PLAY_FROM_FRAME,
-            Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_Spacebar, CTRL),
             bindings.play_from_frame,
         )
         self._shortcut_manager.register(
@@ -332,7 +346,7 @@ class ApplicationShell:
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_AUTOPLAY,
-            Shortcut(dpg.mvKey_P, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_P, CTRL),
             bindings.toggle_autoplay,
         )
         self._shortcut_manager.register(
@@ -345,19 +359,20 @@ class ApplicationShell:
             Shortcut(),
             bindings.toggle_loop_song,
         )
+        self._register_channel_shortcuts(bindings)
         self._shortcut_manager.register(
             ShortcutId.UNDO,
-            Shortcut(dpg.mvKey_Z, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_Z, CTRL),
             bindings.undo,
         )
         self._shortcut_manager.register(
             ShortcutId.REDO,
-            Shortcut(dpg.mvKey_Y, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_Y, CTRL),
             bindings.redo,
         )
         self._shortcut_manager.register_alias(
             ShortcutId.REDO,
-            Shortcut(dpg.mvKey_Z, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_Z, CTRL_SHIFT),
         )
         self._shortcut_manager.register(
             ShortcutId.ABOUT_DIALOG,
@@ -366,16 +381,36 @@ class ApplicationShell:
         )
         self._shortcut_manager.register(
             ShortcutId.NEXT_TAB,
-            Shortcut(KEY_PAGE_DOWN, (Modifier.CTRL,), field_transparent=True),
+            Shortcut(KEY_PAGE_DOWN, CTRL, field_transparent=True),
             bindings.next_tab,
         )
         self._shortcut_manager.register(
             ShortcutId.PREVIOUS_TAB,
-            Shortcut(KEY_PAGE_UP, (Modifier.CTRL,), field_transparent=True),
+            Shortcut(KEY_PAGE_UP, CTRL, field_transparent=True),
             bindings.previous_tab,
         )
 
         self._shortcut_manager.bind_all()
+
+    def _register_channel_shortcuts(self, bindings: ShortcutBindings) -> None:
+        """Registers one action per tracker channel, plus the one that brings the whole mix back.
+
+        Each action carries the channel it switches, so the Playback menu lists them as its
+        Channels submenu. They are registered without a key combination, which leaves the
+        assignment to the keybindings options.
+        """
+        for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
+            self._shortcut_manager.register(
+                shortcut_id,
+                Shortcut(),
+                partial(bindings.toggle_channel, generator),
+            )
+
+        self._shortcut_manager.register(
+            ShortcutId.UNMUTE_ALL_CHANNELS,
+            Shortcut(),
+            bindings.unmute_all_channels,
+        )
 
     def _setup_handlers(self) -> None:
         self._key_router.bind()

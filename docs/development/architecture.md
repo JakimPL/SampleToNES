@@ -59,7 +59,9 @@ This means the UI layer can never be in an inconsistent state: it always reflect
 
 ### 5. Panels communicate via optional callback hooks
 
-A panel never calls coordinator or logic methods directly. Instead it exposes public optional callback attributes (`on_x: Optional[Callback] = None`) that coordinators set during wiring. The panel invokes them through `CallbackMixin.call()`, which silently no-ops when the hook is `None`.
+A panel never calls coordinator or logic methods directly. Instead it exposes public optional callback attributes (`on_x: Optional[Callback] = None`) that coordinators set during wiring. The panel fires them through `CallbackMixin.call()`, which logs a warning and yields `None` for a hook left unset.
+
+A hook the panel consults for state rather than notifies of an event is read through `CallbackMixin.query()`, which preserves the hook's declared return type and takes the answer to assume while the hook is unset. A widget parameter or branch fed by such a hook therefore receives a value of its expected type at every moment, including the window before wiring completes.
 
 This decouples widget construction (which happens during `create_panel()`) from the moment wiring takes place (which happens in the coordinator's constructor), and lets panels be instantiated without any coordinator present.
 
@@ -116,7 +118,9 @@ Each keyboard consumer registers one scope through `register(handle, *, priority
 
 Because the router offers a panel the key ahead of the shortcut scope, a panel returns `False` on any combination it does not own — the grid yields every `Ctrl`-modified press — so that field-transparent shortcuts such as `Ctrl+PgDn` / `Ctrl+PgUp` tab-switching reach the shortcut scope even while a grid cursor is set.
 
-**Focus is pulled, not pushed.** Whether a text or value field keeps a plain key for itself is one router query, `is_field_focused`, that reads the focused item from DearPyGui at the moment of the press and counts it only while it is a field type that is actively being edited. Every input is covered by construction, and the router alone holds the rule.
+**Focus is pulled, not pushed.** Whether a text or value field keeps a plain key for itself is one router query, `is_field_focused`, that reads the focused item from DearPyGui at the moment of the press and counts it only while that item is actively being edited. Every input is covered by construction, and the router alone holds the rule.
+
+The query resolves the focused item to the field behind it. A `dpg.group` reports the state of the widget inside it, and DearPyGui names the outermost such group as the focused item — the instruments panel's sequence input, laid out beside its copy button inside a card body group, reaches the keyboard as that group. An active group therefore answers with the field being edited below it, found by following the one branch that reports focus, so a panel-spanning group costs a key press only the path down to its field.
 
 **Modal suppression lives in one place.** The router holds a LIFO stack of modal handlers; `push_modal` / `pop_modal` bracket a dialog's lifetime, and the built-in `MODAL` scope routes each press to the top of the stack. Since `MODAL` outranks the panel and shortcut scopes, the scopes beneath it carry no "a dialog is open" check of their own.
 
@@ -428,4 +432,5 @@ sampletones_application/
 | DPG widget tag | `TAG_<MODULE>_<WIDGET>[_<DETAIL>]` | `TAG_MAIN_PANEL_CONFIG` |
 | Tag suffix | `SUF_<ROLE>` | `SUF_PANEL_LEFT` |
 | Panel callback hook | `on_<event>` attribute | `on_convert_requested` |
+| Panel state hook | `can_<action>` or `<action>_<subject>` attribute | `can_add_to_sequencer`, `replace_in_sequencer_label` |
 | Logic callback | `on_<event>` attribute | `on_view_changed` |

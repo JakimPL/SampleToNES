@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Final, Optional, Tuple
 
 import numpy as np
 
@@ -9,20 +9,69 @@ from sampletones_core.constants.general import (
     MAX_LFSR,
     MAX_LFSR_SHORT,
     MAX_PERIOD,
-    NOISE_LONG_PERIOD,
     NOISE_PERIODS,
-    NOISE_SHORT_PERIOD,
 )
 from sampletones_shared.types.data import Initials
 
 from ..timer import Timer
 
+CYCLE_START: Final[int] = 0
+OFF_CYCLE: Final[int] = -1
+
+
+def cycle_length(short: bool) -> int:
+    """The number of steps after which the shift register returns to its starting value."""
+    return MAX_LFSR_SHORT if short else MAX_LFSR
+
+
+def step_lfsr(lfsr: int, short: bool) -> int:
+    """Advances the 15-bit shift register one step.
+
+    Feedback is ``bit0 ^ bit1`` in long mode and ``bit0 ^ bit6`` in short mode, shifted into
+    bit 14, as the 2A03 noise channel does.
+
+    Args:
+        lfsr: The current register value, 1 to ``MAX_LFSR``.
+        short: Whether the register runs in its 93-step short mode.
+
+    Returns:
+        int: The register after one step.
+    """
+    feedback = (lfsr & 1) ^ ((lfsr >> (6 if short else 1)) & 1)
+    return ((lfsr >> 1) | (feedback << 14)) & MAX_LFSR
+
+
+def step_lfsr_back(lfsr: int, short: bool) -> int:
+    """Rewinds the 15-bit shift register one step, inverting :func:`step_lfsr`.
+
+    Args:
+        lfsr: The current register value, 1 to ``MAX_LFSR``.
+        short: Whether the register runs in its 93-step short mode.
+
+    Returns:
+        int: The register one step earlier.
+    """
+    partial = (lfsr & 0x3FFF) << 1
+    feedback = ((lfsr >> 14) & 1) ^ ((partial >> (6 if short else 1)) & 1)
+    return (partial | feedback) & MAX_LFSR
+
 
 @dataclass(frozen=True)
-class LFSRTTables:
-    lfsr_to_index: np.ndarray
+class LFSRTables:
+    """Lookups covering one feedback mode's shift-register cycle.
+
+    Attributes:
+        lfsrs: The register values of one full cycle, starting from the seed value 1.
+        lfsr_to_index: Position within ``lfsrs`` of every register value on the cycle, and
+            ``OFF_CYCLE`` for values this mode's feedback places on a different cycle.
+        bit_prefix: Running count of set output bits over the cycle, repeated far enough that
+            any window opening inside the first repetition stays in range, which makes a
+            windowed bit sum one subtraction.
+    """
+
     lfsrs: np.ndarray
-    cumsums: np.ndarray
+    lfsr_to_index: np.ndarray
+    bit_prefix: np.ndarray
 
 
 class LFSRTimer(Timer):
@@ -43,9 +92,8 @@ class LFSRTimer(Timer):
         self.lfsr: int = 1
         self.clock: float = 0.0
 
-        self.lfsr_tables: Dict[bool, LFSRTTables] = {
-            True: self.precalculate_lfsr_tables(True),
-            False: self.precalculate_lfsr_tables(False),
+        self.lfsr_tables: Dict[bool, LFSRTables] = {
+            short: self.precalculate_lfsr_tables(short) for short in (False, True)
         }
 
     def __call__(
@@ -69,48 +117,49 @@ class LFSRTimer(Timer):
 
         return self.generate_frame(save=save)
 
+    def resolve_index(self, lfsr: int) -> int:
+        """The position of a register value within the active mode's cycle.
+
+        Each feedback mode permutes the register into cycles of its own, and short mode's
+        93-step cycle holds 93 of the 32767 possible values, so a value carried over from
+        long mode sits on a different cycle. Such a value opens the sequence at its start.
+
+        Args:
+            lfsr: The register value to locate, 1 to ``MAX_LFSR``.
+
+        Returns:
+            int: The value's index on the active cycle, or ``CYCLE_START`` for a value the
+                active mode reaches on another cycle.
+        """
+        index = int(self.lfsr_tables[self.short].lfsr_to_index[lfsr])
+        return index if index != OFF_CYCLE else CYCLE_START
+
     def calculate_offset(self, initials: Initials = None) -> int:
         lfsr, clock = initials if initials is not None else (1, 0.0)
-        lfsr_to_index = self.lfsr_tables[self.short].lfsr_to_index
-        end_index = int(lfsr_to_index[lfsr])
-        if end_index == -1:
-            end_index = 0
-
-        return int(np.ceil(end_index / self._clocks_per_sample - clock))
+        index = self.resolve_index(lfsr)
+        return int(np.ceil(index / self._clocks_per_sample - clock))
 
     def generate_frame(self, save: bool = True) -> np.ndarray:
-        lfsrs = self.lfsr_tables[self.short].lfsrs
-        cumsum_table = self.lfsr_tables[self.short].cumsums.astype(np.float32)
+        tables = self.lfsr_tables[self.short]
+        length = self.lfsr_period
+        index = self.resolve_index(self.lfsr)
 
-        indices = np.arange(self.frame_length + 1, dtype=np.float32)
-        delta = self._clocks_per_sample
-        clock = indices * delta + self.clock
-        changes = np.abs(np.diff(np.floor(clock)).astype(int))
-        changes_cumsum = np.concatenate([[0], np.cumsum(changes)])
-        differences = np.zeros_like(changes, dtype=np.float32)
+        samples = np.arange(self.frame_length + 1, dtype=np.float64)
+        clocks = samples * self._clocks_per_sample + self.clock
+        edges = np.floor(clocks).astype(np.int64)
+        starts = edges[:-1]
+        steps = edges[1:] - starts
 
-        index = self.lfsr_tables[self.short].lfsr_to_index[self.lfsr]
-        index = index if index != -1 else 0
-        start_indices = changes_cumsum + index
-        end_indices = np.roll(start_indices, -1)
-        pairs = np.stack([start_indices, end_indices]).T[:-1]
-        mask = pairs[:, 0] > pairs[:, 1]
-        pairs[mask, 1] += self.lfsr_period
-
-        mask = pairs[:, 1] > pairs[:, 0]
-        nonzero_pairs = pairs[mask]
-        means = np.array(
-            [np.mean(cumsum_table[start:end]) for start, end in nonzero_pairs],
-            dtype=np.float32,
-        )
-
-        differences[mask] = np.diff(np.concatenate([[0], means]))
-        frame = 2.0 * np.cumsum(differences) - 1.0
+        positions = (index + starts) % length
+        held = tables.bit_prefix[positions + 1] - tables.bit_prefix[positions]
+        stepped = tables.bit_prefix[positions + steps + 1] - tables.bit_prefix[positions + 1]
+        levels = np.where(steps > 0, stepped / np.maximum(steps, 1), held)
 
         if save:
-            self.lfsr = int(lfsrs[index + changes_cumsum[-1]])
-            self.clock = float(clock[-1] % 1.0)
+            self.lfsr = int(tables.lfsrs[(index + int(edges[-1])) % length])
+            self.clock = float(clocks[-1] % 1.0)
 
+        frame: np.ndarray = (2.0 * levels - 1.0).astype(np.float32)
         return frame
 
     @property
@@ -123,35 +172,23 @@ class LFSRTimer(Timer):
 
     @period.setter
     def period(self, value: int) -> None:
-        self._period = value
         self._clocks_per_sample = self.calculate_clocks_per_sample(value)
-        self._period = (NOISE_SHORT_PERIOD if self.short else NOISE_LONG_PERIOD) / self._clocks_per_sample
-        self._real_frequency = 0.5 * self.sample_rate / self._period
+        self._period = self.lfsr_period / self._clocks_per_sample
+        self._real_frequency = self.sample_rate / self._period
 
         if self.reset_phase:
             self.reset()
 
     def calculate_clocks_per_sample(self, period: int) -> float:
         apu_period = NOISE_PERIODS[period]
-        lfsr_clock_hz = 2.0 * APU_CLOCK / float(apu_period)
+        lfsr_clock_hz = APU_CLOCK / float(apu_period)
         return lfsr_clock_hz / float(self.sample_rate)
 
     def forward(self, lfsr: int) -> int:
-        bit_0 = lfsr & 1
-        bit_x = (lfsr >> (6 if self.short else 1)) & 1
-        feedback = bit_0 ^ bit_x
-        lfsr = (lfsr >> 1) | (feedback << 14)
-        lfsr &= MAX_LFSR
-        return lfsr
+        return step_lfsr(lfsr, self.short)
 
     def backward(self, lfsr: int) -> int:
-        msb = (lfsr >> 14) & 1
-        partial = (lfsr & 0x3FFF) << 1
-        bit_x = (partial >> (6 if self.short else 1)) & 1
-        bit_0 = msb ^ bit_x
-        lfsr = partial | bit_0
-        lfsr &= MAX_LFSR
-        return lfsr
+        return step_lfsr_back(lfsr, self.short)
 
     def reset(self) -> None:
         self.lfsr = 1
@@ -181,34 +218,40 @@ class LFSRTimer(Timer):
         self.lfsr = lfsr
         self.clock = clock
 
-    def precalculate_lfsr_tables(self, short: bool) -> LFSRTTables:
-        self.short = short
-        clocks_per_sample = self.calculate_clocks_per_sample(MAX_PERIOD)
-        repeats = int(np.ceil(clocks_per_sample * self.frame_length / self.lfsr_period)) * 2 + 1
+    def precalculate_lfsr_tables(self, short: bool) -> LFSRTables:
+        """Walks one feedback mode's cycle and builds the lookups :meth:`generate_frame` reads.
 
-        lfsrs = np.ones(MAX_LFSR, dtype=np.int16)
-        lfsr_to_index = -np.ones(MAX_LFSR + 1, dtype=np.int16)
+        Args:
+            short: Whether to walk the 93-step short-mode cycle.
+
+        Returns:
+            LFSRTables: The cycle's register values, their index lookup and the bit prefix sum.
+        """
+        length = cycle_length(short)
+        lfsrs = np.empty(length, dtype=np.int32)
+        lfsr_to_index = np.full(MAX_LFSR + 1, OFF_CYCLE, dtype=np.int32)
 
         lfsr = 1
-        for i in range(MAX_LFSR):
-            lfsr_to_index[lfsr] = lfsr_to_index[lfsr] if lfsr_to_index[lfsr] != -1 else i
+        for index in range(length):
+            lfsrs[index] = lfsr
+            lfsr_to_index[lfsr] = index
+            lfsr = step_lfsr(lfsr, short)
 
-            forward_lfsr = self.forward(lfsr)
-            if i == MAX_LFSR - 1:
-                break
+        repeats = 1 + int(np.ceil(self.maximum_steps_per_sample / length))
+        bits = np.tile(lfsrs & 1, repeats)
+        bit_prefix = np.concatenate([[0], np.cumsum(bits)]).astype(np.int32)
 
-            lfsrs[i + 1] = forward_lfsr
-            lfsr = forward_lfsr
-
-        lfsrs = np.tile(lfsrs, repeats)
-        cumsums = np.concatenate([[0], np.cumsum(lfsrs, dtype=np.int16)]) & 1
-
-        return LFSRTTables(
-            lfsr_to_index,
+        return LFSRTables(
             lfsrs=lfsrs,
-            cumsums=cumsums,
+            lfsr_to_index=lfsr_to_index,
+            bit_prefix=bit_prefix,
         )
 
     @property
+    def maximum_steps_per_sample(self) -> int:
+        """The most shift-register steps one output sample spans, at the fastest period."""
+        return int(np.ceil(self.calculate_clocks_per_sample(MAX_PERIOD))) + 1
+
+    @property
     def lfsr_period(self) -> int:
-        return MAX_LFSR_SHORT if self.short else MAX_LFSR
+        return cycle_length(self.short)

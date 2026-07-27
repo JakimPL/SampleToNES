@@ -12,6 +12,13 @@ order:
 sample:
   column: .sample_column
   divider: .sample_divider
+header:
+  background: .table_header
+  hovered: .white/0.25
+  active: .white/0.4
+muted:
+  background: .channel_muted
+  text: .text_disabled
 history:
   future: .history_future
   roles:

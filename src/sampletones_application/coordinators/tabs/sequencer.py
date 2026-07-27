@@ -28,6 +28,7 @@ from sampletones_application.logic.history.transaction import CoalesceKey
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
+from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
@@ -80,6 +81,9 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
@@ -100,7 +104,7 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import StringCallback
+from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
 
@@ -126,16 +130,20 @@ class SequencerTabCoordinator:
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
         on_edit_sample_requested: StringCallback,
+        on_sample_reconstruction_replaced: Callable[[str, Reconstruction], None],
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
+        on_channels_changed: VoidCallback,
     ) -> None:
         self._project_controller = project_controller
         self._session_manager = session_manager
         self._history = history
         self._original_audio_locator = original_audio_locator
         self._on_edit_sample_requested = on_edit_sample_requested
+        self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
+        self._on_channels_changed = on_channels_changed
         self._language_manager = language_manager
         self._dialogs = dialogs
 
@@ -254,13 +262,18 @@ class SequencerTabCoordinator:
             audio_device_manager,
             scheduling=layout.scheduling,
         )
+        self._sequencer_channels_logic: SequencerChannelsLogic = SequencerChannelsLogic()
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
             audio_device_manager,
             project_controller,
             session_manager,
             service=SongPlayerService(
                 audio_device_manager,
-                RowSynthesizer(project_controller, config_manager.config),
+                RowSynthesizer(
+                    project_controller,
+                    config_manager.config,
+                    active_channels=lambda: self._sequencer_channels_logic.active_channels,
+                ),
                 should_loop=lambda: session_manager.loop_song,
                 master_gain=lambda: session_manager.master_gain,
             ),
@@ -317,6 +330,19 @@ class SequencerTabCoordinator:
         self._wire_callbacks()
 
     def _wire_callbacks(self) -> None:
+        """Connects every panel and logic object this tab owns to the handler that serves it."""
+        self._wire_collapse_handlers()
+        self._wire_module_callbacks()
+        self._wire_grid_callbacks()
+        self._wire_channels_callbacks()
+        self._wire_order_callbacks()
+        self._wire_samples_callbacks()
+        self._wire_browser_callbacks()
+        self._wire_playback_callbacks()
+        self._wire_project_callbacks()
+        self._wire_history()
+
+    def _wire_collapse_handlers(self) -> None:
         for panel in (
             self._sequencer_order_panel,
             self._sequencer_grid_panel,
@@ -325,6 +351,8 @@ class SequencerTabCoordinator:
             self._sequencer_history_panel,
         ):
             panel.set_collapse_handler(self._on_card_collapse_changed)
+
+    def _wire_module_callbacks(self) -> None:
         self._sequencer_module_panel.on_nes_frequency = self._request_nes_frequency_change
         self._sequencer_module_panel.on_rows_per_pattern = self._undoable(
             HistoryAction.SET_ROWS_PER_PATTERN,
@@ -344,6 +372,8 @@ class SequencerTabCoordinator:
             detail=self._history_detail.value,
             coalesce=self._module_setting_key,
         )
+
+    def _wire_grid_callbacks(self) -> None:
         self._sequencer_grid_panel.on_clear_row = self._undoable(
             HistoryAction.CLEAR_ROW,
             self._on_clear_row,
@@ -385,6 +415,47 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
+    def _wire_channels_callbacks(self) -> None:
+        """Connects the tracker's column headers and the order table's row labels to the mute set
+        the song player reads.
+
+        Both tables name the same channels and switch the same set, so each panel's hooks reach the
+        channels logic directly and both show every change. Muting is a monitoring gesture, so these
+        hooks record no history entry.
+        """
+        self._sequencer_channels_logic.on_channels_changed = self._show_channels
+        for panel in (self._sequencer_grid_panel, self._sequencer_order_panel):
+            panel.on_channel_mute_toggled = self._sequencer_channels_logic.toggle
+            panel.on_channel_soloed = self._sequencer_channels_logic.solo
+            panel.on_channels_toggled = self._sequencer_channels_logic.toggle_all
+            panel.on_channels_muted = self._sequencer_channels_logic.mute_all
+            panel.on_channels_unmuted = self._sequencer_channels_logic.unmute_all
+
+    def _show_channels(self, view_model: SequencerChannelsViewModel) -> None:
+        """Shows the mute set in both tables and in the menu bar, so a channel reads the same
+        wherever it appears.
+
+        The menu bar sits above this tab and rebuilds its own state, so it is handed the change
+        as a signal and reads the mute set back through :attr:`channels`.
+        """
+        self._sequencer_grid_panel.update_channels(view_model)
+        self._sequencer_order_panel.update_channels(view_model)
+        self._on_channels_changed()
+
+    @property
+    def channels(self) -> SequencerChannelsViewModel:
+        """The mute set the tables show, for the menu bar that lists the same channels."""
+        return self._sequencer_channels_logic.build_channels()
+
+    def toggle_channel(self, generator: GeneratorName) -> None:
+        """Flips one channel between audible and silent, the menu's per-channel gesture."""
+        self._sequencer_channels_logic.toggle(generator)
+
+    def unmute_all_channels(self) -> None:
+        """Returns every channel to audible, the menu's whole-mix gesture."""
+        self._sequencer_channels_logic.unmute_all()
+
+    def _wire_order_callbacks(self) -> None:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
         self._sequencer_order_panel.on_frame_selected = self._on_order_frame_selected
         self._sequencer_order_panel.on_remove_requested = self._undoable(
@@ -425,6 +496,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_order_panel.on_cell_selected = self._on_order_cell_focused
 
+    def _wire_samples_callbacks(self) -> None:
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
         self._sequencer_samples_logic.on_autoplay_error = self._on_preview_error
@@ -448,9 +520,13 @@ class SequencerTabCoordinator:
             self._sequencer_samples_logic.duplicate_sample,
             detail=self._history_detail.duplicate_sample,
         )
+
+    def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
+        self._sequencer_browser_panel.on_replace_in_sequencer = self.replace_reconstruction
+        self._sequencer_browser_panel.replace_in_sequencer_label = self._replace_target_label
         self._sequencer_browser_panel.on_locate_original_audio = self._original_audio_locator.locate
         self._sequencer_browser_panel.on_refresh_tree = self._sequencer_browser_logic.refresh_tree
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
@@ -458,15 +534,16 @@ class SequencerTabCoordinator:
         self._sequencer_tree_logic.on_search_update_needed = self._sequencer_browser_panel.update_tree_visibility
         self._sequencer_tree_logic.on_autoplay_error = self._on_preview_error
 
+    def _wire_playback_callbacks(self) -> None:
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_view_changed = self._on_player_view_changed
         self._song_player_logic.on_error = self._on_player_error
 
+    def _wire_project_callbacks(self) -> None:
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
         self._project_controller.on_song_changed = self._on_song_changed
         self._project_controller.on_samples_changed = self._sequencer_samples_logic.push_samples
         self._project_controller.on_project_replaced = self._on_project_replaced
-        self._wire_history()
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists a card's collapsed state so it restores on the next launch."""
@@ -600,6 +677,16 @@ class SequencerTabCoordinator:
         return ()
 
     def _on_project_replaced(self) -> None:
+        """Realigns the tab with a replaced project, keeping the mute set across history navigation.
+
+        Undo, redo, and history jumps replace the project as well, and the history manager reports
+        itself restoring throughout, so the channels the user is listening through carry across
+        them. A new, opened, or closed document begins a fresh listening session instead, with
+        every channel audible.
+        """
+        if not self._history.is_restoring:
+            self._sequencer_channels_logic.reset()
+
         self._history.reset()
         self.refresh()
 
@@ -686,6 +773,7 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.refresh()
         self._sequencer_order_logic.refresh()
         self._sequencer_samples_logic.push_samples()
+        self._sequencer_channels_logic.push_channels()
         is_open = self._project_controller.is_open
         self._sequencer_module_panel.set_enabled(is_open)
         self._sequencer_grid_panel.set_enabled(is_open)
@@ -767,23 +855,58 @@ class SequencerTabCoordinator:
 
         self._add_reconstruction_with_frequency_check(reconstruction.model_copy(deep=True), name)
 
-    def _add_reconstruction_with_frequency_check(self, reconstruction: Reconstruction, name: str) -> None:
-        """Adds a loaded reconstruction, reconciling its NES frequency with the project's.
+    def _add_reconstruction_with_frequency_check(
+        self,
+        reconstruction: Reconstruction,
+        name: str,
+    ) -> None:
+        """Adds a loaded reconstruction once its NES frequency is settled against the project's.
 
-        A reconstruction is rendered at the frequency it was generated at, so importing one
-        recorded at a different rate plays back wrong. An empty project simply adopts the
-        incoming frequency; a project that already holds samples (which a frequency change would
-        re-time) confirms first, showing both rates.
+        An empty project adopts the incoming frequency, since the rate times nothing there yet; a
+        project that already holds samples confirms first, because the rate governs how all of them
+        play back.
+        """
+        self._reconcile_nes_frequency(
+            reconstruction,
+            lambda adopt_frequency: self._commit_add_reconstruction(
+                reconstruction,
+                name,
+                adopt_frequency=adopt_frequency,
+            ),
+            can_adopt_frequency=not self._project_controller.has_samples,
+        )
+
+    def _reconcile_nes_frequency(
+        self,
+        reconstruction: Reconstruction,
+        commit: Callable[[Optional[int]], None],
+        *,
+        can_adopt_frequency: bool,
+    ) -> None:
+        """Settles a reconstruction's NES frequency against the project's, then commits the gesture.
+
+        A reconstruction renders at the frequency it was generated at, so bringing one recorded at
+        another rate into the project plays it back wrong. Equal rates commit straight away. A
+        mismatch the project can absorb — because the rate times nothing that outlives the gesture —
+        adopts the incoming rate. Otherwise the user decides, seeing both rates, and confirming
+        keeps the project's rate for the samples already timed by it.
+
+        Args:
+            reconstruction: The reconstruction being brought into the project.
+            commit: Performs the gesture, receiving the frequency to adopt, or ``None`` to keep the
+                project's.
+            can_adopt_frequency: Whether adopting the incoming rate re-times only what this gesture
+                itself brings in, which settles a mismatch without asking.
         """
         reconstruction_frequency = reconstruction.config.nes_frequency
         project_frequency = self._sequencer_grid_logic.settings.nes_frequency
 
         if reconstruction_frequency == project_frequency:
-            self._commit_add_reconstruction(reconstruction, name, adopt_frequency=None)
+            commit(None)
             return
 
-        if not self._project_controller.has_samples:
-            self._commit_add_reconstruction(reconstruction, name, adopt_frequency=reconstruction_frequency)
+        if can_adopt_frequency:
+            commit(reconstruction_frequency)
             return
 
         self._dialogs.show_confirmation(
@@ -793,11 +916,7 @@ class SequencerTabCoordinator:
                 reconstruction=reconstruction_frequency,
                 project=project_frequency,
             ),
-            on_confirm=lambda: self._commit_add_reconstruction(
-                reconstruction,
-                name,
-                adopt_frequency=None,
-            ),
+            on_confirm=lambda: commit(None),
             ok_label=self._lbl_add_anyway,
         )
 
@@ -822,6 +941,72 @@ class SequencerTabCoordinator:
             self._sequencer_browser_logic.add_reconstruction(reconstruction, name)
 
         self._on_tab_switch(Tab.SEQUENCER)
+
+    def replace_reconstruction(self, filepath: Path) -> None:
+        """Substitutes the selected sample's reconstruction with a browser file's.
+
+        The sample keeps its id and position, so every pattern row referencing it sounds the
+        incoming audio while the tracker shows it where it was, and it takes the file's name the way
+        an import does. The target is whatever the samples panel has selected as the gesture starts,
+        which is also what named the menu item the user clicked.
+        """
+        selection = self._sequencer_samples_panel.selection
+        if selection is None:
+            return
+
+        try:
+            reconstruction = self._sequencer_browser_logic.load_reconstruction(filepath)
+        except (SampleToNESError, OSError) as exception:
+            logger.error_with_traceback(exception, f"Failed to load reconstruction from {filepath}")
+            self._dialogs.show_error(exception)
+            return
+
+        self._reconcile_nes_frequency(
+            reconstruction,
+            lambda adopt_frequency: self._commit_replace_reconstruction(
+                selection.sample_id,
+                reconstruction,
+                filepath.stem,
+                adopt_frequency=adopt_frequency,
+            ),
+            can_adopt_frequency=self._project_controller.sample_count == 1,
+        )
+
+    def _commit_replace_reconstruction(
+        self,
+        sample_id: str,
+        reconstruction: Reconstruction,
+        name: str,
+        *,
+        adopt_frequency: Optional[int],
+    ) -> None:
+        """Substitutes a sample's reconstruction as one undoable gesture, renaming it to the source.
+
+        The detail is composed while the sample still holds the outgoing reconstruction, so it reads
+        the name being replaced alongside the incoming one. The replacement is announced in the same
+        window, ahead of the substitution, because an editor holding the sample open recognises it by
+        the identity of the reconstruction it is about to give up. The frequency adoption, the rename,
+        and the substitution share a single history entry, so one undo restores the previous rate,
+        name, and audio together.
+        """
+        detail = self._history_detail.replace_sample(sample_id, name)
+        with self._history.transaction(
+            HistoryAction.REPLACE_SAMPLE,
+            detail=detail,
+        ):
+            if adopt_frequency is not None:
+                self._sequencer_grid_logic.set_nes_frequency(adopt_frequency)
+            self._sequencer_samples_logic.rename_sample(sample_id, name)
+            self._on_sample_reconstruction_replaced(sample_id, reconstruction)
+            self._sequencer_browser_logic.replace_reconstruction(sample_id, reconstruction)
+
+    def _replace_target_label(self) -> Optional[str]:
+        """The indexed label of the sample a browser replacement would overwrite, while one is selected."""
+        selection = self._sequencer_samples_panel.selection
+        if selection is None:
+            return None
+
+        return selection.label
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
         self._on_edit_sample_requested(sample_id)

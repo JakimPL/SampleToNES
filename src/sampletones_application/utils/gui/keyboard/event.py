@@ -2,28 +2,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import dearpygui.dearpygui as dpg
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    ModifierSet,
+    capture_modifiers,
+)
 
 
 @dataclass(frozen=True)
 class KeyEvent:
-    """A key press together with the modifier state captured at the moment it fired.
+    """A key press together with the modifiers held at the moment it fired.
 
-    The router snapshots the modifiers once per event, so every scope reads the same
-    ``ctrl``/``shift``/``alt`` state.
+    The router snapshots the modifiers once per event, so every scope reads the same set.
     """
 
     key: int
-    ctrl: bool
-    shift: bool
-    alt: bool
+    modifiers: ModifierSet
 
     @classmethod
     def capture(cls, key: int) -> KeyEvent:
-        """Builds an event for ``key`` with the modifier keys currently held."""
-        return cls(
-            key=key,
-            ctrl=dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl),
-            shift=dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift),
-            alt=dpg.is_key_down(dpg.mvKey_LAlt) or dpg.is_key_down(dpg.mvKey_RAlt),
-        )
+        """Builds an event for ``key`` with the modifiers currently held."""
+        return cls(key=key, modifiers=capture_modifiers())

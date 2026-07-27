@@ -13,7 +13,14 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.snapshot import HistoryEntry, snapshot_project
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.logic.sequencer.channels import ALL_CHANNELS, SequencerChannelsLogic
 from sampletones_application.paths import LANG_EN
+from sampletones_application.ui.panels.sequencer import channels as channels_module
+from sampletones_application.ui.panels.sequencer import grid as grid_module
+from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
+from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
+from sampletones_application.view_model.sequencer.samples import SampleSelection
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -519,6 +526,177 @@ class TestImportFrequencyCheck:
 
 
 @pytest.fixture
+def replace_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators the browser replacement touches.
+
+    Defaults to a two-sample project holding ``1A: bass`` selected, against a reconstruction at the
+    project's frequency (60 Hz); individual tests override. ``_on_tab_switch`` stays absent, so a
+    replacement reaching for it would fail the test — the browser already lives in this tab.
+    """
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
+    instance._history_detail = MagicMock()
+    instance._project_controller = MagicMock()
+    instance._project_controller.sample_count = 2
+    instance._sequencer_browser_logic = MagicMock()
+    instance._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
+    instance._sequencer_grid_logic = MagicMock()
+    instance._sequencer_grid_logic.settings.nes_frequency = 60
+    instance._sequencer_samples_logic = MagicMock()
+    instance._sequencer_samples_panel = MagicMock()
+    instance._sequencer_samples_panel.selection = SampleSelection(
+        sample_id="bass-id",
+        position=26,
+        name="bass",
+    )
+    instance._dialogs = MagicMock()
+    instance._on_sample_reconstruction_replaced = MagicMock()
+    instance._ttl_frequency_mismatch = "Different NES frequency"
+    instance._msg_frequency_mismatch = "recon {reconstruction} vs project {project}"
+    instance._lbl_add_anyway = "Add anyway"
+    return instance
+
+
+class TestReplaceReconstruction:
+    def test_absent_selection_replaces_nothing(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._sequencer_samples_panel.selection = None
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._sequencer_browser_logic.load_reconstruction.assert_not_called()
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
+
+    def test_failed_load_shows_error_and_replaces_nothing(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._sequencer_browser_logic.load_reconstruction.side_effect = InvalidReconstructionValuesError(
+            "invalid",
+            ValueError("inner"),
+        )
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._dialogs.show_error.assert_called_once()
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
+        replace_coordinator._sequencer_samples_logic.rename_sample.assert_not_called()
+        replace_coordinator._on_sample_reconstruction_replaced.assert_not_called()
+
+    def test_selected_sample_is_renamed_and_substituted(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        reconstruction = replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value
+
+        replace_coordinator.replace_reconstruction(Path("/reconstructions/kick_02.stn"))
+
+        replace_coordinator._sequencer_samples_logic.rename_sample.assert_called_once_with(
+            "bass-id",
+            "kick_02",
+        )
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_called_once_with(
+            "bass-id",
+            reconstruction,
+        )
+        replace_coordinator._dialogs.show_confirmation.assert_not_called()
+        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+
+    def test_rename_and_substitution_share_one_history_entry(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._history.transaction.assert_called_once_with(
+            HistoryAction.REPLACE_SAMPLE,
+            detail=replace_coordinator._history_detail.replace_sample.return_value,
+        )
+
+    def test_detail_reads_the_sample_before_it_is_substituted(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """The detail names the outgoing reconstruction, which the sample only holds until the swap."""
+        order = MagicMock()
+        order.attach_mock(replace_coordinator._history_detail.replace_sample, "detail")
+        order.attach_mock(replace_coordinator._sequencer_browser_logic.replace_reconstruction, "replace")
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        assert [call[0] for call in order.mock_calls] == ["detail", "replace"]
+        replace_coordinator._history_detail.replace_sample.assert_called_once_with("bass-id", "kick_02")
+
+    def test_replacement_is_announced_before_the_substitution(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """An editor holding the sample open identifies it by the reconstruction the swap replaces."""
+        reconstruction = replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value
+        order = MagicMock()
+        order.attach_mock(replace_coordinator._on_sample_reconstruction_replaced, "announce")
+        order.attach_mock(replace_coordinator._sequencer_browser_logic.replace_reconstruction, "replace")
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        assert [call[0] for call in order.mock_calls] == ["announce", "replace"]
+        replace_coordinator._on_sample_reconstruction_replaced.assert_called_once_with(
+            "bass-id",
+            reconstruction,
+        )
+
+    def test_sole_sample_adopts_the_reconstruction_frequency_silently(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._project_controller.sample_count = 1
+        replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(50)
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_called_once()
+        replace_coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_mismatch_beside_other_samples_confirms_before_replacing(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._dialogs.show_confirmation.assert_called_once()
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
+        replace_coordinator._on_sample_reconstruction_replaced.assert_not_called()
+
+        confirmation = replace_coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert confirmation["message"] == "recon 50 vs project 60"
+        confirmation["on_confirm"]()
+
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_called_once()
+        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+
+
+class TestReplaceTargetLabel:
+    def test_label_names_the_selected_sample(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        assert replace_coordinator._replace_target_label() == "1A: bass"
+
+    def test_label_is_absent_without_a_selection(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._sequencer_samples_panel.selection = None
+
+        assert replace_coordinator._replace_target_label() is None
+
+
+@pytest.fixture
 def history_coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the history collaborator wired."""
     instance = object.__new__(SequencerTabCoordinator)
@@ -533,6 +711,7 @@ def wired_history_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCo
     A real manager observes a real controller, and every project replacement —
     including the ones undo/redo drive — routes back through
     ``_on_project_replaced``, exactly as ``_wire_callbacks`` sets it up. The
+    channels logic is real too, since the handler decides its lifetime. The
     panel-refreshing ``refresh`` is stubbed since no GUI subtree exists here.
     """
     instance = object.__new__(SequencerTabCoordinator)
@@ -542,6 +721,8 @@ def wired_history_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCo
     controller.on_project_replaced = instance._on_project_replaced
     instance._project_controller = controller
     instance._history = history
+    instance._sequencer_channels_logic = SequencerChannelsLogic()
+    instance._sequencer_channels_logic.on_channels_changed = lambda _: None
     monkeypatch.setattr(instance, "refresh", MagicMock())
     controller.new()
     return instance
@@ -592,6 +773,319 @@ class TestHistoryResetWiring:
         assert len(coordinator._history.entries) == 3
         assert coordinator._history.can_redo is True
         assert controller.project.settings.tempo == 150
+
+
+class TestChannelMuteLifetime:
+    """The mute set spans history navigation and starts fresh on a document transition.
+
+    Both arrive as the controller's single ``on_project_replaced`` signal, so these pin the
+    distinction ``_on_project_replaced`` draws from ``HistoryManager.is_restoring``.
+    """
+
+    def test_undo_keeps_the_mute_set(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        channels = coordinator._sequencer_channels_logic
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        channels.toggle(GeneratorName.TRIANGLE)
+
+        coordinator.undo()
+
+        assert channels.active_channels == ALL_CHANNELS - {GeneratorName.TRIANGLE}
+
+    def test_redo_keeps_the_mute_set(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        channels = coordinator._sequencer_channels_logic
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        channels.toggle(GeneratorName.NOISE)
+        coordinator.undo()
+
+        coordinator.redo()
+
+        assert channels.active_channels == ALL_CHANNELS - {GeneratorName.NOISE}
+
+    def test_opening_a_project_restores_every_channel(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        channels = coordinator._sequencer_channels_logic
+        channels.solo(GeneratorName.TRIANGLE)
+
+        coordinator._project_controller.new()
+
+        assert channels.active_channels == ALL_CHANNELS
+
+    def test_closing_the_project_restores_every_channel(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        channels = coordinator._sequencer_channels_logic
+        channels.toggle(GeneratorName.PULSE1)
+
+        coordinator._project_controller.close()
+
+        assert channels.active_channels == ALL_CHANNELS
+
+
+@pytest.fixture
+def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
+    """A coordinator joining the real channels logic to a real grid panel and a real order panel.
+
+    Each panel's colour cues reach DearPyGui, which holds no context here, so the tables are
+    reported absent and a panel stops once it has recorded the mute set — which is what the
+    wiring is read for. The menu bar above the tab is a recorder, so a test can read whether it
+    was told. Modifiers are reported as held nowhere; a test that needs Ctrl says so.
+    """
+    monkeypatch.setattr(grid_module.dpg, "does_item_exist", lambda item: False)
+    monkeypatch.setattr(grid_module.dpg, "set_value", lambda item, value: None)
+    monkeypatch.setattr(channels_module, "capture_modifiers", lambda: NO_MODIFIERS)
+
+    language_manager = LanguageManager(LANG_EN)
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._on_channels_changed = MagicMock()
+    instance._sequencer_channels_logic = SequencerChannelsLogic()
+    instance._sequencer_grid_panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
+    instance._sequencer_grid_panel._current_channels = None
+    instance._sequencer_grid_panel._create_channel_switch(language_manager)
+    instance._sequencer_order_panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+    instance._sequencer_order_panel._current_channels = None
+    instance._sequencer_order_panel._create_channel_switch(language_manager)
+    instance._wire_channels_callbacks()
+    return instance
+
+
+class TestChannelHeaderWiring:
+    """A header click reaches the mute set, and the panel is told about it in the same gesture."""
+
+    def test_header_click_silences_that_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.TRIANGLE}
+        assert panel._is_muted(GeneratorName.TRIANGLE)
+
+    def test_a_second_click_returns_the_channel_to_the_mix(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+        assert not panel._is_muted(GeneratorName.TRIANGLE)
+
+    def test_ctrl_header_click_solos_that_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(channels_module, "capture_modifiers", lambda: CTRL)
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, GeneratorName.PULSE2)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset({GeneratorName.PULSE2})
+
+    def test_sample_header_click_silences_every_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, None)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
+        assert all(panel._is_muted(generator) for generator in GeneratorName.items())
+
+    def test_sample_header_click_restores_every_channel_from_full_silence(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+
+        panel._on_header_clicked(0, True, None)
+        panel._on_header_clicked(0, True, None)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+        assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
+
+    def test_the_menu_silences_every_channel_from_a_mixed_set(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        panel.call(panel.on_channels_muted)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
+        assert all(panel._is_muted(generator) for generator in GeneratorName.items())
+
+    def test_the_menu_restores_every_channel_from_a_mixed_set(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        panel.call(panel.on_channels_unmuted)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+        assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
+
+
+class TestChannelRowLabelWiring:
+    """The order table's row labels switch the same mute set, and both tables hear about it."""
+
+    def test_row_label_click_silences_that_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        order_panel._on_label_clicked(0, True, GeneratorName.NOISE)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.NOISE}
+        assert order_panel._is_muted(GeneratorName.NOISE)
+
+    def test_ctrl_row_label_click_solos_that_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(channels_module, "capture_modifiers", lambda: CTRL)
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        order_panel._on_label_clicked(0, True, GeneratorName.PULSE1)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset({GeneratorName.PULSE1})
+
+    def test_master_row_label_click_silences_every_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        order_panel._on_label_clicked(0, True, None)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
+
+    def test_a_tracker_click_reaches_the_order_table(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        grid_panel = channels_coordinator._sequencer_grid_panel
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        grid_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        assert order_panel._is_muted(GeneratorName.TRIANGLE)
+
+    def test_an_order_click_reaches_the_tracker(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        grid_panel = channels_coordinator._sequencer_grid_panel
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        order_panel._on_label_clicked(0, True, GeneratorName.PULSE2)
+
+        assert grid_panel._is_muted(GeneratorName.PULSE2)
+
+    def test_the_order_menu_silences_every_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        order_panel = channels_coordinator._sequencer_order_panel
+        order_panel._on_label_clicked(0, True, GeneratorName.TRIANGLE)
+
+        order_panel.call(order_panel.on_channels_muted)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
+
+    def test_the_order_menu_restores_every_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        order_panel = channels_coordinator._sequencer_order_panel
+        order_panel._on_label_clicked(0, True, GeneratorName.TRIANGLE)
+
+        order_panel.call(order_panel.on_channels_unmuted)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+
+
+class TestChannelMenuWiring:
+    """The Playback menu switches the same mute set, and every change reaches the menu bar."""
+
+    def test_the_menu_reads_the_mute_set_back(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator._sequencer_channels_logic.toggle(GeneratorName.NOISE)
+
+        assert channels_coordinator.channels.muted == frozenset({GeneratorName.NOISE})
+
+    def test_toggling_a_channel_silences_it(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.PULSE1}
+
+    def test_toggling_a_channel_twice_returns_it_to_the_mix(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
+        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+
+    def test_the_menu_restores_every_channel_from_a_solo(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator._sequencer_channels_logic.solo(GeneratorName.TRIANGLE)
+
+        channels_coordinator.unmute_all_channels()
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+
+    def test_a_menu_toggle_shows_in_both_tables(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator.toggle_channel(GeneratorName.TRIANGLE)
+
+        assert channels_coordinator._sequencer_grid_panel._is_muted(GeneratorName.TRIANGLE)
+        assert channels_coordinator._sequencer_order_panel._is_muted(GeneratorName.TRIANGLE)
+
+    def test_a_table_click_tells_the_menu_bar(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator._sequencer_grid_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        channels_coordinator._on_channels_changed.assert_called_once_with()
 
 
 class TestHistoryDelegation:

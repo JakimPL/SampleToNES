@@ -9,11 +9,12 @@ from sampletones_application.ui.panels.sequencer.input.state import TrackerInput
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.order_input import OrderCursor, OrderInputState
 from sampletones_application.utils.gui.keyboard import KeyEvent
+from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 
 
 def _escape() -> KeyEvent:
-    return KeyEvent(key=dpg.mvKey_Escape, ctrl=False, shift=False, alt=False)
+    return KeyEvent(key=dpg.mvKey_Escape, modifiers=NO_MODIFIERS)
 
 
 class TestGridEscapeYieldsToGlobalStop:

@@ -42,6 +42,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.logic.project.title.compose import window_title
 from sampletones_application.logic.project.title.document import (
     ReconstructionTitlePart,
     document_title,
@@ -127,6 +128,7 @@ from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
@@ -363,8 +365,10 @@ class Application:
             dialogs=self.dialogs,
             status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
+            on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
+            on_channels_changed=self._update_menu,
         )
 
         self._playback_router = PlaybackRouter(
@@ -492,6 +496,8 @@ class Application:
             toggle_autoplay=self._toggle_autoplay,
             toggle_follow_playback=self._toggle_follow_playback,
             toggle_loop_song=self._toggle_loop_song,
+            toggle_channel=self._sequencer_tab.toggle_channel,
+            unmute_all_channels=self._sequencer_tab.unmute_all_channels,
             audio_settings=self._open_audio_settings,
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_fullscreen=self._shell.toggle_fullscreen,
@@ -563,6 +569,7 @@ class Application:
             autoplay=self.session_manager.autoplay,
             follow_playback=self.session_manager.follow_playback,
             loop_song=self.session_manager.loop_song,
+            channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )
@@ -591,6 +598,7 @@ class Application:
             autoplay=self.session_manager.autoplay,
             follow_playback=self.session_manager.follow_playback,
             loop_song=self.session_manager.loop_song,
+            channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )
@@ -780,6 +788,28 @@ class Application:
             sample.reconstruction,
             name=sample.name,
         )
+
+    def _rebind_replaced_sample(
+        self,
+        sample_id: str,
+        reconstruction: Reconstruction,
+    ) -> None:
+        """Points the open Reconstructions-tab document at the reconstruction replacing the one it edits.
+
+        The editor and its owning sample share one reconstruction object, so a sample whose audio is
+        substituted takes its editor along. This runs while the sample still holds the outgoing
+        reconstruction, which is what identifies the open document as belonging to it.
+
+        Args:
+            sample_id: The sample receiving a new reconstruction.
+            reconstruction: The reconstruction the sample is about to hold.
+        """
+        sample = self.project_manager.current.sample(sample_id)
+        if sample is None or sample.reconstruction is not self.reconstruction_manager.reconstruction:
+            return
+
+        self.reconstruction_manager.apply_regenerated(reconstruction)
+        self._reconstructions_tab.update_reconstruction()
 
     def _regenerate_instrument(
         self,
@@ -1063,21 +1093,19 @@ class Application:
             TextType.LABEL,
             DialogElements.UNTITLED,
         ]
-        composed = document_title(
+        document = document_title(
             self.project_manager.session,
             self._reconstruction_title_part(),
             untitled=untitled,
             project_open=self.project_manager.is_open,
         )
-        self._viewport_manager.update_title(
-            self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.MAIN_WINDOW,
-            ],
-            composed,
-        )
+        application_name = self.language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.MAIN_WINDOW,
+        ]
+        self._viewport_manager.update_title(window_title(application_name, document))
 
     def _sync_reconstruction_ownership(self) -> None:
         """Reflects sequencer ownership in the open reconstruction view.

@@ -225,6 +225,12 @@ class GUITreePanel(GUIPanel, ABC):
             TextType.LABEL,
             ContextElements.ADD_TO_SEQUENCER,
         ]
+        self._tpl_ctx_replace_sample = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.TEMPLATE,
+            ContextElements.REPLACE_SAMPLE,
+        ]
         self._lbl_ctx_locate_audio = language_manager[
             Page.GLOBAL,
             Panel.CONTEXT,
@@ -288,6 +294,8 @@ class GUITreePanel(GUIPanel, ABC):
 
         self.on_add_to_sequencer: Optional[PathCallback] = None
         self.can_add_to_sequencer: Optional[Callable[[], bool]] = None
+        self.on_replace_in_sequencer: Optional[PathCallback] = None
+        self.replace_in_sequencer_label: Optional[Callable[[], Optional[str]]] = None
         self.on_locate_original_audio: Optional[PathCallback] = None
 
         super().__init__(
@@ -726,12 +734,31 @@ class GUITreePanel(GUIPanel, ABC):
         )
 
     def _add_context_menu_sequencer_items(self, node: FileSystemNode) -> None:
+        """Add the send-to-sequencer item, live while its host reports the sequencer accepts one."""
         dpg.add_separator()
         dpg.add_menu_item(
             label=self._lbl_ctx_add_to_sequencer,
             callback=self._on_add_to_sequencer,
             user_data=node,
-            enabled=self.call(self.can_add_to_sequencer),
+            enabled=self.query(self.can_add_to_sequencer, default=False),
+        )
+
+    def _add_context_menu_replace_item(self, node: FileSystemNode) -> None:
+        """Add the replace-in-sequencer item, naming the sample this file would overwrite.
+
+        The target is whichever sample the sequencer has selected, so the item is present while a
+        selection names one and its label is read fresh on each right-click. Carrying no separator
+        groups it with the add item a caller places above it, since both push this file into the
+        sequencer.
+        """
+        target = self.query(self.replace_in_sequencer_label, default=None)
+        if target is None:
+            return
+
+        dpg.add_menu_item(
+            label=self._tpl_ctx_replace_sample.format(sample=target),
+            callback=self._on_replace_in_sequencer,
+            user_data=node,
         )
 
     def _add_context_menu_locate_audio_item(self, node: FileSystemNode) -> None:
@@ -762,6 +789,12 @@ class GUITreePanel(GUIPanel, ABC):
             return
 
         self.call(self.on_add_to_sequencer, user_data.filepath)
+
+    def _on_replace_in_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
+            return
+
+        self.call(self.on_replace_in_sequencer, user_data.filepath)
 
     def _on_search_changed(self, sender: Sender, query: str) -> None:
         if query:

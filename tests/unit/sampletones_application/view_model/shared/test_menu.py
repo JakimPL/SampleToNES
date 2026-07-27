@@ -2,7 +2,10 @@ from dataclasses import dataclass
 
 import pytest
 
+from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
+
+EVERY_CHANNEL_AUDIBLE = SequencerChannelsViewModel(muted=frozenset())
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -73,6 +76,7 @@ class TestUndoRedoEnablement:
             autoplay=False,
             follow_playback=False,
             loop_song=False,
+            channels=EVERY_CHANNEL_AUDIBLE,
             fullscreen=False,
             advanced_settings=False,
         )
@@ -108,6 +112,7 @@ class TestSaveEnablementIndependentOfLoaded:
             autoplay=False,
             follow_playback=False,
             loop_song=False,
+            channels=EVERY_CHANNEL_AUDIBLE,
             fullscreen=False,
             advanced_settings=False,
         )

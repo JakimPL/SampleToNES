@@ -26,6 +26,8 @@ class SequencerGridElements(AbstractElement):
     COLUMN_PULSE_2 = "column_pulse_2"
     COLUMN_TRIANGLE = "column_triangle"
     COLUMN_NOISE = "column_noise"
+    HEADER_CHANNEL = "header_channel"
+    HEADER_SAMPLE = "header_sample"
     CONTEXT_PLAY = "context_play"
     CONTEXT_PLAY_FROM_FRAME = "context_play_from_frame"
     CONTEXT_NOTE_OFF = "context_note_off"
@@ -42,6 +44,12 @@ class SequencerGridElements(AbstractElement):
     CONTEXT_VOLUME_DOWN = "context_volume_down"
     CONTEXT_VOLUME_UP_COARSE = "context_volume_up_coarse"
     CONTEXT_VOLUME_DOWN_COARSE = "context_volume_down_coarse"
+    CONTEXT_MUTE = "context_mute"
+    CONTEXT_UNMUTE = "context_unmute"
+    CONTEXT_SOLO = "context_solo"
+    CONTEXT_UNSOLO = "context_unsolo"
+    CONTEXT_MUTE_ALL = "context_mute_all"
+    CONTEXT_UNMUTE_ALL = "context_unmute_all"
 
 
 class SequencerOrderElements(AbstractElement):
@@ -51,6 +59,8 @@ class SequencerOrderElements(AbstractElement):
     ROW_PULSE_2 = "row_pulse_2"
     ROW_TRIANGLE = "row_triangle"
     ROW_NOISE = "row_noise"
+    LABEL_CHANNEL = "label_channel"
+    LABEL_MASTER = "label_master"
     CONTEXT_PLAY = "context_play"
     CONTEXT_DUPLICATE = "context_duplicate"
     CONTEXT_INSERT = "context_insert"
@@ -60,6 +70,12 @@ class SequencerOrderElements(AbstractElement):
     CONTEXT_MOVE_RIGHT = "context_move_right"
     CONTEXT_MOVE_START = "context_move_start"
     CONTEXT_MOVE_END = "context_move_end"
+    CONTEXT_MUTE = "context_mute"
+    CONTEXT_UNMUTE = "context_unmute"
+    CONTEXT_SOLO = "context_solo"
+    CONTEXT_UNSOLO = "context_unsolo"
+    CONTEXT_MUTE_ALL = "context_mute_all"
+    CONTEXT_UNMUTE_ALL = "context_unmute_all"
 
 
 class SequencerInstrumentsElements(AbstractElement):
@@ -106,6 +122,7 @@ class SequencerHistoryActionElements(AbstractElement):
     SET_ORDER_ENTRY = "set_order_entry"
     ADD_SAMPLE = "add_sample"
     REMOVE_SAMPLE = "remove_sample"
+    REPLACE_SAMPLE = "replace_sample"
     RENAME_SAMPLE = "rename_sample"
     MOVE_SAMPLE = "move_sample"
     DUPLICATE_SAMPLE = "duplicate_sample"

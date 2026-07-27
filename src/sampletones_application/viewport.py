@@ -68,11 +68,9 @@ class ViewportManager:
         assert color is not None, "Background color is not defined in the main theme"
         dpg.set_viewport_clear_color(list(color))
 
-    def update_title(self, app_name: str, document: str) -> None:
-        if document:
-            dpg.set_viewport_title(f"{app_name} — {document}")
-        else:
-            dpg.set_viewport_title(app_name)
+    def update_title(self, title: str) -> None:
+        """Shows an already composed title on the window, keeping title wording with its owner."""
+        dpg.set_viewport_title(title)
 
     def apply_fullscreen_state(self) -> None:
         """Enters fullscreen once the viewport is live when the session requests it.

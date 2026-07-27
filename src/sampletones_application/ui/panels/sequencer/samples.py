@@ -32,9 +32,11 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
+    SampleSelection,
     SequencerSamplesViewModel,
 )
 from sampletones_core.utils.display import display_id, display_sample_label
@@ -312,6 +314,27 @@ class GUISequencerSamplesPanel(GUIPanel):
         dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
         self.call(self.on_sample_selected, sample_id)
 
+    @property
+    def selection(self) -> Optional[SampleSelection]:
+        """The selected sample, or ``None`` while the panel holds no selection.
+
+        Derived from the highlighted row and the cached entries on each read, so it reports
+        whatever the table currently shows. Lets an operation hosted by another panel of the tab
+        address the selection without keeping a copy of it.
+        """
+        if self._selected_sample_id is None or self._selected_row is None:
+            return None
+
+        entry = self._entry_for(self._selected_sample_id)
+        if entry is None:
+            return None
+
+        return SampleSelection(
+            sample_id=entry.sample_id,
+            position=self._selected_row,
+            name=entry.name,
+        )
+
     def deselect(self) -> None:
         """Drops the sample selection so the panel stops consuming keystrokes.
 
@@ -352,10 +375,10 @@ class GUISequencerSamplesPanel(GUIPanel):
         if sample_id is None:
             return False
 
-        if event.ctrl:
+        if Modifier.CTRL in event.modifiers:
             return False
 
-        if event.alt:
+        if Modifier.ALT in event.modifiers:
             return self._handle_alt_move(event.key)
 
         if event.key == dpg.mvKey_Delete:

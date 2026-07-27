@@ -308,6 +308,12 @@ TAG_GLOBAL_THEME_INPUT_INVALID = TagName(
     Widget.THEME,
     "input_invalid",
 )
+TAG_GLOBAL_THEME_INPUT_WARNING = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "input_warning",
+)
 TAG_GLOBAL_THEME_MENU_FPS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -578,6 +584,18 @@ TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG = TagName(
     Widget.MENU,
     "item_playback_loop_song",
 )
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_channels",
+)
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_unmute_all_channels",
+)
 TAG_GLOBAL_TEXT_MENU_FPS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -627,6 +645,7 @@ TAG_GLOBAL_TAB_SEQUENCER = TagName(
     "sequencer",
 )
 
+PRE_GLOBAL_MENU_ITEM_PLAYBACK_CHANNEL = f"{TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS}{TAG_SEPARATOR}"
 SUF_BUTTON = f"{TAG_SEPARATOR}button"
 SUF_BUTTONS = f"{TAG_SEPARATOR}buttons"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}{TAG_SEPARATOR}copy"
@@ -643,6 +662,7 @@ SUF_HANDLER_REGISTRY = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}registry"
 SUF_HANDLER_STATUS = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}status"
 SUF_HANDLER_NODE = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}node"
 SUF_HANDLER_DETAIL_TOOLTIP = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}detail_tooltip"
+SUF_HANDLER_HEADER = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}header"
 SUF_LABEL = f"{TAG_SEPARATOR}label"
 SUF_PATH = f"{TAG_SEPARATOR}path"
 SUF_TEXT = f"{TAG_SEPARATOR}text"

@@ -16,6 +16,7 @@ class SequenceKind(IntEnum):
 
 SEQUENCE_COUNT_2A03: Final[int] = 5
 MAX_SEQUENCES_PER_TYPE: Final[int] = 128
+MAX_SEQUENCE_ITEMS: Final[int] = 252
 
 # Sequence framing
 NO_LOOP_POINT: Final[int] = -1

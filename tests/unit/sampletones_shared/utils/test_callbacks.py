@@ -199,6 +199,49 @@ class TestCall(BaseTestSuite):
         mock_callback.assert_called_once_with(1, 2, key="value")
 
 
+class TestQuery:
+    def test_wired_hook_answers(self) -> None:
+        instance = TestableCallbackClass()
+        instance.on_data = lambda: "answer"
+
+        assert instance.query(instance.on_data, default="fallback") == "answer"
+
+    def test_unset_hook_reports_the_default(self) -> None:
+        instance = TestableCallbackClass()
+
+        assert instance.query(instance.on_data, default=False) is False
+
+    def test_unset_hook_logs_a_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        instance = TestableCallbackClass()
+
+        instance.query(instance.on_data, default=None)
+
+        assert "No callback for TestableCallbackClass to query" in caplog.text
+
+    def test_answer_of_none_is_reported_as_given(self) -> None:
+        """A hook answering ``None`` is wired, so its answer stands rather than the default."""
+        instance = TestableCallbackClass()
+        instance.on_data = lambda: None
+
+        assert instance.query(instance.on_data, default="fallback") is None
+
+    def test_arguments_reach_the_hook(self) -> None:
+        instance = TestableCallbackClass()
+        instance.on_data = MagicMock(return_value=7)
+
+        result = instance.query(instance.on_data, 1, default=0, key="value")
+
+        assert result == 7
+        instance.on_data.assert_called_once_with(1, key="value")
+
+    def test_non_callable_hook_raises(self) -> None:
+        instance = TestableCallbackClass()
+        instance.on_data = 42
+
+        with pytest.raises(TypeError, match="not callable"):
+            instance.query(instance.on_data, default=0)
+
+
 class TestSetCallbacks(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):

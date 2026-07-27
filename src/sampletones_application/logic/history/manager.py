@@ -71,6 +71,18 @@ class HistoryManager(CallbackMixin):
     def can_redo(self) -> bool:
         return self._cursor < len(self._entries) - 1
 
+    @property
+    def is_restoring(self) -> bool:
+        """Whether an undo, redo, or jump is reinstalling a snapshot right now.
+
+        Every project transition reaches its handlers through the controller's single
+        ``on_project_replaced`` signal, so a handler that keeps transient session state — a
+        listening mute set, an acknowledged prompt — reads this to recognise history
+        navigation and carry that state across it, while a new, opened, or closed document
+        starts it fresh.
+        """
+        return self._restoring
+
     def reset(self) -> None:
         """Aligns the stack with the project lifecycle.
 

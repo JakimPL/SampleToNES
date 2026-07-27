@@ -6,6 +6,7 @@ from sampletones_application.utils.gui.dialog_navigation.ring import FocusRing
 from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -62,7 +63,7 @@ class DialogKeyboardNavigator:
 
         match event.key:
             case dpg.mvKey_Tab:
-                self._ring.cycle(-1 if event.shift else 1)
+                self._ring.cycle(-1 if Modifier.SHIFT in event.modifiers else 1)
             case dpg.mvKey_Return:
                 self._ring.activate_focused()
             case dpg.mvKey_Escape:

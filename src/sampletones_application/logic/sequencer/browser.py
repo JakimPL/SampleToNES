@@ -37,10 +37,26 @@ class SequencerBrowserLogic(CallbackMixin):
         """
         return Reconstruction.load(path)
 
-    def add_reconstruction(self, reconstruction: Reconstruction, name: str) -> Sample:
+    def add_reconstruction(
+        self,
+        reconstruction: Reconstruction,
+        name: str,
+    ) -> Sample:
         """Adds an already-loaded reconstruction as a sample.
 
         The sample embeds the reconstruction object and can be renamed afterwards
         from the samples panel.
         """
         return self._controller.add_sample(reconstruction, name=name)
+
+    def replace_reconstruction(
+        self,
+        sample_id: str,
+        reconstruction: Reconstruction,
+    ) -> None:
+        """Substitutes an existing sample's reconstruction with an already-loaded one.
+
+        The sample keeps its identity, so the patterns referencing it sound the new
+        reconstruction while their rows stay as they were.
+        """
+        self._controller.replace_sample_reconstruction(sample_id, reconstruction)

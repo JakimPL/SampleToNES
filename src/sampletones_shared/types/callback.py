@@ -7,3 +7,4 @@ PathCallback = Callable[[Path], None]
 StringCallback = Callable[[str], None]
 MessageCallback = Callable[..., str]
 CallbackT = TypeVar("CallbackT", bound=Callback)
+QueryT = TypeVar("QueryT")

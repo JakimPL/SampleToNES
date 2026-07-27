@@ -24,6 +24,7 @@ class HistoryAction(StrEnum):
     SET_ORDER_ENTRY = "set_order_entry"
     ADD_SAMPLE = "add_sample"
     REMOVE_SAMPLE = "remove_sample"
+    REPLACE_SAMPLE = "replace_sample"
     RENAME_SAMPLE = "rename_sample"
     MOVE_SAMPLE = "move_sample"
     DUPLICATE_SAMPLE = "duplicate_sample"

@@ -146,25 +146,46 @@ sequence, so its envelopes repeat from the start while the note is held; a one-s
 instrument leaves every loop point at `-1`. A sample's `loop` flag drives this when
 the sample is exported into a module.
 
+**Equal lengths.** FamiTracker advances each sequence on its own per-tick counter, so
+every populated sequence of an instrument carries the same item count and the
+dimensions stay in step. The volume envelope arrives one item longer than the others,
+carrying a trailing zero that releases the note. A looping instrument therefore keeps
+the shortest length, dropping that trailing item so the loop sustains; a one-shot
+keeps the longest, each shorter dimension holding its final value through the release
+tick. That shared length stays within the 252 items a FamiTracker sequence holds, so a
+reconstruction longer than 252 frames — 8.4 s at the default 30 fps — exports its opening
+252 frames and logs the shortening. The instruments panel colours a sequence input warning
+orange once it passes that length, so the limit is visible before an export.
+
 **How _SampleToNES_ fills an instrument.** Each generator slice of a sample's
 reconstruction becomes one instrument, so a sample yields one to four instruments.
-The arpeggio sequence is the reconstruction's pitch contour expressed as
-`pitch − initial_pitch`; triggering the instrument at the note `initial_pitch`
-replays the original contour. Volume, duty (or noise mode) and any pitch sequences
-carry across directly. The DPCM key-assignment table is empty by design.
+The arpeggio sequence carries the reconstruction's pitch contour as signed offsets,
+and triggering the instrument at `initial_pitch` replays that contour. Volume, duty
+(or noise mode) and any pitch sequences carry across directly. The DPCM
+key-assignment table is empty by design.
+
+For the pitched channels, `center_pitches` picks the offset origin: it takes the
+midpoint of the contour's `(lowest, highest)` range, reports that pitch as
+`initial_pitch`, and stores each frame as `pitch − initial_pitch`. The offsets
+straddle zero and stay compact around one note, and the pattern cell holds the
+contour's midpoint — a rising contour prints its middle note and opens below it. The
+noise channel measures its offsets from the first sounding period instead, wrapped
+into the 16 available periods.
 
 ## C. FamiTracker capacity limits
 
 FamiTracker bounds several quantities that the _SampleToNES_ `Project` currently
-leaves looser. The exporter guards these limits and raises when a project exceeds
-them, so it never writes a corrupt file. Enforcing them on the domain model — so the
-editor prevents reaching an unexportable state — is planned as a follow-up phase; this
-table is that checklist.
+leaves looser. The exporter guards these limits, so every file it writes loads: it
+raises on a project structure FamiTracker has no room for, and shortens an envelope
+that outruns a sequence. Enforcing them on the domain model — so the editor prevents
+reaching an unexportable state — is planned as a follow-up phase; this table is that
+checklist.
 
 | Quantity | FamiTracker limit | Project bound today | Exporter behaviour |
 | --- | --- | --- | --- |
 | Instruments | 64 total | unbounded (1–4 per sample, so ≈16–64 samples) | raises when the distinct slices exceed 64 |
 | Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
+| Items per sequence | 252 | one item per reconstruction frame, unbounded | keeps the opening 252 items and logs a warning |
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
 | Order frames | 128 | unbounded | raises when the order exceeds 128 frames |
 | Pattern length (rows) | 256 | 1–256 (`rows_per_pattern`) | matches; no guard needed |

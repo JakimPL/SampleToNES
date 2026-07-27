@@ -210,6 +210,18 @@ class TestSampleDetails:
             ("Bass", HistoryDetailRole.NAME),
         ]
 
+    def test_replace_sample_shows_position_and_both_names(self) -> None:
+        controller = _controller()
+        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="Bass")
+        formatter = _formatter(controller)
+
+        assert _pairs(formatter.replace_sample(sample.id, "Kick")) == [
+            ("00:", HistoryDetailRole.SAMPLE),
+            ("Bass", HistoryDetailRole.NAME),
+            (">", HistoryDetailRole.SEPARATOR),
+            ("Kick", HistoryDetailRole.NAME),
+        ]
+
     def test_rename_sample_shows_old_and_new(self) -> None:
         formatter = _formatter(_controller())
 

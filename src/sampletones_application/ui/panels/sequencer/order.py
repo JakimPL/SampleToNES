@@ -7,7 +7,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
-from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.general import SUF_HANDLER_HEADER, SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_ORDER_BUTTON_PAIR,
     TAG_SEQUENCER_ORDER_PANEL,
@@ -29,6 +29,11 @@ from sampletones_application.ui.elements.plus_minus_buttons import (
 )
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
+from sampletones_application.ui.panels.sequencer.channels import (
+    ChannelMenuLabels,
+    ChannelSwitch,
+    channel_tooltip,
+)
 from sampletones_application.ui.panels.sequencer.columns import channel_color
 from sampletones_application.ui.panels.sequencer.order_input import (
     INDEX_DIGITS,
@@ -36,7 +41,10 @@ from sampletones_application.ui.panels.sequencer.order_input import (
     OrderCursor,
     OrderInputState,
 )
-from sampletones_application.ui.themes.inline import create_selectable_text_theme
+from sampletones_application.ui.themes.inline import (
+    create_header_selectable_theme,
+    create_selectable_text_theme,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.keyboard import (
@@ -44,8 +52,13 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, Modifier
+from sampletones_application.utils.gui.keyboard.modifiers import ALT, CTRL, SHIFT, Modifier
+from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
+from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.order import (
     SequencerOrderGridViewModel,
@@ -53,7 +66,7 @@ from sampletones_application.view_model.sequencer.order import (
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.constants.symbols import MINUS, PLUS
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.color import with_alpha_fraction
 
@@ -65,6 +78,8 @@ OnFrameActionCallback = Callable[[int], None]
 OnMoveCallback = Callable[[int, int], None]
 OnSetOrderEntryCallback = Callable[[GeneratorName, int, Optional[int]], None]
 OnSetMasterEntryCallback = Callable[[int, Optional[int]], None]
+OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
+OnChannelSoloedCallback = Callable[[GeneratorName], None]
 
 MASTER_TABLE_ROW: Final[int] = 0
 DIVIDER_TABLE_ROW: Final[int] = 1
@@ -104,7 +119,13 @@ class GUISequencerOrderPanel(GUIPanel):
         self._current_position: Optional[int] = None
         self._playing_position: Optional[int] = None
         self._cell_handler_tag = f"{TAG_SEQUENCER_ORDER_TABLE}{SUF_HANDLER_REGISTRY}"
+        self._label_handler_tag = f"{TAG_SEQUENCER_ORDER_TABLE}{SUF_HANDLER_HEADER}"
+        self._label_rows: Dict[Sender, Optional[GeneratorName]] = {}
         self._entry_theme: int = 0
+        self._muted_entry_theme: int = 0
+        self._label_theme: int = 0
+        self._muted_label_theme: int = 0
+        self._current_channels: Optional[SequencerChannelsViewModel] = None
         self._table_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_ORDER)
 
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
@@ -117,73 +138,19 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_set_order_entry: Optional[OnSetOrderEntryCallback] = None
         self.on_set_master_entry: Optional[OnSetMasterEntryCallback] = None
         self.on_cell_selected: Optional[VoidCallback] = None
+        self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
+        self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
+        self.on_channels_toggled: Optional[VoidCallback] = None
+        self.on_channels_muted: Optional[VoidCallback] = None
+        self.on_channels_unmuted: Optional[VoidCallback] = None
 
-        self._lbl_order = language_manager[
-            Page.SEQUENCER,
-            Panel.ORDER,
-            TextType.LABEL,
-            SequencerOrderElements.ORDER_TEXT,
-        ]
-        self._row_labels: Dict[Optional[GeneratorName], str] = {
-            None: language_manager[
-                Page.SEQUENCER,
-                Panel.ORDER,
-                TextType.LABEL,
-                SequencerOrderElements.ROW_MASTER,
-            ],
-            GeneratorName.PULSE1: language_manager[
-                Page.SEQUENCER,
-                Panel.ORDER,
-                TextType.LABEL,
-                SequencerOrderElements.ROW_PULSE_1,
-            ],
-            GeneratorName.PULSE2: language_manager[
-                Page.SEQUENCER,
-                Panel.ORDER,
-                TextType.LABEL,
-                SequencerOrderElements.ROW_PULSE_2,
-            ],
-            GeneratorName.TRIANGLE: language_manager[
-                Page.SEQUENCER,
-                Panel.ORDER,
-                TextType.LABEL,
-                SequencerOrderElements.ROW_TRIANGLE,
-            ],
-            GeneratorName.NOISE: language_manager[
-                Page.SEQUENCER,
-                Panel.ORDER,
-                TextType.LABEL,
-                SequencerOrderElements.ROW_NOISE,
-            ],
-        }
+        self._lbl_order = self._label(language_manager, SequencerOrderElements.ORDER_TEXT)
+        self._load_row_labels(language_manager)
+        self._load_context_labels(language_manager)
+        self._load_label_tooltips(language_manager)
+        self._create_channel_switch(language_manager)
 
-        def _context_label(element: SequencerOrderElements) -> str:
-            return language_manager[
-                Page.SEQUENCER,
-                Panel.ORDER,
-                TextType.LABEL,
-                element,
-            ]
-
-        self._lbl_context_play = _context_label(SequencerOrderElements.CONTEXT_PLAY)
-        self._lbl_context_duplicate = _context_label(SequencerOrderElements.CONTEXT_DUPLICATE)
-        self._lbl_context_insert = _context_label(SequencerOrderElements.CONTEXT_INSERT)
-        self._lbl_context_clear = _context_label(SequencerOrderElements.CONTEXT_CLEAR)
-        self._lbl_context_remove = _context_label(SequencerOrderElements.CONTEXT_REMOVE)
-        self._lbl_context_move_left = _context_label(SequencerOrderElements.CONTEXT_MOVE_LEFT)
-        self._lbl_context_move_right = _context_label(SequencerOrderElements.CONTEXT_MOVE_RIGHT)
-        self._lbl_context_move_start = _context_label(SequencerOrderElements.CONTEXT_MOVE_START)
-        self._lbl_context_move_end = _context_label(SequencerOrderElements.CONTEXT_MOVE_END)
-
-        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)).get_display_string()
-        self._sc_move_left = Shortcut(dpg.mvKey_Left, (Modifier.ALT,)).get_display_string()
-        self._sc_move_right = Shortcut(dpg.mvKey_Right, (Modifier.ALT,)).get_display_string()
-        self._sc_move_start = Shortcut(dpg.mvKey_Home, (Modifier.ALT,)).get_display_string()
-        self._sc_move_end = Shortcut(dpg.mvKey_End, (Modifier.ALT,)).get_display_string()
-        self._sc_duplicate = Shortcut(dpg.mvKey_D, (Modifier.CTRL,)).get_display_string()
-        self._sc_insert = PLUS
-        self._sc_remove = MINUS
-        self._sc_clear = Shortcut(dpg.mvKey_Delete, (Modifier.SHIFT,)).get_display_string()
+        self._load_shortcut_hints()
 
         super().__init__(
             tag=TAG_SEQUENCER_ORDER_PANEL,
@@ -192,6 +159,78 @@ class GUISequencerOrderPanel(GUIPanel):
             initial_collapsed=initial_collapsed,
             auto_height=True,
             card_tag=TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
+        )
+
+    @staticmethod
+    def _label(language_manager: LanguageManager, element: SequencerOrderElements) -> str:
+        return language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, element]
+
+    def _load_row_labels(self, language_manager: LanguageManager) -> None:
+        """Reads the name each row carries, which its label and its menu title show."""
+        self._row_labels: Dict[Optional[GeneratorName], str] = {
+            None: self._label(language_manager, SequencerOrderElements.ROW_MASTER),
+            GeneratorName.PULSE1: self._label(language_manager, SequencerOrderElements.ROW_PULSE_1),
+            GeneratorName.PULSE2: self._label(language_manager, SequencerOrderElements.ROW_PULSE_2),
+            GeneratorName.TRIANGLE: self._label(language_manager, SequencerOrderElements.ROW_TRIANGLE),
+            GeneratorName.NOISE: self._label(language_manager, SequencerOrderElements.ROW_NOISE),
+        }
+
+    def _load_context_labels(self, language_manager: LanguageManager) -> None:
+        def label(element: SequencerOrderElements) -> str:
+            return self._label(language_manager, element)
+
+        self._lbl_context_play = label(SequencerOrderElements.CONTEXT_PLAY)
+        self._lbl_context_duplicate = label(SequencerOrderElements.CONTEXT_DUPLICATE)
+        self._lbl_context_insert = label(SequencerOrderElements.CONTEXT_INSERT)
+        self._lbl_context_clear = label(SequencerOrderElements.CONTEXT_CLEAR)
+        self._lbl_context_remove = label(SequencerOrderElements.CONTEXT_REMOVE)
+        self._lbl_context_move_left = label(SequencerOrderElements.CONTEXT_MOVE_LEFT)
+        self._lbl_context_move_right = label(SequencerOrderElements.CONTEXT_MOVE_RIGHT)
+        self._lbl_context_move_start = label(SequencerOrderElements.CONTEXT_MOVE_START)
+        self._lbl_context_move_end = label(SequencerOrderElements.CONTEXT_MOVE_END)
+
+    def _load_shortcut_hints(self) -> None:
+        """Spells the accelerator each frame-operation menu item shows beside its label."""
+        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, CTRL).get_display_string()
+        self._sc_move_left = Shortcut(dpg.mvKey_Left, ALT).get_display_string()
+        self._sc_move_right = Shortcut(dpg.mvKey_Right, ALT).get_display_string()
+        self._sc_move_start = Shortcut(dpg.mvKey_Home, ALT).get_display_string()
+        self._sc_move_end = Shortcut(dpg.mvKey_End, ALT).get_display_string()
+        self._sc_duplicate = Shortcut(dpg.mvKey_D, CTRL).get_display_string()
+        self._sc_insert = PLUS
+        self._sc_remove = MINUS
+        self._sc_clear = Shortcut(dpg.mvKey_Delete, SHIFT).get_display_string()
+
+    def _load_label_tooltips(self, language_manager: LanguageManager) -> None:
+        """Reads the row-label tooltips, which name the click gestures the labels carry."""
+
+        def tooltip(element: SequencerOrderElements) -> str:
+            return language_manager[Page.SEQUENCER, Panel.ORDER, TextType.TOOLTIP, element]
+
+        self._tooltip_label_channel = channel_tooltip(tooltip(SequencerOrderElements.LABEL_CHANNEL))
+        self._tooltip_label_master = tooltip(SequencerOrderElements.LABEL_MASTER)
+
+    def _create_channel_switch(self, language_manager: LanguageManager) -> None:
+        """Builds the switch a row label's click and menu act through.
+
+        The hooks are read at call time, so the switch is built here while they are still unset and
+        the coordinator wires them once the panel exists.
+        """
+        labels = ChannelMenuLabels(
+            mute=self._label(language_manager, SequencerOrderElements.CONTEXT_MUTE),
+            unmute=self._label(language_manager, SequencerOrderElements.CONTEXT_UNMUTE),
+            solo=self._label(language_manager, SequencerOrderElements.CONTEXT_SOLO),
+            unsolo=self._label(language_manager, SequencerOrderElements.CONTEXT_UNSOLO),
+            mute_all=self._label(language_manager, SequencerOrderElements.CONTEXT_MUTE_ALL),
+            unmute_all=self._label(language_manager, SequencerOrderElements.CONTEXT_UNMUTE_ALL),
+        )
+        self._channel_switch = ChannelSwitch(
+            labels=labels,
+            on_mute_toggled=lambda generator: self.call(self.on_channel_mute_toggled, generator),
+            on_soloed=lambda generator: self.call(self.on_channel_soloed, generator),
+            on_toggled=lambda: self.call(self.on_channels_toggled),
+            on_muted=lambda: self.call(self.on_channels_muted),
+            on_unmuted=lambda: self.call(self.on_channels_unmuted),
         )
 
     def create_panel(self, parent: str) -> None:
@@ -207,12 +246,28 @@ class GUISequencerOrderPanel(GUIPanel):
                 self._register_handlers()
 
     def _create_entry_themes(self) -> None:
-        """Colours every pattern entry with one readable colour.
+        """Colours every pattern entry, in the shade its channel sounds and the shade it is silenced.
 
-        The theme targets only the selectable text, so it leaves every other colour to
-        the global theme.
+        The entry themes target only the selectable text, so they leave every other colour to the
+        global theme; the dimmed variant keeps the entry colour at reduced alpha, so a silenced
+        channel's frames stay readable and editable while the others are worked on. A row label
+        carries the header's hover and press washes instead, so it reads as the switch it is.
         """
-        self._entry_theme = create_selectable_text_theme(self._layout.colors.text.order)
+        colors = self._layout.colors
+        self._entry_theme = create_selectable_text_theme(colors.text.order)
+        self._muted_entry_theme = create_selectable_text_theme(
+            with_alpha_fraction(colors.text.order, self._layout.tracker.muted_text_fraction),
+        )
+        self._label_theme = create_header_selectable_theme(
+            colors.label,
+            colors.header.hovered,
+            colors.header.active,
+        )
+        self._muted_label_theme = create_header_selectable_theme(
+            colors.muted.text,
+            colors.header.hovered,
+            colors.header.active,
+        )
 
     def _create_button_row(self) -> None:
         buttons = GUIPlusMinusButtons(
@@ -246,6 +301,9 @@ class GUISequencerOrderPanel(GUIPanel):
         with dpg.item_handler_registry(tag=self._cell_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
 
+        with dpg.item_handler_registry(tag=self._label_handler_tag):
+            dpg.add_item_clicked_handler(callback=self._on_label_right_clicked)
+
     def update_order(self, view_model: SequencerOrderGridViewModel) -> None:
         """Reconciles the order table; rebuilds only when the position count changes."""
         cell_values = self._compute_cell_values(view_model)
@@ -254,14 +312,19 @@ class GUISequencerOrderPanel(GUIPanel):
         else:
             self._order.reconcile(cell_values, self._render_cell)
 
-        if self._buttons is not None:
-            self._buttons.set_decrement_enabled(view_model.position_count > 0)
+        self._refresh_remove_enabled()
 
     def select_position(self, frame: int) -> None:
         """Follows the tracker frame: always updates the unfocused column highlight;
         also moves the edit cursor when one is active.
         """
         self._current_position = frame
+        self._follow_frame(frame)
+        self._refresh_remove_enabled()
+
+    def _follow_frame(self, frame: int) -> None:
+        """Carries the edit cursor to the frame, or shifts the unfocused column highlight to it
+        while no cursor is set."""
         cursor = self._input_state.cursor
         if cursor is not None:
             if cursor.position == frame:
@@ -297,8 +360,52 @@ class GUISequencerOrderPanel(GUIPanel):
         if self._current_position is not None and 0 <= self._current_position < self._position_count:
             self._apply_column_highlight(self._current_position, focused=False)
 
+        self._refresh_remove_enabled()
+
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_ORDER_PANEL, enabled=enabled)
+
+    def update_channels(self, view_model: SequencerChannelsViewModel) -> None:
+        """Shows which channels the song player silences.
+
+        The model is kept so a rebuilt table takes the cue again, the way the row tints do, and so
+        a table still waiting for its rows picks it up once they arrive.
+        """
+        self._current_channels = view_model
+        self._apply_channel_cues()
+
+    def _apply_channel_cues(self) -> None:
+        """Marks each silenced channel along its whole row: label, background, and entry text.
+
+        The three cues land together because they read as one: the row recedes as a unit while its
+        frames stay legible, so the channel is visibly out of the mix and still open for editing.
+        The tracker grid carries the same cue down each column, so a channel looks the same in both.
+        """
+        if not dpg.does_item_exist(TAG_SEQUENCER_ORDER_TABLE):
+            return
+
+        self._tint_channel_rows()
+        self._bind_label_themes()
+        for generator in GeneratorName.items():
+            self._bind_channel_entry_themes(generator)
+
+    def _bind_label_themes(self) -> None:
+        for label, generator in self._label_rows.items():
+            muted = generator is not None and self._is_muted(generator)
+            dpg.bind_item_theme(
+                label,
+                self._muted_label_theme if muted else self._label_theme,
+            )
+
+    def _bind_channel_entry_themes(self, generator: GeneratorName) -> None:
+        theme = self._muted_entry_theme if self._is_muted(generator) else self._entry_theme
+        for position in range(self._position_count):
+            widget = self._order.widget((generator, position))
+            if widget is not None:
+                dpg.bind_item_theme(widget, theme)
+
+    def _is_muted(self, generator: GeneratorName) -> bool:
+        return self._current_channels is not None and self._current_channels.is_muted(generator)
 
     def _compute_cell_values(
         self,
@@ -368,6 +475,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 init_width_or_weight=self._layout.order.position_column_width,
             )
 
+        self._label_rows = {}
         for generator in ORDER_ROWS:
             self._build_row(generator, position_count)
             if generator is None:
@@ -375,7 +483,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
         self._apply_column_backgrounds()
         self._highlight_master_row(position_count)
-        self._tint_channel_rows()
+        self._apply_channel_cues()
 
     def _apply_column_backgrounds(self) -> None:
         """Tints the label column like the header row.
@@ -420,20 +528,24 @@ class GUISequencerOrderPanel(GUIPanel):
         Uses a row highlight so it sits on a layer beneath the position and cursor
         highlights, which keep working; a cleared cursor cell falls back to the row
         tint. This is the transposed analog of the tracker grid's per-channel column
-        tint, sharing the fraction.
+        tint, sharing the fraction. A silenced channel trades that identity for a
+        neutral dark shade, so its row recedes as a whole.
         """
-        channels = self._layout.colors.channels
-        fraction = self._layout.tracker.channel_column_tint
         for generator in GeneratorName.items():
-            tint = with_alpha_fraction(
-                channel_color(channels, generator),
-                fraction,
-            )
             dpg.highlight_table_row(
                 TAG_SEQUENCER_ORDER_TABLE,
                 self._table_row(generator),
-                tint,
+                self._channel_row_tint(generator),
             )
+
+    def _channel_row_tint(self, generator: GeneratorName) -> ColorRGBA:
+        if self._is_muted(generator):
+            return self._layout.colors.muted.background
+
+        return with_alpha_fraction(
+            channel_color(self._layout.colors.channels, generator),
+            self._layout.tracker.channel_column_tint,
+        )
 
     def _apply_column_highlight(self, position: int, *, focused: bool) -> None:
         if focused:
@@ -472,15 +584,7 @@ class GUISequencerOrderPanel(GUIPanel):
     ) -> None:
         font = Font.MONO_BOLD_SMALL if generator is None else Font.MONO_SMALL
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_ORDER_TABLE)
-
-        label_cell = dpg.add_table_cell(parent=row_id)
-        label_text = dpg.add_text(
-            self._row_labels[generator],
-            parent=label_cell,
-            color=self._layout.colors.label,
-        )
-        FontRegistry.bind_to_item(label_text, Font.MONO_BOLD_SMALL)
-
+        self._add_row_label(row_id, generator)
         for position in range(position_count):
             cell = dpg.add_table_cell(parent=row_id)
             key: OrderKey = (generator, position)
@@ -494,6 +598,32 @@ class GUISequencerOrderPanel(GUIPanel):
             dpg.bind_item_theme(selectable, self._entry_theme)
             dpg.bind_item_handler_registry(selectable, self._cell_handler_tag)
             self._order.register(key, selectable)
+
+    def _add_row_label(
+        self,
+        row_id: Sender,
+        generator: Optional[GeneratorName],
+    ) -> None:
+        """Places one clickable row label: a channel's mute target, or the master target.
+
+        The label spans its frozen cell, which is what makes the whole name a click target, and it
+        carries its channel so the click knows which row it landed on. A tooltip names the gestures
+        the label answers to, and the right-click registry opens the same actions as a menu.
+        """
+        label_cell = dpg.add_table_cell(parent=row_id)
+        label = dpg.add_selectable(
+            parent=label_cell,
+            label=self._row_labels[generator],
+            user_data=generator,
+            callback=self._on_label_clicked,
+        )
+        FontRegistry.bind_to_item(label, Font.MONO_BOLD_SMALL)
+        dpg.bind_item_handler_registry(label, self._label_handler_tag)
+        show_tooltip(
+            label,
+            self._tooltip_label_master if generator is None else self._tooltip_label_channel,
+        )
+        self._label_rows[label] = generator
 
     def _build_divider_row(self, position_count: int) -> None:
         """Inserts the thin rule that sets the master row apart from the channel
@@ -601,6 +731,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 self.call(self.on_frame_selected, new.position)
 
         self._update_caret()
+        self._refresh_remove_enabled()
 
     def _update_cell_display(self, cursor: OrderCursor) -> None:
         key: OrderKey = (cursor.generator, cursor.position)
@@ -656,6 +787,41 @@ class GUISequencerOrderPanel(GUIPanel):
 
         _, position = key
         self._show_context_menu(position)
+
+    def _on_label_clicked(
+        self,
+        sender: Sender,
+        app_data: bool,
+        user_data: Optional[GeneratorName],
+    ) -> None:
+        self._channel_switch.click(sender, user_data)
+
+    def _on_label_right_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+    ) -> None:
+        """Opens the channel menu for the right-clicked row label.
+
+        The registry reaches the row labels alone, so a click on one of them names its row through
+        the map the rows filled in; a label replaced by a rebuild is absent from it.
+        """
+        mouse_button, clicked_item = app_data
+        if mouse_button != dpg.mvMouseButton_Right:
+            return
+
+        if clicked_item not in self._label_rows:
+            return
+
+        self._show_channel_menu(self._label_rows[clicked_item])
+
+    def _show_channel_menu(self, generator: Optional[GeneratorName]) -> None:
+        """Opens the menu behind a row label, titled with the row's own name."""
+        with context_menu():
+            header = dpg.add_text(self._row_labels[generator])
+            FontRegistry.bind_to_item(header, Font.MONO_BOLD)
+            dpg.add_separator()
+            self._channel_switch.add_menu_items(generator, self._current_channels)
 
     def _show_context_menu(self, position: int) -> None:
         with context_menu():
@@ -723,10 +889,10 @@ class GUISequencerOrderPanel(GUIPanel):
         if cursor is None:
             return False
 
-        if event.alt:
+        if Modifier.ALT in event.modifiers:
             return self._handle_alt_move(event.key, cursor.position)
 
-        if event.ctrl:
+        if Modifier.CTRL in event.modifiers:
             if event.key == dpg.mvKey_D:
                 self.call(self.on_duplicate_requested, cursor.position)
                 return True
@@ -752,7 +918,7 @@ class GUISequencerOrderPanel(GUIPanel):
             case dpg.mvKey_Return:
                 self._move_position(1)
             case dpg.mvKey_Delete:
-                if event.shift:
+                if Modifier.SHIFT in event.modifiers:
                     self.call(self.on_clear_requested, cursor.position)
                 else:
                     self._clear_cell()
@@ -873,6 +1039,23 @@ class GUISequencerOrderPanel(GUIPanel):
         cursor = self._input_state.cursor
         return cursor.position if cursor is not None else self._current_position
 
+    def _get_removable_position(self) -> Optional[int]:
+        """The frame ``[-]`` acts on: the cursor's frame, or the followed tracker frame while no
+        cursor is set, resolved while it addresses a live frame.
+        """
+        position = self._get_cursor_position()
+        if position is not None and 0 <= position < self._position_count:
+            return position
+
+        return None
+
+    def _refresh_remove_enabled(self) -> None:
+        """Enables ``[-]`` while a press would remove a frame, so a greyed-out button tells the
+        user that removal awaits a selected frame.
+        """
+        if self._buttons is not None:
+            self._buttons.set_decrement_enabled(self._get_removable_position() is not None)
+
     def _on_add_clicked(self) -> None:
         """Inserts an empty frame after the current one (appends when at or past the end)."""
         position = self._get_cursor_position()
@@ -882,6 +1065,6 @@ class GUISequencerOrderPanel(GUIPanel):
         self.call(self.on_insert_requested, position)
 
     def _on_remove_clicked(self) -> None:
-        position = self._get_cursor_position()
-        if position is not None and 0 <= position < self._position_count:
+        position = self._get_removable_position()
+        if position is not None:
             self.call(self.on_remove_requested, position)

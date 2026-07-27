@@ -82,7 +82,13 @@ class GUIButton:
             del cls._REGISTRY[tag]
 
     def set_enabled(self, enabled: bool) -> None:
+        """Applies the state to the wrapper group and to the button inside it.
+
+        DearPyGui gates a press on the item's own enabled flag and on that of every group
+        enclosing it, so the button answers a click while both carry the state.
+        """
         dpg.configure_item(self._tag, enabled=enabled)
+        dpg.configure_item(self._button_tag, enabled=enabled)
 
     def is_enabled(self) -> bool:
         enabled: Optional[bool] = dpg.is_item_enabled(self._tag)

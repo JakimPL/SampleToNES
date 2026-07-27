@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from typing import Dict, FrozenSet, List, Optional, Tuple
+from typing import Callable, Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
@@ -70,15 +70,26 @@ class RowSynthesizer:
     Generators are constructed once from ``config`` and carry timer state across
     rows for phase continuity within a sustained note. Triggering a new note
     calls ``generator.reset()`` for a clean phase start.
+
+    ``active_channels`` reports which channels sound and is consulted once per channel per
+    row, so muting or unmuting during playback is heard as the render-ahead buffer drains. A
+    silenced channel still takes each row's instrument, transpose, and volume, so unmuting
+    resumes on the state the pattern has reached.
     """
 
-    def __init__(self, project_controller: ProjectController, config: Config) -> None:
+    def __init__(
+        self,
+        project_controller: ProjectController,
+        config: Config,
+        *,
+        active_channels: Callable[[], FrozenSet[GeneratorName]],
+    ) -> None:
         self._project_controller = project_controller
         self._config = config
+        self._active_channels = active_channels
         self._nes_frequency: int = config.library.nes_frequency
         self._position = SongPosition()
         self._tick_debt: int = 0
-        self._active_channels: FrozenSet[GeneratorName] = frozenset(GeneratorName.items())
         self._channel_states: Dict[GeneratorName, _ChannelState] = {
             generator_name: _ChannelState(
                 generator=GENERATOR_CLASSES[generator_name](
@@ -105,9 +116,6 @@ class RowSynthesizer:
     def set_position(self, order_position: int, row_index: int) -> None:
         self._position.order_position = order_position
         self._position.row_index = row_index
-
-    def set_channel_mask(self, active_channels: FrozenSet[GeneratorName]) -> None:
-        self._active_channels = active_channels
 
     def reset(self) -> None:
         self._tick_debt = 0
@@ -215,7 +223,7 @@ class RowSynthesizer:
             self._apply_row_to_state(state, row)
 
         sample_id = state.sample_id
-        if sample_id is None or generator_name not in self._active_channels:
+        if sample_id is None or generator_name not in self._active_channels():
             return _silence(chunk_length)
 
         return self._synthesize_ticks(

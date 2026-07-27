@@ -9,7 +9,6 @@ from sampletones_application.utils.gui.keyboard import (
     focus,
 )
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_application.utils.gui.shortcuts.keys import Modifier
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_shared.types.callback import Callback
 
@@ -78,7 +77,7 @@ class ShortcutManager:
         while Ctrl+Space and Escape still reach playback and Stop from the same field.
         """
         for shortcut, callback in self._bindings_by_key.get(event.key, ()):
-            if self._modifiers_match(event, shortcut.modifiers):
+            if event.modifiers == shortcut.modifiers:
                 if not shortcut.field_transparent and self._field_consumes(event):
                     return False
 
@@ -89,21 +88,4 @@ class ShortcutManager:
 
     @staticmethod
     def _field_consumes(event: KeyEvent) -> bool:
-        return focus.field_consumes_key(
-            focus.focused_field_kind(),
-            event.key,
-            ctrl=event.ctrl,
-            shift=event.shift,
-            alt=event.alt,
-        )
-
-    @staticmethod
-    def _modifiers_match(
-        event: KeyEvent,
-        required: Tuple[Modifier, ...],
-    ) -> bool:
-        return (
-            event.ctrl == (Modifier.CTRL in required)
-            and event.shift == (Modifier.SHIFT in required)
-            and event.alt == (Modifier.ALT in required)
-        )
+        return focus.field_consumes_key(focus.focused_field_kind(), event.key, event.modifiers)
