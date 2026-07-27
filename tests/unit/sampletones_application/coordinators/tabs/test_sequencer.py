@@ -14,6 +14,7 @@ from sampletones_application.logic.history.snapshot import HistoryEntry, snapsho
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.paths import LANG_EN
+from sampletones_application.view_model.sequencer.samples import SampleSelection
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -516,6 +517,156 @@ class TestImportFrequencyCheck:
 
         coordinator._sequencer_browser_logic.add_reconstruction.assert_called_once()
         coordinator._on_tab_switch.assert_called_once_with(Tab.SEQUENCER)
+
+
+@pytest.fixture
+def replace_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators the browser replacement touches.
+
+    Defaults to a two-sample project holding ``1A: bass`` selected, against a reconstruction at the
+    project's frequency (60 Hz); individual tests override. ``_on_tab_switch`` stays absent, so a
+    replacement reaching for it would fail the test — the browser already lives in this tab.
+    """
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
+    instance._history_detail = MagicMock()
+    instance._project_controller = MagicMock()
+    instance._project_controller.sample_count = 2
+    instance._sequencer_browser_logic = MagicMock()
+    instance._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
+    instance._sequencer_grid_logic = MagicMock()
+    instance._sequencer_grid_logic.settings.nes_frequency = 60
+    instance._sequencer_samples_logic = MagicMock()
+    instance._sequencer_samples_panel = MagicMock()
+    instance._sequencer_samples_panel.selection = SampleSelection(
+        sample_id="bass-id",
+        position=26,
+        name="bass",
+    )
+    instance._dialogs = MagicMock()
+    instance._ttl_frequency_mismatch = "Different NES frequency"
+    instance._msg_frequency_mismatch = "recon {reconstruction} vs project {project}"
+    instance._lbl_add_anyway = "Add anyway"
+    return instance
+
+
+class TestReplaceReconstruction:
+    def test_absent_selection_replaces_nothing(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._sequencer_samples_panel.selection = None
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._sequencer_browser_logic.load_reconstruction.assert_not_called()
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
+
+    def test_failed_load_shows_error_and_replaces_nothing(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._sequencer_browser_logic.load_reconstruction.side_effect = InvalidReconstructionValuesError(
+            "invalid",
+            ValueError("inner"),
+        )
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._dialogs.show_error.assert_called_once()
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
+        replace_coordinator._sequencer_samples_logic.rename_sample.assert_not_called()
+
+    def test_selected_sample_is_renamed_and_substituted(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        reconstruction = replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value
+
+        replace_coordinator.replace_reconstruction(Path("/reconstructions/kick_02.stn"))
+
+        replace_coordinator._sequencer_samples_logic.rename_sample.assert_called_once_with(
+            "bass-id",
+            "kick_02",
+        )
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_called_once_with(
+            "bass-id",
+            reconstruction,
+        )
+        replace_coordinator._dialogs.show_confirmation.assert_not_called()
+        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+
+    def test_rename_and_substitution_share_one_history_entry(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._history.transaction.assert_called_once_with(
+            HistoryAction.REPLACE_SAMPLE,
+            detail=replace_coordinator._history_detail.replace_sample.return_value,
+        )
+
+    def test_detail_reads_the_sample_before_it_is_substituted(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """The detail names the outgoing reconstruction, which the sample only holds until the swap."""
+        order = MagicMock()
+        order.attach_mock(replace_coordinator._history_detail.replace_sample, "detail")
+        order.attach_mock(replace_coordinator._sequencer_browser_logic.replace_reconstruction, "replace")
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        assert [call[0] for call in order.mock_calls] == ["detail", "replace"]
+        replace_coordinator._history_detail.replace_sample.assert_called_once_with("bass-id", "kick_02")
+
+    def test_sole_sample_adopts_the_reconstruction_frequency_silently(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._project_controller.sample_count = 1
+        replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(50)
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_called_once()
+        replace_coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_mismatch_beside_other_samples_confirms_before_replacing(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        replace_coordinator._dialogs.show_confirmation.assert_called_once()
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
+
+        confirmation = replace_coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert confirmation["message"] == "recon 50 vs project 60"
+        confirmation["on_confirm"]()
+
+        replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_called_once()
+        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+
+
+class TestReplaceTargetLabel:
+    def test_label_names_the_selected_sample(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        assert replace_coordinator._replace_target_label() == "1A: bass"
+
+    def test_label_is_absent_without_a_selection(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        replace_coordinator._sequencer_samples_panel.selection = None
+
+        assert replace_coordinator._replace_target_label() is None
 
 
 @pytest.fixture

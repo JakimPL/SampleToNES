@@ -123,6 +123,25 @@ class TestReplaceItemVisibility:
         assert recorder.labels == [ADD_LABEL]
 
 
+class TestAddItemEnablement:
+    def test_predicate_decides_whether_the_add_item_is_live(self, recorder: _MenuItemRecorder) -> None:
+        panel = _panel(replace_target=None)
+        panel.can_add_to_sequencer = lambda: False
+
+        panel._add_context_menu_sequencer_items(_node())
+
+        assert recorder.item(ADD_LABEL)["enabled"] is False
+
+    def test_unwired_predicate_leaves_the_add_item_inert(self, recorder: _MenuItemRecorder) -> None:
+        """An unanswered applicability question reaches the widget as a plain ``False``."""
+        panel = _panel(replace_target=None)
+        panel.can_add_to_sequencer = None
+
+        panel._add_context_menu_sequencer_items(_node())
+
+        assert recorder.item(ADD_LABEL)["enabled"] is False
+
+
 class TestReconstructionMenuComposition:
     def test_replace_follows_the_add_item(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Pins the item order of the reconstruction menu, so replacement sits with the add item."""

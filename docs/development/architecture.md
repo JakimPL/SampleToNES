@@ -59,7 +59,9 @@ This means the UI layer can never be in an inconsistent state: it always reflect
 
 ### 5. Panels communicate via optional callback hooks
 
-A panel never calls coordinator or logic methods directly. Instead it exposes public optional callback attributes (`on_x: Optional[Callback] = None`) that coordinators set during wiring. The panel invokes them through `CallbackMixin.call()`, which silently no-ops when the hook is `None`.
+A panel never calls coordinator or logic methods directly. Instead it exposes public optional callback attributes (`on_x: Optional[Callback] = None`) that coordinators set during wiring. The panel fires them through `CallbackMixin.call()`, which logs a warning and yields `None` for a hook left unset.
+
+A hook the panel consults for state rather than notifies of an event is read through `CallbackMixin.query()`, which preserves the hook's declared return type and takes the answer to assume while the hook is unset. A widget parameter or branch fed by such a hook therefore receives a value of its expected type at every moment, including the window before wiring completes.
 
 This decouples widget construction (which happens during `create_panel()`) from the moment wiring takes place (which happens in the coordinator's constructor), and lets panels be instantiated without any coordinator present.
 
@@ -430,4 +432,5 @@ sampletones_application/
 | DPG widget tag | `TAG_<MODULE>_<WIDGET>[_<DETAIL>]` | `TAG_MAIN_PANEL_CONFIG` |
 | Tag suffix | `SUF_<ROLE>` | `SUF_PANEL_LEFT` |
 | Panel callback hook | `on_<event>` attribute | `on_convert_requested` |
+| Panel state hook | `can_<action>` or `<action>_<subject>` attribute | `can_add_to_sequencer`, `replace_in_sequencer_label` |
 | Logic callback | `on_<event>` attribute | `on_view_changed` |

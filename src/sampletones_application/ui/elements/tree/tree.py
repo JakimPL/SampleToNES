@@ -734,12 +734,13 @@ class GUITreePanel(GUIPanel, ABC):
         )
 
     def _add_context_menu_sequencer_items(self, node: FileSystemNode) -> None:
+        """Add the send-to-sequencer item, live while its host reports the sequencer accepts one."""
         dpg.add_separator()
         dpg.add_menu_item(
             label=self._lbl_ctx_add_to_sequencer,
             callback=self._on_add_to_sequencer,
             user_data=node,
-            enabled=self.call(self.can_add_to_sequencer),
+            enabled=self.query(self.can_add_to_sequencer, default=False),
         )
 
     def _add_context_menu_replace_item(self, node: FileSystemNode) -> None:
@@ -750,7 +751,7 @@ class GUITreePanel(GUIPanel, ABC):
         groups it with the add item a caller places above it, since both push this file into the
         sequencer.
         """
-        target = self.call(self.replace_in_sequencer_label)
+        target = self.query(self.replace_in_sequencer_label, default=None)
         if target is None:
             return
 

@@ -1,7 +1,7 @@
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.callback import Callback, QueryT
 
 
 class CallbackMixin:
@@ -9,7 +9,8 @@ class CallbackMixin:
     The contract for outbound communication from logic and manager classes.
 
     A class that inherits it declares what events it produces, not who consumes
-    them: optional hook attributes are the sole channel outward.  ``call`` is
+    them: optional hook attributes are the sole channel outward.  ``call``
+    announces an event and ``query`` asks a hook for a value; both are
     deliberately lenient about missing hooks — partial wiring during
     construction is expected and logged rather than raised.
     """
@@ -35,6 +36,43 @@ class CallbackMixin:
         if callback is None:
             logger.warning(f"No callback for {self.__class__.__name__} to call.")
             return None
+
+        if not callable(callback):
+            raise TypeError("Provided callback is not callable")
+
+        return callback(*args, **kwargs)
+
+    def query(
+        self,
+        callback: Optional[Callable[..., QueryT]],
+        *args: Any,
+        default: QueryT,
+        **kwargs: Any,
+    ) -> QueryT:
+        """
+        Asks a value-returning hook for its answer, reporting ``default`` while it is unset.
+
+        A hook consulted for state — whether an operation applies, what it would act on — feeds a
+        widget or a decision that needs an answer of the declared type at every moment, including
+        the window before wiring completes, so the caller states which answer to assume there.
+        Preserving the hook's return type keeps that answer checkable, unlike :meth:`call`, whose
+        value is whatever the notified consumer happened to return.
+
+        Args:
+            callback: The state-reporting hook to consult, or None.
+            *args: Positional arguments to pass to the hook.
+            default: The answer to report while the hook is unset.
+            **kwargs: Keyword arguments to pass to the hook.
+
+        Returns:
+            The hook's answer, or ``default`` when the hook is None.
+
+        Raises:
+            TypeError: If callback is not None but is not callable.
+        """
+        if callback is None:
+            logger.warning(f"No callback for {self.__class__.__name__} to query.")
+            return default
 
         if not callable(callback):
             raise TypeError("Provided callback is not callable")
