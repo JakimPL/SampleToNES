@@ -134,12 +134,12 @@ out as the render-ahead buffer drains, with the immediacy every other live edit 
 channel still takes each row's instrument, transpose, and volume, so returning it to the mix resumes
 on the state its pattern has reached.
 
-Muting is monitoring, and principle 5 governs what follows. The project holds every channel,
-so saving, module export, and any rendered output write the full song. The history stack holds
-project state alone, so undo, redo, and history jumps carry the mute set across untouched — which
-means the sequencer distinguishes a history restore from a document transition. And the mute set
-belongs to the listening session, so opening, creating, or closing a document starts a fresh one
-with every channel audible.
+Muting is monitoring, and principle 5 governs what follows. The project holds every channel, so
+saving, module export, and any rendered output write the full song. The history stack holds project
+state alone, so undo, redo, and history jumps carry the mute set across untouched — which is why the
+sequencer distinguishes a history restore from a document transition. And the mute set belongs to the
+listening session, so opening, creating, or closing a document starts a fresh one with every channel
+audible.
 
 ## Who governs what
 
