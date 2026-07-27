@@ -116,7 +116,9 @@ Each keyboard consumer registers one scope through `register(handle, *, priority
 
 Because the router offers a panel the key ahead of the shortcut scope, a panel returns `False` on any combination it does not own — the grid yields every `Ctrl`-modified press — so that field-transparent shortcuts such as `Ctrl+PgDn` / `Ctrl+PgUp` tab-switching reach the shortcut scope even while a grid cursor is set.
 
-**Focus is pulled, not pushed.** Whether a text or value field keeps a plain key for itself is one router query, `is_field_focused`, that reads the focused item from DearPyGui at the moment of the press and counts it only while it is a field type that is actively being edited. Every input is covered by construction, and the router alone holds the rule.
+**Focus is pulled, not pushed.** Whether a text or value field keeps a plain key for itself is one router query, `is_field_focused`, that reads the focused item from DearPyGui at the moment of the press and counts it only while that item is actively being edited. Every input is covered by construction, and the router alone holds the rule.
+
+The query resolves the focused item to the field behind it. A `dpg.group` reports the state of the widget inside it, and DearPyGui names the outermost such group as the focused item — the instruments panel's sequence input, laid out beside its copy button inside a card body group, reaches the keyboard as that group. An active group therefore answers with the field being edited below it, found by following the one branch that reports focus, so a panel-spanning group costs a key press only the path down to its field.
 
 **Modal suppression lives in one place.** The router holds a LIFO stack of modal handlers; `push_modal` / `pop_modal` bracket a dialog's lifetime, and the built-in `MODAL` scope routes each press to the top of the stack. Since `MODAL` outranks the panel and shortcut scopes, the scopes beneath it carry no "a dialog is open" check of their own.
 

@@ -38,5 +38,5 @@
 ## Bugs
 
 * No refreshing after library generation
-* Ctrl+A shortcut interferes with input dialogs
+* Order [-] does not work
 * Window title unsupported characters
