@@ -3,8 +3,11 @@ from typing import Dict, FrozenSet, List, Optional, Tuple
 
 import pytest
 
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer.colors import ChannelColors
+from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.elements.table.cells import EditableCells
+from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer import grid as grid_module
 from sampletones_application.ui.panels.sequencer.columns import tracker_table_column
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
@@ -21,7 +24,7 @@ ROW_COUNT = 3
 TINT_FRACTION = 0.5
 MUTED_TEXT_FRACTION = 0.25
 
-MUTED_COLUMN: ColorRGBA = (10, 8, 18, 96)
+MUTED_BACKGROUND: ColorRGBA = (10, 8, 18, 96)
 CHANNEL_COLORS = ChannelColors(
     pulse1=(240, 146, 86, 255),
     pulse2=(242, 209, 95, 255),
@@ -87,7 +90,7 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
             channels=CHANNEL_COLORS,
-            muted=SimpleNamespace(column=MUTED_COLUMN),
+            muted=SimpleNamespace(background=MUTED_BACKGROUND),
         ),
         tracker=SimpleNamespace(
             channel_column_tint=TINT_FRACTION,
@@ -101,6 +104,7 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
     panel._subcolumn_themes = dict(SUBCOLUMN_THEMES)
     panel._muted_subcolumn_themes = dict(MUTED_SUBCOLUMN_THEMES)
     panel._header_columns = {_header_widget(generator): generator for generator in HEADER_COLUMNS}
+    panel._create_channel_switch(LanguageManager(LANG_EN))
     panel._editable_cells = EditableCells()
     for generator in GeneratorName.items():
         for row_index in range(ROW_COUNT):
@@ -124,7 +128,7 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _DearPyGuiRecorder:
 
 
 def _hold(monkeypatch: pytest.MonkeyPatch, modifiers: ModifierSet) -> None:
-    monkeypatch.setattr(grid_module, "capture_modifiers", lambda: modifiers)
+    monkeypatch.setattr(channels_module, "capture_modifiers", lambda: modifiers)
 
 
 class TestHeaderClickDispatch:
@@ -223,7 +227,7 @@ class TestColumnWash:
         panel._apply_channel_cues()
 
         column = tracker_table_column(GeneratorName.PULSE1)
-        assert recorder.column_tints[column] == MUTED_COLUMN
+        assert recorder.column_tints[column] == MUTED_BACKGROUND
 
     def test_the_other_channels_keep_their_tint_while_one_is_muted(self, recorder: _DearPyGuiRecorder) -> None:
         panel = _panel(frozenset({GeneratorName.TRIANGLE}))
@@ -233,7 +237,7 @@ class TestColumnWash:
         washed = {
             generator
             for generator in GeneratorName.items()
-            if recorder.column_tints[tracker_table_column(generator)] == MUTED_COLUMN
+            if recorder.column_tints[tracker_table_column(generator)] == MUTED_BACKGROUND
         }
         assert washed == {GeneratorName.TRIANGLE}
 

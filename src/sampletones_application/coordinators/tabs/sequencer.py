@@ -81,6 +81,9 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
@@ -411,17 +414,25 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
     def _wire_channels_callbacks(self) -> None:
-        """Connects the tracker's column headers to the mute set the song player reads.
+        """Connects the tracker's column headers and the order table's row labels to the mute set
+        the song player reads.
 
-        Muting is a monitoring gesture, so these hooks reach the channels logic directly and
-        record no history entry.
+        Both tables name the same channels and switch the same set, so each panel's hooks reach the
+        channels logic directly and both show every change. Muting is a monitoring gesture, so these
+        hooks record no history entry.
         """
-        self._sequencer_channels_logic.on_channels_changed = self._sequencer_grid_panel.update_channels
-        self._sequencer_grid_panel.on_channel_mute_toggled = self._sequencer_channels_logic.toggle
-        self._sequencer_grid_panel.on_channel_soloed = self._sequencer_channels_logic.solo
-        self._sequencer_grid_panel.on_channels_toggled = self._sequencer_channels_logic.toggle_all
-        self._sequencer_grid_panel.on_channels_muted = self._sequencer_channels_logic.mute_all
-        self._sequencer_grid_panel.on_channels_unmuted = self._sequencer_channels_logic.unmute_all
+        self._sequencer_channels_logic.on_channels_changed = self._on_channels_changed
+        for panel in (self._sequencer_grid_panel, self._sequencer_order_panel):
+            panel.on_channel_mute_toggled = self._sequencer_channels_logic.toggle
+            panel.on_channel_soloed = self._sequencer_channels_logic.solo
+            panel.on_channels_toggled = self._sequencer_channels_logic.toggle_all
+            panel.on_channels_muted = self._sequencer_channels_logic.mute_all
+            panel.on_channels_unmuted = self._sequencer_channels_logic.unmute_all
+
+    def _on_channels_changed(self, view_model: SequencerChannelsViewModel) -> None:
+        """Shows the mute set in both tables, so a channel looks the same wherever it appears."""
+        self._sequencer_grid_panel.update_channels(view_model)
+        self._sequencer_order_panel.update_channels(view_model)
 
     def _wire_order_callbacks(self) -> None:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order

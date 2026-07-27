@@ -17,7 +17,7 @@ header:
   hovered: .white/0.25
   active: .white/0.4
 muted:
-  column: .channel_muted
+  background: .channel_muted
   text: .text_disabled
 history:
   future: .history_future

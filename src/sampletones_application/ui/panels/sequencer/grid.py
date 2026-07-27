@@ -24,6 +24,11 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import display as tracker_display
+from sampletones_application.ui.panels.sequencer.channels import (
+    ChannelMenuLabels,
+    ChannelSwitch,
+    channel_tooltip,
+)
 from sampletones_application.ui.panels.sequencer.columns import (
     DIVIDER_TABLE_COLUMN,
     HEADER_TABLE_ROW,
@@ -56,8 +61,6 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL,
     CTRL_SHIFT,
     Modifier,
-    capture_modifiers,
-    modifiers_display,
 )
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
@@ -157,6 +160,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._load_column_labels(language_manager)
         self._load_context_labels(language_manager)
         self._load_header_tooltips(language_manager)
+        self._create_channel_switch(language_manager)
 
         self._sc_play_from_here = Shortcut(
             dpg.mvKey_Spacebar,
@@ -205,27 +209,38 @@ class GUISequencerGridPanel(GUIPanel):
         self._lbl_context_volume_down = label(SequencerGridElements.CONTEXT_VOLUME_DOWN)
         self._lbl_context_volume_up_coarse = label(SequencerGridElements.CONTEXT_VOLUME_UP_COARSE)
         self._lbl_context_volume_down_coarse = label(SequencerGridElements.CONTEXT_VOLUME_DOWN_COARSE)
-        self._lbl_context_mute = label(SequencerGridElements.CONTEXT_MUTE)
-        self._lbl_context_unmute = label(SequencerGridElements.CONTEXT_UNMUTE)
-        self._lbl_context_solo = label(SequencerGridElements.CONTEXT_SOLO)
-        self._lbl_context_unsolo = label(SequencerGridElements.CONTEXT_UNSOLO)
-        self._lbl_context_mute_all = label(SequencerGridElements.CONTEXT_MUTE_ALL)
-        self._lbl_context_unmute_all = label(SequencerGridElements.CONTEXT_UNMUTE_ALL)
 
     def _load_header_tooltips(self, language_manager: LanguageManager) -> None:
-        """Reads the header tooltips, which name the click gestures the labels carry.
-
-        The solo modifier is spelled by the shared keyboard vocabulary, so the tooltip names the
-        combination the same way every menu accelerator does.
-        """
+        """Reads the header tooltips, which name the click gestures the labels carry."""
 
         def tooltip(element: SequencerGridElements) -> str:
             return language_manager[Page.SEQUENCER, Panel.GRID, TextType.TOOLTIP, element]
 
-        self._tooltip_header_channel = tooltip(SequencerGridElements.HEADER_CHANNEL).format(
-            modifier="+".join(modifiers_display(CTRL)),
-        )
+        self._tooltip_header_channel = channel_tooltip(tooltip(SequencerGridElements.HEADER_CHANNEL))
         self._tooltip_header_sample = tooltip(SequencerGridElements.HEADER_SAMPLE)
+
+    def _create_channel_switch(self, language_manager: LanguageManager) -> None:
+        """Builds the switch a column header's click and menu act through.
+
+        The hooks are read at call time, so the switch is built here while they are still unset and
+        the coordinator wires them once the panel exists.
+        """
+        labels = ChannelMenuLabels(
+            mute=self._label(language_manager, SequencerGridElements.CONTEXT_MUTE),
+            unmute=self._label(language_manager, SequencerGridElements.CONTEXT_UNMUTE),
+            solo=self._label(language_manager, SequencerGridElements.CONTEXT_SOLO),
+            unsolo=self._label(language_manager, SequencerGridElements.CONTEXT_UNSOLO),
+            mute_all=self._label(language_manager, SequencerGridElements.CONTEXT_MUTE_ALL),
+            unmute_all=self._label(language_manager, SequencerGridElements.CONTEXT_UNMUTE_ALL),
+        )
+        self._channel_switch = ChannelSwitch(
+            labels=labels,
+            on_mute_toggled=lambda generator: self.call(self.on_channel_mute_toggled, generator),
+            on_soloed=lambda generator: self.call(self.on_channel_soloed, generator),
+            on_toggled=lambda: self.call(self.on_channels_toggled),
+            on_muted=lambda: self.call(self.on_channels_muted),
+            on_unmuted=lambda: self.call(self.on_channels_unmuted),
+        )
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
@@ -446,7 +461,7 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _channel_column_tint(self, generator: GeneratorName) -> ColorRGBA:
         if self._is_muted(generator):
-            return self._layout.colors.muted.column
+            return self._layout.colors.muted.background
 
         return with_alpha_fraction(
             channel_color(self._layout.colors.channels, generator),
@@ -700,15 +715,6 @@ class GUISequencerGridPanel(GUIPanel):
     def _is_muted(self, generator: GeneratorName) -> bool:
         return self._current_channels is not None and self._current_channels.is_muted(generator)
 
-    def _is_soloed(self, generator: GeneratorName) -> bool:
-        return self._current_channels is not None and self._current_channels.is_soloed(generator)
-
-    def _any_muted(self) -> bool:
-        return self._current_channels is not None and self._current_channels.any_muted
-
-    def _all_muted(self) -> bool:
-        return self._current_channels is not None and self._current_channels.all_muted
-
     def set_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_SEQUENCER_GRID_GROUP_TRACKER, enabled=enabled)
 
@@ -874,21 +880,7 @@ class GUISequencerGridPanel(GUIPanel):
         app_data: bool,
         user_data: Optional[GeneratorName],
     ) -> None:
-        """Routes a header click: a channel label mutes, Ctrl held solos, the sample label
-        switches every channel at once.
-
-        The selectable is released as the click is handled, so the header behaves as a button
-        that reflects the mix through its colour, and the edit cursor stays where it is.
-        """
-        dpg.set_value(sender, False)
-        if user_data is None:
-            self.call(self.on_channels_toggled)
-            return
-
-        if Modifier.CTRL in capture_modifiers():
-            self.call(self.on_channel_soloed, user_data)
-        else:
-            self.call(self.on_channel_mute_toggled, user_data)
+        self._channel_switch.click(sender, user_data)
 
     def _on_header_right_clicked(
         self,
@@ -910,50 +902,12 @@ class GUISequencerGridPanel(GUIPanel):
         self._show_header_context_menu(self._header_columns[clicked_item])
 
     def _show_header_context_menu(self, generator: Optional[GeneratorName]) -> None:
-        """Builds the menu behind a column header: the channel's own gestures, then the whole mix.
-
-        Both menus end with the all-channel items, so the master column's menu is the shared part
-        of every channel's, and either header reaches "everything" and "everything back".
-        """
+        """Opens the menu behind a column header, titled with the column's own name."""
         with context_menu():
             header = dpg.add_text(self._column_labels[generator])
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
-            if generator is not None:
-                self._add_channel_mute_items(generator)
-                dpg.add_separator()
-
-            self._add_all_channels_items()
-
-    def _add_channel_mute_items(self, generator: GeneratorName) -> None:
-        """Offers the two gestures the header click carries, each named for what it does next.
-
-        The labels follow the channel's state, so the item reads as the change it makes rather
-        than as a switch whose direction the user has to infer from the columns.
-        """
-        muted = self._is_muted(generator)
-        dpg.add_menu_item(
-            label=self._lbl_context_unmute if muted else self._lbl_context_mute,
-            callback=lambda: self.call(self.on_channel_mute_toggled, generator),
-        )
-        soloed = self._is_soloed(generator)
-        dpg.add_menu_item(
-            label=self._lbl_context_unsolo if soloed else self._lbl_context_solo,
-            callback=lambda: self.call(self.on_channel_soloed, generator),
-        )
-
-    def _add_all_channels_items(self) -> None:
-        """Offers the two whole-mix moves, each enabled while it has an effect to make."""
-        dpg.add_menu_item(
-            label=self._lbl_context_mute_all,
-            enabled=not self._all_muted(),
-            callback=lambda: self.call(self.on_channels_muted),
-        )
-        dpg.add_menu_item(
-            label=self._lbl_context_unmute_all,
-            enabled=self._any_muted(),
-            callback=lambda: self.call(self.on_channels_unmuted),
-        )
+            self._channel_switch.add_menu_items(generator, self._current_channels)
 
     def _on_cell_right_clicked(
         self,

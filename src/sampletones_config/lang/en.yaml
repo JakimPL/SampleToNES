@@ -498,6 +498,14 @@ sequencer.order.label.context_move_left: "Move left"
 sequencer.order.label.context_move_right: "Move right"
 sequencer.order.label.context_move_start: "Move to start"
 sequencer.order.label.context_move_end: "Move to end"
+sequencer.order.label.context_mute: "Mute"
+sequencer.order.label.context_unmute: "Unmute"
+sequencer.order.label.context_solo: "Solo"
+sequencer.order.label.context_unsolo: "Unsolo"
+sequencer.order.label.context_mute_all: "Mute all channels"
+sequencer.order.label.context_unmute_all: "Unmute all channels"
+sequencer.order.tooltip.label_channel: "Click to mute or unmute this channel.\n{modifier}+click to solo it, right-click for channel actions."
+sequencer.order.tooltip.label_master: "Click to mute every channel, or to bring them all back.\nRight-click for channel actions."
 
 # =============================================================================
 # Sequencer tab — Instruments

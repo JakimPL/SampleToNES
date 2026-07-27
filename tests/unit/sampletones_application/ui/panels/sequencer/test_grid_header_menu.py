@@ -85,19 +85,16 @@ class _MenuRecorder:
 def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
     """Builds a panel around the state the header menu reads, with no DearPyGui context.
 
-    The menu touches the column labels, the item labels, the pushed mute set, and the map from
-    header widget to column, so those are wired directly and the rest of the panel is left out.
+    The menu touches the column labels, the pushed mute set, and the map from header widget to
+    column, so those are wired directly and the rest of the panel is left out. The switch behind
+    the menu is built the way the panel builds it, from the real language file, so the item labels
+    under test are the ones a user reads.
     """
     panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
     panel._column_labels = dict(COLUMN_LABELS)
     panel._header_columns = {widget: column for column, widget in HEADER_WIDGETS.items()}
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
-    panel._lbl_context_mute = LABEL_MUTE
-    panel._lbl_context_unmute = LABEL_UNMUTE
-    panel._lbl_context_solo = LABEL_SOLO
-    panel._lbl_context_unsolo = LABEL_UNSOLO
-    panel._lbl_context_mute_all = LABEL_MUTE_ALL
-    panel._lbl_context_unmute_all = LABEL_UNMUTE_ALL
+    panel._create_channel_switch(LanguageManager(LANG_EN))
     return panel
 
 

@@ -85,11 +85,12 @@ class HeaderColors(BaseModel, extra="forbid", frozen=True):
 class MutedColors(BaseModel, extra="forbid", frozen=True):
     """Colours marking a channel the song player silences.
 
-    ``column`` is the neutral shade its column takes in place of the channel's identity
-    tint, so the whole column recedes; ``text`` is the shade its header label takes.
+    ``background`` is the neutral shade the channel takes in place of its identity tint —
+    down its column in the tracker, along its row in the order table — so the channel
+    recedes as a whole; ``text`` is the shade its name takes.
     """
 
-    column: PaletteColor
+    background: PaletteColor
     text: PaletteColor
 
 

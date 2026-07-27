@@ -15,8 +15,10 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.channels import ALL_CHANNELS, SequencerChannelsLogic
 from sampletones_application.paths import LANG_EN
+from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer import grid as grid_module
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
 from sampletones_application.view_model.sequencer.samples import SampleSelection
 from sampletones_application.view_model.shared.history import (
@@ -838,21 +840,25 @@ class TestChannelMuteLifetime:
 
 @pytest.fixture
 def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
-    """A coordinator joining the real channels logic to a real grid panel.
+    """A coordinator joining the real channels logic to a real grid panel and a real order panel.
 
-    The panel's colour cues reach DearPyGui, which holds no context here, so the table is
-    reported absent and the panel stops once it has recorded the mute set — which is what
-    the wiring is read for. Modifiers are reported as held nowhere; a test that needs Ctrl
-    says so.
+    Each panel's colour cues reach DearPyGui, which holds no context here, so the tables are
+    reported absent and a panel stops once it has recorded the mute set — which is what the
+    wiring is read for. Modifiers are reported as held nowhere; a test that needs Ctrl says so.
     """
     monkeypatch.setattr(grid_module.dpg, "does_item_exist", lambda item: False)
     monkeypatch.setattr(grid_module.dpg, "set_value", lambda item, value: None)
-    monkeypatch.setattr(grid_module, "capture_modifiers", lambda: NO_MODIFIERS)
+    monkeypatch.setattr(channels_module, "capture_modifiers", lambda: NO_MODIFIERS)
 
+    language_manager = LanguageManager(LANG_EN)
     instance = object.__new__(SequencerTabCoordinator)
     instance._sequencer_channels_logic = SequencerChannelsLogic()
     instance._sequencer_grid_panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
     instance._sequencer_grid_panel._current_channels = None
+    instance._sequencer_grid_panel._create_channel_switch(language_manager)
+    instance._sequencer_order_panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+    instance._sequencer_order_panel._current_channels = None
+    instance._sequencer_order_panel._create_channel_switch(language_manager)
     instance._wire_channels_callbacks()
     return instance
 
@@ -888,7 +894,7 @@ class TestChannelHeaderWiring:
         channels_coordinator: SequencerTabCoordinator,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(grid_module, "capture_modifiers", lambda: CTRL)
+        monkeypatch.setattr(channels_module, "capture_modifiers", lambda: CTRL)
         panel = channels_coordinator._sequencer_grid_panel
 
         panel._on_header_clicked(0, True, GeneratorName.PULSE2)
@@ -941,6 +947,87 @@ class TestChannelHeaderWiring:
 
         assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
         assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
+
+
+class TestChannelRowLabelWiring:
+    """The order table's row labels switch the same mute set, and both tables hear about it."""
+
+    def test_row_label_click_silences_that_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        order_panel._on_label_clicked(0, True, GeneratorName.NOISE)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.NOISE}
+        assert order_panel._is_muted(GeneratorName.NOISE)
+
+    def test_ctrl_row_label_click_solos_that_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(channels_module, "capture_modifiers", lambda: CTRL)
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        order_panel._on_label_clicked(0, True, GeneratorName.PULSE1)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset({GeneratorName.PULSE1})
+
+    def test_master_row_label_click_silences_every_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        order_panel._on_label_clicked(0, True, None)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
+
+    def test_a_tracker_click_reaches_the_order_table(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        grid_panel = channels_coordinator._sequencer_grid_panel
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        grid_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        assert order_panel._is_muted(GeneratorName.TRIANGLE)
+
+    def test_an_order_click_reaches_the_tracker(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        grid_panel = channels_coordinator._sequencer_grid_panel
+        order_panel = channels_coordinator._sequencer_order_panel
+
+        order_panel._on_label_clicked(0, True, GeneratorName.PULSE2)
+
+        assert grid_panel._is_muted(GeneratorName.PULSE2)
+
+    def test_the_order_menu_silences_every_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        order_panel = channels_coordinator._sequencer_order_panel
+        order_panel._on_label_clicked(0, True, GeneratorName.TRIANGLE)
+
+        order_panel.call(order_panel.on_channels_muted)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
+
+    def test_the_order_menu_restores_every_channel(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        order_panel = channels_coordinator._sequencer_order_panel
+        order_panel._on_label_clicked(0, True, GeneratorName.TRIANGLE)
+
+        order_panel.call(order_panel.on_channels_unmuted)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
 
 
 class TestHistoryDelegation:

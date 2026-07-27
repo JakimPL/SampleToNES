@@ -59,6 +59,8 @@ class SequencerOrderElements(AbstractElement):
     ROW_PULSE_2 = "row_pulse_2"
     ROW_TRIANGLE = "row_triangle"
     ROW_NOISE = "row_noise"
+    LABEL_CHANNEL = "label_channel"
+    LABEL_MASTER = "label_master"
     CONTEXT_PLAY = "context_play"
     CONTEXT_DUPLICATE = "context_duplicate"
     CONTEXT_INSERT = "context_insert"
@@ -68,6 +70,12 @@ class SequencerOrderElements(AbstractElement):
     CONTEXT_MOVE_RIGHT = "context_move_right"
     CONTEXT_MOVE_START = "context_move_start"
     CONTEXT_MOVE_END = "context_move_end"
+    CONTEXT_MUTE = "context_mute"
+    CONTEXT_UNMUTE = "context_unmute"
+    CONTEXT_SOLO = "context_solo"
+    CONTEXT_UNSOLO = "context_unsolo"
+    CONTEXT_MUTE_ALL = "context_mute_all"
+    CONTEXT_UNMUTE_ALL = "context_unmute_all"
 
 
 class SequencerInstrumentsElements(AbstractElement):

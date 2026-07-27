@@ -109,6 +109,13 @@ Each of the sequencer's four tracker channels can be silenced for listening. `Se
 soloing silences the other three and remembers the set it replaced, so a second solo of that channel
 returns to the mix it interrupted.
 
+Both sequencer tables reach that one set. The tracker's column headers and the order table's row
+labels are clickable names, and each hands its click and its right-click menu to `ChannelSwitch`
+(`ui/panels/sequencer/channels.py`), so the gestures and the item wording stay identical across the
+two. Each table then shows the mute set its own way — the tracker down a column, the order table
+along a row — from the same colours (`SequencerColors.muted`), so a silenced channel looks the same
+wherever it appears.
+
 The mask is **pulled per row**. `RowSynthesizer` reads it through a provider callable while mixing
 each row, so a change during playback is heard as the render-ahead buffer (`PREFETCH_SECONDS`)
 drains — the same immediacy every other live edit has. A silenced channel still takes each row's
