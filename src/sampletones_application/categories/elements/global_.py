@@ -91,6 +91,8 @@ class MenuElements(AbstractElement):
     ITEM_PLAYBACK_AUTOPLAY = "item_playback_autoplay"
     ITEM_PLAYBACK_FOLLOW_PLAYBACK = "item_playback_follow_playback"
     ITEM_PLAYBACK_LOOP_SONG = "item_playback_loop_song"
+    GROUP_PLAYBACK_CHANNELS = "group_playback_channels"
+    ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS = "item_playback_unmute_all_channels"
     ITEM_PLAYBACK_AUDIO_SETTINGS = "item_playback_audio_settings"
     GROUP_VIEW = "group_view"
     ITEM_VIEW_SHOW_ADVANCED_SETTINGS = "item_view_show_advanced_settings"

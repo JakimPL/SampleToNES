@@ -1,4 +1,4 @@
-from typing import Final, Tuple
+from typing import Dict, Final, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -13,6 +13,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.glyphs import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.tags.general import (
+    PRE_GLOBAL_MENU_ITEM_PLAYBACK_CHANNEL,
     TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
     TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
     TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
@@ -23,12 +24,14 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_FRAME,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
@@ -62,9 +65,13 @@ from sampletones_application.utils.gui.dpg import (
     dpg_set_item_label,
     dpg_set_value,
 )
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.ids import (
+    CHANNEL_SHORTCUT_IDS,
+    ShortcutId,
+)
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.callback import VoidCallback
 
 PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
@@ -80,6 +87,12 @@ RECONSTRUCTION_ITEM_TAGS: Final[Tuple[str, ...]] = (
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
 )
+CHANNEL_LABELS: Final[Dict[GeneratorName, ContextElements]] = {
+    GeneratorName.PULSE1: ContextElements.PULSE_1,
+    GeneratorName.PULSE2: ContextElements.PULSE_2,
+    GeneratorName.TRIANGLE: ContextElements.TRIANGLE,
+    GeneratorName.NOISE: ContextElements.NOISE,
+}
 
 
 class MenuBar:
@@ -361,10 +374,38 @@ class MenuBar:
                 label=self._label(MenuElements.ITEM_PLAYBACK_LOOP_SONG),
                 check=True,
             )
+            self._create_channels_menu(state)
             dpg.add_separator()
             self._shortcut_manager.add_menu_item(
                 ShortcutId.AUDIO_SETTINGS,
                 label=self._label(MenuElements.ITEM_PLAYBACK_AUDIO_SETTINGS),
+            )
+
+    def _create_channels_menu(self, state: MenuBarViewModel) -> None:
+        """Builds the submenu that switches each tracker channel of the sequencer's song.
+
+        A channel carries a check while it sounds, so the submenu reads as the mix the tracker's
+        columns and the order table's rows show, and choosing one silences it. The closing item
+        brings the whole mix back in one gesture, and it is offered while a channel is silenced.
+        """
+        with dpg.menu(
+            tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS,
+            label=self._label(MenuElements.GROUP_PLAYBACK_CHANNELS),
+        ):
+            for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
+                self._shortcut_manager.add_menu_item(
+                    shortcut_id,
+                    tag=self._channel_menu_item_tag(generator),
+                    label=self._context_label(CHANNEL_LABELS[generator]),
+                    check=True,
+                    default_value=not state.channels.is_muted(generator),
+                )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.UNMUTE_ALL_CHANNELS,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
+                label=self._label(MenuElements.ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS),
+                enabled=state.channels.any_muted,
             )
 
     def _create_view_menu(self) -> None:
@@ -487,8 +528,19 @@ class MenuBar:
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK, state.follow_playback)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG, state.loop_song)
+        self._update_channels(state)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN, state.fullscreen)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
+
+    def _update_channels(self, state: MenuBarViewModel) -> None:
+        """Shows the mute set the sequencer's tables show: a check on every channel that sounds."""
+        for generator in CHANNEL_SHORTCUT_IDS:
+            dpg_set_value(self._channel_menu_item_tag(generator), not state.channels.is_muted(generator))
+
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
+            enabled=state.channels.any_muted,
+        )
 
     def _update_player_toolbar(self, state: MenuBarViewModel) -> None:
         dpg_configure_item(self._play_button_tag, enabled=state.play_from_start_enabled)
@@ -507,3 +559,8 @@ class MenuBar:
             TAG_GLOBAL_TEXT_MENU_FPS,
             label=self._tpl_fps.format(fps=fps),
         )
+
+    @staticmethod
+    def _channel_menu_item_tag(generator: GeneratorName) -> str:
+        """The tag of the Channels submenu item that switches ``generator``."""
+        return f"{PRE_GLOBAL_MENU_ITEM_PLAYBACK_CHANNEL}{generator.value}"

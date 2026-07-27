@@ -844,7 +844,8 @@ def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordin
 
     Each panel's colour cues reach DearPyGui, which holds no context here, so the tables are
     reported absent and a panel stops once it has recorded the mute set — which is what the
-    wiring is read for. Modifiers are reported as held nowhere; a test that needs Ctrl says so.
+    wiring is read for. The menu bar above the tab is a recorder, so a test can read whether it
+    was told. Modifiers are reported as held nowhere; a test that needs Ctrl says so.
     """
     monkeypatch.setattr(grid_module.dpg, "does_item_exist", lambda item: False)
     monkeypatch.setattr(grid_module.dpg, "set_value", lambda item, value: None)
@@ -852,6 +853,7 @@ def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordin
 
     language_manager = LanguageManager(LANG_EN)
     instance = object.__new__(SequencerTabCoordinator)
+    instance._on_channels_changed = MagicMock()
     instance._sequencer_channels_logic = SequencerChannelsLogic()
     instance._sequencer_grid_panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
     instance._sequencer_grid_panel._current_channels = None
@@ -1028,6 +1030,62 @@ class TestChannelRowLabelWiring:
         order_panel.call(order_panel.on_channels_unmuted)
 
         assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+
+
+class TestChannelMenuWiring:
+    """The Playback menu switches the same mute set, and every change reaches the menu bar."""
+
+    def test_the_menu_reads_the_mute_set_back(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator._sequencer_channels_logic.toggle(GeneratorName.NOISE)
+
+        assert channels_coordinator.channels.muted == frozenset({GeneratorName.NOISE})
+
+    def test_toggling_a_channel_silences_it(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.PULSE1}
+
+    def test_toggling_a_channel_twice_returns_it_to_the_mix(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
+        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+
+    def test_the_menu_restores_every_channel_from_a_solo(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator._sequencer_channels_logic.solo(GeneratorName.TRIANGLE)
+
+        channels_coordinator.unmute_all_channels()
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+
+    def test_a_menu_toggle_shows_in_both_tables(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator.toggle_channel(GeneratorName.TRIANGLE)
+
+        assert channels_coordinator._sequencer_grid_panel._is_muted(GeneratorName.TRIANGLE)
+        assert channels_coordinator._sequencer_order_panel._is_muted(GeneratorName.TRIANGLE)
+
+    def test_a_table_click_tells_the_menu_bar(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        channels_coordinator._sequencer_grid_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        channels_coordinator._on_channels_changed.assert_called_once_with()
 
 
 class TestHistoryDelegation:

@@ -1,0 +1,206 @@
+from contextlib import contextmanager
+from typing import Any, Dict, FrozenSet, Iterator, List
+
+import pytest
+
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.paths import LANG_EN
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
+)
+from sampletones_application.ui import menu as menu_module
+from sampletones_application.ui.menu import MenuBar
+from sampletones_application.utils.gui.shortcuts.ids import CHANNEL_SHORTCUT_IDS, ShortcutId
+from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.shared.menu import MenuBarViewModel
+from sampletones_core.constants.enums import GeneratorName
+
+CHANNEL_NAMES = ["Pulse 1", "Pulse 2", "Triangle", "Noise"]
+UNMUTE_ALL = "Unmute all channels"
+
+
+class _ShortcutManagerRecorder:
+    """Records the items a menu asks for, in place of the manager that would create them."""
+
+    def __init__(self) -> None:
+        self.items: List[Dict[str, Any]] = []
+
+    def add_menu_item(self, shortcut_id: ShortcutId, **kwargs: Any) -> None:
+        self.items.append({"shortcut_id": shortcut_id, **kwargs})
+
+    @property
+    def labels(self) -> List[str]:
+        return [item["label"] for item in self.items]
+
+    def item(self, label: str) -> Dict[str, Any]:
+        return next(item for item in self.items if item["label"] == label)
+
+
+class _DearPyGuiRecorder:
+    """Stands in for the framework, recording the values and enablement a menu applies."""
+
+    def __init__(self) -> None:
+        self.values: Dict[str, bool] = {}
+        self.enabled: Dict[str, bool] = {}
+
+    @contextmanager
+    def menu(self, **kwargs: Any) -> Iterator[int]:
+        yield 0
+
+    def add_separator(self, **kwargs: Any) -> int:
+        return 0
+
+    def set_value(self, item: str, value: bool) -> None:
+        self.values[item] = value
+
+    def configure_item(self, item: str, **kwargs: Any) -> None:
+        self.enabled[item] = kwargs["enabled"]
+
+
+def _state(muted: FrozenSet[GeneratorName]) -> MenuBarViewModel:
+    return MenuBarViewModel(
+        project_open=True,
+        reconstruction_loaded=False,
+        reconstruction_saveable=False,
+        reconstruction_in_project=False,
+        reconstruction_file_backed=False,
+        reconstruction_audio_recorded=False,
+        can_undo=False,
+        can_redo=False,
+        play_label="Play",
+        play_or_pause_enabled=False,
+        play_from_start_enabled=False,
+        play_from_frame_enabled=False,
+        pause_enabled=False,
+        player_paused=False,
+        stop_enabled=False,
+        autoplay=False,
+        follow_playback=False,
+        loop_song=False,
+        channels=SequencerChannelsViewModel(muted=muted),
+        fullscreen=False,
+        advanced_settings=False,
+    )
+
+
+@pytest.fixture
+def framework(monkeypatch: pytest.MonkeyPatch) -> _DearPyGuiRecorder:
+    instance = _DearPyGuiRecorder()
+    monkeypatch.setattr(menu_module.dpg, "menu", instance.menu)
+    monkeypatch.setattr(menu_module.dpg, "add_separator", instance.add_separator)
+    monkeypatch.setattr(menu_module, "dpg_set_value", instance.set_value)
+    monkeypatch.setattr(menu_module, "dpg_configure_item", instance.configure_item)
+    return instance
+
+
+@pytest.fixture
+def shortcuts() -> _ShortcutManagerRecorder:
+    return _ShortcutManagerRecorder()
+
+
+@pytest.fixture
+def menu_bar(shortcuts: _ShortcutManagerRecorder) -> MenuBar:
+    """A bar with the collaborators its Channels submenu reads, from the real language file."""
+    instance = MenuBar.__new__(MenuBar)
+    instance._shortcut_manager = shortcuts
+    instance._language_manager = LanguageManager(LANG_EN)
+    return instance
+
+
+class TestChannelsMenuItems:
+    def test_every_channel_is_named_in_the_tracker_order(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_channels_menu(_state(frozenset()))
+
+        assert shortcuts.labels == [*CHANNEL_NAMES, UNMUTE_ALL]
+
+    def test_each_channel_carries_its_own_action(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_channels_menu(_state(frozenset()))
+
+        actions = [item["shortcut_id"] for item in shortcuts.items[:-1]]
+        assert actions == list(CHANNEL_SHORTCUT_IDS.values())
+
+    def test_each_channel_carries_its_own_tag(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_channels_menu(_state(frozenset()))
+
+        tags = [item["tag"] for item in shortcuts.items[:-1]]
+        assert tags == [MenuBar._channel_menu_item_tag(generator) for generator in CHANNEL_SHORTCUT_IDS]
+
+    def test_a_channel_is_checked_while_it_sounds(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_channels_menu(_state(frozenset({GeneratorName.TRIANGLE})))
+
+        assert shortcuts.item("Pulse 1")["default_value"]
+        assert not shortcuts.item("Triangle")["default_value"]
+
+    @pytest.mark.parametrize(
+        ("muted", "offered"),
+        [
+            (frozenset(), False),
+            (frozenset({GeneratorName.NOISE}), True),
+        ],
+        ids=["full_mix_withholds_the_restore", "a_silenced_channel_offers_the_restore"],
+    )
+    def test_the_restore_is_offered_while_a_channel_is_silenced(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+        muted: FrozenSet[GeneratorName],
+        offered: bool,
+    ) -> None:
+        menu_bar._create_channels_menu(_state(muted))
+
+        assert shortcuts.item(UNMUTE_ALL)["enabled"] is offered
+
+
+class TestChannelsMenuUpdate:
+    def test_the_checks_follow_the_mute_set(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._update_channels(_state(frozenset({GeneratorName.PULSE2})))
+
+        assert framework.values == {
+            MenuBar._channel_menu_item_tag(GeneratorName.PULSE1): True,
+            MenuBar._channel_menu_item_tag(GeneratorName.PULSE2): False,
+            MenuBar._channel_menu_item_tag(GeneratorName.TRIANGLE): True,
+            MenuBar._channel_menu_item_tag(GeneratorName.NOISE): True,
+        }
+
+    def test_the_restore_follows_the_mute_set(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._update_channels(_state(frozenset({GeneratorName.PULSE2})))
+
+        assert framework.enabled == {TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS: True}
+
+    def test_a_full_mix_withholds_the_restore(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._update_channels(_state(frozenset()))
+
+        assert framework.enabled == {TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS: False}

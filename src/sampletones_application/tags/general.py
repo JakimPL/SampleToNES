@@ -584,6 +584,18 @@ TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG = TagName(
     Widget.MENU,
     "item_playback_loop_song",
 )
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_channels",
+)
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_unmute_all_channels",
+)
 TAG_GLOBAL_TEXT_MENU_FPS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -633,6 +645,7 @@ TAG_GLOBAL_TAB_SEQUENCER = TagName(
     "sequencer",
 )
 
+PRE_GLOBAL_MENU_ITEM_PLAYBACK_CHANNEL = f"{TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS}{TAG_SEPARATOR}"
 SUF_BUTTON = f"{TAG_SEPARATOR}button"
 SUF_BUTTONS = f"{TAG_SEPARATOR}buttons"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}{TAG_SEPARATOR}copy"

@@ -14,7 +14,6 @@
 
 * Basic shapes as instruments
 * Selection operations on patterns and orders
-* Solo/mute channels
 * Replace/swap sample
 
 ### Workflow

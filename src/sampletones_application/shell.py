@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -45,7 +46,10 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL_SHIFT,
     SHIFT,
 )
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.ids import (
+    CHANNEL_SHORTCUT_IDS,
+    ShortcutId,
+)
 from sampletones_application.utils.gui.shortcuts.keys import (
     KEY_PAGE_DOWN,
     KEY_PAGE_UP,
@@ -55,6 +59,7 @@ from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback, PathCallback
 
@@ -99,6 +104,8 @@ class ShortcutBindings:
     toggle_autoplay: Callback
     toggle_follow_playback: Callback
     toggle_loop_song: Callback
+    toggle_channel: Callable[[GeneratorName], None]
+    unmute_all_channels: Callback
     audio_settings: Callback
     toggle_advanced_settings: Callback
     toggle_fullscreen: Callback
@@ -352,6 +359,7 @@ class ApplicationShell:
             Shortcut(),
             bindings.toggle_loop_song,
         )
+        self._register_channel_shortcuts(bindings)
         self._shortcut_manager.register(
             ShortcutId.UNDO,
             Shortcut(dpg.mvKey_Z, CTRL),
@@ -383,6 +391,26 @@ class ApplicationShell:
         )
 
         self._shortcut_manager.bind_all()
+
+    def _register_channel_shortcuts(self, bindings: ShortcutBindings) -> None:
+        """Registers one action per tracker channel, plus the one that brings the whole mix back.
+
+        Each action carries the channel it switches, so the Playback menu lists them as its
+        Channels submenu. They are registered without a key combination, which leaves the
+        assignment to the keybindings options.
+        """
+        for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
+            self._shortcut_manager.register(
+                shortcut_id,
+                Shortcut(),
+                partial(bindings.toggle_channel, generator),
+            )
+
+        self._shortcut_manager.register(
+            ShortcutId.UNMUTE_ALL_CHANNELS,
+            Shortcut(),
+            bindings.unmute_all_channels,
+        )
 
     def _setup_handlers(self) -> None:
         self._key_router.bind()

@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 
+from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.famitracker.export import write_ftm
 from sampletones_core.famitracker.specification.channels import ChannelId
 from sampletones_core.famitracker.specification.file import FTM_VERSION
@@ -47,3 +49,41 @@ class TestFtmPipeline:
             sequence for sequence in parsed_module.sequences if sequence.sequence_type == int(SequenceKind.VOLUME)
         ]
         assert any(any(item > 0 for item in sequence.items) for sequence in volume_sequences)
+
+
+class TestSilencedChannelsReachTheModuleWhole:
+    """A silenced channel belongs to the listening session, so the module still carries it.
+
+    The mute set lives in the application's channels logic while the writer reads the project
+    alone. These read that from the outside: a module exported while channels are silenced holds
+    every played channel, and is the very file the full mix writes.
+    """
+
+    def test_a_soloed_mix_writes_every_played_channel(
+        self,
+        integration_project: Project,
+        module_path: Path,
+    ) -> None:
+        channels = SequencerChannelsLogic()
+        channels.solo(GeneratorName.TRIANGLE)
+        assert channels.active_channels == frozenset({GeneratorName.TRIANGLE})
+
+        write_ftm(module_path, integration_project)
+
+        assert {pattern.channel for pattern in parse_ftm(module_path.read_bytes()).patterns} == PLAYED_CHANNELS
+
+    def test_a_fully_silenced_mix_writes_the_same_file(
+        self,
+        integration_project: Project,
+        module_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        full_mix_path = tmp_path / "full_mix.ftm"
+        write_ftm(full_mix_path, integration_project)
+        channels = SequencerChannelsLogic()
+        channels.mute_all()
+        assert channels.active_channels == frozenset()
+
+        write_ftm(module_path, integration_project)
+
+        assert module_path.read_bytes() == full_mix_path.read_bytes()

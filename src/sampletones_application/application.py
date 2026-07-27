@@ -368,6 +368,7 @@ class Application:
             on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
+            on_channels_changed=self._update_menu,
         )
 
         self._playback_router = PlaybackRouter(
@@ -495,6 +496,8 @@ class Application:
             toggle_autoplay=self._toggle_autoplay,
             toggle_follow_playback=self._toggle_follow_playback,
             toggle_loop_song=self._toggle_loop_song,
+            toggle_channel=self._sequencer_tab.toggle_channel,
+            unmute_all_channels=self._sequencer_tab.unmute_all_channels,
             audio_settings=self._open_audio_settings,
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_fullscreen=self._shell.toggle_fullscreen,
@@ -566,6 +569,7 @@ class Application:
             autoplay=self.session_manager.autoplay,
             follow_playback=self.session_manager.follow_playback,
             loop_song=self.session_manager.loop_song,
+            channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )
@@ -594,6 +598,7 @@ class Application:
             autoplay=self.session_manager.autoplay,
             follow_playback=self.session_manager.follow_playback,
             loop_song=self.session_manager.loop_song,
+            channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
         )

@@ -1,7 +1,10 @@
 from pydantic import BaseModel
 
+from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+
 
 class MenuBarViewModel(BaseModel, frozen=True):
+    channels: SequencerChannelsViewModel
     project_open: bool
     reconstruction_loaded: bool
     reconstruction_saveable: bool

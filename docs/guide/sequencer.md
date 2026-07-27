@@ -55,6 +55,31 @@ grid to keep pace. The keyboard drives playback throughout the tab:
 `Escape` silences everything, including a sample preview. The same commands sit on
 the **Playback** menu and the transport buttons.
 
+## Listening to one channel at a time
+
+Channel names are switches. Click **Triangle** at the top of the tracker to silence
+that channel: its name greys, its column and its row in the **Order** grid go
+neutral, and its notes dim — still readable, still editable, just not sounding.
+Click the name again to bring it back. The same click works on the channel's name
+in the **Order** grid, and both grids show every change, so a channel looks the same
+wherever you see it.
+
+| Gesture | Action |
+|---------|--------|
+| Click a channel's name | Silence it, or bring it back |
+| `Ctrl`+click a channel's name | Solo it — silence the other three; `Ctrl`+click again returns the mix you had |
+| Click **Sample** (tracker) or **Master** (order) | Silence every channel, or bring them all back |
+| Right-click any name | The same actions as a menu |
+
+The **Playback ▸ Channels** submenu carries the same mix: a check marks each channel
+that sounds, and **Unmute all channels** returns the whole set.
+
+Muting is for listening only. The song keeps every channel, so saving, exporting a
+module, and undo all work on the full arrangement, and a mute survives undo and
+redo. Toggling during playback is heard within about a quarter second. Opening,
+creating, or closing a project starts a fresh listening session with every channel
+audible.
+
 ## Timing and properties
 
 Set the song's timing in **Module options** on the right: **Rows** per pattern,

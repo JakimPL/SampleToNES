@@ -104,7 +104,7 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import StringCallback
+from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
 
@@ -133,6 +133,7 @@ class SequencerTabCoordinator:
         on_sample_reconstruction_replaced: Callable[[str, Reconstruction], None],
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
+        on_channels_changed: VoidCallback,
     ) -> None:
         self._project_controller = project_controller
         self._session_manager = session_manager
@@ -142,6 +143,7 @@ class SequencerTabCoordinator:
         self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
+        self._on_channels_changed = on_channels_changed
         self._language_manager = language_manager
         self._dialogs = dialogs
 
@@ -421,7 +423,7 @@ class SequencerTabCoordinator:
         channels logic directly and both show every change. Muting is a monitoring gesture, so these
         hooks record no history entry.
         """
-        self._sequencer_channels_logic.on_channels_changed = self._on_channels_changed
+        self._sequencer_channels_logic.on_channels_changed = self._show_channels
         for panel in (self._sequencer_grid_panel, self._sequencer_order_panel):
             panel.on_channel_mute_toggled = self._sequencer_channels_logic.toggle
             panel.on_channel_soloed = self._sequencer_channels_logic.solo
@@ -429,10 +431,29 @@ class SequencerTabCoordinator:
             panel.on_channels_muted = self._sequencer_channels_logic.mute_all
             panel.on_channels_unmuted = self._sequencer_channels_logic.unmute_all
 
-    def _on_channels_changed(self, view_model: SequencerChannelsViewModel) -> None:
-        """Shows the mute set in both tables, so a channel looks the same wherever it appears."""
+    def _show_channels(self, view_model: SequencerChannelsViewModel) -> None:
+        """Shows the mute set in both tables and in the menu bar, so a channel reads the same
+        wherever it appears.
+
+        The menu bar sits above this tab and rebuilds its own state, so it is handed the change
+        as a signal and reads the mute set back through :attr:`channels`.
+        """
         self._sequencer_grid_panel.update_channels(view_model)
         self._sequencer_order_panel.update_channels(view_model)
+        self._on_channels_changed()
+
+    @property
+    def channels(self) -> SequencerChannelsViewModel:
+        """The mute set the tables show, for the menu bar that lists the same channels."""
+        return self._sequencer_channels_logic.build_channels()
+
+    def toggle_channel(self, generator: GeneratorName) -> None:
+        """Flips one channel between audible and silent, the menu's per-channel gesture."""
+        self._sequencer_channels_logic.toggle(generator)
+
+    def unmute_all_channels(self) -> None:
+        """Returns every channel to audible, the menu's whole-mix gesture."""
+        self._sequencer_channels_logic.unmute_all()
 
     def _wire_order_callbacks(self) -> None:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order

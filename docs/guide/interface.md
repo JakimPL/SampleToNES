@@ -71,8 +71,8 @@ The menu bar and status bar sit outside the tabs.
 The **File** menu manages projects — new, open, save, properties, close, and
 **Export FamiTracker module...**. **Edit** holds **Undo** and **Redo**.
 **Reconstruction** gathers everything for the current reconstruction: reconstruct,
-open, save, and the export actions. **Playback** controls play, pause, and stop and
-opens **Audio settings...**. **View** toggles **Show advanced settings** and
+open, save, and the export actions. **Playback** controls play, pause, and stop, mutes the
+sequencer's channels under **Channels**, and opens **Audio settings...**. **View** toggles **Show advanced settings** and
 **Fullscreen**, and **Help** has **About**.
 
 **Audio settings** (**Playback ▸ Audio settings...**) choose the playback device,

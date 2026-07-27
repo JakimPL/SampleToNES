@@ -1,4 +1,7 @@
 from enum import Enum
+from typing import Dict, Final
+
+from sampletones_core.constants.enums import GeneratorName
 
 
 class ShortcutId(Enum):
@@ -32,9 +35,22 @@ class ShortcutId(Enum):
     TOGGLE_AUTOPLAY = "ToggleAutoplay"
     TOGGLE_FOLLOW_PLAYBACK = "ToggleFollowPlayback"
     TOGGLE_LOOP_SONG = "ToggleLoopSong"
+    TOGGLE_CHANNEL_PULSE_1 = "ToggleChannelPulse1"
+    TOGGLE_CHANNEL_PULSE_2 = "ToggleChannelPulse2"
+    TOGGLE_CHANNEL_TRIANGLE = "ToggleChannelTriangle"
+    TOGGLE_CHANNEL_NOISE = "ToggleChannelNoise"
+    UNMUTE_ALL_CHANNELS = "UnmuteAllChannels"
     AUDIO_SETTINGS = "AudioSettings"
     TOGGLE_ADVANCED_SETTINGS = "ToggleAdvancedSettings"
     TOGGLE_FULLSCREEN = "ToggleFullscreen"
     ABOUT_DIALOG = "AboutDialog"
     NEXT_TAB = "NextTab"
     PREVIOUS_TAB = "PreviousTab"
+
+
+CHANNEL_SHORTCUT_IDS: Final[Dict[GeneratorName, ShortcutId]] = {
+    GeneratorName.PULSE1: ShortcutId.TOGGLE_CHANNEL_PULSE_1,
+    GeneratorName.PULSE2: ShortcutId.TOGGLE_CHANNEL_PULSE_2,
+    GeneratorName.TRIANGLE: ShortcutId.TOGGLE_CHANNEL_TRIANGLE,
+    GeneratorName.NOISE: ShortcutId.TOGGLE_CHANNEL_NOISE,
+}
