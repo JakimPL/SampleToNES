@@ -24,12 +24,18 @@ levels. The chip has two of them (`pulse1`, `pulse2`).
 ### Triangle
 
 A channel that plays a triangle wave of fixed shape and fixed volume; only its
-pitch varies.
+pitch varies. Its timer divides the APU clock by 32 while the pulse channels divide
+by 16, and all three read the same period table, so a triangle note sounds an octave
+below the note it is written as: a triangle instruction of pitch P sounds at pitch
+P−12. FamiTracker uses the same convention, so an exported note cell plays at the
+pitch _SampleToNES_ played it.
 
 ### Noise
 
 A channel that plays pseudo-random noise from an LFSR, with 16 period settings,
-15 volume levels, and a short/long mode.
+15 volume levels, and a short/long mode. The period setting divides the APU clock
+into the LFSR's shift rate, `APU_CLOCK / NOISE_PERIODS[index]`, spanning 440.0 Hz at
+index 0 to 447443.2 Hz at index 15.
 
 ### Duty cycle
 
@@ -39,8 +45,12 @@ sets the pulse channel's timbre.
 ### LFSR
 
 *Linear-feedback shift register* — the circuit that produces the noise channel's
-pseudo-random pattern. Its short/long mode changes the pattern's length, and so
-its character.
+pseudo-random pattern. Its short/long mode changes the pattern's length, and so its
+character: long mode repeats every 32767 shifts and reads as noise, short mode
+repeats every 93 and turns a high period setting into an audible tone — index 15
+sounds at 447443.2 ÷ 93 ≈ 4811 Hz. Short mode also carries a strong DC asymmetry, its
+output bit set 17.2% of the time against long mode's 50%, and that bias is what gives
+it its metallic timbre.
 
 ### NES frequency
 

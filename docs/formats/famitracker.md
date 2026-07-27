@@ -159,10 +159,18 @@ orange once it passes that length, so the limit is visible before an export.
 
 **How _SampleToNES_ fills an instrument.** Each generator slice of a sample's
 reconstruction becomes one instrument, so a sample yields one to four instruments.
-The arpeggio sequence is the reconstruction's pitch contour expressed as
-`pitch − initial_pitch`; triggering the instrument at the note `initial_pitch`
-replays the original contour. Volume, duty (or noise mode) and any pitch sequences
-carry across directly. The DPCM key-assignment table is empty by design.
+The arpeggio sequence carries the reconstruction's pitch contour as signed offsets,
+and triggering the instrument at `initial_pitch` replays that contour. Volume, duty
+(or noise mode) and any pitch sequences carry across directly. The DPCM
+key-assignment table is empty by design.
+
+For the pitched channels, `center_pitches` picks the offset origin: it takes the
+midpoint of the contour's `(lowest, highest)` range, reports that pitch as
+`initial_pitch`, and stores each frame as `pitch − initial_pitch`. The offsets
+straddle zero and stay compact around one note, and the pattern cell holds the
+contour's midpoint — a rising contour prints its middle note and opens below it. The
+noise channel measures its offsets from the first sounding period instead, wrapped
+into the 16 available periods.
 
 ## C. FamiTracker capacity limits
 
