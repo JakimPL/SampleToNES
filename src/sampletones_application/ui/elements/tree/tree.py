@@ -225,6 +225,12 @@ class GUITreePanel(GUIPanel, ABC):
             TextType.LABEL,
             ContextElements.ADD_TO_SEQUENCER,
         ]
+        self._tpl_ctx_replace_sample = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.TEMPLATE,
+            ContextElements.REPLACE_SAMPLE,
+        ]
         self._lbl_ctx_locate_audio = language_manager[
             Page.GLOBAL,
             Panel.CONTEXT,
@@ -288,6 +294,8 @@ class GUITreePanel(GUIPanel, ABC):
 
         self.on_add_to_sequencer: Optional[PathCallback] = None
         self.can_add_to_sequencer: Optional[Callable[[], bool]] = None
+        self.on_replace_in_sequencer: Optional[PathCallback] = None
+        self.replace_in_sequencer_label: Optional[Callable[[], Optional[str]]] = None
         self.on_locate_original_audio: Optional[PathCallback] = None
 
         super().__init__(
@@ -734,6 +742,24 @@ class GUITreePanel(GUIPanel, ABC):
             enabled=self.call(self.can_add_to_sequencer),
         )
 
+    def _add_context_menu_replace_item(self, node: FileSystemNode) -> None:
+        """Add the replace-in-sequencer item, naming the sample this file would overwrite.
+
+        The target is whichever sample the sequencer has selected, so the item is present while a
+        selection names one and its label is read fresh on each right-click. Carrying no separator
+        groups it with the add item a caller places above it, since both push this file into the
+        sequencer.
+        """
+        target = self.call(self.replace_in_sequencer_label)
+        if target is None:
+            return
+
+        dpg.add_menu_item(
+            label=self._tpl_ctx_replace_sample.format(sample=target),
+            callback=self._on_replace_in_sequencer,
+            user_data=node,
+        )
+
     def _add_context_menu_locate_audio_item(self, node: FileSystemNode) -> None:
         dpg.add_menu_item(
             label=self._lbl_ctx_locate_audio,
@@ -762,6 +788,12 @@ class GUITreePanel(GUIPanel, ABC):
             return
 
         self.call(self.on_add_to_sequencer, user_data.filepath)
+
+    def _on_replace_in_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
+            return
+
+        self.call(self.on_replace_in_sequencer, user_data.filepath)
 
     def _on_search_changed(self, sender: Sender, query: str) -> None:
         if query:
