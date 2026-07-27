@@ -8,3 +8,5 @@ MINUS: Final[str] = "-"
 PLUS: Final[str] = "+"
 PLUS_MINUS: Final[str] = f"{PLUS}{MINUS}"
 SIGNS: Final[Tuple[str, str]] = (PLUS, MINUS)
+
+TITLE_SEPARATOR: Final[str] = f" {MINUS} "

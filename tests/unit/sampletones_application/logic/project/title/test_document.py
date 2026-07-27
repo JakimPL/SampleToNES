@@ -7,6 +7,7 @@ from sampletones_application.logic.project.title.document import (
     ReconstructionTitlePart,
     document_title,
 )
+from sampletones_shared.constants.symbols import TITLE_SEPARATOR
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -63,14 +64,14 @@ class TestDocumentTitle(BaseTestSuite):
             expected="Untitled",
         ),
         TestCase(
-            label="file_reconstruction_appended_after_em_dash_with_extension",
+            label="file_reconstruction_appended_after_separator_with_extension",
             project_name="Song",
             project_unsaved=False,
             project_open=True,
             reconstruction_name="Recon.stn",
             reconstruction_unsaved=True,
             reconstruction_included=False,
-            expected="Song — Recon.stn*",
+            expected=f"Song{TITLE_SEPARATOR}Recon.stn*",
         ),
         TestCase(
             label="included_reconstruction_shown_in_brackets",

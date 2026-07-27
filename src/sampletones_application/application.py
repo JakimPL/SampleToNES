@@ -42,6 +42,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.logic.project.title.compose import window_title
 from sampletones_application.logic.project.title.document import (
     ReconstructionTitlePart,
     document_title,
@@ -1063,21 +1064,19 @@ class Application:
             TextType.LABEL,
             DialogElements.UNTITLED,
         ]
-        composed = document_title(
+        document = document_title(
             self.project_manager.session,
             self._reconstruction_title_part(),
             untitled=untitled,
             project_open=self.project_manager.is_open,
         )
-        self._viewport_manager.update_title(
-            self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.MAIN_WINDOW,
-            ],
-            composed,
-        )
+        application_name = self.language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.MAIN_WINDOW,
+        ]
+        self._viewport_manager.update_title(window_title(application_name, document))
 
     def _sync_reconstruction_ownership(self) -> None:
         """Reflects sequencer ownership in the open reconstruction view.
