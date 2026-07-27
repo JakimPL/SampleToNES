@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, FrozenSet, List, Optional
 
 import numpy as np
 
+from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
@@ -11,6 +12,7 @@ from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERE
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     add_sample,
+    all_channels,
     make_controller,
     make_pulse_reconstruction,
     place_modifier_row,
@@ -19,9 +21,25 @@ from tests.unit.sampletones_application.logic.sequencer.playback.conftest import
 )
 
 
+class MaskProvider:
+    """A channel mask a test moves between rows, standing in for the channels logic."""
+
+    __test__ = False
+
+    def __init__(self) -> None:
+        self.active: FrozenSet[GeneratorName] = ALL_CHANNELS
+
+    def mute(self, generator: GeneratorName) -> None:
+        self.active = ALL_CHANNELS - {generator}
+
+    def __call__(self) -> FrozenSet[GeneratorName]:
+        return self.active
+
+
 @dataclass
 class SynthesizerContext:
     synthesizer: RowSynthesizer
+    mask: MaskProvider
     chunks: List[np.ndarray] = field(default_factory=list)
     tick_snapshots: Dict[str, int] = field(default_factory=dict)
     sample_id_snapshots: Dict[str, Optional[str]] = field(default_factory=dict)
@@ -29,7 +47,11 @@ class SynthesizerContext:
 
 def _make_context() -> SynthesizerContext:
     controller = make_controller()
-    return SynthesizerContext(synthesizer=RowSynthesizer(controller, Config()))
+    mask = MaskProvider()
+    return SynthesizerContext(
+        synthesizer=RowSynthesizer(controller, Config(), active_channels=mask),
+        mask=mask,
+    )
 
 
 def _controller(context: SynthesizerContext):
@@ -223,27 +245,59 @@ class TestChannelMask:
             sample = add_sample(_controller(context), recon)
             place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
 
-        def set_mask_excluding_pulse1(context: SynthesizerContext) -> None:
-            context.synthesizer.set_channel_mask(frozenset(GeneratorName.items()) - {GeneratorName.PULSE1})
+        def mute_pulse1(context: SynthesizerContext) -> None:
+            context.mask.mute(GeneratorName.PULSE1)
 
         def render_and_compare_against_unmasked(context: SynthesizerContext) -> None:
             audio_masked = _render(context)
 
-            unmasked_synthesizer = RowSynthesizer(_controller(context), Config())
-            unmasked_synthesizer.set_channel_mask(frozenset({GeneratorName.PULSE1}))
-            audio_with_pulse1, _ = unmasked_synthesizer.render_row()
+            audible_synthesizer = RowSynthesizer(_controller(context), Config(), active_channels=all_channels)
+            audio_with_pulse1, _ = audible_synthesizer.render_row()
 
-            assert not np.allclose(audio_masked, audio_with_pulse1)
+            assert np.allclose(audio_masked, 0.0)
+            assert not np.allclose(audio_with_pulse1, 0.0)
 
         BaseTestScenario(
             label="masked channel excluded from mix",
             build=_make_context,
             steps=[
                 ScenarioStep(label="place pulse sample on row 0", action=place_pulse_sample),
-                ScenarioStep(label="mask out PULSE1", action=set_mask_excluding_pulse1),
+                ScenarioStep(label="mask out PULSE1", action=mute_pulse1),
                 ScenarioStep(
-                    label="render and assert differs from unmasked", action=render_and_compare_against_unmasked
+                    label="render and assert silence while the audible mix sounds",
+                    action=render_and_compare_against_unmasked,
                 ),
+            ],
+        ).run()
+
+    def test_mask_change_between_rows_takes_effect_without_restart(self) -> None:
+        """The mask is read per row, so unmuting mid-song is heard on the next row rendered.
+
+        The sustained note keeps its state through the muted row, so the channel resumes at the
+        pitch and volume the pattern has reached rather than retriggering.
+        """
+
+        def place_looping_pulse_sample(context: SynthesizerContext) -> None:
+            recon = make_pulse_reconstruction(count=4)
+            sample = add_sample(_controller(context), recon, loop=True)
+            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+
+        def mute_pulse1_and_render_row_0(context: SynthesizerContext) -> None:
+            context.mask.mute(GeneratorName.PULSE1)
+            assert np.allclose(_render(context), 0.0)
+            assert _state(context).sample_id is not None
+
+        def unmute_pulse1_and_render_row_1(context: SynthesizerContext) -> None:
+            context.mask.active = ALL_CHANNELS
+            assert not np.allclose(_render(context), 0.0)
+
+        BaseTestScenario(
+            label="mask change heard on the next row",
+            build=_make_context,
+            steps=[
+                ScenarioStep(label="place looping pulse sample on row 0", action=place_looping_pulse_sample),
+                ScenarioStep(label="mute PULSE1, render row 0 — silence", action=mute_pulse1_and_render_row_0),
+                ScenarioStep(label="unmute PULSE1, render row 1 — sounds", action=unmute_pulse1_and_render_row_1),
             ],
         ).run()
 
@@ -546,7 +600,7 @@ class TestNesFrequencyTempo:
         def pattern_duration_seconds(nes_frequency: int) -> float:
             controller = make_controller()
             controller.set_nes_frequency(nes_frequency)
-            synthesizer = RowSynthesizer(controller, Config())
+            synthesizer = RowSynthesizer(controller, Config(), active_channels=all_channels)
             rows = controller.project.song.rows_per_pattern
             total_samples = sum(len(synthesizer.render_row()[0]) for _ in range(rows))
             return total_samples / controller.project.settings.sample_rate
@@ -560,7 +614,7 @@ class TestNesFrequencyTempo:
         recon = make_pulse_reconstruction(count=12)
         sample = add_sample(controller, recon)
         place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
-        synthesizer = RowSynthesizer(controller, Config())
+        synthesizer = RowSynthesizer(controller, Config(), active_channels=all_channels)
         sample_rate = controller.project.settings.sample_rate
         pulse_state = synthesizer._channel_states[GeneratorName.PULSE1]
 

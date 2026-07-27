@@ -13,6 +13,7 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.snapshot import HistoryEntry, snapshot_project
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.logic.sequencer.channels import ALL_CHANNELS, SequencerChannelsLogic
 from sampletones_application.paths import LANG_EN
 from sampletones_application.view_model.sequencer.samples import SampleSelection
 from sampletones_application.view_model.shared.history import (
@@ -705,6 +706,7 @@ def wired_history_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCo
     A real manager observes a real controller, and every project replacement —
     including the ones undo/redo drive — routes back through
     ``_on_project_replaced``, exactly as ``_wire_callbacks`` sets it up. The
+    channels logic is real too, since the handler decides its lifetime. The
     panel-refreshing ``refresh`` is stubbed since no GUI subtree exists here.
     """
     instance = object.__new__(SequencerTabCoordinator)
@@ -714,6 +716,8 @@ def wired_history_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCo
     controller.on_project_replaced = instance._on_project_replaced
     instance._project_controller = controller
     instance._history = history
+    instance._sequencer_channels_logic = SequencerChannelsLogic()
+    instance._sequencer_channels_logic.on_channels_changed = lambda _: None
     monkeypatch.setattr(instance, "refresh", MagicMock())
     controller.new()
     return instance
@@ -764,6 +768,69 @@ class TestHistoryResetWiring:
         assert len(coordinator._history.entries) == 3
         assert coordinator._history.can_redo is True
         assert controller.project.settings.tempo == 150
+
+
+class TestChannelMuteLifetime:
+    """The mute set spans history navigation and starts fresh on a document transition.
+
+    Both arrive as the controller's single ``on_project_replaced`` signal, so these pin the
+    distinction ``_on_project_replaced`` draws from ``HistoryManager.is_restoring``.
+    """
+
+    def test_undo_keeps_the_mute_set(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        channels = coordinator._sequencer_channels_logic
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        channels.toggle(GeneratorName.TRIANGLE)
+
+        coordinator.undo()
+
+        assert channels.active_channels == ALL_CHANNELS - {GeneratorName.TRIANGLE}
+
+    def test_redo_keeps_the_mute_set(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        channels = coordinator._sequencer_channels_logic
+        with coordinator._history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+        channels.toggle(GeneratorName.NOISE)
+        coordinator.undo()
+
+        coordinator.redo()
+
+        assert channels.active_channels == ALL_CHANNELS - {GeneratorName.NOISE}
+
+    def test_opening_a_project_restores_every_channel(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        channels = coordinator._sequencer_channels_logic
+        channels.solo(GeneratorName.TRIANGLE)
+
+        coordinator._project_controller.new()
+
+        assert channels.active_channels == ALL_CHANNELS
+
+    def test_closing_the_project_restores_every_channel(
+        self,
+        wired_history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = wired_history_coordinator
+        channels = coordinator._sequencer_channels_logic
+        channels.toggle(GeneratorName.PULSE1)
+
+        coordinator._project_controller.close()
+
+        assert channels.active_channels == ALL_CHANNELS
 
 
 class TestHistoryDelegation:

@@ -1,4 +1,4 @@
-from typing import Callable, FrozenSet, Optional, Protocol
+from typing import Callable, Optional, Protocol
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.project.controller import ProjectController
@@ -11,7 +11,6 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -39,7 +38,6 @@ class SongPlayerServiceProtocol(Protocol):
         *,
         order_position: int,
         row_index: int,
-        active_channels: FrozenSet[GeneratorName],
     ) -> None: ...
 
     def stop(self) -> None: ...
@@ -75,7 +73,6 @@ class SongPlayerLogic(CallbackMixin):
         self._service.subscribe(self._on_service_result)
         self._audio_device_manager.on_acquire_output = self.stop
         self._audio_device_manager.external_output_priority = self._external_output_priority
-        self._active_channels: FrozenSet[GeneratorName] = frozenset(GeneratorName.items())
         self._position = SongPosition()
         self._last_error: Optional[str] = None
         self._awaiting_seek_order: Optional[int] = None
@@ -100,7 +97,6 @@ class SongPlayerLogic(CallbackMixin):
         self._service.start(
             order_position=position.order_position,
             row_index=position.row_index,
-            active_channels=self._active_channels,
         )
         self._emit_view()
 
@@ -176,9 +172,6 @@ class SongPlayerLogic(CallbackMixin):
     def _external_output_priority(self) -> Optional[int]:
         """The song holds the shared output device while its stream is alive (playing or paused)."""
         return PlaybackPriority.NORMAL if self._service.alive else None
-
-    def set_active_channels(self, active_channels: FrozenSet[GeneratorName]) -> None:
-        self._active_channels = active_channels
 
     def on_project_replaced(self) -> None:
         self.stop()

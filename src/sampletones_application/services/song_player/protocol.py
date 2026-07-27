@@ -1,8 +1,7 @@
-from typing import FrozenSet, Protocol, Tuple
+from typing import Protocol, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
 
 
@@ -25,8 +24,6 @@ class RowSynthesizerProtocol(Protocol):
     def is_finished(self) -> bool: ...
 
     def set_position(self, order_position: int, row_index: int) -> None: ...
-
-    def set_channel_mask(self, active_channels: FrozenSet[GeneratorName]) -> None: ...
 
     def render_row(self) -> Tuple[np.ndarray, SongPosition]: ...
 

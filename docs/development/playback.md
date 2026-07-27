@@ -101,6 +101,26 @@ while a field is focused. Field-transparent shortcuts (tab switching) fire wheth
 button releases keyboard focus, so a transport key is delivered to the router rather than being
 absorbed by the focused widget. This keeps `Space` and `Escape` working the moment after any click.
 
+## The channel mask
+
+Each of the sequencer's four tracker channels can be silenced for listening. `SequencerChannelsLogic`
+(`logic/sequencer/channels.py`) owns the mute set for the open document and derives the
+**active-channel mask** — the channels that sound — from it. Solo is derived from the same set:
+soloing silences the other three and remembers the set it replaced, so a second solo of that channel
+returns to the mix it interrupted.
+
+The mask is **pulled per row**. `RowSynthesizer` reads it through a provider callable while mixing
+each row, so a change during playback is heard as the render-ahead buffer (`PREFETCH_SECONDS`)
+drains — the same immediacy every other live edit has. A silenced channel still takes each row's
+instrument, transpose, and volume, so unmuting resumes on the state the pattern has reached.
+
+Muting is **monitoring only**, and three consequences follow. The project holds every channel, so
+saving, `.ftm` export, and any rendered output write the full song. The history stack holds project
+state alone, so undo, redo, and history jumps carry the mute set across untouched — the sequencer
+coordinator reads `HistoryManager.is_restoring` to tell those apart from a document transition. And
+the mute set belongs to the listening session, so opening, creating, or closing a document starts it
+fresh with every channel audible.
+
 ## Where this lives in code
 
 A single transport (`coordinators/playback/`) holds the intentional sources and the resolver for

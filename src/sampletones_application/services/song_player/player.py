@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 from collections import deque
 from dataclasses import dataclass
-from typing import Callable, Deque, FrozenSet, Optional, Tuple
+from typing import Callable, Deque, Optional, Tuple
 
 import numpy as np
 import pyaudio
@@ -21,7 +21,6 @@ from sampletones_application.services.song_player.result import (
     SongPositionUpdate,
 )
 from sampletones_core.audio import AudioDeviceManager, clip_audio_inplace
-from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.constants.audio import UNITY_GAIN
 from sampletones_shared.logger import logger
@@ -89,11 +88,9 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         *,
         order_position: int = 0,
         row_index: int = 0,
-        active_channels: FrozenSet[GeneratorName],
     ) -> None:
         self.stop()
         self._synthesizer.set_position(order_position, row_index)
-        self._synthesizer.set_channel_mask(active_channels)
         self._synthesizer.reset()
         self._playback_error = None
         self._prefetch_samples = max(1, round(PREFETCH_SECONDS * self._audio_device_manager.sample_rate))

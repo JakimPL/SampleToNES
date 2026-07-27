@@ -1,10 +1,12 @@
 from pathlib import Path
+from typing import FrozenSet
 
 import numpy as np
 import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
@@ -21,6 +23,11 @@ from sampletones_core.reconstructions import Reconstruction
 
 def make_controller() -> ProjectController:
     return ProjectController(ProjectManager())
+
+
+def all_channels() -> FrozenSet[GeneratorName]:
+    """The fully audible mask a synthesiser renders under unless a test moves it."""
+    return ALL_CHANNELS
 
 
 def make_pulse_reconstruction(
@@ -149,4 +156,4 @@ def controller() -> ProjectController:
 
 @pytest.fixture
 def synthesizer(controller: ProjectController, config: Config) -> RowSynthesizer:
-    return RowSynthesizer(controller, config)
+    return RowSynthesizer(controller, config, active_channels=all_channels)

@@ -28,6 +28,7 @@ from sampletones_application.logic.history.transaction import CoalesceKey
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
+from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
@@ -256,13 +257,18 @@ class SequencerTabCoordinator:
             audio_device_manager,
             scheduling=layout.scheduling,
         )
+        self._sequencer_channels_logic: SequencerChannelsLogic = SequencerChannelsLogic()
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
             audio_device_manager,
             project_controller,
             session_manager,
             service=SongPlayerService(
                 audio_device_manager,
-                RowSynthesizer(project_controller, config_manager.config),
+                RowSynthesizer(
+                    project_controller,
+                    config_manager.config,
+                    active_channels=lambda: self._sequencer_channels_logic.active_channels,
+                ),
                 should_loop=lambda: session_manager.loop_song,
                 master_gain=lambda: session_manager.master_gain,
             ),
@@ -625,6 +631,16 @@ class SequencerTabCoordinator:
         return ()
 
     def _on_project_replaced(self) -> None:
+        """Realigns the tab with a replaced project, keeping the mute set across history navigation.
+
+        Undo, redo, and history jumps replace the project as well, and the history manager reports
+        itself restoring throughout, so the channels the user is listening through carry across
+        them. A new, opened, or closed document begins a fresh listening session instead, with
+        every channel audible.
+        """
+        if not self._history.is_restoring:
+            self._sequencer_channels_logic.reset()
+
         self._history.reset()
         self.refresh()
 
