@@ -14,11 +14,12 @@ from sampletones_shared.types.data import SerializedData
 
 
 def show_tooltip(
-    parent: str,
+    parent: Sender,
     message: str,
     *,
     tag: Optional[str] = None,
 ) -> Sender:
+    """Attaches a hover explanation to ``parent``, named by its tag or by the id it was created with."""
     tooltip_kwargs: SerializedData = {"hide_on_activity": True}
     if tag is not None:
         tooltip_kwargs["tag"] = tag

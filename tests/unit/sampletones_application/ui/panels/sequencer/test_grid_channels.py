@@ -100,7 +100,7 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
     panel._muted_header_theme = MUTED_HEADER_THEME
     panel._subcolumn_themes = dict(SUBCOLUMN_THEMES)
     panel._muted_subcolumn_themes = dict(MUTED_SUBCOLUMN_THEMES)
-    panel._header_cells = {generator: _header_widget(generator) for generator in HEADER_COLUMNS}
+    panel._header_columns = {_header_widget(generator): generator for generator in HEADER_COLUMNS}
     panel._editable_cells = EditableCells()
     for generator in GeneratorName.items():
         for row_index in range(ROW_COUNT):

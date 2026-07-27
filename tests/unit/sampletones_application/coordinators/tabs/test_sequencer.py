@@ -918,6 +918,30 @@ class TestChannelHeaderWiring:
         assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
         assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
 
+    def test_the_menu_silences_every_channel_from_a_mixed_set(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        panel.call(panel.on_channels_muted)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
+        assert all(panel._is_muted(generator) for generator in GeneratorName.items())
+
+    def test_the_menu_restores_every_channel_from_a_mixed_set(
+        self,
+        channels_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        panel = channels_coordinator._sequencer_grid_panel
+        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+
+        panel.call(panel.on_channels_unmuted)
+
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
+        assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
+
 
 class TestHistoryDelegation:
     def test_undo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:

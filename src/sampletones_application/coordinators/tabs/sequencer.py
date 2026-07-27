@@ -420,6 +420,8 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel.on_channel_mute_toggled = self._sequencer_channels_logic.toggle
         self._sequencer_grid_panel.on_channel_soloed = self._sequencer_channels_logic.solo
         self._sequencer_grid_panel.on_channels_toggled = self._sequencer_channels_logic.toggle_all
+        self._sequencer_grid_panel.on_channels_muted = self._sequencer_channels_logic.mute_all
+        self._sequencer_grid_panel.on_channels_unmuted = self._sequencer_channels_logic.unmute_all
 
     def _wire_order_callbacks(self) -> None:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order

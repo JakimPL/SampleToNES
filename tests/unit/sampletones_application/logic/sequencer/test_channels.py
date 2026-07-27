@@ -31,6 +31,10 @@ def toggle_all() -> Gesture:
     return lambda logic: logic.toggle_all()
 
 
+def mute_all() -> Gesture:
+    return lambda logic: logic.mute_all()
+
+
 def unmute_all() -> Gesture:
     return lambda logic: logic.unmute_all()
 
@@ -118,6 +122,26 @@ GESTURE_CASES = [
         expected_muted=frozenset(),
     ),
     GestureCase(
+        label="muting all silences a mixed set",
+        gestures=(toggle(PULSE1), mute_all()),
+        expected_muted=ALL_CHANNELS,
+    ),
+    GestureCase(
+        label="muting all holds full silence",
+        gestures=(mute_all(), mute_all()),
+        expected_muted=ALL_CHANNELS,
+    ),
+    GestureCase(
+        label="muting all silences the channel a solo left audible",
+        gestures=(solo(TRIANGLE), mute_all()),
+        expected_muted=ALL_CHANNELS,
+    ),
+    GestureCase(
+        label="muting all becomes what the next solo returns to",
+        gestures=(toggle(PULSE1), solo(TRIANGLE), mute_all(), solo(TRIANGLE), solo(TRIANGLE)),
+        expected_muted=ALL_CHANNELS,
+    ),
+    GestureCase(
         label="unmuting all clears a mixed set",
         gestures=(toggle(PULSE1), toggle(NOISE), unmute_all()),
         expected_muted=frozenset(),
@@ -185,10 +209,11 @@ class TestViewPush:
         logic.toggle(PULSE1)
         logic.solo(TRIANGLE)
         logic.toggle_all()
+        logic.mute_all()
         logic.unmute_all()
         logic.reset()
 
-        assert len(views) == 5
+        assert len(views) == 6
 
     def test_pushed_view_reports_the_silenced_channels(self) -> None:
         logic, views = _make_logic()

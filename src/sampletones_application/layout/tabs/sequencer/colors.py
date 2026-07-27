@@ -69,6 +69,19 @@ class SampleColors(BaseModel, extra="forbid", frozen=True):
     divider: PaletteColor
 
 
+class HeaderColors(BaseModel, extra="forbid", frozen=True):
+    """Colours the tracker's clickable column header takes.
+
+    ``background`` is the band the header row sits in, the shade a table header carries;
+    ``hovered`` and ``active`` are the washes a header label takes under the pointer and while
+    it is held, which is how the label shows it answers to a click.
+    """
+
+    background: PaletteColor
+    hovered: PaletteColor
+    active: PaletteColor
+
+
 class MutedColors(BaseModel, extra="forbid", frozen=True):
     """Colours marking a channel the song player silences.
 
@@ -94,10 +107,10 @@ class SequencerColors(BaseModel, extra="forbid", frozen=True):
     cell_cursor: PaletteColor
     cursor_row: PaletteColor
     playback_row: PaletteColor
-    header_row: PaletteColor
     label: PaletteColor
     order: OrderColors
     sample: SampleColors
+    header: HeaderColors
     muted: MutedColors
     history: HistoryColors
     text: TrackerColors

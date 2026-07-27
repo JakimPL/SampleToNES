@@ -20,6 +20,7 @@ CURSOR_ROW: ColorRGBA = (255, 255, 255, 24)
 CELL_CURSOR: ColorRGBA = (102, 187, 255, 160)
 PATTERN_HIGHLIGHT: ColorRGBA = (255, 255, 255, 64)
 PLAYBACK_ROW: ColorRGBA = (100, 220, 100, 64)
+HEADER_SHADE: ColorRGBA = (70, 65, 92, 255)
 
 
 class _TableRecorder:
@@ -212,7 +213,7 @@ class TestHeaderRowBackground:
         recorder: _TableRecorder,
     ) -> None:
         panel = _panel()
-        panel._layout = SimpleNamespace(colors=SimpleNamespace(header_row=(70, 65, 92, 255)))
+        panel._layout = SimpleNamespace(colors=SimpleNamespace(header=SimpleNamespace(background=HEADER_SHADE)))
 
         panel._highlight_header_row()
 
@@ -228,12 +229,11 @@ class TestHeaderRowBackground:
         """The washes are column highlights, which DearPyGui draws over a row highlight, so the
         header is painted per cell to read as one band."""
         panel = _panel()
-        header_shade: ColorRGBA = (70, 65, 92, 255)
-        panel._layout = SimpleNamespace(colors=SimpleNamespace(header_row=header_shade))
+        panel._layout = SimpleNamespace(colors=SimpleNamespace(header=SimpleNamespace(background=HEADER_SHADE)))
 
         panel._highlight_header_row()
 
         washed: List[Optional[GeneratorName]] = [None, *GeneratorName.items()]
         for generator in washed:
             key = (HEADER_TABLE_ROW, tracker_table_column(generator))
-            assert recorder.highlighted_cells[key] == header_shade
+            assert recorder.highlighted_cells[key] == HEADER_SHADE

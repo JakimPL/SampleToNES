@@ -6,7 +6,7 @@ from sampletones_application.categories.elements.sequencer import SequencerGridE
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
-from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.general import SUF_HANDLER_HEADER, SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
@@ -41,7 +41,10 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
     EditAction,
 )
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
-from sampletones_application.ui.themes.inline import create_selectable_text_theme
+from sampletones_application.ui.themes.inline import (
+    create_header_selectable_theme,
+    create_selectable_text_theme,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.keyboard import (
@@ -54,9 +57,11 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL_SHIFT,
     Modifier,
     capture_modifiers,
+    modifiers_display,
 )
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
+from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
@@ -114,9 +119,10 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._item_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_REGISTRY}"
         self._cell_handler_tag = f"{TAG_SEQUENCER_GRID_TABLE_TRACKER}{SUF_HANDLER_REGISTRY}"
+        self._header_handler_tag = f"{TAG_SEQUENCER_GRID_TABLE_TRACKER}{SUF_HANDLER_HEADER}"
 
         self._rows: Dict[Optional[int], Sender] = {}
-        self._header_cells: Dict[Optional[GeneratorName], Sender] = {}
+        self._header_columns: Dict[Sender, Optional[GeneratorName]] = {}
         self._editable_cells: EditableCells[CellKey] = EditableCells()
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
@@ -142,61 +148,15 @@ class GUISequencerGridPanel(GUIPanel):
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
         self.on_channels_toggled: Optional[VoidCallback] = None
+        self.on_channels_muted: Optional[VoidCallback] = None
+        self.on_channels_unmuted: Optional[VoidCallback] = None
 
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 
-        self._lbl_tracker = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.TRACKER_TEXT,
-        ]
-        self._lbl_col_row = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.COLUMN_ROW,
-        ]
-        self._lbl_col_sample = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.COLUMN_SAMPLE,
-        ]
-        self._lbl_col_pulse_1 = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.COLUMN_PULSE_1,
-        ]
-        self._lbl_col_pulse_2 = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.COLUMN_PULSE_2,
-        ]
-        self._lbl_col_triangle = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.COLUMN_TRIANGLE,
-        ]
-        self._lbl_col_noise = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.COLUMN_NOISE,
-        ]
-
-        self._column_labels: Dict[Optional[GeneratorName], str] = {
-            None: self._lbl_col_sample,
-            GeneratorName.PULSE1: self._lbl_col_pulse_1,
-            GeneratorName.PULSE2: self._lbl_col_pulse_2,
-            GeneratorName.TRIANGLE: self._lbl_col_triangle,
-            GeneratorName.NOISE: self._lbl_col_noise,
-        }
-
+        self._lbl_tracker = self._label(language_manager, SequencerGridElements.TRACKER_TEXT)
+        self._load_column_labels(language_manager)
         self._load_context_labels(language_manager)
+        self._load_header_tooltips(language_manager)
 
         self._sc_play_from_here = Shortcut(
             dpg.mvKey_Spacebar,
@@ -210,9 +170,24 @@ class GUISequencerGridPanel(GUIPanel):
         )
         self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
+    def _load_column_labels(self, language_manager: LanguageManager) -> None:
+        """Reads the name each column carries, which its header label and its menu title show."""
+        self._lbl_col_row = self._label(language_manager, SequencerGridElements.COLUMN_ROW)
+        self._column_labels: Dict[Optional[GeneratorName], str] = {
+            None: self._label(language_manager, SequencerGridElements.COLUMN_SAMPLE),
+            GeneratorName.PULSE1: self._label(language_manager, SequencerGridElements.COLUMN_PULSE_1),
+            GeneratorName.PULSE2: self._label(language_manager, SequencerGridElements.COLUMN_PULSE_2),
+            GeneratorName.TRIANGLE: self._label(language_manager, SequencerGridElements.COLUMN_TRIANGLE),
+            GeneratorName.NOISE: self._label(language_manager, SequencerGridElements.COLUMN_NOISE),
+        }
+
+    @staticmethod
+    def _label(language_manager: LanguageManager, element: SequencerGridElements) -> str:
+        return language_manager[Page.SEQUENCER, Panel.GRID, TextType.LABEL, element]
+
     def _load_context_labels(self, language_manager: LanguageManager) -> None:
         def label(element: SequencerGridElements) -> str:
-            return language_manager[Page.SEQUENCER, Panel.GRID, TextType.LABEL, element]
+            return self._label(language_manager, element)
 
         self._lbl_context_play = label(SequencerGridElements.CONTEXT_PLAY)
         self._lbl_context_play_from_frame = label(SequencerGridElements.CONTEXT_PLAY_FROM_FRAME)
@@ -230,6 +205,27 @@ class GUISequencerGridPanel(GUIPanel):
         self._lbl_context_volume_down = label(SequencerGridElements.CONTEXT_VOLUME_DOWN)
         self._lbl_context_volume_up_coarse = label(SequencerGridElements.CONTEXT_VOLUME_UP_COARSE)
         self._lbl_context_volume_down_coarse = label(SequencerGridElements.CONTEXT_VOLUME_DOWN_COARSE)
+        self._lbl_context_mute = label(SequencerGridElements.CONTEXT_MUTE)
+        self._lbl_context_unmute = label(SequencerGridElements.CONTEXT_UNMUTE)
+        self._lbl_context_solo = label(SequencerGridElements.CONTEXT_SOLO)
+        self._lbl_context_unsolo = label(SequencerGridElements.CONTEXT_UNSOLO)
+        self._lbl_context_mute_all = label(SequencerGridElements.CONTEXT_MUTE_ALL)
+        self._lbl_context_unmute_all = label(SequencerGridElements.CONTEXT_UNMUTE_ALL)
+
+    def _load_header_tooltips(self, language_manager: LanguageManager) -> None:
+        """Reads the header tooltips, which name the click gestures the labels carry.
+
+        The solo modifier is spelled by the shared keyboard vocabulary, so the tooltip names the
+        combination the same way every menu accelerator does.
+        """
+
+        def tooltip(element: SequencerGridElements) -> str:
+            return language_manager[Page.SEQUENCER, Panel.GRID, TextType.TOOLTIP, element]
+
+        self._tooltip_header_channel = tooltip(SequencerGridElements.HEADER_CHANNEL).format(
+            modifier="+".join(modifiers_display(CTRL)),
+        )
+        self._tooltip_header_sample = tooltip(SequencerGridElements.HEADER_SAMPLE)
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
@@ -242,8 +238,13 @@ class GUISequencerGridPanel(GUIPanel):
                 parent=self._item_handler_tag,
                 callback=self._on_row_hovered,
             )
+
         with dpg.item_handler_registry(tag=self._cell_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
+
+        with dpg.item_handler_registry(tag=self._header_handler_tag):
+            dpg.add_item_clicked_handler(callback=self._on_header_right_clicked)
+
         self._router.register(
             self._on_key_pressed,
             priority=PRIORITY_PANEL,
@@ -275,9 +276,22 @@ class GUISequencerGridPanel(GUIPanel):
             )
 
     def _create_header_themes(self) -> None:
-        """Builds the two shades a channel's header label takes: audible and silenced."""
-        self._header_theme = create_selectable_text_theme(self._layout.colors.label)
-        self._muted_header_theme = create_selectable_text_theme(self._layout.colors.muted.text)
+        """Builds the two shades a channel's header label takes: audible and silenced.
+
+        Both carry the header's own hover and press washes, so a label reads as the switch it is
+        while its text colour reports whether the channel sounds.
+        """
+        header = self._layout.colors.header
+        self._header_theme = create_header_selectable_theme(
+            self._layout.colors.label,
+            header.hovered,
+            header.active,
+        )
+        self._muted_header_theme = create_header_selectable_theme(
+            self._layout.colors.muted.text,
+            header.hovered,
+            header.active,
+        )
 
     def _create_tracker_view(self, parent: str) -> None:
         """Builds the tracker card and the empty table its rows are filled into.
@@ -412,7 +426,7 @@ class GUISequencerGridPanel(GUIPanel):
                 TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 HEADER_TABLE_ROW,
                 column,
-                color=self._layout.colors.header_row,
+                color=self._layout.colors.header.background,
             )
 
     def _tint_channel_columns(self) -> None:
@@ -478,7 +492,7 @@ class GUISequencerGridPanel(GUIPanel):
         pattern rows, and lands on the row ``freeze_rows`` pins in place. The cells are
         positional like a pattern row's, so the labels line up with the columns they name.
         """
-        self._header_cells = {}
+        self._header_columns = {}
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_GRID_TABLE_TRACKER)
         self._add_empty_cell(row_id)
         self._add_header_label_cell(row_id)
@@ -501,7 +515,8 @@ class GUISequencerGridPanel(GUIPanel):
 
         The selectable takes its width from its label, which is what lets a label wider than
         its column draw in full, and it carries its channel so the click knows which column
-        it landed on.
+        it landed on. A tooltip names the gestures the label answers to, and the right-click
+        registry opens the same actions as a menu.
         """
         header_cell = dpg.add_table_cell(parent=row_id)
         selectable = dpg.add_selectable(
@@ -510,7 +525,12 @@ class GUISequencerGridPanel(GUIPanel):
             user_data=generator,
             callback=self._on_header_clicked,
         )
-        self._header_cells[generator] = selectable
+        dpg.bind_item_handler_registry(selectable, self._header_handler_tag)
+        show_tooltip(
+            selectable,
+            self._tooltip_header_sample if generator is None else self._tooltip_header_channel,
+        )
+        self._header_columns[selectable] = generator
 
     def _build_table_row(self, row: SequencerRowViewModel) -> None:
         """Builds one tracker row.
@@ -662,7 +682,7 @@ class GUISequencerGridPanel(GUIPanel):
             self._bind_channel_cell_themes(generator)
 
     def _bind_header_themes(self) -> None:
-        for generator, selectable in self._header_cells.items():
+        for selectable, generator in self._header_columns.items():
             muted = generator is not None and self._is_muted(generator)
             dpg.bind_item_theme(
                 selectable,
@@ -679,6 +699,15 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _is_muted(self, generator: GeneratorName) -> bool:
         return self._current_channels is not None and self._current_channels.is_muted(generator)
+
+    def _is_soloed(self, generator: GeneratorName) -> bool:
+        return self._current_channels is not None and self._current_channels.is_soloed(generator)
+
+    def _any_muted(self) -> bool:
+        return self._current_channels is not None and self._current_channels.any_muted
+
+    def _all_muted(self) -> bool:
+        return self._current_channels is not None and self._current_channels.all_muted
 
     def set_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_SEQUENCER_GRID_GROUP_TRACKER, enabled=enabled)
@@ -860,6 +889,71 @@ class GUISequencerGridPanel(GUIPanel):
             self.call(self.on_channel_soloed, user_data)
         else:
             self.call(self.on_channel_mute_toggled, user_data)
+
+    def _on_header_right_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+    ) -> None:
+        """Opens the channel menu for the right-clicked column header.
+
+        The registry reaches the header labels alone, so a click on one of them names its column
+        through the map the header row filled in; a label replaced by a rebuild is absent from it.
+        """
+        mouse_button, clicked_item = app_data
+        if mouse_button != dpg.mvMouseButton_Right:
+            return
+
+        if clicked_item not in self._header_columns:
+            return
+
+        self._show_header_context_menu(self._header_columns[clicked_item])
+
+    def _show_header_context_menu(self, generator: Optional[GeneratorName]) -> None:
+        """Builds the menu behind a column header: the channel's own gestures, then the whole mix.
+
+        Both menus end with the all-channel items, so the master column's menu is the shared part
+        of every channel's, and either header reaches "everything" and "everything back".
+        """
+        with context_menu():
+            header = dpg.add_text(self._column_labels[generator])
+            FontRegistry.bind_to_item(header, Font.MONO_BOLD)
+            dpg.add_separator()
+            if generator is not None:
+                self._add_channel_mute_items(generator)
+                dpg.add_separator()
+
+            self._add_all_channels_items()
+
+    def _add_channel_mute_items(self, generator: GeneratorName) -> None:
+        """Offers the two gestures the header click carries, each named for what it does next.
+
+        The labels follow the channel's state, so the item reads as the change it makes rather
+        than as a switch whose direction the user has to infer from the columns.
+        """
+        muted = self._is_muted(generator)
+        dpg.add_menu_item(
+            label=self._lbl_context_unmute if muted else self._lbl_context_mute,
+            callback=lambda: self.call(self.on_channel_mute_toggled, generator),
+        )
+        soloed = self._is_soloed(generator)
+        dpg.add_menu_item(
+            label=self._lbl_context_unsolo if soloed else self._lbl_context_solo,
+            callback=lambda: self.call(self.on_channel_soloed, generator),
+        )
+
+    def _add_all_channels_items(self) -> None:
+        """Offers the two whole-mix moves, each enabled while it has an effect to make."""
+        dpg.add_menu_item(
+            label=self._lbl_context_mute_all,
+            enabled=not self._all_muted(),
+            callback=lambda: self.call(self.on_channels_muted),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_unmute_all,
+            enabled=self._any_muted(),
+            callback=lambda: self.call(self.on_channels_unmuted),
+        )
 
     def _on_cell_right_clicked(
         self,

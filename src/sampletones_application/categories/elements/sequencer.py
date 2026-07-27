@@ -26,6 +26,8 @@ class SequencerGridElements(AbstractElement):
     COLUMN_PULSE_2 = "column_pulse_2"
     COLUMN_TRIANGLE = "column_triangle"
     COLUMN_NOISE = "column_noise"
+    HEADER_CHANNEL = "header_channel"
+    HEADER_SAMPLE = "header_sample"
     CONTEXT_PLAY = "context_play"
     CONTEXT_PLAY_FROM_FRAME = "context_play_from_frame"
     CONTEXT_NOTE_OFF = "context_note_off"
@@ -42,6 +44,12 @@ class SequencerGridElements(AbstractElement):
     CONTEXT_VOLUME_DOWN = "context_volume_down"
     CONTEXT_VOLUME_UP_COARSE = "context_volume_up_coarse"
     CONTEXT_VOLUME_DOWN_COARSE = "context_volume_down_coarse"
+    CONTEXT_MUTE = "context_mute"
+    CONTEXT_UNMUTE = "context_unmute"
+    CONTEXT_SOLO = "context_solo"
+    CONTEXT_UNSOLO = "context_unsolo"
+    CONTEXT_MUTE_ALL = "context_mute_all"
+    CONTEXT_UNMUTE_ALL = "context_unmute_all"
 
 
 class SequencerOrderElements(AbstractElement):

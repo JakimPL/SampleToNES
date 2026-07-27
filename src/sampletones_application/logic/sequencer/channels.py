@@ -71,8 +71,15 @@ class SequencerChannelsLogic(CallbackMixin):
         tedious operation by hand — in one gesture, while returning from full silence stays one
         gesture too.
         """
+        if self._muted == ALL_CHANNELS:
+            self.unmute_all()
+        else:
+            self.mute_all()
+
+    def mute_all(self) -> None:
+        """Silences every channel from any mute set."""
         self._muted_before_solo = None
-        self._apply(_NO_CHANNELS if self._muted == ALL_CHANNELS else ALL_CHANNELS)
+        self._apply(ALL_CHANNELS)
 
     def unmute_all(self) -> None:
         """Returns every channel to audible from any mute set."""

@@ -471,6 +471,14 @@ sequencer.grid.label.context_volume_up: "Volume up"
 sequencer.grid.label.context_volume_down: "Volume down"
 sequencer.grid.label.context_volume_up_coarse: "Volume up (coarse)"
 sequencer.grid.label.context_volume_down_coarse: "Volume down (coarse)"
+sequencer.grid.label.context_mute: "Mute"
+sequencer.grid.label.context_unmute: "Unmute"
+sequencer.grid.label.context_solo: "Solo"
+sequencer.grid.label.context_unsolo: "Unsolo"
+sequencer.grid.label.context_mute_all: "Mute all channels"
+sequencer.grid.label.context_unmute_all: "Unmute all channels"
+sequencer.grid.tooltip.header_channel: "Click to mute or unmute this channel.\n{modifier}+click to solo it, right-click for channel actions."
+sequencer.grid.tooltip.header_sample: "Click to mute every channel, or to bring them all back.\nRight-click for channel actions."
 
 # =============================================================================
 # Sequencer tab — Order
