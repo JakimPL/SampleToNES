@@ -175,6 +175,69 @@ class TestSamples:
 
         assert emitted == ["samples"]
 
+    def test_replace_sample_reconstruction_swaps_content_and_keeps_identity(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        replacement = reconstruction_factory()
+
+        controller.replace_sample_reconstruction(sample.id, replacement)
+
+        assert sample.reconstruction is replacement
+        assert sample.name == "lead"
+        assert controller.project.sample(sample.id) is sample
+
+    def test_replace_sample_reconstruction_detaches_source(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        replacement = reconstruction_factory()
+        assert replacement.audio_filepath is not None
+
+        controller.replace_sample_reconstruction(sample.id, replacement)
+
+        assert replacement.audio_filepath is None
+
+    def test_replace_sample_reconstruction_preserves_row_references(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        song = controller.project.song
+        pattern_id = song.order[0][GeneratorName.PULSE1]
+        controller.set_row(
+            GeneratorName.PULSE1,
+            pattern_id,
+            0,
+            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+        )
+
+        controller.replace_sample_reconstruction(sample.id, reconstruction_factory())
+
+        row = song.pattern(GeneratorName.PULSE1, pattern_id).rows[0]
+        assert row.command is not None
+        assert row.command.sample_id == sample.id
+
+    def test_replace_sample_reconstruction_emits_samples_and_song_changes(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        emitted: List[str] = []
+        controller.on_samples_changed = lambda: emitted.append("samples")
+        controller.on_song_changed = lambda: emitted.append("song")
+
+        controller.replace_sample_reconstruction(sample.id, reconstruction_factory())
+
+        assert "samples" in emitted
+        assert "song" in emitted
+
 
 class TestSong:
     def test_set_row_replaces_row(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
@@ -261,6 +324,17 @@ class TestProperties:
     def test_order_length_returns_number_of_frames(self) -> None:
         controller = _controller()
         assert controller.order_length >= 1
+
+    def test_sample_count_tracks_the_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+        controller = _controller()
+        assert controller.sample_count == 0
+
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        controller.add_sample(reconstruction_factory(), name="pad")
+        assert controller.sample_count == 2
+
+        controller.remove_sample(sample.id)
+        assert controller.sample_count == 1
 
     def test_is_dirty_false_initially(self) -> None:
         controller = _controller()

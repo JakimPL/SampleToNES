@@ -82,18 +82,30 @@ class SequencerHistoryDetail:
 
         if transpose is not None:
             segments.append(self._subcolumn(SubColumn.TRANSPOSE))
-            segments.append(self._segment(display_transpose(transpose), HistoryDetailRole.TRANSPOSE))
+            segments.append(
+                self._segment(display_transpose(transpose), HistoryDetailRole.TRANSPOSE),
+            )
 
         if volume is not None:
             segments.append(self._subcolumn(SubColumn.VOLUME))
-            segments.append(self._segment(display_volume(volume), HistoryDetailRole.VOLUME))
+            segments.append(
+                self._segment(display_volume(volume), HistoryDetailRole.VOLUME),
+            )
 
         return tuple(segments)
 
-    def note_off(self, row_index: int, generator: Optional[GeneratorName]) -> Segments:
+    def note_off(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> Segments:
         return self._location(row_index, generator, GeneratorName.items())
 
-    def clear_row(self, row_index: int, generator: Optional[GeneratorName]) -> Segments:
+    def clear_row(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> Segments:
         return self._location(row_index, generator, GeneratorName.items())
 
     def clear_subcolumn(
@@ -111,13 +123,25 @@ class SequencerHistoryDetail:
         segments.append(self._subcolumn(subcolumn))
         return tuple(segments)
 
-    def adjust_transpose(self, row_index: int, generator: Optional[GeneratorName], delta: int) -> Segments:
+    def adjust_transpose(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        delta: int,
+    ) -> Segments:
         affected = self._grid_logic.relevant_generators(row_index)
         segments = list(self._location(row_index, generator, affected))
-        segments.append(self._segment(display_transpose(delta), HistoryDetailRole.TRANSPOSE))
+        segments.append(
+            self._segment(display_transpose(delta), HistoryDetailRole.TRANSPOSE),
+        )
         return tuple(segments)
 
-    def adjust_volume(self, row_index: int, generator: Optional[GeneratorName], delta: int) -> Segments:
+    def adjust_volume(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        delta: int,
+    ) -> Segments:
         affected = self._grid_logic.relevant_generators(row_index)
         segments = list(self._location(row_index, generator, affected))
         segments.append(self._segment(f"{delta:+d}", HistoryDetailRole.VOLUME))
@@ -151,7 +175,11 @@ class SequencerHistoryDetail:
             self._value(display_id(pattern_index)),
         )
 
-    def set_master_entry(self, position: int, pattern_index: Optional[int]) -> Segments:
+    def set_master_entry(
+        self,
+        position: int,
+        pattern_index: Optional[int],
+    ) -> Segments:
         return (
             self._frame(position),
             self._channel(GeneratorName.items()),
@@ -163,16 +191,39 @@ class SequencerHistoryDetail:
         return (self._name(name),)
 
     def remove_sample(self, sample_id: str) -> Segments:
-        return (self._sample(sample_id, colon=True), self._name(self._samples_logic.sample_name(sample_id)))
+        return (
+            self._sample(sample_id, colon=True),
+            self._name(self._samples_logic.sample_name(sample_id)),
+        )
+
+    def replace_sample(self, sample_id: str, name: str) -> Segments:
+        """Describes a reconstruction substitution as the sample's position and the two names.
+
+        ``name`` is the incoming reconstruction's, read against the sample's current one, so the
+        caller builds this detail while the sample still holds the reconstruction being replaced.
+        """
+        return (
+            self._sample(sample_id, colon=True),
+            self._name(self._samples_logic.sample_name(sample_id)),
+            self._arrow(),
+            self._name(name),
+        )
 
     def rename_sample(self, old_name: str, new_name: str) -> Segments:
         return (self._name(old_name), self._arrow(), self._name(new_name))
 
     def move_sample(self, sample_id: str, to_index: int) -> Segments:
-        return (self._sample(sample_id), self._arrow(), self._value(display_id(to_index)))
+        return (
+            self._sample(sample_id),
+            self._arrow(),
+            self._value(display_id(to_index)),
+        )
 
     def duplicate_sample(self, sample_id: str) -> Segments:
-        return (self._sample(sample_id, colon=True), self._name(self._samples_logic.sample_name(sample_id)))
+        return (
+            self._sample(sample_id, colon=True),
+            self._name(self._samples_logic.sample_name(sample_id)),
+        )
 
     def set_sample_loop(self, sample_id: str, loop: bool) -> Segments:
         word = HistoryDetailWord.LOOP_ON if loop else HistoryDetailWord.LOOP_OFF
@@ -223,33 +274,64 @@ class SequencerHistoryDetail:
         affected: List[GeneratorName],
     ) -> Segments:
         channels = [generator] if generator is not None else affected
-        return (self._frame(self._grid_logic.frame_index), self._channel(channels), self._row(row_index))
+        return (
+            self._frame(self._grid_logic.frame_index),
+            self._channel(channels),
+            self._row(row_index),
+        )
 
     def _frame(self, index: int) -> HistoryDetailSegment:
-        return HistoryDetailSegment(text=display_id(index), role=HistoryDetailRole.FRAME)
+        return HistoryDetailSegment(
+            text=display_id(index),
+            role=HistoryDetailRole.FRAME,
+        )
 
     def _row(self, index: int) -> HistoryDetailSegment:
-        return HistoryDetailSegment(text=display_id(index), role=HistoryDetailRole.ROW)
+        return HistoryDetailSegment(
+            text=display_id(index),
+            role=HistoryDetailRole.ROW,
+        )
 
     def _channel(self, generators: List[GeneratorName]) -> HistoryDetailSegment:
-        return HistoryDetailSegment(text=abbreviate_generator_names(generators), role=HistoryDetailRole.CHANNEL)
+        return HistoryDetailSegment(
+            text=abbreviate_generator_names(generators),
+            role=HistoryDetailRole.CHANNEL,
+        )
 
     def _value(self, text: str) -> HistoryDetailSegment:
         return HistoryDetailSegment(text=text, role=HistoryDetailRole.VALUE)
 
-    def _segment(self, text: str, role: HistoryDetailRole) -> HistoryDetailSegment:
+    def _segment(
+        self,
+        text: str,
+        role: HistoryDetailRole,
+    ) -> HistoryDetailSegment:
         return HistoryDetailSegment(text=text, role=role)
 
     def _subcolumn(self, subcolumn: SubColumn) -> HistoryDetailSegment:
-        return self._segment(_SUBCOLUMN_LETTERS[subcolumn], _SUBCOLUMN_ROLES[subcolumn])
+        return self._segment(
+            _SUBCOLUMN_LETTERS[subcolumn],
+            _SUBCOLUMN_ROLES[subcolumn],
+        )
 
     def _name(self, text: str) -> HistoryDetailSegment:
-        return HistoryDetailSegment(text=text, role=HistoryDetailRole.NAME)
+        return HistoryDetailSegment(
+            text=text,
+            role=HistoryDetailRole.NAME,
+        )
 
-    def _sample(self, sample_id: str, *, colon: bool = False) -> HistoryDetailSegment:
+    def _sample(
+        self,
+        sample_id: str,
+        *,
+        colon: bool = False,
+    ) -> HistoryDetailSegment:
         position = self._samples_logic.sample_position(sample_id)
         text = f"{position}:" if colon else position
         return HistoryDetailSegment(text=text, role=HistoryDetailRole.SAMPLE)
 
     def _arrow(self) -> HistoryDetailSegment:
-        return HistoryDetailSegment(text=_ARROW, role=HistoryDetailRole.SEPARATOR)
+        return HistoryDetailSegment(
+            text=_ARROW,
+            role=HistoryDetailRole.SEPARATOR,
+        )

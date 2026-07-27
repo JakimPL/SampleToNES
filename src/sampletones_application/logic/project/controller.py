@@ -58,6 +58,10 @@ class ProjectController(CallbackMixin):
         return bool(self.project.samples)
 
     @property
+    def sample_count(self) -> int:
+        return len(self.project.samples)
+
+    @property
     def is_dirty(self) -> bool:
         return self._project_manager.is_dirty
 
@@ -151,6 +155,13 @@ class ProjectController(CallbackMixin):
         return sample
 
     def replace_sample_reconstruction(self, sample_id: str, reconstruction: Reconstruction) -> None:
+        """Substitutes a sample's reconstruction, detaching its local source-audio origin.
+
+        The sample keeps its id, so every pattern row referencing it stays valid and the tracker
+        shows the same position. Detaching matches :meth:`add_sample`: whichever path embeds a
+        reconstruction, the project stays a self-contained, shareable artifact.
+        """
+        reconstruction.detach_source()
         self.project.samples[sample_id].reconstruction = reconstruction
         self._touch()
         self.call(self.on_samples_changed)
