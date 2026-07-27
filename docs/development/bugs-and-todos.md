@@ -38,5 +38,4 @@
 ## Bugs
 
 * No refreshing after library generation
-* Order [-] does not work
 * Window title unsupported characters

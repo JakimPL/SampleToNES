@@ -255,14 +255,19 @@ class GUISequencerOrderPanel(GUIPanel):
         else:
             self._order.reconcile(cell_values, self._render_cell)
 
-        if self._buttons is not None:
-            self._buttons.set_decrement_enabled(view_model.position_count > 0)
+        self._refresh_remove_enabled()
 
     def select_position(self, frame: int) -> None:
         """Follows the tracker frame: always updates the unfocused column highlight;
         also moves the edit cursor when one is active.
         """
         self._current_position = frame
+        self._follow_frame(frame)
+        self._refresh_remove_enabled()
+
+    def _follow_frame(self, frame: int) -> None:
+        """Carries the edit cursor to the frame, or shifts the unfocused column highlight to it
+        while no cursor is set."""
         cursor = self._input_state.cursor
         if cursor is not None:
             if cursor.position == frame:
@@ -297,6 +302,8 @@ class GUISequencerOrderPanel(GUIPanel):
 
         if self._current_position is not None and 0 <= self._current_position < self._position_count:
             self._apply_column_highlight(self._current_position, focused=False)
+
+        self._refresh_remove_enabled()
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_ORDER_PANEL, enabled=enabled)
@@ -602,6 +609,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 self.call(self.on_frame_selected, new.position)
 
         self._update_caret()
+        self._refresh_remove_enabled()
 
     def _update_cell_display(self, cursor: OrderCursor) -> None:
         key: OrderKey = (cursor.generator, cursor.position)
@@ -874,6 +882,23 @@ class GUISequencerOrderPanel(GUIPanel):
         cursor = self._input_state.cursor
         return cursor.position if cursor is not None else self._current_position
 
+    def _get_removable_position(self) -> Optional[int]:
+        """The frame ``[-]`` acts on: the cursor's frame, or the followed tracker frame while no
+        cursor is set, resolved while it addresses a live frame.
+        """
+        position = self._get_cursor_position()
+        if position is not None and 0 <= position < self._position_count:
+            return position
+
+        return None
+
+    def _refresh_remove_enabled(self) -> None:
+        """Enables ``[-]`` while a press would remove a frame, so a greyed-out button tells the
+        user that removal awaits a selected frame.
+        """
+        if self._buttons is not None:
+            self._buttons.set_decrement_enabled(self._get_removable_position() is not None)
+
     def _on_add_clicked(self) -> None:
         """Inserts an empty frame after the current one (appends when at or past the end)."""
         position = self._get_cursor_position()
@@ -883,6 +908,6 @@ class GUISequencerOrderPanel(GUIPanel):
         self.call(self.on_insert_requested, position)
 
     def _on_remove_clicked(self) -> None:
-        position = self._get_cursor_position()
-        if position is not None and 0 <= position < self._position_count:
+        position = self._get_removable_position()
+        if position is not None:
             self.call(self.on_remove_requested, position)
