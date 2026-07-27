@@ -544,6 +544,7 @@ def replace_coordinator() -> SequencerTabCoordinator:
         name="bass",
     )
     instance._dialogs = MagicMock()
+    instance._on_sample_reconstruction_replaced = MagicMock()
     instance._ttl_frequency_mismatch = "Different NES frequency"
     instance._msg_frequency_mismatch = "recon {reconstruction} vs project {project}"
     instance._lbl_add_anyway = "Add anyway"
@@ -576,6 +577,7 @@ class TestReplaceReconstruction:
         replace_coordinator._dialogs.show_error.assert_called_once()
         replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
         replace_coordinator._sequencer_samples_logic.rename_sample.assert_not_called()
+        replace_coordinator._on_sample_reconstruction_replaced.assert_not_called()
 
     def test_selected_sample_is_renamed_and_substituted(
         self,
@@ -621,6 +623,24 @@ class TestReplaceReconstruction:
         assert [call[0] for call in order.mock_calls] == ["detail", "replace"]
         replace_coordinator._history_detail.replace_sample.assert_called_once_with("bass-id", "kick_02")
 
+    def test_replacement_is_announced_before_the_substitution(
+        self,
+        replace_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """An editor holding the sample open identifies it by the reconstruction the swap replaces."""
+        reconstruction = replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value
+        order = MagicMock()
+        order.attach_mock(replace_coordinator._on_sample_reconstruction_replaced, "announce")
+        order.attach_mock(replace_coordinator._sequencer_browser_logic.replace_reconstruction, "replace")
+
+        replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
+
+        assert [call[0] for call in order.mock_calls] == ["announce", "replace"]
+        replace_coordinator._on_sample_reconstruction_replaced.assert_called_once_with(
+            "bass-id",
+            reconstruction,
+        )
+
     def test_sole_sample_adopts_the_reconstruction_frequency_silently(
         self,
         replace_coordinator: SequencerTabCoordinator,
@@ -644,6 +664,7 @@ class TestReplaceReconstruction:
 
         replace_coordinator._dialogs.show_confirmation.assert_called_once()
         replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
+        replace_coordinator._on_sample_reconstruction_replaced.assert_not_called()
 
         confirmation = replace_coordinator._dialogs.show_confirmation.call_args.kwargs
         assert confirmation["message"] == "recon 50 vs project 60"

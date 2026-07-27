@@ -126,6 +126,7 @@ class SequencerTabCoordinator:
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
         on_edit_sample_requested: StringCallback,
+        on_sample_reconstruction_replaced: Callable[[str, Reconstruction], None],
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
     ) -> None:
@@ -134,6 +135,7 @@ class SequencerTabCoordinator:
         self._history = history
         self._original_audio_locator = original_audio_locator
         self._on_edit_sample_requested = on_edit_sample_requested
+        self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
         self._language_manager = language_manager
@@ -918,9 +920,11 @@ class SequencerTabCoordinator:
         """Substitutes a sample's reconstruction as one undoable gesture, renaming it to the source.
 
         The detail is composed while the sample still holds the outgoing reconstruction, so it reads
-        the name being replaced alongside the incoming one. The frequency adoption, the rename, and
-        the substitution share a single history entry, so one undo restores the previous rate, name,
-        and audio together.
+        the name being replaced alongside the incoming one. The replacement is announced in the same
+        window, ahead of the substitution, because an editor holding the sample open recognises it by
+        the identity of the reconstruction it is about to give up. The frequency adoption, the rename,
+        and the substitution share a single history entry, so one undo restores the previous rate,
+        name, and audio together.
         """
         detail = self._history_detail.replace_sample(sample_id, name)
         with self._history.transaction(
@@ -930,6 +934,7 @@ class SequencerTabCoordinator:
             if adopt_frequency is not None:
                 self._sequencer_grid_logic.set_nes_frequency(adopt_frequency)
             self._sequencer_samples_logic.rename_sample(sample_id, name)
+            self._on_sample_reconstruction_replaced(sample_id, reconstruction)
             self._sequencer_browser_logic.replace_reconstruction(sample_id, reconstruction)
 
     def _replace_target_label(self) -> Optional[str]:

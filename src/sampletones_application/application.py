@@ -128,6 +128,7 @@ from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
@@ -364,6 +365,7 @@ class Application:
             dialogs=self.dialogs,
             status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
+            on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
         )
@@ -781,6 +783,28 @@ class Application:
             sample.reconstruction,
             name=sample.name,
         )
+
+    def _rebind_replaced_sample(
+        self,
+        sample_id: str,
+        reconstruction: Reconstruction,
+    ) -> None:
+        """Points the open Reconstructions-tab document at the reconstruction replacing the one it edits.
+
+        The editor and its owning sample share one reconstruction object, so a sample whose audio is
+        substituted takes its editor along. This runs while the sample still holds the outgoing
+        reconstruction, which is what identifies the open document as belonging to it.
+
+        Args:
+            sample_id: The sample receiving a new reconstruction.
+            reconstruction: The reconstruction the sample is about to hold.
+        """
+        sample = self.project_manager.current.sample(sample_id)
+        if sample is None or sample.reconstruction is not self.reconstruction_manager.reconstruction:
+            return
+
+        self.reconstruction_manager.apply_regenerated(reconstruction)
+        self._reconstructions_tab.update_reconstruction()
 
     def _regenerate_instrument(
         self,
