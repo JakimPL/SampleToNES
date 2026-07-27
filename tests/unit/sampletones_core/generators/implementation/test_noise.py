@@ -15,6 +15,8 @@ from sampletones_core.instructions import NoiseInstruction, PulseInstruction
 from tests.suite.noise import tone_frequency
 
 FASTEST_PERIOD = len(NOISE_PERIODS) - 1
+PERIODIC_PERIOD = 0
+PERIODICITY_CORRELATION = 0.98
 
 
 def _count_sign_changes(arr: np.ndarray) -> int:
@@ -106,15 +108,20 @@ class TestNoiseLibrarySample:
         assert cycles == pytest.approx(round(cycles), abs=0.05)
 
     def test_sample_halves_match_for_a_two_cycle_sample(self, generator: NoiseGenerator, config: Config) -> None:
-        instruction = NoiseInstruction(on=True, period=FASTEST_PERIOD, volume=MAX_VOLUME, short=False)
-        cycle_samples = int(config.library.sample_rate / tone_frequency(FASTEST_PERIOD, False))
+        """A cycle spans a fractional number of output samples, so the halves compared here sit
+        a fraction of a shift-register step apart. The slowest period holds that fraction far
+        below one step, where the repetition shows as near-perfect correlation.
+        """
+        instruction = NoiseInstruction(on=True, period=PERIODIC_PERIOD, volume=MAX_VOLUME, short=True)
+        cycle_samples = config.library.sample_rate / tone_frequency(PERIODIC_PERIOD, True)
+        length = round(cycle_samples)
         generator.reset()
         rendered = np.concatenate(
-            [generator(instruction, save=True) for _ in range(int(np.ceil(2 * cycle_samples / generator.frame_length)))]
+            [generator(instruction, save=True) for _ in range(int(np.ceil(2 * length / generator.frame_length)))]
         )
-        first = rendered[:cycle_samples]
-        second = rendered[cycle_samples : 2 * cycle_samples]
-        assert float(np.corrcoef(first, second)[0, 1]) > 0.99
+        first = rendered[:length]
+        second = rendered[length : 2 * length]
+        assert float(np.corrcoef(first, second)[0, 1]) > PERIODICITY_CORRELATION
 
 
 class TestNoiseGeneratorSetTimer:

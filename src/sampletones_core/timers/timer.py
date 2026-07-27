@@ -39,13 +39,26 @@ class Timer(ABC):
         length = self.frame_length if window is None else window.size
         return np.zeros(length, dtype=np.float32)
 
+    def calculate_base_length(self, minimum_length: int) -> int:
+        """Length in samples of the shortest whole number of wave cycles reaching a minimum.
+
+        Rounding once, after multiplying by the cycle count, keeps the loop point within half
+        a sample of a true cycle boundary however many cycles the sample spans.
+
+        Args:
+            minimum_length: The shortest acceptable length in samples.
+
+        Returns:
+            int: The sample length spanning a whole number of cycles.
+        """
+        cycle_length = self.sample_rate / self._real_frequency
+        cycles = int(np.ceil(minimum_length / cycle_length))
+        return round(cycles * cycle_length)
+
     def generate_sample(self) -> CyclicArray:
         min_sample_length = round(MIN_SAMPLE_LENGTH * self.sample_rate)
         max_sample_length = round(MAX_SAMPLE_LENGTH * self.sample_rate)
-        base_length = round(self.sample_rate / self._real_frequency)
-
-        if base_length < min_sample_length:
-            base_length = int(np.ceil(min_sample_length / base_length)) * base_length
+        base_length = self.calculate_base_length(min_sample_length)
 
         frames_count = int(np.ceil(base_length / self.frame_length))
         frames = self.generate_frames(frames_count)[:base_length]
