@@ -45,7 +45,8 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS, Modifier
+from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT, Modifier
+from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
@@ -178,9 +179,9 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._sc_play_from_here = Shortcut(
             dpg.mvKey_Spacebar,
-            (Modifier.CTRL, Modifier.SHIFT),
+            CTRL_SHIFT,
         ).get_display_string()
-        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)).get_display_string()
+        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, CTRL).get_display_string()
 
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,
@@ -868,11 +869,11 @@ class GUISequencerGridPanel(GUIPanel):
         if cursor is None:
             return False
 
-        if event.ctrl and event.shift and event.key == dpg.mvKey_Spacebar:
+        if event.modifiers == CTRL_SHIFT and event.key == dpg.mvKey_Spacebar:
             self.call(self.on_play_from_row, cursor.row)
             return True
 
-        if event.ctrl:
+        if Modifier.CTRL in event.modifiers:
             return False
 
         match event.key:
@@ -885,7 +886,7 @@ class GUISequencerGridPanel(GUIPanel):
             case dpg.mvKey_Right:
                 self._move_subcolumn(1)
             case dpg.mvKey_Tab:
-                self._move_column(-1 if event.shift else 1)
+                self._move_column(-1 if Modifier.SHIFT in event.modifiers else 1)
             case dpg.mvKey_Home:
                 self._jump_to_row(0)
             case dpg.mvKey_End:

@@ -1,5 +1,5 @@
 from typing import Callable, List
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -10,12 +10,13 @@ from sampletones_application.utils.gui.keyboard import (
     KeyRouter,
     focus,
 )
+from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
 
 EVENT_MODULE = "sampletones_application.utils.gui.keyboard.event"
 
 
 def _event() -> KeyEvent:
-    return KeyEvent(key=1, ctrl=False, shift=False, alt=False)
+    return KeyEvent(key=1, modifiers=NO_MODIFIERS)
 
 
 def _recorder(log: List[str], label: str, claims: bool) -> Callable[[KeyEvent], bool]:
@@ -149,16 +150,10 @@ class TestDispatch:
         received: List[KeyEvent] = []
         router.register(_capturing(received), priority=PRIORITY_SHORTCUT, active=lambda: True)
 
-        dpg = MagicMock()
-        dpg.mvKey_LControl, dpg.mvKey_RControl = 1, 2
-        dpg.mvKey_LShift, dpg.mvKey_RShift = 3, 4
-        dpg.mvKey_LAlt, dpg.mvKey_RAlt = 5, 6
-        dpg.is_key_down.side_effect = lambda key: key == 1
-
-        with patch(f"{EVENT_MODULE}.dpg", dpg):
+        with patch(f"{EVENT_MODULE}.capture_modifiers", lambda: CTRL):
             router._dispatch("handler", 65)
 
-        assert received == [KeyEvent(key=65, ctrl=True, shift=False, alt=False)]
+        assert received == [KeyEvent(key=65, modifiers=CTRL)]
 
 
 class TestFieldFocus:

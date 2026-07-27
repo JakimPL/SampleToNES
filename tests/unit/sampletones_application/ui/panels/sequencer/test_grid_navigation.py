@@ -7,6 +7,7 @@ from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPan
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.utils.gui.keyboard import KeyEvent
+from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.utils.gui.shortcuts.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 
@@ -31,7 +32,7 @@ class TestGridPageNavigation:
         monkeypatch.setattr(panel, "_move_row", moves.append)
         monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: scrolls.append(None))
 
-        assert panel._on_key_pressed(KeyEvent(key=KEY_PAGE_UP, ctrl=False, shift=False, alt=False)) is True
+        assert panel._on_key_pressed(KeyEvent(key=KEY_PAGE_UP, modifiers=NO_MODIFIERS)) is True
         assert moves == [-PAGE_SIZE]
         assert scrolls == [None]
 
@@ -42,6 +43,6 @@ class TestGridPageNavigation:
         monkeypatch.setattr(panel, "_move_row", moves.append)
         monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: scrolls.append(None))
 
-        assert panel._on_key_pressed(KeyEvent(key=KEY_PAGE_DOWN, ctrl=False, shift=False, alt=False)) is True
+        assert panel._on_key_pressed(KeyEvent(key=KEY_PAGE_DOWN, modifiers=NO_MODIFIERS)) is True
         assert moves == [PAGE_SIZE]
         assert scrolls == [None]

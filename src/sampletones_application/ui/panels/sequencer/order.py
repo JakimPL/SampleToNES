@@ -44,7 +44,8 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, Modifier
+from sampletones_application.utils.gui.keyboard.modifiers import ALT, CTRL, SHIFT, Modifier
+from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.order import (
@@ -175,15 +176,15 @@ class GUISequencerOrderPanel(GUIPanel):
         self._lbl_context_move_start = _context_label(SequencerOrderElements.CONTEXT_MOVE_START)
         self._lbl_context_move_end = _context_label(SequencerOrderElements.CONTEXT_MOVE_END)
 
-        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)).get_display_string()
-        self._sc_move_left = Shortcut(dpg.mvKey_Left, (Modifier.ALT,)).get_display_string()
-        self._sc_move_right = Shortcut(dpg.mvKey_Right, (Modifier.ALT,)).get_display_string()
-        self._sc_move_start = Shortcut(dpg.mvKey_Home, (Modifier.ALT,)).get_display_string()
-        self._sc_move_end = Shortcut(dpg.mvKey_End, (Modifier.ALT,)).get_display_string()
-        self._sc_duplicate = Shortcut(dpg.mvKey_D, (Modifier.CTRL,)).get_display_string()
+        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, CTRL).get_display_string()
+        self._sc_move_left = Shortcut(dpg.mvKey_Left, ALT).get_display_string()
+        self._sc_move_right = Shortcut(dpg.mvKey_Right, ALT).get_display_string()
+        self._sc_move_start = Shortcut(dpg.mvKey_Home, ALT).get_display_string()
+        self._sc_move_end = Shortcut(dpg.mvKey_End, ALT).get_display_string()
+        self._sc_duplicate = Shortcut(dpg.mvKey_D, CTRL).get_display_string()
         self._sc_insert = PLUS
         self._sc_remove = MINUS
-        self._sc_clear = Shortcut(dpg.mvKey_Delete, (Modifier.SHIFT,)).get_display_string()
+        self._sc_clear = Shortcut(dpg.mvKey_Delete, SHIFT).get_display_string()
 
         super().__init__(
             tag=TAG_SEQUENCER_ORDER_PANEL,
@@ -723,10 +724,10 @@ class GUISequencerOrderPanel(GUIPanel):
         if cursor is None:
             return False
 
-        if event.alt:
+        if Modifier.ALT in event.modifiers:
             return self._handle_alt_move(event.key, cursor.position)
 
-        if event.ctrl:
+        if Modifier.CTRL in event.modifiers:
             if event.key == dpg.mvKey_D:
                 self.call(self.on_duplicate_requested, cursor.position)
                 return True
@@ -752,7 +753,7 @@ class GUISequencerOrderPanel(GUIPanel):
             case dpg.mvKey_Return:
                 self._move_position(1)
             case dpg.mvKey_Delete:
-                if event.shift:
+                if Modifier.SHIFT in event.modifiers:
                     self.call(self.on_clear_requested, cursor.position)
                 else:
                     self._clear_cell()

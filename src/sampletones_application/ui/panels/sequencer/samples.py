@@ -32,6 +32,7 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
@@ -352,10 +353,10 @@ class GUISequencerSamplesPanel(GUIPanel):
         if sample_id is None:
             return False
 
-        if event.ctrl:
+        if Modifier.CTRL in event.modifiers:
             return False
 
-        if event.alt:
+        if Modifier.ALT in event.modifiers:
             return self._handle_alt_move(event.key)
 
         if event.key == dpg.mvKey_Delete:

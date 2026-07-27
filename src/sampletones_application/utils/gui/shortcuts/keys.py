@@ -1,16 +1,8 @@
-from enum import Enum
 from typing import Dict, Final
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_shared.constants.symbols import HEXADECIMAL, MINUS, PLUS
-
-
-class Modifier(Enum):
-    CTRL = "Ctrl"
-    SHIFT = "Shift"
-    ALT = "Alt"
-
 
 KEY_PAGE_UP: Final = 517
 KEY_PAGE_DOWN: Final = 518

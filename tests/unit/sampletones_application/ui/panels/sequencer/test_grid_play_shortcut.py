@@ -6,6 +6,7 @@ from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPan
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.utils.gui.keyboard import KeyEvent
+from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 
 
@@ -16,7 +17,7 @@ def _panel(cursor: Optional[TrackerCursor]) -> GUISequencerGridPanel:
 
 
 def _play_from_here() -> KeyEvent:
-    return KeyEvent(key=dpg.mvKey_Spacebar, ctrl=True, shift=True, alt=False)
+    return KeyEvent(key=dpg.mvKey_Spacebar, modifiers=CTRL_SHIFT)
 
 
 class TestGridPlayFromHere:
@@ -40,7 +41,7 @@ class TestGridPlayFromHere:
         panel = _panel(TrackerCursor(5, None, SubColumn.INSTRUMENT))
         panel.on_play_from_row = played.append
 
-        result = panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Spacebar, ctrl=True, shift=False, alt=False))
+        result = panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Spacebar, modifiers=CTRL))
 
         assert result is False
         assert played == []

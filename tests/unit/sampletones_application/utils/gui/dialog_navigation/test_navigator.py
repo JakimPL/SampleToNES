@@ -6,6 +6,7 @@ from sampletones_application.utils.gui.dialog_navigation.navigator import (
 )
 from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS, SHIFT
 
 MODULE = "sampletones_application.utils.gui.dialog_navigation.navigator"
 
@@ -24,7 +25,7 @@ def _dpg(*, exists: bool = True) -> MagicMock:
 
 
 def _event(key: int, *, shift: bool = False) -> KeyEvent:
-    return KeyEvent(key=key, ctrl=False, shift=shift, alt=False)
+    return KeyEvent(key=key, modifiers=SHIFT if shift else NO_MODIFIERS)
 
 
 def _stops() -> List[FocusStop]:

@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
-from sampletones_application.utils.gui.shortcuts.keys import (
-    KEY_DISPLAY_NAMES,
-    Modifier,
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    NO_MODIFIERS,
+    ModifierSet,
+    modifiers_display,
 )
+from sampletones_application.utils.gui.shortcuts.keys import KEY_DISPLAY_NAMES
 
 
 @dataclass(frozen=True)
@@ -17,16 +19,14 @@ class Shortcut:
     """
 
     key: Optional[int] = None
-    modifiers: Tuple[Modifier, ...] = ()
+    modifiers: ModifierSet = NO_MODIFIERS
     field_transparent: bool = False
 
     def get_display_string(self) -> str:
         if self.key is None:
             return ""
 
-        parts = [modifier.value for modifier in self.modifiers]
-        parts.append(self._key_to_string())
-        return "+".join(parts)
+        return "+".join((*modifiers_display(self.modifiers), self._key_to_string()))
 
     def _key_to_string(self) -> str:
         if self.key is None:
