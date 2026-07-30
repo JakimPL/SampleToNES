@@ -25,6 +25,7 @@ from sampletones_shared.exceptions import (
     UnhandledProjectError,
 )
 from tests.conftest import ReconstructionFactory
+from tests.suite.errors import DIRECTORY_READ_ERRORS
 
 _RECONSTRUCTION_VERSION_CONSTANT = (
     "sampletones_core.reconstructions.reconstruction.reconstruction.SAMPLETONES_RECONSTRUCTION_DATA_VERSION"
@@ -193,8 +194,8 @@ class TestLoadRejectsInvalidArchives:
         with pytest.raises(FileNotFoundError):
             ProjectContainer.load(tmp_path / "nope.stp")
 
-    def test_directory_raises_is_a_directory(self, tmp_path: Path) -> None:
-        with pytest.raises(IsADirectoryError):
+    def test_directory_raises_directory_read_error(self, tmp_path: Path) -> None:
+        with pytest.raises(DIRECTORY_READ_ERRORS):
             ProjectContainer.load(tmp_path)
 
     def test_non_zip_raises_not_a_valid_archive(self, tmp_path: Path) -> None:

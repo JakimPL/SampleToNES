@@ -19,24 +19,24 @@ def config() -> Config:
 
 
 class TestGetRelativePath:
-    def test_preserves_subdirectory_structure(self) -> None:
-        base = Path("/base")
-        audio_file = Path("/base/sub/file.wav")
-        output = Path("/output")
+    def test_preserves_subdirectory_structure(self, tmp_path: Path) -> None:
+        base = tmp_path / "base"
+        audio_file = base / "sub" / "file.wav"
+        output = tmp_path / "output"
         result = get_relative_path(base, audio_file, output)
-        assert result == Path("/output/sub/file.stn")
+        assert result == output / "sub" / "file.stn"
 
-    def test_replaces_extension_with_suffix(self) -> None:
-        base = Path("/base")
-        audio_file = Path("/base/song.wav")
-        output = Path("/output")
+    def test_replaces_extension_with_suffix(self, tmp_path: Path) -> None:
+        base = tmp_path / "base"
+        audio_file = base / "song.wav"
+        output = tmp_path / "output"
         result = get_relative_path(base, audio_file, output)
         assert result.suffix == EXT_FILE_RECONSTRUCTION
 
     def test_result_is_absolute(self) -> None:
-        base = Path("/base")
-        audio_file = Path("/base/song.wav")
-        output = Path("/output")
+        base = Path("base")
+        audio_file = Path("base/song.wav")
+        output = Path("output")
         result = get_relative_path(base, audio_file, output)
         assert result.is_absolute()
 

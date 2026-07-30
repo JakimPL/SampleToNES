@@ -30,7 +30,7 @@ class TestZenityBackend:
         assert result == Path("/home/user/song.stp")
         assert "--save" in command
         assert command[command.index("--file-filter") + 1] == "Project files (*.stp) | *.stp"
-        assert command[command.index("--filename") + 1] == "/home/user/song.stp"
+        assert command[command.index("--filename") + 1] == str(Path("/home/user/song.stp"))
 
     def test_open_command_filter_format(self) -> None:
         backend = ZenityBackend()

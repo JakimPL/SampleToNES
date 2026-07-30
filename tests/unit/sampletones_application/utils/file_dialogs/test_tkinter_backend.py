@@ -24,7 +24,7 @@ class TestTkinterBackend:
         assert result == Path("/home/user/song.stp")
         assert kwargs["filetypes"] == [("Project files (*.stp)", ("*.stp",))]
         assert kwargs["initialfile"] == "song"
-        assert kwargs["initialdir"] == "/home/user"
+        assert kwargs["initialdir"] == str(Path("/home/user"))
         tk.return_value.withdraw.assert_called_once()
         tk.return_value.destroy.assert_called_once()
 

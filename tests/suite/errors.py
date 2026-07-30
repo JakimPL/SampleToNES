@@ -1,8 +1,11 @@
 import inspect
 from re import Pattern
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Final, Optional, Tuple, Type, Union
 
 import pytest
+
+# Opening a directory for reading raises IsADirectoryError on POSIX and PermissionError on Windows.
+DIRECTORY_READ_ERRORS: Final[Tuple[Type[OSError], ...]] = (IsADirectoryError, PermissionError)
 
 
 def _invoke_with_raises(
@@ -12,7 +15,7 @@ def _invoke_with_raises(
     match: Optional[Union[str, Pattern[str]]] = None,
     **kwargs: Any,
 ) -> None:
-    assert isinstance(expected, type)
+    assert isinstance(expected, type) or (isinstance(expected, tuple) and all(isinstance(e, type) for e in expected))
     with pytest.raises(expected, match=match):
         function(*args, **kwargs)
 

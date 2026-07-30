@@ -19,6 +19,7 @@ from sampletones_shared.exceptions import (
 )
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.errors import DIRECTORY_READ_ERRORS
 
 
 def _library(metadata: Optional[Metadata] = None) -> InstructionLibraryData:
@@ -67,7 +68,7 @@ class TestLoadFileAccess(BaseTestSuite):
         TestCase(
             label="directory",
             make_path=lambda root: root,
-            expected=IsADirectoryError,
+            expected=DIRECTORY_READ_ERRORS,
         ),
     ]
 
