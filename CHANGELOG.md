@@ -1,10 +1,10 @@
 # SampleToNES
 
-## v0.3.0 [2026-07-25]
+## v0.3.0 [2026-07-30]
 
 * Added a _Sequencer_ view with FamiTracker-style patterns.
 * Added project export in a FamiTracker-compatible format.
-* Improved matching algorithms and extended availalbe methods (`LogFFT`, `CQT`).
+* Improved matching algorithms and extended available methods (`LogFFT`, `CQT`).
 * Improved the general layout of the application.
 * Changed the internal file formats (`.stn`, `.ins`).
 * Switched to `uv` as the package manager.

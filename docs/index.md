@@ -56,7 +56,6 @@ The [**development**](development/) section is for contributors.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
 - [Dependencies](development/dependencies.md) — the libraries _SampleToNES_ builds on.
-- [Releasing](development/release.md) — the release process, what the workflow does, and the license checks.
 - [Bugs and to-dos](development/bugs-and-todos.md) — the working ledger of known gaps.
 
 ## Glossary

@@ -12,7 +12,8 @@ Two different things are distributed, and they carry different obligations:
 | The standalone bundles attached to GitHub Releases | _SampleToNES_ code, the fonts, the Python runtime, and every dependency — including several native libraries | Fonts, plus the third-party terms described below |
 
 The full license text of everything in the standalone bundles is reproduced in
-[`THIRD-PARTY-LICENSES.txt`](THIRD-PARTY-LICENSES.txt), which ships inside each bundle.
+[`THIRD-PARTY-LICENSES.txt`](https://github.com/JakimPL/SampleToNES/blob/main/THIRD-PARTY-LICENSES.txt),
+which ships inside each bundle.
 
 ## Bundled fonts
 
@@ -23,9 +24,9 @@ them in `sampletones_assets/fonts/LICENSES/`.
 
 | Font | Copyright | License |
 | --- | --- | --- |
-| Roboto Mono (all weights and italics, including the variable fonts) | Copyright 2015 The Roboto Mono Project Authors | [SIL Open Font License 1.1](src/sampletones_assets/fonts/LICENSES/OFL-1.1.txt) |
-| Source Sans 3 (Regular, Italic, Bold) | © 2023 Adobe, with Reserved Font Name "Source" | [SIL Open Font License 1.1](src/sampletones_assets/fonts/LICENSES/OFL-1.1.txt) |
-| DejaVu Sans | © 2003 Bitstream, Inc.; Arev glyphs © Tavmjong Bah; DejaVu changes in the public domain | [Bitstream Vera / Arev](src/sampletones_assets/fonts/LICENSES/DejaVu-BitstreamVera.txt) |
+| Roboto Mono (all weights and italics, including the variable fonts) | Copyright 2015 The Roboto Mono Project Authors | [SIL Open Font License 1.1](https://github.com/JakimPL/SampleToNES/blob/main/src/sampletones_assets/fonts/LICENSES/OFL-1.1.txt) |
+| Source Sans 3 (Regular, Italic, Bold) | © 2023 Adobe, with Reserved Font Name "Source" | [SIL Open Font License 1.1](https://github.com/JakimPL/SampleToNES/blob/main/src/sampletones_assets/fonts/LICENSES/OFL-1.1.txt) |
+| DejaVu Sans | © 2003 Bitstream, Inc.; Arev glyphs © Tavmjong Bah; DejaVu changes in the public domain | [Bitstream Vera / Arev](https://github.com/JakimPL/SampleToNES/blob/main/src/sampletones_assets/fonts/LICENSES/DejaVu-BitstreamVera.txt) |
 
 The fonts are redistributed unmodified. Reserved Font Names ("Source", "Bitstream", "Vera")
 are not used in any SampleToNES component name.
@@ -111,5 +112,4 @@ their publishers.
 
 The inventory above is a snapshot of the pinned dependency set in `pyproject.toml` and
 `uv.lock`. When those change, both this file and `THIRD-PARTY-LICENSES.txt` need to be
-reviewed — see [`docs/development/release.md`](docs/development/release.md) for the release
-checklist.
+reviewed before the next release.
