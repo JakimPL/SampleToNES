@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.exporters.slices import (
+    InstrumentSlot,
+    InstrumentTable,
+    iterate_sample_slices,
+)
 from sampletones_core.famitracker.model.instrument import Instrument2A03
 from sampletones_core.famitracker.model.module import (
     FamiTrackerModule,
@@ -54,17 +58,6 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
 
 
-@dataclass(frozen=True)
-class InstrumentSlot:
-    """Where a sample's generator slice landed in the instrument table."""
-
-    index: int
-    initial_pitch: int
-
-
-InstrumentTable = Dict[Tuple[str, GeneratorName], InstrumentSlot]
-
-
 def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], InstrumentTable]:
     """Builds one FamiTracker instrument per generator slice of every sample.
 
@@ -75,28 +68,27 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
     instruments: List[Instrument2A03] = []
     slots: InstrumentTable = {}
 
-    for sample in project.samples:
-        features_by_generator = sample.reconstruction.export()
-        for generator in GeneratorName.items():
-            features = features_by_generator.get(generator)
-            if features is None:
-                continue
+    for sample_slice in iterate_sample_slices(project):
+        if sample_slice.index >= MAX_INSTRUMENTS:
+            raise ValueError(f"Module exceeds the FamiTracker limit of {MAX_INSTRUMENTS} instruments")
 
-            index = len(instruments)
-            if index >= MAX_INSTRUMENTS:
-                raise ValueError(f"Module exceeds the FamiTracker limit of {MAX_INSTRUMENTS} instruments")
-
-            sequences = features_to_instrument_sequences(
-                volume=features.volume,
-                arpeggio=features.arpeggio,
-                pitch=features.pitch,
-                hi_pitch=features.hi_pitch,
-                duty_cycle=features.duty_cycle,
-                loop=sample.loop,
+        features = sample_slice.features
+        sequences = features_to_instrument_sequences(
+            volume=features.volume,
+            arpeggio=features.arpeggio,
+            pitch=features.pitch,
+            hi_pitch=features.hi_pitch,
+            duty_cycle=features.duty_cycle,
+            loop=sample_slice.sample.loop,
+        )
+        instruments.append(
+            Instrument2A03(
+                index=sample_slice.index,
+                name=sample_slice.instrument_name,
+                sequences=sequences,
             )
-            name = f"{sample.name} {generator.capitalized}"
-            instruments.append(Instrument2A03(index=index, name=name, sequences=sequences))
-            slots[(sample.id, generator)] = InstrumentSlot(index=index, initial_pitch=features.initial_pitch)
+        )
+        slots[sample_slice.key] = sample_slice.slot
 
     return instruments, slots
 
@@ -137,7 +129,12 @@ def _row_cell(
                     f"'{reference.generator_name}' that has no instrument"
                 )
             instrument = slot.index
-            note, octave = _note_and_octave(reference, row.transpose or 0, channel_generator, slot)
+            note, octave = _note_and_octave(
+                reference,
+                row.transpose or 0,
+                channel_generator,
+                slot,
+            )
         case None:
             pass
 
@@ -162,7 +159,11 @@ def _has_data(cell: RowCell) -> bool:
     )
 
 
-def _channel_patterns(generator: GeneratorName, channel: Channel, slots: InstrumentTable) -> List[PatternData]:
+def _channel_patterns(
+    generator: GeneratorName,
+    channel: Channel,
+    slots: InstrumentTable,
+) -> List[PatternData]:
     channel_id = GENERATOR_NAME_TO_CHANNEL_ID[generator]
     patterns: List[PatternData] = []
 
@@ -173,11 +174,25 @@ def _channel_patterns(generator: GeneratorName, channel: Channel, slots: Instrum
         pattern = channel.patterns[index]
         rows = tuple(
             cell
-            for cell in (_row_cell(row, row_number, generator, slots) for row_number, row in enumerate(pattern.rows))
+            for cell in (
+                _row_cell(
+                    row,
+                    row_number,
+                    generator,
+                    slots,
+                )
+                for row_number, row in enumerate(pattern.rows)
+            )
             if cell is not None
         )
         if rows:
-            patterns.append(PatternData(channel=channel_id, index=index, rows=rows))
+            patterns.append(
+                PatternData(
+                    channel=channel_id,
+                    index=index,
+                    rows=rows,
+                )
+            )
 
     return patterns
 
@@ -227,11 +242,17 @@ def project_to_module(project: Project) -> FamiTrackerModule:
         highlight_second=DEFAULT_HIGHLIGHT_SECOND,
         speed_split_point=DEFAULT_SPEED_SPLIT_POINT,
     )
-    information = ModuleInformation(title=info.title, author=info.author, copyright=DEFAULT_COPYRIGHT)
+    information = ModuleInformation(
+        title=info.title,
+        author=info.author,
+        copyright=DEFAULT_COPYRIGHT,
+    )
 
     patterns: List[PatternData] = []
     for generator in GeneratorName.items():
-        patterns.extend(_channel_patterns(generator, song.channels[generator], slots))
+        patterns.extend(
+            _channel_patterns(generator, song.channels[generator], slots),
+        )
 
     track = Track(
         title=info.title,

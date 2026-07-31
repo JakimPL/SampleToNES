@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, Final, List
 
 import numpy as np
 import pytest
@@ -13,6 +13,8 @@ from sampletones_core.exporters import Features
 from sampletones_core.trackers.famitracker import FamiTrackerBackend
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
 
+NES_FREQUENCY: Final[int] = 60
+
 
 @pytest.fixture(name="backend")
 def backend_fixture() -> FamiTrackerBackend:
@@ -25,7 +27,12 @@ def instrument_export(name: str, features: Features) -> InstrumentExport:
         generator=GeneratorName.PULSE1,
         features=features,
         loop=False,
+        nes_frequency=NES_FREQUENCY,
     )
+
+
+def sample_export(name: str, *instruments: InstrumentExport) -> SampleExport:
+    return SampleExport(name=name, instruments=instruments, nes_frequency=NES_FREQUENCY)
 
 
 class TestExportWavIntegration:
@@ -117,12 +124,10 @@ class TestExportSampleIntegration:
         results: List[Any] = []
         export_service.subscribe(results.append)
 
-        request = SampleExport(
-            name="sample",
-            instruments=(
-                instrument_export("inst_0", pulse_features),
-                instrument_export("inst_1", pulse_features),
-            ),
+        request = sample_export(
+            "sample",
+            instrument_export("inst_0", pulse_features),
+            instrument_export("inst_1", pulse_features),
         )
         export_service.export_sample(tmp_path, backend, request)
 
@@ -134,7 +139,7 @@ class TestExportSampleIntegration:
         results: List[Any] = []
         export_service.subscribe(results.append)
 
-        request = SampleExport(name="sample", instruments=(instrument_export("inst", pulse_features),))
+        request = sample_export("sample", instrument_export("inst", pulse_features))
         export_service.export_sample(tmp_path, backend, request)
 
         assert len(results) == 1
@@ -147,7 +152,7 @@ class TestExportSampleIntegration:
         export_service = ExportService()
         export_service.subscribe(lambda _: None)
 
-        request = SampleExport(name="sample", instruments=(instrument_export("inst", pulse_features),))
+        request = sample_export("sample", instrument_export("inst", pulse_features))
         export_service.export_sample(new_dir, backend, request)
 
         assert new_dir.exists()
@@ -157,7 +162,7 @@ class TestExportSampleIntegration:
         results: List[Any] = []
         export_service.subscribe(results.append)
 
-        export_service.export_sample(tmp_path, backend, SampleExport(name="sample", instruments=()))
+        export_service.export_sample(tmp_path, backend, sample_export("sample"))
 
         assert list(tmp_path.glob("*.fti")) == []
         assert isinstance(results[0], ExportSuccess)

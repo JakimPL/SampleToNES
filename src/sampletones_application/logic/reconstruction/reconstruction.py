@@ -231,6 +231,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 self._instrument_export(generator_name, feature)
                 for generator_name, feature in reconstruction_data.feature_data.generators.items()
             ),
+            nes_frequency=self._nes_frequency(),
         )
         self._session_manager.set_instrument_path(directory.parent)
         self._export_service.export_sample(directory, self._export_backend, request)
@@ -250,7 +251,16 @@ class ReconstructionPanelLogic(CallbackMixin):
             generator=generator_name,
             features=feature,
             loop=False,
+            nes_frequency=self._nes_frequency(),
         )
+
+    def _nes_frequency(self) -> int:
+        """The rate the loaded reconstruction's envelopes advance at, in Hz."""
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
+            raise AssertionError("Expected reconstruction data to be present")
+
+        return reconstruction_data.config.library.nes_frequency
 
     def handle_export_wav_confirmed(self, filepath: Path) -> None:
         reconstruction_data = self._reconstruction_data

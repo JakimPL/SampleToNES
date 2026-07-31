@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, Final, List, Optional, Tuple
 from unittest.mock import patch
 
 import numpy as np
@@ -20,6 +20,8 @@ from sampletones_core.trackers.request import (
     SampleExport,
 )
 from sampletones_core.trackers.scope import DestinationKind, ExportScope
+
+NES_FREQUENCY: Final[int] = 60
 
 
 class StubBackend:
@@ -81,6 +83,7 @@ def build_instrument(name: str = "Lead") -> InstrumentExport:
             duty_cycle=None,
         ),
         loop=False,
+        nes_frequency=NES_FREQUENCY,
     )
 
 
@@ -88,6 +91,7 @@ def build_sample(count: int = 2) -> SampleExport:
     return SampleExport(
         name="Kick",
         instruments=tuple(build_instrument(f"Kick {index}") for index in range(count)),
+        nes_frequency=NES_FREQUENCY,
     )
 
 

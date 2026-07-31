@@ -15,12 +15,14 @@ class InstrumentExport:
         generator: The NES channel the slice was reconstructed for.
         features: The per-dimension envelopes describing the slice.
         loop: Whether the instrument repeats its envelopes while its note is held.
+        nes_frequency: Rate in Hz the envelopes advance at, one item per tick.
     """
 
     name: str
     generator: GeneratorName
     features: Features
     loop: bool
+    nes_frequency: int
 
 
 @dataclass(frozen=True)
@@ -30,10 +32,12 @@ class SampleExport:
     Attributes:
         name: Name of the reconstruction the slices came from.
         instruments: One entry per channel the reconstruction covers.
+        nes_frequency: Rate in Hz the envelopes advance at, one item per tick.
     """
 
     name: str
     instruments: Tuple[InstrumentExport, ...]
+    nes_frequency: int
 
 
 @dataclass(frozen=True)

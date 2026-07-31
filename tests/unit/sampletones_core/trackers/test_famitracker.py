@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Final, Optional
 
 import numpy as np
 import pytest
@@ -13,6 +13,8 @@ from sampletones_core.trackers.famitracker import FamiTrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
 from sampletones_core.trackers.scope import DestinationKind, ExportScope
+
+NES_FREQUENCY: Final[int] = 60
 
 
 def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> Features:
@@ -33,7 +35,12 @@ def build_instrument(name: str, frames: int) -> InstrumentExport:
         generator=GeneratorName.PULSE1,
         features=build_features(frames),
         loop=False,
+        nes_frequency=NES_FREQUENCY,
     )
+
+
+def build_sample(name: str, *instruments: InstrumentExport) -> SampleExport:
+    return SampleExport(name=name, instruments=instruments, nes_frequency=NES_FREQUENCY)
 
 
 @pytest.fixture(name="backend")
@@ -125,10 +132,7 @@ class TestWriteSample:
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / "Kick"
-        request = SampleExport(
-            name="Kick",
-            instruments=(build_instrument("Kick (pulse1)", 16), build_instrument("Kick (noise)", 16)),
-        )
+        request = build_sample("Kick", build_instrument("Kick (pulse1)", 16), build_instrument("Kick (noise)", 16))
 
         artifact = backend.write_sample(destination, request)
 
@@ -141,18 +145,16 @@ class TestWriteSample:
     def test_a_missing_directory_is_created(self, backend: FamiTrackerBackend, tmp_path: Path) -> None:
         destination = tmp_path / "nested" / "Kick"
 
-        backend.write_sample(destination, SampleExport(name="Kick", instruments=(build_instrument("Kick", 16),)))
+        backend.write_sample(destination, build_sample("Kick", build_instrument("Kick", 16)))
 
         assert destination.is_dir()
 
     def test_the_report_spans_every_shortened_slice(self, backend: FamiTrackerBackend, tmp_path: Path) -> None:
-        request = SampleExport(
-            name="Kick",
-            instruments=(
-                build_instrument("Short", 16),
-                build_instrument("Long", 300),
-                build_instrument("Longer", 410),
-            ),
+        request = build_sample(
+            "Kick",
+            build_instrument("Short", 16),
+            build_instrument("Long", 300),
+            build_instrument("Longer", 410),
         )
 
         artifact = backend.write_sample(tmp_path / "Kick", request)
@@ -164,7 +166,7 @@ class TestWriteSample:
         )
 
     def test_slices_that_all_fit_report_nothing(self, backend: FamiTrackerBackend, tmp_path: Path) -> None:
-        request = SampleExport(name="Kick", instruments=(build_instrument("Short", 16),))
+        request = build_sample("Kick", build_instrument("Short", 16))
 
         artifact = backend.write_sample(tmp_path / "Kick", request)
 
