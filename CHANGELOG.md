@@ -1,6 +1,6 @@
 # SampleToNES
 
-## v0.3.0 [2026-07-30]
+## v0.3.0 [2026-07-31]
 
 * Added a _Sequencer_ view with FamiTracker-style patterns.
 * Added project export in a FamiTracker-compatible format.

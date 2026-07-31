@@ -15,6 +15,9 @@ on:
           - testpypi
           - pypi
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build distributions
@@ -68,13 +71,17 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install PortAudio (Linux)
+      - name: Install PortAudio and Tk (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
+        run: sudo apt-get update && sudo apt-get install -y portaudio19-dev python3-tk
 
       - name: Install PortAudio (macOS)
         if: runner.os == 'macOS'
-        run: brew install portaudio
+        run: |
+          brew install portaudio
+          prefix="$(brew --prefix portaudio)"
+          echo "CFLAGS=-I${prefix}/include" >> "$GITHUB_ENV"
+          echo "LDFLAGS=-L${prefix}/lib" >> "$GITHUB_ENV"
 
       - name: Install the wheel and check the entry point
         shell: bash
@@ -89,8 +96,6 @@ jobs:
 
   bundle:
     name: Standalone bundle (${{ matrix.platform }})
-    # Only a tag push produces downloadable binaries. A manual TestPyPI run must never
-    # create a GitHub Release.
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ${{ matrix.os }}
@@ -115,10 +120,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-tk tk-dev libportaudio2 libasound-dev portaudio19-dev
 
-      - name: Install SampleToNES and its runtime dependencies
+      - name: Create the build environment the bundle scripts expect
+        shell: bash
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install .
+          python -m venv .venv-build
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            venv_python=.venv-build/Scripts/python.exe
+          else
+            venv_python=.venv-build/bin/python
+          fi
+          "$venv_python" -m pip install --upgrade pip
+          "$venv_python" -m pip install ".[build]"
 
       - name: Build the bundle (Linux)
         if: runner.os == 'Linux'
@@ -161,9 +173,6 @@ jobs:
     needs: bundle
     runs-on: ubuntu-latest
     permissions:
-      # The only job in this workflow that can write to the repository, and only to
-      # create the release. The release is left as a draft: nothing becomes public
-      # until you press Publish yourself.
       contents: write
     steps:
       - uses: actions/download-artifact@v4
@@ -185,7 +194,6 @@ jobs:
           fi
           gh release upload "$GITHUB_REF_NAME" bundles/*.zip \
             --repo "$GITHUB_REPOSITORY" --clobber
-          echo "Draft release ready. It stays invisible until you publish it."
 
   publish:
     name: Publish to ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'pypi' }}
@@ -194,7 +202,6 @@ jobs:
     environment:
       name: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'pypi' }}
     permissions:
-      # Required for PyPI Trusted Publishing (OIDC). No API token is stored anywhere.
       id-token: write
     steps:
       - uses: actions/download-artifact@v4

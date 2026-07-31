@@ -33,8 +33,7 @@ are not used in any SampleToNES component name.
 
 ## The PyPI package
 
-_SampleToNES_ does not vendor any dependency source code — every dependency is installed
-separately by `pip`/`uv` from PyPI and imported at runtime.
+Every dependency is installed separately by `pip`/`uv` from PyPI and imported at runtime.
 
 Most dependencies are permissively licensed (MIT, BSD, Apache-2.0, ISC). Two are under the
 GNU Lesser General Public License — [Pebble](https://pypi.org/project/Pebble/) (LGPL-3.0,
@@ -49,8 +48,8 @@ MIT License applies to the PyPI package without further obligation.
 
 The bundles attached to GitHub Releases are produced by
 [PyInstaller](https://pyinstaller.org/) and contain the complete dependency set, the
-Python runtime, and a number of native libraries. Publishing them makes _SampleToNES_ a
-redistributor of all of that material.
+Python runtime, and a number of native libraries. Each component reaches you as part of
+that bundle, under its own license.
 
 Every component's full license text is in `THIRD-PARTY-LICENSES.txt` at the root of each
 bundle. The components below are the ones whose licenses ask for more than attribution.
@@ -83,8 +82,8 @@ bootloader is GPL-2.0-or-later with
 [an exception](https://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt)
 permitting its use in bundles of software under any license.
 
-Neither exception places any obligation on _SampleToNES_ beyond reproducing these notices.
-No component of these bundles is under the plain GPL.
+Both exceptions make these notices the only condition attached to the compiled output. No
+component of these bundles is under the plain GPL.
 
 ### MPL-2.0 components
 
@@ -100,16 +99,9 @@ upstream project. If you would prefer to receive it from us, open an issue at
 will supply the source for the exact versions contained in a given bundle, for at least
 three years from the date of that release.
 
-### What the bundles do not contain
+### GPU acceleration
 
-The published bundles are **CPU-only**. They contain no CuPy, no CUDA runtime, and no
-NVIDIA libraries; those are proprietary and are not redistributable under their EULA. GPU
-acceleration is available only when _SampleToNES_ is installed from PyPI with the `gpu`
-extra, in which case CuPy and the CUDA components are downloaded by the user directly from
-their publishers.
-
-## Keeping this file accurate
-
-The inventory above is a snapshot of the pinned dependency set in `pyproject.toml` and
-`uv.lock`. When those change, both this file and `THIRD-PARTY-LICENSES.txt` need to be
-reviewed before the next release.
+The published bundles are **CPU-only**: CuPy, the CUDA runtime and the NVIDIA libraries
+are proprietary, and their EULA reserves redistribution to NVIDIA. GPU acceleration comes
+from installing _SampleToNES_ from PyPI with the `gpu` extra, which fetches CuPy and the
+CUDA components from their publishers straight to your machine.
