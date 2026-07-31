@@ -156,7 +156,10 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(tag=TAG_SEQUENCER_BROWSER_WINDOW_TREE, horizontal_scrollbar=True):
+        with dpg.child_window(
+            tag=TAG_SEQUENCER_BROWSER_WINDOW_TREE,
+            horizontal_scrollbar=True,
+        ):
             with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_reconstructions,
@@ -220,7 +223,10 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
     def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_BROWSER_GROUP_TREE, enabled=enabled)
-        dpg_configure_item(TAG_SEQUENCER_BROWSER_GROUP_CONTROLS, enabled=enabled)
+        dpg_configure_item(
+            TAG_SEQUENCER_BROWSER_GROUP_CONTROLS,
+            enabled=enabled,
+        )
 
     def _on_directory_node_clicked(
         self,
@@ -271,7 +277,11 @@ class GUISequencerBrowserPanel(GUITreePanel):
             self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
 
-    def _show_reconstruction_context_menu(self, node: FileSystemNode, node_tag: str) -> None:
+    def _show_reconstruction_context_menu(
+        self,
+        node: FileSystemNode,
+        node_tag: str,
+    ) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 

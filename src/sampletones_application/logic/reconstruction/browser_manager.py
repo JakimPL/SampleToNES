@@ -53,7 +53,11 @@ class BrowserManager:
         self._assign_directory_display_names(container_root)
         self.tree.set_root(container_root)
 
-    def _build_tree(self, path: Path, parent: Optional[TreeNode] = None) -> Optional[FileSystemNode]:
+    def _build_tree(
+        self,
+        path: Path,
+        parent: Optional[TreeNode] = None,
+    ) -> Optional[FileSystemNode]:
         if not path.exists():
             return None
 

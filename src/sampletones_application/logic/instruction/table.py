@@ -219,7 +219,10 @@ class InstructionTableLogic:
         return self._current_data
 
     @current_data.setter
-    def current_data(self, instruction_data: Optional[InstructionPanelData]) -> None:
+    def current_data(
+        self,
+        instruction_data: Optional[InstructionPanelData],
+    ) -> None:
         if instruction_data is None:
             self._current_data = None
             self._current_hash = ""

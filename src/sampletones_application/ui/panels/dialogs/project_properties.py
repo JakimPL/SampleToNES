@@ -187,7 +187,11 @@ class GUIProjectPropertiesWindow(GUIWindow):
 
     def _create_text_field(self, tag: str, label: str, value: str) -> None:
         with labeled_field(label, self._layout.label_width):
-            dpg.add_input_text(tag=tag, default_value=value, width=self._layout.input_width)
+            dpg.add_input_text(
+                tag=tag,
+                default_value=value,
+                width=self._layout.input_width,
+            )
 
     def _create_comment_field(self) -> None:
         label_id = dpg.add_text(self._lbl_comment)
@@ -235,5 +239,13 @@ class GUIProjectPropertiesWindow(GUIWindow):
         self.hide()
 
     @staticmethod
-    def _label(language_manager: LanguageManager, element: ProjectPropertiesElements) -> str:
-        return language_manager[Page.SETTINGS, Panel.PROPERTIES, TextType.LABEL, element]
+    def _label(
+        language_manager: LanguageManager,
+        element: ProjectPropertiesElements,
+    ) -> str:
+        return language_manager[
+            Page.SETTINGS,
+            Panel.PROPERTIES,
+            TextType.LABEL,
+            element,
+        ]

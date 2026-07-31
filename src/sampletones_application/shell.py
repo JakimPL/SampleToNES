@@ -415,7 +415,11 @@ class ApplicationShell:
     def _setup_handlers(self) -> None:
         self._key_router.bind()
 
-    def _create_main_window(self, on_tab_changed: Callback, initial_menu_state: MenuBarViewModel) -> None:
+    def _create_main_window(
+        self,
+        on_tab_changed: Callback,
+        initial_menu_state: MenuBarViewModel,
+    ) -> None:
         with dpg.window(
             label=self._language_manager[
                 Page.GLOBAL,
@@ -527,7 +531,10 @@ class ApplicationShell:
 
         on_load_project(current_project_path)
 
-    def _restore_current_reconstruction(self, on_load_reconstruction: PathCallback) -> None:
+    def _restore_current_reconstruction(
+        self,
+        on_load_reconstruction: PathCallback,
+    ) -> None:
         current_reconstruction_path = self._session_manager.current_reconstruction
         if current_reconstruction_path is None:
             return

@@ -327,9 +327,17 @@ class GUIAudioSettingsWindow(GUIWindow):
             dpg_set_value(TAG_SETTINGS_AUDIO_COMBO_DEVICE, "")
             return
 
-        self._sample_rates_by_label = dict(zip(device.sample_rate_labels(self._fmt_sample_rate), device.sample_rates))
+        self._sample_rates_by_label = dict(
+            zip(
+                device.sample_rate_labels(self._fmt_sample_rate),
+                device.sample_rates,
+            )
+        )
         sample_rate_items = list(self._sample_rates_by_label)
-        dpg_set_value(TAG_SETTINGS_AUDIO_COMBO_DEVICE, device.label(self._fmt_device_label))
+        dpg_set_value(
+            TAG_SETTINGS_AUDIO_COMBO_DEVICE,
+            device.label(self._fmt_device_label),
+        )
         dpg_configure_item(
             TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
             items=sample_rate_items,

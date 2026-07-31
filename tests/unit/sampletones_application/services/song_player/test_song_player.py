@@ -169,8 +169,8 @@ class TestSongPlayerServiceSubscribeAndEmit:
 
     def test_multiple_subscribers_all_receive_result(self) -> None:
         service = _make_service()
-        received_a: list = []
-        received_b: list = []
+        received_a = []
+        received_b = []
         service.subscribe(received_a.append)
         service.subscribe(received_b.append)
 
@@ -276,7 +276,7 @@ class TestSongPlayerServicePrefetch:
 
     def test_drain_writes_buffered_rows_then_reports_stopped(self) -> None:
         service = _make_service()
-        received: list = []
+        received = []
         service.subscribe(received.append)
         service._resume_event.set()
 
@@ -294,7 +294,7 @@ class TestSongPlayerServicePrefetch:
 
     def test_drain_returns_without_terminal_when_stopping(self) -> None:
         service = _make_service()
-        received: list = []
+        received = []
         service.subscribe(received.append)
         service._resume_event.set()
         service._stop_event.set()

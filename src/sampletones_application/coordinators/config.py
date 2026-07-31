@@ -140,7 +140,10 @@ class ConfigCoordinator:
             self._show_status_dialog(self._message(GlobalMessageElements.CONFIGURATION_LOADED_SUCCESSFULLY))
         except _LOAD_EXCEPTIONS as exception:
             logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
-            self._dialogs.show_error(exception, self._message(GlobalMessageElements.CONFIGURATION_LOAD_ERROR))
+            self._dialogs.show_error(
+                exception,
+                self._message(GlobalMessageElements.CONFIGURATION_LOAD_ERROR),
+            )
 
         self._session_manager.set_config_path(filepath)
 
@@ -155,7 +158,13 @@ class ConfigCoordinator:
         for outcome in self._config_manager.pending_load_outcomes:
             match outcome:
                 case ConfigRecovered(source_version=source_version, dropped=dropped):
-                    properties = tuple(flatten_location(location) for location in sorted(dropped, key=flatten_location))
+                    properties = tuple(
+                        flatten_location(location)
+                        for location in sorted(
+                            dropped,
+                            key=flatten_location,
+                        )
+                    )
                     self._dialogs.show_config_recovery(
                         tag=TAG_GLOBAL_DIALOG_CONFIG_RECOVERY,
                         source_version=source_version,
@@ -164,12 +173,20 @@ class ConfigCoordinator:
                         config_path=self._config_manager.config_path,
                     )
                 case ConfigLoadFailure(exception=exception, reason=reason):
-                    self._dialogs.show_error(exception, self._message(_LOAD_FAILURE_MESSAGES[reason]))
+                    self._dialogs.show_error(
+                        exception,
+                        self._message(_LOAD_FAILURE_MESSAGES[reason]),
+                    )
 
         self._config_manager.pending_load_outcomes.clear()
 
     def _message(self, element: GlobalMessageElements) -> str:
-        return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, element]
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            element,
+        ]
 
     def _show_status_dialog(self, message: str) -> None:
         def content(parent: str) -> None:

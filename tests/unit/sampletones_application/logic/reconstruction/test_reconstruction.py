@@ -237,7 +237,7 @@ class TestReconstructionPanelLogicClose:
         self,
         panel_logic: ReconstructionPanelLogic,
     ) -> None:
-        received: list = []
+        received = []
         panel_logic.on_view_changed = lambda vm: received.append(vm)
         panel_logic.close_reconstruction()
         assert len(received) == 1
@@ -247,7 +247,7 @@ class TestReconstructionPanelLogicClose:
         self,
         panel_logic: ReconstructionPanelLogic,
     ) -> None:
-        received: list = []
+        received = []
         panel_logic.on_audio_data_changed = received.append
         panel_logic.close_reconstruction()
         assert received == [None]
@@ -506,7 +506,7 @@ class TestReconstructionPanelLogicComputeAudio:
         self,
         panel_logic: ReconstructionPanelLogic,
     ) -> None:
-        received: list = []
+        received = []
         panel_logic.on_audio_data_changed = received.append
         panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
         assert received == [None]

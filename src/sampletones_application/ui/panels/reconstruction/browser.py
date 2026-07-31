@@ -187,7 +187,10 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE, horizontal_scrollbar=True):
+        with dpg.child_window(
+            tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
+            horizontal_scrollbar=True,
+        ):
             with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_reconstructions,
@@ -250,8 +253,14 @@ class GUIBrowserPanel(GUITreePanel):
         state.parent = node_tag
 
     def set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE, enabled=enabled)
-        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS, enabled=enabled)
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE,
+            enabled=enabled,
+        )
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
+            enabled=enabled,
+        )
 
     def _reconstruct_file(self) -> None:
         self.call(self.on_reconstruct_file)
@@ -309,7 +318,11 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_remove_directory_item(node)
             self._add_context_menu_favorite_item(node)
 
-    def _show_reconstruction_context_menu(self, node: FileSystemNode, node_tag: str) -> None:
+    def _show_reconstruction_context_menu(
+        self,
+        node: FileSystemNode,
+        node_tag: str,
+    ) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
@@ -323,7 +336,10 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_locate_audio_item(node)
             self._add_context_menu_favorite_item(node)
 
-    def _add_context_menu_load_reconstruction_item(self, node: FileSystemNode) -> None:
+    def _add_context_menu_load_reconstruction_item(
+        self,
+        node: FileSystemNode,
+    ) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
             label=self._lbl_context_load,
@@ -331,20 +347,37 @@ class GUIBrowserPanel(GUITreePanel):
             user_data=node,
         )
 
-    def _add_context_menu_remove_reconstruction_item(self, node: FileSystemNode) -> None:
+    def _add_context_menu_remove_reconstruction_item(
+        self,
+        node: FileSystemNode,
+    ) -> None:
         dpg.add_menu_item(
             label=self._lbl_context_remove_reconstruction,
-            callback=lambda: self.call(self.on_reconstruction_remove_requested, node.filepath),
+            callback=lambda: self.call(
+                self.on_reconstruction_remove_requested,
+                node.filepath,
+            ),
         )
 
-    def _add_context_menu_remove_directory_item(self, node: FileSystemNode) -> None:
+    def _add_context_menu_remove_directory_item(
+        self,
+        node: FileSystemNode,
+    ) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
             label=self._lbl_context_remove_directory,
-            callback=lambda: self.call(self.on_directory_remove_requested, node.filepath),
+            callback=lambda: self.call(
+                self.on_directory_remove_requested,
+                node.filepath,
+            ),
         )
 
-    def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
+    def _on_load_reconstruction(
+        self,
+        sender: Sender,
+        app_data: Path,
+        user_data: FileSystemNode,
+    ) -> None:
         self._load_reconstruction(user_data)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:

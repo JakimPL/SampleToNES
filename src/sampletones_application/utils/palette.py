@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Dict, Final, Mapping, Optional, Union
+from typing import Annotated, Any, Dict, Final, Mapping, Optional, Union
 
 from pydantic import BaseModel, BeforeValidator, Field, ValidationInfo, model_validator
 
@@ -28,7 +28,7 @@ class PaletteReference(BaseModel, frozen=True):
 
     @model_validator(mode="before")
     @classmethod
-    def _from_string(cls, value: object) -> object:
+    def _from_string(cls, value: Any) -> object:
         if isinstance(value, str):
             return _parse_reference(value)
 
@@ -121,7 +121,7 @@ def _palette_from_context(info: ValidationInfo) -> Palette:
     return palette
 
 
-def _resolve_palette_color(value: object, info: ValidationInfo) -> object:
+def _resolve_palette_color(value: Any, info: ValidationInfo) -> object:
     if isinstance(value, str):
         text = value.strip()
         if text.startswith(REFERENCE_PREFIX):

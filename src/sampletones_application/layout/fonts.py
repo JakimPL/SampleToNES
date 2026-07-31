@@ -21,7 +21,11 @@ class FontScale(BaseModel, extra="forbid", frozen=True):
     large: int
 
     def step(self, step: Step) -> int:
-        return {Step.SMALL: self.small, Step.MEDIUM: self.medium, Step.LARGE: self.large}[step]
+        return {
+            Step.SMALL: self.small,
+            Step.MEDIUM: self.medium,
+            Step.LARGE: self.large,
+        }[step]
 
 
 class FontsLayout(BaseModel, extra="forbid", frozen=True):
@@ -38,5 +42,9 @@ class FontsLayout(BaseModel, extra="forbid", frozen=True):
     icon: FontScale
 
     def size_for(self, typeface: Typeface, step: Step) -> int:
-        scale = {Typeface.SANS: self.sans, Typeface.MONO: self.mono, Typeface.ICON: self.icon}[typeface]
+        scale = {
+            Typeface.SANS: self.sans,
+            Typeface.MONO: self.mono,
+            Typeface.ICON: self.icon,
+        }[typeface]
         return scale.step(step)

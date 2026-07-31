@@ -36,7 +36,14 @@ class ZenityBackend:
         suggested_name: Optional[str],
         file_filter: Optional[FileFilter],
     ) -> Optional[Path]:
-        command = ["zenity", "--file-selection", "--save", "--confirm-overwrite", "--title", title]
+        command = [
+            "zenity",
+            "--file-selection",
+            "--save",
+            "--confirm-overwrite",
+            "--title",
+            title,
+        ]
         command += _filename_arguments(initial_directory, suggested_name)
         command += _filter_arguments(file_filter)
         return _run(command)
@@ -47,12 +54,21 @@ class ZenityBackend:
         title: str,
         initial_directory: Optional[Path],
     ) -> Optional[Path]:
-        command = ["zenity", "--file-selection", "--directory", "--title", title]
+        command = [
+            "zenity",
+            "--file-selection",
+            "--directory",
+            "--title",
+            title,
+        ]
         command += _filename_arguments(initial_directory, None)
         return _run(command)
 
 
-def _filename_arguments(initial_directory: Optional[Path], suggested_name: Optional[str]) -> List[str]:
+def _filename_arguments(
+    initial_directory: Optional[Path],
+    suggested_name: Optional[str],
+) -> List[str]:
     if initial_directory is None and not suggested_name:
         return []
 
@@ -72,5 +88,10 @@ def _filter_arguments(file_filter: Optional[FileFilter]) -> List[str]:
 
 
 def _run(command: List[str]) -> Optional[Path]:
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     return normalize_path(result.stdout.strip())

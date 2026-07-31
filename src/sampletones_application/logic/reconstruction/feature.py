@@ -37,5 +37,8 @@ class FeatureData:
 
         return cls(generators=generators)
 
-    def get_generator_features(self, generator_name: GeneratorName) -> Optional[Features]:
+    def get_generator_features(
+        self,
+        generator_name: GeneratorName,
+    ) -> Optional[Features]:
         return self.generators.get(generator_name)

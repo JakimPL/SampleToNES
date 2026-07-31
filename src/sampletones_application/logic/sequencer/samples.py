@@ -137,5 +137,8 @@ class SequencerSamplesLogic(CallbackMixin):
                 priority=priority,
             )
         except (PlaybackError, ValueError) as exception:
-            logger.error_with_traceback(exception, f"Failed to preview sample: {sample_id}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to preview sample: {sample_id}",
+            )
             self.call(self.on_autoplay_error, exception)

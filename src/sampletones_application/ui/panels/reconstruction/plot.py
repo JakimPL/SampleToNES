@@ -164,7 +164,11 @@ class GUIReconstructionPlotPanel(GUIPanel):
         for generator_name in GeneratorName:
             tag = self._get_generator_checkbox_tag(generator_name)
             is_available = generator_name in view_model.available_generators
-            dpg_configure_item(tag, enabled=is_available, default_value=is_available)
+            dpg_configure_item(
+                tag,
+                enabled=is_available,
+                default_value=is_available,
+            )
             dpg_set_value(tag, is_available)
             if is_available:
                 ThemeRegistry.get(_GENERATOR_THEME_TAGS[generator_name]).bind_to_item(tag)
@@ -261,7 +265,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def _create_tooltips(self) -> None:
         show_tooltip(self.autoscale_tag, self._tooltip_autoscale)
 
-    def _create_message_function_for_generator_checkbox(self, generator_name: GeneratorName) -> MessageCallback:
+    def _create_message_function_for_generator_checkbox(
+        self,
+        generator_name: GeneratorName,
+    ) -> MessageCallback:
         tag = self._get_generator_checkbox_tag(generator_name)
         name = generator_name.capitalized
 

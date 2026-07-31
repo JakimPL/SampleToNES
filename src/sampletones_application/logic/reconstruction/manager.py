@@ -47,7 +47,12 @@ class ReconstructionManager(CallbackMixin):
         self.call(self.on_reconstruction_loaded)
         logger.info(f"Reconstruction {logger.format_path(path)} loaded successfully")
 
-    def load_reconstruction_object(self, reconstruction: Reconstruction, *, name: str) -> None:
+    def load_reconstruction_object(
+        self,
+        reconstruction: Reconstruction,
+        *,
+        name: str,
+    ) -> None:
         """Loads an in-memory reconstruction (e.g. a project sample's) for editing.
 
         Mirrors :meth:`load_reconstruction` for an object already in memory, so edits
@@ -55,7 +60,9 @@ class ReconstructionManager(CallbackMixin):
         display name is supplied by the caller, since a detached reconstruction has no
         source path to derive it from.
         """
-        self._adopt_reconstruction(ReconstructionData.from_reconstruction(reconstruction, name=name))
+        self._adopt_reconstruction(
+            ReconstructionData.from_reconstruction(reconstruction, name=name),
+        )
         self._session.mark_loaded(name)
         self.call(self.on_reconstruction_loaded)
 
@@ -92,7 +99,10 @@ class ReconstructionManager(CallbackMixin):
             logger.warning("Reconstruction has no file path; use 'Save as' to choose one")
             return False
 
-        self._write_to_file(self._current_reconstruction.reconstruction, target_path)
+        self._write_to_file(
+            self._current_reconstruction.reconstruction,
+            target_path,
+        )
         self._session.mark_saved(filepath.name if filepath is not None else None)
         return True
 
@@ -129,7 +139,10 @@ class ReconstructionManager(CallbackMixin):
 
         reconstruction = self._current_reconstruction.reconstruction
         name = self._current_reconstruction.name
-        self._current_reconstruction = ReconstructionData.from_reconstruction(reconstruction, name=name)
+        self._current_reconstruction = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name=name,
+        )
 
     def apply_regenerated(self, reconstruction: Reconstruction) -> None:
         """Adopts an edited reconstruction produced by regeneration.

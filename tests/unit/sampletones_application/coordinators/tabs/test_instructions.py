@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -73,7 +74,7 @@ class TestGenerationCompletedNotice:
         coordinator._dialogs.show_info.assert_not_called()
 
 
-def _remove_library_coordinator(*, current_library_key: object | None) -> InstructionsTabCoordinator:
+def _remove_library_coordinator(*, current_library_key: Any) -> InstructionsTabCoordinator:
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._library_logic = MagicMock()
     coordinator._library_logic.current_library_key = current_library_key

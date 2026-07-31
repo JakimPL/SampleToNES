@@ -13,7 +13,7 @@ class CallbackTask(NamedTuple):
     args: Tuple[Any, ...]
     kwargs: SerializedData
 
-    def __lt__(self, other: object) -> bool:
+    def __lt__(self, other: Any) -> bool:
         if not isinstance(other, CallbackTask):
             return NotImplemented
 

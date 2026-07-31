@@ -224,7 +224,10 @@ class GUIConverterPanel(GUIPanel):
             self._tooltip_convert_disabled,
             tag=TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
         )
-        self._status_bar.bind_to_item(TAG_MAIN_CONVERTER_BUTTON_ACTION, self._action_status_message)
+        self._status_bar.bind_to_item(
+            TAG_MAIN_CONVERTER_BUTTON_ACTION,
+            self._action_status_message,
+        )
 
     def _action_status_message(self, *args: Any, **kwargs: Any) -> str:
         return self._status_action_message
@@ -236,7 +239,10 @@ class GUIConverterPanel(GUIPanel):
             height=-1,
             border=False,
         ):
-            hint = dpg.add_text(self._msg_empty_hint, tag=TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT)
+            hint = dpg.add_text(
+                self._msg_empty_hint,
+                tag=TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT,
+            )
             FontRegistry.bind_to_item(hint, Font.REGULAR_SMALL)
             with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_SUMMARY, show=False):
                 self.input_path_text = GUIPathText(
@@ -272,7 +278,10 @@ class GUIConverterPanel(GUIPanel):
                 tag=TAG_MAIN_CONVERTER_TEXT_STATUS,
                 parent=TAG_MAIN_CONVERTER_GROUP,
             )
-            FontRegistry.bind_to_item(TAG_MAIN_CONVERTER_TEXT_STATUS, Font.MONO_SMALL)
+            FontRegistry.bind_to_item(
+                TAG_MAIN_CONVERTER_TEXT_STATUS,
+                Font.MONO_SMALL,
+            )
             dpg.add_progress_bar(
                 tag=TAG_MAIN_CONVERTER_PROGRESS,
                 parent=TAG_MAIN_CONVERTER_GROUP,

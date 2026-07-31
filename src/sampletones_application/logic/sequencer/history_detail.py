@@ -83,7 +83,10 @@ class SequencerHistoryDetail:
         if transpose is not None:
             segments.append(self._subcolumn(SubColumn.TRANSPOSE))
             segments.append(
-                self._segment(display_transpose(transpose), HistoryDetailRole.TRANSPOSE),
+                self._segment(
+                    display_transpose(transpose),
+                    HistoryDetailRole.TRANSPOSE,
+                ),
             )
 
         if volume is not None:
@@ -160,7 +163,11 @@ class SequencerHistoryDetail:
         return (self._frame(position), self._arrow(), self._frame(position + 1))
 
     def move_frame(self, from_position: int, to_position: int) -> Segments:
-        return (self._frame(from_position), self._arrow(), self._frame(to_position))
+        return (
+            self._frame(from_position),
+            self._arrow(),
+            self._frame(to_position),
+        )
 
     def set_order_entry(
         self,

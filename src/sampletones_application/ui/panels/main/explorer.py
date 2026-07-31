@@ -248,12 +248,21 @@ class GUIExplorerPanel(GUITreePanel):
                 width=-1,
                 callback=self.collapse_all,
             )
-        self._status_bar.bind_to_item(TAG_MAIN_EXPLORER_BUTTON_REFRESH, self._msg_status_refresh)
-        self._status_bar.bind_to_item(TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL, self._msg_status_collapse_all)
+        self._status_bar.bind_to_item(
+            TAG_MAIN_EXPLORER_BUTTON_REFRESH,
+            self._msg_status_refresh,
+        )
+        self._status_bar.bind_to_item(
+            TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
+            self._msg_status_collapse_all,
+        )
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE, horizontal_scrollbar=True):
+        with dpg.child_window(
+            tag=TAG_MAIN_EXPLORER_WINDOW_TREE,
+            horizontal_scrollbar=True,
+        ):
             with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_section,
@@ -262,7 +271,12 @@ class GUIExplorerPanel(GUITreePanel):
                 ):
                     pass
 
-    def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
+    def collapse_all(
+        self,
+        sender: Sender,
+        app_data: int,
+        user_data: Any,
+    ) -> None:
         self._explorer_logic.collapse_all()
         children = dpg.get_item_children(self.tree_tag, 1)
         assert children is not None, "Explorer tree has no children."
@@ -281,14 +295,22 @@ class GUIExplorerPanel(GUITreePanel):
         )
 
     @concurrent(wait=False, method_bound=True)
-    def _rebuild_node_subtree(self, node: FileSystemNode, node_tag: str) -> None:
+    def _rebuild_node_subtree(
+        self,
+        node: FileSystemNode,
+        node_tag: str,
+    ) -> None:
         self._launch_rebuild(
             lambda: None,
             lambda: self._collect_subtree_specs(node, node_tag),
             root_tag=node_tag,
         )
 
-    def _collect_subtree_specs(self, node: FileSystemNode, node_tag: str) -> List[NodeSpec]:
+    def _collect_subtree_specs(
+        self,
+        node: FileSystemNode,
+        node_tag: str,
+    ) -> List[NodeSpec]:
         self._pending_specs = []
         if self._explorer_logic.is_directory_expanded(node.filepath):
             for child in node.children:
@@ -350,16 +372,32 @@ class GUIExplorerPanel(GUITreePanel):
         library_message_function = self._create_status_bar_message_function_for_library_node()
         audio_message_function = self._create_status_bar_message_function_for_audio_node()
 
-        def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
+        def message_function(
+            *args: Any,
+            user_data: Tuple[FileSystemNode, str],
+            **kwargs: Any,
+        ) -> str:
             node, _ = user_data
             suffix = node.filepath.suffix.lower()
             match suffix:
                 case paths.EXT_FILE_RECONSTRUCTION:
-                    return reconstruction_message_function(*args, user_data=user_data, **kwargs)
+                    return reconstruction_message_function(
+                        *args,
+                        user_data=user_data,
+                        **kwargs,
+                    )
                 case paths.EXT_FILE_LIBRARY:
-                    return library_message_function(*args, user_data=user_data, **kwargs)
+                    return library_message_function(
+                        *args,
+                        user_data=user_data,
+                        **kwargs,
+                    )
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    return audio_message_function(*args, user_data=user_data, **kwargs)
+                    return audio_message_function(
+                        *args,
+                        user_data=user_data,
+                        **kwargs,
+                    )
                 case _:
                     raise ValueError(f"Unsupported file type {suffix} for status bar message function.")
 
@@ -433,7 +471,11 @@ class GUIExplorerPanel(GUITreePanel):
 
         return self._create_status_bar_message_function(message_function)
 
-    def _directory_node_clicked(self, node: FileSystemNode, node_tag: str) -> None:
+    def _directory_node_clicked(
+        self,
+        node: FileSystemNode,
+        node_tag: str,
+    ) -> None:
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
             return
@@ -467,7 +509,11 @@ class GUIExplorerPanel(GUITreePanel):
 
         self.call(self.on_reconstruct_file, node.filepath)
 
-    def _toggle_directory_expansion(self, node: FileSystemNode, node_tag: str) -> None:
+    def _toggle_directory_expansion(
+        self,
+        node: FileSystemNode,
+        node_tag: str,
+    ) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
             return
 
@@ -513,7 +559,10 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
 
-    def _add_context_menu_reconstruction_directory(self, node: FileSystemNode) -> None:
+    def _add_context_menu_reconstruction_directory(
+        self,
+        node: FileSystemNode,
+    ) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
             label=self._lbl_ctx_reconstruct_directory,

@@ -59,12 +59,23 @@ def dpg_delete_children(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
     dpg_delete_item(tag, children_only=True, **kwargs)
 
 
-def dpg_bind_item_theme(tag: Sender, theme_tag: Sender, /, *args: Any, **kwargs: Any) -> None:
+def dpg_bind_item_theme(
+    tag: Sender,
+    theme_tag: Sender,
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> None:
     if dpg.does_item_exist(tag) and dpg.does_item_exist(theme_tag):
         dpg.bind_item_theme(tag, theme_tag, *args, **kwargs)
 
 
-def dpg_get_item_parent(tag: Sender, /, *args: Any, **kwargs: Any) -> Optional[Sender]:
+def dpg_get_item_parent(
+    tag: Sender,
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> Optional[Sender]:
     """The item's parent, or None when the item is absent.
 
     Queued callbacks mutate the item tree on the callback-queue thread, so an item read
@@ -85,23 +96,46 @@ def dpg_configure_item(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
 
 
 @dpg_wrapper(button_function=GUIButton.set_item_callback)
-def dpg_set_item_callback(tag: Sender, callback: Callback, /, *args: Any, **kwargs: Any) -> None:
+def dpg_set_item_callback(
+    tag: Sender,
+    callback: Callback,
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> None:
     dpg.set_item_callback(tag, callback=callback, *args, **kwargs)
 
 
 @dpg_wrapper(button_function=GUIButton.set_item_label)
-def dpg_set_item_label(tag: Sender, /, label: str, *args: Any, **kwargs: Any) -> None:
+def dpg_set_item_label(
+    tag: Sender,
+    /,
+    label: str,
+    *args: Any,
+    **kwargs: Any,
+) -> None:
     dpg.set_item_label(tag, label=label, *args, **kwargs)
 
 
 @dpg_wrapper(button_function=GUIButton.get_item_label)
-def dpg_get_item_label(tag: Sender, /, *args: Any, **kwargs: Any) -> Optional[str]:
+def dpg_get_item_label(
+    tag: Sender,
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> Optional[str]:
     item_label: Optional[str] = dpg.get_item_label(tag, *args, **kwargs)
     return item_label
 
 
 @dpg_wrapper(button_function=GUIButton.set_value)
-def dpg_set_value(tag: Sender, value: Any, /, *args: Any, **kwargs: Any) -> None:
+def dpg_set_value(
+    tag: Sender,
+    value: Any,
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> None:
     dpg.set_value(tag, value, *args, **kwargs)
 
 
@@ -111,6 +145,11 @@ def dpg_get_value(tag: Sender, /, *args: Any, **kwargs: Any) -> Any:
 
 
 @dpg_wrapper(button_function=GUIButton.is_item_hovered)
-def dpg_is_item_hovered(tag: Sender, /, *args: Any, **kwargs: Any) -> Optional[bool]:
+def dpg_is_item_hovered(
+    tag: Sender,
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> Optional[bool]:
     is_hovered: Optional[bool] = dpg.is_item_hovered(tag, *args, **kwargs)
     return is_hovered

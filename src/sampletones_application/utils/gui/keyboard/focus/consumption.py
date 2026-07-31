@@ -73,7 +73,10 @@ def field_consumes_key(kind: FieldKind, key: int, modifiers: ModifierSet) -> boo
         return False
 
     if Modifier.CTRL in modifiers:
-        return kind is FieldKind.TEXT_ENTRY and key in TEXT_EDIT_CHORDS.get(modifiers, NO_KEYS)
+        return kind is FieldKind.TEXT_ENTRY and key in TEXT_EDIT_CHORDS.get(
+            modifiers,
+            NO_KEYS,
+        )
 
     if key in EDITING_KEYS:
         return True

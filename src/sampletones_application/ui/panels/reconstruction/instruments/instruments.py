@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable, Dict, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -205,8 +205,16 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             TextType.TEMPLATE,
             ReconstructionsInstrumentsElements.INITIAL_PITCH_TOOLTIP_TEMPLATE,
         ]
-        self._pitch_tooltip = build_pitch_tooltip(language_manager, PITCH_VALUE_KIND, tooltip_template)
-        self._period_tooltip = build_pitch_tooltip(language_manager, PERIOD_VALUE_KIND, tooltip_template)
+        self._pitch_tooltip = build_pitch_tooltip(
+            language_manager,
+            PITCH_VALUE_KIND,
+            tooltip_template,
+        )
+        self._period_tooltip = build_pitch_tooltip(
+            language_manager,
+            PERIOD_VALUE_KIND,
+            tooltip_template,
+        )
         self._msg_reconstruction_no_data = language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -292,23 +300,40 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _get_window_tag(self, tab_tag: str) -> str:
         return f"{tab_tag}{SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW}"
 
-    def _get_feature_group_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
+    def _get_feature_group_tag(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+    ) -> str:
         return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GROUP}"
 
-    def _get_feature_text_group_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
+    def _get_feature_text_group_tag(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+    ) -> str:
         return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GRAPH_RAW_DATA}"
 
     def _get_feature_text_tag(self, text_group_tag: str) -> str:
         return f"{text_group_tag}{SUF_TEXT}"
 
-    def _get_feature_plot_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
+    def _get_feature_plot_tag(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+    ) -> str:
         return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GRAPH}"
 
     def _setup_mouse_event_handler(self) -> None:
         with dpg.handler_registry(tag=self.mouse_item_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_move)
 
-    def _handle_export_button_clicked(self, sender: Sender, app_data: Any, user_data: GeneratorName) -> None:
+    def _handle_export_button_clicked(
+        self,
+        sender: Sender,
+        app_data: Any,
+        user_data: GeneratorName,
+    ) -> None:
         self.call(self.on_instrument_export, user_data)
 
     def _create_tabs_for_generators(self) -> None:
@@ -318,7 +343,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _generator_kind(self, generator_name: GeneratorName) -> LibraryGeneratorName:
         return GENERATOR_KIND[generator_name]
 
-    def _generator_features(self, generator_name: GeneratorName) -> list[FeatureKey]:
+    def _generator_features(
+        self,
+        generator_name: GeneratorName,
+    ) -> List[FeatureKey]:
         return supported_features(self._generator_kind(generator_name))
 
     def _feature_plot_config(self, generator_name: GeneratorName, feature_key: FeatureKey) -> FeaturePlotConfig:
@@ -360,7 +388,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         ThemeRegistry.get(TAG_GLOBAL_THEME_INSTRUMENT_TABS).bind_to_item(tab_tag)
 
-    def _create_generator_content(self, generator_name: GeneratorName, window_tag: str) -> None:
+    def _create_generator_content(
+        self,
+        generator_name: GeneratorName,
+        window_tag: str,
+    ) -> None:
         initial_pitch = self._default_initial_pitch(generator_name)
         self._create_pitch_stepper(generator_name, initial_pitch, window_tag)
         self._create_generator_feature_displays(generator_name, window_tag)
@@ -368,9 +400,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _default_initial_pitch(self, generator_name: GeneratorName) -> int:
         return MAX_PERIOD if generator_name == GeneratorName.NOISE else MIN_PITCH
 
-    def _create_generator_feature_displays(self, generator_name: GeneratorName, window_tag: str) -> None:
+    def _create_generator_feature_displays(
+        self,
+        generator_name: GeneratorName,
+        window_tag: str,
+    ) -> None:
         for feature_key in self._generator_features(generator_name):
-            self._add_generator_feature_display(generator_name, feature_key, window_tag)
+            self._add_generator_feature_display(
+                generator_name,
+                feature_key,
+                window_tag,
+            )
 
     def _add_generator_feature_display(
         self,
@@ -378,7 +418,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         window_tag: str,
     ) -> None:
-        feature_group_tag = self._get_feature_group_tag(generator_name, feature_key)
+        feature_group_tag = self._get_feature_group_tag(
+            generator_name,
+            feature_key,
+        )
         with dpg.group(
             tag=feature_group_tag,
             parent=window_tag,
@@ -431,7 +474,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
-        text_group_tag = self._get_feature_text_group_tag(generator_name, feature_key)
+        text_group_tag = self._get_feature_text_group_tag(
+            generator_name,
+            feature_key,
+        )
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
         raw_data_text = self._format_data(data)
         dpg_set_value(raw_data_tag, raw_data_text)
@@ -462,7 +508,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             if generator_features is None:
                 continue
 
-            self._update_generator_feature_data(generator_name, generator_features)
+            self._update_generator_feature_data(
+                generator_name,
+                generator_features,
+            )
 
     def _update_generator_feature_data(
         self,

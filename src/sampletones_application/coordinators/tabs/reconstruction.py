@@ -377,16 +377,32 @@ class ReconstructionTabCoordinator:
         match result:
             case ExportSuccess(kind=ExportKind.WAV, filepath=fp):
                 self._dialogs.show_message_with_path(messages.wav_title, messages.wav_success, fp)
-            case ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=fp, truncation=truncation):
+            case ExportSuccess(
+                kind=ExportKind.INSTRUMENT,
+                filepath=fp,
+                truncation=truncation,
+            ):
                 self._dialogs.show_message_with_path(
                     messages.status_title,
-                    self._export_message(messages.instrument_success, messages.instrument_truncated, truncation),
+                    self._export_message(
+                        messages.instrument_success,
+                        messages.instrument_truncated,
+                        truncation,
+                    ),
                     fp,
                 )
-            case ExportSuccess(kind=ExportKind.INSTRUMENTS, filepath=fp, truncation=truncation):
+            case ExportSuccess(
+                kind=ExportKind.INSTRUMENTS,
+                filepath=fp,
+                truncation=truncation,
+            ):
                 self._dialogs.show_message_with_path(
                     messages.status_title,
-                    self._export_message(messages.instruments_success, messages.instruments_truncated, truncation),
+                    self._export_message(
+                        messages.instruments_success,
+                        messages.instruments_truncated,
+                        truncation,
+                    ),
                     fp,
                 )
             case ExportError(kind=ExportKind.WAV, exception=exception):
@@ -422,12 +438,19 @@ class ReconstructionTabCoordinator:
         )
         return f"{success}\n\n{note}"
 
-    def _update_reconstruction_view(self, view_model: ReconstructionViewModel) -> None:
+    def _update_reconstruction_view(
+        self,
+        view_model: ReconstructionViewModel,
+    ) -> None:
         """Fans the reconstruction view model out to the audio and plot cards."""
         self._reconstruction_audio_panel.update_view(view_model)
         self._reconstruction_plot_panel.update_view(view_model)
 
-    def _open_export_instrument_dialog(self, default_filename: str, default_path: str) -> None:
+    def _open_export_instrument_dialog(
+        self,
+        default_filename: str,
+        default_path: str,
+    ) -> None:
         filepath = save_file_dialog(
             title=self._ttl_export_instrument,
             initial_directory=default_path,
@@ -510,16 +533,28 @@ class ReconstructionTabCoordinator:
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)
 
-    def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+    def _on_card_collapse_changed(
+        self,
+        card_tag: str,
+        collapsed: bool,
+    ) -> None:
         """Persists a card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
 
-    def _on_browser_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+    def _on_browser_collapse_changed(
+        self,
+        card_tag: str,
+        collapsed: bool,
+    ) -> None:
         """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_browser_width()
 
-    def _on_instruments_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
+    def _on_instruments_collapse_changed(
+        self,
+        card_tag: str,
+        collapsed: bool,
+    ) -> None:
         """Persists the instruments panel's collapse, then docks or restores the width of the column it fills."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_instruments_width()
@@ -619,7 +654,10 @@ class ReconstructionTabCoordinator:
         try:
             self._browser_logic.remove_path(directory)
         except OSError as exception:
-            logger.error_with_traceback(exception, f"Failed to remove directory: {directory}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to remove directory: {directory}",
+            )
             self._dialogs.show_error(exception, self._msg_load_error)
             return
 
@@ -670,7 +708,10 @@ class ReconstructionTabCoordinator:
             self._reconstruction_manager.load_reconstruction(filepath)
             logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
         except FileNotFoundError as exception:
-            logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to load reconstruction data from {filepath}",
+            )
             self._dialogs.show_file_not_found(filepath, self._msg_file_not_found)
         except (
             IOError,
@@ -690,10 +731,16 @@ class ReconstructionTabCoordinator:
             )
             self._dialogs.show_error(exception, self._msg_invalid_metadata)
         except InvalidReconstructionValuesError as exception:
-            logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
+            logger.error_with_traceback(
+                exception,
+                f"Reconstruction contains invalid values: {filepath}",
+            )
             self._dialogs.show_error(exception, self._msg_invalid_values)
         except InvalidReconstructionError as exception:
-            logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
+            logger.error_with_traceback(
+                exception,
+                f"Invalid reconstruction file: {filepath}",
+            )
             self._dialogs.show_error(exception, self._msg_invalid_file)
         except IncompatibleReconstructionVersionError as exception:
             logger.error_with_traceback(

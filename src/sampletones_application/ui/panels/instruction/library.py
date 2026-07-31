@@ -288,21 +288,33 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     self._tooltip_generate_disabled,
                     tag=TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
                 )
-            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_GENERATING, show=False):
+            with dpg.group(
+                tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_GENERATING,
+                show=False,
+            ):
                 dpg.add_progress_bar(
                     tag=TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
                     width=-1,
                     default_value=0.0,
                 )
-                FontRegistry.bind_to_item(TAG_INSTRUCTIONS_LIBRARY_PROGRESS, Font.MONO)
+                FontRegistry.bind_to_item(
+                    TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
+                    Font.MONO,
+                )
                 GUIButton(
                     tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
                     label=self._lbl_cancel,
                     width=-1,
                     callback=self._on_cancel_clicked,
                 )
-        self._status_bar.bind_to_item(TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES, self._msg_status_refresh)
-        self._status_bar.bind_to_item(TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY, self._msg_status_generate)
+        self._status_bar.bind_to_item(
+            TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
+            self._msg_status_refresh,
+        )
+        self._status_bar.bind_to_item(
+            TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
+            self._msg_status_generate,
+        )
         self._status_bar.bind_to_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
             self._msg_status_cancel_generation,
@@ -335,7 +347,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.call(self.on_cancel_generation)
 
     def update_view(self, view_model: LibraryPanelViewModel) -> None:
-        dpg_set_value(TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS, view_model.status_text)
+        dpg_set_value(
+            TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS,
+            view_model.status_text,
+        )
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_IDLE,
             show=view_model.idle_controls_visible,
@@ -431,7 +446,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _create_status_bar_message_function_for_instructions_node(
         self,
     ) -> MessageCallback:
-        def message_function(*args: Any, user_data: Tuple[TreeNode, str], **kwargs: Any) -> str:
+        def message_function(
+            *args: Any,
+            user_data: Tuple[TreeNode, str],
+            **kwargs: Any,
+        ) -> str:
             node, _ = user_data
             match node.node_type:
                 case NodeType.LIBRARY:
@@ -499,11 +518,17 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg.add_separator()
         dpg.add_menu_item(
             label=self._lbl_ctx_load_library,
-            callback=lambda: self.call(self.on_library_selected, node.library_key),
+            callback=lambda: self.call(
+                self.on_library_selected,
+                node.library_key,
+            ),
         )
         dpg.add_menu_item(
             label=self._lbl_ctx_remove_library,
-            callback=lambda: self.call(self.on_library_remove_requested, node.library_key),
+            callback=lambda: self.call(
+                self.on_library_remove_requested,
+                node.library_key,
+            ),
         )
 
     def _show_generator_context_menu(self, node: GeneratorNode) -> None:
@@ -528,6 +553,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         return node.library_key == self._library_logic.current_library_key
 
-    def _on_load_generator(self, sender: Sender, app_data: bool, user_data: GeneratorNode) -> None:
+    def _on_load_generator(
+        self,
+        sender: Sender,
+        app_data: bool,
+        user_data: GeneratorNode,
+    ) -> None:
         assert isinstance(user_data.parent, LibraryNode), "Generator node parent is not a LibraryNode"
-        self.call(self.on_generator_selected, user_data.parent.library_key, user_data.generator_name)
+        self.call(
+            self.on_generator_selected,
+            user_data.parent.library_key,
+            user_data.generator_name,
+        )

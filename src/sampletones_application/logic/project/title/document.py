@@ -49,7 +49,10 @@ def document_title(
             if reconstruction.included:
                 title = f"{title} [{reconstruction.name}]"
             else:
-                marked = _mark(reconstruction.name, reconstruction.unsaved_changes)
+                marked = _mark(
+                    reconstruction.name,
+                    reconstruction.unsaved_changes,
+                )
                 title = join_segments(title, marked)
 
         return title

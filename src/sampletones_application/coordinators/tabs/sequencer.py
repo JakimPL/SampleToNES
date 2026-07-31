@@ -583,7 +583,10 @@ class SequencerTabCoordinator:
         spacing is read from the base theme, which sets it explicitly, so the gap tracks the theme's
         value.
         """
-        spacing = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT).get_style(dpg.mvAll, dpg.mvStyleVar_ItemSpacing)
+        spacing = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT).get_style(
+            dpg.mvAll,
+            dpg.mvStyleVar_ItemSpacing,
+        )
         spacing_y = int(spacing[1]) if spacing is not None else 0
         return self._geometry.panel_gap + 2 * spacing_y
 
@@ -626,7 +629,10 @@ class SequencerTabCoordinator:
         single entry.
         """
 
-        def wrapped(*args: _UndoableParams.args, **kwargs: _UndoableParams.kwargs) -> None:
+        def wrapped(
+            *args: _UndoableParams.args,
+            **kwargs: _UndoableParams.kwargs,
+        ) -> None:
             description = detail(*args, **kwargs) if detail is not None else ()
             key = coalesce(*args, **kwargs) if coalesce is not None else None
             with self._history.transaction(action, detail=description, coalesce=key):
@@ -634,7 +640,11 @@ class SequencerTabCoordinator:
 
         return wrapped
 
-    def _cell_key(self, row_index: int, generator: Optional[GeneratorName]) -> CoalesceKey:
+    def _cell_key(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> CoalesceKey:
         """Identifies one cell of the displayed frame as a coalescing target.
 
         The sample column (``generator`` absent) is its own target, distinct from
@@ -719,7 +729,11 @@ class SequencerTabCoordinator:
         feature_key: FeatureKey,
     ) -> HistoryDetail:
         """Describes a reconstruction edit for the project history's detail line."""
-        return self._history_detail.edit_reconstruction(sample_id, generator_name, feature_key)
+        return self._history_detail.edit_reconstruction(
+            sample_id,
+            generator_name,
+            feature_key,
+        )
 
     def _build_history_view_model(self) -> HistoryViewModel:
         cursor = self._history.cursor
@@ -797,7 +811,11 @@ class SequencerTabCoordinator:
             self._sequencer_grid_panel.set_playing_row(None)
             self._sequencer_order_panel.set_playing_position(None)
 
-    def _on_player_position_changed(self, order_position: int, row_index: int) -> None:
+    def _on_player_position_changed(
+        self,
+        order_position: int,
+        row_index: int,
+    ) -> None:
         self._playing_order = order_position
         self._sequencer_grid_panel.set_playing_row(row_index)
         self._sequencer_order_panel.set_playing_position(order_position)
@@ -833,7 +851,10 @@ class SequencerTabCoordinator:
         try:
             reconstruction = self._sequencer_browser_logic.load_reconstruction(filepath)
         except (SampleToNESError, OSError) as exception:
-            logger.error_with_traceback(exception, f"Failed to load reconstruction from {filepath}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to load reconstruction from {filepath}",
+            )
             self._dialogs.show_error(exception)
             return
 
@@ -853,7 +874,10 @@ class SequencerTabCoordinator:
             )
             return
 
-        self._add_reconstruction_with_frequency_check(reconstruction.model_copy(deep=True), name)
+        self._add_reconstruction_with_frequency_check(
+            reconstruction.model_copy(deep=True),
+            name,
+        )
 
     def _add_reconstruction_with_frequency_check(
         self,
@@ -996,6 +1020,7 @@ class SequencerTabCoordinator:
         ):
             if adopt_frequency is not None:
                 self._sequencer_grid_logic.set_nes_frequency(adopt_frequency)
+
             self._sequencer_samples_logic.rename_sample(sample_id, name)
             self._on_sample_reconstruction_replaced(sample_id, reconstruction)
             self._sequencer_browser_logic.replace_reconstruction(sample_id, reconstruction)
@@ -1172,15 +1197,24 @@ class SequencerTabCoordinator:
 
     def _perform_remove_sample(self, sample_id: str) -> None:
         detail = self._history_detail.remove_sample(sample_id)
-        with self._history.transaction(HistoryAction.REMOVE_SAMPLE, detail=detail):
+        with self._history.transaction(
+            HistoryAction.REMOVE_SAMPLE,
+            detail=detail,
+        ):
             self._sequencer_samples_logic.remove_sample(sample_id)
 
     def _submit_rename(self, sample_id: str, name: str) -> None:
         """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
         stripped = name.strip()
         if stripped:
-            detail = self._history_detail.rename_sample(self._sequencer_samples_logic.sample_name(sample_id), stripped)
-            with self._history.transaction(HistoryAction.RENAME_SAMPLE, detail=detail):
+            detail = self._history_detail.rename_sample(
+                self._sequencer_samples_logic.sample_name(sample_id),
+                stripped,
+            )
+            with self._history.transaction(
+                HistoryAction.RENAME_SAMPLE,
+                detail=detail,
+            ):
                 self._sequencer_samples_logic.rename_sample(sample_id, stripped)
 
     def _request_nes_frequency_change(self, nes_frequency: int) -> None:

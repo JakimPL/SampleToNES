@@ -41,7 +41,11 @@ class KeyRouter:
         self._scopes: List[_Scope] = []
         self._modal_stack: List[ModalKeyHandler] = []
         self._bound: bool = False
-        self.register(self._route_modal, priority=PRIORITY_MODAL, active=lambda: self.is_modal_open)
+        self.register(
+            self._route_modal,
+            priority=PRIORITY_MODAL,
+            active=lambda: self.is_modal_open,
+        )
 
     def bind(self) -> None:
         """Installs the one global key-press handler, once, after the context exists."""
@@ -60,7 +64,13 @@ class KeyRouter:
         active: ActivePredicate,
     ) -> None:
         """Adds a scope, keeping the scopes ordered from highest priority to lowest."""
-        self._scopes.append(_Scope(priority=priority, active=active, handle=handle))
+        self._scopes.append(
+            _Scope(
+                priority=priority,
+                active=active,
+                handle=handle,
+            )
+        )
         self._scopes.sort(key=lambda scope: scope.priority, reverse=True)
 
     @property

@@ -93,7 +93,10 @@ class InstructionsLibraryManager(CallbackMixin):
         self._library_files = new_library_files
         return self._library_files
 
-    def get_library_key(self, library_key: Optional[InstructionLibraryKey] = None) -> Optional[InstructionLibraryKey]:
+    def get_library_key(
+        self,
+        library_key: Optional[InstructionLibraryKey] = None,
+    ) -> Optional[InstructionLibraryKey]:
         if library_key is None:
             if self._current_library_key is None:
                 return None
@@ -102,14 +105,20 @@ class InstructionsLibraryManager(CallbackMixin):
 
         return library_key
 
-    def is_library_loaded(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+    def is_library_loaded(
+        self,
+        library_key: Optional[InstructionLibraryKey] = None,
+    ) -> bool:
         library_key = self.get_library_key(library_key)
         if not self.does_library_exist(library_key):
             return False
 
         return library_key in self._library.data
 
-    def does_library_exist(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+    def does_library_exist(
+        self,
+        library_key: Optional[InstructionLibraryKey] = None,
+    ) -> bool:
         library_key = self.get_library_key(library_key)
         if library_key is None:
             return False
@@ -137,7 +146,10 @@ class InstructionsLibraryManager(CallbackMixin):
         logger.info(f"Library data: {logger.format_path(path)} loaded successfully")
         return library_key
 
-    def load_instruction(self, instruction: InstructionUnion) -> Optional[InstructionPanelData]:
+    def load_instruction(
+        self,
+        instruction: InstructionUnion,
+    ) -> Optional[InstructionPanelData]:
         if not self._current_library_key or not self.is_library_loaded(self._current_library_key):
             return None
 
@@ -156,7 +168,10 @@ class InstructionsLibraryManager(CallbackMixin):
     def get_path(self, library_key: InstructionLibraryKey) -> Path:
         return self._library.get_path(library_key)
 
-    def sync_with_config_key(self, config_key: InstructionLibraryKey) -> Optional[InstructionLibraryKey]:
+    def sync_with_config_key(
+        self,
+        config_key: InstructionLibraryKey,
+    ) -> Optional[InstructionLibraryKey]:
         if self.library_exists_for_key(config_key):
             self._current_library_key = config_key
             return config_key
@@ -191,7 +206,10 @@ class InstructionsLibraryManager(CallbackMixin):
 
         self._creator.start()
 
-    def _complete_generation(self, result: Tuple[InstructionLibraryKey, InstructionLibraryData]) -> None:
+    def _complete_generation(
+        self,
+        result: Tuple[InstructionLibraryKey, InstructionLibraryData],
+    ) -> None:
         key, library_data = result
         try:
             self._library.save_data(key, library_data)
@@ -271,9 +289,17 @@ class InstructionsLibraryManager(CallbackMixin):
 
         self._tree.set_root(root)
 
-    def _build_library_node(self, library_key: InstructionLibraryKey, parent: TreeNode) -> LibraryNode:
+    def _build_library_node(
+        self,
+        library_key: InstructionLibraryKey,
+        parent: TreeNode,
+    ) -> LibraryNode:
         display_name = get_display_name_from_key(library_key)
-        library_node = LibraryNode(display_name, library_key=library_key, parent=parent)
+        library_node = LibraryNode(
+            display_name,
+            library_key=library_key,
+            parent=parent,
+        )
         self._build_generator_nodes(library_node)
         return library_node
 

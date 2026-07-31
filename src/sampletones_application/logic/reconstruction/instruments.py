@@ -61,7 +61,11 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         )
         self.call(self.on_feature_data_changed, feature_data.generators)
 
-    def handle_pitch_value_changed(self, generator_name: GeneratorName, value: int) -> None:
+    def handle_pitch_value_changed(
+        self,
+        generator_name: GeneratorName,
+        value: int,
+    ) -> None:
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
                 generator_name,
@@ -98,7 +102,10 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
             )
         )
 
-    def _schedule_reconstruction_update(self, update: ReconstructionUpdate) -> None:
+    def _schedule_reconstruction_update(
+        self,
+        update: ReconstructionUpdate,
+    ) -> None:
         """Coalesces a burst of edits into the latest pending update, then hands it off promptly.
 
         The slot keeps only the newest update so events arriving within the short debounce

@@ -526,11 +526,17 @@ class MenuBar:
         self._update_player_toolbar(state)
 
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
-        dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK, state.follow_playback)
+        dpg_set_value(
+            TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
+            state.follow_playback,
+        )
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG, state.loop_song)
         self._update_channels(state)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN, state.fullscreen)
-        dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
+        dpg_set_value(
+            TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+            state.advanced_settings,
+        )
 
     def _update_channels(self, state: MenuBarViewModel) -> None:
         """Shows the mute set the sequencer's tables show: a check on every channel that sounds."""
@@ -543,15 +549,24 @@ class MenuBar:
         )
 
     def _update_player_toolbar(self, state: MenuBarViewModel) -> None:
-        dpg_configure_item(self._play_button_tag, enabled=state.play_from_start_enabled)
+        dpg_configure_item(
+            self._play_button_tag,
+            enabled=state.play_from_start_enabled,
+        )
         dpg_configure_item(self._pause_button_tag, enabled=state.pause_enabled)
         dpg_configure_item(self._stop_button_tag, enabled=state.stop_enabled)
 
         if state.player_paused:
-            dpg_set_item_label(self._pause_button_tag, self._player_glyphs.resume)
+            dpg_set_item_label(
+                self._pause_button_tag,
+                self._player_glyphs.resume,
+            )
             dpg_set_value(self._pause_tooltip_tag, self._lbl_resume)
         else:
-            dpg_set_item_label(self._pause_button_tag, self._player_glyphs.pause)
+            dpg_set_item_label(
+                self._pause_button_tag,
+                self._player_glyphs.pause,
+            )
             dpg_set_value(self._pause_tooltip_tag, self._lbl_pause)
 
     def update_fps(self, fps: float) -> None:

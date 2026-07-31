@@ -256,7 +256,10 @@ class GUISequencerOrderPanel(GUIPanel):
         colors = self._layout.colors
         self._entry_theme = create_selectable_text_theme(colors.text.order)
         self._muted_entry_theme = create_selectable_text_theme(
-            with_alpha_fraction(colors.text.order, self._layout.tracker.muted_text_fraction),
+            with_alpha_fraction(
+                colors.text.order,
+                self._layout.tracker.muted_text_fraction,
+            ),
         )
         self._label_theme = create_header_selectable_theme(
             colors.label,
@@ -330,7 +333,9 @@ class GUISequencerOrderPanel(GUIPanel):
             if cursor.position == frame:
                 return
 
-            new_state = OrderInputState(cursor=OrderCursor(cursor.generator, frame))
+            new_state = OrderInputState(
+                cursor=OrderCursor(cursor.generator, frame),
+            )
             if 0 <= frame < self._position_count:
                 self._apply_state(new_state, notify=False)
             else:
@@ -855,12 +860,38 @@ class GUISequencerOrderPanel(GUIPanel):
                 callback=lambda: self.call(self.on_remove_requested, position),
             )
             dpg.add_separator()
-            self._add_move_item(self._lbl_context_move_left, self._sc_move_left, position, MoveDirection.PREVIOUS)
-            self._add_move_item(self._lbl_context_move_right, self._sc_move_right, position, MoveDirection.NEXT)
-            self._add_move_item(self._lbl_context_move_start, self._sc_move_start, position, MoveDirection.FIRST)
-            self._add_move_item(self._lbl_context_move_end, self._sc_move_end, position, MoveDirection.LAST)
+            self._add_move_item(
+                self._lbl_context_move_left,
+                self._sc_move_left,
+                position,
+                MoveDirection.PREVIOUS,
+            )
+            self._add_move_item(
+                self._lbl_context_move_right,
+                self._sc_move_right,
+                position,
+                MoveDirection.NEXT,
+            )
+            self._add_move_item(
+                self._lbl_context_move_start,
+                self._sc_move_start,
+                position,
+                MoveDirection.FIRST,
+            )
+            self._add_move_item(
+                self._lbl_context_move_end,
+                self._sc_move_end,
+                position,
+                MoveDirection.LAST,
+            )
 
-    def _add_move_item(self, label: str, shortcut: str, position: int, direction: MoveDirection) -> None:
+    def _add_move_item(
+        self,
+        label: str,
+        shortcut: str,
+        position: int,
+        direction: MoveDirection,
+    ) -> None:
         """Adds a move item, greyed out (disabled) when the move would have no effect."""
         target = direction.target(position, self._position_count)
         dpg.add_menu_item(
@@ -969,7 +1000,10 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _move_position(self, delta: int) -> None:
         self._apply_state(
-            self._committed_state().navigate_position(delta, self._position_count),
+            self._committed_state().navigate_position(
+                delta,
+                self._position_count,
+            ),
         )
 
     def _jump_position(self, index: int) -> None:

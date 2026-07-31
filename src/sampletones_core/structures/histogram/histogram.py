@@ -4,6 +4,7 @@ import warnings
 from functools import cached_property, reduce
 from types import ModuleType
 from typing import (
+    Any,
     Dict,
     Iterator,
     List,
@@ -167,7 +168,7 @@ class Histogram(DataModel):
 
         return self
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: Any) -> bool:
         """
         Check equality with another histogram.
 

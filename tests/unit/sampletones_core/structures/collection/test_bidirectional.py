@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Any, Tuple, Union
 
 import pytest
 
@@ -726,7 +726,7 @@ class TestEdgeCases:
             def __hash__(self) -> int:
                 return id(self)
 
-            def __eq__(self, other: object) -> bool:
+            def __eq__(self, other: Any) -> bool:
                 return self is other
 
         bidirectional = BidirectionalHashMap[IdentityObject]()

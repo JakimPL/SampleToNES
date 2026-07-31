@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Optional
 
@@ -116,5 +114,9 @@ class ConversionService(ServiceBase[ConversionResult]):
     def _on_cancelled(self) -> None:
         self._emit(ServiceCancelled())
 
-    def forward_library_progress(self, _status: TaskStatus, progress: TaskProgress) -> None:
+    def forward_library_progress(
+        self,
+        _status: TaskStatus,
+        progress: TaskProgress,
+    ) -> None:
         self._emit(ServiceIntermediate(data=progress))

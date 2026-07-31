@@ -54,7 +54,10 @@ class OriginalAudioLocator:
             return
 
         if not audio_filepath.exists():
-            self._dialogs.show_file_not_found(audio_filepath, self._msg_locate_failed)
+            self._dialogs.show_file_not_found(
+                audio_filepath,
+                self._msg_locate_failed,
+            )
             return
 
         open_path_in_explorer(audio_filepath)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import pytest
 
@@ -94,7 +94,7 @@ class TestDFS:
     def test_kwargs_reach_callback(self, six_node_tree: TreeNode) -> None:
         received: List[Optional[str]] = []
 
-        def collect(node: TreeNode, **kwargs: object) -> None:
+        def collect(node: TreeNode, **kwargs: Any) -> None:
             received.append(kwargs.get("tag"))  # type: ignore[arg-type]
 
         traverse(TreeTraversal.DFS, method=False)(collect)(six_node_tree, tag="hello")

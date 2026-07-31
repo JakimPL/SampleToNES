@@ -149,8 +149,14 @@ class ViewportManager:
 
         margin_x = (screen_w - usable_w) // 2
         margin_y = (screen_h - usable_h) // 2
-        fitted_x = max(screen_x + margin_x, min(x, screen_x + screen_w - margin_x - fitted_width))
-        fitted_y = max(screen_y + margin_y, min(y, screen_y + screen_h - margin_y - fitted_height))
+        fitted_x = max(
+            screen_x + margin_x,
+            min(x, screen_x + screen_w - margin_x - fitted_width),
+        )
+        fitted_y = max(
+            screen_y + margin_y,
+            min(y, screen_y + screen_h - margin_y - fitted_height),
+        )
 
         return fitted_x, fitted_y, fitted_width, fitted_height
 

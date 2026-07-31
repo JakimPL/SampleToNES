@@ -372,7 +372,12 @@ class DialogsRenderer:
             modal=False,
         )
 
-    def _render_template_bold(self, parent: str, template: str, substitutions: Dict[str, str]) -> None:
+    def _render_template_bold(
+        self,
+        parent: str,
+        template: str,
+        substitutions: Dict[str, str],
+    ) -> None:
         """
         Renders a placeholder template on one line with the substituted values in bold.
 
@@ -753,7 +758,12 @@ class DialogsRenderer:
             modal=False,
         )
 
-    def show_message_with_path(self, title: str, message: str, path: Path) -> None:
+    def show_message_with_path(
+        self,
+        title: str,
+        message: str,
+        path: Path,
+    ) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_PATH_MESSAGE)
 
         def content(parent: str) -> None:

@@ -186,21 +186,44 @@ class GUISequencerModulePanel(GUIPanel):
             self._on_rows_per_pattern_input,
         )
         show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._tpl_rows_tooltip)
-        self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._msg_status_input)
-        self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
-        self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_TEMPO, self._msg_status_input)
-        self._status_bar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_SPEED, self._msg_status_input)
+        self._status_bar.bind_to_item(
+            TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
+            self._msg_status_input,
+        )
+        self._status_bar.bind_to_item(
+            TAG_SEQUENCER_MODULE_INPUT_ROWS,
+            self._msg_status_input,
+        )
+        self._status_bar.bind_to_item(
+            TAG_SEQUENCER_MODULE_INPUT_TEMPO,
+            self._msg_status_input,
+        )
+        self._status_bar.bind_to_item(
+            TAG_SEQUENCER_MODULE_INPUT_SPEED,
+            self._msg_status_input,
+        )
 
     def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
-        dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, view_model.nes_frequency)
-        dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_ROWS, view_model.rows_per_pattern)
+        dpg.set_value(
+            TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
+            view_model.nes_frequency,
+        )
+        dpg.set_value(
+            TAG_SEQUENCER_MODULE_INPUT_ROWS,
+            view_model.rows_per_pattern,
+        )
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_TEMPO, view_model.tempo)
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_SPEED, view_model.speed)
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_MODULE_GROUP_OPTIONS, enabled=enabled)
 
-    def _commit_on_finish(self, input_tag: str, handler_tag: str, callback: Callable[[Sender, int], None]) -> None:
+    def _commit_on_finish(
+        self,
+        input_tag: str,
+        handler_tag: str,
+        callback: Callable[[Sender, int], None],
+    ) -> None:
         """Commits a field only when editing finishes (focus lost or Enter pressed).
 
         Used for the fields whose change rebuilds or re-times the song — NES frequency and rows
@@ -214,13 +237,25 @@ class GUISequencerModulePanel(GUIPanel):
         dpg.bind_item_handler_registry(input_tag, handler_tag)
 
     def _on_nes_frequency_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_nes_frequency, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)))
+        self.call(
+            self.on_nes_frequency,
+            int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)),
+        )
 
     def _on_rows_per_pattern_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_rows_per_pattern, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_ROWS)))
+        self.call(
+            self.on_rows_per_pattern,
+            int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_ROWS)),
+        )
 
     def _on_tempo_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_tempo, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_TEMPO)))
+        self.call(
+            self.on_tempo,
+            int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_TEMPO)),
+        )
 
     def _on_speed_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_speed, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_SPEED)))
+        self.call(
+            self.on_speed,
+            int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_SPEED)),
+        )

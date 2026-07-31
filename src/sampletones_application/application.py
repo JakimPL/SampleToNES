@@ -825,7 +825,10 @@ class Application:
             feature_value,
         )
 
-    def _on_reconstruction_updated(self, outcome: RegeneratedInstrument) -> None:
+    def _on_reconstruction_updated(
+        self,
+        outcome: RegeneratedInstrument,
+    ) -> None:
         """Records a reconstruction edit against the project when it owns the sample.
 
         Regeneration produces a fresh reconstruction. When the edited document is a
@@ -924,10 +927,15 @@ class Application:
             detail=self._sequencer_tab.nes_frequency_detail(nes_frequency),
             coalesce=(nes_frequency,),
         ):
-            self.project_controller.replace_sample_reconstruction(retuned.sample_id, retuned.reconstruction)
+            self.project_controller.replace_sample_reconstruction(
+                retuned.sample_id,
+                retuned.reconstruction,
+            )
 
         if is_open:
-            self.reconstruction_manager.apply_regenerated(retuned.reconstruction)
+            self.reconstruction_manager.apply_regenerated(
+                retuned.reconstruction,
+            )
             self._reconstructions_tab.update_reconstruction()
 
     def _open_project_properties(self) -> None:
@@ -950,7 +958,12 @@ class Application:
             )
         )
 
-    def _commit_project_properties(self, title: str, author: str, comment: str) -> None:
+    def _commit_project_properties(
+        self,
+        title: str,
+        author: str,
+        comment: str,
+    ) -> None:
         """Applies the properties dialog's values as one undoable gesture.
 
         Only fields that differ from the current project info reach the controller,
@@ -996,7 +1009,11 @@ class Application:
             name_text = dpg.add_text(SAMPLETONES_NAME_VERSION, parent=parent)
             dpg.add_separator(parent=parent)
             FontRegistry.bind_to_item(name_text, Font.BOLD_LARGE)
-            dpg.add_text(description, parent=parent, wrap=self.dialogs.default_wrap)
+            dpg.add_text(
+                description,
+                parent=parent,
+                wrap=self.dialogs.default_wrap,
+            )
             author_text = dpg.add_text(author_line, parent=parent)
             FontRegistry.bind_to_item(author_text, Font.ITALIC)
 
@@ -1105,7 +1122,12 @@ class Application:
             TextType.TITLE,
             GlobalDialogTitleElements.MAIN_WINDOW,
         ]
-        self._viewport_manager.update_title(window_title(application_name, document))
+        self._viewport_manager.update_title(
+            window_title(
+                application_name,
+                document,
+            )
+        )
 
     def _sync_reconstruction_ownership(self) -> None:
         """Reflects sequencer ownership in the open reconstruction view.

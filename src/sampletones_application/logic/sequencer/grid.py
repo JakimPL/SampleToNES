@@ -194,7 +194,11 @@ class SequencerGridLogic(CallbackMixin):
                 volume=volume,
             )
 
-    def set_sample_instrument(self, row_index: int, sample_id: Optional[str]) -> None:
+    def set_sample_instrument(
+        self,
+        row_index: int,
+        sample_id: Optional[str],
+    ) -> None:
         """Places a sample across the channels its reconstruction uses.
 
         The sample column is authoritative: the instrument is written to every
@@ -313,7 +317,11 @@ class SequencerGridLogic(CallbackMixin):
         for generator in self._subcolumn_generators(row_index):
             self.adjust_volume(generator, row_index, delta)
 
-    def _current_row(self, generator: GeneratorName, row_index: int) -> Optional[Row]:
+    def _current_row(
+        self,
+        generator: GeneratorName,
+        row_index: int,
+    ) -> Optional[Row]:
         pattern_index = self._pattern_index_at_frame(generator)
         if pattern_index is None:
             return None

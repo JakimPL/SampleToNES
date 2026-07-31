@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Any, Self
 from uuid import uuid4
 
 from sampletones_core.reconstructions import Reconstruction
@@ -32,7 +32,7 @@ class Sample:
     def __hash__(self) -> int:
         return hash(self.id)
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: Any) -> bool:
         return isinstance(other, Sample) and self.id == other.id
 
     def __repr__(self) -> str:

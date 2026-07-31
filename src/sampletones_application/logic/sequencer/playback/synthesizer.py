@@ -142,7 +142,10 @@ class RowSynthesizer:
         self._nes_frequency = nes_frequency
         config = self._playback_config(nes_frequency)
         for generator_name, state in self._channel_states.items():
-            state.generator = GENERATOR_CLASSES[generator_name](config, generator_name.value)
+            state.generator = GENERATOR_CLASSES[generator_name](
+                config,
+                generator_name.value,
+            )
 
     def _playback_config(self, nes_frequency: int) -> Config:
         library = self._config.library.model_copy(update={"nes_frequency": nes_frequency})

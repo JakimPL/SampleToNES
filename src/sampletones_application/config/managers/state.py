@@ -38,7 +38,10 @@ class ApplicationStateManager:
     def save(self) -> None:
         try:
             APPLICATION_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            save_yaml_atomic(APPLICATION_STATE_PATH, self.state.model_dump(mode="json"))
+            save_yaml_atomic(
+                APPLICATION_STATE_PATH,
+                self.state.model_dump(mode="json"),
+            )
         except OSError as exception:
             logger.error_with_traceback(
                 exception,

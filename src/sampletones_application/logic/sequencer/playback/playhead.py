@@ -3,7 +3,11 @@ def remap_after_insert(playhead: int, inserted_index: int) -> int:
     return playhead + 1 if inserted_index <= playhead else playhead
 
 
-def remap_after_remove(playhead: int, removed_index: int, new_length: int) -> int:
+def remap_after_remove(
+    playhead: int,
+    removed_index: int,
+    new_length: int,
+) -> int:
     """A frame removed before the playhead pulls it one position earlier.
 
     Removing the playing frame itself keeps the index (it now addresses the frame that
