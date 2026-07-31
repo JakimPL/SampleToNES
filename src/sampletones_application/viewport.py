@@ -2,13 +2,14 @@ import sys
 from typing import Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
-from screeninfo import Monitor, get_monitors
+from screeninfo import Monitor, ScreenInfoError, get_monitors
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.ui.resources.items import IconResource
 from sampletones_application.ui.resources.resources import get_icon_path
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_shared.application import SAMPLETONES_NAME
+from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 
 _MAX_WINDOW_MONITOR_RATIO: Final[float] = 0.9
@@ -115,7 +116,17 @@ class ViewportManager:
 
     @staticmethod
     def _get_monitors() -> List[Monitor]:
-        return get_monitors()
+        """Monitors reported by the platform, empty where none can be enumerated.
+
+        A display server that exposes no enumerator — a headless session, a remote shell,
+        a Wayland compositor without the expected backend — makes ``screeninfo`` raise
+        instead of returning an empty list, so the window falls back to assumed dimensions.
+        """
+        try:
+            return get_monitors()
+        except ScreenInfoError as exception:
+            logger.warning(f"No monitor information available: {exception}")
+            return []
 
     def _fit_window_to_monitor(
         self,

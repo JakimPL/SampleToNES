@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 
 import pytest
-from screeninfo import Monitor
+from screeninfo import Monitor, ScreenInfoError
 
 from sampletones_application.viewport import _MAX_WINDOW_MONITOR_RATIO, ViewportManager
 
@@ -110,6 +110,25 @@ class TestFitWindowToMonitor:
         monkeypatch.setattr(
             "sampletones_application.viewport.get_monitors",
             list,
+        )
+        manager = _manager()
+        manager._get_screen_dimensions = lambda: (1920, 1080)  # type: ignore[method-assign]
+
+        x, y, width, height = manager._fit_window_to_monitor(200, 200, 4000, 4000)
+
+        assert 0 <= x and 0 <= y
+        assert x + width <= 1920
+        assert y + height <= 1080
+
+    def test_falls_back_to_screen_dimensions_when_enumeration_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A display server exposing no enumerator makes screeninfo raise, which stays recoverable."""
+
+        def raise_screen_info_error() -> List[Monitor]:
+            raise ScreenInfoError("No enumerators available")
+
+        monkeypatch.setattr(
+            "sampletones_application.viewport.get_monitors",
+            raise_screen_info_error,
         )
         manager = _manager()
         manager._get_screen_dimensions = lambda: (1920, 1080)  # type: ignore[method-assign]
