@@ -23,10 +23,10 @@ jobs:
     name: Build distributions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           python-version: "3.12"
 
@@ -47,7 +47,7 @@ jobs:
       - name: Check metadata renders on PyPI
         run: uvx twine check --strict dist/*
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -62,12 +62,12 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.12", "3.13"]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
 
@@ -108,9 +108,9 @@ jobs:
           - os: windows-latest
             platform: windows-x86_64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -158,11 +158,18 @@ jobs:
         run: |
           name="sampletones-${GITHUB_REF_NAME}-${{ matrix.platform }}"
           mkdir -p bundles
-          mv bin/sampletones "bin/${name}"
-          python -c "import shutil, sys; shutil.make_archive(sys.argv[1], 'zip', 'bin', sys.argv[2])" \
-            "bundles/${name}" "${name}"
+          python - bin/sampletones "bundles/${name}.zip" "${name}" <<'PY'
+          import sys
+          import zipfile
+          from pathlib import Path
 
-      - uses: actions/upload-artifact@v4
+          source, archive, root = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+          with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
+              for path in sorted(source.rglob("*")):
+                  bundle.write(path, f"{root}/{path.relative_to(source).as_posix()}")
+          PY
+
+      - uses: actions/upload-artifact@v7
         with:
           name: bundle-${{ matrix.platform }}
           path: bundles/*.zip
@@ -175,7 +182,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: bundle-*
           merge-multiple: true
@@ -204,7 +211,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
