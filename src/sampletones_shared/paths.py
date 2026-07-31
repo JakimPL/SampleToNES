@@ -1,9 +1,11 @@
+import sys
+from importlib.resources import files
 from pathlib import Path
-from typing import Final
+from typing import Final, Optional
 
-import sampletones_application
-import sampletones_config
+_BUNDLE_ROOT: Final[Optional[str]] = getattr(sys, "_MEIPASS", None)
 
-# Root
-APPLICATION_SOURCE_DIRECTORY: Final[Path] = Path(sampletones_application.__file__).parent
-CONFIG_DIRECTORY: Final[Path] = Path(sampletones_config.__file__).parent
+CONFIG_DIRECTORY: Final[Path] = (
+    Path(_BUNDLE_ROOT) / "config" if _BUNDLE_ROOT is not None else Path(str(files("sampletones_config")))
+)
+REPOSITORY_ROOT: Final[Path] = CONFIG_DIRECTORY.parents[1]

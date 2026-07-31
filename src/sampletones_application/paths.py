@@ -1,12 +1,9 @@
-import sys
 from pathlib import Path
 from typing import Final
 
-import sampletones_config as _config_pkg
 from sampletones_core.paths import USER_PATH_CONFIG
+from sampletones_shared.paths import CONFIG_DIRECTORY
 
-_MEIPASS = getattr(sys, "_MEIPASS", None)
-CONFIG_DIRECTORY: Final[Path] = Path(_MEIPASS) / "config" if _MEIPASS is not None else Path(_config_pkg.__file__).parent
 APPLICATION_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "application"
 BEHAVIOR_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "behavior"
 LAYOUT_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "layout"

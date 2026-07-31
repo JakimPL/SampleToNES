@@ -1,33 +1,24 @@
 from __future__ import annotations
 
-import importlib.util
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from types import ModuleType
 from typing import Optional, Sequence, Tuple
 
 import pytest
 
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.scripts import load_script
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SCRIPT_PATH = _REPO_ROOT / "scripts" / "detect_cuda.py"
-
-
-def _load_detect_cuda() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("detect_cuda", _SCRIPT_PATH)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+detect_cuda = load_script("scripts/detect_cuda.py")
 
 
-detect_cuda = _load_detect_cuda()
-
-
-def _completed(output: str, *, returncode: int = 0) -> subprocess.CompletedProcess[str]:
+def _completed(
+    output: str,
+    *,
+    returncode: int = 0,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess(args=["nvidia-smi"], returncode=returncode, stdout=output, stderr="")
 
 
