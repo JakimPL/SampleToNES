@@ -84,7 +84,6 @@ dev = [
     "pytest-cov==7.1.0",
     "pytest-xdist==3.8.0",
     "types-PyYAML==6.0.12.20260518",
-    "yamlfmt==1.1.1",
 ]
 
 [build-system]

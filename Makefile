@@ -122,4 +122,3 @@ mypy:
 
 format:
 	$(call script,dev/format)
-

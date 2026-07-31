@@ -6,6 +6,12 @@ repos:
         types: [text]
         exclude: ^(LICENSE|THIRD-PARTY-LICENSES\.txt|src/sampletones_assets/fonts/LICENSES/)
 
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+        types: [text]
+        exclude: ^(LICENSE|THIRD-PARTY-LICENSES\.txt|src/sampletones_assets/fonts/LICENSES/)
+
   - repo: https://github.com/timothycrosley/isort
     rev: 9.0.0a3
     hooks:
@@ -42,12 +48,6 @@ repos:
         types: [python]
         files: ^src/sampletones_application/tags/
         verbose: true
-
-      - id: yamlfmt
-        name: yamlfmt
-        entry: uv run yamlfmt
-        language: system
-        types: [yaml]
 
       - id: mypy
         name: mypy
