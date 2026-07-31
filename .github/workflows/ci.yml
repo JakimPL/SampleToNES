@@ -27,9 +27,7 @@ jobs:
           enable-cache: true
 
       - name: Install system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y portaudio19-dev python3-tk
+        run: bash scripts/linux/build/dependencies.sh
 
       - name: Install the development environment
         run: uv sync --group dev
@@ -62,9 +60,7 @@ jobs:
 
       - name: Install system libraries (Linux)
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y portaudio19-dev python3-tk libgl1 libxrandr2 libxinerama1 libxcursor1 libxi6
+        run: bash scripts/linux/build/dependencies.sh
 
       - name: Install the development environment
         run: uv sync --group dev
