@@ -2,10 +2,11 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
+from sampletones_core.exporters.lengths import equalize_lengths
 from sampletones_core.famitracker.model.sequence import InstrumentSequence
-from sampletones_core.famitracker.sequences.lengths import equalize_lengths
 from sampletones_core.famitracker.specification.sequences import (
     LOOP_FROM_START,
+    MAX_SEQUENCE_ITEMS,
     NO_LOOP_POINT,
     SequenceKind,
 )
@@ -43,7 +44,11 @@ def features_to_instrument_sequences(
         SequenceKind.DUTY: duty_cycle,
     }
 
-    items_by_kind = equalize_lengths({kind: _to_items(array) for kind, array in arrays.items()}, loop)
+    items_by_kind = equalize_lengths(
+        {kind: _to_items(array) for kind, array in arrays.items()},
+        loop,
+        limit=MAX_SEQUENCE_ITEMS,
+    )
 
     sequences: Dict[SequenceKind, InstrumentSequence] = {}
     for kind, items in items_by_kind.items():

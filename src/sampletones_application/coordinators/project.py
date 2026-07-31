@@ -26,6 +26,7 @@ from sampletones_application.utils.file_dialogs.api import (
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_MODULE, EXT_FILE_PROJECT
+from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_shared.constants.project import (
     DEFAULT_MODULE_FILENAME,
     DEFAULT_PROJECT_FILENAME,
@@ -57,6 +58,7 @@ class ProjectCoordinator:
         project_manager: ProjectManager,
         session_manager: SessionManager,
         *,
+        export_backend: TrackerBackend,
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
         on_tab_switch: Callback,
@@ -65,6 +67,7 @@ class ProjectCoordinator:
         self._project_controller = project_controller
         self._project_manager = project_manager
         self._session_manager = session_manager
+        self._export_backend = export_backend
         self._dialogs = dialogs
         self._language_manager = language_manager
         self._on_tab_switch = on_tab_switch
@@ -259,7 +262,7 @@ class ProjectCoordinator:
 
     def _export_module(self, filepath: Path) -> None:
         try:
-            self._project_controller.export_module(filepath)
+            self._project_controller.export_project(filepath, self._export_backend)
         except (ValueError, OSError) as exception:
             logger.error_with_traceback(
                 exception,

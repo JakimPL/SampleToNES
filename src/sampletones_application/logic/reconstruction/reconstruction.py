@@ -14,8 +14,9 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
-from sampletones_core.exporters import Features
-from sampletones_core.paths import EXT_FILE_INSTRUMENT
+from sampletones_core.exporters.feature import Features
+from sampletones_core.trackers.backend import TrackerBackend
+from sampletones_core.trackers.request import InstrumentExport, SampleExport
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -29,11 +30,26 @@ class ExportServiceProtocol(Protocol):
     the service implementation; the composition root supplies the real service.
     """
 
-    def export_wav(self, filepath: Path, sample_rate: int, audio: np.ndarray) -> None: ...
+    def export_wav(
+        self,
+        filepath: Path,
+        sample_rate: int,
+        audio: np.ndarray,
+    ) -> None: ...
 
-    def export_instrument(self, filepath: Path, instrument_name: str, feature: Features) -> None: ...
+    def export_instrument(
+        self,
+        destination: Path,
+        backend: TrackerBackend,
+        request: InstrumentExport,
+    ) -> None: ...
 
-    def export_instruments(self, directory: Path, exports: List[Tuple[Path, str, Features]]) -> None: ...
+    def export_sample(
+        self,
+        destination: Path,
+        backend: TrackerBackend,
+        request: SampleExport,
+    ) -> None: ...
 
 
 class ReconstructionPanelLogic(CallbackMixin):
@@ -42,10 +58,12 @@ class ReconstructionPanelLogic(CallbackMixin):
         session_manager: SessionManager,
         reconstruction_manager: ReconstructionManager,
         export_service: ExportServiceProtocol,
+        export_backend: TrackerBackend,
     ) -> None:
         self._session_manager = session_manager
         self._reconstruction_manager = reconstruction_manager
         self._export_service = export_service
+        self._export_backend = export_backend
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._selected_generators: List[GeneratorName] = []
@@ -191,15 +209,14 @@ class ReconstructionPanelLogic(CallbackMixin):
             return
 
         generator_name = self._pending_generator_name
-        instrument_name = self._get_instrument_name(generator_name)
         feature = self._reconstruction_data.feature_data[generator_name]
         self._pending_generator_name = None
 
         self._session_manager.set_instrument_path(filepath.parent)
         self._export_service.export_instrument(
             filepath,
-            instrument_name,
-            feature,
+            self._export_backend,
+            self._instrument_export(generator_name, feature),
         )
 
     def handle_export_instruments_confirmed(self, directory: Path) -> None:
@@ -208,16 +225,32 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for instruments export")
             return
 
-        exports = [
-            (
-                directory / f"{self._get_instrument_name(gen_name)}{EXT_FILE_INSTRUMENT}",
-                self._get_instrument_name(gen_name),
-                feature,
-            )
-            for gen_name, feature in reconstruction_data.feature_data.generators.items()
-        ]
+        request = SampleExport(
+            name=reconstruction_data.name,
+            instruments=tuple(
+                self._instrument_export(generator_name, feature)
+                for generator_name, feature in reconstruction_data.feature_data.generators.items()
+            ),
+        )
         self._session_manager.set_instrument_path(directory.parent)
-        self._export_service.export_instruments(directory, exports)
+        self._export_service.export_sample(directory, self._export_backend, request)
+
+    def _instrument_export(
+        self,
+        generator_name: GeneratorName,
+        feature: Features,
+    ) -> InstrumentExport:
+        """Names one generator slice and packages it for a tracker backend.
+
+        A reconstruction has no loop flag of its own — that belongs to a sample placed in
+        a project — so the instrument plays its envelopes once.
+        """
+        return InstrumentExport(
+            name=self._get_instrument_name(generator_name),
+            generator=generator_name,
+            features=feature,
+            loop=False,
+        )
 
     def handle_export_wav_confirmed(self, filepath: Path) -> None:
         reconstruction_data = self._reconstruction_data

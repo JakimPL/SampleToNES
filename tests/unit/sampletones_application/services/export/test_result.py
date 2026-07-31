@@ -6,7 +6,7 @@ import pytest
 from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_application.services.export.truncation import ExportTruncation
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 
 
 class TestExportSuccess:
@@ -18,7 +18,7 @@ class TestExportSuccess:
         assert success.truncation is None
 
     def test_stores_the_truncation(self) -> None:
-        truncation = ExportTruncation(frames=252, source_frames=300, instruments=1)
+        truncation = EnvelopeTruncation(frames=252, source_frames=300, instruments=1)
         success = ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=Path("/x"), truncation=truncation)
         assert success.truncation == truncation
 

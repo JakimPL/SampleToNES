@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,7 +11,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_application.services.export.truncation import ExportTruncation
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -260,7 +260,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.INSTRUMENT,
                 filepath=Path("lead.fti"),
-                truncation=ExportTruncation(frames=252, source_frames=300, instruments=1),
+                truncation=EnvelopeTruncation(frames=252, source_frames=300, instruments=1),
             )
         )
 
@@ -277,7 +277,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.INSTRUMENTS,
                 filepath=Path("instruments"),
-                truncation=ExportTruncation(frames=252, source_frames=410, instruments=3),
+                truncation=EnvelopeTruncation(frames=252, source_frames=410, instruments=3),
             )
         )
 

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,8 +47,19 @@ def panel_logic(
     session_manager: MagicMock,
     mock_reconstruction_manager: MagicMock,
     mock_export_service: MagicMock,
+    mock_export_backend: MagicMock,
 ) -> ReconstructionPanelLogic:
-    return ReconstructionPanelLogic(session_manager, mock_reconstruction_manager, mock_export_service)
+    return ReconstructionPanelLogic(
+        session_manager,
+        mock_reconstruction_manager,
+        mock_export_service,
+        mock_export_backend,
+    )
+
+
+@pytest.fixture
+def mock_export_backend() -> MagicMock:
+    return MagicMock()
 
 
 @pytest.fixture
@@ -441,9 +452,9 @@ class TestReconstructionPanelLogicExportInstruments:
         tmp_path: Path,
     ) -> None:
         panel_logic.handle_export_instruments_confirmed(tmp_path)
-        mock_export_service.export_instruments.assert_not_called()
+        mock_export_service.export_sample.assert_not_called()
 
-    def test_handle_export_instruments_confirmed_calls_export_instruments(
+    def test_handle_export_instruments_confirmed_calls_export_sample(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
@@ -453,7 +464,7 @@ class TestReconstructionPanelLogicExportInstruments:
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.handle_export_instruments_confirmed(tmp_path)
-        mock_export_service.export_instruments.assert_called_once()
+        mock_export_service.export_sample.assert_called_once()
 
 
 class TestReconstructionPanelLogicExportWav:

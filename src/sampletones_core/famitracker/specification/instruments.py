@@ -5,6 +5,8 @@ from sampletones_core.famitracker.specification.patterns import NOTE_RANGE, OCTA
 INSTRUMENT_TYPE_2A03: Final[int] = 1
 MAX_INSTRUMENTS: Final[int] = 64
 
+STANDALONE_INSTRUMENT_INDEX: Final[int] = 0
+
 DPCM_KEY_ASSIGNMENTS: Final[int] = NOTE_RANGE * OCTAVE_RANGE
 
 DPCM_KEY_BYTES: Final[int] = 3

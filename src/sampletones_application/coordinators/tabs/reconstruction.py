@@ -41,7 +41,6 @@ from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.result import ExportResult
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_application.services.export.truncation import ExportTruncation
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -85,7 +84,10 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
+from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.paths import EXT_FILE_WAVE
+from sampletones_core.trackers.backend import TrackerBackend
+from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -111,6 +113,7 @@ class ReconstructionTabCoordinator:
         reconstruction_manager: ReconstructionManager,
         browser_manager: BrowserManager,
         export_service: ExportService,
+        export_backend: TrackerBackend,
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
         on_reconstruct_file: VoidCallback,
         on_reconstruct_directory: VoidCallback,
@@ -126,6 +129,7 @@ class ReconstructionTabCoordinator:
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
+        self._export_backend = export_backend
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
 
@@ -302,6 +306,7 @@ class ReconstructionTabCoordinator:
             session_manager,
             reconstruction_manager,
             export_service,
+            export_backend,
         )
         self._reconstruction_instruments_panel: GUIReconstructionInstrumentsPanel = GUIReconstructionInstrumentsPanel(
             pitch_stepper_style=layout.pitch_stepper_style,
@@ -416,7 +421,7 @@ class ReconstructionTabCoordinator:
         self,
         success: str,
         shortened: str,
-        truncation: Optional[ExportTruncation],
+        truncation: Optional[EnvelopeTruncation],
     ) -> str:
         """Follows the success line with the frames the FamiTracker sequence limit left out.
 
@@ -455,7 +460,7 @@ class ReconstructionTabCoordinator:
             title=self._ttl_export_instrument,
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[EXT_FILE_INSTRUMENT],
+            extensions=[self._export_backend.extension(ExportScope.INSTRUMENT)],
             filter_name=self._filter_export_instrument,
         )
         self._handle_export_instrument(filepath)

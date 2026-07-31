@@ -1,6 +1,6 @@
 from pathlib import Path
-from typing import Any, List
-from unittest.mock import MagicMock, call, patch
+from typing import Any, List, Optional, Tuple
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -9,7 +9,86 @@ from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_core.famitracker.sequences.truncation import SequenceTruncation
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.exporters import Features
+from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.trackers.artifact import ExportArtifact
+from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.trackers.request import (
+    InstrumentExport,
+    ProjectExport,
+    SampleExport,
+)
+from sampletones_core.trackers.scope import DestinationKind, ExportScope
+
+
+class StubBackend:
+    """Records what the service asked for and returns a prepared artefact.
+
+    The service under test owns the thread boundary and the result contract; what lands
+    on disk belongs to the real backends and is exercised in their own tests.
+    """
+
+    def __init__(
+        self,
+        truncation: Optional[EnvelopeTruncation] = None,
+        exception: Optional[Exception] = None,
+    ) -> None:
+        self.truncation = truncation
+        self.exception = exception
+        self.calls: List[Tuple[str, Path, Any]] = []
+
+    @property
+    def tracker_format(self) -> TrackerFormat:
+        return TrackerFormat.FAMITRACKER
+
+    @property
+    def supported_scopes(self) -> frozenset:
+        return frozenset(ExportScope)
+
+    def destination_kind(self, scope: ExportScope) -> DestinationKind:
+        return DestinationKind.FILE
+
+    def extension(self, scope: ExportScope) -> str:
+        return ".fti"
+
+    def write_instrument(self, destination: Path, request: InstrumentExport) -> ExportArtifact:
+        return self._write("instrument", destination, request)
+
+    def write_sample(self, destination: Path, request: SampleExport) -> ExportArtifact:
+        return self._write("sample", destination, request)
+
+    def write_project(self, destination: Path, request: ProjectExport) -> ExportArtifact:
+        return self._write("project", destination, request)
+
+    def _write(self, scope: str, destination: Path, request: Any) -> ExportArtifact:
+        self.calls.append((scope, destination, request))
+        if self.exception is not None:
+            raise self.exception
+        return ExportArtifact(paths=(destination,), truncation=self.truncation)
+
+
+def build_instrument(name: str = "Lead") -> InstrumentExport:
+    return InstrumentExport(
+        name=name,
+        generator=GeneratorName.PULSE1,
+        features=Features(
+            initial_pitch=60,
+            volume=np.full(8, 15, dtype=int),
+            arpeggio=np.zeros(8, dtype=int),
+            pitch=None,
+            hi_pitch=None,
+            duty_cycle=None,
+        ),
+        loop=False,
+    )
+
+
+def build_sample(count: int = 2) -> SampleExport:
+    return SampleExport(
+        name="Kick",
+        instruments=tuple(build_instrument(f"Kick {index}") for index in range(count)),
+    )
 
 
 @pytest.fixture
@@ -18,13 +97,6 @@ def service():
     results: List[Any] = []
     export_service.subscribe(results.append)
     return export_service, results
-
-
-def feature_mock(truncation: Any = None) -> MagicMock:
-    """A feature whose save reports the frames a FamiTracker sequence left out."""
-    feature = MagicMock()
-    feature.save.return_value = truncation
-    return feature
 
 
 class TestExportWav:
@@ -81,9 +153,8 @@ class TestExportInstrument:
     def test_success_emits_export_success(self, service, tmp_path) -> None:
         export_service, results = service
         filepath = tmp_path / "instrument.fti"
-        feature = feature_mock()
 
-        export_service.export_instrument(filepath, "guitar", feature)
+        export_service.export_instrument(filepath, StubBackend(), build_instrument())
 
         assert len(results) == 1
         result = results[0]
@@ -91,23 +162,25 @@ class TestExportInstrument:
         assert result.kind == ExportKind.INSTRUMENT
         assert result.filepath == filepath
 
-    def test_success_calls_feature_save(self, service, tmp_path) -> None:
+    def test_the_backend_receives_the_destination_and_the_request(self, service, tmp_path) -> None:
         export_service, _ = service
         filepath = tmp_path / "instrument.fti"
-        feature = feature_mock()
+        backend = StubBackend()
+        request = build_instrument("Guitar")
 
-        export_service.export_instrument(filepath, "guitar", feature)
+        export_service.export_instrument(filepath, backend, request)
 
-        feature.save.assert_called_once_with(filepath, "guitar")
+        assert backend.calls == [("instrument", filepath, request)]
 
     def test_error_emits_export_error(self, service, tmp_path) -> None:
         export_service, results = service
-        filepath = tmp_path / "instrument.fti"
         exception = PermissionError("read-only")
-        feature = feature_mock()
-        feature.save.side_effect = exception
 
-        export_service.export_instrument(filepath, "bass", feature)
+        export_service.export_instrument(
+            tmp_path / "instrument.fti",
+            StubBackend(exception=exception),
+            build_instrument(),
+        )
 
         assert len(results) == 1
         result = results[0]
@@ -117,31 +190,21 @@ class TestExportInstrument:
 
     def test_error_does_not_emit_success(self, service, tmp_path) -> None:
         export_service, results = service
-        feature = feature_mock()
-        feature.save.side_effect = OSError("fail")
 
-        export_service.export_instrument(tmp_path / "x.fti", "piano", feature)
+        export_service.export_instrument(
+            tmp_path / "x.fti",
+            StubBackend(exception=OSError("fail")),
+            build_instrument(),
+        )
 
         assert not any(isinstance(r, ExportSuccess) for r in results)
 
 
-class TestExportInstruments:
-    def test_success_calls_save_for_each_export(self, service, tmp_path) -> None:
-        export_service, _ = service
-        features = [feature_mock(), feature_mock(), feature_mock()]
-        exports = [(tmp_path / f"inst_{i}.fti", f"inst_{i}", features[i]) for i in range(3)]
-
-        export_service.export_instruments(tmp_path, exports)
-
-        for feature in features:
-            feature.save.assert_called_once()
-
-    def test_success_emits_export_success_with_directory(self, service, tmp_path) -> None:
+class TestExportSample:
+    def test_success_emits_export_success_with_the_destination(self, service, tmp_path) -> None:
         export_service, results = service
-        feature = feature_mock()
-        exports = [(tmp_path / "inst.fti", "inst", feature)]
 
-        export_service.export_instruments(tmp_path, exports)
+        export_service.export_sample(tmp_path, StubBackend(), build_sample())
 
         assert len(results) == 1
         result = results[0]
@@ -149,28 +212,20 @@ class TestExportInstruments:
         assert result.kind == ExportKind.INSTRUMENTS
         assert result.filepath == tmp_path
 
-    def test_success_creates_directory(self, service, tmp_path) -> None:
+    def test_the_backend_receives_every_slice_in_one_call(self, service, tmp_path) -> None:
         export_service, _ = service
-        new_dir = tmp_path / "subdir"
-        feature = feature_mock()
-        exports = [(new_dir / "inst.fti", "inst", feature)]
+        backend = StubBackend()
+        request = build_sample(3)
 
-        export_service.export_instruments(new_dir, exports)
+        export_service.export_sample(tmp_path, backend, request)
 
-        assert new_dir.exists()
+        assert backend.calls == [("sample", tmp_path, request)]
 
-    def test_error_on_first_save_emits_export_error(self, service, tmp_path) -> None:
+    def test_error_emits_export_error(self, service, tmp_path) -> None:
         export_service, results = service
         exception = OSError("no space")
-        first_feature = feature_mock()
-        first_feature.save.side_effect = exception
-        second_feature = feature_mock()
-        exports = [
-            (tmp_path / "first.fti", "first", first_feature),
-            (tmp_path / "second.fti", "second", second_feature),
-        ]
 
-        export_service.export_instruments(tmp_path, exports)
+        export_service.export_sample(tmp_path, StubBackend(exception=exception), build_sample())
 
         assert len(results) == 1
         result = results[0]
@@ -178,24 +233,10 @@ class TestExportInstruments:
         assert result.kind == ExportKind.INSTRUMENTS
         assert result.exception is exception
 
-    def test_error_stops_after_first_failure(self, service, tmp_path) -> None:
-        export_service, _ = service
-        first_feature = feature_mock()
-        first_feature.save.side_effect = OSError("fail")
-        second_feature = feature_mock()
-        exports = [
-            (tmp_path / "first.fti", "first", first_feature),
-            (tmp_path / "second.fti", "second", second_feature),
-        ]
-
-        export_service.export_instruments(tmp_path, exports)
-
-        second_feature.save.assert_not_called()
-
-    def test_empty_exports_list_emits_success(self, service, tmp_path) -> None:
+    def test_a_sample_with_no_slices_emits_success(self, service, tmp_path) -> None:
         export_service, results = service
 
-        export_service.export_instruments(tmp_path, [])
+        export_service.export_sample(tmp_path, StubBackend(), build_sample(0))
 
         assert len(results) == 1
         assert isinstance(results[0], ExportSuccess)
@@ -206,44 +247,29 @@ class TestExportTruncationReporting:
     def test_a_complete_instrument_reports_no_truncation(self, service, tmp_path) -> None:
         export_service, results = service
 
-        export_service.export_instrument(tmp_path / "inst.fti", "inst", feature_mock())
+        export_service.export_instrument(tmp_path / "inst.fti", StubBackend(), build_instrument())
 
         assert results[0].truncation is None
 
-    def test_a_shortened_instrument_reports_its_frames(self, service, tmp_path) -> None:
+    def test_a_shortened_instrument_carries_the_backend_report(self, service, tmp_path) -> None:
         export_service, results = service
-        feature = feature_mock(SequenceTruncation(frames=252, source_frames=300))
+        truncation = EnvelopeTruncation(frames=252, source_frames=300, instruments=1)
 
-        export_service.export_instrument(tmp_path / "inst.fti", "inst", feature)
+        export_service.export_instrument(
+            tmp_path / "inst.fti",
+            StubBackend(truncation=truncation),
+            build_instrument(),
+        )
 
-        truncation = results[0].truncation
-        assert truncation.frames == 252
-        assert truncation.source_frames == 300
-        assert truncation.instruments == 1
+        assert results[0].truncation == truncation
 
-    def test_a_complete_reconstruction_reports_no_truncation(self, service, tmp_path) -> None:
+    def test_a_shortened_sample_carries_the_backend_report(self, service, tmp_path) -> None:
         export_service, results = service
-        exports = [(tmp_path / f"inst_{index}.fti", f"inst_{index}", feature_mock()) for index in range(3)]
+        truncation = EnvelopeTruncation(frames=252, source_frames=410, instruments=2)
 
-        export_service.export_instruments(tmp_path, exports)
+        export_service.export_sample(tmp_path, StubBackend(truncation=truncation), build_sample(3))
 
-        assert results[0].truncation is None
-
-    def test_a_partly_shortened_reconstruction_counts_the_shortened_instruments(self, service, tmp_path) -> None:
-        export_service, results = service
-        features = [
-            feature_mock(),
-            feature_mock(SequenceTruncation(frames=252, source_frames=300)),
-            feature_mock(SequenceTruncation(frames=252, source_frames=410)),
-        ]
-        exports = [(tmp_path / f"inst_{index}.fti", f"inst_{index}", feature) for index, feature in enumerate(features)]
-
-        export_service.export_instruments(tmp_path, exports)
-
-        truncation = results[0].truncation
-        assert truncation.instruments == 2
-        assert truncation.frames == 252
-        assert truncation.source_frames == 410
+        assert results[0].truncation == truncation
 
     def test_a_wav_export_reports_no_truncation(self, service, tmp_path) -> None:
         export_service, results = service

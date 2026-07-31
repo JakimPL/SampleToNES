@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import Any, Dict, Final, Optional
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
@@ -129,6 +129,9 @@ from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.trackers.backend import TrackerBackend
+from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.trackers.registry import build_tracker_backends
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
@@ -207,6 +210,8 @@ class Application:
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
 
+        self.tracker_backends: Dict[TrackerFormat, TrackerBackend] = build_tracker_backends()
+
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)
         self.history: HistoryManager = HistoryManager(
@@ -267,6 +272,7 @@ class Application:
             self.project_controller,
             self.project_manager,
             self.session_manager,
+            export_backend=self.tracker_backends[TrackerFormat.FAMITRACKER],
             dialogs=self.dialogs,
             language_manager=self.language_manager,
             on_tab_switch=self._set_current_tab,
@@ -298,6 +304,7 @@ class Application:
             reconstruction_manager=self.reconstruction_manager,
             browser_manager=self.browser_manager,
             export_service=self.export_service,
+            export_backend=self.tracker_backends[TrackerFormat.FAMITRACKER],
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
