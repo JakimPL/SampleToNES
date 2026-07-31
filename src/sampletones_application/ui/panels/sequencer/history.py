@@ -130,7 +130,10 @@ class GUISequencerHistoryPanel(GUIPanel):
         super().__init__(
             tag=TAG_SEQUENCER_HISTORY_PANEL,
         )
-        self._enable_vertical_collapse(initial_collapsed=initial_collapsed, fill=True)
+        self._enable_vertical_collapse(
+            initial_collapsed=initial_collapsed,
+            fill=True,
+        )
 
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
@@ -173,8 +176,14 @@ class GUISequencerHistoryPanel(GUIPanel):
                         callback=self._on_redo_clicked,
                         width=-1,
                     )
-        self._status_bar.bind_to_item(TAG_SEQUENCER_HISTORY_BUTTON_UNDO, self._msg_status_undo)
-        self._status_bar.bind_to_item(TAG_SEQUENCER_HISTORY_BUTTON_REDO, self._msg_status_redo)
+        self._status_bar.bind_to_item(
+            TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
+            self._msg_status_undo,
+        )
+        self._status_bar.bind_to_item(
+            TAG_SEQUENCER_HISTORY_BUTTON_REDO,
+            self._msg_status_redo,
+        )
 
     def update_view(self, view_model: HistoryViewModel) -> None:
         self._update_actions(view_model)
@@ -186,8 +195,14 @@ class GUISequencerHistoryPanel(GUIPanel):
         self._rebuild(window)
 
     def _update_actions(self, view_model: HistoryViewModel) -> None:
-        dpg_configure_item(TAG_SEQUENCER_HISTORY_BUTTON_UNDO, enabled=view_model.can_undo)
-        dpg_configure_item(TAG_SEQUENCER_HISTORY_BUTTON_REDO, enabled=view_model.can_redo)
+        dpg_configure_item(
+            TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
+            enabled=view_model.can_undo,
+        )
+        dpg_configure_item(
+            TAG_SEQUENCER_HISTORY_BUTTON_REDO,
+            enabled=view_model.can_redo,
+        )
 
     def _window(self, view_model: HistoryViewModel) -> EntryWindow:
         """Selects the slice of entries rendered around the cursor.
@@ -282,7 +297,13 @@ class GUISequencerHistoryPanel(GUIPanel):
 
         ThemeRegistry.get(TAG_SEQUENCER_HISTORY_THEME_LIST).bind_to_item(table)
 
-    def _create_entry(self, table: int, entry: HistoryEntryViewModel, *, before: int) -> None:
+    def _create_entry(
+        self,
+        table: int,
+        entry: HistoryEntryViewModel,
+        *,
+        before: int,
+    ) -> None:
         """Renders one entry as a full-width selectable with coloured text on top.
 
         A ``span_columns`` selectable backs the whole row, so clicking anywhere
@@ -325,7 +346,15 @@ class GUISequencerHistoryPanel(GUIPanel):
             self._add_text(segment.text, parent=group, color=color)
 
     def _add_text(self, value: str, *, parent: int, color: Optional[RGBA]) -> None:
-        text = dpg.add_text(value, parent=parent) if color is None else dpg.add_text(value, parent=parent, color=color)
+        text = (
+            dpg.add_text(value, parent=parent)
+            if color is None
+            else dpg.add_text(
+                value,
+                parent=parent,
+                color=color,
+            )
+        )
         FontRegistry.bind_to_item(text, Font.MONO_SMALL)
 
     def _role_color(self, role: HistoryDetailRole) -> RGBA:
@@ -369,5 +398,10 @@ class GUISequencerHistoryPanel(GUIPanel):
     def _on_redo_clicked(self, sender: Sender, app_data: Any) -> None:
         self.call(self.on_redo)
 
-    def _on_entry_clicked(self, sender: Sender, app_data: Any, user_data: int) -> None:
+    def _on_entry_clicked(
+        self,
+        sender: Sender,
+        app_data: Any,
+        user_data: int,
+    ) -> None:
         self.call(self.on_jump_to, user_data)

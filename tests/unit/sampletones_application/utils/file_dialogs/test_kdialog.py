@@ -28,7 +28,7 @@ class TestKDialogBackend:
         command = run.call_args.args[0]
         assert result == Path("/home/user/song.stp")
         assert "--getsavefilename" in command
-        assert "/home/user/song.stp" in command
+        assert str(Path("/home/user/song.stp")) in command
         assert "*.stp|Project files (*.stp)" in command
         assert command[command.index("--title") + 1] == "Save project"
 

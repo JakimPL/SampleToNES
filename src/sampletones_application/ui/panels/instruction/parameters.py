@@ -58,7 +58,10 @@ class GUIInstructionParametersPanel(GUIPanel):
         super().__init__(
             tag=TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
         )
-        self._enable_vertical_collapse(initial_collapsed=initial_collapsed, auto_height=True)
+        self._enable_vertical_collapse(
+            initial_collapsed=initial_collapsed,
+            auto_height=True,
+        )
 
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(

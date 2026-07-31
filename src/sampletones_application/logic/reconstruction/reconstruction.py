@@ -111,7 +111,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._selected_generators = []
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
-        empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path="")
+        empty_path = ReconstructionPathViewModel(
+            state=ReconstructionPathState.EMPTY,
+            path="",
+        )
         self.call(
             self.on_view_changed,
             ReconstructionViewModel(
@@ -133,10 +136,17 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             return
 
-        self.call(self.on_waveform_load_changed, reconstruction_data.waveform_data(), generators)
+        self.call(
+            self.on_waveform_load_changed,
+            reconstruction_data.waveform_data(),
+            generators,
+        )
         self._emit_audio_data()
 
-    def request_export_instrument_dialog(self, generator_name: GeneratorName) -> None:
+    def request_export_instrument_dialog(
+        self,
+        generator_name: GeneratorName,
+    ) -> None:
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting an instrument")
@@ -149,7 +159,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         default_path = str(self._session_manager.get_instrument_path())
 
         self._pending_generator_name = generator_name
-        self.call(self.on_open_export_instrument_dialog, instrument_name, default_path)
+        self.call(
+            self.on_open_export_instrument_dialog,
+            instrument_name,
+            default_path,
+        )
 
     def request_export_instruments_dialog(self) -> None:
         reconstruction_data = self._reconstruction_data
@@ -182,7 +196,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._pending_generator_name = None
 
         self._session_manager.set_instrument_path(filepath.parent)
-        self._export_service.export_instrument(filepath, instrument_name, feature)
+        self._export_service.export_instrument(
+            filepath,
+            instrument_name,
+            feature,
+        )
 
     def handle_export_instruments_confirmed(self, directory: Path) -> None:
         reconstruction_data = self._reconstruction_data
@@ -231,7 +249,10 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         open_path_in_explorer(filepath)
 
-    def _get_instrument_name(self, generator_name: Optional[GeneratorName] = None) -> str:
+    def _get_instrument_name(
+        self,
+        generator_name: Optional[GeneratorName] = None,
+    ) -> str:
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be present")
@@ -281,11 +302,19 @@ class ReconstructionPanelLogic(CallbackMixin):
         return reconstruction_file, original_audio
 
     @staticmethod
-    def _build_file_path_view_model(filepath: Optional[Path]) -> ReconstructionPathViewModel:
+    def _build_file_path_view_model(
+        filepath: Optional[Path],
+    ) -> ReconstructionPathViewModel:
         if filepath is None:
-            return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
+            return ReconstructionPathViewModel(
+                state=ReconstructionPathState.NOT_APPLICABLE,
+                path="",
+            )
 
-        return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(filepath))
+        return ReconstructionPathViewModel(
+            state=ReconstructionPathState.AVAILABLE,
+            path=str(filepath),
+        )
 
     @staticmethod
     def _build_audio_path_view_model(
@@ -295,12 +324,21 @@ class ReconstructionPanelLogic(CallbackMixin):
         """Reports the original-audio location, treating a recorded path with unusable content
         the same as a missing one, so the source toggle and waveform agree with what actually loaded."""
         if audio_filepath is None:
-            return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_APPLICABLE, path="")
+            return ReconstructionPathViewModel(
+                state=ReconstructionPathState.NOT_APPLICABLE,
+                path="",
+            )
 
         if original_audio is None:
-            return ReconstructionPathViewModel(state=ReconstructionPathState.NOT_FOUND, path="")
+            return ReconstructionPathViewModel(
+                state=ReconstructionPathState.NOT_FOUND,
+                path="",
+            )
 
-        return ReconstructionPathViewModel(state=ReconstructionPathState.AVAILABLE, path=str(audio_filepath))
+        return ReconstructionPathViewModel(
+            state=ReconstructionPathState.AVAILABLE,
+            path=str(audio_filepath),
+        )
 
     @property
     def _reconstruction_data(self) -> Optional[ReconstructionData]:

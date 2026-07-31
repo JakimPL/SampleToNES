@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-from sampletones_shared.types.path import GeneralPathlike
 from sampletones_shared.utils.system.paths import (
     DEFAULT_MAX_FILENAME_DISPLAY,
     ensure_suffix,
@@ -150,7 +149,7 @@ class TestToPath(BaseTestSuite):
         if isinstance(test_case.input_path, Path):
             assert result is test_case.input_path
 
-        assert str(result) == test_case.expected
+        assert result == Path(test_case.expected)
 
 
 class TestEnsureSuffix(BaseTestSuite):
@@ -428,12 +427,17 @@ class TestShortenPath(BaseTestSuite):
         ),
     ]
 
-    def _create_resolved_mock(self, resolved_path: GeneralPathlike) -> MagicMock:
+    def _create_resolved_mock(self, resolved_path: Any) -> MagicMock:
+        """Stands in for the resolved path, keeping the path flavour each case declares.
+
+        Every case states its expectation as a ``PurePosixPath`` or a ``PureWindowsPath``, so
+        the parts come from that pure path and the case reads the same on either platform.
+        """
         resolved_mock = MagicMock()
         try:
-            resolved_mock.parts = Path(resolved_path).parts
+            resolved_mock.parts = resolved_path.parts
             resolved_mock.__str__ = MagicMock(return_value=str(resolved_path))  # type: ignore[method-assign]
-        except TypeError:
+        except AttributeError:
             resolved_mock.parts = ()
 
         return resolved_mock
@@ -590,7 +594,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         TestCase(
             label="dolphin_kde",
             desktop_file="org.kde.dolphin.desktop",
-            expected=["dolphin", "--select", "/tmp/test.txt"],
+            expected=["dolphin", "--select"],
             path="/tmp/test.txt",
             mime_returncode=0,
             command_returncode=0,
@@ -599,7 +603,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         TestCase(
             label="dolphin_plain",
             desktop_file="dolphin.desktop",
-            expected=["dolphin", "--select", "/tmp/test.txt"],
+            expected=["dolphin", "--select"],
             path="/tmp/test.txt",
             mime_returncode=0,
             command_returncode=0,
@@ -608,7 +612,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         TestCase(
             label="nautilus_gnome",
             desktop_file="org.gnome.Nautilus.desktop",
-            expected=["nautilus", "--select", "/tmp/test.txt"],
+            expected=["nautilus", "--select"],
             path="/tmp/test.txt",
             mime_returncode=0,
             command_returncode=0,
@@ -617,7 +621,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         TestCase(
             label="nautilus_plain",
             desktop_file="nautilus.desktop",
-            expected=["nautilus", "--select", "/tmp/test.txt"],
+            expected=["nautilus", "--select"],
             path="/tmp/test.txt",
             mime_returncode=0,
             command_returncode=0,
@@ -626,7 +630,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         TestCase(
             label="nemo",
             desktop_file="nemo.desktop",
-            expected=["nemo", "/tmp/test.txt"],
+            expected=["nemo"],
             path="/tmp/test.txt",
             mime_returncode=0,
             command_returncode=0,
@@ -635,7 +639,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         TestCase(
             label="thunar",
             desktop_file="thunar.desktop",
-            expected=["thunar", "/tmp/test.txt"],
+            expected=["thunar"],
             path="/tmp/test.txt",
             mime_returncode=0,
             command_returncode=0,
@@ -644,7 +648,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         TestCase(
             label="whitespace_in_path",
             desktop_file="org.kde.dolphin.desktop",
-            expected=["dolphin", "--select", "/tmp/file with spaces.txt"],
+            expected=["dolphin", "--select"],
             path="/tmp/file with spaces.txt",
             mime_returncode=0,
             command_returncode=0,
@@ -671,7 +675,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         TestCase(
             label="command_execution_fails",
             desktop_file="org.kde.dolphin.desktop",
-            expected=["dolphin", "--select", "/tmp/test.txt"],
+            expected=["dolphin", "--select"],
             path="/tmp/test.txt",
             mime_returncode=0,
             command_returncode=1,
@@ -718,8 +722,9 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
             path = Path(test_case.path)
             open_file_in_explorer_linux(path)
 
+            expected = test_case.expected + [str(path)]
             assert mock_run.call_count == 2
-            assert mock_run.call_args_list[1] == call(test_case.expected, check=False, capture_output=True)
+            assert mock_run.call_args_list[1] == call(expected, check=False, capture_output=True)
 
 
 class TestOpenPathInExplorer(BaseTestSuite):

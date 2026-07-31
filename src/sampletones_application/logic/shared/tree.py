@@ -66,7 +66,11 @@ class TreeLogic(CallbackMixin):
         """
         callback = self.on_lock_state_changed
         if callback is not None:
-            CallbackQueue.add(callback, is_unlocked, priority=self._scheduling.priorities.gui_action)
+            CallbackQueue.add(
+                callback,
+                is_unlocked,
+                priority=self._scheduling.priorities.gui_action,
+            )
 
     @property
     def locked(self) -> bool:
@@ -124,7 +128,10 @@ class TreeLogic(CallbackMixin):
                         priority=priority,
                     )
                 except (OSError, SampleToNESError) as exception:
-                    logger.error_with_traceback(exception, f"Failed to play reconstruction file: {node.filepath}")
+                    logger.error_with_traceback(
+                        exception,
+                        f"Failed to play reconstruction file: {node.filepath}",
+                    )
                     self.call(self.on_autoplay_error, exception)
             case suffix if suffix in paths.EXT_FILES_AUDIO:
                 self._audio_device_manager.play_file(

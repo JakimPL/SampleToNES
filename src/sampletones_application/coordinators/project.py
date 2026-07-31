@@ -225,7 +225,10 @@ class ProjectCoordinator:
         try:
             self._project_controller.load(filepath)
         except (LoadProjectError, OSError) as exception:
-            logger.error_with_traceback(exception, f"Failed to load project from {filepath}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to load project from {filepath}",
+            )
             self._dialogs.show_error(exception)
             return
 
@@ -236,7 +239,10 @@ class ProjectCoordinator:
         try:
             self._project_controller.save(filepath)
         except (SerializationError, OSError) as exception:
-            logger.error_with_traceback(exception, f"Failed to save project to {filepath}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to save project to {filepath}",
+            )
             self._dialogs.show_error(
                 exception,
                 self._message(GlobalMessageElements.PROJECT_SAVE_FAILED),
@@ -255,7 +261,10 @@ class ProjectCoordinator:
         try:
             self._project_controller.export_module(filepath)
         except (ValueError, OSError) as exception:
-            logger.error_with_traceback(exception, f"Failed to export FamiTracker module to {filepath}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to export FamiTracker module to {filepath}",
+            )
             self._dialogs.show_error(
                 exception,
                 self._message(GlobalMessageElements.PROJECT_EXPORT_FAILED),
@@ -299,13 +308,33 @@ class ProjectCoordinator:
             )
 
     def _title(self, element: AbstractElement) -> str:
-        return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.TITLE, element]
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            element,
+        ]
 
     def _message(self, element: AbstractElement) -> str:
-        return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, element]
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            element,
+        ]
 
     def _label(self, element: AbstractElement) -> str:
-        return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.LABEL, element]
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            element,
+        ]
 
     def _filter_name(self, element: AbstractElement) -> str:
-        return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.FILTER, element]
+        return self._language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.FILTER,
+            element,
+        ]

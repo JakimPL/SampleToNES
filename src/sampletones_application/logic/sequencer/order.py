@@ -27,7 +27,10 @@ class SequencerOrderLogic(CallbackMixin):
     def build_order(self) -> SequencerOrderGridViewModel:
         song = self._controller.project.song
         channels = {generator: self._build_channel_view(generator, song) for generator in GeneratorName.items()}
-        return SequencerOrderGridViewModel(position_count=song.order_length(), channels=channels)
+        return SequencerOrderGridViewModel(
+            position_count=song.order_length(),
+            channels=channels,
+        )
 
     def push_order(self) -> None:
         self.call(self.on_order_changed, self.build_order())

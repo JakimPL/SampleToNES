@@ -214,7 +214,7 @@ class IndexedCollection(Generic[T]):
         """
         return len(self._order) > 0
 
-    def __eq__(self, value: object) -> bool:
+    def __eq__(self, value: Any) -> bool:
         """
         Checks equality between this collection and another object.
 

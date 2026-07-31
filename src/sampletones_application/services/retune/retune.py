@@ -39,6 +39,13 @@ class SampleRetuneService(ServiceBase[RetuneResult]):
         try:
             for sample_id, reconstruction in targets:
                 retuned = reconstruction.with_nes_frequency(nes_frequency)
-                self._emit(ServiceSuccess(value=RetunedSample(sample_id=sample_id, reconstruction=retuned)))
+                self._emit(
+                    ServiceSuccess(
+                        value=RetunedSample(
+                            sample_id=sample_id,
+                            reconstruction=retuned,
+                        )
+                    )
+                )
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self._emit(ServiceError(exception=exception))

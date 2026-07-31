@@ -171,7 +171,10 @@ class ReconstructionCoordinator:
         try:
             self._reconstruction_manager.save_reconstruction_as(filepath)
         except (OSError, SampleToNESError) as exception:
-            logger.error_with_traceback(exception, f"Failed to save reconstruction to {filepath}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to save reconstruction to {filepath}",
+            )
             self._dialogs.show_error(
                 exception,
                 self._language_manager[

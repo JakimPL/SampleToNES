@@ -58,7 +58,10 @@ class GUITraceback:
         ]
 
         self.theme = ThemeRegistry.resolve(theme, TAG_GLOBAL_THEME_TRACEBACK)
-        resolved_button_theme = ThemeRegistry.resolve(button_theme, TAG_GLOBAL_THEME_DEFAULT)
+        resolved_button_theme = ThemeRegistry.resolve(
+            button_theme,
+            TAG_GLOBAL_THEME_DEFAULT,
+        )
         traceback_text_tag = f"{self._tag}{SUF_TEXT}"
         traceback_copy_tag = f"{self._tag}{SUF_BUTTON_COPY}"
 

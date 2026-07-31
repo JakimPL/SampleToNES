@@ -11,6 +11,7 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import LoadReconstructionError
+from tests.suite.errors import DIRECTORY_READ_ERRORS
 
 
 class TestLoadReconstructionPropagatesErrors:
@@ -22,8 +23,8 @@ class TestLoadReconstructionPropagatesErrors:
         with pytest.raises(FileNotFoundError):
             self._manager().load_reconstruction(tmp_path / "nope.stn")
 
-    def test_directory_raises_is_a_directory(self, tmp_path: Path) -> None:
-        with pytest.raises(IsADirectoryError):
+    def test_directory_raises_directory_read_error(self, tmp_path: Path) -> None:
+        with pytest.raises(DIRECTORY_READ_ERRORS):
             self._manager().load_reconstruction(tmp_path)
 
     def test_foreign_file_raises_load_reconstruction_error(self, tmp_path: Path) -> None:

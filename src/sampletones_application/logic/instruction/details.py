@@ -39,7 +39,10 @@ class InstructionDetailsPanelLogic(CallbackMixin):
     def get_current_instruction_data(self) -> Optional[InstructionPanelData]:
         return self._table_logic.current_data
 
-    def handle_instruction_parameter_changed(self, instruction: InstructionUnion) -> None:
+    def handle_instruction_parameter_changed(
+        self,
+        instruction: InstructionUnion,
+    ) -> None:
         current = self._table_logic.current_data
         if current is not None and current.instruction == instruction:
             return

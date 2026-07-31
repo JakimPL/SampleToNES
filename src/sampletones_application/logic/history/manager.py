@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Iterator, List, Optional, Tuple
@@ -190,7 +188,11 @@ class HistoryManager(CallbackMixin):
         coalesce: Optional[CoalesceKey],
     ) -> None:
         if self._pending is None:
-            self._pending = PendingTransaction(action=action, detail=detail, coalesce=coalesce)
+            self._pending = PendingTransaction(
+                action=action,
+                detail=detail,
+                coalesce=coalesce,
+            )
             return
 
         self._pending.depth += 1
@@ -206,7 +208,11 @@ class HistoryManager(CallbackMixin):
         pending = self._pending
         self._pending = None
         if pending.mutations > 0:
-            self._commit(pending.action, pending.detail, coalesce=pending.coalesce)
+            self._commit(
+                pending.action,
+                pending.detail,
+                coalesce=pending.coalesce,
+            )
 
     def _commit(
         self,
@@ -267,7 +273,10 @@ class HistoryManager(CallbackMixin):
         """
         project = self._controller.project
         fingerprint = (
-            fingerprint_project(project, reconstruction_hash=self._hash_cache.hash)
+            fingerprint_project(
+                project,
+                reconstruction_hash=self._hash_cache.hash,
+            )
             if self._hash_cache is not None
             else None
         )
@@ -314,7 +323,10 @@ class HistoryManager(CallbackMixin):
         if entry.fingerprint is None:
             return
 
-        actual = fingerprint_project(self._controller.project, reconstruction_hash=hash_model)
+        actual = fingerprint_project(
+            self._controller.project,
+            reconstruction_hash=hash_model,
+        )
         if actual != entry.fingerprint:
             raise HistoryIntegrityError(
                 f"Restoring history entry '{entry.action}' produced a project that "

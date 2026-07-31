@@ -248,8 +248,14 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             TAG_MAIN_ADVANCED_INPUT_TRANSFORMATION_GAMMA,
             self._item_handler_tag,
         )
-        self._status_bar.bind_to_item(TAG_MAIN_ADVANCED_COMBO_SPECTRUM_METHOD, self._msg_status_combo)
-        self._status_bar.bind_to_item(TAG_MAIN_ADVANCED_INPUT_TRANSFORMATION_GAMMA, self._msg_status_input)
+        self._status_bar.bind_to_item(
+            TAG_MAIN_ADVANCED_COMBO_SPECTRUM_METHOD,
+            self._msg_status_combo,
+        )
+        self._status_bar.bind_to_item(
+            TAG_MAIN_ADVANCED_INPUT_TRANSFORMATION_GAMMA,
+            self._msg_status_input,
+        )
 
     def _create_workers_settings(self) -> None:
         with labeled_field(self._lbl_max_workers, self._label_width):
@@ -379,7 +385,10 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._output_directory = view_model.reconstructions_directory
         self._spectrum_method = view_model.spectrum_method
         self._transformation_gamma = view_model.transformation_gamma
-        dpg.set_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS, view_model.max_workers)
+        dpg.set_value(
+            TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
+            view_model.max_workers,
+        )
         dpg.set_value(
             TAG_MAIN_ADVANCED_COMBO_SPECTRUM_METHOD,
             format_spectrum_method(view_model.spectrum_method),

@@ -199,7 +199,10 @@ class SongPlayerLogic(CallbackMixin):
                 self._emit_view()
 
     def _emit_view(self) -> None:
-        self.call(self.on_view_changed, self._build_view_model(self.is_playing(), self.is_paused()))
+        self.call(
+            self.on_view_changed,
+            self._build_view_model(self.is_playing(), self.is_paused()),
+        )
 
     def _emit_idle_view(self) -> None:
         """Pushes a definitively stopped view.
@@ -209,9 +212,16 @@ class SongPlayerLogic(CallbackMixin):
         itself as playing; forcing the flags off keeps the stopped view authoritative and lets the
         playing highlight settle correctly.
         """
-        self.call(self.on_view_changed, self._build_view_model(is_playing=False, is_paused=False))
+        self.call(
+            self.on_view_changed,
+            self._build_view_model(is_playing=False, is_paused=False),
+        )
 
-    def _build_view_model(self, is_playing: bool, is_paused: bool) -> SongPlayerViewModel:
+    def _build_view_model(
+        self,
+        is_playing: bool,
+        is_paused: bool,
+    ) -> SongPlayerViewModel:
         return SongPlayerViewModel(
             is_loaded=self.is_loaded(),
             is_playing=is_playing,

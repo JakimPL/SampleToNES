@@ -251,9 +251,18 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._build_loop_cell(row_id, entry)
         if entry.sample_id == self._selected_sample_id:
             self._selected_row = position
-            dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
+            dpg.highlight_table_row(
+                TAG_SEQUENCER_INSTRUMENTS_TABLE,
+                position,
+                color=self._layout.colors.cell_cursor,
+            )
 
-    def _build_id_cell(self, row_id: int | str, position: int, entry: SampleEntryViewModel) -> None:
+    def _build_id_cell(
+        self,
+        row_id: int | str,
+        position: int,
+        entry: SampleEntryViewModel,
+    ) -> None:
         id_cell = dpg.add_table_cell(parent=row_id)
         id_selectable = dpg.add_selectable(
             parent=id_cell,
@@ -264,14 +273,24 @@ class GUISequencerSamplesPanel(GUIPanel):
         FontRegistry.bind_to_item(id_selectable, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(id_selectable, self._row_handler_tag)
 
-    def _build_name_cell(self, row_id: int | str, position: int, entry: SampleEntryViewModel) -> None:
+    def _build_name_cell(
+        self,
+        row_id: int | str,
+        position: int,
+        entry: SampleEntryViewModel,
+    ) -> None:
         name_cell = dpg.add_table_cell(parent=row_id)
         if entry.sample_id == self._editing_sample_id:
             self._build_name_input(name_cell, entry)
         else:
             self._build_name_selectable(name_cell, position, entry)
 
-    def _build_name_selectable(self, name_cell: int | str, position: int, entry: SampleEntryViewModel) -> None:
+    def _build_name_selectable(
+        self,
+        name_cell: int | str,
+        position: int,
+        entry: SampleEntryViewModel,
+    ) -> None:
         name_selectable = dpg.add_selectable(
             parent=name_cell,
             label=entry.name,
@@ -281,7 +300,11 @@ class GUISequencerSamplesPanel(GUIPanel):
         FontRegistry.bind_to_item(name_selectable, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(name_selectable, self._row_handler_tag)
 
-    def _build_name_input(self, name_cell: int | str, entry: SampleEntryViewModel) -> None:
+    def _build_name_input(
+        self,
+        name_cell: int | str,
+        entry: SampleEntryViewModel,
+    ) -> None:
         name_input = dpg.add_input_text(
             tag=TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
             parent=name_cell,
@@ -293,7 +316,11 @@ class GUISequencerSamplesPanel(GUIPanel):
         FontRegistry.bind_to_item(name_input, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(name_input, self._rename_handler_tag)
 
-    def _build_loop_cell(self, row_id: int | str, entry: SampleEntryViewModel) -> None:
+    def _build_loop_cell(
+        self,
+        row_id: int | str,
+        entry: SampleEntryViewModel,
+    ) -> None:
         loop_cell = dpg.add_table_cell(parent=row_id)
         loop_checkbox = dpg.add_checkbox(
             parent=loop_cell,
@@ -303,15 +330,27 @@ class GUISequencerSamplesPanel(GUIPanel):
         )
         FontRegistry.bind_to_item(loop_checkbox, Font.REGULAR_SMALL)
 
-    def _on_sample_selected(self, sender: Sender, app_data: bool, user_data: Tuple[int, str]) -> None:
+    def _on_sample_selected(
+        self,
+        sender: Sender,
+        app_data: bool,
+        user_data: Tuple[int, str],
+    ) -> None:
         position, sample_id = user_data
         dpg.set_value(sender, False)
         if self._selected_row is not None:
-            dpg.unhighlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, self._selected_row)
+            dpg.unhighlight_table_row(
+                TAG_SEQUENCER_INSTRUMENTS_TABLE,
+                self._selected_row,
+            )
 
         self._selected_row = position
         self._selected_sample_id = sample_id
-        dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
+        dpg.highlight_table_row(
+            TAG_SEQUENCER_INSTRUMENTS_TABLE,
+            position,
+            color=self._layout.colors.cell_cursor,
+        )
         self.call(self.on_sample_selected, sample_id)
 
     @property
@@ -457,17 +496,30 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _on_rename_deactivated(self, sender: Sender, app_data: int) -> None:
         self._commit_rename()
 
-    def _on_loop_toggled(self, sender: Sender, app_data: bool, user_data: str) -> None:
+    def _on_loop_toggled(
+        self,
+        sender: Sender,
+        app_data: bool,
+        user_data: str,
+    ) -> None:
         self.call(self.on_loop_changed, user_data, app_data)
 
-    def _on_sample_double_clicked(self, sender: Sender, app_data: List[int]) -> None:
+    def _on_sample_double_clicked(
+        self,
+        sender: Sender,
+        app_data: List[int],
+    ) -> None:
         clicked_item = app_data[1]
         user_data = dpg.get_item_user_data(clicked_item)
         if user_data is not None:
             _, sample_id = user_data
             self.call(self.on_sample_edit_requested, sample_id)
 
-    def _on_sample_clicked(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+    def _on_sample_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+    ) -> None:
         mouse_button, clicked_item = app_data
         if mouse_button != dpg.mvMouseButton_Right:
             return
@@ -491,7 +543,13 @@ class GUISequencerSamplesPanel(GUIPanel):
             header = dpg.add_text(display_sample_label(position, entry.name))
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
-            add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_requested, sample_id))
+            add_play_menu_item(
+                self._lbl_context_play,
+                lambda: self.call(
+                    self.on_play_requested,
+                    sample_id,
+                ),
+            )
             dpg.add_menu_item(
                 label=self._lbl_context_edit,
                 callback=lambda: self.call(self.on_sample_edit_requested, sample_id),
@@ -511,10 +569,34 @@ class GUISequencerSamplesPanel(GUIPanel):
             )
             dpg.add_separator()
             count = len(self._entries)
-            self._add_move_item(self._lbl_context_move_up, sample_id, position, count, MoveDirection.PREVIOUS)
-            self._add_move_item(self._lbl_context_move_down, sample_id, position, count, MoveDirection.NEXT)
-            self._add_move_item(self._lbl_context_move_top, sample_id, position, count, MoveDirection.FIRST)
-            self._add_move_item(self._lbl_context_move_bottom, sample_id, position, count, MoveDirection.LAST)
+            self._add_move_item(
+                self._lbl_context_move_up,
+                sample_id,
+                position,
+                count,
+                MoveDirection.PREVIOUS,
+            )
+            self._add_move_item(
+                self._lbl_context_move_down,
+                sample_id,
+                position,
+                count,
+                MoveDirection.NEXT,
+            )
+            self._add_move_item(
+                self._lbl_context_move_top,
+                sample_id,
+                position,
+                count,
+                MoveDirection.FIRST,
+            )
+            self._add_move_item(
+                self._lbl_context_move_bottom,
+                sample_id,
+                position,
+                count,
+                MoveDirection.LAST,
+            )
 
     def _add_move_item(
         self,

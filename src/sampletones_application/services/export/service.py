@@ -31,10 +31,21 @@ class ExportService(ServiceBase[ExportResult]):
             try:
                 write_wave(filepath, sample_rate, audio)
                 logger.info(f"Exported reconstruction to WAV: {logger.format_path(filepath)}")
-                self._emit(ExportSuccess(kind=ExportKind.WAV, filepath=filepath, truncation=None))
+                self._emit(
+                    ExportSuccess(
+                        kind=ExportKind.WAV,
+                        filepath=filepath,
+                        truncation=None,
+                    )
+                )
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error_with_traceback(exception, f"Failed to export reconstruction to WAV: {filepath}")
-                self._emit(ExportError(kind=ExportKind.WAV, exception=exception))
+                self._emit(
+                    ExportError(
+                        kind=ExportKind.WAV,
+                        exception=exception,
+                    )
+                )
 
         self._executor.execute(task, wait=False)
 
@@ -57,7 +68,12 @@ class ExportService(ServiceBase[ExportResult]):
                 )
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
-                self._emit(ExportError(kind=ExportKind.INSTRUMENT, exception=exception))
+                self._emit(
+                    ExportError(
+                        kind=ExportKind.INSTRUMENT,
+                        exception=exception,
+                    )
+                )
 
         self._executor.execute(task, wait=False)
 
@@ -82,6 +98,11 @@ class ExportService(ServiceBase[ExportResult]):
                 )
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error_with_traceback(exception, f"Failed to export instruments to: {directory}")
-                self._emit(ExportError(kind=ExportKind.INSTRUMENTS, exception=exception))
+                self._emit(
+                    ExportError(
+                        kind=ExportKind.INSTRUMENTS,
+                        exception=exception,
+                    )
+                )
 
         self._executor.execute(task, wait=False)

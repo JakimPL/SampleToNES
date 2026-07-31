@@ -76,7 +76,10 @@ class GUIReconstructionAudioPanel(GUIPanel):
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
         )
-        self._enable_vertical_collapse(initial_collapsed=initial_collapsed, auto_height=True)
+        self._enable_vertical_collapse(
+            initial_collapsed=initial_collapsed,
+            auto_height=True,
+        )
 
     def _load_path_text(self, language_manager: LanguageManager) -> None:
         self._lbl_reconstruction_file = language_manager[
@@ -123,7 +126,10 @@ class GUIReconstructionAudioPanel(GUIPanel):
             self._create_path_display()
 
     def update_view(self, view_model: ReconstructionViewModel) -> None:
-        self._render_path(self._reconstruction_file_path, view_model.reconstruction_file)
+        self._render_path(
+            self._reconstruction_file_path,
+            view_model.reconstruction_file,
+        )
         self._render_path(self._original_audio_path, view_model.original_audio)
 
         dpg_configure_item(
@@ -131,9 +137,16 @@ class GUIReconstructionAudioPanel(GUIPanel):
             enabled=view_model.audio_source_enabled,
         )
         if not view_model.audio_source_enabled:
-            dpg_set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, self._lbl_reconstruction_radio)
+            dpg_set_value(
+                TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
+                self._lbl_reconstruction_radio,
+            )
 
-    def _render_path(self, path_widget: GUIPathText, view_model: ReconstructionPathViewModel) -> None:
+    def _render_path(
+        self,
+        path_widget: GUIPathText,
+        view_model: ReconstructionPathViewModel,
+    ) -> None:
         match view_model.state:
             case ReconstructionPathState.AVAILABLE:
                 path_widget.set_path(view_model.path)
@@ -186,9 +199,15 @@ class GUIReconstructionAudioPanel(GUIPanel):
                 callback=self._on_audio_source_changed,
                 horizontal=True,
             )
-            FontRegistry.bind_to_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, Font.REGULAR_SMALL)
+            FontRegistry.bind_to_item(
+                TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
+                Font.REGULAR_SMALL,
+            )
 
-        dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE, enabled=False)
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
+            enabled=False,
+        )
 
     def _on_audio_source_changed(self, sender: Sender, app_data: str) -> None:
         if app_data == self._lbl_original_audio_radio:

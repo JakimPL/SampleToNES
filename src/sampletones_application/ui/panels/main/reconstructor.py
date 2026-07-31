@@ -173,9 +173,18 @@ class GUIReconstructorPanel(GUIPanel):
                 format=self._layout.drive_format,
             )
 
-        dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._item_handler_tag)
-        self._status_bar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._msg_status_input)
-        FontRegistry.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, Font.MONO)
+        dpg.bind_item_handler_registry(
+            TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+            self._item_handler_tag,
+        )
+        self._status_bar.bind_to_item(
+            TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+            self._msg_status_input,
+        )
+        FontRegistry.bind_to_item(
+            TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+            Font.MONO,
+        )
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._tooltip_drive)

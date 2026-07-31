@@ -156,7 +156,10 @@ class GUISequencerGridPanel(GUIPanel):
 
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 
-        self._lbl_tracker = self._label(language_manager, SequencerGridElements.TRACKER_TEXT)
+        self._lbl_tracker = self._label(
+            language_manager,
+            SequencerGridElements.TRACKER_TEXT,
+        )
         self._load_column_labels(language_manager)
         self._load_context_labels(language_manager)
         self._load_header_tooltips(language_manager)
@@ -186,8 +189,16 @@ class GUISequencerGridPanel(GUIPanel):
         }
 
     @staticmethod
-    def _label(language_manager: LanguageManager, element: SequencerGridElements) -> str:
-        return language_manager[Page.SEQUENCER, Panel.GRID, TextType.LABEL, element]
+    def _label(
+        language_manager: LanguageManager,
+        element: SequencerGridElements,
+    ) -> str:
+        return language_manager[
+            Page.SEQUENCER,
+            Panel.GRID,
+            TextType.LABEL,
+            element,
+        ]
 
     def _load_context_labels(self, language_manager: LanguageManager) -> None:
         def label(element: SequencerGridElements) -> str:
@@ -322,7 +333,11 @@ class GUISequencerGridPanel(GUIPanel):
         swapped. The swap lands pattern row 0 on the same stripe it takes in every other
         table, and the header row's own stripe sits under an opaque header shade.
         """
-        with self._collapsible_card(parent, self._lbl_tracker, glyph=self._glyphs.headers.tracker):
+        with self._collapsible_card(
+            parent,
+            self._lbl_tracker,
+            glyph=self._glyphs.headers.tracker,
+        ):
             dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER)
             with dpg.child_window(
                 tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
@@ -901,7 +916,10 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._show_header_context_menu(self._header_columns[clicked_item])
 
-    def _show_header_context_menu(self, generator: Optional[GeneratorName]) -> None:
+    def _show_header_context_menu(
+        self,
+        generator: Optional[GeneratorName],
+    ) -> None:
         """Opens the menu behind a column header, titled with the column's own name."""
         with context_menu():
             header = dpg.add_text(self._column_labels[generator])
@@ -937,7 +955,9 @@ class GUISequencerGridPanel(GUIPanel):
         subcolumn: SubColumn,
     ) -> None:
         with context_menu():
-            header = dpg.add_text(tracker_display.indexed_label(row_index, self._column_labels[generator]))
+            header = dpg.add_text(
+                tracker_display.indexed_label(row_index, self._column_labels[generator]),
+            )
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             add_play_menu_item(

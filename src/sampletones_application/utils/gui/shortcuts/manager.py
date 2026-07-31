@@ -28,7 +28,11 @@ class ShortcutManager:
     ) -> None:
         self._shortcuts[shortcut_id] = (shortcut, callback)
 
-    def register_alias(self, shortcut_id: ShortcutId, shortcut: Shortcut) -> None:
+    def register_alias(
+        self,
+        shortcut_id: ShortcutId,
+        shortcut: Shortcut,
+    ) -> None:
         """Binds an additional key combination to an already registered action.
 
         The primary shortcut keeps the action's display string in menus and
@@ -67,7 +71,12 @@ class ShortcutManager:
         if shortcut.key is None:
             return
 
-        self._bindings_by_key.setdefault(shortcut.key, []).append((shortcut, callback))
+        self._bindings_by_key.setdefault(shortcut.key, []).append(
+            (
+                shortcut,
+                callback,
+            )
+        )
 
     def _dispatch(self, event: KeyEvent) -> bool:
         """Fires the shortcut matching the event, yielding its key to a focused field that acts on
@@ -88,4 +97,8 @@ class ShortcutManager:
 
     @staticmethod
     def _field_consumes(event: KeyEvent) -> bool:
-        return focus.field_consumes_key(focus.focused_field_kind(), event.key, event.modifiers)
+        return focus.field_consumes_key(
+            focus.focused_field_kind(),
+            event.key,
+            event.modifiers,
+        )

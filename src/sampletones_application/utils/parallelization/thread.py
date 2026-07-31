@@ -44,7 +44,9 @@ class SingleThreadExecutor:
                 target()
             finally:
                 with SingleThreadExecutor._live_threads_lock:
-                    SingleThreadExecutor._live_threads.discard(threading.current_thread())
+                    SingleThreadExecutor._live_threads.discard(
+                        threading.current_thread(),
+                    )
 
         with self._lock:
             thread = threading.Thread(

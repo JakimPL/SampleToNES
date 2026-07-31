@@ -64,7 +64,10 @@ class GUIInstructionWaveformPanel(GUIPanel):
     def set_display_height(self, height: int) -> None:
         self.display.set_height(height)
 
-    def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
+    def load_library_fragment(
+        self,
+        fragment: InstructionLibraryFragment[Any],
+    ) -> None:
         self.display.load_library_fragment(fragment)
 
     def clear_layers(self) -> None:

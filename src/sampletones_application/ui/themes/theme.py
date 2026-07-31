@@ -30,7 +30,12 @@ class Theme:
         dictionary: ThemeDictionary = {}
         for parameter, values in items.items.items():
             for item in values:
-                dictionary[parameter, item.key, item.category, isinstance(item, ThemeStyle)] = item
+                dictionary[
+                    parameter,
+                    item.key,
+                    item.category,
+                    isinstance(item, ThemeStyle),
+                ] = item
 
         return dictionary
 
@@ -93,9 +98,16 @@ class Theme:
         enabled_state: bool = True,
         category: int = dpg.mvThemeCat_Core,
     ) -> Optional[Color]:
-        theme_item = self.get(item_type, key, enabled_state=enabled_state, category=category, is_style=False)
+        theme_item = self.get(
+            item_type,
+            key,
+            enabled_state=enabled_state,
+            category=category,
+            is_style=False,
+        )
         if isinstance(theme_item, ThemeColor):
             return theme_item.color
+
         return None
 
     def get_style(
@@ -106,9 +118,16 @@ class Theme:
         enabled_state: bool = True,
         category: int = dpg.mvThemeCat_Core,
     ) -> Optional[Tuple[float, float]]:
-        theme_item = self.get(item_type, key, enabled_state=enabled_state, category=category, is_style=True)
+        theme_item = self.get(
+            item_type,
+            key,
+            enabled_state=enabled_state,
+            category=category,
+            is_style=True,
+        )
         if isinstance(theme_item, ThemeStyle):
             return theme_item.x, theme_item.y
+
         return None
 
     def get_category(
@@ -129,4 +148,5 @@ class Theme:
                 )
                 if theme_item is not None:
                     return theme_item.category
+
         return None

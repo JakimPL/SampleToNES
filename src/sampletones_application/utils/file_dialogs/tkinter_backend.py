@@ -66,7 +66,9 @@ def _initial_directory(initial_directory: Optional[Path]) -> Optional[str]:
     return str(initial_directory) if initial_directory is not None else None
 
 
-def _filetypes(file_filter: Optional[FileFilter]) -> List[Tuple[str, Tuple[str, ...]]]:
+def _filetypes(
+    file_filter: Optional[FileFilter],
+) -> List[Tuple[str, Tuple[str, ...]]]:
     if file_filter is None:
         return []
 

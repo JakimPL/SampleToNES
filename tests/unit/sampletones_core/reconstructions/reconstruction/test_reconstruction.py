@@ -23,6 +23,7 @@ from tests.conftest import ReconstructionFactory
 from tests.suite.arrays import assert_array_equal
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.errors import DIRECTORY_READ_ERRORS
 
 _RETUNED_FREQUENCY: Final[int] = 60
 _FASTER_FREQUENCY: Final[int] = 120
@@ -103,7 +104,7 @@ class TestLoadFileAccess(BaseTestSuite):
         TestCase(
             label="directory",
             make_path=lambda root: root,
-            expected=IsADirectoryError,
+            expected=DIRECTORY_READ_ERRORS,
         ),
     ]
 

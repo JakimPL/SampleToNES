@@ -71,7 +71,11 @@ class GUIStatusBar:
         **kwargs: Any,
     ) -> None:
         if message_or_function is not None:
-            self.message = self.get_message(message_or_function, *args, **kwargs)
+            self.message = self.get_message(
+                message_or_function,
+                *args,
+                **kwargs,
+            )
             self.timer = self._display_time
 
         dpg_configure_item(self.tag, label=self.message)

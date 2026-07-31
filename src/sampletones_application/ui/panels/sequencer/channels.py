@@ -19,7 +19,6 @@ from sampletones_shared.types.callback import VoidCallback
 OnChannelCallback = Callable[[GeneratorName], None]
 
 NOTHING_MUTED: Final[SequencerChannelsViewModel] = SequencerChannelsViewModel(muted=frozenset())
-"""The mix a channel name reads before the first model arrives: every channel audible."""
 
 
 class ChannelMenuLabels(BaseModel, extra="forbid", frozen=True):

@@ -118,7 +118,10 @@ class SessionManager:
     def current_project(self) -> Optional[Path]:
         return self._state_manager.current_project
 
-    def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
+    def set_current_audio_device(
+        self,
+        audio_device_manager: AudioDeviceManager,
+    ) -> None:
         self._config_manager.set_current_audio_device(audio_device_manager)
 
     def set_master_gain(self, value: float) -> None:

@@ -113,4 +113,9 @@ class ExportMessages:
         text_type: TextType,
         element: ReconstructionsInstrumentsElements,
     ) -> str:
-        return language_manager[Page.RECONSTRUCTIONS, Panel.INSTRUMENTS, text_type, element]
+        return language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.INSTRUMENTS,
+            text_type,
+            element,
+        ]

@@ -54,9 +54,10 @@ The [**development**](development/) section is for contributors.
 
 - [Architecture](development/architecture.md) — the application's layers and the contracts between them.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
+- [Playback](development/playback.md) — the audio transport shared by every view.
+- [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
 - [Dependencies](development/dependencies.md) — the libraries _SampleToNES_ builds on.
-- [Releasing](development/release.md) — the release process, what the workflow does, and the license checks.
 - [Bugs and to-dos](development/bugs-and-todos.md) — the working ledger of known gaps.
 
 ## Glossary

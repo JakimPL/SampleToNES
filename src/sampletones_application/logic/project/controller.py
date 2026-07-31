@@ -218,13 +218,21 @@ class ProjectController(CallbackMixin):
         self.call(self.on_song_changed)
         return index
 
-    def duplicate_pattern(self, generator: GeneratorName, pattern_index: int) -> int:
+    def duplicate_pattern(
+        self,
+        generator: GeneratorName,
+        pattern_index: int,
+    ) -> int:
         clone_index = self.song.duplicate_pattern(generator, pattern_index)
         self._touch()
         self.call(self.on_song_changed)
         return clone_index
 
-    def remove_pattern(self, generator: GeneratorName, pattern_index: int) -> None:
+    def remove_pattern(
+        self,
+        generator: GeneratorName,
+        pattern_index: int,
+    ) -> None:
         self.song.remove_pattern(generator, pattern_index)
         self._touch()
         self.call(self.on_song_changed)

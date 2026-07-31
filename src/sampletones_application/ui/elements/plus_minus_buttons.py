@@ -74,7 +74,10 @@ class GUIPlusMinusButtons(CallbackMixin):
         self._decrement_button: Optional[GUIButton] = None
         self._increment_button: Optional[GUIButton] = None
 
-        self._build(increment_enabled=increment_enabled, decrement_enabled=decrement_enabled)
+        self._build(
+            increment_enabled=increment_enabled,
+            decrement_enabled=decrement_enabled,
+        )
 
     def set_decrement_enabled(self, enabled: bool) -> None:
         if self._decrement_button is not None:
@@ -96,8 +99,14 @@ class GUIPlusMinusButtons(CallbackMixin):
             width=0,
             height=0,
         ):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.button_width)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.button_width)
+            dpg.add_table_column(
+                width_fixed=True,
+                init_width_or_weight=self._layout.button_width,
+            )
+            dpg.add_table_column(
+                width_fixed=True,
+                init_width_or_weight=self._layout.button_width,
+            )
             with dpg.table_row():
                 with dpg.table_cell():
                     self._add_button(
@@ -116,7 +125,13 @@ class GUIPlusMinusButtons(CallbackMixin):
         if self._hold_repeat:
             self._setup_button_hold_handlers()
 
-    def _add_button(self, *, increment: bool, increment_enabled: bool, decrement_enabled: bool) -> None:
+    def _add_button(
+        self,
+        *,
+        increment: bool,
+        increment_enabled: bool,
+        decrement_enabled: bool,
+    ) -> None:
         if increment:
             self._increment_button = GUIButton(
                 label=PLUS,
@@ -148,8 +163,14 @@ class GUIPlusMinusButtons(CallbackMixin):
 
     def _setup_button_hold_handlers(self) -> None:
         with dpg.handler_registry(tag=self._mouse_handler_tag):
-            dpg.add_mouse_down_handler(button=dpg.mvMouseButton_Left, callback=self._on_mouse_down)
-            dpg.add_mouse_release_handler(button=dpg.mvMouseButton_Left, callback=self._on_mouse_release)
+            dpg.add_mouse_down_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_mouse_down,
+            )
+            dpg.add_mouse_release_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_mouse_release,
+            )
 
     def _step(self, direction: int) -> None:
         if direction > 0:
@@ -163,22 +184,41 @@ class GUIPlusMinusButtons(CallbackMixin):
     def _on_decrement(self, *_arguments: Any) -> None:
         self._step(-1)
 
-    def _on_mouse_down(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+    def _on_mouse_down(
+        self,
+        sender: Sender,
+        app_data: Any,
+        user_data: Any,
+    ) -> None:
         if not dpg.does_item_exist(self._decrement_button_tag) or not dpg.does_item_exist(self._increment_button_tag):
             dpg_delete_item(sender)
             return
 
         is_decrement = self._decrement_button is not None and bool(self._decrement_button.is_item_hovered())
         is_increment = self._increment_button is not None and bool(self._increment_button.is_item_hovered())
-        direction = self._update_hold_timer(is_decrement, is_increment, dpg.get_delta_time())
+        direction = self._update_hold_timer(
+            is_decrement,
+            is_increment,
+            dpg.get_delta_time(),
+        )
         if direction is not None:
             self._step(direction)
 
-    def _on_mouse_release(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+    def _on_mouse_release(
+        self,
+        sender: Sender,
+        app_data: Any,
+        user_data: Any,
+    ) -> None:
         self._hold_timer = None
         self._hold_direction = None
 
-    def _update_hold_timer(self, is_decrement: bool, is_increment: bool, delta_time: float) -> Optional[int]:
+    def _update_hold_timer(
+        self,
+        is_decrement: bool,
+        is_increment: bool,
+        delta_time: float,
+    ) -> Optional[int]:
         """Drives click-and-hold repetition: the first frame of a press arms the timer with a longer
         initial delay, and each later frame repeats once the delay elapses. Returns the step direction on
         the frames that should advance the value, otherwise None.

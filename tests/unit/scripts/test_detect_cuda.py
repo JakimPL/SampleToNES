@@ -78,14 +78,14 @@ class TestQueryDriverCudaVersion(BaseTestSuite):
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_parse(self, test_case: "TestQueryDriverCudaVersion.TestCase", monkeypatch: pytest.MonkeyPatch) -> None:
-        def fake_run(command: Sequence[str], **_: object) -> subprocess.CompletedProcess[str]:
+        def fake_run(command: Sequence[str], **_: Any) -> subprocess.CompletedProcess[str]:
             return _completed(test_case.output)
 
         monkeypatch.setattr(detect_cuda.subprocess, "run", fake_run)
         assert detect_cuda.query_driver_cuda_version(Path("nvidia-smi")) == test_case.expected
 
     def test_falls_back_to_query_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        def fake_run(command: Sequence[str], **_: object) -> subprocess.CompletedProcess[str]:
+        def fake_run(command: Sequence[str], **_: Any) -> subprocess.CompletedProcess[str]:
             output = QUERY_OUTPUT_CUDA11 if "-q" in command else NO_VERSION_OUTPUT
             return _completed(output)
 
@@ -93,14 +93,14 @@ class TestQueryDriverCudaVersion(BaseTestSuite):
         assert detect_cuda.query_driver_cuda_version(Path("nvidia-smi")) == (11, 8)
 
     def test_missing_executable_keeps_cpu(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        def fake_run(command: Sequence[str], **_: object) -> subprocess.CompletedProcess[str]:
+        def fake_run(command: Sequence[str], **_: Any) -> subprocess.CompletedProcess[str]:
             raise OSError("nvidia-smi is not executable")
 
         monkeypatch.setattr(detect_cuda.subprocess, "run", fake_run)
         assert detect_cuda.query_driver_cuda_version(Path("nvidia-smi")) is None
 
     def test_nonzero_return_code_keeps_cpu(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        def fake_run(command: Sequence[str], **_: object) -> subprocess.CompletedProcess[str]:
+        def fake_run(command: Sequence[str], **_: Any) -> subprocess.CompletedProcess[str]:
             return _completed(TABLE_OUTPUT_CUDA12, returncode=9)
 
         monkeypatch.setattr(detect_cuda.subprocess, "run", fake_run)

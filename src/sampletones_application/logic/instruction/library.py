@@ -300,7 +300,10 @@ class LibraryLogic(CallbackMixin):
         try:
             library_key = create_key_from_filename(filepath.name)
         except ValueError as exception:
-            logger.error_with_traceback(exception, f"Invalid library file name format: {filepath.name}")
+            logger.error_with_traceback(
+                exception,
+                f"Invalid library file name format: {filepath.name}",
+            )
             self.call(self.on_load_error, exception, self._msg_load_error)
             return
 
@@ -363,7 +366,11 @@ class LibraryLogic(CallbackMixin):
         config_key = self._config_manager.key
         matching_key = self._library_manager.sync_with_config_key(config_key)
         if matching_key:
-            self._set_current_library(matching_key, load_if_needed=load_if_needed, apply_config=False)
+            self._set_current_library(
+                matching_key,
+                load_if_needed=load_if_needed,
+                apply_config=False,
+            )
 
     def _set_current_library(
         self,
@@ -380,7 +387,11 @@ class LibraryLogic(CallbackMixin):
         self.update_status()
 
     def load_library_and_set_current(self, library_key: InstructionLibraryKey) -> None:
-        self._set_current_library(library_key, load_if_needed=True, apply_config=True)
+        self._set_current_library(
+            library_key,
+            load_if_needed=True,
+            apply_config=True,
+        )
 
     def _load_library(self, library_key: InstructionLibraryKey) -> None:
         if self._is_locked:
@@ -391,7 +402,10 @@ class LibraryLogic(CallbackMixin):
             self._library_manager.load_library(library_key)
             logger.info(f"Library loaded: {library_key}")
         except FileNotFoundError as exception:
-            logger.error_with_traceback(exception, f"Library file not found for key {library_key}")
+            logger.error_with_traceback(
+                exception,
+                f"Library file not found for key {library_key}",
+            )
             self.call(
                 self.on_load_file_not_found,
                 self._library_manager.get_path(library_key),
@@ -403,14 +417,21 @@ class LibraryLogic(CallbackMixin):
             PermissionError,
             OSError,
         ) as exception:
-            logger.error_with_traceback(exception, f"Error loading library file for key {library_key}")
+            logger.error_with_traceback(
+                exception,
+                f"Error loading library file for key {library_key}",
+            )
             self.call(self.on_load_error, exception, self._msg_file_load_error)
         except InvalidMetadataError as exception:
             logger.error_with_traceback(
                 exception,
                 f"Invalid metadata in library file for key {library_key}",
             )
-            self.call(self.on_load_error, exception, self._msg_invalid_metadata_error)
+            self.call(
+                self.on_load_error,
+                exception,
+                self._msg_invalid_metadata_error,
+            )
         except InvalidLibraryDataValuesError as exception:
             logger.error_with_traceback(
                 exception,
@@ -422,7 +443,10 @@ class LibraryLogic(CallbackMixin):
                 self._msg_invalid_data_values_error,
             )
         except InvalidLibraryDataError as exception:
-            logger.error_with_traceback(exception, f"Invalid library data file for {library_key}")
+            logger.error_with_traceback(
+                exception,
+                f"Invalid library data file for {library_key}",
+            )
             self.call(self.on_load_error, exception, self._msg_invalid_data_error)
         except IncompatibleLibraryDataVersionError as exception:
             logger.error_with_traceback(
@@ -443,7 +467,11 @@ class LibraryLogic(CallbackMixin):
                 exception,
                 f"Deserialization error loading library for key {library_key}",
             )
-            self.call(self.on_load_error, exception, self._msg_deserialization_error)
+            self.call(
+                self.on_load_error,
+                exception,
+                self._msg_deserialization_error,
+            )
         except LoadLibraryError as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
             self.call(self.on_load_error, exception, self._msg_load_error)
@@ -518,7 +546,12 @@ class LibraryLogic(CallbackMixin):
             self._do_unlock()
             self.call(self.on_generation_state_changed)
 
-    def _emit_view(self, status_text: Optional[str] = None, *, progress: float = 0.0) -> None:
+    def _emit_view(
+        self,
+        status_text: Optional[str] = None,
+        *,
+        progress: float = 0.0,
+    ) -> None:
         """Builds and emits the panel view model from freshly computed values.
 
         ``status_text`` of ``None`` renders the idle status derived from the manager state;

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,7 +23,7 @@ def _coordinator(config_manager: MagicMock) -> ConfigCoordinator:
     )
 
 
-def _manager_with(*outcomes: object, config_path: Path = Path("config.json")) -> MagicMock:
+def _manager_with(*outcomes: Any, config_path: Path = Path("config.json")) -> MagicMock:
     config_manager = MagicMock()
     config_manager.config_path = config_path
     config_manager.pending_load_outcomes = list(outcomes)

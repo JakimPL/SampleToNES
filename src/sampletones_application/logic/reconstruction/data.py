@@ -110,7 +110,9 @@ class ReconstructionData:
         return audio_filepath.stem if audio_filepath is not None else filepath.stem
 
     @staticmethod
-    def _load_original_audio(reconstruction: Reconstruction) -> Optional[np.ndarray]:
+    def _load_original_audio(
+        reconstruction: Reconstruction,
+    ) -> Optional[np.ndarray]:
         """Loads the source audio, yielding ``None`` when no usable original exists.
 
         A reconstruction detached from its origin (a project sample) records no source path, and a

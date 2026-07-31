@@ -55,22 +55,30 @@ class ConfigManager:
         except FileNotFoundError as exception:
             self.load_default_config()
             logger.error(f"Config file not found: {config_path}")
-            self.pending_load_outcomes.append(ConfigLoadFailure(exception, ConfigLoadFailureReason.LOAD_ERROR))
+            self.pending_load_outcomes.append(
+                ConfigLoadFailure(exception, ConfigLoadFailureReason.LOAD_ERROR),
+            )
         except OSError as exception:
             self.load_default_config()
             logger.error_with_traceback(
                 exception,
                 f"File error while loading config from {config_path}",
             )
-            self.pending_load_outcomes.append(ConfigLoadFailure(exception, ConfigLoadFailureReason.LOAD_ERROR))
+            self.pending_load_outcomes.append(
+                ConfigLoadFailure(exception, ConfigLoadFailureReason.LOAD_ERROR),
+            )
         except (json.JSONDecodeError, UnicodeDecodeError, TypeError) as exception:
             self.load_default_config()
             logger.error_with_traceback(exception, f"Unreadable config file: {config_path}")
-            self.pending_load_outcomes.append(ConfigLoadFailure(exception, ConfigLoadFailureReason.PARSE_ERROR))
+            self.pending_load_outcomes.append(
+                ConfigLoadFailure(exception, ConfigLoadFailureReason.PARSE_ERROR),
+            )
         except ValidationError as exception:
             self.load_default_config()
             logger.error_with_traceback(exception, f"Invalid config file: {config_path}")
-            self.pending_load_outcomes.append(ConfigLoadFailure(exception, ConfigLoadFailureReason.INVALID))
+            self.pending_load_outcomes.append(
+                ConfigLoadFailure(exception, ConfigLoadFailureReason.INVALID),
+            )
 
     def save_config(self) -> None:
         if not self.config:
@@ -102,7 +110,10 @@ class ConfigManager:
         self.window = Window.from_config(self.config)
         self.update_gui()
 
-    def apply_generation_settings(self, update: GenerationSettingsUpdate) -> None:
+    def apply_generation_settings(
+        self,
+        update: GenerationSettingsUpdate,
+    ) -> None:
         new_generation = self.config.generation.model_copy(
             update={
                 "drive": update.drive,
@@ -131,7 +142,9 @@ class ConfigManager:
                 "transformation_gamma": update.transformation_gamma,
             }
         )
-        self.config = self.config.model_copy(update={"general": new_general, "library": new_library})
+        self.config = self.config.model_copy(
+            update={"general": new_general, "library": new_library},
+        )
         self.window = Window.from_config(self.config)
         self.library_directory = update.library_directory
         self.reconstructions_directory = update.reconstructions_directory
@@ -171,7 +184,9 @@ class ConfigManager:
             }
         )
 
-        self.config = self.config.model_copy(update={"library": new_library_config})
+        self.config = self.config.model_copy(
+            update={"library": new_library_config},
+        )
         self.window = Window.from_config(self.config)
         self.update_gui()
 

@@ -5,6 +5,7 @@ import pytest
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.exceptions import NotAValidArchiveError
+from tests.suite.errors import DIRECTORY_READ_ERRORS
 
 
 class TestProjectManager:
@@ -49,8 +50,8 @@ class TestLoadPropagatesErrors:
         with pytest.raises(FileNotFoundError):
             ProjectManager().load(tmp_path / "nope.stp")
 
-    def test_directory_raises_is_a_directory(self, tmp_path: Path) -> None:
-        with pytest.raises(IsADirectoryError):
+    def test_directory_raises_directory_read_error(self, tmp_path: Path) -> None:
+        with pytest.raises(DIRECTORY_READ_ERRORS):
             ProjectManager().load(tmp_path)
 
     def test_invalid_archive_raises_load_project_error(self, tmp_path: Path) -> None:

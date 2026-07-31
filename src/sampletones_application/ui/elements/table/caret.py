@@ -80,7 +80,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
     def set_target(
         cls,
         *,
-        owner: object,
+        owner: Any,
         widget: Optional[Sender],
         caret_index: int,
         font: Font,
@@ -102,7 +102,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
         cls._clip_widget = clip_widget
 
     @classmethod
-    def clear(cls, owner: object) -> None:
+    def clear(cls, owner: Any) -> None:
         """Disarms the caret, but only if ``owner`` currently holds it."""
         if cls._owner is not None and cls._owner != owner:
             return

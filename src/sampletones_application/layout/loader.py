@@ -18,26 +18,74 @@ from sampletones_application.utils.palette import PALETTE_CONTEXT_KEY, Palette
 from sampletones_shared.utils.serialization import load_yaml_model, load_yaml_model_dir
 
 
-def load_layout_config(layout_directory: Path, behavior_directory: Path, palette: Palette) -> LayoutConfig:
+def load_layout_config(
+    layout_directory: Path,
+    behavior_directory: Path,
+    palette: Palette,
+) -> LayoutConfig:
     context = {PALETTE_CONTEXT_KEY: palette}
     tabs_directory = layout_directory / "tabs"
     return LayoutConfig(
-        general=load_yaml_model_dir(layout_directory / "general", GeneralLayout, context=context),
-        fonts=load_yaml_model(layout_directory / "fonts.yaml", FontsLayout, context=context),
-        glyphs=load_yaml_model(layout_directory / "glyphs.yaml", Glyphs, context=context),
-        graphs=load_yaml_model_dir(layout_directory / "graphs", GraphsLayout, context=context),
+        general=load_yaml_model_dir(
+            layout_directory / "general",
+            GeneralLayout,
+            context=context,
+        ),
+        fonts=load_yaml_model(
+            layout_directory / "fonts.yaml",
+            FontsLayout,
+            context=context,
+        ),
+        glyphs=load_yaml_model(
+            layout_directory / "glyphs.yaml",
+            Glyphs,
+            context=context,
+        ),
+        graphs=load_yaml_model_dir(
+            layout_directory / "graphs",
+            GraphsLayout,
+            context=context,
+        ),
         tabs=TabsLayout(
-            main=load_yaml_model_dir(tabs_directory / "main", MainLayout, context=context),
-            instructions=load_yaml_model_dir(tabs_directory / "instructions", InstructionsLayout, context=context),
-            reconstruction=load_yaml_model_dir(
-                tabs_directory / "reconstruction", ReconstructionLayout, context=context
+            main=load_yaml_model_dir(
+                tabs_directory / "main",
+                MainLayout,
+                context=context,
             ),
-            sequencer=load_yaml_model_dir(tabs_directory / "sequencer", SequencerLayout, context=context),
+            instructions=load_yaml_model_dir(
+                tabs_directory / "instructions",
+                InstructionsLayout,
+                context=context,
+            ),
+            reconstruction=load_yaml_model_dir(
+                tabs_directory / "reconstruction",
+                ReconstructionLayout,
+                context=context,
+            ),
+            sequencer=load_yaml_model_dir(
+                tabs_directory / "sequencer",
+                SequencerLayout,
+                context=context,
+            ),
         ),
-        player=load_yaml_model_dir(layout_directory / "player", PlayerLayout, context=context),
+        player=load_yaml_model_dir(
+            layout_directory / "player",
+            PlayerLayout,
+            context=context,
+        ),
         project_properties=load_yaml_model_dir(
-            layout_directory / "project_properties", ProjectPropertiesLayout, context=context
+            layout_directory / "project_properties",
+            ProjectPropertiesLayout,
+            context=context,
         ),
-        settings=load_yaml_model_dir(layout_directory / "settings", SettingsLayout, context=context),
-        behavior=load_yaml_model(behavior_directory / "general.yaml", BehaviorConfig, context=context),
+        settings=load_yaml_model_dir(
+            layout_directory / "settings",
+            SettingsLayout,
+            context=context,
+        ),
+        behavior=load_yaml_model(
+            behavior_directory / "general.yaml",
+            BehaviorConfig,
+            context=context,
+        ),
     )

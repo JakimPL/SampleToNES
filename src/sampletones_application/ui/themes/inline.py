@@ -41,7 +41,10 @@ def _create_selectable_theme(colors: Dict[int, ColorRGBA]) -> int:
     """
     with dpg.theme() as theme:
         for enabled_state in (True, False):
-            with dpg.theme_component(dpg.mvSelectable, enabled_state=enabled_state):
+            with dpg.theme_component(
+                dpg.mvSelectable,
+                enabled_state=enabled_state,
+            ):
                 for key, color in colors.items():
                     dpg.add_theme_color(
                         key,

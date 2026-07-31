@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import threading
 from collections import deque
 from dataclasses import dataclass
@@ -93,7 +91,12 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._synthesizer.set_position(order_position, row_index)
         self._synthesizer.reset()
         self._playback_error = None
-        self._prefetch_samples = max(1, round(PREFETCH_SECONDS * self._audio_device_manager.sample_rate))
+        self._prefetch_samples = max(
+            1,
+            round(
+                PREFETCH_SECONDS * self._audio_device_manager.sample_rate,
+            ),
+        )
         self._stop_event.clear()
         self._resume_event.set()
         self._render_thread = threading.Thread(

@@ -1,4 +1,4 @@
-from typing import Annotated, Final
+from typing import Annotated, Any, Final
 
 import numpy as np
 from pydantic import BeforeValidator
@@ -80,7 +80,7 @@ def parse_hex_color(value: str) -> ColorRGBA:
     return (r, g, b, a)
 
 
-def _rgba_validator(value: object) -> ColorRGBA:
+def _rgba_validator(value: Any) -> ColorRGBA:
     if isinstance(value, str):
         return parse_hex_color(value)
 

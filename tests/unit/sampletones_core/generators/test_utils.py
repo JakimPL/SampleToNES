@@ -1,3 +1,5 @@
+from typing import Dict
+
 import pytest
 
 from sampletones_core.configs import Config
@@ -71,17 +73,17 @@ class TestGetRemainingGeneratorClasses:
 
 
 class TestGetGeneratorByInstruction:
-    def test_pulse_instruction_returns_pulse_generator(self, all_generators: dict) -> None:
+    def test_pulse_instruction_returns_pulse_generator(self, all_generators: Dict) -> None:
         instruction = PulseInstruction(on=True, pitch=60, volume=15, duty_cycle=0)
         result = get_generator_by_instruction(instruction, all_generators)
         assert isinstance(result, PulseGenerator)
 
-    def test_noise_instruction_returns_noise_generator(self, all_generators: dict) -> None:
+    def test_noise_instruction_returns_noise_generator(self, all_generators: Dict) -> None:
         instruction = NoiseInstruction(on=True, period=3, volume=15, short=False)
         result = get_generator_by_instruction(instruction, all_generators)
         assert isinstance(result, NoiseGenerator)
 
-    def test_triangle_instruction_returns_triangle_generator(self, all_generators: dict) -> None:
+    def test_triangle_instruction_returns_triangle_generator(self, all_generators: Dict) -> None:
         instruction = TriangleInstruction(on=True, pitch=60)
         result = get_generator_by_instruction(instruction, all_generators)
         assert isinstance(result, TriangleGenerator)

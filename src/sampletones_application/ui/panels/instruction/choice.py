@@ -150,21 +150,39 @@ class GUIInstructionChoicePanel(GUIPanel):
             TextType.TEMPLATE,
             InstructionsDetailsElements.PITCH_TOOLTIP_TEMPLATE,
         ]
-        self._pitch_tooltip = build_pitch_tooltip(language_manager, PITCH_VALUE_KIND, tooltip_template)
-        self._period_tooltip = build_pitch_tooltip(language_manager, PERIOD_VALUE_KIND, tooltip_template)
+        self._pitch_tooltip = build_pitch_tooltip(
+            language_manager,
+            PITCH_VALUE_KIND,
+            tooltip_template,
+        )
+        self._period_tooltip = build_pitch_tooltip(
+            language_manager,
+            PERIOD_VALUE_KIND,
+            tooltip_template,
+        )
 
         super().__init__(
             tag=TAG_INSTRUCTIONS_DETAILS_PANEL,
         )
-        self._enable_vertical_collapse(initial_collapsed=initial_collapsed, auto_height=True)
+        self._enable_vertical_collapse(
+            initial_collapsed=initial_collapsed,
+            auto_height=True,
+        )
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with self._collapsible_card(parent, self._lbl_section, glyph=self._glyphs.headers.details):
+        with self._collapsible_card(
+            parent,
+            self._lbl_section,
+            glyph=self._glyphs.headers.details,
+        ):
             self._create_instructions_choice_inputs()
             self._create_no_instruction_text()
 
-    def update_choice(self, instruction_data: Optional[InstructionPanelData]) -> None:
+    def update_choice(
+        self,
+        instruction_data: Optional[InstructionPanelData],
+    ) -> None:
         self._current_instruction_data = instruction_data
         dpg_configure_item(TAG_INSTRUCTIONS_DETAILS_TEXT_INFO, show=instruction_data is None)
         self._update_instructions_choice_panel(instruction_data)
@@ -192,7 +210,10 @@ class GUIInstructionChoicePanel(GUIPanel):
         ):
             pass
 
-    def _update_instructions_choice_panel(self, instruction_data: Optional[InstructionPanelData]) -> None:
+    def _update_instructions_choice_panel(
+        self,
+        instruction_data: Optional[InstructionPanelData],
+    ) -> None:
         dpg_delete_children(TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE)
         if instruction_data is None:
             return
@@ -279,7 +300,10 @@ class GUIInstructionChoicePanel(GUIPanel):
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
             FontRegistry.bind_to_item(tag, Font.MONO)
 
-    def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
+    def _create_triangle_instruction_choice_panel(
+        self,
+        instruction: TriangleInstruction,
+    ) -> None:
         self._create_pitch_stepper(
             kind=PITCH_VALUE_KIND,
             initial_value=instruction.pitch,
@@ -287,7 +311,10 @@ class GUIInstructionChoicePanel(GUIPanel):
             tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
         )
 
-    def _create_noise_instruction_choice_panel(self, instruction: NoiseInstruction) -> None:
+    def _create_noise_instruction_choice_panel(
+        self,
+        instruction: NoiseInstruction,
+    ) -> None:
         self._create_pitch_stepper(
             kind=PERIOD_VALUE_KIND,
             initial_value=instruction.period,
@@ -316,14 +343,20 @@ class GUIInstructionChoicePanel(GUIPanel):
         )
 
         self._status_bar.bind_to_item(
-            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME, self._msg_status_input
+            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            self._msg_status_input,
         )
-        FontRegistry.bind_to_item(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME, Font.MONO)
+        FontRegistry.bind_to_item(
+            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            Font.MONO,
+        )
         self._status_bar.bind_to_item(
-            TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT, self._msg_status_input
+            TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+            self._msg_status_input,
         )
         dpg.bind_item_handler_registry(
-            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME, self._item_handler_tag
+            TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            self._item_handler_tag,
         )
 
     def _on_instruction_changed(self, *_arguments: Any) -> None:
@@ -341,7 +374,11 @@ class GUIInstructionChoicePanel(GUIPanel):
             case GeneratorClassName.PULSE_GENERATOR:
                 pitch = self._pitch_stepper.value
                 volume = int(
-                    clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_VOLUME), 1, MAX_VOLUME)
+                    clamp(
+                        dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_VOLUME),
+                        1,
+                        MAX_VOLUME,
+                    )
                 )
                 duty_cycle = int(
                     clamp(
@@ -369,7 +406,11 @@ class GUIInstructionChoicePanel(GUIPanel):
                 )
             case GeneratorClassName.NOISE_GENERATOR:
                 volume = int(
-                    clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME), 1, MAX_VOLUME)
+                    clamp(
+                        dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_VOLUME),
+                        1,
+                        MAX_VOLUME,
+                    )
                 )
                 short = bool(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT))
                 instruction = NoiseInstruction(

@@ -20,7 +20,7 @@ Instruction libraries and reconstructions are serialized with [MessagePack](http
 
 ## Linux (standalone executable)
 
-Building a standalone executable on Linux needs the PortAudio and Tk system packages. Install them with `make system-deps` (or run `scripts/linux/build/dependencies.sh`), which holds the full list.
+Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. Install them with `make system-deps` (or run `scripts/linux/build/dependencies.sh`), which holds the full list.
 
 PortAudio is required. Tk backs the file dialogs where `kdialog` and `zenity` are absent, and `make release` requires it so the shipped executable stays self-contained.
 

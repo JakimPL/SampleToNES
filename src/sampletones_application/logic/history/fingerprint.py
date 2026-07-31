@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import hashlib
 from typing import Callable, Dict, Iterable, List, Tuple
 

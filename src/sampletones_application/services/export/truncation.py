@@ -21,7 +21,10 @@ class ExportTruncation:
     instruments: int
 
     @classmethod
-    def summarize(cls, truncations: Sequence[Optional[SequenceTruncation]]) -> Optional[ExportTruncation]:
+    def summarize(
+        cls,
+        truncations: Sequence[Optional[SequenceTruncation]],
+    ) -> Optional[ExportTruncation]:
         """Gathers the per-instrument shortenings of one export into a single report.
 
         Args:

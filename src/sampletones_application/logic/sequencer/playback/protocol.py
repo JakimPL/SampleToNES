@@ -19,7 +19,13 @@ class ChannelGeneratorProtocol(Protocol):
     lies outside the static type system.
     """
 
-    def __call__(self, instruction: Any, /, initials: Any = None, save: bool = False) -> np.ndarray: ...
+    def __call__(
+        self,
+        instruction: Any,
+        /,
+        initials: Any = None,
+        save: bool = False,
+    ) -> np.ndarray: ...
 
     def reset(self) -> None: ...
 
