@@ -14,11 +14,21 @@ REFERENCE_PITCH: Final[int] = 60
 
 
 class FakeFeatures(Dict[Any, Any]):
-    """Stands in for ``Features``: records the edited dimension and carries a reference pitch."""
+    """Stands in for ``Features``: records the edited dimension and carries a reference pitch.
+
+    Assigning ``FeatureKey.INITIAL_PITCH`` moves the reference pitch, matching the real model,
+    so the pitch stepper's edit is observable through ``initial_pitch``.
+    """
 
     def __init__(self, initial_pitch: int) -> None:
         super().__init__()
         self.initial_pitch = initial_pitch
+
+    def __setitem__(self, feature_key: Any, value: Any) -> None:
+        if feature_key == FeatureKey.INITIAL_PITCH:
+            self.initial_pitch = value
+        else:
+            super().__setitem__(feature_key, value)
 
 
 @pytest.fixture
@@ -186,6 +196,43 @@ class TestRegenerationServiceRun:
         reconstruction.update_generator_data.assert_not_called()
         call_args = updated.update_generator_data.call_args
         assert call_args.args[0] == synthesis_mocks.generator_name
+
+    def test_run_carries_the_reference_pitch_through_an_arpeggio_edit(
+        self, synthesis_mocks, reconstruction, features
+    ) -> None:
+        """An arpeggio edit stores the reference pitch the edit was made from.
+
+        Handing the unchanged reference back to the reconstruction is what keeps a later
+        export measuring the envelope against the same base.
+        """
+        service = RegenerationService()
+
+        service._run(
+            reconstruction,
+            synthesis_mocks.generator_name,
+            features,
+            FeatureKey.ARPEGGIO,
+            np.array([12, 0], dtype=np.int8),
+        )
+
+        call_args = reconstruction.model_copy.return_value.update_generator_data.call_args
+        assert call_args.args[3] == REFERENCE_PITCH
+
+    def test_run_carries_a_moved_reference_pitch(self, synthesis_mocks, reconstruction, features) -> None:
+        """The pitch stepper's edit stores the new reference pitch."""
+        moved_pitch = REFERENCE_PITCH + 12
+        service = RegenerationService()
+
+        service._run(
+            reconstruction,
+            synthesis_mocks.generator_name,
+            features,
+            FeatureKey.INITIAL_PITCH,
+            moved_pitch,
+        )
+
+        call_args = reconstruction.model_copy.return_value.update_generator_data.call_args
+        assert call_args.args[3] == moved_pitch
 
     def test_run_calls_generator_for_each_instruction(self, synthesis_mocks, reconstruction, features) -> None:
         extra_instruction = MagicMock()

@@ -164,13 +164,15 @@ and triggering the instrument at `initial_pitch` replays that contour. Volume, d
 (or noise mode) and any pitch sequences carry across directly. The DPCM
 key-assignment table is empty by design.
 
-For the pitched channels, `center_pitches` picks the offset origin: it takes the
-midpoint of the contour's `(lowest, highest)` range, reports that pitch as
-`initial_pitch`, and stores each frame as `pitch − initial_pitch`. The offsets
-straddle zero and stay compact around one note, and the pattern cell holds the
-contour's midpoint — a rising contour prints its middle note and opens below it. The
-noise channel measures its offsets from the first sounding period instead, wrapped
-into the 16 available periods.
+The offset origin is chosen once, when the reconstruction is built, and stored with it
+as that channel's reference pitch (see
+[Reconstructions](reconstructions.md#contents)). For the pitched channels
+`center_pitch` picks it, taking the midpoint of the contour's `(lowest, highest)`
+range; the noise channel takes the first sounding period. Every later export reports
+that stored pitch as `initial_pitch` and writes each frame as `pitch − initial_pitch`,
+wrapped into the 16 available periods on noise. The offsets straddle zero and stay
+compact around one note, and the pattern cell holds the contour's midpoint — a rising
+contour prints its middle note and opens below it.
 
 ## C. FamiTracker capacity limits
 

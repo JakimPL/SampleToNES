@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import GeneratorName
@@ -15,7 +16,10 @@ from sampletones_core.instructions.implementation.pulse import PulseInstruction
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 
-from .conftest import ProjectFixture, build_reconstruction
+from .conftest import RECONSTRUCTION_LENGTH, ProjectFixture, build_reconstruction
+
+LEAD_PITCH = 60
+OCTAVE = 12
 
 
 class TestBuildInstrumentTable:
@@ -31,7 +35,31 @@ class TestBuildInstrumentTable:
 
     def test_slot_carries_initial_pitch(self, project_fixture: ProjectFixture) -> None:
         _, slots = build_instrument_table(project_fixture.project)
-        assert slots[(project_fixture.lead.id, GeneratorName.PULSE1)].initial_pitch == 60
+        assert slots[(project_fixture.lead.id, GeneratorName.PULSE1)].initial_pitch == LEAD_PITCH
+
+    def test_slot_keeps_its_pitch_after_an_arpeggio_edit(self, project_fixture: ProjectFixture) -> None:
+        """A pattern row triggers the instrument at the note its sample was reconstructed at.
+
+        Raising a channel's first frame an octave moves the arpeggio sequence, and the row
+        keeps naming the reference pitch — so the tracker plays the contour the reconstruction
+        view sounds.
+        """
+        arpeggiated = [
+            PulseInstruction(on=True, pitch=LEAD_PITCH + OCTAVE, volume=15, duty_cycle=0),
+            PulseInstruction(on=True, pitch=LEAD_PITCH, volume=8, duty_cycle=0),
+        ]
+        project_fixture.lead.reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            arpeggiated,
+            np.ones(RECONSTRUCTION_LENGTH, dtype=np.float32),
+            LEAD_PITCH,
+        )
+
+        instruments, slots = build_instrument_table(project_fixture.project)
+
+        slot = slots[(project_fixture.lead.id, GeneratorName.PULSE1)]
+        assert slot.initial_pitch == LEAD_PITCH
+        assert list(instruments[slot.index].sequences[SequenceKind.ARPEGGIO].items)[0] == OCTAVE
 
     def test_looping_sample_loops_populated_sequences(self, project_fixture: ProjectFixture) -> None:
         instruments, slots = build_instrument_table(project_fixture.project)

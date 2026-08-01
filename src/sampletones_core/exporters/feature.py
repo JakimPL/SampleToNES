@@ -14,13 +14,13 @@ class Features(BaseModel):
     The per-dimension envelopes describing one FamiTracker instrument.
 
     Each field is the frame-by-frame envelope for one dimension — volume, arpeggio,
-    pitch, hi-pitch, and duty cycle — alongside the ``initial_pitch`` the pitch envelope
-    is relative to. An optional dimension is absent when the channel does not use it.
-    The mapping interface (subscript, ``get``, ``keys``/``items``/``values``, ``in``)
-    exposes the envelopes keyed by :class:`FeatureKey`, passing over absent ones.
+    pitch, hi-pitch, and duty cycle — alongside the ``initial_pitch`` the arpeggio
+    envelope is relative to. An optional dimension is absent when the channel does not
+    use it. The mapping interface (subscript, ``get``, ``keys``/``items``/``values``,
+    ``in``) exposes the envelopes keyed by :class:`FeatureKey`, passing over absent ones.
 
     Attributes:
-        initial_pitch: Reference pitch the pitch envelope is measured against.
+        initial_pitch: Reference pitch the arpeggio envelope is measured against.
         volume: Volume envelope.
         arpeggio: Arpeggio (relative pitch) envelope.
         pitch: Pitch envelope, or ``None`` when unused.
