@@ -1,9 +1,10 @@
-from typing import List
+from typing import List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.trackers import TRACKER_INSTRUMENT_LABELS
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.paths import (
@@ -27,6 +28,7 @@ from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette import Palette
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.trackers.format import TrackerFormat
 
 
 @pytest.fixture
@@ -105,6 +107,32 @@ class TestSequenceLengthWarning:
         panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
         panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.ARPEGGIO, 8)
         assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING, TAG_GLOBAL_THEME_DEFAULT]
+
+
+class TestInstrumentExportFormat:
+    """The export button asks which tracker the slice is written for, and the answer travels
+    with the generator so the logic below picks the matching backend."""
+
+    def test_the_chosen_format_reaches_the_export_callback(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        calls: List[Tuple[GeneratorName, TrackerFormat]] = []
+        panel.on_instrument_export = lambda generator, tracker_format: calls.append((generator, tracker_format))
+
+        panel._handle_export_format_selected(
+            "sender",
+            None,
+            (GeneratorName.NOISE, TrackerFormat.BITPHASE_PRESET),
+        )
+
+        assert calls == [(GeneratorName.NOISE, TrackerFormat.BITPHASE_PRESET)]
+
+    def test_the_popup_offers_a_label_for_every_format(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        assert set(panel._lbl_export_formats) == set(TRACKER_INSTRUMENT_LABELS)
 
 
 class TestSequenceStatusMessage:

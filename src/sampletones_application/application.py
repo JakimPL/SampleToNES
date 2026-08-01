@@ -1,4 +1,3 @@
-from functools import partial
 from pathlib import Path
 from typing import Any, Dict, Final, Optional
 
@@ -480,14 +479,7 @@ class Application:
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
             project_properties=self._open_project_properties,
-            export_project_famitracker=partial(
-                self._project_coordinator.export_project_dialog,
-                TrackerFormat.FAMITRACKER,
-            ),
-            export_project_bitphase=partial(
-                self._project_coordinator.export_project_dialog,
-                TrackerFormat.BITPHASE,
-            ),
+            export_project=self._project_coordinator.export_project_dialog,
             close_project=self._project_coordinator.close_with_confirmation,
             exit=self._on_close,
             undo=self._sequencer_tab.undo,
@@ -742,9 +734,12 @@ class Application:
         if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_wav_dialog()
 
-    def _export_reconstruction_instruments_dialog(self) -> None:
+    def _export_reconstruction_instruments_dialog(
+        self,
+        tracker_format: TrackerFormat,
+    ) -> None:
         if self._reconstruction_coordinator.check_loaded():
-            self._reconstructions_tab.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
+            self._reconstructions_tab.request_export_instruments_dialog(tracker_format)
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)

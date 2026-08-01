@@ -410,11 +410,11 @@ TAG_GLOBAL_MENU_ITEM_FILE_PROJECT_PROPERTIES = TagName(
     Widget.MENU,
     "item_file_project_properties",
 )
-TAG_GLOBAL_MENU_ITEM_FILE_EXPORT_MODULE = TagName(
+TAG_GLOBAL_MENU_ITEM_FILE_EXPORT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_file_export_module",
+    "item_file_export",
 )
 TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT = TagName(
     Page.GLOBAL,

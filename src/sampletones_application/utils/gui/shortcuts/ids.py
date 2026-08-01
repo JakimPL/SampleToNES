@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Dict, Final
 
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.trackers.format import TrackerFormat
 
 
 class ShortcutId(Enum):
@@ -25,7 +26,9 @@ class ShortcutId(Enum):
     SAVE_RECONSTRUCTION_AS = "SaveReconstructionAs"
     CLOSE_RECONSTRUCTION = "CloseReconstruction"
     EXPORT_RECONSTRUCTION_WAV = "ExportReconstructionWav"
-    EXPORT_RECONSTRUCTION_INSTRUMENTS = "ExportReconstructionInstruments"
+    EXPORT_INSTRUMENTS_FAMITRACKER = "ExportInstrumentsFamiTracker"
+    EXPORT_INSTRUMENTS_BITPHASE = "ExportInstrumentsBitphase"
+    EXPORT_INSTRUMENTS_BITPHASE_PRESET = "ExportInstrumentsBitphasePreset"
     ADD_RECONSTRUCTION_TO_SEQUENCER = "AddReconstructionToSequencer"
     OPEN_RECONSTRUCTION_IN_EXPLORER = "OpenReconstructionInExplorer"
     LOCATE_ORIGINAL_AUDIO = "LocateOriginalAudio"
@@ -54,4 +57,15 @@ CHANNEL_SHORTCUT_IDS: Final[Dict[GeneratorName, ShortcutId]] = {
     GeneratorName.PULSE2: ShortcutId.TOGGLE_CHANNEL_PULSE_2,
     GeneratorName.TRIANGLE: ShortcutId.TOGGLE_CHANNEL_TRIANGLE,
     GeneratorName.NOISE: ShortcutId.TOGGLE_CHANNEL_NOISE,
+}
+
+PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {
+    TrackerFormat.FAMITRACKER: ShortcutId.EXPORT_PROJECT_FAMITRACKER,
+    TrackerFormat.BITPHASE: ShortcutId.EXPORT_PROJECT_BITPHASE,
+}
+
+SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {
+    TrackerFormat.FAMITRACKER: ShortcutId.EXPORT_INSTRUMENTS_FAMITRACKER,
+    TrackerFormat.BITPHASE: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE,
+    TrackerFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
 }

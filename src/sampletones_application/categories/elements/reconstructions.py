@@ -41,6 +41,9 @@ class ReconstructionPanelElements(AbstractElement):
 class ReconstructionsInstrumentsElements(AbstractElement):
     SECTION = "section"
     EXPORT_INSTRUMENT_BUTTON = "export_instrument_button"
+    EXPORT_INSTRUMENT_FAMITRACKER = "export_instrument_famitracker"
+    EXPORT_INSTRUMENT_BITPHASE = "export_instrument_bitphase"
+    EXPORT_INSTRUMENT_BITPHASE_PRESET = "export_instrument_bitphase_preset"
     COPY_BUTTON = "copy_button"
     PITCH_LABEL = "pitch_label"
     HI_PITCH_LABEL = "hi_pitch_label"

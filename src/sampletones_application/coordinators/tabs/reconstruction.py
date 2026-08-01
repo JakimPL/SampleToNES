@@ -85,7 +85,6 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.paths import EXT_FILE_WAVE
 from sampletones_core.trackers.backend import TrackerBackend
@@ -367,7 +366,9 @@ class ReconstructionTabCoordinator:
             on_reconstruction_instrument_updated
         )
 
-        self._reconstruction_instruments_panel.on_instrument_export = self._request_export_instrument
+        self._reconstruction_instruments_panel.on_instrument_export = (
+            self._reconstruction_panel_logic.request_export_instrument_dialog
+        )
         self._reconstruction_instruments_panel.on_reconstruction_instrument_hovered = (
             self._reconstruction_plot_panel.set_overlay
         )
@@ -454,12 +455,6 @@ class ReconstructionTabCoordinator:
         """Fans the reconstruction view model out to the audio and plot cards."""
         self._reconstruction_audio_panel.update_view(view_model)
         self._reconstruction_plot_panel.update_view(view_model)
-
-    def _request_export_instrument(self, generator_name: GeneratorName) -> None:
-        self._reconstruction_panel_logic.request_export_instrument_dialog(
-            generator_name,
-            TrackerFormat.FAMITRACKER,
-        )
 
     def _open_export_instrument_dialog(
         self,
