@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -18,6 +18,7 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.trackers import TRACKER_INSTRUMENT_FILTERS
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
@@ -84,10 +85,12 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.paths import EXT_FILE_WAVE
 from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.trackers.scope import DestinationKind, ExportScope
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -113,7 +116,7 @@ class ReconstructionTabCoordinator:
         reconstruction_manager: ReconstructionManager,
         browser_manager: BrowserManager,
         export_service: ExportService,
-        export_backend: TrackerBackend,
+        tracker_backends: Dict[TrackerFormat, TrackerBackend],
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
         on_reconstruct_file: VoidCallback,
         on_reconstruct_directory: VoidCallback,
@@ -129,7 +132,7 @@ class ReconstructionTabCoordinator:
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
-        self._export_backend = export_backend
+        self._tracker_backends = tracker_backends
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
 
@@ -229,12 +232,15 @@ class ReconstructionTabCoordinator:
             TextType.TITLE,
             ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_DIALOG,
         ]
-        self._filter_export_instrument = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.FILTER,
-            FileFilterElements.INSTRUMENT,
-        ]
+        self._filters_export_instrument: Dict[TrackerFormat, str] = {
+            tracker_format: language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                element,
+            ]
+            for tracker_format, element in TRACKER_INSTRUMENT_FILTERS.items()
+        }
         self._filter_export_wav = language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -306,7 +312,7 @@ class ReconstructionTabCoordinator:
             session_manager,
             reconstruction_manager,
             export_service,
-            export_backend,
+            tracker_backends,
         )
         self._reconstruction_instruments_panel: GUIReconstructionInstrumentsPanel = GUIReconstructionInstrumentsPanel(
             pitch_stepper_style=layout.pitch_stepper_style,
@@ -361,9 +367,7 @@ class ReconstructionTabCoordinator:
             on_reconstruction_instrument_updated
         )
 
-        self._reconstruction_instruments_panel.on_instrument_export = (
-            self._reconstruction_panel_logic.request_export_instrument_dialog
-        )
+        self._reconstruction_instruments_panel.on_instrument_export = self._request_export_instrument
         self._reconstruction_instruments_panel.on_reconstruction_instrument_hovered = (
             self._reconstruction_plot_panel.set_overlay
         )
@@ -397,7 +401,7 @@ class ReconstructionTabCoordinator:
                     fp,
                 )
             case ExportSuccess(
-                kind=ExportKind.INSTRUMENTS,
+                kind=ExportKind.SAMPLE,
                 filepath=fp,
                 truncation=truncation,
             ):
@@ -414,7 +418,7 @@ class ReconstructionTabCoordinator:
                 self._dialogs.show_error(exception, messages.wav_failed)
             case ExportError(kind=ExportKind.INSTRUMENT, exception=exception):
                 self._dialogs.show_error(exception, messages.instrument_failed)
-            case ExportError(kind=ExportKind.INSTRUMENTS, exception=exception):
+            case ExportError(kind=ExportKind.SAMPLE, exception=exception):
                 self._dialogs.show_error(exception, messages.instruments_failed)
 
     def _export_message(
@@ -451,17 +455,25 @@ class ReconstructionTabCoordinator:
         self._reconstruction_audio_panel.update_view(view_model)
         self._reconstruction_plot_panel.update_view(view_model)
 
+    def _request_export_instrument(self, generator_name: GeneratorName) -> None:
+        self._reconstruction_panel_logic.request_export_instrument_dialog(
+            generator_name,
+            TrackerFormat.FAMITRACKER,
+        )
+
     def _open_export_instrument_dialog(
         self,
         default_filename: str,
         default_path: str,
+        tracker_format: TrackerFormat,
     ) -> None:
+        backend = self._tracker_backends[tracker_format]
         filepath = save_file_dialog(
             title=self._ttl_export_instrument,
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[self._export_backend.extension(ExportScope.INSTRUMENT)],
-            filter_name=self._filter_export_instrument,
+            extensions=[backend.extension(ExportScope.INSTRUMENT)],
+            filter_name=self._filters_export_instrument[tracker_format],
         )
         self._handle_export_instrument(filepath)
 
@@ -469,16 +481,37 @@ class ReconstructionTabCoordinator:
     def _handle_export_instrument(self, filepath: Path) -> None:
         self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath)
 
-    def _open_export_instruments_dialog(self, default_path: str) -> None:
-        directory = select_directory_dialog(
-            title=self._ttl_export_instruments,
-            initial_directory=default_path,
+    def _open_export_instruments_dialog(
+        self,
+        default_filename: str,
+        default_path: str,
+        tracker_format: TrackerFormat,
+    ) -> None:
+        """Prompts for whatever destination the chosen format writes a reconstruction to.
+
+        A format that gathers a whole reconstruction into one document is saved as a file;
+        one that writes an instrument per slice fills a directory.
+        """
+        backend = self._tracker_backends[tracker_format]
+        destination = (
+            save_file_dialog(
+                title=self._ttl_export_instruments,
+                initial_directory=default_path,
+                default_filename=default_filename,
+                extensions=[backend.extension(ExportScope.SAMPLE)],
+                filter_name=self._filters_export_instrument[tracker_format],
+            )
+            if backend.destination_kind(ExportScope.SAMPLE) is DestinationKind.FILE
+            else select_directory_dialog(
+                title=self._ttl_export_instruments,
+                initial_directory=default_path,
+            )
         )
-        self._handle_export_instruments(directory)
+        self._handle_export_instruments(destination)
 
     @ignore_none_path
-    def _handle_export_instruments(self, directory: Path) -> None:
-        self._reconstruction_panel_logic.handle_export_instruments_confirmed(directory)
+    def _handle_export_instruments(self, destination: Path) -> None:
+        self._reconstruction_panel_logic.handle_export_instruments_confirmed(destination)
 
     def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
         filepath = save_file_dialog(
@@ -681,8 +714,8 @@ class ReconstructionTabCoordinator:
     def request_export_wav_dialog(self) -> None:
         self._reconstruction_panel_logic.request_export_wav_dialog()
 
-    def request_export_instruments_dialog(self) -> None:
-        self._reconstruction_panel_logic.request_export_instruments_dialog()
+    def request_export_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
+        self._reconstruction_panel_logic.request_export_instruments_dialog(tracker_format)
 
     def _on_browser_autoplay_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))

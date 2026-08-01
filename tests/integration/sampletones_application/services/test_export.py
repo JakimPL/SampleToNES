@@ -144,7 +144,7 @@ class TestExportSampleIntegration:
 
         assert len(results) == 1
         assert isinstance(results[0], ExportSuccess)
-        assert results[0].kind == ExportKind.INSTRUMENTS
+        assert results[0].kind == ExportKind.SAMPLE
         assert results[0].filepath == tmp_path
 
     def test_new_directory_is_created(self, tmp_path, pulse_features, backend) -> None:

@@ -217,7 +217,7 @@ class MenuBar:
                 enabled=state.project_open,
             )
             self._shortcut_manager.add_menu_item(
-                ShortcutId.EXPORT_PROJECT_MODULE,
+                ShortcutId.EXPORT_PROJECT_FAMITRACKER,
                 tag=TAG_GLOBAL_MENU_ITEM_FILE_EXPORT_MODULE,
                 label=self._label(MenuElements.ITEM_FILE_EXPORT_MODULE),
                 enabled=state.project_open,

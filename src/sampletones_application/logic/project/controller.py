@@ -8,7 +8,6 @@ from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.request import ProjectExport
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
@@ -95,9 +94,10 @@ class ProjectController(CallbackMixin):
         self._project_manager.install(project, clean=clean)
         self.call(self.on_project_replaced)
 
-    def export_project(self, path: Path, backend: TrackerBackend) -> None:
-        """Writes the current project in the format ``backend`` produces."""
-        backend.write_project(path, ProjectExport(project=self.project))
+    @property
+    def export_request(self) -> ProjectExport:
+        """Packages the current project for a tracker backend to write."""
+        return ProjectExport(project=self.project)
 
     def mark_updated(self) -> None:
         self._touch()

@@ -12,6 +12,7 @@ from sampletones_application.services.export.success import ExportSuccess
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.project.project import Project
 from sampletones_core.trackers.artifact import ExportArtifact
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import (
@@ -93,6 +94,10 @@ def build_sample(count: int = 2) -> SampleExport:
         instruments=tuple(build_instrument(f"Kick {index}") for index in range(count)),
         nes_frequency=NES_FREQUENCY,
     )
+
+
+def build_project() -> ProjectExport:
+    return ProjectExport(project=Project.create(title="Song"))
 
 
 @pytest.fixture
@@ -213,7 +218,7 @@ class TestExportSample:
         assert len(results) == 1
         result = results[0]
         assert isinstance(result, ExportSuccess)
-        assert result.kind == ExportKind.INSTRUMENTS
+        assert result.kind == ExportKind.SAMPLE
         assert result.filepath == tmp_path
 
     def test_the_backend_receives_every_slice_in_one_call(self, service, tmp_path) -> None:
@@ -234,7 +239,7 @@ class TestExportSample:
         assert len(results) == 1
         result = results[0]
         assert isinstance(result, ExportError)
-        assert result.kind == ExportKind.INSTRUMENTS
+        assert result.kind == ExportKind.SAMPLE
         assert result.exception is exception
 
     def test_a_sample_with_no_slices_emits_success(self, service, tmp_path) -> None:
@@ -244,7 +249,71 @@ class TestExportSample:
 
         assert len(results) == 1
         assert isinstance(results[0], ExportSuccess)
-        assert results[0].kind == ExportKind.INSTRUMENTS
+        assert results[0].kind == ExportKind.SAMPLE
+
+
+class TestExportProject:
+    def test_success_emits_export_success(self, service, tmp_path) -> None:
+        export_service, results = service
+        filepath = tmp_path / "song.ftm"
+
+        export_service.export_project(filepath, StubBackend(), build_project())
+
+        assert len(results) == 1
+        result = results[0]
+        assert isinstance(result, ExportSuccess)
+        assert result.kind == ExportKind.PROJECT
+        assert result.filepath == filepath
+
+    def test_the_backend_receives_the_destination_and_the_request(self, service, tmp_path) -> None:
+        export_service, _ = service
+        filepath = tmp_path / "song.ftm"
+        backend = StubBackend()
+        request = build_project()
+
+        export_service.export_project(filepath, backend, request)
+
+        assert backend.calls == [("project", filepath, request)]
+
+    def test_error_emits_export_error(self, service, tmp_path) -> None:
+        export_service, results = service
+        exception = OSError("no space")
+
+        export_service.export_project(
+            tmp_path / "song.ftm",
+            StubBackend(exception=exception),
+            build_project(),
+        )
+
+        assert len(results) == 1
+        result = results[0]
+        assert isinstance(result, ExportError)
+        assert result.kind == ExportKind.PROJECT
+        assert result.exception is exception
+
+
+class TestExportFormatReporting:
+    def test_a_tracker_export_names_the_format_it_was_written_in(self, service, tmp_path) -> None:
+        export_service, results = service
+
+        export_service.export_instrument(tmp_path / "inst.fti", StubBackend(), build_instrument())
+
+        assert results[0].tracker_format == TrackerFormat.FAMITRACKER
+
+    def test_a_failed_tracker_export_names_the_format_it_was_written_in(self, service, tmp_path) -> None:
+        export_service, results = service
+
+        export_service.export_sample(tmp_path, StubBackend(exception=OSError("fail")), build_sample())
+
+        assert results[0].tracker_format == TrackerFormat.FAMITRACKER
+
+    def test_a_wav_export_names_no_format(self, service, tmp_path) -> None:
+        export_service, results = service
+
+        with patch("sampletones_application.services.export.service.write_wave"):
+            export_service.export_wav(tmp_path / "track.wav", 44100, np.zeros(100))
+
+        assert results[0].tracker_format is None
 
 
 class TestExportTruncationReporting:

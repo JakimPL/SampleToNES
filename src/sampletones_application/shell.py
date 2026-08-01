@@ -79,7 +79,8 @@ class ShortcutBindings:
     save_project: Callback
     save_project_as: Callback
     project_properties: Callback
-    export_project_module: Callback
+    export_project_famitracker: Callback
+    export_project_bitphase: Callback
     close_project: Callback
     exit: Callback
     undo: Callback
@@ -225,9 +226,14 @@ class ApplicationShell:
             bindings.save_project_as,
         )
         self._shortcut_manager.register(
-            ShortcutId.EXPORT_PROJECT_MODULE,
+            ShortcutId.EXPORT_PROJECT_FAMITRACKER,
             Shortcut(dpg.mvKey_M, CTRL),
-            bindings.export_project_module,
+            bindings.export_project_famitracker,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.EXPORT_PROJECT_BITPHASE,
+            Shortcut(dpg.mvKey_B, CTRL),
+            bindings.export_project_bitphase,
         )
         self._shortcut_manager.register(
             ShortcutId.PROJECT_PROPERTIES,

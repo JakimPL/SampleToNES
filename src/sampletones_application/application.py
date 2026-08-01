@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, Final, Optional
 
@@ -272,7 +273,8 @@ class Application:
             self.project_controller,
             self.project_manager,
             self.session_manager,
-            export_backend=self.tracker_backends[TrackerFormat.FAMITRACKER],
+            self.export_service,
+            tracker_backends=self.tracker_backends,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
             on_tab_switch=self._set_current_tab,
@@ -304,7 +306,7 @@ class Application:
             reconstruction_manager=self.reconstruction_manager,
             browser_manager=self.browser_manager,
             export_service=self.export_service,
-            export_backend=self.tracker_backends[TrackerFormat.FAMITRACKER],
+            tracker_backends=self.tracker_backends,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
@@ -478,7 +480,14 @@ class Application:
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
             project_properties=self._open_project_properties,
-            export_project_module=self._project_coordinator.export_module_dialog,
+            export_project_famitracker=partial(
+                self._project_coordinator.export_project_dialog,
+                TrackerFormat.FAMITRACKER,
+            ),
+            export_project_bitphase=partial(
+                self._project_coordinator.export_project_dialog,
+                TrackerFormat.BITPHASE,
+            ),
             close_project=self._project_coordinator.close_with_confirmation,
             exit=self._on_close,
             undo=self._sequencer_tab.undo,
@@ -735,7 +744,7 @@ class Application:
 
     def _export_reconstruction_instruments_dialog(self) -> None:
         if self._reconstruction_coordinator.check_loaded():
-            self._reconstructions_tab.request_export_instruments_dialog()
+            self._reconstructions_tab.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)

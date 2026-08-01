@@ -9,7 +9,7 @@ DEFAULT_PROJECT_TITLE: Final[str] = ""
 DEFAULT_PROJECT_AUTHOR: Final[str] = ""
 DEFAULT_PROJECT_COMMENT: Final[str] = ""
 DEFAULT_PROJECT_FILENAME: Final[str] = "Untitled.stp"
-DEFAULT_MODULE_FILENAME: Final[str] = "Untitled.ftm"
+DEFAULT_EXPORT_NAME: Final[str] = "Untitled"
 
 # Project info length limits
 MAX_PROJECT_TITLE_LENGTH: Final[int] = 64
