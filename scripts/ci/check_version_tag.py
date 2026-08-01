@@ -17,9 +17,19 @@ def tag_names_version(*, tag: str, project_version: str) -> bool:
 
 def main(argv: Sequence[str]) -> int:
     """Confirm a release tag and the project metadata agree on the version being released."""
-    parser = argparse.ArgumentParser(description="Compare a release tag against the project version.")
-    parser.add_argument("--tag", required=True, help="the release tag being built, such as v0.3.0")
-    parser.add_argument("--project-version", required=True, help="the version recorded in pyproject.toml")
+    parser = argparse.ArgumentParser(
+        description="Compare a release tag against the project version.",
+    )
+    parser.add_argument(
+        "--tag",
+        required=True,
+        help="the release tag being built, such as v0.3.0",
+    )
+    parser.add_argument(
+        "--project-version",
+        required=True,
+        help="the version recorded in pyproject.toml",
+    )
     arguments = parser.parse_args(list(argv))
 
     tag: str = arguments.tag

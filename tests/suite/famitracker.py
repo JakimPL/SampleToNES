@@ -2,13 +2,13 @@ import struct
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
-from sampletones_core.famitracker.specification.blocks import BLOCK_NAME_LENGTH
-from sampletones_core.famitracker.specification.file import FTM_END_MARKER, FTM_MAGIC
-from sampletones_core.famitracker.specification.instruments import (
+from sampletones_core.formats.famitracker.specification.blocks import BLOCK_NAME_LENGTH
+from sampletones_core.formats.famitracker.specification.file import FTM_END_MARKER, FTM_MAGIC
+from sampletones_core.formats.famitracker.specification.instruments import (
     DPCM_KEY_ASSIGNMENTS,
     DPCM_KEY_BYTES,
 )
-from sampletones_core.famitracker.specification.sequences import SEQUENCE_COUNT_2A03
+from sampletones_core.formats.famitracker.specification.sequences import SEQUENCE_COUNT_2A03
 
 
 class _Cursor:
@@ -156,6 +156,7 @@ def _read_blocks(cursor: _Cursor) -> Tuple[Dict[str, bytes], Dict[str, int]]:
         size = cursor.read_int32()
         payloads[name] = cursor.read(size)
         versions[name] = version
+
     return payloads, versions
 
 
@@ -191,6 +192,7 @@ def _parse_header(payload: bytes, channel_count: int) -> ParsedHeader:
         channel_id = cursor.read_uint8()
         effect_columns = cursor.read_uint8() + 1
         channels.append(ParsedChannelHeader(channel_id=channel_id, effect_columns=effect_columns))
+
     return ParsedHeader(track_count=track_count, track_titles=track_titles, channels=channels)
 
 
@@ -212,6 +214,7 @@ def _parse_instruments(payload: bytes) -> List[ParsedInstrument]:
         instruments.append(
             ParsedInstrument(index=index, instrument_type=instrument_type, sequence_refs=refs, name=name)
         )
+
     return instruments
 
 
@@ -238,6 +241,7 @@ def _parse_sequences(payload: bytes) -> List[ParsedSequence]:
     for sequence in sequences:
         sequence.release_point = cursor.read_int32()
         sequence.setting = cursor.read_int32()
+
     return sequences
 
 

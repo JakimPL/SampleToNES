@@ -1,6 +1,6 @@
 [project]
 name = "sampletones"
-version = "0.3.0"
+version = "0.3.1"
 description = "Approximate audio samples with the NES 2A03 oscillators and export them as FamiTracker instruments"
 readme = "README.md"
 requires-python = ">=3.12"

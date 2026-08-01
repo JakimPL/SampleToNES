@@ -27,7 +27,7 @@ from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette import Palette
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
 from sampletones_core.trackers.format import TrackerFormat
 
 

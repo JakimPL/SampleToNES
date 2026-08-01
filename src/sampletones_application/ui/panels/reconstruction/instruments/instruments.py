@@ -71,8 +71,8 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
-from sampletones_core.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
 from sampletones_core.features import GENERATOR_KIND, supported_features
+from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
