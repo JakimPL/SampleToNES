@@ -9,6 +9,7 @@
 * Tracker cell shortcuts
 * Drag and drop
 * Multiple Reconstruction views
+* Playing a fragment by clicking on a waveform
 
 ### Tracker
 

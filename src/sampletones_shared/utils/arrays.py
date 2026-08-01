@@ -345,6 +345,56 @@ def trim(array: Array) -> Array:
     return module.concatenate([array[: last_end + 1], [last_value]])
 
 
+def hold(
+    array: Array,
+    index: int,
+    *,
+    default: Numeric,
+) -> Numeric:
+    """
+    Reads an envelope at an index, holding its final value past its end.
+
+    An envelope describes the frames it covers and sustains its last value over every
+    frame beyond them, which is how a dimension trimmed shorter than its sequence keeps
+    describing the whole of it. An empty envelope describes no frame, so it reads as the
+    given default.
+
+    Args:
+        array: The 1-dimensional envelope to read.
+        index: The frame position to read, counted from the envelope's start.
+        default: The value an empty envelope reads as.
+
+    Returns:
+        The value at `index`, the final value once `index` reaches the envelope's end,
+        or `default` for an empty envelope.
+
+    Raises:
+        TypeError: If array is not an Array.
+        ValueError: If array is not 1-dimensional, or if index is negative.
+
+    Examples:
+        >>> int(hold(np.array([12, 0]), 0, default=0))
+        12
+        >>> int(hold(np.array([12, 0]), 5, default=0))
+        0
+        >>> hold(np.array([]), 3, default=7)
+        7
+    """
+    if not isinstance(array, ArrayClasses):
+        raise TypeError(f"Expected array to be Array, got {type(array)}")
+
+    if array.ndim != 1:
+        raise ValueError("Array must be 1-dimensional")
+
+    if index < 0:
+        raise ValueError(f"Index must be at least 0, got {index}")
+
+    if not array.size:
+        return default
+
+    return array[min(index, len(array) - 1)]
+
+
 def interpolate_segment(
     array: Array,
     start_index: int,

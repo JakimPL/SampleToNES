@@ -508,6 +508,7 @@ class TestLiveLinkedReconstruction:
             GeneratorName.PULSE1,
             new_instructions,
             np.zeros(64, dtype=np.float32),
+            72,
         )
 
         stored = controller.project.sample(sample.id).reconstruction

@@ -13,6 +13,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.data import DataModel, Metadata
 from sampletones_core.exporters import (
+    GENERATOR_NAME_TO_EXPORTER_MAP,
     INSTRUCTION_TO_EXPORTER_MAP,
     ExporterTypeUnion,
     ExporterUnion,
@@ -47,17 +48,39 @@ from .instructions import InstructionsItem
 class Reconstruction(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    metadata: Metadata = Field(default_factory=Metadata.default, description="Reconstruction metadata")
-    id: str = Field(..., description="Unique identifier for the reconstruction")
+    metadata: Metadata = Field(
+        default_factory=Metadata.default,
+        description="Reconstruction metadata",
+    )
+    id: str = Field(
+        ...,
+        description="Unique identifier for the reconstruction",
+    )
     audio_filepath: Optional[Path] = Field(
         ...,
         description="Location of the source audio; None marks a reconstruction detached from its local origin",
     )
-    config: Config = Field(..., description="Configuration used for reconstruction", frozen=True)
-    approximation: np.ndarray = Field(..., description="Audio approximation")
-    approximations_data: List[ApproximationsItem] = Field(..., description="Approximations per generator")
-    instructions_data: List[InstructionsItem] = Field(..., description="Instructions per generator")
-    coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
+    config: Config = Field(
+        ...,
+        description="Configuration used for reconstruction",
+        frozen=True,
+    )
+    approximation: np.ndarray = Field(
+        ...,
+        description="Audio approximation",
+    )
+    approximations_data: List[ApproximationsItem] = Field(
+        ...,
+        description="Approximations per generator",
+    )
+    instructions_data: List[InstructionsItem] = Field(
+        ...,
+        description="Instructions per generator",
+    )
+    coefficient: float = Field(
+        ...,
+        description="Normalization coefficient used during reconstruction",
+    )
 
     @cached_property
     def approximations(self) -> Dict[GeneratorName, np.ndarray]:
@@ -70,9 +93,31 @@ class Reconstruction(DataModel):
             for item in self.instructions_data
         }
 
+    @cached_property
+    def initial_pitches(self) -> Dict[GeneratorName, int]:
+        """The reference pitch each generator's arpeggio envelope is measured against."""
+        return {item.generator_name: item.initial_pitch for item in self.instructions_data}
+
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
         return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
+
+    @classmethod
+    def _derive_initial_pitch(
+        cls,
+        generator_name: GeneratorName,
+        instructions: List[InstructionUnion],
+    ) -> int:
+        """Chooses the reference pitch a channel's arpeggio envelope is measured against.
+
+        The instruction type selects the exporter, matching how `export` resolves one. A
+        channel carrying no instructions takes the exporter its generator name pairs with,
+        which reports that exporter's resting reference.
+        """
+        exporter_class = (
+            cls._get_exporter_class(instructions[0]) if instructions else GENERATOR_NAME_TO_EXPORTER_MAP[generator_name]
+        )
+        return exporter_class.derive_initial_pitch(instructions)  # type: ignore[arg-type]
 
     @classmethod
     def create(
@@ -92,10 +137,12 @@ class Reconstruction(DataModel):
 
         instructions_data: List[InstructionsItem] = []
         for generator_name, instructions_list in instructions.items():
+            channel_instructions = list(instructions_list)
             instructions_data.append(
                 InstructionsItem.create(
                     generator_name=generator_name,
-                    instructions=list(instructions_list),
+                    instructions=channel_instructions,
+                    initial_pitch=cls._derive_initial_pitch(generator_name, channel_instructions),
                 )
             )
 
@@ -138,7 +185,13 @@ class Reconstruction(DataModel):
         generator_name: GeneratorName,
         instructions: List[InstructionUnion],
         partial_approximation: np.ndarray,
+        initial_pitch: int,
     ) -> None:
+        """Replaces one generator's instructions, audio, and reference pitch.
+
+        The reference pitch travels with the instructions it produced, so a later export
+        measures the arpeggio against the same base the edit was made from.
+        """
         partial_approximation = np.trim_zeros(partial_approximation, trim="b")
         max_length = max(
             len(partial_approximation),
@@ -152,7 +205,11 @@ class Reconstruction(DataModel):
         self.approximations_data = self._build_approximations_data(rendered, max_length)
         self.instructions_data = [
             (
-                InstructionsItem.create(generator_name=generator_name, instructions=instructions)
+                InstructionsItem.create(
+                    generator_name=generator_name,
+                    instructions=instructions,
+                    initial_pitch=initial_pitch,
+                )
                 if item.generator_name == generator_name
                 else item
             )
@@ -260,6 +317,7 @@ class Reconstruction(DataModel):
         """Drops the memoized per-generator views so they recompute from their backing data."""
         reconstruction.__dict__.pop("approximations", None)
         reconstruction.__dict__.pop("instructions", None)
+        reconstruction.__dict__.pop("initial_pitches", None)
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
@@ -313,7 +371,11 @@ class Reconstruction(DataModel):
                 actual_version=reconstruction_version,
             )
 
-    def _validate_instructions(self, exporter: ExporterUnion, instructions: List[InstructionUnion]) -> None:
+    def _validate_instructions(
+        self,
+        exporter: ExporterUnion,
+        instructions: List[InstructionUnion],
+    ) -> None:
         first_instruction: InstructionUnion = instructions[0]
         exporter_class = self._get_exporter_class(instructions[0])
         exporter_instruction_type = exporter.get_instruction_type()
@@ -336,17 +398,28 @@ class Reconstruction(DataModel):
             exporter_class = self._get_exporter_class(instructions[0])
             exporter: ExporterUnion = exporter_class()
             self._validate_instructions(exporter, instructions)
-            feature: Features = exporter.to_features(instructions)  # type: ignore[arg-type]
+            feature: Features = exporter.to_features(
+                instructions,  # type: ignore[arg-type]
+                self.initial_pitches[name],
+            )
             features[name] = feature
 
         return features
 
     @field_serializer("approximation")
-    def _serialize_approximation(self, approximation: np.ndarray, _info: Any) -> SerializedData:
+    def _serialize_approximation(
+        self,
+        approximation: np.ndarray,
+        _info: Any,
+    ) -> SerializedData:
         return serialize_array(approximation)
 
     @field_serializer("audio_filepath")
-    def _serialize_audio_filepath(self, audio_filepath: Optional[Path], _info: Any) -> Optional[str]:
+    def _serialize_audio_filepath(
+        self,
+        audio_filepath: Optional[Path],
+        _info: Any,
+    ) -> Optional[str]:
         if audio_filepath is None:
             return None
 

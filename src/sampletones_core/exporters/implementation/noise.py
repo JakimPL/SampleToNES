@@ -57,12 +57,24 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         return initial_period, periods, volumes, duty_cycles
 
     @classmethod
-    def get_feature_map(cls, instructions: List[NoiseInstruction]) -> FeatureMap:
-        initial_period, periods, volumes, duty_cycles = cls.extract_data(instructions)
-        arpeggio = (np.array(periods) - initial_period) % NUM_PERIODS
+    def derive_initial_pitch(
+        cls,
+        instructions: List[NoiseInstruction],
+    ) -> int:
+        initial_period, _, _, _ = cls.extract_data(instructions)
+        return initial_period
+
+    @classmethod
+    def get_feature_map(
+        cls,
+        instructions: List[NoiseInstruction],
+        initial_pitch: int,
+    ) -> FeatureMap:
+        _, periods, volumes, duty_cycles = cls.extract_data(instructions)
+        arpeggio = (np.array(periods) - initial_pitch) % NUM_PERIODS
 
         return {
-            FeatureKey.INITIAL_PITCH: initial_period,
+            FeatureKey.INITIAL_PITCH: initial_pitch,
             FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
             FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
             FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),

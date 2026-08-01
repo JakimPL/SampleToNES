@@ -68,45 +68,47 @@ class TestNoiseExporterExtractData:
         assert duty_cycles == []
 
 
+class TestNoiseExporterDeriveInitialPitch:
+    def test_reference_is_the_first_sounding_period(self) -> None:
+        instructions = [_off(), _noise(period=7, volume=10), _noise(period=2, volume=10)]
+        assert NoiseExporter.derive_initial_pitch(instructions) == 7
+
+    def test_empty_instruction_list_references_period_zero(self) -> None:
+        assert NoiseExporter.derive_initial_pitch([]) == 0
+
+
 class TestNoiseExporterGetFeatureMap:
     def test_feature_map_contains_all_required_keys(self) -> None:
-        feature_map = NoiseExporter.get_feature_map(
-            [
-                _noise(
-                    period=3,
-                    volume=10,
-                )
-            ]
-        )
+        feature_map = NoiseExporter.get_feature_map([_noise(period=3, volume=10)], 3)
         assert FeatureKey.INITIAL_PITCH in feature_map
         assert FeatureKey.VOLUME in feature_map
         assert FeatureKey.ARPEGGIO in feature_map
         assert FeatureKey.DUTY_CYCLE in feature_map
 
-    def test_arpeggio_is_relative_to_initial_period_modulo_num_periods(self) -> None:
+    def test_arpeggio_is_relative_to_the_given_reference_modulo_num_periods(self) -> None:
         instructions = [
             _noise(period=2, volume=10),
-            _noise(
-                period=5,
-                volume=8,
-            ),
+            _noise(period=5, volume=8),
         ]
-        feature_map = NoiseExporter.get_feature_map(instructions)
-        initial = feature_map[FeatureKey.INITIAL_PITCH]
+        feature_map = NoiseExporter.get_feature_map(instructions, 4)
         arpeggio = feature_map[FeatureKey.ARPEGGIO]
-        assert int(arpeggio[0]) == (2 - initial) % NUM_PERIODS
-        assert int(arpeggio[1]) == (5 - initial) % NUM_PERIODS
+        assert int(arpeggio[0]) == (2 - 4) % NUM_PERIODS
+        assert int(arpeggio[1]) == (5 - 4) % NUM_PERIODS
+
+    def test_initial_pitch_is_the_given_reference(self) -> None:
+        feature_map = NoiseExporter.get_feature_map([_noise(period=2, volume=10)], 9)
+        assert feature_map[FeatureKey.INITIAL_PITCH] == 9
 
     def test_volume_array_dtype_is_int8(self) -> None:
-        feature_map = NoiseExporter.get_feature_map([_noise()])
+        feature_map = NoiseExporter.get_feature_map([_noise()], 0)
         assert feature_map[FeatureKey.VOLUME].dtype == np.int8
 
     def test_arpeggio_dtype_is_int8(self) -> None:
-        feature_map = NoiseExporter.get_feature_map([_noise()])
+        feature_map = NoiseExporter.get_feature_map([_noise()], 0)
         assert feature_map[FeatureKey.ARPEGGIO].dtype == np.int8
 
     def test_duty_cycle_dtype_is_int8(self) -> None:
-        feature_map = NoiseExporter.get_feature_map([_noise()])
+        feature_map = NoiseExporter.get_feature_map([_noise()], 0)
         assert feature_map[FeatureKey.DUTY_CYCLE].dtype == np.int8
 
 

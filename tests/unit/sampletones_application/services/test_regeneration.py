@@ -1,6 +1,6 @@
 import threading
 from types import SimpleNamespace
-from typing import Any, Dict, List
+from typing import Any, Dict, Final, List
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -9,6 +9,21 @@ import pytest
 from sampletones_application.services.regeneration import RegenerationService
 from sampletones_application.services.result import ServiceCancelled, ServiceError, ServiceSuccess
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
+
+REFERENCE_PITCH: Final[int] = 60
+
+
+class FakeFeatures(Dict[Any, Any]):
+    """Stands in for ``Features``: records the edited dimension and carries a reference pitch."""
+
+    def __init__(self, initial_pitch: int) -> None:
+        super().__init__()
+        self.initial_pitch = initial_pitch
+
+
+@pytest.fixture
+def features() -> FakeFeatures:
+    return FakeFeatures(REFERENCE_PITCH)
 
 
 @pytest.fixture
@@ -119,7 +134,7 @@ class TestRegenerationServiceRun:
         assert len(results) == 1
         assert isinstance(results[0], ServiceCancelled)
 
-    def test_run_success_emits_service_success(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_success_emits_service_success(self, synthesis_mocks, reconstruction, features) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
@@ -127,7 +142,7 @@ class TestRegenerationServiceRun:
         service._run(
             reconstruction,
             synthesis_mocks.generator_name,
-            {},
+            features,
             FeatureKey.VOLUME,
             1,
         )
@@ -140,9 +155,8 @@ class TestRegenerationServiceRun:
         assert outcome.generator_name is synthesis_mocks.generator_name
         assert outcome.feature_key is FeatureKey.VOLUME
 
-    def test_run_updates_feature_before_synthesis(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_updates_feature_before_synthesis(self, synthesis_mocks, reconstruction, features) -> None:
         service = RegenerationService()
-        features: Dict[Any, Any] = {}
         feature_key = FeatureKey.VOLUME
         new_value = 42
 
@@ -156,13 +170,13 @@ class TestRegenerationServiceRun:
 
         assert features[feature_key] == new_value
 
-    def test_run_updates_reconstruction_copy(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_updates_reconstruction_copy(self, synthesis_mocks, reconstruction, features) -> None:
         service = RegenerationService()
 
         service._run(
             reconstruction,
             synthesis_mocks.generator_name,
-            {},
+            features,
             FeatureKey.VOLUME,
             1,
         )
@@ -173,7 +187,7 @@ class TestRegenerationServiceRun:
         call_args = updated.update_generator_data.call_args
         assert call_args.args[0] == synthesis_mocks.generator_name
 
-    def test_run_calls_generator_for_each_instruction(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_calls_generator_for_each_instruction(self, synthesis_mocks, reconstruction, features) -> None:
         extra_instruction = MagicMock()
         synthesis_mocks.exporter.from_features.return_value = [synthesis_mocks.instruction, extra_instruction]
         service = RegenerationService()
@@ -181,7 +195,7 @@ class TestRegenerationServiceRun:
         service._run(
             reconstruction,
             synthesis_mocks.generator_name,
-            {},
+            features,
             FeatureKey.VOLUME,
             1,
         )
@@ -241,7 +255,7 @@ class TestRegenerationServiceCancellationConstraints:
     synthesis that is already in progress.
     """
 
-    def test_cancel_while_running_does_not_interrupt_synthesis(self, synthesis_mocks) -> None:
+    def test_cancel_while_running_does_not_interrupt_synthesis(self, synthesis_mocks, features) -> None:
         service = RegenerationService()
         results: List[Any] = []
         done = threading.Event()
@@ -255,7 +269,7 @@ class TestRegenerationServiceCancellationConstraints:
         task_started = threading.Event()
         task_unblock = threading.Event()
 
-        def blocking_from_features(features):
+        def blocking_from_features(edited_features):
             task_started.set()
             task_unblock.wait(timeout=2.0)
             return [synthesis_mocks.instruction]
@@ -265,7 +279,13 @@ class TestRegenerationServiceCancellationConstraints:
         reconstruction.config = MagicMock()
 
         thread = threading.Thread(
-            target=lambda: service._run(reconstruction, synthesis_mocks.generator_name, {}, FeatureKey.VOLUME, 1),
+            target=lambda: service._run(
+                reconstruction,
+                synthesis_mocks.generator_name,
+                features,
+                FeatureKey.VOLUME,
+                1,
+            ),
         )
         thread.start()
         task_started.wait(timeout=2.0)
