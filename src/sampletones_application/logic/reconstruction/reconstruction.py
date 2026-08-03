@@ -17,10 +17,7 @@ from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.extensions import (
-    format_for_extension,
-    scope_extensions,
-)
+from sampletones_core.trackers.extensions import format_for_extension
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
 from sampletones_core.trackers.scope import ExportScope
@@ -74,7 +71,6 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._selected_generators: List[GeneratorName] = []
-        self._pending_generator: Optional[GeneratorName] = None
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
@@ -83,10 +79,9 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
-        self.on_open_export_instrument_dialog: Optional[Callable[[str, str], None]] = None
+        self.on_open_export_instrument_dialog: Optional[Callable[[str, str, GeneratorName], None]] = None
         self.on_open_export_instruments_dialog: Optional[Callable[[str, str, TrackerFormat], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
-        self.on_unsupported_export_extension: Optional[Callable[[str, Tuple[str, ...]], None]] = None
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
 
@@ -172,10 +167,13 @@ class ReconstructionPanelLogic(CallbackMixin):
     def request_export_instrument_dialog(self, generator_name: GeneratorName) -> None:
         """Asks for the destination one generator slice is written to.
 
-        Every tracker able to write a single slice is offered at once, so the generator alone
-        waits here until the dialog answers with a path. The suggestion is the instrument's
-        name on its own, leaving the tracker to the dialog's file-type selector and to any
-        extension typed over it.
+        Every tracker able to write a single slice is offered at once, so the generator travels
+        with the request to the dialog and back. The suggestion is the instrument's name on its
+        own, leaving the tracker to the dialog's file-type selector and to any extension typed
+        over it.
+
+        Args:
+            generator_name: The generator whose slice is written.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
@@ -188,11 +186,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         instrument_name = self._get_instrument_name(generator_name)
         default_path = str(self._session_manager.get_instrument_path())
 
-        self._pending_generator = generator_name
         self.call(
             self.on_open_export_instrument_dialog,
             instrument_name,
             default_path,
+            generator_name,
         )
 
     def request_export_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
@@ -228,30 +226,34 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.call(self.on_open_export_wav_dialog, default_filename, default_path)
 
-    def handle_export_instrument_confirmed(self, filepath: Path) -> None:
-        """Writes one generator slice of the loaded reconstruction to ``filepath``.
+    def handle_export_instrument_confirmed(
+        self,
+        filepath: Path,
+        generator_name: GeneratorName,
+    ) -> None:
+        """Writes the ``generator_name`` slice of the loaded reconstruction to ``filepath``.
 
         The extension picks the tracker the slice is written for, and the instrument carries
         the name the destination was saved under, so renaming the file in the dialog renames
         the instrument the tracker lists.
+
+        Args:
+            filepath: The destination the dialog was confirmed with.
+            generator_name: The generator whose slice is written.
         """
-        generator = self._pending_generator
-        self._pending_generator = None
-        if not self._reconstruction_data or generator is None:
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
             logger.warning("No reconstruction data available for instrument export")
             return
 
-        tracker_format = self._resolve_tracker_format(filepath, ExportScope.INSTRUMENT)
-        if tracker_format is None:
-            return
-
-        feature = self._reconstruction_data.feature_data[generator]
+        tracker_format = self._tracker_format(filepath, ExportScope.INSTRUMENT)
+        feature = reconstruction_data.feature_data[generator_name]
 
         self._session_manager.set_instrument_path(filepath.parent)
         self._export_service.export_instrument(
             filepath,
             self._tracker_backends[tracker_format],
-            self._instrument_export(generator, feature, filepath.stem),
+            self._instrument_export(generator_name, feature, filepath.stem),
         )
 
     def handle_export_instruments_confirmed(
@@ -290,33 +292,29 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._session_manager.set_instrument_path(destination.parent)
         self._export_service.export_sample(destination, self._tracker_backends[tracker_format], request)
 
-    def _resolve_tracker_format(
+    def _tracker_format(
         self,
         destination: Path,
         scope: ExportScope,
-    ) -> Optional[TrackerFormat]:
+    ) -> TrackerFormat:
         """Reads the tracker format out of the destination's extension.
 
-        Reports an extension no format claims through
-        :attr:`on_unsupported_export_extension`, naming what the scope accepts so the user
-        can name the destination again.
+        A save dialog answers with one of the extensions it offered, and an export offers the
+        types its own formats write, so every destination reaching here names a format.
 
         Args:
             destination: The destination the export was confirmed with.
             scope: The scope about to be written.
 
         Returns:
-            Optional[TrackerFormat]: The format to write in, or ``None`` when the extension
-            names none.
+            TrackerFormat: The format to write in.
+
+        Raises:
+            ValueError: If no format able to express ``scope`` claims the extension.
         """
         tracker_format = format_for_extension(self._tracker_backends, scope, destination.suffix)
         if tracker_format is None:
-            logger.warning(f"No tracker format writes '{destination.suffix}' for a {scope} export")
-            self.call(
-                self.on_unsupported_export_extension,
-                destination.suffix,
-                scope_extensions(self._tracker_backends, scope),
-            )
+            raise ValueError(f"No tracker format writes '{destination.suffix}' for a {scope} export")
 
         return tracker_format
 

@@ -183,8 +183,6 @@ class GlobalMessageElements(AbstractElement):
     CHANGE_NES_FREQUENCY = "change_nes_frequency"
     FREQUENCY_MISMATCH = "frequency_mismatch"
     OPERATION_IN_PROGRESS = "operation_in_progress"
-    UNSUPPORTED_EXTENSION = "unsupported_extension"
-    MISSING_EXTENSION = "missing_extension"
     ABOUT_DESCRIPTION = "about_description"
 
 
@@ -215,7 +213,6 @@ class GlobalDialogTitleElements(AbstractElement):
     REMOVE_SAMPLE = "remove_sample"
     CHANGE_NES_FREQUENCY = "change_nes_frequency"
     FREQUENCY_MISMATCH = "frequency_mismatch"
-    UNSUPPORTED_EXTENSION = "unsupported_extension"
     ABOUT = "about"
 
 

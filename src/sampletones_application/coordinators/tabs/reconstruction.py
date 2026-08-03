@@ -49,7 +49,6 @@ from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
-    TAG_GLOBAL_DIALOG_UNSUPPORTED_EXTENSION,
     TAG_GLOBAL_TAB_RECONSTRUCTION,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
@@ -87,6 +86,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.paths import EXT_FILE_WAVE
 from sampletones_core.trackers.backend import TrackerBackend
@@ -354,7 +354,6 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_open_export_instrument_dialog = self._open_export_instrument_dialog
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
-        self._reconstruction_panel_logic.on_unsupported_export_extension = self._show_unsupported_extension
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
             path, self._msg_locate_audio_failed
         )
@@ -463,31 +462,38 @@ class ReconstructionTabCoordinator:
         self,
         default_filename: str,
         default_path: str,
+        generator_name: GeneratorName,
     ) -> None:
-        """Prompts for the file one generator slice is written to.
+        """Prompts for the file the ``generator_name`` slice is written to.
 
-        Every format that writes a single slice is offered at once, so the extension the
-        destination is given names the tracker it is written for.
+        Every format that writes a single slice is offered at once, so the type picked in the
+        dialog names the tracker the slice is written for.
         """
         filepath = save_file_dialog(
             title=self._ttl_export_instrument,
             initial_directory=default_path,
             default_filename=default_filename,
-            filters=self._instrument_filters(ExportScope.INSTRUMENT),
+            filters=self._instrument_filters(),
         )
-        self._handle_export_instrument(filepath)
+        self._handle_export_instrument(filepath, generator_name)
 
-    def _instrument_filters(self, scope: ExportScope) -> Tuple[FileFilter, ...]:
-        """The types a destination for ``scope`` may be given, one per tracker offered.
+    def _instrument_filters(self) -> Tuple[FileFilter, ...]:
+        """The types a destination for one slice may be given, one per tracker offered.
 
         Naming each tracker's own type puts the trackers an export can reach in the dialog's
         type selector, so the one that is picked there names the format.
         """
-        return tuple(self._tracker_filter(tracker_format, scope) for tracker_format in INSTRUMENT_EXPORT_FORMATS)
+        return tuple(
+            self._tracker_filter(tracker_format, ExportScope.INSTRUMENT) for tracker_format in INSTRUMENT_EXPORT_FORMATS
+        )
 
     @ignore_none_path
-    def _handle_export_instrument(self, filepath: Path) -> None:
-        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath)
+    def _handle_export_instrument(
+        self,
+        filepath: Path,
+        generator_name: GeneratorName,
+    ) -> None:
+        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath, generator_name)
 
     def _open_export_instruments_dialog(
         self,
@@ -518,30 +524,6 @@ class ReconstructionTabCoordinator:
         return FileFilter.for_extensions(
             self._instrument_filter_names[tracker_format],
             [self._tracker_backends[tracker_format].extension(scope)],
-        )
-
-    def _show_unsupported_extension(
-        self,
-        extension: str,
-        supported: Tuple[str, ...],
-    ) -> None:
-        """Reports that the destination's extension names no tracker format.
-
-        The extension decides which tracker an export is written for, so one no format
-        claims leaves nothing to write. The dialog names what the export accepts, and a
-        destination given no extension at all is told so directly.
-        """
-        messages = self._export_messages
-        extensions = ", ".join(supported)
-        message = (
-            messages.unsupported_extension.format(extension=extension, extensions=extensions)
-            if extension
-            else messages.missing_extension.format(extensions=extensions)
-        )
-        self._dialogs.show_info(
-            TAG_GLOBAL_DIALOG_UNSUPPORTED_EXTENSION,
-            message,
-            messages.unsupported_extension_title,
         )
 
     @ignore_none_path

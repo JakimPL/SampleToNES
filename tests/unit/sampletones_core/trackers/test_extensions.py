@@ -10,11 +10,7 @@ from sampletones_core.paths import (
     EXT_FILE_MODULE,
 )
 from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.extensions import (
-    default_scope_extension,
-    format_for_extension,
-    scope_extensions,
-)
+from sampletones_core.trackers.extensions import format_for_extension
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
 from sampletones_core.trackers.scope import ExportScope
@@ -74,73 +70,6 @@ def backends_fixture() -> Dict[TrackerFormat, TrackerBackend]:
     return build_tracker_backends()
 
 
-class TestScopeExtensions:
-    def test_one_slice_may_be_saved_for_every_format(
-        self,
-        backends: Dict[TrackerFormat, TrackerBackend],
-    ) -> None:
-        assert set(scope_extensions(backends, ExportScope.INSTRUMENT)) == {
-            EXT_FILE_INSTRUMENT,
-            EXT_FILE_BITPHASE,
-            EXT_FILE_JSON,
-        }
-
-    def test_a_project_reaches_only_the_formats_holding_a_whole_composition(
-        self,
-        backends: Dict[TrackerFormat, TrackerBackend],
-    ) -> None:
-        """A preset carries one instrument, so its extension stays off a project's list."""
-        assert set(scope_extensions(backends, ExportScope.PROJECT)) == {
-            EXT_FILE_MODULE,
-            EXT_FILE_BITPHASE,
-        }
-
-    @pytest.mark.parametrize("scope", list(ExportScope), ids=lambda scope: str(scope))
-    def test_each_extension_is_offered_once(
-        self,
-        backends: Dict[TrackerFormat, TrackerBackend],
-        scope: ExportScope,
-    ) -> None:
-        extensions = scope_extensions(backends, scope)
-        assert len(extensions) == len(set(extensions))
-
-    def test_the_extensions_follow_the_order_the_backends_were_registered(
-        self,
-        backends: Dict[TrackerFormat, TrackerBackend],
-    ) -> None:
-        assert scope_extensions(backends, ExportScope.INSTRUMENT) == (
-            EXT_FILE_INSTRUMENT,
-            EXT_FILE_BITPHASE,
-            EXT_FILE_JSON,
-        )
-
-
-class TestDefaultScopeExtension:
-    @pytest.mark.parametrize("scope", list(ExportScope), ids=lambda scope: str(scope))
-    def test_the_default_is_one_of_the_offered_extensions(
-        self,
-        backends: Dict[TrackerFormat, TrackerBackend],
-        scope: ExportScope,
-    ) -> None:
-        assert default_scope_extension(backends, scope) in scope_extensions(backends, scope)
-
-    @pytest.mark.parametrize("scope", list(ExportScope), ids=lambda scope: str(scope))
-    def test_the_default_resolves_to_a_format(
-        self,
-        backends: Dict[TrackerFormat, TrackerBackend],
-        scope: ExportScope,
-    ) -> None:
-        """A destination suggested under the default reaches a backend as it stands, so
-        confirming the dialog untouched writes a file.
-        """
-        extension = default_scope_extension(backends, scope)
-        assert format_for_extension(backends, scope, extension) is not None
-
-    def test_a_scope_no_format_writes_is_refused(self) -> None:
-        with pytest.raises(ValueError):
-            default_scope_extension({}, ExportScope.INSTRUMENT)
-
-
 class TestFormatForExtension:
     @pytest.mark.parametrize(
         "case",
@@ -173,13 +102,15 @@ class TestFormatForExtension:
         assert format_for_extension(backends, ExportScope.PROJECT, EXT_FILE_JSON) is None
 
     @pytest.mark.parametrize("scope", list(ExportScope), ids=lambda scope: str(scope))
-    def test_every_offered_extension_resolves(
+    def test_every_extension_a_backend_writes_resolves_back_to_it(
         self,
         backends: Dict[TrackerFormat, TrackerBackend],
         scope: ExportScope,
     ) -> None:
-        """The dialog offers exactly what the resolution accepts, so a destination taking
-        one of the offered extensions always names a backend.
+        """A dialog offers the extension of each format it can reach, so a destination taking
+        one of them names the backend that put it in the selector. Each scope's extensions are
+        therefore distinct across formats, which is what the resolution reads them as.
         """
-        for extension in scope_extensions(backends, scope):
-            assert format_for_extension(backends, scope, extension) is not None
+        for tracker_format, backend in backends.items():
+            if scope in backend.supported_scopes:
+                assert format_for_extension(backends, scope, backend.extension(scope)) == tracker_format

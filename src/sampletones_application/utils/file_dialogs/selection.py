@@ -54,6 +54,10 @@ def _select_linux_backend() -> Optional[FileDialogBackend]:
     the one the user picked, so a caller offering several types learns which was chosen. Behind
     it stand the desktop's own command-line tools, and Tk last.
     """
+    portal = _portal_backend()
+    if portal is not None:
+        return portal
+
     kdialog = KDialogBackend() if shutil.which(KDIALOG) is not None else None
     zenity = ZenityBackend() if shutil.which(ZENITY) is not None else None
 
@@ -64,7 +68,7 @@ def _select_linux_backend() -> Optional[FileDialogBackend]:
     else:
         preferred, alternative = zenity, kdialog
 
-    return _portal_backend() or preferred or alternative or _tkinter_backend()
+    return preferred or alternative or _tkinter_backend()
 
 
 def _portal_backend() -> Optional[FileDialogBackend]:

@@ -450,16 +450,26 @@ class TestReconstructionPanelLogicExportInstrument:
         panel_logic.request_export_instrument_dialog(GeneratorName.TRIANGLE)
         callback.assert_not_called()
 
-    def test_handle_export_instrument_confirmed_with_no_pending_does_not_export(
+    def test_request_export_instrument_dialog_sends_the_generator_to_the_dialog(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
+    ) -> None:
+        """The generator travels with the request, so the confirmation names it back."""
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        callback = MagicMock()
+        panel_logic.on_open_export_instrument_dialog = callback
+        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
+        assert callback.call_args.args[2] == GeneratorName.PULSE1
+
+    def test_handle_export_instrument_confirmed_with_no_data_does_not_export(
+        self,
+        panel_logic: ReconstructionPanelLogic,
         mock_export_service: MagicMock,
         tmp_path: Path,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(tmp_path / "instrument.fti")
+        panel_logic.handle_export_instrument_confirmed(tmp_path / "instrument.fti", GeneratorName.PULSE1)
         mock_export_service.export_instrument.assert_not_called()
 
     def test_handle_export_instrument_confirmed_calls_export_service(
@@ -471,9 +481,7 @@ class TestReconstructionPanelLogicExportInstrument:
         tmp_path: Path,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.on_open_export_instrument_dialog = MagicMock()
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        panel_logic.handle_export_instrument_confirmed(tmp_path / "instrument.fti")
+        panel_logic.handle_export_instrument_confirmed(tmp_path / "instrument.fti", GeneratorName.PULSE1)
         mock_export_service.export_instrument.assert_called_once()
 
     def test_handle_export_instrument_confirmed_names_the_instrument_after_the_destination(
@@ -485,9 +493,7 @@ class TestReconstructionPanelLogicExportInstrument:
         tmp_path: Path,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.on_open_export_instrument_dialog = MagicMock()
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        panel_logic.handle_export_instrument_confirmed(tmp_path / "Clap (pulse1).fti")
+        panel_logic.handle_export_instrument_confirmed(tmp_path / "Clap (pulse1).fti", GeneratorName.PULSE1)
         request = mock_export_service.export_instrument.call_args.args[2]
         assert request.name == "Clap (pulse1)"
 
@@ -503,9 +509,10 @@ class TestReconstructionPanelLogicExportInstrument:
         case: FormatCase,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.on_open_export_instrument_dialog = MagicMock()
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        panel_logic.handle_export_instrument_confirmed(tmp_path / f"instrument{case.extension}")
+        panel_logic.handle_export_instrument_confirmed(
+            tmp_path / f"instrument{case.extension}",
+            GeneratorName.PULSE1,
+        )
         backend = mock_export_service.export_instrument.call_args.args[1]
         assert backend is mock_tracker_backends[case.tracker_format]
 
@@ -515,34 +522,18 @@ class TestReconstructionPanelLogicExportInstrument:
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
-        mock_export_service: MagicMock,
         tmp_path: Path,
         extension: str,
     ) -> None:
+        """The dialog answers with one of the types it offered, so an extension naming no
+        format is a broken invariant rather than a choice to report.
+        """
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.on_open_export_instrument_dialog = MagicMock()
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        panel_logic.handle_export_instrument_confirmed(tmp_path / f"instrument{extension}")
-        mock_export_service.export_instrument.assert_not_called()
-
-    @pytest.mark.parametrize("extension", UNSUPPORTED_EXTENSIONS)
-    def test_handle_export_instrument_confirmed_reports_the_extension_and_what_is_accepted(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-        tmp_path: Path,
-        extension: str,
-    ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.on_open_export_instrument_dialog = MagicMock()
-        callback = MagicMock()
-        panel_logic.on_unsupported_export_extension = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        panel_logic.handle_export_instrument_confirmed(tmp_path / f"instrument{extension}")
-        chosen, supported = callback.call_args.args
-        assert chosen == extension
-        assert set(supported) == {EXT_FILE_INSTRUMENT, EXT_FILE_BITPHASE, EXT_FILE_JSON}
+        with pytest.raises(ValueError):
+            panel_logic.handle_export_instrument_confirmed(
+                tmp_path / f"instrument{extension}",
+                GeneratorName.PULSE1,
+            )
 
 
 class TestReconstructionPanelLogicExportInstruments:

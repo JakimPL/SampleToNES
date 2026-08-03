@@ -2,10 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sampletones_application.categories.elements.global_ import (
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
-)
 from sampletones_application.categories.elements.reconstructions import (
     ReconstructionPanelElements,
     ReconstructionsInstrumentsElements,
@@ -33,9 +29,6 @@ class ExportMessages:
         instruments_failed: Shown when a reconstruction's instrument export fails.
         wav_success: Shown when the reconstruction reaches a WAV file.
         wav_failed: Shown when the WAV export fails.
-        unsupported_extension_title: Title of the dialog reporting an extension no format claims.
-        unsupported_extension: Template naming the extension chosen and those the scope accepts.
-        missing_extension: Template naming the extensions a destination given none accepts.
     """
 
     status_title: str
@@ -48,9 +41,6 @@ class ExportMessages:
     instruments_failed: str
     wav_success: str
     wav_failed: str
-    unsupported_extension_title: str
-    unsupported_extension: str
-    missing_extension: str
 
     @classmethod
     def build(cls, language_manager: LanguageManager) -> ExportMessages:
@@ -114,24 +104,6 @@ class ExportMessages:
                 Panel.RECONSTRUCTION,
                 TextType.MESSAGE,
                 ReconstructionPanelElements.EXPORT_WAV_FAILED,
-            ],
-            unsupported_extension_title=language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.UNSUPPORTED_EXTENSION,
-            ],
-            unsupported_extension=language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.UNSUPPORTED_EXTENSION,
-            ],
-            missing_extension=language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.MISSING_EXTENSION,
             ],
         )
 

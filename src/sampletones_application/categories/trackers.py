@@ -62,9 +62,9 @@ Bitphase project holds a whole composition, so it is written through the project
 
 TRACKER_INSTRUMENT_FILTERS: Final[Dict[TrackerFormat, FileFilterElements]] = {
     TrackerFormat.FAMITRACKER: FileFilterElements.FAMITRACKER_INSTRUMENT,
-    TrackerFormat.BITPHASE: FileFilterElements.BITPHASE_PROJECT,
     TrackerFormat.BITPHASE_PRESET: FileFilterElements.BITPHASE_PRESET,
 }
+"""The file type each instrument-export format is offered under, keyed by its format."""
 
 TRACKER_SAMPLE_MENU_LABELS: Final[Dict[TrackerFormat, MenuElements]] = {
     TrackerFormat.FAMITRACKER: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER,

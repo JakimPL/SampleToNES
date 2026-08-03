@@ -32,12 +32,21 @@ CURRENT_FILTER_RESULT: Final[str] = "current_filter"
 SUCCESS_CODE: Final[int] = 0
 
 PORTAL_OUT_OF_REACH_ERRORS: Final[Tuple[Type[Exception], ...]] = (
-    KeyError,  # the session bus address is absent from the environment
-    RuntimeError,  # the address names a transport jeepney speaks no dialect of
-    OSError,  # the socket the address names refused the connection
+    KeyError,
+    RuntimeError,
+    OSError,
     AuthenticationError,
-    DBusErrorResponse,  # the bus answers, and no portal claims the interface
+    DBusErrorResponse,
 )
+"""How an environment without a reachable portal announces itself, in jeepney's terms.
+
+Each stage of reaching the portal has its own failure: ``KeyError`` for a session bus address
+absent from the environment, ``RuntimeError`` for an address naming a transport jeepney speaks
+no dialect of, ``OSError`` for a socket refusing the connection, ``AuthenticationError`` for a
+bus declining the handshake, and ``DBusErrorResponse`` for a bus that answers while no portal
+claims the interface. Together they mean the same thing to a caller: dialogs belong to another
+backend.
+"""
 
 FILE_CHOOSER: Final[DBusAddress] = DBusAddress(
     PORTAL_OBJECT_PATH,

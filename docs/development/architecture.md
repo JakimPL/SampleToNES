@@ -102,7 +102,9 @@ A new exclusive operation joins by contributing its `is_active` to the authority
 
 Where behaviour depends on the operating system, the desktop environment, or an external command-line tool, that variation is expressed as a `Protocol` with one implementation per target, chosen by a runtime factory — never as platform branches scattered through the callers. The factory probes availability (`shutil.which`) and environment (`System.current()`, `XDG_CURRENT_DESKTOP`) and returns the implementation that fits; callers depend only on the Protocol and read identically on every platform.
 
-`utils/file_dialogs/` applies this to native file dialogs: a `FileDialogBackend` Protocol with `kdialog`, `zenity`, and `tkinter` implementations, selected by `select_file_dialog_backend()`. Each tool's quirks stay sealed inside its own implementation — `kdialog` activates the supplied filter, `zenity` lists the filter but leaves the selector on its "(None)" default because its command line offers no way to pre-select one — and the guarantee callers depend on, that a saved file carries the configured extension, is enforced once in the API layer above every backend. `sampletones_core/calibration/referee/` follows the same shape with its `build_referees()` factory.
+`utils/file_dialogs/` applies this to native file dialogs: a `FileDialogBackend` Protocol with desktop-portal, `kdialog`, `zenity`, and `tkinter` implementations, selected by `select_file_dialog_backend()`. Each tool's quirks stay sealed inside its own implementation — the portal lists every offered type in its selector and reports the one the user picked, `kdialog` activates a single filter, `zenity` lists the filter but leaves the selector on its "(None)" default because its command line offers no way to pre-select one — and the guarantee callers depend on, that a saved file carries one of the offered extensions, is enforced once in the API layer above every backend. `sampletones_core/calibration/referee/` follows the same shape with its `build_referees()` factory.
+
+Ordering the implementations is part of the factory's job: where several are available, the one that expresses the most wins. A save offering several file types is answered by the portal because it alone reports which type was chosen, so an export names its format in the type selector; a backend answering with a name alone leaves the extension to be read from the name, and the API layer settles it either way.
 
 ### 12. One dispatcher owns the keyboard
 
@@ -283,7 +285,7 @@ There are two coordinator kinds:
 | `categories/` | `LanguageManager` and the `Page / Panel / TextType / Element` enum hierarchy used as lookup keys |
 | `layout/` | Pydantic models loaded from YAML at startup; injected into coordinators and panels as `LayoutConfig` |
 | `constants/` | DPG widget tags (`TAG_*`) and tag suffix fragments (`SUF_*`) |
-| `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/`, colour, threading, and `utils/file_dialogs/` — OS-native file dialogs behind a `FileDialogBackend` Protocol). DPG-bound helpers live in `utils/gui/` and are off-limits to the non-visual layers |
+| `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/`, colour, threading, and `utils/file_dialogs/` — OS-native file dialogs behind a `FileDialogBackend` Protocol, with the D-Bus desktop-portal client under `utils/file_dialogs/portal/`). DPG-bound helpers live in `utils/gui/` and are off-limits to the non-visual layers |
 | `viewport.py` | Manages DPG viewport geometry and fullscreen state |
 
 ---

@@ -362,12 +362,6 @@ TAG_GLOBAL_DIALOG_PATH_MESSAGE = TagName(
     Widget.DIALOG,
     "path_message",
 )
-TAG_GLOBAL_DIALOG_UNSUPPORTED_EXTENSION = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.DIALOG,
-    "unsupported_extension",
-)
 TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
