@@ -33,6 +33,7 @@
 * Code documentation (docstrings)
 * Backward compatibility: library/reconstruction upgrade scheme
 * Respecting FamiTracker limitations
+* Carrying the project comment and tempo into a Bitphase document, once the format holds them
 * Per-tab undo routing
 
 ## Bugs
