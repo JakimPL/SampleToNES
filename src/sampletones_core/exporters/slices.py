@@ -5,6 +5,7 @@ from typing import Dict, Iterator, Tuple
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters.feature import Features
+from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 
@@ -39,7 +40,7 @@ class SampleSlice:
     @property
     def instrument_name(self) -> str:
         """The exported instrument's name, naming both its sample and its channel."""
-        return f"{self.sample.name} {self.generator.capitalized}"
+        return instrument_slice_name(self.sample.name, self.generator)
 
     @property
     def key(self) -> Tuple[str, GeneratorName]:

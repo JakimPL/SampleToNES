@@ -133,7 +133,7 @@ class TestTheDocumentCarriesTheProject:
         assert song.interrupt_frequency == source.settings.nes_frequency
 
     def test_every_sample_slice_becomes_an_instrument(self, document: BitphaseProject) -> None:
-        assert [instrument.name for instrument in document.instruments] == ["Lead Pulse 1", "Bass Triangle"]
+        assert [instrument.name for instrument in document.instruments] == ["Lead (pulse1)", "Bass (triangle)"]
 
 
 class TestTheOrderFlattens:

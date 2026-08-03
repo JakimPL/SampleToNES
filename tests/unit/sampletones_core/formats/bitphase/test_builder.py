@@ -45,9 +45,9 @@ def project_fixture() -> BitphaseProject:
     return sample_to_bitphase(
         build_sample(
             "Kick",
-            build_instrument("Kick Pulse 1", build_features(VOLUME_ENVELOPE)),
+            build_instrument("Kick (pulse1)", build_features(VOLUME_ENVELOPE)),
             build_instrument(
-                "Kick Noise",
+                "Kick (noise)",
                 build_features(VOLUME_ENVELOPE, initial_pitch=NOISE_PERIOD),
                 generator=GeneratorName.NOISE,
             ),
@@ -57,10 +57,10 @@ def project_fixture() -> BitphaseProject:
 
 class TestEverySliceBecomesAVoice:
     def test_each_slice_yields_one_instrument(self, project: BitphaseProject) -> None:
-        assert [instrument.name for instrument in project.instruments] == ["Kick Pulse 1", "Kick Noise"]
+        assert [instrument.name for instrument in project.instruments] == ["Kick (pulse1)", "Kick (noise)"]
 
     def test_each_slice_yields_the_table_that_carries_its_contour(self, project: BitphaseProject) -> None:
-        assert [table.name for table in project.tables] == ["Kick Pulse 1", "Kick Noise"]
+        assert [table.name for table in project.tables] == ["Kick (pulse1)", "Kick (noise)"]
 
     def test_instruments_are_numbered_from_the_first_the_column_names(self, project: BitphaseProject) -> None:
         assert [instrument.id for instrument in project.instruments] == [
@@ -143,7 +143,7 @@ class TestTheOrderCoversTheLongestInstrument:
         return sample_to_bitphase(
             build_sample(
                 "Pad",
-                build_instrument("Pad Pulse 1", build_features([15] * LONG_ENVELOPE_FRAMES)),
+                build_instrument("Pad (pulse1)", build_features([15] * LONG_ENVELOPE_FRAMES)),
             )
         )
 

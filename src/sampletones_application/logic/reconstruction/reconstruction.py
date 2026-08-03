@@ -16,6 +16,7 @@ from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.exporters.feature import Features
+from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
@@ -177,7 +178,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if generator_name not in feature_data.generators:
             return
 
-        instrument_name = f"{reconstruction_data.name} ({generator_name})"
+        instrument_name = self._get_instrument_name(generator_name)
         default_path = str(self._session_manager.get_instrument_path())
 
         self._pending_instrument = PendingInstrumentExport(
@@ -312,19 +313,13 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         open_path_in_explorer(filepath)
 
-    def _get_instrument_name(
-        self,
-        generator_name: Optional[GeneratorName] = None,
-    ) -> str:
+    def _get_instrument_name(self, generator_name: GeneratorName) -> str:
+        """Names the loaded reconstruction's slice for one generator."""
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be present")
 
-        filename = reconstruction_data.name
-        if generator_name is None:
-            return filename
-
-        return f"{filename}_{generator_name}"
+        return instrument_slice_name(reconstruction_data.name, generator_name)
 
     def _emit_audio_data(self) -> None:
         audio_data = self._compute_audio_data()

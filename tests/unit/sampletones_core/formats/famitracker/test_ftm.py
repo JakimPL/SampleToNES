@@ -121,8 +121,8 @@ class TestInstrumentsBlock:
 
     def test_instrument_names_include_generator(self, project_fixture: ProjectFixture) -> None:
         names = [instrument.name for instrument in _parsed(project_fixture).instruments]
-        assert names[0] == "lead Pulse 1"
-        assert "Triangle" in names[4]
+        assert names[0] == "lead (pulse1)"
+        assert names[4] == "bell (triangle)"
 
     def test_volume_reference_resolves_to_populated_sequence(self, project_fixture: ProjectFixture) -> None:
         parsed = _parsed(project_fixture)

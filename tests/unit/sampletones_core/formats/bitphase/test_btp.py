@@ -61,9 +61,9 @@ def project_fixture() -> BitphaseProject:
     return sample_to_bitphase(
         build_sample(
             "Kick",
-            build_instrument("Kick Pulse 1", build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR)),
+            build_instrument("Kick (pulse1)", build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR)),
             build_instrument(
-                "Kick Noise",
+                "Kick (noise)",
                 build_features(VOLUME_ENVELOPE, duty_cycle=[1, 1, 0, 0]),
                 generator=GeneratorName.NOISE,
             ),

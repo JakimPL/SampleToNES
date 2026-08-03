@@ -136,8 +136,8 @@ class TestWriteSample:
         destination = tmp_path / f"Kick{EXT_FILE_BITPHASE}"
         request = build_sample(
             "Kick",
-            build_instrument("Kick Pulse 1", ENVELOPE_FRAMES),
-            build_instrument("Kick Noise", ENVELOPE_FRAMES),
+            build_instrument("Kick (pulse1)", ENVELOPE_FRAMES),
+            build_instrument("Kick (noise)", ENVELOPE_FRAMES),
         )
 
         artifact = backend.write_sample(destination, request)
@@ -217,15 +217,15 @@ class TestThePresetBackend:
         destination = tmp_path / "Kick"
         request = build_sample(
             "Kick",
-            build_instrument("Kick Pulse 1", ENVELOPE_FRAMES),
-            build_instrument("Kick Noise", ENVELOPE_FRAMES),
+            build_instrument("Kick (pulse1)", ENVELOPE_FRAMES),
+            build_instrument("Kick (noise)", ENVELOPE_FRAMES),
         )
 
         artifact = preset_backend.write_sample(destination, request)
 
         assert artifact.paths == (
-            destination / f"Kick Pulse 1{EXT_FILE_JSON}",
-            destination / f"Kick Noise{EXT_FILE_JSON}",
+            destination / f"Kick (pulse1){EXT_FILE_JSON}",
+            destination / f"Kick (noise){EXT_FILE_JSON}",
         )
         assert all(path.exists() for path in artifact.paths)
 
