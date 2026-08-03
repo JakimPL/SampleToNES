@@ -17,6 +17,7 @@ from sampletones_core.trackers.request import (
     SampleExport,
 )
 from sampletones_core.trackers.scope import ExportScope
+from sampletones_shared.utils.system.paths import get_filename
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
 
@@ -79,7 +80,7 @@ class FamiTrackerBackend:
         paths: List[Path] = []
         truncations: List[Optional[EnvelopeTruncation]] = []
         for instrument in request.instruments:
-            filepath = destination.with_name(f"{instrument.name}{EXT_FILE_INSTRUMENT}")
+            filepath = destination.with_name(get_filename(instrument.name, EXT_FILE_INSTRUMENT))
             artifact = self.write_instrument(filepath, instrument)
             paths.extend(artifact.paths)
             truncations.append(artifact.truncation)

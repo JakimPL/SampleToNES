@@ -13,6 +13,7 @@ from sampletones_core.trackers.artifact import ExportArtifact
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import InstrumentExport, ProjectExport, SampleExport
 from sampletones_core.trackers.scope import ExportScope
+from sampletones_shared.utils.system.paths import get_filename
 
 DOCUMENT_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
 PRESET_SCOPES: FrozenSet[ExportScope] = frozenset({ExportScope.INSTRUMENT, ExportScope.SAMPLE})
@@ -102,7 +103,7 @@ class BitphasePresetBackend:
 
         paths: List[Path] = []
         for instrument in request.instruments:
-            filepath = destination.with_name(f"{instrument.name}{EXT_FILE_JSON}")
+            filepath = destination.with_name(get_filename(instrument.name, EXT_FILE_JSON))
             paths.extend(self.write_instrument(filepath, instrument).paths)
 
         return ExportArtifact(paths=tuple(paths), truncation=WHOLE_ENVELOPE)

@@ -43,6 +43,7 @@ from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
+from sampletones_shared.utils.system.paths import get_filename
 
 
 class ReconstructionCoordinator:
@@ -143,7 +144,7 @@ class ReconstructionCoordinator:
             default_filename = filepath.name
             default_path = str(filepath.parent)
         else:
-            default_filename = f"{reconstruction_data.name}{EXT_FILE_RECONSTRUCTION}"
+            default_filename = get_filename(reconstruction_data.name, EXT_FILE_RECONSTRUCTION)
             default_path = str(self._session_manager.get_reconstruction_path())
 
         filepath = save_file_dialog(

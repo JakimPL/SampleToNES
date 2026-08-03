@@ -11,6 +11,7 @@ from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_core.paths import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils.system.paths import get_filename
 
 
 def create_key_from_filename(filename: Pathlike) -> InstructionLibraryKey:
@@ -32,7 +33,7 @@ def create_key_from_filename(filename: Pathlike) -> InstructionLibraryKey:
         transformation_gamma=transformation_gamma,
         spectrum_method=spectrum_method,
         config_hash=config_hash,
-        filename=f"{filename}{EXT_FILE_LIBRARY}",
+        filename=get_filename(filename, EXT_FILE_LIBRARY),
     )
 
 

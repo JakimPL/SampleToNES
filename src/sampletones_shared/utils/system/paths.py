@@ -49,6 +49,26 @@ def to_path(path: GeneralPathlike) -> Path:
     return Path(path)
 
 
+def get_filename(name: str, extension: str) -> str:
+    """
+    Composes a file name from the name a thing is known by and its extension.
+
+    Every place that names a file composes it here — an exported instrument, a saved
+    library, a corpus item, a destination a dialog suggests — so a name and the file
+    holding it stay in step. The name is carried verbatim, so one holding dots keeps
+    them (``Kick v1.2`` becomes ``Kick v1.2.fti``). :func:`ensure_suffix` covers a path
+    that may already end with the extension.
+
+    Args:
+        name (str): The name the file is known by, without its extension.
+        extension (str): The extension the file carries, leading dot included.
+
+    Returns:
+        str: The file name, of the form ``name.extension``.
+    """
+    return f"{name}{extension}"
+
+
 def ensure_suffix(path: Path, suffix: str) -> Path:
     """
     Returns the path with ``suffix`` appended when its name lacks that ending.

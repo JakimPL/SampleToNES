@@ -46,7 +46,7 @@ from sampletones_shared.exceptions import (
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
-from sampletones_shared.utils.system.paths import get_directory
+from sampletones_shared.utils.system.paths import get_directory, get_filename
 
 
 class ProjectCoordinator:
@@ -185,7 +185,7 @@ class ProjectCoordinator:
 
     def _get_project_filename(self, extension: str) -> str:
         name = self.project_name or DEFAULT_EXPORT_NAME
-        return f"{name}{extension}"
+        return get_filename(name, extension)
 
     def export_project_dialog(self, tracker_format: TrackerFormat) -> None:
         """Prompts for a destination and writes the open project in ``tracker_format``.

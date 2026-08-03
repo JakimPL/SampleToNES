@@ -29,6 +29,7 @@ from sampletones_shared.exceptions import (
 )
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import JSON_INDENT
+from sampletones_shared.utils.system.paths import get_filename
 
 
 class ProjectContainer:
@@ -54,7 +55,8 @@ class ProjectContainer:
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
             archive.writestr(PROJECT_DOCUMENT_NAME, payload)
             for reconstruction_id, reconstruction in reconstructions.items():
-                name = f"{RECONSTRUCTIONS_DIRECTORY}/{reconstruction_id}{EXT_FILE_RECONSTRUCTION}"
+                filename = get_filename(reconstruction_id, EXT_FILE_RECONSTRUCTION)
+                name = f"{RECONSTRUCTIONS_DIRECTORY}/{filename}"
                 archive.writestr(name, reconstruction.serialize())
 
     @staticmethod

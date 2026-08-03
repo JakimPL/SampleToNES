@@ -12,6 +12,7 @@ from sampletones_shared.utils.system.paths import (
     DEFAULT_MAX_FILENAME_DISPLAY,
     ensure_suffix,
     get_directory,
+    get_filename,
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
     open_path_in_explorer,
@@ -150,6 +151,49 @@ class TestToPath(BaseTestSuite):
             assert result is test_case.input_path
 
         assert result == Path(test_case.expected)
+
+
+class TestGetFilename(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        name: str
+        extension: str
+        expected: str
+
+    test_cases = [
+        TestCase(
+            name="song",
+            extension=".stp",
+            expected="song.stp",
+            label="appends_the_extension",
+        ),
+        TestCase(
+            name="Kick (pulse1)",
+            extension=".fti",
+            expected="Kick (pulse1).fti",
+            label="carries_a_parenthesised_slice_name",
+        ),
+        TestCase(
+            name="Kick v1.2",
+            extension=".fti",
+            expected="Kick v1.2.fti",
+            label="keeps_incidental_dots",
+        ),
+        TestCase(
+            name="song.stp",
+            extension=".stp",
+            expected="song.stp.stp",
+            label="appends_to_a_name_already_ending_in_the_extension",
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_get_filename(self, test_case: TestCase) -> None:
+        assert get_filename(test_case.name, test_case.extension) == test_case.expected
 
 
 class TestEnsureSuffix(BaseTestSuite):
