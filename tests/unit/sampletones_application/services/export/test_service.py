@@ -20,7 +20,7 @@ from sampletones_core.trackers.request import (
     ProjectExport,
     SampleExport,
 )
-from sampletones_core.trackers.scope import DestinationKind, ExportScope
+from sampletones_core.trackers.scope import ExportScope
 
 NES_FREQUENCY: Final[int] = 60
 
@@ -48,9 +48,6 @@ class StubBackend:
     @property
     def supported_scopes(self) -> frozenset:
         return frozenset(ExportScope)
-
-    def destination_kind(self, scope: ExportScope) -> DestinationKind:
-        return DestinationKind.FILE
 
     def extension(self, scope: ExportScope) -> str:
         return ".fti"

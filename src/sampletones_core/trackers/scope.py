@@ -11,14 +11,3 @@ class ExportScope(StrEnum):
     INSTRUMENT = "instrument"
     SAMPLE = "sample"
     PROJECT = "project"
-
-
-class DestinationKind(StrEnum):
-    """Whether a scope's destination is a file to write or a directory to fill.
-
-    The coordinator reads this to choose between a save-file and a select-directory
-    dialog, so the choice follows the backend rather than a branch on format.
-    """
-
-    FILE = "file"
-    DIRECTORY = "directory"

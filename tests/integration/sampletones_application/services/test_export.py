@@ -129,23 +129,24 @@ class TestExportSampleIntegration:
             instrument_export("inst_0", pulse_features),
             instrument_export("inst_1", pulse_features),
         )
-        export_service.export_sample(tmp_path, backend, request)
+        export_service.export_sample(tmp_path / "sample.fti", backend, request)
 
         assert (tmp_path / "inst_0.fti").exists()
         assert (tmp_path / "inst_1.fti").exists()
 
-    def test_emits_export_success_with_directory_filepath(self, tmp_path, pulse_features, backend) -> None:
+    def test_emits_export_success_with_the_destination(self, tmp_path, pulse_features, backend) -> None:
+        destination = tmp_path / "sample.fti"
         export_service = ExportService()
         results: List[Any] = []
         export_service.subscribe(results.append)
 
         request = sample_export("sample", instrument_export("inst", pulse_features))
-        export_service.export_sample(tmp_path, backend, request)
+        export_service.export_sample(destination, backend, request)
 
         assert len(results) == 1
         assert isinstance(results[0], ExportSuccess)
         assert results[0].kind == ExportKind.SAMPLE
-        assert results[0].filepath == tmp_path
+        assert results[0].filepath == destination
 
     def test_new_directory_is_created(self, tmp_path, pulse_features, backend) -> None:
         new_dir = tmp_path / "subdir"
@@ -153,7 +154,7 @@ class TestExportSampleIntegration:
         export_service.subscribe(lambda _: None)
 
         request = sample_export("sample", instrument_export("inst", pulse_features))
-        export_service.export_sample(new_dir, backend, request)
+        export_service.export_sample(new_dir / "sample.fti", backend, request)
 
         assert new_dir.exists()
 
@@ -162,7 +163,7 @@ class TestExportSampleIntegration:
         results: List[Any] = []
         export_service.subscribe(results.append)
 
-        export_service.export_sample(tmp_path, backend, sample_export("sample"))
+        export_service.export_sample(tmp_path / "sample.fti", backend, sample_export("sample"))
 
         assert list(tmp_path.glob("*.fti")) == []
         assert isinstance(results[0], ExportSuccess)

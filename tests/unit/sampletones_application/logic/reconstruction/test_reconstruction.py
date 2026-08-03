@@ -437,6 +437,21 @@ class TestReconstructionPanelLogicExportInstrument:
         panel_logic.handle_export_instrument_confirmed(tmp_path / "instrument.fti")
         mock_export_service.export_instrument.assert_called_once()
 
+    def test_handle_export_instrument_confirmed_names_the_instrument_after_the_destination(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+        mock_export_service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.on_open_export_instrument_dialog = MagicMock()
+        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1, TrackerFormat.FAMITRACKER)
+        panel_logic.handle_export_instrument_confirmed(tmp_path / "Clap (pulse1).fti")
+        request = mock_export_service.export_instrument.call_args.args[2]
+        assert request.name == "Clap (pulse1)"
+
     def test_handle_export_instrument_confirmed_selects_the_backend_of_the_chosen_format(
         self,
         panel_logic: ReconstructionPanelLogic,
@@ -520,6 +535,22 @@ class TestReconstructionPanelLogicExportInstruments:
         panel_logic.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
         panel_logic.handle_export_instruments_confirmed(tmp_path)
         mock_export_service.export_sample.assert_called_once()
+
+    def test_handle_export_instruments_confirmed_names_the_batch_after_the_destination(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+        mock_export_service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.on_open_export_instruments_dialog = MagicMock()
+        panel_logic.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
+        panel_logic.handle_export_instruments_confirmed(tmp_path / "Clap.fti")
+        request = mock_export_service.export_sample.call_args.args[2]
+        assert request.name == "Clap"
+        assert [instrument.name for instrument in request.instruments] == ["Clap (pulse1)"]
 
     def test_handle_export_instruments_confirmed_selects_the_backend_of_the_chosen_format(
         self,

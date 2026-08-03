@@ -12,7 +12,7 @@ from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.implementation.famitracker import FamiTrackerBackend
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
-from sampletones_core.trackers.scope import DestinationKind, ExportScope
+from sampletones_core.trackers.scope import ExportScope
 
 NES_FREQUENCY: Final[int] = 60
 
@@ -54,22 +54,6 @@ class TestFormatDeclaration:
 
     def test_every_scope_is_supported(self, backend: FamiTrackerBackend) -> None:
         assert backend.supported_scopes == frozenset(ExportScope)
-
-    @pytest.mark.parametrize(
-        ("scope", "expected"),
-        [
-            (ExportScope.INSTRUMENT, DestinationKind.FILE),
-            (ExportScope.SAMPLE, DestinationKind.DIRECTORY),
-            (ExportScope.PROJECT, DestinationKind.FILE),
-        ],
-    )
-    def test_a_sample_fills_a_directory_while_the_others_write_a_file(
-        self,
-        backend: FamiTrackerBackend,
-        scope: ExportScope,
-        expected: DestinationKind,
-    ) -> None:
-        assert backend.destination_kind(scope) == expected
 
     @pytest.mark.parametrize(
         ("scope", "expected"),
@@ -126,28 +110,28 @@ class TestWriteInstrument:
 
 
 class TestWriteSample:
-    def test_each_slice_lands_in_a_file_named_after_its_instrument(
+    def test_each_slice_lands_beside_the_destination_named_after_its_instrument(
         self,
         backend: FamiTrackerBackend,
         tmp_path: Path,
     ) -> None:
-        destination = tmp_path / "Kick"
+        destination = tmp_path / f"Kick{EXT_FILE_INSTRUMENT}"
         request = build_sample("Kick", build_instrument("Kick (pulse1)", 16), build_instrument("Kick (noise)", 16))
 
         artifact = backend.write_sample(destination, request)
 
         assert artifact.paths == (
-            destination / f"Kick (pulse1){EXT_FILE_INSTRUMENT}",
-            destination / f"Kick (noise){EXT_FILE_INSTRUMENT}",
+            tmp_path / f"Kick (pulse1){EXT_FILE_INSTRUMENT}",
+            tmp_path / f"Kick (noise){EXT_FILE_INSTRUMENT}",
         )
         assert all(path.exists() for path in artifact.paths)
 
     def test_a_missing_directory_is_created(self, backend: FamiTrackerBackend, tmp_path: Path) -> None:
-        destination = tmp_path / "nested" / "Kick"
+        destination = tmp_path / "nested" / f"Kick{EXT_FILE_INSTRUMENT}"
 
         backend.write_sample(destination, build_sample("Kick", build_instrument("Kick", 16)))
 
-        assert destination.is_dir()
+        assert destination.parent.is_dir()
 
     def test_the_report_spans_every_shortened_slice(self, backend: FamiTrackerBackend, tmp_path: Path) -> None:
         request = build_sample(

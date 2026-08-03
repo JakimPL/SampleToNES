@@ -72,10 +72,7 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
-from sampletones_application.utils.file_dialogs.api import (
-    save_file_dialog,
-    select_directory_dialog,
-)
+from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -89,7 +86,7 @@ from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.paths import EXT_FILE_WAVE
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.scope import DestinationKind, ExportScope
+from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -482,25 +479,18 @@ class ReconstructionTabCoordinator:
         default_path: str,
         tracker_format: TrackerFormat,
     ) -> None:
-        """Prompts for whatever destination the chosen format writes a reconstruction to.
+        """Prompts for the destination the loaded reconstruction's slices are named after.
 
-        A format that gathers a whole reconstruction into one document is saved as a file;
-        one that writes an instrument per slice fills a directory.
+        A format that gathers the whole reconstruction into one document writes it there,
+        while one that keeps an instrument per file writes its slices beside it.
         """
         backend = self._tracker_backends[tracker_format]
-        destination = (
-            save_file_dialog(
-                title=self._ttl_export_instruments,
-                initial_directory=default_path,
-                default_filename=default_filename,
-                extensions=[backend.extension(ExportScope.SAMPLE)],
-                filter_name=self._filters_export_instrument[tracker_format],
-            )
-            if backend.destination_kind(ExportScope.SAMPLE) is DestinationKind.FILE
-            else select_directory_dialog(
-                title=self._ttl_export_instruments,
-                initial_directory=default_path,
-            )
+        destination = save_file_dialog(
+            title=self._ttl_export_instruments,
+            initial_directory=default_path,
+            default_filename=default_filename,
+            extensions=[backend.extension(ExportScope.SAMPLE)],
+            filter_name=self._filters_export_instrument[tracker_format],
         )
         self._handle_export_instruments(destination)
 

@@ -218,6 +218,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_open_export_wav_dialog, default_filename, default_path)
 
     def handle_export_instrument_confirmed(self, filepath: Path) -> None:
+        """Writes one generator slice of the loaded reconstruction to ``filepath``.
+
+        The instrument carries the name the destination was saved under, so renaming the
+        file in the dialog renames the instrument the tracker lists.
+        """
         pending = self._pending_instrument
         self._pending_instrument = None
         if not self._reconstruction_data or pending is None:
@@ -230,14 +235,15 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._export_service.export_instrument(
             filepath,
             self._tracker_backends[pending.tracker_format],
-            self._instrument_export(pending.generator, feature),
+            self._instrument_export(pending.generator, feature, filepath.stem),
         )
 
     def handle_export_instruments_confirmed(self, destination: Path) -> None:
         """Writes every generator slice of the loaded reconstruction to ``destination``.
 
-        The chosen format decides whether the destination is one file holding the whole
-        reconstruction or a directory the slices fill.
+        The destination names the batch: each slice takes its generator suffix from the
+        stem, so a format gathering the whole reconstruction into one document writes it
+        there while one keeping an instrument per file writes its slices beside it.
         """
         reconstruction_data = self._reconstruction_data
         tracker_format = self._pending_sample_format
@@ -246,10 +252,15 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for instruments export")
             return
 
+        base_name = destination.stem
         request = SampleExport(
-            name=reconstruction_data.name,
+            name=base_name,
             instruments=tuple(
-                self._instrument_export(generator_name, feature)
+                self._instrument_export(
+                    generator_name,
+                    feature,
+                    instrument_slice_name(base_name, generator_name),
+                )
                 for generator_name, feature in reconstruction_data.feature_data.generators.items()
             ),
             nes_frequency=self._nes_frequency(),
@@ -261,14 +272,15 @@ class ReconstructionPanelLogic(CallbackMixin):
         self,
         generator_name: GeneratorName,
         feature: Features,
+        name: str,
     ) -> InstrumentExport:
-        """Names one generator slice and packages it for a tracker backend.
+        """Packages one generator slice under ``name`` for a tracker backend.
 
         A reconstruction has no loop flag of its own — that belongs to a sample placed in
         a project — so the instrument plays its envelopes once.
         """
         return InstrumentExport(
-            name=self._get_instrument_name(generator_name),
+            name=name,
             generator=generator_name,
             features=feature,
             loop=False,

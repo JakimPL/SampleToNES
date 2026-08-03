@@ -12,7 +12,7 @@ from sampletones_core.paths import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from sampletones_core.trackers.artifact import ExportArtifact
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import InstrumentExport, ProjectExport, SampleExport
-from sampletones_core.trackers.scope import DestinationKind, ExportScope
+from sampletones_core.trackers.scope import ExportScope
 
 DOCUMENT_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
 PRESET_SCOPES: FrozenSet[ExportScope] = frozenset({ExportScope.INSTRUMENT, ExportScope.SAMPLE})
@@ -36,9 +36,6 @@ class BitphaseBackend:
     @property
     def supported_scopes(self) -> FrozenSet[ExportScope]:
         return DOCUMENT_SCOPES
-
-    def destination_kind(self, scope: ExportScope) -> DestinationKind:
-        return DestinationKind.FILE
 
     def extension(self, scope: ExportScope) -> str:
         return EXT_FILE_BITPHASE
@@ -72,9 +69,9 @@ class BitphasePresetBackend:
     """Writes the single-instrument ``.json`` files Bitphase's instruments panel loads.
 
     The panel reads one instrument per file into the slot the user has selected, so a
-    whole reconstruction lands as a directory of them, one file per generator slice
-    named after the instrument. A preset carries rows alone, so its pitch contour rides
-    in each row's tone offset.
+    whole reconstruction lands as a set of them beside the chosen destination, one file
+    per generator slice named after the instrument. A preset carries rows alone, so its
+    pitch contour rides in each row's tone offset.
     """
 
     @property
@@ -84,9 +81,6 @@ class BitphasePresetBackend:
     @property
     def supported_scopes(self) -> FrozenSet[ExportScope]:
         return PRESET_SCOPES
-
-    def destination_kind(self, scope: ExportScope) -> DestinationKind:
-        return DestinationKind.DIRECTORY if scope == ExportScope.SAMPLE else DestinationKind.FILE
 
     def extension(self, scope: ExportScope) -> str:
         return EXT_FILE_JSON
@@ -104,11 +98,11 @@ class BitphasePresetBackend:
         destination: Path,
         request: SampleExport,
     ) -> ExportArtifact:
-        destination.mkdir(parents=True, exist_ok=True)
+        destination.parent.mkdir(parents=True, exist_ok=True)
 
         paths: List[Path] = []
         for instrument in request.instruments:
-            filepath = destination / f"{instrument.name}{EXT_FILE_JSON}"
+            filepath = destination.with_name(f"{instrument.name}{EXT_FILE_JSON}")
             paths.extend(self.write_instrument(filepath, instrument).paths)
 
         return ExportArtifact(paths=tuple(paths), truncation=WHOLE_ENVELOPE)

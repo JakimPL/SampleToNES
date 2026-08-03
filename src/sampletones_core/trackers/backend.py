@@ -8,17 +8,16 @@ from sampletones_core.trackers.request import (
     ProjectExport,
     SampleExport,
 )
-from sampletones_core.trackers.scope import DestinationKind, ExportScope
+from sampletones_core.trackers.scope import ExportScope
 
 
 class TrackerBackend(Protocol):
     """Writes the application's work in the file format one tracker reads.
 
     A backend owns both the byte layout and the shape each :class:`ExportScope` takes on
-    disk, so a format that reads a whole reconstruction from a single file writes one
-    where another writes a directory of per-instrument files. Callers ask
-    :meth:`destination_kind` what to prompt for and hand the answer straight back as the
-    ``destination``.
+    disk, so a format that gathers a whole reconstruction into one document writes one
+    where another writes a file per instrument. Every scope is written to a file path the
+    caller chooses, and :meth:`extension` names the extension it carries.
     """
 
     @property
@@ -28,16 +27,6 @@ class TrackerBackend(Protocol):
     @property
     def supported_scopes(self) -> FrozenSet[ExportScope]:
         """The scopes this format can express."""
-
-    def destination_kind(self, scope: ExportScope) -> DestinationKind:
-        """Whether ``scope`` is written to a file or into a directory.
-
-        Args:
-            scope: The scope about to be exported.
-
-        Returns:
-            DestinationKind: What the caller should prompt the user for.
-        """
 
     def extension(self, scope: ExportScope) -> str:
         """The extension the files of ``scope`` carry, leading dot included.
@@ -75,7 +64,9 @@ class TrackerBackend(Protocol):
         """Writes every generator slice of one reconstruction.
 
         Args:
-            destination: The file to write, or the directory to fill.
+            destination: The file this scope is written to. A format that keeps one
+                instrument per file writes its slices beside it, each named after the
+                instrument it carries.
             request: The reconstruction's slices.
 
         Returns:

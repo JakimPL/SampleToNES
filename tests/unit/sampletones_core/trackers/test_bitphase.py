@@ -15,7 +15,7 @@ from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.implementation.bitphase import BitphaseBackend, BitphasePresetBackend
 from sampletones_core.trackers.request import InstrumentExport, ProjectExport, SampleExport
-from sampletones_core.trackers.scope import DestinationKind, ExportScope
+from sampletones_core.trackers.scope import ExportScope
 
 NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60
@@ -24,16 +24,7 @@ LONG_ENVELOPE_FRAMES: Final[int] = 600
 PROJECT_TITLE: Final[str] = "Demo"
 
 
-@dataclass
-class ScopeCase:
-    scope: ExportScope
-    destination: DestinationKind
-
-
-PRESET_SCOPE_CASES: List[ScopeCase] = [
-    ScopeCase(scope=ExportScope.INSTRUMENT, destination=DestinationKind.FILE),
-    ScopeCase(scope=ExportScope.SAMPLE, destination=DestinationKind.DIRECTORY),
-]
+PRESET_SCOPES: List[ExportScope] = [ExportScope.INSTRUMENT, ExportScope.SAMPLE]
 
 
 def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> Features:
@@ -88,13 +79,6 @@ class TestFormatDeclaration:
 
     def test_every_scope_is_supported(self, backend: BitphaseBackend) -> None:
         assert backend.supported_scopes == frozenset(ExportScope)
-
-    @pytest.mark.parametrize("scope", list(ExportScope))
-    def test_every_scope_lands_in_one_file(self, backend: BitphaseBackend, scope: ExportScope) -> None:
-        """A document holds instruments, tables and patterns together, so a whole
-        reconstruction fits in the same kind of file one slice does.
-        """
-        assert backend.destination_kind(scope) == DestinationKind.FILE
 
     @pytest.mark.parametrize("scope", list(ExportScope))
     def test_every_scope_carries_the_document_extension(self, backend: BitphaseBackend, scope: ExportScope) -> None:
@@ -185,21 +169,13 @@ class TestThePresetBackend:
     def test_a_preset_holds_instruments_rather_than_a_song(self, preset_backend: BitphasePresetBackend) -> None:
         assert preset_backend.supported_scopes == frozenset({ExportScope.INSTRUMENT, ExportScope.SAMPLE})
 
-    @pytest.mark.parametrize("case", PRESET_SCOPE_CASES, ids=lambda case: str(case.scope))
-    def test_one_slice_writes_a_file_and_a_reconstruction_fills_a_directory(
-        self,
-        preset_backend: BitphasePresetBackend,
-        case: ScopeCase,
-    ) -> None:
-        assert preset_backend.destination_kind(case.scope) == case.destination
-
-    @pytest.mark.parametrize("case", PRESET_SCOPE_CASES, ids=lambda case: str(case.scope))
+    @pytest.mark.parametrize("scope", PRESET_SCOPES, ids=lambda scope: str(scope))
     def test_every_supported_scope_carries_the_preset_extension(
         self,
         preset_backend: BitphasePresetBackend,
-        case: ScopeCase,
+        scope: ExportScope,
     ) -> None:
-        assert preset_backend.extension(case.scope) == EXT_FILE_JSON
+        assert preset_backend.extension(scope) == EXT_FILE_JSON
 
     def test_one_slice_lands_in_a_file(self, preset_backend: BitphasePresetBackend, tmp_path: Path) -> None:
         destination = tmp_path / f"Lead{EXT_FILE_JSON}"
@@ -209,12 +185,12 @@ class TestThePresetBackend:
         assert artifact.paths == (destination,)
         assert json.loads(destination.read_text(encoding="utf-8"))["name"] == "Lead"
 
-    def test_each_slice_lands_in_a_file_named_after_its_instrument(
+    def test_each_slice_lands_beside_the_destination_named_after_its_instrument(
         self,
         preset_backend: BitphasePresetBackend,
         tmp_path: Path,
     ) -> None:
-        destination = tmp_path / "Kick"
+        destination = tmp_path / f"Kick{EXT_FILE_JSON}"
         request = build_sample(
             "Kick",
             build_instrument("Kick (pulse1)", ENVELOPE_FRAMES),
@@ -224,17 +200,17 @@ class TestThePresetBackend:
         artifact = preset_backend.write_sample(destination, request)
 
         assert artifact.paths == (
-            destination / f"Kick (pulse1){EXT_FILE_JSON}",
-            destination / f"Kick (noise){EXT_FILE_JSON}",
+            tmp_path / f"Kick (pulse1){EXT_FILE_JSON}",
+            tmp_path / f"Kick (noise){EXT_FILE_JSON}",
         )
         assert all(path.exists() for path in artifact.paths)
 
     def test_a_missing_directory_is_created(self, preset_backend: BitphasePresetBackend, tmp_path: Path) -> None:
-        destination = tmp_path / "nested" / "Kick"
+        destination = tmp_path / "nested" / f"Kick{EXT_FILE_JSON}"
 
         preset_backend.write_sample(destination, build_sample("Kick", build_instrument("Kick", ENVELOPE_FRAMES)))
 
-        assert destination.is_dir()
+        assert destination.parent.is_dir()
 
     def test_a_project_is_refused(
         self,

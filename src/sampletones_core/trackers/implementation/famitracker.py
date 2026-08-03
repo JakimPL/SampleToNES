@@ -16,7 +16,7 @@ from sampletones_core.trackers.request import (
     ProjectExport,
     SampleExport,
 )
-from sampletones_core.trackers.scope import DestinationKind, ExportScope
+from sampletones_core.trackers.scope import ExportScope
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
 
@@ -25,7 +25,8 @@ class FamiTrackerBackend:
     """Writes FamiTracker's ``.fti`` instruments and ``.ftm`` modules.
 
     FamiTracker reads one instrument per ``.fti`` file, so a whole reconstruction lands
-    as a directory of them, one file per generator slice named after the instrument.
+    as a set of them beside the chosen destination, one file per generator slice named
+    after the instrument.
     """
 
     @property
@@ -35,9 +36,6 @@ class FamiTrackerBackend:
     @property
     def supported_scopes(self) -> FrozenSet[ExportScope]:
         return SUPPORTED_SCOPES
-
-    def destination_kind(self, scope: ExportScope) -> DestinationKind:
-        return DestinationKind.DIRECTORY if scope == ExportScope.SAMPLE else DestinationKind.FILE
 
     def extension(self, scope: ExportScope) -> str:
         return EXT_FILE_MODULE if scope == ExportScope.PROJECT else EXT_FILE_INSTRUMENT
@@ -76,12 +74,12 @@ class FamiTrackerBackend:
         destination: Path,
         request: SampleExport,
     ) -> ExportArtifact:
-        destination.mkdir(parents=True, exist_ok=True)
+        destination.parent.mkdir(parents=True, exist_ok=True)
 
         paths: List[Path] = []
         truncations: List[Optional[EnvelopeTruncation]] = []
         for instrument in request.instruments:
-            filepath = destination / f"{instrument.name}{EXT_FILE_INSTRUMENT}"
+            filepath = destination.with_name(f"{instrument.name}{EXT_FILE_INSTRUMENT}")
             artifact = self.write_instrument(filepath, instrument)
             paths.extend(artifact.paths)
             truncations.append(artifact.truncation)
