@@ -2,6 +2,7 @@
 
 ## v0.3.1 [2026-07-31]
 
+* Added support to [Bitphase](https://github.com/paator/bitphase).
 * Fixed arpeggio editing shifting a sample's pitch permanently.
 * Bumped the reconstruction data-version to `2.1`.
 

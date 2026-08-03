@@ -3,6 +3,7 @@
 ### Navigation
 
 * Interface scale
+* VSync/frame rate options
 * Tree navigation using keys
 * Waveform LOD for zooming
 * Keybindings options
@@ -10,6 +11,7 @@
 * Drag and drop
 * Multiple Reconstruction views
 * Playing a fragment by clicking on a waveform
+* Transpose/note pitch display duality
 
 ### Tracker
 
@@ -39,3 +41,4 @@
 ## Bugs
 
 * No refreshing after library generation
+* Inconsistent instruments naming scheme
