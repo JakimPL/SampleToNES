@@ -84,7 +84,6 @@ class MenuElements(AbstractElement):
     ITEM_RECONSTRUCTION_EXPORT_WAV = "item_reconstruction_export_wav"
     GROUP_RECONSTRUCTION_EXPORT_INSTRUMENTS = "group_reconstruction_export_instruments"
     ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER = "item_reconstruction_export_instruments_famitracker"
-    ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE = "item_reconstruction_export_instruments_bitphase"
     ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET = "item_reconstruction_export_instruments_bitphase_preset"
     GROUP_PLAYBACK = "group_playback"
     ITEM_PLAYBACK_PLAY = "item_playback_play"
@@ -184,6 +183,8 @@ class GlobalMessageElements(AbstractElement):
     CHANGE_NES_FREQUENCY = "change_nes_frequency"
     FREQUENCY_MISMATCH = "frequency_mismatch"
     OPERATION_IN_PROGRESS = "operation_in_progress"
+    UNSUPPORTED_EXTENSION = "unsupported_extension"
+    MISSING_EXTENSION = "missing_extension"
     ABOUT_DESCRIPTION = "about_description"
 
 
@@ -214,6 +215,7 @@ class GlobalDialogTitleElements(AbstractElement):
     REMOVE_SAMPLE = "remove_sample"
     CHANGE_NES_FREQUENCY = "change_nes_frequency"
     FREQUENCY_MISMATCH = "frequency_mismatch"
+    UNSUPPORTED_EXTENSION = "unsupported_extension"
     ABOUT = "about"
 
 
@@ -221,7 +223,7 @@ class FileFilterElements(AbstractElement):
     PROJECT = "project"
     RECONSTRUCTION = "reconstruction"
     MODULE = "module"
-    INSTRUMENT = "instrument"
+    FAMITRACKER_INSTRUMENT = "famitracker_instrument"
     BITPHASE_PROJECT = "bitphase_project"
     BITPHASE_PRESET = "bitphase_preset"
     CONFIG = "config"

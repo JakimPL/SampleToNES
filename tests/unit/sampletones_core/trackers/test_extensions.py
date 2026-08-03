@@ -10,7 +10,11 @@ from sampletones_core.paths import (
     EXT_FILE_MODULE,
 )
 from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.extensions import format_for_extension, scope_extensions
+from sampletones_core.trackers.extensions import (
+    default_scope_extension,
+    format_for_extension,
+    scope_extensions,
+)
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
 from sampletones_core.trackers.scope import ExportScope
@@ -109,6 +113,32 @@ class TestScopeExtensions:
             EXT_FILE_BITPHASE,
             EXT_FILE_JSON,
         )
+
+
+class TestDefaultScopeExtension:
+    @pytest.mark.parametrize("scope", list(ExportScope), ids=lambda scope: str(scope))
+    def test_the_default_is_one_of_the_offered_extensions(
+        self,
+        backends: Dict[TrackerFormat, TrackerBackend],
+        scope: ExportScope,
+    ) -> None:
+        assert default_scope_extension(backends, scope) in scope_extensions(backends, scope)
+
+    @pytest.mark.parametrize("scope", list(ExportScope), ids=lambda scope: str(scope))
+    def test_the_default_resolves_to_a_format(
+        self,
+        backends: Dict[TrackerFormat, TrackerBackend],
+        scope: ExportScope,
+    ) -> None:
+        """A destination suggested under the default reaches a backend as it stands, so
+        confirming the dialog untouched writes a file.
+        """
+        extension = default_scope_extension(backends, scope)
+        assert format_for_extension(backends, scope, extension) is not None
+
+    def test_a_scope_no_format_writes_is_refused(self) -> None:
+        with pytest.raises(ValueError):
+            default_scope_extension({}, ExportScope.INSTRUMENT)
 
 
 class TestFormatForExtension:

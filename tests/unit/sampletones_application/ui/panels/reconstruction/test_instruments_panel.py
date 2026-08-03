@@ -1,10 +1,9 @@
-from typing import List, Tuple
+from typing import List
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.trackers import TRACKER_INSTRUMENT_LABELS
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.paths import (
@@ -28,7 +27,6 @@ from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette import Palette
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
-from sampletones_core.trackers.format import TrackerFormat
 
 
 @pytest.fixture
@@ -109,30 +107,43 @@ class TestSequenceLengthWarning:
         assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING, TAG_GLOBAL_THEME_DEFAULT]
 
 
-class TestInstrumentExportFormat:
-    """The export button asks which tracker the slice is written for, and the answer travels
-    with the generator so the logic below picks the matching backend."""
+class TestInstrumentExport:
+    """The export button carries the generator whose slice it writes; the destination the
+    dialog answers with names the tracker, so no format travels from here."""
 
-    def test_the_chosen_format_reaches_the_export_callback(
+    def test_the_generator_reaches_the_export_callback(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        calls: List[Tuple[GeneratorName, TrackerFormat]] = []
-        panel.on_instrument_export = lambda generator, tracker_format: calls.append((generator, tracker_format))
+        calls: List[GeneratorName] = []
+        panel.on_instrument_export = calls.append
 
-        panel._handle_export_format_selected(
-            "sender",
-            None,
-            (GeneratorName.NOISE, TrackerFormat.BITPHASE_PRESET),
-        )
+        panel._export_callback(GeneratorName.NOISE)()
 
-        assert calls == [(GeneratorName.NOISE, TrackerFormat.BITPHASE_PRESET)]
+        assert calls == [GeneratorName.NOISE]
 
-    def test_the_popup_offers_a_label_for_every_format(
+    def test_each_generator_gets_its_own_handler(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        assert set(panel._lbl_export_formats) == set(TRACKER_INSTRUMENT_LABELS)
+        calls: List[GeneratorName] = []
+        panel.on_instrument_export = calls.append
+
+        for generator_name in GeneratorName.items():
+            panel._export_callback(generator_name)()
+
+        assert calls == list(GeneratorName.items())
+
+    def test_the_handler_is_one_the_framework_can_dispatch(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        """DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it,
+        so a press handler carries one and takes the arguments the framework offers a button.
+        """
+        callback = panel._export_callback(GeneratorName.NOISE)
+
+        assert callback.__code__.co_argcount == 0
 
 
 class TestSequenceStatusMessage:

@@ -104,6 +104,7 @@ from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     select_directory_dialog,
 )
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.frame_limiter import FrameLimiter
@@ -676,13 +677,17 @@ class Application:
                 GlobalDialogTitleElements.RECONSTRUCT_FILE,
             ],
             initial_directory=self.session_manager.get_audio_input_path(),
-            extensions=EXT_FILES_AUDIO,
-            filter_name=self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                FileFilterElements.AUDIO,
-            ],
+            filters=(
+                FileFilter.for_extensions(
+                    self.language_manager[
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.FILTER,
+                        FileFilterElements.AUDIO,
+                    ],
+                    EXT_FILES_AUDIO,
+                ),
+            ),
         )
 
         self._handle_reconstruct_file(filepath)
@@ -734,10 +739,7 @@ class Application:
         if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_wav_dialog()
 
-    def _export_reconstruction_instruments_dialog(
-        self,
-        tracker_format: TrackerFormat,
-    ) -> None:
+    def _export_reconstruction_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
         if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_instruments_dialog(tracker_format)
 

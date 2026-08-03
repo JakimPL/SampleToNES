@@ -115,9 +115,13 @@ class ExportService(ServiceBase[ExportResult]):
     ) -> None:
         """Runs one backend write on the executor and reports what it produced.
 
+        The result reports a path the run actually wrote, so the dialog announcing it opens
+        a file that is there: a batch naming its slices after the destination writes those
+        slices rather than the destination itself.
+
         Args:
             kind: The artefact the run produces, naming the dialog that reports it.
-            destination: The file written, or the directory a batch of instruments filled.
+            destination: The destination the run was given.
             tracker_format: The format the run writes, carried through to the result.
             write: Calls the backend and returns what it left on disk.
         """
@@ -127,10 +131,11 @@ class ExportService(ServiceBase[ExportResult]):
                 artifact = write()
                 for path in artifact.paths:
                     logger.info(f"Exported {kind.value}: {logger.format_path(path)}")
+
                 self._emit(
                     ExportSuccess(
                         kind=kind,
-                        filepath=destination,
+                        filepath=artifact.paths[0] if artifact.paths else destination,
                         tracker_format=tracker_format,
                         truncation=artifact.truncation,
                     )

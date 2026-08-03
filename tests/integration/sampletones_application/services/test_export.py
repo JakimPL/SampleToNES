@@ -134,19 +134,22 @@ class TestExportSampleIntegration:
         assert (tmp_path / "inst_0.fti").exists()
         assert (tmp_path / "inst_1.fti").exists()
 
-    def test_emits_export_success_with_the_destination(self, tmp_path, pulse_features, backend) -> None:
-        destination = tmp_path / "sample.fti"
+    def test_emits_export_success_with_a_path_that_was_written(self, tmp_path, pulse_features, backend) -> None:
+        """A batch names its slices after the destination, so the result reports one of the
+        slices it wrote and the dialog announcing it opens a file that is there.
+        """
         export_service = ExportService()
         results: List[Any] = []
         export_service.subscribe(results.append)
 
         request = sample_export("sample", instrument_export("inst", pulse_features))
-        export_service.export_sample(destination, backend, request)
+        export_service.export_sample(tmp_path / "sample.fti", backend, request)
 
         assert len(results) == 1
         assert isinstance(results[0], ExportSuccess)
         assert results[0].kind == ExportKind.SAMPLE
-        assert results[0].filepath == destination
+        assert results[0].filepath == tmp_path / "inst.fti"
+        assert results[0].filepath.exists()
 
     def test_new_directory_is_created(self, tmp_path, pulse_features, backend) -> None:
         new_dir = tmp_path / "subdir"

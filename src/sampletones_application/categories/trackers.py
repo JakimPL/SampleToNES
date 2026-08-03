@@ -1,14 +1,11 @@
 from dataclasses import dataclass
-from typing import Dict, Final
+from typing import Dict, Final, Tuple
 
 from sampletones_application.categories.elements.global_ import (
     FileFilterElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
     MenuElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsInstrumentsElements,
 )
 from sampletones_core.trackers.format import TrackerFormat
 
@@ -48,25 +45,28 @@ TRACKER_PROJECT_ELEMENTS: Final[Dict[TrackerFormat, TrackerProjectElements]] = {
     ),
 }
 
-TRACKER_INSTRUMENT_FILTERS: Final[Dict[TrackerFormat, FileFilterElements]] = {
-    TrackerFormat.FAMITRACKER: FileFilterElements.INSTRUMENT,
-    TrackerFormat.BITPHASE: FileFilterElements.BITPHASE_PROJECT,
-    TrackerFormat.BITPHASE_PRESET: FileFilterElements.BITPHASE_PRESET,
-}
-
 TRACKER_PROJECT_MENU_LABELS: Final[Dict[TrackerFormat, MenuElements]] = {
     TrackerFormat.FAMITRACKER: MenuElements.ITEM_FILE_EXPORT_FAMITRACKER,
     TrackerFormat.BITPHASE: MenuElements.ITEM_FILE_EXPORT_BITPHASE,
 }
 
-TRACKER_SAMPLE_MENU_LABELS: Final[Dict[TrackerFormat, MenuElements]] = {
-    TrackerFormat.FAMITRACKER: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER,
-    TrackerFormat.BITPHASE: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE,
-    TrackerFormat.BITPHASE_PRESET: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET,
+INSTRUMENT_EXPORT_FORMATS: Final[Tuple[TrackerFormat, ...]] = (
+    TrackerFormat.FAMITRACKER,
+    TrackerFormat.BITPHASE_PRESET,
+)
+"""The formats an instrument export offers, in the order they are listed.
+
+Both write one file per generator slice, which is what exporting instruments produces. A
+Bitphase project holds a whole composition, so it is written through the project export.
+"""
+
+TRACKER_INSTRUMENT_FILTERS: Final[Dict[TrackerFormat, FileFilterElements]] = {
+    TrackerFormat.FAMITRACKER: FileFilterElements.FAMITRACKER_INSTRUMENT,
+    TrackerFormat.BITPHASE: FileFilterElements.BITPHASE_PROJECT,
+    TrackerFormat.BITPHASE_PRESET: FileFilterElements.BITPHASE_PRESET,
 }
 
-TRACKER_INSTRUMENT_LABELS: Final[Dict[TrackerFormat, ReconstructionsInstrumentsElements]] = {
-    TrackerFormat.FAMITRACKER: ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_FAMITRACKER,
-    TrackerFormat.BITPHASE: ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_BITPHASE,
-    TrackerFormat.BITPHASE_PRESET: ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_BITPHASE_PRESET,
+TRACKER_SAMPLE_MENU_LABELS: Final[Dict[TrackerFormat, MenuElements]] = {
+    TrackerFormat.FAMITRACKER: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER,
+    TrackerFormat.BITPHASE_PRESET: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET,
 }

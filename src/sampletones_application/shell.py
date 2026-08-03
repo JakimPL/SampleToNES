@@ -79,7 +79,6 @@ _PROJECT_EXPORT_SHORTCUTS: Final[Dict[TrackerFormat, Shortcut]] = {
 }
 _SAMPLE_EXPORT_SHORTCUTS: Final[Dict[TrackerFormat, Shortcut]] = {
     TrackerFormat.FAMITRACKER: Shortcut(dpg.mvKey_I, CTRL),
-    TrackerFormat.BITPHASE: Shortcut(),
     TrackerFormat.BITPHASE_PRESET: Shortcut(),
 }
 

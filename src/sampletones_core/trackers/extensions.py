@@ -26,6 +26,34 @@ def scope_extensions(
     return tuple(dict.fromkeys(extensions))
 
 
+def default_scope_extension(
+    backends: Mapping[TrackerFormat, TrackerBackend],
+    scope: ExportScope,
+) -> str:
+    """The extension a destination for ``scope`` takes when it is given none.
+
+    The extension chooses the format, so a destination has to end in one for the export to
+    reach a backend. The first format able to express the scope stands in when the user
+    types a bare name, and it is the extension the save dialog suggests, so the type an
+    export lands in is on screen before it is confirmed.
+
+    Args:
+        backends: Every backend the application writes through, keyed by its format.
+        scope: The scope about to be exported.
+
+    Returns:
+        str: The extension the scope falls back to, leading dot included.
+
+    Raises:
+        ValueError: If no format can express ``scope``.
+    """
+    extensions = scope_extensions(backends, scope)
+    if not extensions:
+        raise ValueError(f"No tracker format writes a {scope} export")
+
+    return extensions[0]
+
+
 def format_for_extension(
     backends: Mapping[TrackerFormat, TrackerBackend],
     scope: ExportScope,

@@ -27,7 +27,6 @@ class ShortcutId(Enum):
     CLOSE_RECONSTRUCTION = "CloseReconstruction"
     EXPORT_RECONSTRUCTION_WAV = "ExportReconstructionWav"
     EXPORT_INSTRUMENTS_FAMITRACKER = "ExportInstrumentsFamiTracker"
-    EXPORT_INSTRUMENTS_BITPHASE = "ExportInstrumentsBitphase"
     EXPORT_INSTRUMENTS_BITPHASE_PRESET = "ExportInstrumentsBitphasePreset"
     ADD_RECONSTRUCTION_TO_SEQUENCER = "AddReconstructionToSequencer"
     OPEN_RECONSTRUCTION_IN_EXPLORER = "OpenReconstructionInExplorer"
@@ -66,6 +65,5 @@ PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {
 
 SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {
     TrackerFormat.FAMITRACKER: ShortcutId.EXPORT_INSTRUMENTS_FAMITRACKER,
-    TrackerFormat.BITPHASE: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE,
     TrackerFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
 }

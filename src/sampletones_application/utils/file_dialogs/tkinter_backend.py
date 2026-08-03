@@ -2,6 +2,10 @@ from pathlib import Path
 from tkinter import Tk, filedialog
 from typing import Callable, List, Optional, Tuple
 
+from sampletones_application.utils.file_dialogs.destination import (
+    SaveDestination,
+    untyped_destination,
+)
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_shared.utils.system.paths import normalize_path
 
@@ -12,8 +16,8 @@ class TkinterBackend:
 
     Tk renders the platform's native dialog on Windows and macOS, which makes this the
     backend there; on Linux it is the last resort when neither kdialog nor zenity is
-    installed. Each call raises a transient hidden root so the dialog owns no lasting
-    window.
+    installed. Every offered type reaches the dialog's type selector as its own entry.
+    Each call raises a transient hidden root so the dialog owns no lasting window.
     """
 
     def open_file(
@@ -21,13 +25,13 @@ class TkinterBackend:
         *,
         title: str,
         initial_directory: Optional[Path],
-        file_filter: Optional[FileFilter],
+        filters: Tuple[FileFilter, ...],
     ) -> Optional[Path]:
         return _run(
             lambda: filedialog.askopenfilename(
                 title=title,
                 initialdir=_initial_directory(initial_directory),
-                filetypes=_filetypes(file_filter),
+                filetypes=_filetypes(filters),
             )
         )
 
@@ -37,14 +41,16 @@ class TkinterBackend:
         title: str,
         initial_directory: Optional[Path],
         suggested_name: Optional[str],
-        file_filter: Optional[FileFilter],
-    ) -> Optional[Path]:
-        return _run(
-            lambda: filedialog.asksaveasfilename(
-                title=title,
-                initialdir=_initial_directory(initial_directory),
-                initialfile=suggested_name or "",
-                filetypes=_filetypes(file_filter),
+        filters: Tuple[FileFilter, ...],
+    ) -> Optional[SaveDestination]:
+        return untyped_destination(
+            _run(
+                lambda: filedialog.asksaveasfilename(
+                    title=title,
+                    initialdir=_initial_directory(initial_directory),
+                    initialfile=suggested_name or "",
+                    filetypes=_filetypes(filters),
+                )
             )
         )
 
@@ -67,12 +73,9 @@ def _initial_directory(initial_directory: Optional[Path]) -> Optional[str]:
 
 
 def _filetypes(
-    file_filter: Optional[FileFilter],
+    filters: Tuple[FileFilter, ...],
 ) -> List[Tuple[str, Tuple[str, ...]]]:
-    if file_filter is None:
-        return []
-
-    return [(file_filter.label, tuple(file_filter.patterns))]
+    return [(file_filter.label, file_filter.patterns) for file_filter in filters]
 
 
 def _run(dialog: Callable[[], str]) -> Optional[Path]:

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
@@ -33,6 +33,7 @@ from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
@@ -156,16 +157,24 @@ class ReconstructionCoordinator:
             ],
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[EXT_FILE_RECONSTRUCTION],
-            filter_name=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                FileFilterElements.RECONSTRUCTION,
-            ],
+            filters=self._reconstruction_filters(),
         )
 
         self._handle_save_as(filepath)
+
+    def _reconstruction_filters(self) -> Tuple[FileFilter, ...]:
+        """The single type a reconstruction is written as and read from."""
+        return (
+            FileFilter.for_extensions(
+                self._language_manager[
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.FILTER,
+                    FileFilterElements.RECONSTRUCTION,
+                ],
+                [EXT_FILE_RECONSTRUCTION],
+            ),
+        )
 
     @ignore_none_path
     def _handle_save_as(self, filepath: Path) -> None:
@@ -215,13 +224,7 @@ class ReconstructionCoordinator:
                 ReconstructionsBrowserElements.LOAD_RECONSTRUCTION_DIALOG,
             ],
             initial_directory=self._session_manager.get_reconstruction_path(),
-            extensions=[EXT_FILE_RECONSTRUCTION],
-            filter_name=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                FileFilterElements.RECONSTRUCTION,
-            ],
+            filters=self._reconstruction_filters(),
         )
 
         self._handle_load(filepath)

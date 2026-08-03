@@ -15,7 +15,6 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
-from sampletones_application.categories.trackers import TRACKER_INSTRUMENT_LABELS
 from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.general.colors import FeatureColors
 from sampletones_application.layout.graphs import GraphsLayout
@@ -73,7 +72,6 @@ from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
 from sampletones_core.features import GENERATOR_KIND, supported_features
 from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
-from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
     PITCH_VALUE_KIND,
@@ -81,9 +79,10 @@ from sampletones_core.utils.pitch_kind import (
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
-OnInstrumentExportCallback = Callable[[GeneratorName, TrackerFormat], None]
+OnInstrumentExportCallback = Callable[[GeneratorName], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
@@ -141,15 +140,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             TextType.LABEL,
             ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_BUTTON,
         ]
-        self._lbl_export_formats: Dict[TrackerFormat, str] = {
-            tracker_format: language_manager[
-                Page.RECONSTRUCTIONS,
-                Panel.INSTRUMENTS,
-                TextType.LABEL,
-                element,
-            ]
-            for tracker_format, element in TRACKER_INSTRUMENT_LABELS.items()
-        }
         self._lbl_copy = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.INSTRUMENTS,
@@ -339,14 +329,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         with dpg.handler_registry(tag=self.mouse_item_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_move)
 
-    def _handle_export_format_selected(
-        self,
-        sender: Sender,
-        app_data: Any,
-        user_data: Tuple[GeneratorName, TrackerFormat],
-    ) -> None:
-        generator_name, tracker_format = user_data
-        self.call(self.on_instrument_export, generator_name, tracker_format)
+    def _export_callback(self, generator_name: GeneratorName) -> VoidCallback:
+        """The press handler for one generator's export button.
+
+        DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it, so
+        the generator is captured in a closure, which carries one.
+        """
+        return lambda: self.call(self.on_instrument_export, generator_name)
 
     def _create_tabs_for_generators(self) -> None:
         for generator_name in GeneratorName.items():
@@ -376,13 +365,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         ):
             self.generator_plots[generator_name] = {}
             button_tag = f"{TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT}{TAG_SEPARATOR}{tab_tag}"
-            button = GUIButton(
+            GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
                 label=self._lbl_export_instrument,
                 width=-1,
+                callback=self._export_callback(generator_name),
             )
-            self._create_export_formats_popup(button.button_tag, generator_name)
             self._status_bar.bind_to_item(
                 button_tag,
                 self._msg_export_instrument.format(generator=self._generator_labels[generator_name]),
@@ -398,24 +387,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_INSTRUMENT).bind_to_item(window_tag)
 
         ThemeRegistry.get(TAG_GLOBAL_THEME_INSTRUMENT_TABS).bind_to_item(tab_tag)
-
-    def _create_export_formats_popup(
-        self,
-        button_tag: str,
-        generator_name: GeneratorName,
-    ) -> None:
-        """Hangs the format choice off the export button, opening where the button sits.
-
-        One slice reaches several trackers, so the button asks which one before a destination
-        is picked, and the chosen format travels with the generator to the export request.
-        """
-        with dpg.popup(button_tag, mousebutton=dpg.mvMouseButton_Left):
-            for tracker_format, label in self._lbl_export_formats.items():
-                dpg.add_menu_item(
-                    label=label,
-                    callback=self._handle_export_format_selected,
-                    user_data=(generator_name, tracker_format),
-                )
 
     def _create_generator_content(
         self,

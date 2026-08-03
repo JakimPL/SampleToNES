@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.elements.global_ import (
@@ -29,6 +29,7 @@ from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_PROJECT
@@ -177,11 +178,19 @@ class ProjectCoordinator:
             title=self._title(GlobalDialogTitleElements.SAVE_PROJECT),
             initial_directory=directory,
             default_filename=filename,
-            extensions=[EXT_FILE_PROJECT],
-            filter_name=self._filter_name(FileFilterElements.PROJECT),
+            filters=self._project_filters(),
         )
 
         return self._handle_save_as(filepath)
+
+    def _project_filters(self) -> Tuple[FileFilter, ...]:
+        """The single type a project of this application's own is written as and read from."""
+        return (
+            FileFilter.for_extensions(
+                self._filter_name(FileFilterElements.PROJECT),
+                [EXT_FILE_PROJECT],
+            ),
+        )
 
     def _get_project_filename(self, extension: str) -> str:
         name = self.project_name or DEFAULT_EXPORT_NAME
@@ -204,8 +213,12 @@ class ProjectCoordinator:
             title=self._title(elements.dialog_title),
             initial_directory=get_directory(path),
             default_filename=self._get_project_filename(extension),
-            extensions=[extension],
-            filter_name=self._filter_name(elements.filter_name),
+            filters=(
+                FileFilter.for_extensions(
+                    self._filter_name(elements.filter_name),
+                    [extension],
+                ),
+            ),
         )
 
         self._handle_export_project(filepath, tracker_format)
@@ -214,8 +227,7 @@ class ProjectCoordinator:
         filepath = open_file_dialog(
             title=self._title(GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT),
             initial_directory=self._session_manager.get_project_path(),
-            extensions=[EXT_FILE_PROJECT],
-            filter_name=self._filter_name(FileFilterElements.PROJECT),
+            filters=self._project_filters(),
         )
 
         self._handle_open(filepath)

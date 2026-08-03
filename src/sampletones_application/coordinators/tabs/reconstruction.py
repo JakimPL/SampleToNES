@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -18,7 +18,10 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.trackers import TRACKER_INSTRUMENT_FILTERS
+from sampletones_application.categories.trackers import (
+    INSTRUMENT_EXPORT_FORMATS,
+    TRACKER_INSTRUMENT_FILTERS,
+)
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
@@ -46,6 +49,7 @@ from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
+    TAG_GLOBAL_DIALOG_UNSUPPORTED_EXTENSION,
     TAG_GLOBAL_TAB_RECONSTRUCTION,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
@@ -73,6 +77,7 @@ from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -228,7 +233,13 @@ class ReconstructionTabCoordinator:
             TextType.TITLE,
             ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_DIALOG,
         ]
-        self._filters_export_instrument: Dict[TrackerFormat, str] = {
+        self._filter_export_wav = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.FILTER,
+            FileFilterElements.WAVE,
+        ]
+        self._instrument_filter_names: Dict[TrackerFormat, str] = {
             tracker_format: language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
@@ -237,12 +248,6 @@ class ReconstructionTabCoordinator:
             ]
             for tracker_format, element in TRACKER_INSTRUMENT_FILTERS.items()
         }
-        self._filter_export_wav = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.FILTER,
-            FileFilterElements.WAVE,
-        ]
         self._msg_locate_audio_failed = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.RECONSTRUCTION,
@@ -349,6 +354,7 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_open_export_instrument_dialog = self._open_export_instrument_dialog
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
+        self._reconstruction_panel_logic.on_unsupported_export_extension = self._show_unsupported_extension
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
             path, self._msg_locate_audio_failed
         )
@@ -457,17 +463,27 @@ class ReconstructionTabCoordinator:
         self,
         default_filename: str,
         default_path: str,
-        tracker_format: TrackerFormat,
     ) -> None:
-        backend = self._tracker_backends[tracker_format]
+        """Prompts for the file one generator slice is written to.
+
+        Every format that writes a single slice is offered at once, so the extension the
+        destination is given names the tracker it is written for.
+        """
         filepath = save_file_dialog(
             title=self._ttl_export_instrument,
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[backend.extension(ExportScope.INSTRUMENT)],
-            filter_name=self._filters_export_instrument[tracker_format],
+            filters=self._instrument_filters(ExportScope.INSTRUMENT),
         )
         self._handle_export_instrument(filepath)
+
+    def _instrument_filters(self, scope: ExportScope) -> Tuple[FileFilter, ...]:
+        """The types a destination for ``scope`` may be given, one per tracker offered.
+
+        Naming each tracker's own type puts the trackers an export can reach in the dialog's
+        type selector, so the one that is picked there names the format.
+        """
+        return tuple(self._tracker_filter(tracker_format, scope) for tracker_format in INSTRUMENT_EXPORT_FORMATS)
 
     @ignore_none_path
     def _handle_export_instrument(self, filepath: Path) -> None:
@@ -481,30 +497,67 @@ class ReconstructionTabCoordinator:
     ) -> None:
         """Prompts for the destination the loaded reconstruction's slices are named after.
 
-        A format that gathers the whole reconstruction into one document writes it there,
-        while one that keeps an instrument per file writes its slices beside it.
+        The tracker was chosen with the action, so the dialog offers its file type alone: a
+        format that gathers the whole reconstruction into one document writes it at the
+        destination, while one that keeps an instrument per file writes its slices beside it.
         """
-        backend = self._tracker_backends[tracker_format]
         destination = save_file_dialog(
             title=self._ttl_export_instruments,
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[backend.extension(ExportScope.SAMPLE)],
-            filter_name=self._filters_export_instrument[tracker_format],
+            filters=(self._tracker_filter(tracker_format, ExportScope.SAMPLE),),
         )
-        self._handle_export_instruments(destination)
+        self._handle_export_instruments(destination, tracker_format)
+
+    def _tracker_filter(
+        self,
+        tracker_format: TrackerFormat,
+        scope: ExportScope,
+    ) -> FileFilter:
+        """The type ``tracker_format`` writes ``scope`` files as, named after that tracker."""
+        return FileFilter.for_extensions(
+            self._instrument_filter_names[tracker_format],
+            [self._tracker_backends[tracker_format].extension(scope)],
+        )
+
+    def _show_unsupported_extension(
+        self,
+        extension: str,
+        supported: Tuple[str, ...],
+    ) -> None:
+        """Reports that the destination's extension names no tracker format.
+
+        The extension decides which tracker an export is written for, so one no format
+        claims leaves nothing to write. The dialog names what the export accepts, and a
+        destination given no extension at all is told so directly.
+        """
+        messages = self._export_messages
+        extensions = ", ".join(supported)
+        message = (
+            messages.unsupported_extension.format(extension=extension, extensions=extensions)
+            if extension
+            else messages.missing_extension.format(extensions=extensions)
+        )
+        self._dialogs.show_info(
+            TAG_GLOBAL_DIALOG_UNSUPPORTED_EXTENSION,
+            message,
+            messages.unsupported_extension_title,
+        )
 
     @ignore_none_path
-    def _handle_export_instruments(self, destination: Path) -> None:
-        self._reconstruction_panel_logic.handle_export_instruments_confirmed(destination)
+    def _handle_export_instruments(
+        self,
+        destination: Path,
+        tracker_format: TrackerFormat,
+    ) -> None:
+        self._reconstruction_panel_logic.handle_export_instruments_confirmed(destination, tracker_format)
 
     def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
         filepath = save_file_dialog(
             title=self._export_messages.wav_title,
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[EXT_FILE_WAVE],
-            filter_name=self._filter_export_wav,
+            filters=(FileFilter.for_extensions(self._filter_export_wav, [EXT_FILE_WAVE]),),
         )
         self._handle_export_wav(filepath)
 

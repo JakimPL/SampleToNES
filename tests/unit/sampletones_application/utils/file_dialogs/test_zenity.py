@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from sampletones_application.utils.file_dialogs.destination import SaveDestination
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.zenity import ZenityBackend
 
@@ -23,11 +24,11 @@ class TestZenityBackend:
                 title="Save project",
                 initial_directory=Path("/home/user"),
                 suggested_name="song.stp",
-                file_filter=file_filter,
+                filters=(file_filter,),
             )
 
         command = run.call_args.args[0]
-        assert result == Path("/home/user/song.stp")
+        assert result == SaveDestination(path=Path("/home/user/song.stp"), file_type=None)
         assert "--save" in command
         assert command[command.index("--file-filter") + 1] == "Project files (*.stp) | *.stp"
         assert command[command.index("--filename") + 1] == str(Path("/home/user/song.stp"))
@@ -36,10 +37,32 @@ class TestZenityBackend:
         backend = ZenityBackend()
         file_filter = FileFilter(name="Audio files", patterns=("*.wav", "*.mp3"))
         with patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/clip.wav\n")) as run:
-            backend.open_file(title="Open", initial_directory=Path("/audio"), file_filter=file_filter)
+            backend.open_file(title="Open", initial_directory=Path("/audio"), filters=(file_filter,))
 
         command = run.call_args.args[0]
         assert command[command.index("--file-filter") + 1] == "Audio files (*.wav *.mp3) | *.wav *.mp3"
+
+    def test_each_offered_type_reaches_the_selector_as_its_own_entry(self) -> None:
+        """GTK narrows the browser by the type picked in the selector, so every accepted
+        type is listed for itself.
+        """
+        backend = ZenityBackend()
+        filters = (
+            FileFilter(name="FamiTracker instrument", patterns=("*.fti",)),
+            FileFilter(name="Bitphase preset", patterns=("*.json",)),
+        )
+        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/home/user/kick.json\n")) as run:
+            backend.save_file(
+                title="Export instrument",
+                initial_directory=Path("/home/user"),
+                suggested_name="kick",
+                filters=filters,
+            )
+
+        command = run.call_args.args[0]
+        assert command.count("--file-filter") == 2
+        assert "FamiTracker instrument (*.fti) | *.fti" in command
+        assert "Bitphase preset (*.json) | *.json" in command
 
     def test_directory_command_uses_directory_flag(self) -> None:
         backend = ZenityBackend()
@@ -57,7 +80,7 @@ class TestZenityBackend:
             result = backend.open_file(
                 title="Open",
                 initial_directory=None,
-                file_filter=FileFilter(name="", patterns=("*.stp",)),
+                filters=(FileFilter(name="", patterns=("*.stp",)),),
             )
 
         assert result is None

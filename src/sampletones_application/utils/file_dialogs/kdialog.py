@@ -1,8 +1,12 @@
 import subprocess
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-from sampletones_application.utils.file_dialogs.filter import FileFilter
+from sampletones_application.utils.file_dialogs.destination import (
+    SaveDestination,
+    untyped_destination,
+)
+from sampletones_application.utils.file_dialogs.filter import FileFilter, merge_filters
 from sampletones_shared.utils.system.paths import normalize_path
 
 
@@ -11,7 +15,9 @@ class KDialogBackend:
     File dialogs backed by KDE's ``kdialog`` (Qt).
 
     ``kdialog`` activates the supplied filter, so the file-type selector opens on the
-    chosen type.
+    chosen type. Its command line carries one filter, so offering a single type hands KDE
+    a lone pattern and its own extension checkbox fills that extension in; several types
+    gather into one filter whose label names each of them.
     """
 
     def open_file(
@@ -19,14 +25,14 @@ class KDialogBackend:
         *,
         title: str,
         initial_directory: Optional[Path],
-        file_filter: Optional[FileFilter],
+        filters: Tuple[FileFilter, ...],
     ) -> Optional[Path]:
         command = [
             "kdialog",
             "--getopenfilename",
             _start_location(initial_directory),
         ]
-        command += _filter_arguments(file_filter)
+        command += _filter_arguments(filters)
         command += ["--title", title]
         return _run(command)
 
@@ -36,8 +42,8 @@ class KDialogBackend:
         title: str,
         initial_directory: Optional[Path],
         suggested_name: Optional[str],
-        file_filter: Optional[FileFilter],
-    ) -> Optional[Path]:
+        filters: Tuple[FileFilter, ...],
+    ) -> Optional[SaveDestination]:
         command = [
             "kdialog",
             "--getsavefilename",
@@ -46,9 +52,9 @@ class KDialogBackend:
                 suggested_name,
             ),
         ]
-        command += _filter_arguments(file_filter)
+        command += _filter_arguments(filters)
         command += ["--title", title]
-        return _run(command)
+        return untyped_destination(_run(command))
 
     def select_directory(
         self,
@@ -77,12 +83,13 @@ def _start_location(
     return str(base)
 
 
-def _filter_arguments(file_filter: Optional[FileFilter]) -> List[str]:
-    if file_filter is None:
+def _filter_arguments(filters: Tuple[FileFilter, ...]) -> List[str]:
+    merged = merge_filters(filters)
+    if merged is None:
         return []
 
-    patterns = " ".join(file_filter.patterns)
-    return [f"{patterns}|{file_filter.label}"]
+    patterns = " ".join(merged.patterns)
+    return [f"{patterns}|{merged.label}"]
 
 
 def _run(command: List[str]) -> Optional[Path]:

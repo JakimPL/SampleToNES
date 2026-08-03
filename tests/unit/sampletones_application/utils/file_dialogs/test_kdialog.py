@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from sampletones_application.utils.file_dialogs.destination import SaveDestination
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.kdialog import KDialogBackend
 
@@ -22,11 +23,11 @@ class TestKDialogBackend:
                 title="Save project",
                 initial_directory=Path("/home/user"),
                 suggested_name="song.stp",
-                file_filter=file_filter,
+                filters=(file_filter,),
             )
 
         command = run.call_args.args[0]
-        assert result == Path("/home/user/song.stp")
+        assert result == SaveDestination(path=Path("/home/user/song.stp"), file_type=None)
         assert "--getsavefilename" in command
         assert str(Path("/home/user/song.stp")) in command
         assert "*.stp|Project files (*.stp)" in command
@@ -39,13 +40,33 @@ class TestKDialogBackend:
             result = backend.open_file(
                 title="Open",
                 initial_directory=Path("/audio"),
-                file_filter=file_filter,
+                filters=(file_filter,),
             )
 
         command = run.call_args.args[0]
         assert result == Path("/audio/clip.wav")
         assert "--getopenfilename" in command
         assert "*.wav *.mp3|Audio files (*.wav *.mp3)" in command
+
+    def test_several_types_gather_into_one_filter_naming_each(self) -> None:
+        """One filter reaches ``kdialog``'s command line, so it carries every accepted
+        pattern behind a label naming each type.
+        """
+        backend = KDialogBackend()
+        filters = (
+            FileFilter(name="FamiTracker instrument", patterns=("*.fti",)),
+            FileFilter(name="Bitphase preset", patterns=("*.json",)),
+        )
+        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/home/user/kick.json\n")) as run:
+            backend.save_file(
+                title="Export instrument",
+                initial_directory=Path("/home/user"),
+                suggested_name="kick",
+                filters=filters,
+            )
+
+        command = run.call_args.args[0]
+        assert "*.fti *.json|FamiTracker instrument, Bitphase preset (*.fti *.json)" in command
 
     def test_directory_command_has_no_filter(self) -> None:
         backend = KDialogBackend()
@@ -64,7 +85,7 @@ class TestKDialogBackend:
                 title="Save",
                 initial_directory=None,
                 suggested_name=None,
-                file_filter=FileFilter(name="", patterns=("*.stp",)),
+                filters=(FileFilter(name="", patterns=("*.stp",)),),
             )
 
         assert result is None

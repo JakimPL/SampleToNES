@@ -13,7 +13,7 @@ class ExportSuccess:
 
     Attributes:
         kind: The artefact the run produced.
-        filepath: The file written, or the directory a batch of instruments filled.
+        filepath: A file the run wrote, which a batch reports as the first of its slices.
         tracker_format: The format the run wrote, and ``None`` for an audio export.
         truncation: What the target format's item limit left out, and ``None`` when
             the export carries every frame.

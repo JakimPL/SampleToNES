@@ -346,9 +346,8 @@ class MenuBar:
     def _create_instruments_export_menu(self, state: MenuBarViewModel) -> None:
         """Builds the submenu that writes the loaded reconstruction's slices for one tracker.
 
-        A format that gathers every slice into one document and one that writes a file per
-        slice are listed together, since the choice between them is the user's; the
-        destination dialog then asks for whichever the chosen format fills.
+        Each format able to write a file per slice gets its own item, so choosing the tracker
+        is one click and the destination dialog then offers that tracker's file type alone.
         """
         with dpg.menu(
             tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,

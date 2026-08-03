@@ -6,7 +6,6 @@ import numpy as np
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.logic.reconstruction.pending import PendingInstrumentExport
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
     ReconstructionPathViewModel,
@@ -18,12 +17,17 @@ from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.trackers.backend import TrackerBackend
+from sampletones_core.trackers.extensions import (
+    format_for_extension,
+    scope_extensions,
+)
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
+from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.paths import open_path_in_explorer
+from sampletones_shared.utils.system.paths import get_filename, open_path_in_explorer
 
 
 class ExportServiceProtocol(Protocol):
@@ -70,8 +74,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._selected_generators: List[GeneratorName] = []
-        self._pending_instrument: Optional[PendingInstrumentExport] = None
-        self._pending_sample_format: Optional[TrackerFormat] = None
+        self._pending_generator: Optional[GeneratorName] = None
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
@@ -80,9 +83,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
-        self.on_open_export_instrument_dialog: Optional[Callable[[str, str, TrackerFormat], None]] = None
+        self.on_open_export_instrument_dialog: Optional[Callable[[str, str], None]] = None
         self.on_open_export_instruments_dialog: Optional[Callable[[str, str, TrackerFormat], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
+        self.on_unsupported_export_extension: Optional[Callable[[str, Tuple[str, ...]], None]] = None
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
 
@@ -165,11 +169,14 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._emit_audio_data()
 
-    def request_export_instrument_dialog(
-        self,
-        generator_name: GeneratorName,
-        tracker_format: TrackerFormat,
-    ) -> None:
+    def request_export_instrument_dialog(self, generator_name: GeneratorName) -> None:
+        """Asks for the destination one generator slice is written to.
+
+        Every tracker able to write a single slice is offered at once, so the generator alone
+        waits here until the dialog answers with a path. The suggestion is the instrument's
+        name on its own, leaving the tracker to the dialog's file-type selector and to any
+        extension typed over it.
+        """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting an instrument")
@@ -181,28 +188,32 @@ class ReconstructionPanelLogic(CallbackMixin):
         instrument_name = self._get_instrument_name(generator_name)
         default_path = str(self._session_manager.get_instrument_path())
 
-        self._pending_instrument = PendingInstrumentExport(
-            generator=generator_name,
-            tracker_format=tracker_format,
-        )
+        self._pending_generator = generator_name
         self.call(
             self.on_open_export_instrument_dialog,
             instrument_name,
             default_path,
-            tracker_format,
         )
 
     def request_export_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
+        """Asks for the destination the loaded reconstruction's slices are named after.
+
+        The tracker comes from the action that was chosen, so the dialog offers that
+        tracker's file type alone and the suggestion already ends in its extension.
+
+        Args:
+            tracker_format: The tracker the slices are written for.
+        """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
 
         default_path = str(self._session_manager.get_instrument_path())
+        extension = self._tracker_backends[tracker_format].extension(ExportScope.SAMPLE)
 
-        self._pending_sample_format = tracker_format
         self.call(
             self.on_open_export_instruments_dialog,
-            reconstruction_data.name,
+            get_filename(reconstruction_data.name, extension),
             default_path,
             tracker_format,
         )
@@ -220,35 +231,46 @@ class ReconstructionPanelLogic(CallbackMixin):
     def handle_export_instrument_confirmed(self, filepath: Path) -> None:
         """Writes one generator slice of the loaded reconstruction to ``filepath``.
 
-        The instrument carries the name the destination was saved under, so renaming the
-        file in the dialog renames the instrument the tracker lists.
+        The extension picks the tracker the slice is written for, and the instrument carries
+        the name the destination was saved under, so renaming the file in the dialog renames
+        the instrument the tracker lists.
         """
-        pending = self._pending_instrument
-        self._pending_instrument = None
-        if not self._reconstruction_data or pending is None:
+        generator = self._pending_generator
+        self._pending_generator = None
+        if not self._reconstruction_data or generator is None:
             logger.warning("No reconstruction data available for instrument export")
             return
 
-        feature = self._reconstruction_data.feature_data[pending.generator]
+        tracker_format = self._resolve_tracker_format(filepath, ExportScope.INSTRUMENT)
+        if tracker_format is None:
+            return
+
+        feature = self._reconstruction_data.feature_data[generator]
 
         self._session_manager.set_instrument_path(filepath.parent)
         self._export_service.export_instrument(
             filepath,
-            self._tracker_backends[pending.tracker_format],
-            self._instrument_export(pending.generator, feature, filepath.stem),
+            self._tracker_backends[tracker_format],
+            self._instrument_export(generator, feature, filepath.stem),
         )
 
-    def handle_export_instruments_confirmed(self, destination: Path) -> None:
+    def handle_export_instruments_confirmed(
+        self,
+        destination: Path,
+        tracker_format: TrackerFormat,
+    ) -> None:
         """Writes every generator slice of the loaded reconstruction to ``destination``.
 
-        The destination names the batch: each slice takes its generator suffix from the
-        stem, so a format gathering the whole reconstruction into one document writes it
-        there while one keeping an instrument per file writes its slices beside it.
+        The destination names the batch: each slice takes its generator suffix from the stem,
+        so a format gathering the whole reconstruction into one document writes it there while
+        one keeping an instrument per file writes its slices beside it.
+
+        Args:
+            destination: The file the export was confirmed with.
+            tracker_format: The tracker the slices are written for.
         """
         reconstruction_data = self._reconstruction_data
-        tracker_format = self._pending_sample_format
-        self._pending_sample_format = None
-        if not reconstruction_data or tracker_format is None:
+        if not reconstruction_data:
             logger.warning("No reconstruction data available for instruments export")
             return
 
@@ -267,6 +289,36 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._session_manager.set_instrument_path(destination.parent)
         self._export_service.export_sample(destination, self._tracker_backends[tracker_format], request)
+
+    def _resolve_tracker_format(
+        self,
+        destination: Path,
+        scope: ExportScope,
+    ) -> Optional[TrackerFormat]:
+        """Reads the tracker format out of the destination's extension.
+
+        Reports an extension no format claims through
+        :attr:`on_unsupported_export_extension`, naming what the scope accepts so the user
+        can name the destination again.
+
+        Args:
+            destination: The destination the export was confirmed with.
+            scope: The scope about to be written.
+
+        Returns:
+            Optional[TrackerFormat]: The format to write in, or ``None`` when the extension
+            names none.
+        """
+        tracker_format = format_for_extension(self._tracker_backends, scope, destination.suffix)
+        if tracker_format is None:
+            logger.warning(f"No tracker format writes '{destination.suffix}' for a {scope} export")
+            self.call(
+                self.on_unsupported_export_extension,
+                destination.suffix,
+                scope_extensions(self._tracker_backends, scope),
+            )
+
+        return tracker_format
 
     def _instrument_export(
         self,
