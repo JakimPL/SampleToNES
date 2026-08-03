@@ -1,13 +1,17 @@
 from collections import deque
 from contextlib import contextmanager
 from types import SimpleNamespace
-from typing import Deque, Dict, Final, Iterator, List, Optional, Tuple
+from typing import Deque, Dict, Final, Iterator, List, Optional, Tuple, cast
 
 import pytest
-from jeepney import HeaderFields, MessageType
+from jeepney import HeaderFields, MatchRule, MessageType
 
 from sampletones_application.utils.file_dialogs.portal import client as client_module
 from sampletones_application.utils.file_dialogs.portal.client import (
+    NAME_OWNER_CHANGED_SIGNAL,
+    NO_OWNER,
+    PORTAL_BUS_NAME,
+    RESPONSE_SIGNAL,
     ChooserResult,
     FileChooserClient,
     Variant,
@@ -16,13 +20,20 @@ from sampletones_application.utils.file_dialogs.portal.client import (
 HANDLE: Final[str] = "/org/freedesktop/portal/desktop/request/1_42/sampletones"
 OTHER_HANDLE: Final[str] = "/org/freedesktop/portal/desktop/request/1_7/elsewhere"
 LABEL: Final[str] = "Bitphase instrument preset (*.json)"
+PORTAL_OWNER: Final[str] = ":1.42"
 
 
 def _message(
     body: Tuple[object, ...],
     path: Optional[str] = None,
+    member: Optional[str] = None,
 ) -> SimpleNamespace:
-    fields: Dict[HeaderFields, str] = {} if path is None else {HeaderFields.path: path}
+    fields: Dict[HeaderFields, str] = {}
+    if path is not None:
+        fields[HeaderFields.path] = path
+    if member is not None:
+        fields[HeaderFields.member] = member
+
     return SimpleNamespace(
         header=SimpleNamespace(fields=fields, message_type=MessageType.method_return),
         body=body,
@@ -34,7 +45,25 @@ def _response(
     results: Dict[str, Variant],
     path: str = HANDLE,
 ) -> SimpleNamespace:
-    return _message((code, results), path=path)
+    return _message(
+        (code, results),
+        path=path,
+        member=RESPONSE_SIGNAL,
+    )
+
+
+def _name_owner_changed(
+    previous_owner: str,
+    current_owner: str,
+) -> SimpleNamespace:
+    return _message(
+        (
+            PORTAL_BUS_NAME,
+            previous_owner,
+            current_owner,
+        ),
+        member=NAME_OWNER_CHANGED_SIGNAL,
+    )
 
 
 class FakeConnection:
@@ -58,9 +87,14 @@ class FakeConnection:
         self.closed = True
 
     @contextmanager
-    def filter(self, rule: object) -> Iterator[Deque[SimpleNamespace]]:
+    def filter(
+        self,
+        rule: object,
+        *,
+        queue: Optional[Deque[SimpleNamespace]] = None,
+    ) -> Iterator[Deque[SimpleNamespace]]:
         self.rules.append(rule)
-        yield self._signals
+        yield self._signals if queue is None else queue
 
     def send_and_get_reply(self, message: object) -> SimpleNamespace:
         member = getattr(message, "header").fields[HeaderFields.member]
@@ -111,7 +145,7 @@ class TestVersion:
 class TestCall:
     def test_the_response_to_the_open_request_is_the_answer(self, monkeypatch: pytest.MonkeyPatch) -> None:
         connection = FakeConnection(
-            replies=[_message(("ok",)), _message((HANDLE,))],
+            replies=[_message(("ok",)), _message(("ok",)), _message((HANDLE,))],
             signals=[
                 _response(
                     0,
@@ -127,12 +161,12 @@ class TestCall:
         result = FileChooserClient().call(method="SaveFile", title="Export instrument", options={})
 
         assert result == ChooserResult(uris=("file:///home/user/kick.json",), filter_label=LABEL)
-        assert connection.sent == ["AddMatch", "SaveFile"]
+        assert connection.sent == ["AddMatch", "AddMatch", "SaveFile"]
 
     def test_another_request_s_response_is_passed_over(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Every portal response on the bus reaches the subscription, so each call waits for its own."""
         connection = FakeConnection(
-            replies=[_message(("ok",)), _message((HANDLE,))],
+            replies=[_message(("ok",)), _message(("ok",)), _message((HANDLE,))],
             signals=[
                 _response(0, {"uris": ("as", ["file:///elsewhere/other.json"])}, path=OTHER_HANDLE),
                 _response(0, {"uris": ("as", ["file:///home/user/kick.json"])}),
@@ -146,9 +180,50 @@ class TestCall:
 
     def test_a_dismissed_dialog_answers_with_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         connection = FakeConnection(
-            replies=[_message(("ok",)), _message((HANDLE,))],
+            replies=[_message(("ok",)), _message(("ok",)), _message((HANDLE,))],
             signals=[_response(1, {})],
         )
         monkeypatch.setattr(client_module, "open_dbus_connection", _connecting(connection))
 
         assert FileChooserClient().call(method="SaveFile", title="Export instrument", options={}) is None
+
+
+class TestAPortalLeavingTheBus:
+    """The portal owes every open dialog its response, so the bus announcing that name released
+    is what tells a waiting call the answer is never coming."""
+
+    def test_the_call_subscribes_to_the_portal_s_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        connection = FakeConnection(
+            replies=[_message(("ok",)), _message(("ok",)), _message((HANDLE,))],
+            signals=[_response(1, {})],
+        )
+        monkeypatch.setattr(client_module, "open_dbus_connection", _connecting(connection))
+
+        FileChooserClient().call(method="SaveFile", title="Export instrument", options={})
+
+        subscriptions = [cast(MatchRule, rule).serialise() for rule in connection.rules]
+        assert any(NAME_OWNER_CHANGED_SIGNAL in rule and PORTAL_BUS_NAME in rule for rule in subscriptions)
+
+    def test_the_name_released_ends_the_wait(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        connection = FakeConnection(
+            replies=[_message(("ok",)), _message(("ok",)), _message((HANDLE,))],
+            signals=[_name_owner_changed(PORTAL_OWNER, NO_OWNER)],
+        )
+        monkeypatch.setattr(client_module, "open_dbus_connection", _connecting(connection))
+
+        assert FileChooserClient().call(method="SaveFile", title="Export instrument", options={}) is None
+
+    def test_the_name_taken_up_leaves_the_dialog_waiting(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A call may be what starts the portal, so the name arriving is the dialog opening."""
+        connection = FakeConnection(
+            replies=[_message(("ok",)), _message(("ok",)), _message((HANDLE,))],
+            signals=[
+                _name_owner_changed(NO_OWNER, PORTAL_OWNER),
+                _response(0, {"uris": ("as", ["file:///home/user/kick.json"])}),
+            ],
+        )
+        monkeypatch.setattr(client_module, "open_dbus_connection", _connecting(connection))
+
+        result = FileChooserClient().call(method="SaveFile", title="Export instrument", options={})
+
+        assert result == ChooserResult(uris=("file:///home/user/kick.json",), filter_label=None)

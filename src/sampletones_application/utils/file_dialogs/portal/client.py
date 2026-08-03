@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, Optional, Tuple, Type, cast
+from typing import Deque, Dict, Final, List, Optional, Tuple, Type, cast
 
 from jeepney import (
     AuthenticationError,
@@ -11,7 +11,7 @@ from jeepney import (
     message_bus,
     new_method_call,
 )
-from jeepney.io.blocking import open_dbus_connection, unwrap_msg
+from jeepney.io.blocking import DBusConnection, open_dbus_connection, unwrap_msg
 from jeepney.low_level import Message
 
 Variant = Tuple[str, object]
@@ -22,7 +22,9 @@ PORTAL_BUS_NAME: Final[str] = "org.freedesktop.portal.Desktop"
 PORTAL_OBJECT_PATH: Final[str] = "/org/freedesktop/portal/desktop"
 FILE_CHOOSER_INTERFACE: Final[str] = "org.freedesktop.portal.FileChooser"
 REQUEST_INTERFACE: Final[str] = "org.freedesktop.portal.Request"
+BUS_INTERFACE: Final[str] = "org.freedesktop.DBus"
 RESPONSE_SIGNAL: Final[str] = "Response"
+NAME_OWNER_CHANGED_SIGNAL: Final[str] = "NameOwnerChanged"
 VERSION_PROPERTY: Final[str] = "version"
 
 CALL_SIGNATURE: Final[str] = "ssa{sv}"
@@ -30,6 +32,8 @@ PARENT_WINDOW: Final[str] = ""
 URIS_RESULT: Final[str] = "uris"
 CURRENT_FILTER_RESULT: Final[str] = "current_filter"
 SUCCESS_CODE: Final[int] = 0
+BUS_NAME_ARGUMENT: Final[int] = 0
+NO_OWNER: Final[str] = ""
 
 PORTAL_OUT_OF_REACH_ERRORS: Final[Tuple[Type[Exception], ...]] = (
     KeyError,
@@ -76,8 +80,10 @@ class FileChooserClient:
     A call asks the portal for a dialog and answers once the user closes it. The portal replies
     to the call with the object path of a request and delivers the outcome as a signal on that
     path, so each call subscribes to the signal before asking and then waits for the response
-    belonging to its own request. Every dialog runs in the desktop's own portal implementation,
-    which is what makes the file-type selector and the type it reports available at all.
+    belonging to its own request. The same subscription covers the bus announcing who owns the
+    portal's name, which is what tells a waiting call that the portal it is waiting on left.
+    Every dialog runs in the desktop's own portal implementation, which is what makes the
+    file-type selector and the type it reports available at all.
     """
 
     def version(self) -> Optional[int]:
@@ -112,13 +118,11 @@ class FileChooserClient:
             options: The portal options for that method, each value a D-Bus variant.
 
         Returns:
-            Optional[ChooserResult]: What the dialog answered, or ``None`` once it was dismissed.
+            Optional[ChooserResult]: What the dialog answered, ``None`` once it was dismissed or
+                once the portal drawing it left the bus.
         """
-        rule = MatchRule(
-            type="signal",
-            interface=REQUEST_INTERFACE,
-            member=RESPONSE_SIGNAL,
-        )
+        response_rule = _response_rule()
+        owner_rule = _portal_owner_rule()
         request = new_method_call(
             FILE_CHOOSER,
             method,
@@ -131,13 +135,66 @@ class FileChooserClient:
         )
 
         with open_dbus_connection(bus=SESSION_BUS) as connection:
-            with connection.filter(rule) as responses:
-                connection.send_and_get_reply(message_bus.AddMatch(rule))
+            with connection.filter(response_rule) as signals, connection.filter(owner_rule, queue=signals):
+                connection.send_and_get_reply(message_bus.AddMatch(response_rule))
+                connection.send_and_get_reply(message_bus.AddMatch(owner_rule))
                 (handle,) = cast(Tuple[str], unwrap_msg(connection.send_and_get_reply(request)))
-                while True:
-                    response = connection.recv_until_filtered(responses)
-                    if _signal_path(response) == handle:
-                        return _read_response(response)
+                return _answer(
+                    connection,
+                    signals,
+                    handle,
+                )
+
+
+def _response_rule() -> MatchRule:
+    """Subscribes to the outcome of every portal request, each call recognising its own."""
+    return MatchRule(
+        type="signal",
+        interface=REQUEST_INTERFACE,
+        member=RESPONSE_SIGNAL,
+    )
+
+
+def _portal_owner_rule() -> MatchRule:
+    """Subscribes to the bus announcing the portal's name changing hands."""
+    rule = MatchRule(
+        type="signal",
+        interface=BUS_INTERFACE,
+        member=NAME_OWNER_CHANGED_SIGNAL,
+    )
+    rule.add_arg_condition(BUS_NAME_ARGUMENT, PORTAL_BUS_NAME)
+    return rule
+
+
+def _answer(
+    connection: DBusConnection,
+    signals: Deque[Message],
+    handle: str,
+) -> Optional[ChooserResult]:
+    """
+    Waits for the request ``handle`` to answer, or for the portal owing that answer to leave.
+
+    A dialog stands open for as long as the user takes over it, so the wait runs to the user's
+    own pace. What bounds it instead is the portal: the bus announces the name being released,
+    and a released name means the dialog on screen went with the process that drew it, leaving
+    a request that answers to nobody. That ends the wait the way a dismissal does, since either
+    way the user named no destination.
+    """
+    while True:
+        signal = connection.recv_until_filtered(signals)
+        if _portal_left_the_bus(signal):
+            return None
+
+        if _signal_path(signal) == handle:
+            return _read_response(signal)
+
+
+def _portal_left_the_bus(signal: Message) -> bool:
+    if _signal_member(signal) != NAME_OWNER_CHANGED_SIGNAL:
+        return False
+
+    _name, _previous_owner, current_owner = cast(Tuple[str, str, str], signal.body)
+    return current_owner == NO_OWNER
 
 
 def _read_response(response: Message) -> Optional[ChooserResult]:
@@ -169,5 +226,9 @@ def _filter_label(results: Dict[str, Variant]) -> Optional[str]:
     return label
 
 
-def _signal_path(response: Message) -> Optional[str]:
-    return cast(Optional[str], response.header.fields.get(HeaderFields.path))
+def _signal_path(signal: Message) -> Optional[str]:
+    return cast(Optional[str], signal.header.fields.get(HeaderFields.path))
+
+
+def _signal_member(signal: Message) -> Optional[str]:
+    return cast(Optional[str], signal.header.fields.get(HeaderFields.member))
