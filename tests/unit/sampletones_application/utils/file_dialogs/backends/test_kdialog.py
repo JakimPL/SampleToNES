@@ -1,4 +1,6 @@
+from contextlib import AbstractContextManager
 from pathlib import Path
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 from sampletones_application.utils.file_dialogs.backends.kdialog import KDialogBackend
@@ -8,17 +10,16 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 MODULE = "sampletones_application.utils.file_dialogs.backends.kdialog"
 
 
-def _completed(stdout: str) -> MagicMock:
-    result = MagicMock()
-    result.stdout = stdout
-    return result
+def _chosen(path: Optional[Path]) -> AbstractContextManager[MagicMock]:
+    """Answers the dialog with ``path``, standing in for what ``kdialog`` reports."""
+    return patch(f"{MODULE}.run_dialog_command", return_value=path)
 
 
 class TestKDialogBackend:
     def test_save_command_carries_suggested_name_and_named_filter(self) -> None:
         backend = KDialogBackend()
         file_filter = FileFilter(name="Project files", patterns=("*.stp",))
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/home/user/song.stp\n")) as run:
+        with _chosen(Path("/home/user/song.stp")) as run:
             result = backend.save_file(
                 title="Save project",
                 initial_directory=Path("/home/user"),
@@ -36,7 +37,7 @@ class TestKDialogBackend:
     def test_open_command_carries_multi_pattern_filter(self) -> None:
         backend = KDialogBackend()
         file_filter = FileFilter(name="Audio files", patterns=("*.wav", "*.mp3"))
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/clip.wav\n")) as run:
+        with _chosen(Path("/audio/clip.wav")) as run:
             result = backend.open_file(
                 title="Open",
                 initial_directory=Path("/audio"),
@@ -57,7 +58,7 @@ class TestKDialogBackend:
             FileFilter(name="FamiTracker instrument", patterns=("*.fti",)),
             FileFilter(name="Bitphase preset", patterns=("*.json",)),
         )
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/home/user/kick.json\n")) as run:
+        with _chosen(Path("/home/user/kick.json")) as run:
             backend.save_file(
                 title="Export instrument",
                 initial_directory=Path("/home/user"),
@@ -70,7 +71,7 @@ class TestKDialogBackend:
 
     def test_directory_command_has_no_filter(self) -> None:
         backend = KDialogBackend()
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/library\n")) as run:
+        with _chosen(Path("/audio/library")) as run:
             result = backend.select_directory(title="Choose", initial_directory=Path("/audio"))
 
         command = run.call_args.args[0]
@@ -80,7 +81,7 @@ class TestKDialogBackend:
 
     def test_cancel_returns_none(self) -> None:
         backend = KDialogBackend()
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("")):
+        with _chosen(None):
             result = backend.save_file(
                 title="Save",
                 initial_directory=None,

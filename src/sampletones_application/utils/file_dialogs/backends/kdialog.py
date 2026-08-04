@@ -1,13 +1,12 @@
-import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from sampletones_application.utils.file_dialogs.backends.command import run_dialog_command
 from sampletones_application.utils.file_dialogs.destination import (
     SaveDestination,
     untyped_destination,
 )
 from sampletones_application.utils.file_dialogs.filter import FileFilter, merge_filters
-from sampletones_shared.utils.system.paths import normalize_path
 
 
 class KDialogBackend:
@@ -30,11 +29,11 @@ class KDialogBackend:
         command = [
             "kdialog",
             "--getopenfilename",
-            _start_location(initial_directory),
+            self._start_location(initial_directory),
         ]
-        command += _filter_arguments(filters)
+        command += self._filter_arguments(filters)
         command += ["--title", title]
-        return _run(command)
+        return run_dialog_command(command)
 
     def save_file(
         self,
@@ -47,14 +46,14 @@ class KDialogBackend:
         command = [
             "kdialog",
             "--getsavefilename",
-            _start_location(
+            self._start_location(
                 initial_directory,
                 suggested_name,
             ),
         ]
-        command += _filter_arguments(filters)
+        command += self._filter_arguments(filters)
         command += ["--title", title]
-        return untyped_destination(_run(command))
+        return untyped_destination(run_dialog_command(command))
 
     def select_directory(
         self,
@@ -65,38 +64,28 @@ class KDialogBackend:
         command = [
             "kdialog",
             "--getexistingdirectory",
-            _start_location(initial_directory),
+            self._start_location(initial_directory),
             "--title",
             title,
         ]
-        return _run(command)
+        return run_dialog_command(command)
 
+    @staticmethod
+    def _start_location(
+        initial_directory: Optional[Path],
+        suggested_name: Optional[str] = None,
+    ) -> str:
+        base = initial_directory if initial_directory is not None else Path.home()
+        if suggested_name:
+            return str(base / suggested_name)
 
-def _start_location(
-    initial_directory: Optional[Path],
-    suggested_name: Optional[str] = None,
-) -> str:
-    base = initial_directory if initial_directory is not None else Path.home()
-    if suggested_name:
-        return str(base / suggested_name)
+        return str(base)
 
-    return str(base)
+    @staticmethod
+    def _filter_arguments(filters: Tuple[FileFilter, ...]) -> List[str]:
+        merged = merge_filters(filters)
+        if merged is None:
+            return []
 
-
-def _filter_arguments(filters: Tuple[FileFilter, ...]) -> List[str]:
-    merged = merge_filters(filters)
-    if merged is None:
-        return []
-
-    patterns = " ".join(merged.patterns)
-    return [f"{patterns}|{merged.label}"]
-
-
-def _run(command: List[str]) -> Optional[Path]:
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return normalize_path(result.stdout.strip())
+        patterns = " ".join(merged.patterns)
+        return [f"{patterns}|{merged.label}"]

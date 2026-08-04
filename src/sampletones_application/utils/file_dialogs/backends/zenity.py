@@ -1,14 +1,13 @@
 import os
-import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from sampletones_application.utils.file_dialogs.backends.command import run_dialog_command
 from sampletones_application.utils.file_dialogs.destination import (
     SaveDestination,
     untyped_destination,
 )
 from sampletones_application.utils.file_dialogs.filter import FileFilter
-from sampletones_shared.utils.system.paths import normalize_path
 
 
 class ZenityBackend:
@@ -28,9 +27,9 @@ class ZenityBackend:
         filters: Tuple[FileFilter, ...],
     ) -> Optional[Path]:
         command = ["zenity", "--file-selection", "--title", title]
-        command += _filename_arguments(initial_directory, None)
-        command += _filter_arguments(filters)
-        return _run(command)
+        command += self._filename_arguments(initial_directory, None)
+        command += self._filter_arguments(filters)
+        return run_dialog_command(command)
 
     def save_file(
         self,
@@ -48,9 +47,9 @@ class ZenityBackend:
             "--title",
             title,
         ]
-        command += _filename_arguments(initial_directory, suggested_name)
-        command += _filter_arguments(filters)
-        return untyped_destination(_run(command))
+        command += self._filename_arguments(initial_directory, suggested_name)
+        command += self._filter_arguments(filters)
+        return untyped_destination(run_dialog_command(command))
 
     def select_directory(
         self,
@@ -65,38 +64,28 @@ class ZenityBackend:
             "--title",
             title,
         ]
-        command += _filename_arguments(initial_directory, None)
-        return _run(command)
+        command += self._filename_arguments(initial_directory, None)
+        return run_dialog_command(command)
 
+    @staticmethod
+    def _filename_arguments(
+        initial_directory: Optional[Path],
+        suggested_name: Optional[str],
+    ) -> List[str]:
+        if initial_directory is None and not suggested_name:
+            return []
 
-def _filename_arguments(
-    initial_directory: Optional[Path],
-    suggested_name: Optional[str],
-) -> List[str]:
-    if initial_directory is None and not suggested_name:
-        return []
+        base = initial_directory if initial_directory is not None else Path.home()
+        if suggested_name:
+            return ["--filename", str(base / suggested_name)]
 
-    base = initial_directory if initial_directory is not None else Path.home()
-    if suggested_name:
-        return ["--filename", str(base / suggested_name)]
+        return ["--filename", f"{base}{os.sep}"]
 
-    return ["--filename", f"{base}{os.sep}"]
+    @staticmethod
+    def _filter_arguments(filters: Tuple[FileFilter, ...]) -> List[str]:
+        arguments: List[str] = []
+        for file_filter in filters:
+            patterns = " ".join(file_filter.patterns)
+            arguments += ["--file-filter", f"{file_filter.label} | {patterns}"]
 
-
-def _filter_arguments(filters: Tuple[FileFilter, ...]) -> List[str]:
-    arguments: List[str] = []
-    for file_filter in filters:
-        patterns = " ".join(file_filter.patterns)
-        arguments += ["--file-filter", f"{file_filter.label} | {patterns}"]
-
-    return arguments
-
-
-def _run(command: List[str]) -> Optional[Path]:
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return normalize_path(result.stdout.strip())
+        return arguments

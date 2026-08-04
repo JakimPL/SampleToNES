@@ -1,5 +1,7 @@
 import os
+from contextlib import AbstractContextManager
 from pathlib import Path
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 from sampletones_application.utils.file_dialogs.backends.zenity import ZenityBackend
@@ -9,17 +11,16 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 MODULE = "sampletones_application.utils.file_dialogs.backends.zenity"
 
 
-def _completed(stdout: str) -> MagicMock:
-    result = MagicMock()
-    result.stdout = stdout
-    return result
+def _chosen(path: Optional[Path]) -> AbstractContextManager[MagicMock]:
+    """Answers the dialog with ``path``, standing in for what ``zenity`` reports."""
+    return patch(f"{MODULE}.run_dialog_command", return_value=path)
 
 
 class TestZenityBackend:
     def test_save_command_uses_named_filter_and_filename(self) -> None:
         backend = ZenityBackend()
         file_filter = FileFilter(name="Project files", patterns=("*.stp",))
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/home/user/song.stp\n")) as run:
+        with _chosen(Path("/home/user/song.stp")) as run:
             result = backend.save_file(
                 title="Save project",
                 initial_directory=Path("/home/user"),
@@ -36,7 +37,7 @@ class TestZenityBackend:
     def test_open_command_filter_format(self) -> None:
         backend = ZenityBackend()
         file_filter = FileFilter(name="Audio files", patterns=("*.wav", "*.mp3"))
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/clip.wav\n")) as run:
+        with _chosen(Path("/audio/clip.wav")) as run:
             backend.open_file(title="Open", initial_directory=Path("/audio"), filters=(file_filter,))
 
         command = run.call_args.args[0]
@@ -51,7 +52,7 @@ class TestZenityBackend:
             FileFilter(name="FamiTracker instrument", patterns=("*.fti",)),
             FileFilter(name="Bitphase preset", patterns=("*.json",)),
         )
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/home/user/kick.json\n")) as run:
+        with _chosen(Path("/home/user/kick.json")) as run:
             backend.save_file(
                 title="Export instrument",
                 initial_directory=Path("/home/user"),
@@ -66,7 +67,7 @@ class TestZenityBackend:
 
     def test_directory_command_uses_directory_flag(self) -> None:
         backend = ZenityBackend()
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/library\n")) as run:
+        with _chosen(Path("/audio/library")) as run:
             result = backend.select_directory(title="Choose", initial_directory=Path("/audio"))
 
         command = run.call_args.args[0]
@@ -76,7 +77,7 @@ class TestZenityBackend:
 
     def test_cancel_returns_none(self) -> None:
         backend = ZenityBackend()
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("")):
+        with _chosen(None):
             result = backend.open_file(
                 title="Open",
                 initial_directory=None,

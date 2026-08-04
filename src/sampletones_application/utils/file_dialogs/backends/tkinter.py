@@ -27,11 +27,11 @@ class TkinterBackend:
         initial_directory: Optional[Path],
         filters: Tuple[FileFilter, ...],
     ) -> Optional[Path]:
-        return _run(
+        return self._run(
             lambda: filedialog.askopenfilename(
                 title=title,
-                initialdir=_initial_directory(initial_directory),
-                filetypes=_filetypes(filters),
+                initialdir=self._initial_directory(initial_directory),
+                filetypes=self._filetypes(filters),
             )
         )
 
@@ -44,12 +44,12 @@ class TkinterBackend:
         filters: Tuple[FileFilter, ...],
     ) -> Optional[SaveDestination]:
         return untyped_destination(
-            _run(
+            self._run(
                 lambda: filedialog.asksaveasfilename(
                     title=title,
-                    initialdir=_initial_directory(initial_directory),
+                    initialdir=self._initial_directory(initial_directory),
                     initialfile=suggested_name or "",
-                    filetypes=_filetypes(filters),
+                    filetypes=self._filetypes(filters),
                 )
             )
         )
@@ -60,30 +60,30 @@ class TkinterBackend:
         title: str,
         initial_directory: Optional[Path],
     ) -> Optional[Path]:
-        return _run(
+        return self._run(
             lambda: filedialog.askdirectory(
                 title=title,
-                initialdir=_initial_directory(initial_directory),
+                initialdir=self._initial_directory(initial_directory),
             )
         )
 
+    @staticmethod
+    def _initial_directory(initial_directory: Optional[Path]) -> Optional[str]:
+        return str(initial_directory) if initial_directory is not None else None
 
-def _initial_directory(initial_directory: Optional[Path]) -> Optional[str]:
-    return str(initial_directory) if initial_directory is not None else None
+    @staticmethod
+    def _filetypes(
+        filters: Tuple[FileFilter, ...],
+    ) -> List[Tuple[str, Tuple[str, ...]]]:
+        return [(file_filter.label, file_filter.patterns) for file_filter in filters]
 
+    @staticmethod
+    def _run(dialog: Callable[[], str]) -> Optional[Path]:
+        root = Tk()
+        root.withdraw()
+        try:
+            selection = dialog()
+        finally:
+            root.destroy()
 
-def _filetypes(
-    filters: Tuple[FileFilter, ...],
-) -> List[Tuple[str, Tuple[str, ...]]]:
-    return [(file_filter.label, file_filter.patterns) for file_filter in filters]
-
-
-def _run(dialog: Callable[[], str]) -> Optional[Path]:
-    root = Tk()
-    root.withdraw()
-    try:
-        selection = dialog()
-    finally:
-        root.destroy()
-
-    return normalize_path(selection)
+        return normalize_path(selection)
