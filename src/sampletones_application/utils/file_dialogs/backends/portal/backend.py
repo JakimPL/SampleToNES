@@ -3,13 +3,13 @@ from pathlib import Path
 from typing import Dict, Final, List, Optional, Tuple
 from urllib.parse import unquote, urlparse
 
-from sampletones_application.utils.file_dialogs.destination import SaveDestination
-from sampletones_application.utils.file_dialogs.filter import FileFilter
-from sampletones_application.utils.file_dialogs.portal.client import (
+from sampletones_application.utils.file_dialogs.backends.portal.client import (
     ChooserResult,
     FileChooserClient,
     Variant,
 )
+from sampletones_application.utils.file_dialogs.destination import SaveDestination
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 
 OPEN_FILE_METHOD: Final[str] = "OpenFile"
 SAVE_FILE_METHOD: Final[str] = "SaveFile"

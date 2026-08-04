@@ -6,8 +6,8 @@ from typing import Deque, Dict, Final, Iterator, List, Optional, Tuple, cast
 import pytest
 from jeepney import HeaderFields, MatchRule, MessageType
 
-from sampletones_application.utils.file_dialogs.portal import client as client_module
-from sampletones_application.utils.file_dialogs.portal.client import (
+from sampletones_application.utils.file_dialogs.backends.portal import client as client_module
+from sampletones_application.utils.file_dialogs.backends.portal.client import (
     NAME_OWNER_CHANGED_SIGNAL,
     NO_OWNER,
     PORTAL_BUS_NAME,

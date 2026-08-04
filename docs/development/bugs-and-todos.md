@@ -28,6 +28,7 @@
 
 * Theme selector and palette management
 * In-application guide/tutorial
+* Language selector
 
 ### Technical
 
@@ -41,4 +42,3 @@
 ## Bugs
 
 * No refreshing after library generation
-* Inconsistent instruments naming scheme

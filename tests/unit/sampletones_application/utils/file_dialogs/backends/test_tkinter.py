@@ -1,11 +1,11 @@
 from pathlib import Path
 from unittest.mock import patch
 
+from sampletones_application.utils.file_dialogs.backends.tkinter import TkinterBackend
 from sampletones_application.utils.file_dialogs.destination import SaveDestination
 from sampletones_application.utils.file_dialogs.filter import FileFilter
-from sampletones_application.utils.file_dialogs.tkinter_backend import TkinterBackend
 
-MODULE = "sampletones_application.utils.file_dialogs.tkinter_backend"
+MODULE = "sampletones_application.utils.file_dialogs.backends.tkinter"
 
 
 class TestTkinterBackend:

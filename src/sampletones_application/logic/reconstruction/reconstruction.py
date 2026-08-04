@@ -164,7 +164,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._emit_audio_data()
 
-    def request_export_instrument_dialog(self, generator_name: GeneratorName) -> None:
+    def request_export_instrument_dialog(
+        self,
+        generator_name: GeneratorName,
+    ) -> None:
         """Asks for the destination one generator slice is written to.
 
         Every tracker able to write a single slice is offered at once, so the generator travels
@@ -193,7 +196,10 @@ class ReconstructionPanelLogic(CallbackMixin):
             generator_name,
         )
 
-    def request_export_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
+    def request_export_instruments_dialog(
+        self,
+        tracker_format: TrackerFormat,
+    ) -> None:
         """Asks for the destination the loaded reconstruction's slices are named after.
 
         The tracker comes from the action that was chosen, so the dialog offers that
@@ -290,7 +296,11 @@ class ReconstructionPanelLogic(CallbackMixin):
             nes_frequency=self._nes_frequency(),
         )
         self._session_manager.set_instrument_path(destination.parent)
-        self._export_service.export_sample(destination, self._tracker_backends[tracker_format], request)
+        self._export_service.export_sample(
+            destination,
+            self._tracker_backends[tracker_format],
+            request,
+        )
 
     def _tracker_format(
         self,

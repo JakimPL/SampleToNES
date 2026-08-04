@@ -5,8 +5,8 @@ from typing import Final, Optional, Tuple
 JEEPNEY_MODULE: Final[str] = "jeepney"
 
 PORTAL_PATHS: Final[Tuple[str, ...]] = (
-    "src/sampletones_application/utils/file_dialogs/portal",
-    "tests/unit/sampletones_application/utils/file_dialogs/portal",
+    "src/sampletones_application/utils/file_dialogs/backends/portal",
+    "tests/unit/sampletones_application/utils/file_dialogs/backends/portal",
     "tests/unit/sampletones_application/utils/file_dialogs/test_selection.py",
 )
 

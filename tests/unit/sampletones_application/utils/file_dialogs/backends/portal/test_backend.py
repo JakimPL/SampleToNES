@@ -3,9 +3,7 @@ from typing import Dict, Final, List, Optional, Tuple
 
 import pytest
 
-from sampletones_application.utils.file_dialogs.destination import SaveDestination
-from sampletones_application.utils.file_dialogs.filter import FileFilter
-from sampletones_application.utils.file_dialogs.portal.backend import (
+from sampletones_application.utils.file_dialogs.backends.portal.backend import (
     CURRENT_FILTER_OPTION,
     CURRENT_FOLDER_OPTION,
     CURRENT_NAME_OPTION,
@@ -14,7 +12,9 @@ from sampletones_application.utils.file_dialogs.portal.backend import (
     MINIMUM_FILE_CHOOSER_VERSION,
     PortalBackend,
 )
-from sampletones_application.utils.file_dialogs.portal.client import ChooserResult, Variant
+from sampletones_application.utils.file_dialogs.backends.portal.client import ChooserResult, Variant
+from sampletones_application.utils.file_dialogs.destination import SaveDestination
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 
 FAMITRACKER_FILTER: Final[FileFilter] = FileFilter(name="FamiTracker instrument", patterns=("*.fti",))
 PRESET_FILTER: Final[FileFilter] = FileFilter(name="Bitphase instrument preset", patterns=("*.json",))
@@ -196,7 +196,7 @@ class TestPortalAvailability:
         self,
         version: Optional[int],
     ) -> None:
-        from sampletones_application.utils.file_dialogs.portal import backend as backend_module
+        from sampletones_application.utils.file_dialogs.backends.portal import backend as backend_module
 
         client = FakeClient(None, version=version)
         with pytest.MonkeyPatch.context() as patcher:

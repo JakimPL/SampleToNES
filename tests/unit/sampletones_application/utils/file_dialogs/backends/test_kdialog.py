@@ -1,12 +1,11 @@
-import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from sampletones_application.utils.file_dialogs.backends.kdialog import KDialogBackend
 from sampletones_application.utils.file_dialogs.destination import SaveDestination
 from sampletones_application.utils.file_dialogs.filter import FileFilter
-from sampletones_application.utils.file_dialogs.zenity import ZenityBackend
 
-MODULE = "sampletones_application.utils.file_dialogs.zenity"
+MODULE = "sampletones_application.utils.file_dialogs.backends.kdialog"
 
 
 def _completed(stdout: str) -> MagicMock:
@@ -15,9 +14,9 @@ def _completed(stdout: str) -> MagicMock:
     return result
 
 
-class TestZenityBackend:
-    def test_save_command_uses_named_filter_and_filename(self) -> None:
-        backend = ZenityBackend()
+class TestKDialogBackend:
+    def test_save_command_carries_suggested_name_and_named_filter(self) -> None:
+        backend = KDialogBackend()
         file_filter = FileFilter(name="Project files", patterns=("*.stp",))
         with patch(f"{MODULE}.subprocess.run", return_value=_completed("/home/user/song.stp\n")) as run:
             result = backend.save_file(
@@ -29,24 +28,31 @@ class TestZenityBackend:
 
         command = run.call_args.args[0]
         assert result == SaveDestination(path=Path("/home/user/song.stp"), file_type=None)
-        assert "--save" in command
-        assert command[command.index("--file-filter") + 1] == "Project files (*.stp) | *.stp"
-        assert command[command.index("--filename") + 1] == str(Path("/home/user/song.stp"))
+        assert "--getsavefilename" in command
+        assert str(Path("/home/user/song.stp")) in command
+        assert "*.stp|Project files (*.stp)" in command
+        assert command[command.index("--title") + 1] == "Save project"
 
-    def test_open_command_filter_format(self) -> None:
-        backend = ZenityBackend()
+    def test_open_command_carries_multi_pattern_filter(self) -> None:
+        backend = KDialogBackend()
         file_filter = FileFilter(name="Audio files", patterns=("*.wav", "*.mp3"))
         with patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/clip.wav\n")) as run:
-            backend.open_file(title="Open", initial_directory=Path("/audio"), filters=(file_filter,))
+            result = backend.open_file(
+                title="Open",
+                initial_directory=Path("/audio"),
+                filters=(file_filter,),
+            )
 
         command = run.call_args.args[0]
-        assert command[command.index("--file-filter") + 1] == "Audio files (*.wav *.mp3) | *.wav *.mp3"
+        assert result == Path("/audio/clip.wav")
+        assert "--getopenfilename" in command
+        assert "*.wav *.mp3|Audio files (*.wav *.mp3)" in command
 
-    def test_each_offered_type_reaches_the_selector_as_its_own_entry(self) -> None:
-        """GTK narrows the browser by the type picked in the selector, so every accepted
-        type is listed for itself.
+    def test_several_types_gather_into_one_filter_naming_each(self) -> None:
+        """One filter reaches ``kdialog``'s command line, so it carries every accepted
+        pattern behind a label naming each type.
         """
-        backend = ZenityBackend()
+        backend = KDialogBackend()
         filters = (
             FileFilter(name="FamiTracker instrument", patterns=("*.fti",)),
             FileFilter(name="Bitphase preset", patterns=("*.json",)),
@@ -60,26 +66,25 @@ class TestZenityBackend:
             )
 
         command = run.call_args.args[0]
-        assert command.count("--file-filter") == 2
-        assert "FamiTracker instrument (*.fti) | *.fti" in command
-        assert "Bitphase preset (*.json) | *.json" in command
+        assert "*.fti *.json|FamiTracker instrument, Bitphase preset (*.fti *.json)" in command
 
-    def test_directory_command_uses_directory_flag(self) -> None:
-        backend = ZenityBackend()
+    def test_directory_command_has_no_filter(self) -> None:
+        backend = KDialogBackend()
         with patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/library\n")) as run:
             result = backend.select_directory(title="Choose", initial_directory=Path("/audio"))
 
         command = run.call_args.args[0]
         assert result == Path("/audio/library")
-        assert "--directory" in command
-        assert command[command.index("--filename") + 1].endswith(os.sep)
+        assert "--getexistingdirectory" in command
+        assert not any("|" in part for part in command)
 
     def test_cancel_returns_none(self) -> None:
-        backend = ZenityBackend()
+        backend = KDialogBackend()
         with patch(f"{MODULE}.subprocess.run", return_value=_completed("")):
-            result = backend.open_file(
-                title="Open",
+            result = backend.save_file(
+                title="Save",
                 initial_directory=None,
+                suggested_name=None,
                 filters=(FileFilter(name="", patterns=("*.stp",)),),
             )
 

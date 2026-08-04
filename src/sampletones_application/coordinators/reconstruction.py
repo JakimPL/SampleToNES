@@ -194,6 +194,7 @@ class ReconstructionCoordinator:
                     GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED,
                 ],
             )
+
             return
 
         self._session_manager.set_reconstruction_path(filepath.parent)

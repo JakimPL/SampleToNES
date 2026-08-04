@@ -3,9 +3,9 @@ import os
 import shutil
 from typing import Final, Optional
 
-from sampletones_application.utils.file_dialogs.backend import FileDialogBackend
-from sampletones_application.utils.file_dialogs.kdialog import KDialogBackend
-from sampletones_application.utils.file_dialogs.zenity import ZenityBackend
+from sampletones_application.utils.file_dialogs.backends.kdialog import KDialogBackend
+from sampletones_application.utils.file_dialogs.backends.zenity import ZenityBackend
+from sampletones_application.utils.file_dialogs.protocol import FileDialogBackend
 from sampletones_shared.exceptions import FileDialogUnavailableError
 from sampletones_shared.utils.system.system import System
 
@@ -81,7 +81,7 @@ def _portal_backend() -> Optional[FileDialogBackend]:
     if importlib.util.find_spec(JEEPNEY_MODULE) is None:
         return None
 
-    from sampletones_application.utils.file_dialogs.portal.backend import portal_backend
+    from sampletones_application.utils.file_dialogs.backends.portal.backend import portal_backend
 
     return portal_backend()
 
@@ -97,7 +97,7 @@ def _tkinter_backend() -> Optional[FileDialogBackend]:
     if importlib.util.find_spec(TKINTER_MODULE) is None:
         return None
 
-    from sampletones_application.utils.file_dialogs.tkinter_backend import TkinterBackend
+    from sampletones_application.utils.file_dialogs.backends.tkinter import TkinterBackend
 
     return TkinterBackend()
 

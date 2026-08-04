@@ -331,8 +331,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _export_callback(self, generator_name: GeneratorName) -> VoidCallback:
         """The press handler for one generator's export button.
-
-        DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it, so
         the generator is captured in a closure, which carries one.
         """
         return lambda: self.call(self.on_instrument_export, generator_name)
@@ -341,7 +339,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         for generator_name in GeneratorName.items():
             self._create_generator_tab(generator_name)
 
-    def _generator_kind(self, generator_name: GeneratorName) -> LibraryGeneratorName:
+    def _generator_kind(
+        self,
+        generator_name: GeneratorName,
+    ) -> LibraryGeneratorName:
         return GENERATOR_KIND[generator_name]
 
     def _generator_features(

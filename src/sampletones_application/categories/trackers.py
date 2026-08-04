@@ -54,17 +54,11 @@ INSTRUMENT_EXPORT_FORMATS: Final[Tuple[TrackerFormat, ...]] = (
     TrackerFormat.FAMITRACKER,
     TrackerFormat.BITPHASE_PRESET,
 )
-"""The formats an instrument export offers, in the order they are listed.
-
-Both write one file per generator slice, which is what exporting instruments produces. A
-Bitphase project holds a whole composition, so it is written through the project export.
-"""
 
 TRACKER_INSTRUMENT_FILTERS: Final[Dict[TrackerFormat, FileFilterElements]] = {
     TrackerFormat.FAMITRACKER: FileFilterElements.FAMITRACKER_INSTRUMENT,
     TrackerFormat.BITPHASE_PRESET: FileFilterElements.BITPHASE_PRESET,
 }
-"""The file type each instrument-export format is offered under, keyed by its format."""
 
 TRACKER_SAMPLE_MENU_LABELS: Final[Dict[TrackerFormat, MenuElements]] = {
     TrackerFormat.FAMITRACKER: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER,
