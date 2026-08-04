@@ -12,10 +12,10 @@ from sampletones_application.utils.file_dialogs.backends.portal.client import (
     NO_OWNER,
     PORTAL_BUS_NAME,
     RESPONSE_SIGNAL,
-    ChooserResult,
     FileChooserClient,
-    Variant,
 )
+from sampletones_application.utils.file_dialogs.backends.portal.response import ChooserResult
+from sampletones_application.utils.file_dialogs.backends.portal.variant import Variant
 
 HANDLE: Final[str] = "/org/freedesktop/portal/desktop/request/1_42/sampletones"
 OTHER_HANDLE: Final[str] = "/org/freedesktop/portal/desktop/request/1_7/elsewhere"

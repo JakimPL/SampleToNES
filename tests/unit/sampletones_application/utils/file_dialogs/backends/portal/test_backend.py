@@ -12,7 +12,8 @@ from sampletones_application.utils.file_dialogs.backends.portal.backend import (
     MINIMUM_FILE_CHOOSER_VERSION,
     PortalBackend,
 )
-from sampletones_application.utils.file_dialogs.backends.portal.client import ChooserResult, Variant
+from sampletones_application.utils.file_dialogs.backends.portal.response import ChooserResult
+from sampletones_application.utils.file_dialogs.backends.portal.variant import Variant
 from sampletones_application.utils.file_dialogs.destination import SaveDestination
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 
