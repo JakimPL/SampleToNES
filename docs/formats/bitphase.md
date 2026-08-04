@@ -149,12 +149,13 @@ from the note, so its preset rows hold a flat offset.
 ## D. What the exporter builds per scope
 
 A `.btp` holds a whole document, so every scope lands in one file; a preset holds one
-instrument, so a reconstruction fills a directory of them.
+instrument, so a reconstruction lands as a set of them beside the name the export was
+given, one per slice.
 
 | Scope | `.btp` | `.json` preset |
 | --- | --- | --- |
 | One generator slice | a playable document holding that instrument | one file |
-| A whole reconstruction | a playable document holding every slice | a directory, one file per slice |
+| A whole reconstruction | a playable document holding every slice | one file per slice, beside the chosen name |
 | A project | the song, its samples and its arrangement | — |
 
 **Instrument and reconstruction documents are playable.** Each slice becomes an

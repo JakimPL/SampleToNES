@@ -18,8 +18,9 @@ instruments, and building a whole song. Both assume it is already
    runs.
 5. When it finishes, click **Load** to open the result on the **Reconstructions**
    tab.
-6. Click **Export FamiTracker instruments** and choose a folder. One `.fti`
-   instrument is written per channel.
+6. Choose **Reconstruction ▸ Export instruments ▸ FamiTracker instruments...** and
+   name the export. One `.fti` file is generated per instrument: `Kick (pulse1).fti`,
+   `Kick (triangle).fti`, and so on.
 
 That is the shortest path from a sound to instruments you can load in FamiTracker.
 The [interface guide](interface.md) covers the **Main** and **Reconstructions**
@@ -37,8 +38,8 @@ tabs in full.
    sample to a channel with the cell's right-click **Set instrument**.
 5. Arrange the piece in the **Order** grid, and set **Rows**, **Tempo**, **Speed**,
    and **NES frequency** under **Module options**.
-6. Choose **Export as FamiTracker module** (or **File ▸ Export FamiTracker
-   module...**) and pick a path for the `.ftm` file.
+6. Choose **File ▸ Export ▸ FamiTracker module...** and pick a path for the `.ftm`
+   file. **Bitphase project...** beside it writes the same song as a `.btp`.
 
 The [sequencer guide](sequencer.md) covers the tracker grid, the order, samples,
 and undo history in full.

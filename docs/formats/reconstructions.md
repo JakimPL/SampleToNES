@@ -55,6 +55,6 @@ application version is stored alongside it, for reference.
 
 `.stn` files live in the documents folder. They are binary
 ([MessagePack](https://msgpack.org/)) with the audio arrays embedded, so a file
-is self-contained. The instruction streams can be exported to FamiTracker — one
+is self-contained. The instruction streams can be exported to a tracker — one
 instrument per channel, or a whole module — as described in
-[FamiTracker export](famitracker.md).
+[FamiTracker export](famitracker.md) and [Bitphase export](bitphase.md).

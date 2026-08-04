@@ -2,7 +2,8 @@
 
 _SampleToNES_ approximates an audio sample using only the sound channels of the
 NES's 2A03 chip — two pulse waves, a triangle and noise — and lets you arrange
-the results into a song and export them to [FamiTracker](glossary.md#famitracker).
+the results into a song and export them to [FamiTracker](glossary.md#famitracker)
+or [Bitphase](glossary.md#bitphase).
 This is the documentation for using it, understanding how it works, and building
 on it.
 
