@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -48,6 +48,8 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
 )
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
+    PROJECT_EXPORT_SHORTCUT_IDS,
+    SAMPLE_EXPORT_SHORTCUT_IDS,
     ShortcutId,
 )
 from sampletones_application.utils.gui.shortcuts.keys import (
@@ -60,6 +62,7 @@ from sampletones_application.utils.parallelization.thread import SingleThreadExe
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.trackers.format import TrackerFormat
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback, PathCallback
 
@@ -70,6 +73,14 @@ _TAB_TAGS: Dict[Tab, str] = {
     Tab.INSTRUCTIONS: TAG_GLOBAL_TAB_INSTRUCTIONS,
 }
 _TAG_TABS: Dict[str, Tab] = {tag: Tab(tab) for tab, tag in _TAB_TAGS.items()}
+_PROJECT_EXPORT_SHORTCUTS: Final[Dict[TrackerFormat, Shortcut]] = {
+    TrackerFormat.FAMITRACKER: Shortcut(dpg.mvKey_M, CTRL),
+    TrackerFormat.BITPHASE: Shortcut(dpg.mvKey_B, CTRL),
+}
+_SAMPLE_EXPORT_SHORTCUTS: Final[Dict[TrackerFormat, Shortcut]] = {
+    TrackerFormat.FAMITRACKER: Shortcut(dpg.mvKey_I, CTRL),
+    TrackerFormat.BITPHASE_PRESET: Shortcut(),
+}
 
 
 @dataclass(frozen=True)
@@ -79,7 +90,7 @@ class ShortcutBindings:
     save_project: Callback
     save_project_as: Callback
     project_properties: Callback
-    export_project_module: Callback
+    export_project: Callable[[TrackerFormat], None]
     close_project: Callback
     exit: Callback
     undo: Callback
@@ -93,7 +104,7 @@ class ShortcutBindings:
     save_reconstruction_as: Callback
     close_reconstruction: Callback
     export_wav: Callback
-    export_instruments: Callback
+    export_instruments: Callable[[TrackerFormat], None]
     add_reconstruction_to_sequencer: Callback
     open_reconstruction_in_explorer: Callback
     locate_original_audio: Callback
@@ -224,11 +235,7 @@ class ApplicationShell:
             Shortcut(dpg.mvKey_S, CTRL_SHIFT),
             bindings.save_project_as,
         )
-        self._shortcut_manager.register(
-            ShortcutId.EXPORT_PROJECT_MODULE,
-            Shortcut(dpg.mvKey_M, CTRL),
-            bindings.export_project_module,
-        )
+        self._register_export_shortcuts(bindings)
         self._shortcut_manager.register(
             ShortcutId.PROJECT_PROPERTIES,
             Shortcut(dpg.mvKey_P, ALT),
@@ -293,11 +300,6 @@ class ApplicationShell:
             ShortcutId.EXPORT_RECONSTRUCTION_WAV,
             Shortcut(dpg.mvKey_E, CTRL),
             bindings.export_wav,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.EXPORT_RECONSTRUCTION_INSTRUMENTS,
-            Shortcut(dpg.mvKey_I, CTRL),
-            bindings.export_instruments,
         )
         self._shortcut_manager.register(
             ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
@@ -391,6 +393,27 @@ class ApplicationShell:
         )
 
         self._shortcut_manager.bind_all()
+
+    def _register_export_shortcuts(self, bindings: ShortcutBindings) -> None:
+        """Registers one export action per tracker format, the entries the Export submenus list.
+
+        Each action carries the format it writes, so a menu entry and its key combination reach
+        the same coordinator call. A format registered without a key is offered by the menu
+        alone, which leaves the assignment to the keybindings options.
+        """
+        for tracker_format, shortcut in _PROJECT_EXPORT_SHORTCUTS.items():
+            self._shortcut_manager.register(
+                PROJECT_EXPORT_SHORTCUT_IDS[tracker_format],
+                shortcut,
+                partial(bindings.export_project, tracker_format),
+            )
+
+        for tracker_format, shortcut in _SAMPLE_EXPORT_SHORTCUTS.items():
+            self._shortcut_manager.register(
+                SAMPLE_EXPORT_SHORTCUT_IDS[tracker_format],
+                shortcut,
+                partial(bindings.export_instruments, tracker_format),
+            )
 
     def _register_channel_shortcuts(self, bindings: ShortcutBindings) -> None:
         """Registers one action per tracker channel, plus the one that brings the whole mix back.

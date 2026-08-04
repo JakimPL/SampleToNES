@@ -5,7 +5,6 @@ from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.result import ExportResult
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_application.services.export.truncation import ExportTruncation
 from sampletones_application.services.regeneration import (
     RegeneratedInstrument,
     RegenerationResult,
@@ -30,7 +29,6 @@ __all__ = [
     "ExportResult",
     "ExportService",
     "ExportSuccess",
-    "ExportTruncation",
     "RegeneratedInstrument",
     "RegenerationResult",
     "RegenerationService",

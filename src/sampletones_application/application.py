@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import Any, Dict, Final, Optional
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
@@ -104,6 +104,7 @@ from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     select_directory_dialog,
 )
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.frame_limiter import FrameLimiter
@@ -129,6 +130,9 @@ from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.trackers.backend import TrackerBackend
+from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.trackers.registry import build_tracker_backends
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
@@ -207,6 +211,8 @@ class Application:
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
 
+        self.tracker_backends: Dict[TrackerFormat, TrackerBackend] = build_tracker_backends()
+
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)
         self.history: HistoryManager = HistoryManager(
@@ -267,6 +273,8 @@ class Application:
             self.project_controller,
             self.project_manager,
             self.session_manager,
+            self.export_service,
+            tracker_backends=self.tracker_backends,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
             on_tab_switch=self._set_current_tab,
@@ -298,6 +306,7 @@ class Application:
             reconstruction_manager=self.reconstruction_manager,
             browser_manager=self.browser_manager,
             export_service=self.export_service,
+            tracker_backends=self.tracker_backends,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
@@ -471,7 +480,7 @@ class Application:
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
             project_properties=self._open_project_properties,
-            export_project_module=self._project_coordinator.export_module_dialog,
+            export_project=self._project_coordinator.export_project_dialog,
             close_project=self._project_coordinator.close_with_confirmation,
             exit=self._on_close,
             undo=self._sequencer_tab.undo,
@@ -668,13 +677,17 @@ class Application:
                 GlobalDialogTitleElements.RECONSTRUCT_FILE,
             ],
             initial_directory=self.session_manager.get_audio_input_path(),
-            extensions=EXT_FILES_AUDIO,
-            filter_name=self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                FileFilterElements.AUDIO,
-            ],
+            filters=(
+                FileFilter.for_extensions(
+                    self.language_manager[
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.FILTER,
+                        FileFilterElements.AUDIO,
+                    ],
+                    EXT_FILES_AUDIO,
+                ),
+            ),
         )
 
         self._handle_reconstruct_file(filepath)
@@ -726,9 +739,9 @@ class Application:
         if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_wav_dialog()
 
-    def _export_reconstruction_instruments_dialog(self) -> None:
+    def _export_reconstruction_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
         if self._reconstruction_coordinator.check_loaded():
-            self._reconstructions_tab.request_export_instruments_dialog()
+            self._reconstructions_tab.request_export_instruments_dialog(tracker_format)
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)

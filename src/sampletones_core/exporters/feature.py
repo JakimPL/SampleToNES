@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.famitracker.fti import write_fti
-from sampletones_core.famitracker.model.instrument import Instrument2A03
-from sampletones_core.famitracker.sequences.features import features_to_instrument_sequences
-from sampletones_core.famitracker.sequences.truncation import SequenceTruncation
 from sampletones_core.types.feature import FeatureMap, FeatureValue
 
 
@@ -19,13 +14,13 @@ class Features(BaseModel):
     The per-dimension envelopes describing one FamiTracker instrument.
 
     Each field is the frame-by-frame envelope for one dimension — volume, arpeggio,
-    pitch, hi-pitch, and duty cycle — alongside the ``initial_pitch`` the pitch envelope
-    is relative to. An optional dimension is absent when the channel does not use it.
-    The mapping interface (subscript, ``get``, ``keys``/``items``/``values``, ``in``)
-    exposes the envelopes keyed by :class:`FeatureKey`, passing over absent ones.
+    pitch, hi-pitch, and duty cycle — alongside the ``initial_pitch`` the arpeggio
+    envelope is relative to. An optional dimension is absent when the channel does not
+    use it. The mapping interface (subscript, ``get``, ``keys``/``items``/``values``,
+    ``in``) exposes the envelopes keyed by :class:`FeatureKey`, passing over absent ones.
 
     Attributes:
-        initial_pitch: Reference pitch the pitch envelope is measured against.
+        initial_pitch: Reference pitch the arpeggio envelope is measured against.
         volume: Volume envelope.
         arpeggio: Arpeggio (relative pitch) envelope.
         pitch: Pitch envelope, or ``None`` when unused.
@@ -111,43 +106,3 @@ class Features(BaseModel):
         """The frame count the envelopes describe, taken from the longest populated dimension."""
         arrays = (self.volume, self.arpeggio, self.pitch, self.hi_pitch, self.duty_cycle)
         return max((len(array) for array in arrays if array is not None), default=0)
-
-    def save(self, filepath: Path, instrument_name: str) -> Optional[SequenceTruncation]:
-        """Writes the features to a FamiTracker instrument (``.fti``) file.
-
-        Builds a single 2A03 instrument from the envelopes and serializes it. Envelopes
-        longer than a FamiTracker sequence holds reach the file as their opening frames,
-        which the return value reports.
-
-        Args:
-            filepath: Destination path for the ``.fti`` file.
-            instrument_name: Name stored in the instrument.
-
-        Returns:
-            Optional[SequenceTruncation]: The frames the sequence limit left out, and
-                ``None`` when the file carries every frame.
-
-        Raises:
-            IOError: If the file cannot be written.
-        """
-        sequences = features_to_instrument_sequences(
-            volume=self.volume,
-            arpeggio=self.arpeggio,
-            pitch=self.pitch,
-            hi_pitch=self.hi_pitch,
-            duty_cycle=self.duty_cycle,
-            loop=False,
-        )
-        instrument = Instrument2A03(index=0, name=instrument_name, sequences=sequences)
-        try:
-            write_fti(filepath, instrument)
-        except (
-            FileNotFoundError,
-            IOError,
-            OSError,
-            PermissionError,
-            IsADirectoryError,
-        ) as exception:
-            raise IOError(f"Failed to save features to '{filepath}': {exception}") from exception
-
-        return SequenceTruncation.measure(self.frame_count)

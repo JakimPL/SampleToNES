@@ -4,7 +4,7 @@ import numpy as np
 
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME, MIN_PITCH
-from sampletones_core.exporters.implementation.utils import center_pitches
+from sampletones_core.exporters.implementation.utils import center_pitch
 from sampletones_core.generators import GeneratorTypeUnion, TriangleGenerator
 from sampletones_core.instructions import (
     InstructionFields,
@@ -54,9 +54,21 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         return initial_pitch, pitches, volumes
 
     @classmethod
-    def get_feature_map(cls, instructions: List[TriangleInstruction]) -> FeatureMap:
-        initial_pitch, pitches, volumes = cls.extract_data(instructions)
-        initial_pitch, arpeggio = center_pitches(initial_pitch, pitches)
+    def derive_initial_pitch(
+        cls,
+        instructions: List[TriangleInstruction],
+    ) -> int:
+        first_pitch, pitches, _ = cls.extract_data(instructions)
+        return center_pitch(first_pitch, pitches)
+
+    @classmethod
+    def get_feature_map(
+        cls,
+        instructions: List[TriangleInstruction],
+        initial_pitch: int,
+    ) -> FeatureMap:
+        _, pitches, volumes = cls.extract_data(instructions)
+        arpeggio = np.array(pitches) - initial_pitch
 
         return {
             FeatureKey.INITIAL_PITCH: initial_pitch,

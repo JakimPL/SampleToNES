@@ -4,10 +4,10 @@ import pytest
 
 from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.famitracker.export import write_ftm
-from sampletones_core.famitracker.specification.channels import ChannelId
-from sampletones_core.famitracker.specification.file import FTM_VERSION
-from sampletones_core.famitracker.specification.sequences import SequenceKind
+from sampletones_core.formats.famitracker.export import write_ftm
+from sampletones_core.formats.famitracker.specification.channels import ChannelId
+from sampletones_core.formats.famitracker.specification.file import FTM_VERSION
+from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
 from sampletones_core.project.project import Project
 from tests.suite.famitracker import ParsedModule, parse_ftm
 

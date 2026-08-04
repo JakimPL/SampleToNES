@@ -1,13 +1,18 @@
+from dataclasses import dataclass, field
 from typing import Any, List
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 
+from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.services.regeneration import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.exporters import Features
+from sampletones_core.reconstructions import Reconstruction
+from tests.suite.scenario import BaseTestScenario, ScenarioStep
 
 _real_queue_add = CallbackQueue.add
 
@@ -17,6 +22,9 @@ SETTLE_PRIORITY = 0
 GENEROUS_BUDGET_SECONDS = 1.0
 DELIVERY_BUDGET_FRAMES = 10
 SETTLE_DELAY_FRAMES = 500
+
+BASE_PITCH = 60
+OCTAVE = 12
 
 
 class TestRegenerationServicePipeline:
@@ -137,6 +145,97 @@ class TestRegenerationServicePipeline:
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
+
+
+@dataclass
+class ArpeggioEditContext:
+    reconstruction: Reconstruction
+    features: Features
+    history: List[List[int]] = field(default_factory=list)
+
+
+def _edit_arpeggio(context: ArpeggioEditContext, arpeggio: np.ndarray) -> None:
+    """Applies an arpeggio envelope through the real regeneration pipeline.
+
+    Each edit runs on its own service, exactly as the instruments panel drives one, and the
+    regenerated reconstruction replaces the context's own so the next edit continues from it.
+    """
+    service = RegenerationService()
+    results: List[Any] = []
+    service.subscribe(results.append)
+
+    service._run(
+        context.reconstruction,
+        GeneratorName.PULSE1,
+        context.features,
+        FeatureKey.ARPEGGIO,
+        arpeggio,
+    )
+
+    assert len(results) == 1
+    assert isinstance(results[0], ServiceSuccess)
+    context.reconstruction = results[0].value.reconstruction
+    context.history.append(_pitches(context))
+
+
+def _pitches(context: ArpeggioEditContext) -> List[int]:
+    instructions = context.reconstruction.get_generator_instructions(GeneratorName.PULSE1)
+    return [instruction.pitch for instruction in instructions]
+
+
+class TestArpeggioEditKeepsTheSamplePitch:
+    """The reported bug, end to end on the real pipeline.
+
+    Typing an arpeggio envelope into a channel and clearing it again sounds the sample at the
+    note it was reconstructed at. The reference pitch travels with the instructions each edit
+    produces, so the second edit measures its offsets from the base the first one started at.
+    """
+
+    def test_clearing_an_arpeggio_returns_the_sample_to_its_pitch(self, reconstruction_data) -> None:
+        def build() -> ArpeggioEditContext:
+            reconstruction = reconstruction_data.reconstruction
+            return ArpeggioEditContext(
+                reconstruction=reconstruction,
+                features=FeatureData.load(reconstruction)[GeneratorName.PULSE1],
+            )
+
+        def check_the_starting_reference(context: ArpeggioEditContext) -> None:
+            assert context.features.initial_pitch == BASE_PITCH
+            assert context.features.arpeggio.tolist() == [0]
+
+        def raise_the_first_frame_an_octave(context: ArpeggioEditContext) -> None:
+            _edit_arpeggio(context, np.array([OCTAVE, 0, 0, 0], dtype=np.int8))
+            assert _pitches(context) == [BASE_PITCH + OCTAVE] + [BASE_PITCH] * 3
+
+        def reload_the_edited_features(context: ArpeggioEditContext) -> None:
+            context.features = FeatureData.load(context.reconstruction)[GeneratorName.PULSE1]
+            assert context.features.initial_pitch == BASE_PITCH
+            assert context.features.arpeggio.tolist() == [OCTAVE, 0]
+
+        def clear_the_envelope(context: ArpeggioEditContext) -> None:
+            _edit_arpeggio(context, np.zeros(len(context.features.arpeggio), dtype=np.int8))
+            assert _pitches(context) == [BASE_PITCH] * 4
+
+        def check_the_reference_held(context: ArpeggioEditContext) -> None:
+            reloaded = FeatureData.load(context.reconstruction)[GeneratorName.PULSE1]
+            assert reloaded.initial_pitch == BASE_PITCH
+            assert reloaded.arpeggio.tolist() == [0]
+
+        scenario = BaseTestScenario(
+            label="arpeggio_edit_keeps_the_sample_pitch",
+            build=build,
+            steps=[
+                ScenarioStep(label="check_the_starting_reference", action=check_the_starting_reference),
+                ScenarioStep(label="raise_the_first_frame_an_octave", action=raise_the_first_frame_an_octave),
+                ScenarioStep(label="reload_the_edited_features", action=reload_the_edited_features),
+                ScenarioStep(label="clear_the_envelope", action=clear_the_envelope),
+                ScenarioStep(label="check_the_reference_held", action=check_the_reference_held),
+            ],
+        )
+
+        context = scenario.run()
+
+        assert context.history[-1] == [BASE_PITCH] * 4
 
 
 class TestRegenerationDeliveryThroughRealQueue:

@@ -1,6 +1,6 @@
 [project]
 name = "sampletones"
-version = "0.3.0"
+version = "0.3.1"
 description = "Approximate audio samples with the NES 2A03 oscillators and export them as FamiTracker instruments"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -47,6 +47,7 @@ dependencies = [
     "scipy>=1.13,<2",
     "screeninfo>=0.8,<0.9",
     "tqdm>=4.66,<5",
+    "jeepney>=0.8,<1; sys_platform == 'linux'",
     "pytaskbar>=0.1.1,<0.2; platform_system == 'Windows'",
     "pywin32>=306; platform_system == 'Windows'",
     "PyYAML>=6.0,<7",

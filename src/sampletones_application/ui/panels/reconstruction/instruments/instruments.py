@@ -70,8 +70,8 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
-from sampletones_core.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
 from sampletones_core.features import GENERATOR_KIND, supported_features
+from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
     PITCH_VALUE_KIND,
@@ -79,6 +79,7 @@ from sampletones_core.utils.pitch_kind import (
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
@@ -328,19 +329,20 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         with dpg.handler_registry(tag=self.mouse_item_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_move)
 
-    def _handle_export_button_clicked(
-        self,
-        sender: Sender,
-        app_data: Any,
-        user_data: GeneratorName,
-    ) -> None:
-        self.call(self.on_instrument_export, user_data)
+    def _export_callback(self, generator_name: GeneratorName) -> VoidCallback:
+        """The press handler for one generator's export button.
+        the generator is captured in a closure, which carries one.
+        """
+        return lambda: self.call(self.on_instrument_export, generator_name)
 
     def _create_tabs_for_generators(self) -> None:
         for generator_name in GeneratorName.items():
             self._create_generator_tab(generator_name)
 
-    def _generator_kind(self, generator_name: GeneratorName) -> LibraryGeneratorName:
+    def _generator_kind(
+        self,
+        generator_name: GeneratorName,
+    ) -> LibraryGeneratorName:
         return GENERATOR_KIND[generator_name]
 
     def _generator_features(
@@ -369,8 +371,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 parent=tab_tag,
                 label=self._lbl_export_instrument,
                 width=-1,
-                callback=self._handle_export_button_clicked,
-                user_data=generator_name,
+                callback=self._export_callback(generator_name),
             )
             self._status_bar.bind_to_item(
                 button_tag,

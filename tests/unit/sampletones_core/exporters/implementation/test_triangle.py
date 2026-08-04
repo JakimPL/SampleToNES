@@ -52,27 +52,44 @@ class TestTriangleExporterExtractData:
         assert volumes == []
 
 
+class TestTriangleExporterDeriveInitialPitch:
+    def test_reference_is_the_midpoint_of_the_contour(self) -> None:
+        instructions = [_tri(pitch=60), _tri(pitch=72)]
+        assert TriangleExporter.derive_initial_pitch(instructions) == 66
+
+    def test_flat_contour_references_its_own_pitch(self) -> None:
+        instructions = [_tri(pitch=60), _tri(pitch=60)]
+        assert TriangleExporter.derive_initial_pitch(instructions) == 60
+
+    def test_empty_instruction_list_references_min_pitch(self) -> None:
+        assert TriangleExporter.derive_initial_pitch([]) == MIN_PITCH
+
+
 class TestTriangleExporterGetFeatureMap:
     def test_feature_map_contains_required_keys(self) -> None:
-        feature_map = TriangleExporter.get_feature_map([_tri(pitch=60)])
+        feature_map = TriangleExporter.get_feature_map([_tri(pitch=60)], 60)
         assert FeatureKey.INITIAL_PITCH in feature_map
         assert FeatureKey.VOLUME in feature_map
         assert FeatureKey.ARPEGGIO in feature_map
 
-    def test_arpeggio_is_relative_pitch_difference(self) -> None:
+    def test_arpeggio_is_relative_to_the_given_reference(self) -> None:
         instructions = [_tri(pitch=60), _tri(pitch=65)]
-        feature_map = TriangleExporter.get_feature_map(instructions)
-        initial = feature_map[FeatureKey.INITIAL_PITCH]
+        feature_map = TriangleExporter.get_feature_map(instructions, 60)
         arpeggio = feature_map[FeatureKey.ARPEGGIO]
-        assert int(arpeggio[0]) == 60 - initial
-        assert int(arpeggio[1]) == 65 - initial
+        assert int(arpeggio[0]) == 0
+        assert int(arpeggio[1]) == 5
+
+    def test_initial_pitch_is_the_given_reference(self) -> None:
+        feature_map = TriangleExporter.get_feature_map([_tri(pitch=60)], 55)
+        assert feature_map[FeatureKey.INITIAL_PITCH] == 55
+        assert int(feature_map[FeatureKey.ARPEGGIO][0]) == 5
 
     def test_volume_dtype_is_int8(self) -> None:
-        feature_map = TriangleExporter.get_feature_map([_tri()])
+        feature_map = TriangleExporter.get_feature_map([_tri()], 60)
         assert feature_map[FeatureKey.VOLUME].dtype == np.int8
 
     def test_arpeggio_dtype_is_int8(self) -> None:
-        feature_map = TriangleExporter.get_feature_map([_tri()])
+        feature_map = TriangleExporter.get_feature_map([_tri()], 60)
         assert feature_map[FeatureKey.ARPEGGIO].dtype == np.int8
 
 

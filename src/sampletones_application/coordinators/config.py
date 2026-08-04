@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, Final
+from typing import Dict, Final, Tuple
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
@@ -27,6 +27,7 @@ from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.paths import EXT_FILE_JSON
@@ -75,13 +76,7 @@ class ConfigCoordinator:
             ],
             initial_directory=self._session_manager.get_config_path(),
             default_filename=DEFAULT_CONFIG_FILENAME,
-            extensions=[EXT_FILE_JSON],
-            filter_name=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                FileFilterElements.CONFIG,
-            ],
+            filters=self._config_filters(),
         )
 
         self._handle_save(filepath)
@@ -121,16 +116,24 @@ class ConfigCoordinator:
                 GlobalDialogTitleElements.LOAD_CONFIG,
             ],
             initial_directory=self._session_manager.get_config_path(),
-            extensions=[EXT_FILE_JSON],
-            filter_name=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                FileFilterElements.CONFIG,
-            ],
+            filters=self._config_filters(),
         )
 
         self._handle_load(filepath)
+
+    def _config_filters(self) -> Tuple[FileFilter, ...]:
+        """The single type a configuration is written as and read from."""
+        return (
+            FileFilter.for_extensions(
+                self._language_manager[
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.FILTER,
+                    FileFilterElements.CONFIG,
+                ],
+                [EXT_FILE_JSON],
+            ),
+        )
 
     @ignore_none_path
     def _handle_load(self, filepath: Path) -> None:

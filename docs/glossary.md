@@ -161,6 +161,12 @@ A [_tracker application_](http://famitracker.com/) for composing music for the
 NES 2A03. _SampleToNES_ exports instruments and modules that it (and its forks)
 can load.
 
+### Bitphase
+
+A [_web tracker_](https://github.com/paator/bitphase) whose chips include the NES
+2A03. _SampleToNES_ exports documents and instrument presets it can load. See
+[Bitphase export](formats/bitphase.md).
+
 ### Tracker / sequencer
 
 A pattern-based music editor. _SampleToNES_'s built-in sequencer arranges
@@ -185,6 +191,16 @@ The list that arranges patterns into the song's timeline.
 A complete FamiTracker song, saved as an `.ftm` file — its settings,
 instruments, patterns, and order together.
 
+### Document
+
+A complete Bitphase project, saved as a `.btp` file — its songs, instruments,
+tables, patterns, and order together.
+
+### Table
+
+In Bitphase, a per-tick list of semitone offsets a pattern cell attaches to a
+channel, which carries the pitch contour a FamiTracker arpeggio sequence would.
+
 ### Sample (sequencer)
 
 A reconstruction added to the sequencer as a playable, placeable voice in the
@@ -194,6 +210,8 @@ song.
 
 A single FamiTracker instrument, saved as an `.fti` file, exported from one
 channel of a reconstruction. See [FamiTracker export](formats/famitracker.md).
+Bitphase takes the same slice as a `.json` instrument preset. See
+[Bitphase export](formats/bitphase.md).
 
 ## File types
 
@@ -204,3 +222,5 @@ channel of a reconstruction. See [FamiTracker export](formats/famitracker.md).
 | `.stp` | [Project](formats/projects.md) — a bundle of reconstructions with a song and settings. |
 | `.fti` | FamiTracker instrument ([export](formats/famitracker.md)). |
 | `.ftm` | FamiTracker module ([export](formats/famitracker.md)). |
+| `.btp` | Bitphase document ([export](formats/bitphase.md)). |
+| `.json` | Bitphase instrument preset ([export](formats/bitphase.md)), or the [configuration file](formats/configuration.md). |

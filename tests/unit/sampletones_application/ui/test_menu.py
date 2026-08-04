@@ -7,10 +7,15 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
 )
 from sampletones_application.ui import menu as menu_module
 from sampletones_application.ui.menu import MenuBar
-from sampletones_application.utils.gui.shortcuts.ids import CHANNEL_SHORTCUT_IDS, ShortcutId
+from sampletones_application.utils.gui.shortcuts.ids import (
+    CHANNEL_SHORTCUT_IDS,
+    SAMPLE_EXPORT_SHORTCUT_IDS,
+    ShortcutId,
+)
 from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_core.constants.enums import GeneratorName
@@ -42,10 +47,15 @@ class _DearPyGuiRecorder:
     def __init__(self) -> None:
         self.values: Dict[str, bool] = {}
         self.enabled: Dict[str, bool] = {}
+        self.menus: List[Dict[str, Any]] = []
 
     @contextmanager
     def menu(self, **kwargs: Any) -> Iterator[int]:
+        self.menus.append(kwargs)
         yield 0
+
+    def submenu(self, tag: str) -> Dict[str, Any]:
+        return next(entry for entry in self.menus if entry.get("tag") == tag)
 
     def add_separator(self, **kwargs: Any) -> int:
         return 0
@@ -57,10 +67,14 @@ class _DearPyGuiRecorder:
         self.enabled[item] = kwargs["enabled"]
 
 
-def _state(muted: FrozenSet[GeneratorName]) -> MenuBarViewModel:
+def _state(
+    muted: FrozenSet[GeneratorName],
+    *,
+    reconstruction_loaded: bool = False,
+) -> MenuBarViewModel:
     return MenuBarViewModel(
         project_open=True,
-        reconstruction_loaded=False,
+        reconstruction_loaded=reconstruction_loaded,
         reconstruction_saveable=False,
         reconstruction_in_project=False,
         reconstruction_file_backed=False,
@@ -105,6 +119,46 @@ def menu_bar(shortcuts: _ShortcutManagerRecorder) -> MenuBar:
     instance._shortcut_manager = shortcuts
     instance._language_manager = LanguageManager(LANG_EN)
     return instance
+
+
+class TestInstrumentsExportMenu:
+    """Each tracker that writes a file per slice gets its own item, so choosing the tracker
+    is one click and the destination dialog then offers that tracker's type alone."""
+
+    def test_every_offered_tracker_is_listed(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_reconstruction_menu(_state(frozenset()))
+
+        entries = [item for item in shortcuts.items if item["shortcut_id"] in SAMPLE_EXPORT_SHORTCUT_IDS.values()]
+
+        assert [entry["label"] for entry in entries] == [
+            "FamiTracker instruments...",
+            "Bitphase presets...",
+        ]
+
+    def test_the_submenu_waits_for_a_loaded_reconstruction(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_reconstruction_menu(_state(frozenset()))
+
+        assert framework.submenu(TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS)["enabled"] is False
+
+    def test_the_submenu_is_offered_once_a_reconstruction_is_loaded(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_reconstruction_menu(_state(frozenset(), reconstruction_loaded=True))
+
+        assert framework.submenu(TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS)["enabled"] is True
 
 
 class TestChannelsMenuItems:

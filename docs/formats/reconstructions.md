@@ -29,7 +29,12 @@ A `.stn` file holds:
   one waveform per enabled channel (`pulse1`, `pulse2`, `triangle`, `noise`);
 * **per-channel instructions** — the instruction stream each channel plays, one
   [instruction](../glossary.md#instruction) per frame. This is the data a
-  FamiTracker export is built from.
+  FamiTracker export is built from;
+* **per-channel reference pitch** — the note each channel's arpeggio offsets are
+  measured against, chosen once when the reconstruction is built and stored with
+  the instructions it describes. An export reads the offsets against this pitch,
+  so editing an arpeggio moves the frames around a base that stays put (see
+  [FamiTracker export](famitracker.md)).
 
 ## Detached reconstructions
 
@@ -50,6 +55,6 @@ application version is stored alongside it, for reference.
 
 `.stn` files live in the documents folder. They are binary
 ([MessagePack](https://msgpack.org/)) with the audio arrays embedded, so a file
-is self-contained. The instruction streams can be exported to FamiTracker — one
+is self-contained. The instruction streams can be exported to a tracker — one
 instrument per channel, or a whole module — as described in
-[FamiTracker export](famitracker.md).
+[FamiTracker export](famitracker.md) and [Bitphase export](bitphase.md).

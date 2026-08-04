@@ -1,12 +1,15 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Final
+from typing import Callable, Final, List
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.data import Metadata
+from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.application import (
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
@@ -27,6 +30,27 @@ from tests.suite.errors import DIRECTORY_READ_ERRORS
 
 _RETUNED_FREQUENCY: Final[int] = 60
 _FASTER_FREQUENCY: Final[int] = 120
+
+_AUDIO_LENGTH: Final[int] = 64
+_BASE_PITCH: Final[int] = 60
+_OCTAVE: Final[int] = 12
+_CONTOUR_MIDPOINT: Final[int] = 66
+_RESET_PITCH: Final[int] = 48
+
+
+def _pulse(pitch: int) -> PulseInstruction:
+    return PulseInstruction(on=True, pitch=pitch, volume=8, duty_cycle=0)
+
+
+def _reconstruction(instructions: List[PulseInstruction]) -> Reconstruction:
+    return Reconstruction.create(
+        approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
+        approximations={GeneratorName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
+        instructions={GeneratorName.PULSE1: instructions},
+        config=Config(),
+        coefficient=1.0,
+        audio_filepath=Path("/dev/null"),
+    )
 
 
 class TestRoundTrip:
@@ -190,6 +214,61 @@ class TestDeserializeDataWrapping(BaseTestSuite):
         ):
             with pytest.raises(test_case.expected):
                 Reconstruction.deserialize_data(b"x", source="mem")
+
+
+class TestInitialPitchReference:
+    """The reference pitch each channel's arpeggio is measured against is stored, not re-derived.
+
+    Storing it is what keeps an arpeggio edit from moving the base pitch: an edited contour
+    carries absolute pitches, so deriving a reference from it again would follow the edit.
+    """
+
+    def test_create_anchors_each_generator_to_its_contour(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH), _pulse(_BASE_PITCH + _OCTAVE)])
+
+        assert reconstruction.initial_pitches[GeneratorName.PULSE1] == _CONTOUR_MIDPOINT
+
+    def test_export_measures_the_arpeggio_against_the_stored_reference(self) -> None:
+        """An arpeggiated channel exports offsets from the pitch it was anchored at.
+
+        The channel is anchored flat at ``_BASE_PITCH`` and then given a contour an octave
+        up on its first frame — the shape an ``12 0`` envelope produces. The export reports
+        the stored reference and reads the octave straight back.
+        """
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
+        arpeggiated = [_pulse(_BASE_PITCH + _OCTAVE), _pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            arpeggiated,
+            np.ones(_AUDIO_LENGTH, dtype=np.float32),
+            _BASE_PITCH,
+        )
+
+        features = reconstruction.export()[GeneratorName.PULSE1]
+
+        assert features.initial_pitch == _BASE_PITCH
+        assert features.arpeggio.tolist() == [_OCTAVE, 0]
+
+    def test_update_generator_data_replaces_the_reference(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [_pulse(_RESET_PITCH)],
+            np.ones(_AUDIO_LENGTH, dtype=np.float32),
+            _RESET_PITCH,
+        )
+
+        assert reconstruction.initial_pitches[GeneratorName.PULSE1] == _RESET_PITCH
+
+    def test_reference_survives_a_save_load_round_trip(self, tmp_path: Path) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH), _pulse(_BASE_PITCH + _OCTAVE)])
+        path = tmp_path / "anchored.stn"
+
+        reconstruction.save(path)
+        loaded = Reconstruction.load(path)
+
+        assert loaded.initial_pitches == reconstruction.initial_pitches
 
 
 class TestWithNesFrequency:

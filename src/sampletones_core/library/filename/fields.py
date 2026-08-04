@@ -10,6 +10,7 @@ from sampletones_core.constants.field_aliases import ALIASES
 from sampletones_core.paths import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import HASH_PATTERN
+from sampletones_shared.utils.system.paths import get_filename
 
 FILENAME_SEPARATOR: Final[str] = "_"
 
@@ -31,7 +32,7 @@ class InstructionsFilenameFields(BaseModel):
 
     @property
     def filename(self) -> str:
-        return f"{self.stem}{EXT_FILE_LIBRARY}"
+        return get_filename(self.stem, EXT_FILE_LIBRARY)
 
     @classmethod
     def create(cls, pathlike: Pathlike) -> InstructionsFilenameFields:
