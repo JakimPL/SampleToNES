@@ -13,6 +13,7 @@ from jeepney import (
 from jeepney.io.blocking import DBusConnection, open_dbus_connection, unwrap_msg
 from jeepney.low_level import Message
 
+from sampletones_application.utils.file_dialogs.backends.portal.parent import parent_window_handle
 from sampletones_application.utils.file_dialogs.backends.portal.response import ChooserResult
 from sampletones_application.utils.file_dialogs.backends.portal.variant import Variant
 
@@ -27,7 +28,6 @@ NAME_OWNER_CHANGED_SIGNAL: Final[str] = "NameOwnerChanged"
 VERSION_PROPERTY: Final[str] = "version"
 
 CALL_SIGNATURE: Final[str] = "ssa{sv}"
-PARENT_WINDOW: Final[str] = ""
 BUS_NAME_ARGUMENT: Final[int] = 0
 NO_OWNER: Final[str] = ""
 
@@ -85,6 +85,9 @@ class FileChooserClient:
         """
         Opens the dialog ``method`` names and waits for the user to answer it.
 
+        The call names this application's window as the dialog's parent, which is what places
+        the dialog over the window it was asked from.
+
         Args:
             method: The ``FileChooser`` method to call, naming the kind of dialog to open.
             title: The window title the dialog carries.
@@ -101,7 +104,7 @@ class FileChooserClient:
             method,
             CALL_SIGNATURE,
             (
-                PARENT_WINDOW,
+                parent_window_handle(),
                 title,
                 options,
             ),

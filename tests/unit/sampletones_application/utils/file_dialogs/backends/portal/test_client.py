@@ -21,6 +21,7 @@ HANDLE: Final[str] = "/org/freedesktop/portal/desktop/request/1_42/sampletones"
 OTHER_HANDLE: Final[str] = "/org/freedesktop/portal/desktop/request/1_7/elsewhere"
 LABEL: Final[str] = "Bitphase instrument preset (*.json)"
 PORTAL_OWNER: Final[str] = ":1.42"
+PARENT_WINDOW: Final[str] = "x11:2200132"
 
 
 def _message(
@@ -77,6 +78,7 @@ class FakeConnection:
         self._replies = deque(replies)
         self._signals = deque(signals)
         self.sent: List[str] = []
+        self.bodies: List[Tuple[object, ...]] = []
         self.rules: List[object] = []
         self.closed = False
 
@@ -99,6 +101,7 @@ class FakeConnection:
     def send_and_get_reply(self, message: object) -> SimpleNamespace:
         member = getattr(message, "header").fields[HeaderFields.member]
         self.sent.append(member)
+        self.bodies.append(getattr(message, "body"))
         return self._replies.popleft()
 
     def recv_until_filtered(self, queue: Deque[SimpleNamespace]) -> SimpleNamespace:
@@ -162,6 +165,23 @@ class TestCall:
 
         assert result == ChooserResult(uris=("file:///home/user/kick.json",), filter_label=LABEL)
         assert connection.sent == ["AddMatch", "AddMatch", "SaveFile"]
+
+    def test_the_dialog_names_the_application_s_window_as_its_parent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The window a dialog belongs to is what the portal places it over."""
+        connection = FakeConnection(
+            replies=[_message(("ok",)), _message(("ok",)), _message((HANDLE,))],
+            signals=[_response(1, {})],
+        )
+        monkeypatch.setattr(client_module, "open_dbus_connection", _connecting(connection))
+        monkeypatch.setattr(client_module, "parent_window_handle", lambda: PARENT_WINDOW)
+
+        FileChooserClient().call(method="SaveFile", title="Export instrument", options={})
+
+        assert connection.bodies[-1] == (
+            PARENT_WINDOW,
+            "Export instrument",
+            {},
+        )
 
     def test_another_request_s_response_is_passed_over(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Every portal response on the bus reaches the subscription, so each call waits for its own."""
