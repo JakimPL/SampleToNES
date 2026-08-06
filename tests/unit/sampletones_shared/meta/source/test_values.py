@@ -4,7 +4,7 @@ from typing import Dict, Final, Mapping, Tuple
 
 import pytest
 
-from sampletones_shared.meta.source.bindings import TypeEnvironment
+from sampletones_shared.meta.source.bindings.environment import TypeEnvironment
 from sampletones_shared.meta.source.values import UNRESOLVED, EnumTable, ResolvedValues, ValueResolver
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase

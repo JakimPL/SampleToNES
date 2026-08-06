@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
     FileFilterElements,
@@ -320,9 +319,9 @@ class ProjectCoordinator:
     def _guard_open(
         self,
         *,
-        title: AbstractElement,
-        message: AbstractElement,
-        open_message: AbstractElement,
+        title: GlobalDialogTitleElements,
+        message: GlobalMessageElements,
+        open_message: GlobalMessageElements,
         on_confirm: Callback,
     ) -> None:
         if not self._project_controller.is_open:
@@ -347,7 +346,7 @@ class ProjectCoordinator:
                 ok_label=self._label(DialogElements.DISCARD),
             )
 
-    def _title(self, element: AbstractElement) -> str:
+    def _title(self, element: GlobalDialogTitleElements) -> str:
         return self._language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -355,7 +354,7 @@ class ProjectCoordinator:
             element,
         ]
 
-    def _message(self, element: AbstractElement) -> str:
+    def _message(self, element: GlobalMessageElements) -> str:
         return self._language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -363,7 +362,7 @@ class ProjectCoordinator:
             element,
         ]
 
-    def _label(self, element: AbstractElement) -> str:
+    def _label(self, element: DialogElements) -> str:
         return self._language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -371,7 +370,7 @@ class ProjectCoordinator:
             element,
         ]
 
-    def _filter_name(self, element: AbstractElement) -> str:
+    def _filter_name(self, element: FileFilterElements) -> str:
         return self._language_manager[
             Page.GLOBAL,
             Panel.DIALOG,

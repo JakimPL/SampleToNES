@@ -2,7 +2,7 @@ import ast
 from textwrap import dedent
 from typing import Iterable
 
-from sampletones_shared.meta.source.bindings import Scope
+from sampletones_shared.meta.source.bindings.scopes import Scope
 
 
 def parse_source(source: str) -> ast.Module:

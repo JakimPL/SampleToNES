@@ -1,6 +1,6 @@
 from typing import Final, List
 
-from sampletones_shared.meta.source.bindings import module_scopes
+from sampletones_shared.meta.source.bindings.scopes import module_scopes
 from sampletones_shared.meta.source.subscripts import SubscriptSite, find_subscripts
 from tests.suite.source import parse_source, scope_named
 

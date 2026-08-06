@@ -3,6 +3,7 @@ from typing import Final, Iterable, List
 
 from sampletones_shared.meta.source.nodes import (
     expression_spelling,
+    is_attribute_spelling,
     nested_scopes,
     own_nodes,
     slice_elements,
@@ -71,6 +72,14 @@ class TestExpressionSpelling:
 
     def test_a_subscript_spells_nothing(self) -> None:
         assert expression_spelling(first_expression("managers['first']")) is None
+
+
+class TestIsAttributeSpelling:
+    def test_a_chain_reaches_an_attribute(self) -> None:
+        assert is_attribute_spelling("self._language_manager")
+
+    def test_a_bare_name_reaches_no_attribute(self) -> None:
+        assert not is_attribute_spelling("language_manager")
 
 
 class TestTerminalName:

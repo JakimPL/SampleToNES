@@ -5,6 +5,8 @@ PositionedNode = Union[ast.stmt, ast.expr]
 
 SCOPE_NODES: Final[Tuple[Type[ast.AST], ...]] = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 
+ATTRIBUTE_SEPARATOR: Final[str] = "."
+
 
 def own_nodes(scope: ast.AST) -> Iterator[ast.AST]:
     """The scope itself and every node under it, up to where a nested scope begins.
@@ -63,9 +65,21 @@ def expression_spelling(node: ast.expr) -> Optional[str]:
             return name
         case ast.Attribute(value=value, attr=attribute):
             base = expression_spelling(value)
-            return None if base is None else f"{base}.{attribute}"
+            return None if base is None else f"{base}{ATTRIBUTE_SEPARATOR}{attribute}"
         case _:
             return None
+
+
+def is_attribute_spelling(spelling: str) -> bool:
+    """Whether a spelling reaches an attribute of something, as `self._manager` does.
+
+    Args:
+        spelling: Spelling to read, as `expression_spelling` writes it.
+
+    Returns:
+        bool: True where the spelling names an attribute, false where it names a bare name.
+    """
+    return ATTRIBUTE_SEPARATOR in spelling
 
 
 def terminal_name(node: ast.expr) -> Optional[str]:

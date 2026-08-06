@@ -1,13 +1,7 @@
-import ast
-from typing import Dict, Final, List, Mapping, Tuple
+from typing import Final, List, Mapping, Tuple
 
-from sampletones_shared.meta.source.bindings import (
-    Scope,
-    TypeEnvironment,
-    container_item_types,
-    iterated_container,
-    module_scopes,
-)
+from sampletones_shared.meta.source.bindings.environment import TypeEnvironment
+from sampletones_shared.meta.source.bindings.scopes import Scope, module_scopes
 from tests.suite.source import parse_source, scope_named
 
 PANEL_SOURCE: Final[str] = """
@@ -152,33 +146,3 @@ class TestLoopTargets:
     def test_a_container_the_module_annotates_states_its_own_item_types(self) -> None:
         environment = environment_of(LOCAL_OVER_IMPORTED_SOURCE, "create", IMPORTED_FILTERS)
         assert environment.type_of("element") == "MenuElements"
-
-
-class TestIteratedContainer:
-    def test_a_mapping_walked_directly_is_read(self) -> None:
-        container = iterated_container(ast.parse("FILTERS", mode="eval").body)
-        assert container is not None and (container.spelling, container.accessor) == ("FILTERS", None)
-
-    def test_an_accessor_travels_with_the_container(self) -> None:
-        container = iterated_container(ast.parse("self._filters.items()", mode="eval").body)
-        assert container is not None and (container.spelling, container.accessor) == ("self._filters", "items")
-
-    def test_a_call_of_another_kind_reads_no_container(self) -> None:
-        assert iterated_container(ast.parse("enumerate(FILTERS)", mode="eval").body) is None
-
-
-class TestContainerItemTypes:
-    def test_an_annotated_container_states_its_item_types(self) -> None:
-        item_types = container_item_types(parse_source(PANEL_SOURCE))
-        assert item_types["FILTERS"] == ("TrackerFormat", "FileFilterElements")
-
-    def test_a_container_annotated_inside_a_method_is_read(self) -> None:
-        source = """
-        from typing import Dict, Final
-
-        class Panel:
-            def _load(self) -> None:
-                self._labels: Dict[MenuElements, str] = {}
-        """
-        item_types: Dict[str, Tuple[str, ...]] = container_item_types(parse_source(source))
-        assert item_types["self._labels"] == ("MenuElements", "str")

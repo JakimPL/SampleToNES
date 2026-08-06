@@ -2,7 +2,7 @@ import ast
 from dataclasses import dataclass
 from typing import Final, FrozenSet, Mapping, Tuple
 
-from sampletones_shared.meta.source.bindings import TypeEnvironment
+from sampletones_shared.meta.source.bindings.environment import TypeEnvironment
 from sampletones_shared.meta.source.nodes import expression_spelling, terminal_name
 
 EnumMembers = Mapping[str, str]
