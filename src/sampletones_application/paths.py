@@ -7,7 +7,7 @@ from sampletones_shared.paths import CONFIG_DIRECTORY
 APPLICATION_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "application"
 BEHAVIOR_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "behavior"
 LAYOUT_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "layout"
-PALETTE_PATH: Final[Path] = LAYOUT_DIRECTORY / "palette.yaml"
+PALETTES_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "palettes"
 LANG_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "lang"
 THEME_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "theme"
 

@@ -4,12 +4,13 @@ from typing import Dict, Generator, Optional
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.paths import PALETTE_PATH, THEME_DIRECTORY
+from sampletones_application.paths import PALETTES_DIRECTORY, THEME_DIRECTORY
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.ui.themes.loader import ThemeLoader
 from sampletones_application.ui.themes.spec import ThemeSpec
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.palette import Palette
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.palette import Palette
 
 _BASE_NAME = "default"
 
@@ -68,7 +69,8 @@ class TestLoadedInheritance:
 
     @pytest.fixture
     def themes(self) -> Dict[str, Theme]:
-        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, Palette.load(PALETTE_PATH)).load_all()}
+        palette = PaletteCatalog.load(PALETTES_DIRECTORY).default
+        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, palette).load_all()}
 
     def test_every_theme_carries_the_base_table_border(self, themes: Dict[str, Theme]) -> None:
         dpg.create_context()

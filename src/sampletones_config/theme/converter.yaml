@@ -6,7 +6,7 @@ components:
     entries:
       - type: color
         key: Text
-        value: .white
+        value: .contrast
       - type: color
         key: TextDisabled
         value: .text_muted

@@ -7,7 +7,7 @@ programmatic role is to be importable so consumers can resolve its directory
 
 The schema that validates each file lives in the **consuming** package:
 
-- `sampletones_application` — layout, theme, palette, language, behavior, deployment.
+- `sampletones_application` — layout, theme, palettes, language, behavior, deployment.
 - `sampletones_core` — calibration.
 - `sampletones_shared` — the loader primitives only.
 
@@ -21,7 +21,8 @@ The data package must not import a schema, and a schema package must not inline 
 | `behavior/` | Non-visual runtime behavior | `BehaviorConfig` |
 | `calibration/` | DSP calibration tuning | `CorpusConfig`, `RefereeConfig` |
 | `lang/` | Interface strings (i18n) | `LanguageManager` |
-| `layout/` | UI geometry, dimensions, fonts, palette | `LayoutConfig` |
+| `layout/` | UI geometry, dimensions, fonts | `LayoutConfig` |
+| `palettes/` | The colour sets layout and theme resolve against | `Palette` |
 | `theme/` | DearPyGui theme/colour styling | `ThemeSpec` |
 
 The rules for where a value belongs, how the directories nest, and how each domain is

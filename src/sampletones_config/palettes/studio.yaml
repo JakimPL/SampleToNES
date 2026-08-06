@@ -104,7 +104,8 @@ colors:
   text_trace: "#c0c0c0"
 
   # emphasis and overlays
-  white: "#ffffff"
+  contrast: "#ffffff"
+  overlay: "#ffffff"
   transparent: "#00000000"
   border_strong: "#565f78"
   input_invalid: "#c0504a64"

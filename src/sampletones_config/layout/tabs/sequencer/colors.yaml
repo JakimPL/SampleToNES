@@ -2,7 +2,7 @@ pattern_highlight: .pattern_highlight
 cell_cursor: .cell_cursor
 cursor_row: .cursor_row
 playback_row: .playback_row
-label: .white
+label: .contrast
 order:
   label: .order_label
   master: .order_master
@@ -14,8 +14,8 @@ sample:
   divider: .sample_divider
 header:
   background: .table_header
-  hovered: .white/0.25
-  active: .white/0.4
+  hovered: .overlay/0.25
+  active: .overlay/0.4
 muted:
   background: .channel_muted
   text: .text_disabled

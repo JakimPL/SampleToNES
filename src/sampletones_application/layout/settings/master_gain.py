@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.utils.palette import PaletteColor
+from sampletones_application.utils.palette.color import PaletteColor
 
 
 class MasterGainLayout(BaseModel, extra="forbid", frozen=True):

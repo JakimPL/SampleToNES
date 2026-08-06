@@ -9,7 +9,7 @@ from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.parameters.geometry import TabGeometry
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
 from sampletones_application.ui.elements.tree.colors import TreeColors
-from sampletones_application.utils.palette import PaletteColor
+from sampletones_application.utils.palette.color import PaletteColor
 
 
 @dataclass(frozen=True)

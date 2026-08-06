@@ -25,7 +25,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
-from sampletones_application.utils.palette import PaletteColor
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_core.utils.pitch_kind import PitchValueKind
 from sampletones_shared.types.application import Color
 from sampletones_shared.utils.callbacks import CallbackMixin

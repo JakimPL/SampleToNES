@@ -27,11 +27,9 @@ from sampletones_application.ui.themes.style import (
     ThemeValue,
 )
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.palette import (
-    ColorSource,
-    Palette,
-    PaletteReference,
-)
+from sampletones_application.utils.palette.color import ColorSource
+from sampletones_application.utils.palette.palette import Palette
+from sampletones_application.utils.palette.reference import PaletteReference
 from sampletones_core.paths import EXT_FILE_YAML
 from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.serialization import load_yaml

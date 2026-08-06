@@ -4,7 +4,7 @@ from typing import Annotated, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from sampletones_application.utils.palette import ColorSource
+from sampletones_application.utils.palette.color import ColorSource
 
 
 class ThemeColorEntrySpec(BaseModel, frozen=True):

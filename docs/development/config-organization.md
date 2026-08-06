@@ -10,7 +10,7 @@ is read; use it as the reference when adding or moving a value. It sits alongsid
 first:
 
 - **Shipped configuration** — the `sampletones_config` YAML package: layout, theme,
-  palette, language, behavior, deployment, and calibration. *(This document.)*
+  palettes, language, behavior, deployment, and calibration. *(This document.)*
 - **Runtime user preferences** — mutable state persisted to the user profile
   (`sampletones_application/config`, e.g. `PlaybackConfig`, `ApplicationState`), governed
   by that package.
@@ -29,7 +29,7 @@ that reads them. The dependency runs one way — a consumer imports the data pac
 resolve its directory (`CONFIG_DIRECTORY`), and the package itself is pure YAML with an
 empty `__init__.py`. Each schema lives with its reader:
 
-- `sampletones_application` owns the layout, theme, palette, language, behavior, and
+- `sampletones_application` owns the layout, theme, palettes, language, behavior, and
   deployment schemas.
 - `sampletones_core` owns the calibration schemas.
 - `sampletones_shared` owns the loader primitives (`load_yaml_model`,
@@ -41,9 +41,15 @@ on their own terms.
 ### 2. The top level is organized by domain
 
 `sampletones_config` has one top-level directory per schema family and its loader:
-`application`, `behavior`, `calibration`, `lang`, `layout`, `theme`. Each domain owns its
-schema and its load path (see [Domains](#domains)). A new domain is a new top-level
+`application`, `behavior`, `calibration`, `lang`, `layout`, `palettes`, `theme`. Each domain
+owns its schema and its load path (see [Domains](#domains)). A new domain is a new top-level
 directory with its own schema owner and loader.
+
+Palettes are a domain of their own because two other domains resolve against them: a colour
+field in `layout/` and a colour entry in `theme/` both name a palette token, and the palette
+is what turns that name into a value. A directory holds one file per palette, named after the
+palette it declares, and every palette answers the same token set — an entry names one token
+and each palette must have an answer for it.
 
 ### 3. The config tree mirrors the code
 
@@ -54,9 +60,9 @@ predicts its place in the code. Three conventions keep the mirror true:
 
 - **A feature area is a directory of fragments.** Each area is a directory loaded by
   `load_yaml_model_dir`; every `<field>.yaml` supplies the model's `<field>`, and an
-  optional `root.yaml` carries the loose scalars that own no section file. Three
-  cross-cutting resources — `fonts.yaml`, `glyphs.yaml`, `palette.yaml` — are single
-  self-contained files at the `layout/` root, each one resource in one file.
+  optional `root.yaml` carries the loose scalars that own no section file. Two
+  cross-cutting resources — `fonts.yaml` and `glyphs.yaml` — are single self-contained
+  files at the `layout/` root, each one resource in one file.
 - **File stem = field = model.** `choice.yaml` fills field `choice`, validated by
   `ChoiceLayout` in `choice.py`; the three names match within a domain, so one name traces
   a value from YAML through field to schema. A stem is unique within its domain: the same
@@ -120,11 +126,13 @@ each value sits in the tree stays in the factory.
 | Calibration | `calibration/` | `CorpusConfig`, `RefereeConfig` (`sampletones_core/calibration/config/`) | each model's own `.load()` |
 | Language | `lang/` | `LanguageManager` (`sampletones_application/categories/`) | flat string map keyed `page.panel.text_type.element`, each key validated at load |
 | Layout | `layout/` | `LayoutConfig` (`sampletones_application/layout/config.py`) | `load_layout_config` (`layout/loader.py`) |
+| Palettes | `palettes/` | `Palette` (`sampletones_application/utils/palette/`) | `PaletteCatalog.load()`, indexed by palette name |
 | Theme | `theme/` | `ThemeSpec` (`sampletones_application/ui/themes/spec.py`) | `ThemeLoader.load_all()` → `ThemeRegistry` |
 
-The palette (`layout/palette.yaml` → `Palette`, `sampletones_application/utils/palette.py`)
-is a layout-domain resource loaded first and injected as validation **context**, so any
-colour field in layout or theme resolves its palette tokens against the one loaded palette.
+The palettes load first, and the active one is injected as validation **context**, so any
+colour field in layout or theme resolves its tokens against it. `PaletteCatalog` names the
+palette a preference selects and answers with the default (`studio`) for a name the build
+does not ship, so a preference outlives the build that wrote it.
 
 Layout and theme schemas are `frozen=True, extra="forbid"`, and loading is eager at the
 composition root (`Application.__init__` → `load_layout_config`, wrapped as `SystemError`),
@@ -140,7 +148,7 @@ that import `SchedulingBehavior` as a type.
 
 ## Loading
 
-Two load mechanisms serve the two grouping schemes:
+Three load mechanisms serve the three grouping schemes:
 
 - **Field aggregation** (layout, and every domain that mirrors the code).
   `load_layout_config` builds `LayoutConfig` field by field — `load_yaml_model` for a
@@ -154,7 +162,10 @@ Two load mechanisms serve the two grouping schemes:
   graph, and registers the results in the `ThemeRegistry` singleton keyed by `tag`. Here
   the directory grouping serves people and the `tag` and `extends` fields carry the load
   meaning; every theme extends the base `default` unless it names another parent.
+- **Name-keyed discovery** (palettes). `PaletteCatalog.load()` reads every `*.yaml` under
+  `palettes/` and indexes it by `Palette.name`, holding each file's stem against the name it
+  declares so one name traces a palette from a stored preference to the file on disk.
 
-Palette, deployment, and calibration each load through a bespoke `.load()` classmethod over
+Deployment and calibration each load through a bespoke `.load()` classmethod over
 the same low-level primitives in `sampletones_shared/utils/serialization.py` — the one
 module that calls `yaml.safe_load`.

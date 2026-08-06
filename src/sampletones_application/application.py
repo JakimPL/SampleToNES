@@ -51,7 +51,7 @@ from sampletones_application.paths import (
     DEPLOYMENT_CONFIG_PATH,
     LANG_EN,
     LAYOUT_DIRECTORY,
-    PALETTE_PATH,
+    PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
 from sampletones_application.services import (
@@ -102,7 +102,8 @@ from sampletones_application.utils.frame_limiter import FrameLimiter
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.palette import Palette
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
@@ -162,7 +163,8 @@ class Application:
         self.deployment: DeploymentConfig = DeploymentConfig.load(DEPLOYMENT_CONFIG_PATH)
         self._set_logging_level()
 
-        self._palette: Palette = Palette.load(PALETTE_PATH)
+        self._palette_catalog: PaletteCatalog = PaletteCatalog.load(PALETTES_DIRECTORY)
+        self._palette: Palette = self._palette_catalog.default
         self.layout: LayoutConfig = self._load_layout_config()
         self._setup_gui_elements()
 

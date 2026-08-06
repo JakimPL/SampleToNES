@@ -10,7 +10,7 @@ components:
         y: 4
       - type: color
         key: HeaderHovered
-        value: .white/0.25
+        value: .overlay/0.25
       - type: color
         key: HeaderActive
         value: .transparent
@@ -24,4 +24,4 @@ components:
     entries:
       - type: color
         key: Text
-        value: .white
+        value: .contrast

@@ -14,7 +14,8 @@ from sampletones_application.layout.tabs.instructions import InstructionsLayout
 from sampletones_application.layout.tabs.main import MainLayout
 from sampletones_application.layout.tabs.reconstruction import ReconstructionLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
-from sampletones_application.utils.palette import PALETTE_CONTEXT_KEY, Palette
+from sampletones_application.utils.palette.color import PALETTE_CONTEXT_KEY
+from sampletones_application.utils.palette.palette import Palette
 from sampletones_shared.utils.serialization import load_yaml_model, load_yaml_model_dir
 
 
