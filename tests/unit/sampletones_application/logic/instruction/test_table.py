@@ -1,29 +1,27 @@
+from typing import Dict, Final
 from unittest.mock import MagicMock, patch
 
-from sampletones_application.categories.elements.global_ import DialogElements
-from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.logic.instruction.table import InstructionTableLogic
 from sampletones_application.view_model.instruction.table_data import InstructionTableData
 from sampletones_core.instructions.implementation.noise import NoiseInstruction
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
+from tests.suite.language import FakeLanguageManager
+
+FIRST_ARGUMENT: Final[str] = "{0}"
+
+TEXTS: Final[Dict[str, str]] = {
+    "instructions.details.template.frequency_template": FIRST_ARGUMENT,
+    "instructions.details.template.pitch_template": FIRST_ARGUMENT,
+    "instructions.details.template.duty_cycle_template": FIRST_ARGUMENT,
+    "instructions.details.template.period_template": FIRST_ARGUMENT,
+    "global.dialog.label.yes": "yes",
+    "global.dialog.label.no": "no",
+}
 
 
 def _logic() -> InstructionTableLogic:
-    language_manager = MagicMock()
-
-    def side_effect(key):
-        _, _, text_type, element = key
-        if text_type == TextType.TEMPLATE:
-            return "{0}"
-        if element == DialogElements.YES:
-            return "yes"
-        if element == DialogElements.NO:
-            return "no"
-        return ""
-
-    language_manager.__getitem__.side_effect = side_effect
     return InstructionTableLogic(
-        language_manager=language_manager,
+        language_manager=FakeLanguageManager(TEXTS),  # type: ignore[arg-type]
         float_precision=2,
     )
 

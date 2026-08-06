@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Generic, Iterable, List, Optional, Union, cast
+from typing import Dict, Final, Generic, List, Optional, Union, cast
 
 import numpy as np
 
@@ -11,9 +11,11 @@ from sampletones_core.instructions import (
     InstructionTypeUnion,
 )
 from sampletones_core.types.feature import FeatureMap
-from sampletones_shared.utils.arrays import trim
+from sampletones_shared.utils.arrays import hold, trim
 
 from .feature import Features
+
+EMPTY_ENVELOPE_VALUE: Final[int] = 0
 
 
 class Exporter(ABC, Generic[InstructionT]):
@@ -35,16 +37,18 @@ class Exporter(ABC, Generic[InstructionT]):
     def to_features(
         self,
         instructions: List[InstructionT],
+        initial_pitch: int,
     ) -> Features:
         """Converts an instruction sequence into its :class:`Features`.
 
         Args:
             instructions: The channel's per-frame instructions.
+            initial_pitch: Reference pitch the arpeggio envelope is measured against.
 
         Returns:
             Features: The envelope representation of the sequence.
         """
-        feature_map = self.get_feature_map(instructions)
+        feature_map = self.get_feature_map(instructions, initial_pitch)
         return self.from_feature_map_to_features(feature_map)
 
     @staticmethod
@@ -77,23 +81,41 @@ class Exporter(ABC, Generic[InstructionT]):
 
     @classmethod
     @abstractmethod
-    def get_feature_map(cls, instructions: List[InstructionT]) -> FeatureMap:
+    def get_feature_map(cls, instructions: List[InstructionT], initial_pitch: int) -> FeatureMap:
         """Extracts the raw per-dimension feature arrays from an instruction sequence.
 
         Args:
             instructions: The channel's per-frame instructions.
+            initial_pitch: Reference pitch the arpeggio envelope is measured against.
 
         Returns:
             FeatureMap: The per-dimension arrays for this channel.
         """
 
     @classmethod
+    @abstractmethod
+    def derive_initial_pitch(cls, instructions: List[InstructionT]) -> int:
+        """Chooses the reference pitch an instruction sequence's arpeggio is measured against.
+
+        The reference is chosen once, when a reconstruction is built, and stored alongside
+        the sequence. Every later export measures against that stored value, so editing the
+        arpeggio moves the frames around a base pitch that stays put.
+
+        Args:
+            instructions: The channel's per-frame instructions.
+
+        Returns:
+            int: The reference pitch for the sequence.
+        """
+
+    @classmethod
     def from_features(cls, features: Features) -> List[InstructionT]:
         """Rebuilds the instruction sequence from a :class:`Features`.
 
-        Walks the envelopes frame by frame, reading each dimension's value (holding the
-        previous instruction's value past the end of a shorter envelope) and assembling
-        one instruction per frame.
+        Walks the envelopes frame by frame and assembles one instruction per frame. Every
+        envelope is read relative to itself — a dimension trimmed shorter than the sequence
+        holds its own final value over the remaining frames — so the arpeggio stays an
+        offset from ``initial_pitch`` for the whole sequence.
 
         Args:
             features: The envelope representation of a channel.
@@ -101,38 +123,25 @@ class Exporter(ABC, Generic[InstructionT]):
         Returns:
             List[InstructionT]: The reconstructed per-frame instructions.
         """
-        features_map = features.feature_map
         initial_pitch = features.initial_pitch
+        envelopes: Dict[FeatureKey, np.ndarray] = {
+            key: cast(np.ndarray, value)
+            for key, value in features.feature_map.items()
+            if key != FeatureKey.INITIAL_PITCH and value is not None
+        }
+        max_length = max((len(array) for array in envelopes.values()), default=0)
+
         instructions: List[InstructionT] = []
-        last_instruction: Optional[InstructionT] = None
-        non_empty_arrays: Iterable[np.ndarray] = cast(
-            Iterable[np.ndarray],
-            filter(lambda obj: isinstance(obj, np.ndarray), features_map.values()),
-        )
-        max_length = max(map(len, non_empty_arrays), default=0)
         for index in range(max_length):
             instruction_dictionary: Dict[str, Union[bool, int]] = {}
-            for key, array in features_map.items():
-                if key == FeatureKey.INITIAL_PITCH or array is None:
-                    continue
-
+            for key, array in envelopes.items():
                 attribute = cls._remap_feature_key(key)
                 if not attribute:
                     continue
 
-                value = Exporter.get_value(
-                    attribute,
-                    cast(np.ndarray, array),
-                    last_instruction,
-                    index,
-                    initial_value=initial_pitch if attribute == "pitch" else 0,
-                )
+                instruction_dictionary[attribute] = int(hold(array, index, default=EMPTY_ENVELOPE_VALUE))
 
-                instruction_dictionary[attribute] = value
-
-            instruction = cls._features_dictionary_to_instruction(instruction_dictionary, initial_pitch)
-            instructions.append(instruction)
-            last_instruction = instruction
+            instructions.append(cls._features_dictionary_to_instruction(instruction_dictionary, initial_pitch))
 
         return instructions
 
@@ -162,56 +171,6 @@ class Exporter(ABC, Generic[InstructionT]):
             return dictionary["volume"] > 0
 
         return True
-
-    @classmethod
-    def _handle_special_attributes(
-        cls,
-        attribute: InstructionFields,
-        value: int,
-        initial_value: int,
-    ) -> int:
-        if attribute == "pitch":
-            value -= initial_value
-
-        return value
-
-    @classmethod
-    def get_value(
-        cls,
-        attribute: InstructionFields,
-        array: Optional[np.ndarray],
-        last_instruction: Optional[InstructionT],
-        index: int,
-        initial_value: int = 0,
-    ) -> int:
-        """Reads one attribute's value for a given frame.
-
-        Returns the array's value at ``index`` when present; past the array's end it
-        carries the previous instruction's value forward, and falls back to
-        ``initial_value`` when neither is available.
-
-        Args:
-            attribute: The instruction field being read.
-            array: The dimension's envelope, or ``None``.
-            last_instruction: The instruction from the previous frame, if any.
-            index: The frame position to read.
-            initial_value: The value used when the array is empty or exhausted.
-
-        Returns:
-            int: The attribute's value for the frame.
-        """
-        if array is None or not array.size:
-            return initial_value
-
-        if index < len(array):
-            return int(array[index])
-
-        if last_instruction is not None:
-            if hasattr(last_instruction, attribute):
-                value = int(getattr(last_instruction, attribute))
-                return cls._handle_special_attributes(attribute, value, initial_value)
-
-        return initial_value
 
     @classmethod
     def _remap_feature_key(cls, feature_key: FeatureKey) -> Optional[InstructionFields]:

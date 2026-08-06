@@ -1,5 +1,3 @@
-from sampletones_application.categories.elements.global_ import GlobalPitchElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PitchValueKind
 
@@ -15,17 +13,9 @@ def build_pitch_tooltip(
     Both the reconstruction and instruction steppers compose their tooltips through here, keeping one
     definition of the example while each supplies its own surrounding wording via ``template``."""
     is_period = kind is PERIOD_VALUE_KIND
-    type_name = language_manager[
-        Page.GLOBAL,
-        Panel.PITCH,
-        TextType.LABEL,
-        GlobalPitchElements.PERIOD_NAME if is_period else GlobalPitchElements.PITCH_NAME,
-    ]
+    type_name = language_manager["global.pitch.label.period_name" if is_period else "global.pitch.label.pitch_name"]
     example_name = language_manager[
-        Page.GLOBAL,
-        Panel.PITCH,
-        TextType.LABEL,
-        GlobalPitchElements.PERIOD_EXAMPLE if is_period else GlobalPitchElements.PITCH_EXAMPLE,
+        "global.pitch.label.period_example" if is_period else "global.pitch.label.pitch_example"
     ]
     example_value = kind.from_text(example_name, kind.minimum)
     return template.format(type_name, example_name, example_value)

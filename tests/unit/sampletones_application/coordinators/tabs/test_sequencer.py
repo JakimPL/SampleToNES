@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, Final
 from unittest.mock import MagicMock
 
 import pytest
@@ -29,6 +30,15 @@ from sampletones_application.view_model.shared.history import (
 )
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.exceptions import InvalidReconstructionValuesError
+from tests.suite.language import FakeLanguageManager
+
+FREQUENCY_MISMATCH_MESSAGE_KEY: Final[str] = "global.dialog.message.frequency_mismatch"
+REMOVE_SAMPLE_MESSAGE_KEY: Final[str] = "global.dialog.message.remove_sample"
+
+TEXTS: Final[Dict[str, str]] = {
+    FREQUENCY_MISMATCH_MESSAGE_KEY: "recon {reconstruction} vs project {project}",
+    REMOVE_SAMPLE_MESSAGE_KEY: "Remove {name}?",
+}
 
 
 @pytest.fixture
@@ -51,11 +61,9 @@ def coordinator() -> SequencerTabCoordinator:
     instance._sequencer_grid_logic.settings.nes_frequency = 60
     instance._dialogs = MagicMock()
     instance._on_tab_switch = MagicMock()
+    instance._language_manager = FakeLanguageManager(TEXTS)
     instance._msg_no_project = "no project"
     instance._ttl_no_project = "No project open"
-    instance._ttl_frequency_mismatch = "Different NES frequency"
-    instance._msg_frequency_mismatch = "recon {reconstruction} vs project {project}"
-    instance._lbl_add_anyway = "Add anyway"
     return instance
 
 
@@ -67,9 +75,7 @@ def samples_coordinator() -> SequencerTabCoordinator:
     instance._history_detail = MagicMock()
     instance._sequencer_samples_logic = MagicMock()
     instance._dialogs = MagicMock()
-    instance._ttl_remove_sample = "Remove sample"
-    instance._msg_remove_sample = "Remove {name}?"
-    instance._lbl_remove_sample = "Remove"
+    instance._language_manager = FakeLanguageManager(TEXTS)
     return instance
 
 
@@ -136,10 +142,7 @@ def nes_frequency_coordinator() -> SequencerTabCoordinator:
     instance._dialogs = MagicMock()
     instance._on_nes_frequency_changed = MagicMock()
     instance._nes_frequency_change_acknowledged = False
-    instance._ttl_change_nes_frequency = "Change NES frequency"
-    instance._msg_change_nes_frequency = "Reconstructions go out of sync. Retune?"
-    instance._lbl_change_nes_frequency = "Change and retune"
-    instance._lbl_dont_ask_again = "Don't ask again"
+    instance._language_manager = FakeLanguageManager(TEXTS)
     return instance
 
 
@@ -551,9 +554,7 @@ def replace_coordinator() -> SequencerTabCoordinator:
     )
     instance._dialogs = MagicMock()
     instance._on_sample_reconstruction_replaced = MagicMock()
-    instance._ttl_frequency_mismatch = "Different NES frequency"
-    instance._msg_frequency_mismatch = "recon {reconstruction} vs project {project}"
-    instance._lbl_add_anyway = "Add anyway"
+    instance._language_manager = FakeLanguageManager(TEXTS)
     return instance
 
 

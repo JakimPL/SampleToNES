@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from sampletones_application.categories.elements.global_ import TreeElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_core.configs.display import DISPLAY_SEPARATOR, short_hash
@@ -23,14 +21,9 @@ class BrowserManager:
         *,
         language_manager: LanguageManager,
     ) -> None:
+        self._language_manager = language_manager
         self.config_manager = config_manager
         self.reconstructions_directory = config_manager.get_reconstructions_directory()
-        self._root_label = language_manager[
-            Page.GLOBAL,
-            Panel.BROWSER,
-            TextType.LABEL,
-            TreeElements.ROOT,
-        ]
 
         self.tree = Tree()
 
@@ -44,7 +37,7 @@ class BrowserManager:
             return
 
         container_root = TreeNode(
-            name=self._root_label,
+            name=self._language_manager["global.browser.label.root"],
             node_type=NodeType.ROOT,
         )
         for path in sorted(self.reconstructions_directory.iterdir()):

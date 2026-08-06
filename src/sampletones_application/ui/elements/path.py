@@ -3,6 +3,7 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
@@ -60,9 +61,9 @@ class GUIPathText(CallbackMixin):
         self._status_message = status_message
 
         self.parent = parent
-        self.label_tag = f"{tag}{SUF_LABEL}"
-        self.handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
-        self.group_tag = f"{tag}{SUF_GROUP}"
+        self.label_tag = compose_tag(tag, SUF_LABEL)
+        self.handler_tag = compose_tag(tag, SUF_HANDLER_REGISTRY)
+        self.group_tag = compose_tag(tag, SUF_GROUP)
 
         self._create_text()
         self._create_handler()

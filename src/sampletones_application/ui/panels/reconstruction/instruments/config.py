@@ -1,10 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, Final, Optional, Tuple
 
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsInstrumentsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import FeatureColors
 from sampletones_core.constants.enums import FeatureKey, LibraryGeneratorName
@@ -42,36 +38,11 @@ def make_feature_plot_configs(
 
 
 def _feature_labels(language_manager: LanguageManager) -> Dict[FeatureKey, str]:
-    lbl_volume = language_manager[
-        Page.RECONSTRUCTIONS,
-        Panel.INSTRUMENTS,
-        TextType.LABEL,
-        ReconstructionsInstrumentsElements.VOLUME_LABEL,
-    ]
-    lbl_arpeggio = language_manager[
-        Page.RECONSTRUCTIONS,
-        Panel.INSTRUMENTS,
-        TextType.LABEL,
-        ReconstructionsInstrumentsElements.ARPEGGIO_LABEL,
-    ]
-    lbl_pitch = language_manager[
-        Page.RECONSTRUCTIONS,
-        Panel.INSTRUMENTS,
-        TextType.LABEL,
-        ReconstructionsInstrumentsElements.PITCH_LABEL,
-    ]
-    lbl_hi_pitch = language_manager[
-        Page.RECONSTRUCTIONS,
-        Panel.INSTRUMENTS,
-        TextType.LABEL,
-        ReconstructionsInstrumentsElements.HI_PITCH_LABEL,
-    ]
-    lbl_duty_cycle = language_manager[
-        Page.RECONSTRUCTIONS,
-        Panel.INSTRUMENTS,
-        TextType.LABEL,
-        ReconstructionsInstrumentsElements.DUTY_CYCLE_LABEL,
-    ]
+    lbl_volume = language_manager["reconstructions.instruments.label.volume_label"]
+    lbl_arpeggio = language_manager["reconstructions.instruments.label.arpeggio_label"]
+    lbl_pitch = language_manager["reconstructions.instruments.label.pitch_label"]
+    lbl_hi_pitch = language_manager["reconstructions.instruments.label.hi_pitch_label"]
+    lbl_duty_cycle = language_manager["reconstructions.instruments.label.duty_cycle_label"]
 
     return {
         FeatureKey.VOLUME: lbl_volume,

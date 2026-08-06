@@ -3,13 +3,6 @@ from typing import Callable, Optional, ParamSpec, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
-    MenuElements,
-    PlayerElements,
-)
 from sampletones_application.categories.elements.sequencer import (
     SequencerHistoryActionElements,
     SequencerHistoryElements,
@@ -45,6 +38,7 @@ from sampletones_application.logic.sequencer.samples import SequencerSamplesLogi
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.player import SongPlayerService
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -108,9 +102,9 @@ from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
 
-_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}"
-_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}"
-_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}"
+_LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_SEQUENCER, SUF_PANEL_LEFT)
+_CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_SEQUENCER, SUF_PANEL_CENTER)
+_RIGHT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_SEQUENCER, SUF_PANEL_RIGHT)
 
 
 class SequencerTabCoordinator:
@@ -147,84 +141,8 @@ class SequencerTabCoordinator:
         self._language_manager = language_manager
         self._dialogs = dialogs
 
-        self._tab_label = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.TAB_SEQUENCER,
-        ]
-        self._msg_no_project = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.NO_PROJECT_OPEN,
-        ]
-        self._ttl_no_project = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.NO_PROJECT_OPEN,
-        ]
-        self._ttl_remove_sample = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.REMOVE_SAMPLE,
-        ]
-        self._msg_remove_sample = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.REMOVE_SAMPLE,
-        ]
-        self._lbl_remove_sample = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.REMOVE,
-        ]
-        self._ttl_change_nes_frequency = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.CHANGE_NES_FREQUENCY,
-        ]
-        self._msg_change_nes_frequency = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.CHANGE_NES_FREQUENCY,
-        ]
-        self._lbl_change_nes_frequency = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.CHANGE_AND_RETUNE,
-        ]
-        self._lbl_dont_ask_again = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.DONT_ASK_AGAIN,
-        ]
-        self._ttl_frequency_mismatch = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.FREQUENCY_MISMATCH,
-        ]
-        self._msg_frequency_mismatch = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.FREQUENCY_MISMATCH,
-        ]
-        self._lbl_add_anyway = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.ADD_ANYWAY,
-        ]
+        self._msg_no_project = language_manager["global.dialog.message.no_project_open"]
+        self._ttl_no_project = language_manager["global.dialog.title.no_project_open"]
         self._nes_frequency_change_acknowledged: bool = False
         self._playing_order: Optional[int] = None
         self._geometry = layout.geometry
@@ -281,12 +199,7 @@ class SequencerTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._song_player_logic,
             dialogs=dialogs,
-            error_message=language_manager[
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.MESSAGE,
-                PlayerElements.AUDIO_PLAYBACK_ERROR,
-            ],
+            error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             layout=layout.sequencer,
@@ -935,13 +848,13 @@ class SequencerTabCoordinator:
 
         self._dialogs.show_confirmation(
             tag=TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
-            title=self._ttl_frequency_mismatch,
-            message=self._msg_frequency_mismatch.format(
+            title=self._language_manager["global.dialog.title.frequency_mismatch"],
+            message=self._language_manager["global.dialog.message.frequency_mismatch"].format(
                 reconstruction=reconstruction_frequency,
                 project=project_frequency,
             ),
             on_confirm=lambda: commit(None),
-            ok_label=self._lbl_add_anyway,
+            ok_label=self._language_manager["global.dialog.label.add_anyway"],
         )
 
     def _commit_add_reconstruction(
@@ -1189,10 +1102,10 @@ class SequencerTabCoordinator:
         name = self._sequencer_samples_logic.sample_name(sample_id)
         self._dialogs.show_confirmation(
             tag=TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
-            title=self._ttl_remove_sample,
-            message=self._msg_remove_sample.format(name=name),
+            title=self._language_manager["global.dialog.title.remove_sample"],
+            message=self._language_manager["global.dialog.message.remove_sample"].format(name=name),
             on_confirm=lambda: self._perform_remove_sample(sample_id),
-            ok_label=self._lbl_remove_sample,
+            ok_label=self._language_manager["global.dialog.label.remove"],
         )
 
     def _perform_remove_sample(self, sample_id: str) -> None:
@@ -1233,11 +1146,11 @@ class SequencerTabCoordinator:
 
         self._dialogs.show_confirmation(
             tag=TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
-            title=self._ttl_change_nes_frequency,
-            message=self._msg_change_nes_frequency,
+            title=self._language_manager["global.dialog.title.change_nes_frequency"],
+            message=self._language_manager["global.dialog.message.change_nes_frequency"],
             on_confirm=lambda: self._perform_nes_frequency_change(nes_frequency),
-            ok_label=self._lbl_change_nes_frequency,
-            opt_out_label=self._lbl_dont_ask_again,
+            ok_label=self._language_manager["global.dialog.label.change_and_retune"],
+            opt_out_label=self._language_manager["global.dialog.label.dont_ask_again"],
             on_opt_out=self._acknowledge_nes_frequency_changes,
             on_cancel=self._sequencer_grid_logic.push_settings,
         )
@@ -1367,7 +1280,7 @@ class SequencerTabCoordinator:
         with dpg.tab(
             tag=TAG_GLOBAL_TAB_SEQUENCER,
             parent=TAG_GLOBAL_TABS,
-            label=self._tab_label,
+            label=self._language_manager["global.menu.label.tab_sequencer"],
         ):
             self._side_panel_count = TabColumns.build(
                 panel_gap=self._geometry.panel_gap,

@@ -3,13 +3,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import MenuElements
-from sampletones_application.categories.elements.main import (
-    AdvancedElements,
-    ConverterElements,
-    ExplorerElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
@@ -24,6 +17,7 @@ from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
 from sampletones_application.services.conversion import ConversionService
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -70,8 +64,8 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
-_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}"
-_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_CENTER}"
+_LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_MAIN, SUF_PANEL_LEFT)
+_CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_MAIN, SUF_PANEL_CENTER)
 
 
 class MainTabCoordinator:
@@ -111,6 +105,7 @@ class MainTabCoordinator:
         on_refresh_trees: VoidCallback,
         on_generate_library: VoidCallback,
     ) -> None:
+        self._language_manager = language_manager
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._library_manager = library_manager
@@ -122,123 +117,13 @@ class MainTabCoordinator:
         self._on_refresh_trees = on_refresh_trees
         self._dialogs = dialogs
 
-        self._tab_label = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.TAB_MAIN,
-        ]
         self._geometry = layout.geometry
         self._side_panel_count: int
         self._config_height = layout.config_height
-        _msg_converter_error = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_ERROR,
-        ]
-        _msg_no_files = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_NO_FILES,
-        ]
-        _msg_no_generators = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_NO_GENERATORS,
-        ]
-        self._ttl_progress = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.TITLE,
-            ConverterElements.PROGRESS_DIALOG,
-        ]
-        self._ttl_load = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.TITLE,
-            ConverterElements.LOAD_DIALOG,
-        ]
-        self._msg_load_file = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.LOAD_FILE_PROMPT,
-        ]
-        self._msg_load_directory = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.LOAD_DIRECTORY_PROMPT,
-        ]
-        self._lbl_load = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.LOAD_BUTTON,
-        ]
-        self._lbl_open = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.OPEN_BUTTON,
-        ]
-        self._lbl_close = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CLOSE_BUTTON,
-        ]
-        self._ttl_cancel = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.TITLE,
-            ConverterElements.CANCEL_DIALOG,
-        ]
-        self._msg_cancel = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.CANCEL_PROMPT,
-        ]
-        self._lbl_stop = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.STOP_BUTTON,
-        ]
-        self._lbl_continue = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CONTINUE_BUTTON,
-        ]
-        self._msg_converter_running = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.MESSAGE,
-            ExplorerElements.CONVERTER_RUNNING_MSG,
-        ]
-        self._ttl_converter_running = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.TITLE,
-            ExplorerElements.CONVERTER_RUNNING_DIALOG,
-        ]
-        self._ttl_library_dialog = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.TITLE,
-            AdvancedElements.SELECT_LIBRARY_DIRECTORY,
-        ]
-        self._ttl_output_dialog = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.TITLE,
-            AdvancedElements.SELECT_OUTPUT_DIRECTORY,
-        ]
+        _msg_converter_error = language_manager["main.converter.message.status_error"]
+        _msg_no_files = language_manager["main.converter.message.status_no_files"]
+        _msg_no_generators = language_manager["main.converter.message.status_no_generators"]
+        self._ttl_progress = language_manager["main.converter.title.progress_dialog"]
 
         self._explorer_logic: ExplorerLogic = ExplorerLogic(
             config_manager,
@@ -400,8 +285,8 @@ class MainTabCoordinator:
         logger.warning("Conversion is already running. Wait or cancel the current operation.")
         self._dialogs.show_info(
             TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
-            self._msg_converter_running,
-            self._ttl_converter_running,
+            self._language_manager["main.explorer.message.converter_running_msg"],
+            self._language_manager["main.explorer.title.converter_running_dialog"],
         )
 
         return True
@@ -409,21 +294,21 @@ class MainTabCoordinator:
     def _on_conversion_success(self, success: ConversionSuccess) -> None:
         self._on_refresh_trees()
         if success.is_file:
-            message = self._msg_load_file
-            ok_label = self._lbl_load
+            message = self._language_manager["main.converter.message.load_file_prompt"]
+            ok_label = self._language_manager["main.converter.label.load_button"]
             path = success.output_path
         else:
-            message = self._msg_load_directory
-            ok_label = self._lbl_open
+            message = self._language_manager["main.converter.message.load_directory_prompt"]
+            ok_label = self._language_manager["main.converter.label.open_button"]
             path = None
 
         self._dialogs.show_confirmation(
             TAG_MAIN_CONVERTER_DIALOG_LOAD,
             message,
-            self._ttl_load,
+            self._language_manager["main.converter.title.load_dialog"],
             self._converter_logic.handle_load_request,
             ok_label=ok_label,
-            cancel_label=self._lbl_close,
+            cancel_label=self._language_manager["main.converter.label.close_button"],
             path=path,
             on_cancel=self._converter_logic.close,
         )
@@ -431,11 +316,11 @@ class MainTabCoordinator:
     def _request_cancel_confirmation(self) -> None:
         self._dialogs.show_confirmation(
             TAG_MAIN_CONVERTER_DIALOG_CANCEL,
-            self._msg_cancel,
-            self._ttl_cancel,
+            self._language_manager["main.converter.message.cancel_prompt"],
+            self._language_manager["main.converter.title.cancel_dialog"],
             self._converter_logic.cancel,
-            ok_label=self._lbl_stop,
-            cancel_label=self._lbl_continue,
+            ok_label=self._language_manager["main.converter.label.stop_button"],
+            cancel_label=self._language_manager["main.converter.label.continue_button"],
         )
 
     def _update_config_panel_view(self) -> None:
@@ -471,7 +356,7 @@ class MainTabCoordinator:
 
     def _select_library_directory(self) -> None:
         directory = select_directory_dialog(
-            title=self._ttl_library_dialog,
+            title=self._language_manager["main.advanced.title.select_library_directory"],
             initial_directory=self._advanced_settings_panel.library_directory,
         )
         self._handle_select_library_directory(directory)
@@ -483,7 +368,7 @@ class MainTabCoordinator:
 
     def _select_output_directory(self) -> None:
         directory = select_directory_dialog(
-            title=self._ttl_output_dialog,
+            title=self._language_manager["main.advanced.title.select_output_directory"],
             initial_directory=self._advanced_settings_panel.reconstructions_directory,
         )
         self._handle_select_output_directory(directory)
@@ -494,7 +379,7 @@ class MainTabCoordinator:
 
     def create_tab(self) -> None:
         with dpg.tab(
-            label=self._tab_label,
+            label=self._language_manager["global.menu.label.tab_main"],
             tag=TAG_GLOBAL_TAB_MAIN,
             parent=TAG_GLOBAL_TABS,
         ):

@@ -6,4 +6,5 @@ class ExportKind(str, Enum):
 
     WAV = "wav"
     INSTRUMENT = "instrument"
-    INSTRUMENTS = "instruments"
+    SAMPLE = "sample"
+    PROJECT = "project"

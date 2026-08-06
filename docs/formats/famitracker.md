@@ -1,7 +1,7 @@
 # FamiTracker export format
 
 This document is the reference for how _SampleToNES_ writes FamiTracker files. It
-describes the two binary formats the `sampletones_core.famitracker` package
+describes the two binary formats the `sampletones_core.formats.famitracker` package
 produces — the `.fti` instrument file and the `.ftm` module file — and lists the
 FamiTracker capacity limits that the project domain model will grow to respect.
 
@@ -12,7 +12,7 @@ noise, DPCM), with the DPCM channel and DPCM sample bank always empty by design.
 
 All multi-byte integers are **little-endian**. Field types below use `uint8`,
 `int8`, `uint32`, `int32`; strings are noted per field. Every constant referenced
-here has a named counterpart under `sampletones_core/famitracker/specification/`
+here has a named counterpart under `sampletones_core/formats/famitracker/specification/`
 (grouped by unit: `file`, `blocks`, `channels`, `sequences`, `instruments`,
 `patterns`, `parameters`), and every block has its own writer function so this
 specification is readable straight from the code.
@@ -22,7 +22,7 @@ specification is readable straight from the code.
 ### A.1 `.fti` — instrument file
 
 An `.fti` holds a single 2A03 instrument: its five sequences inline, then an empty
-DPCM section. Written by `sampletones_core/famitracker/fti.py`.
+DPCM section. Written by `sampletones_core/formats/famitracker/instrument.py`.
 
 | Field | Type | Value |
 | --- | --- | --- |
@@ -50,7 +50,7 @@ Each **sequence record**:
 ### A.2 `.ftm` — module file
 
 An `.ftm` is a file header followed by a sequence of named, versioned blocks and a
-final `END` marker. Written by `sampletones_core/famitracker/ftm.py`, one function
+final `END` marker. Written by `sampletones_core/formats/famitracker/module.py`, one function
 per block.
 
 **File header**
@@ -164,13 +164,15 @@ and triggering the instrument at `initial_pitch` replays that contour. Volume, d
 (or noise mode) and any pitch sequences carry across directly. The DPCM
 key-assignment table is empty by design.
 
-For the pitched channels, `center_pitches` picks the offset origin: it takes the
-midpoint of the contour's `(lowest, highest)` range, reports that pitch as
-`initial_pitch`, and stores each frame as `pitch − initial_pitch`. The offsets
-straddle zero and stay compact around one note, and the pattern cell holds the
-contour's midpoint — a rising contour prints its middle note and opens below it. The
-noise channel measures its offsets from the first sounding period instead, wrapped
-into the 16 available periods.
+The offset origin is chosen once, when the reconstruction is built, and stored with it
+as that channel's reference pitch (see
+[Reconstructions](reconstructions.md#contents)). For the pitched channels
+`center_pitch` picks it, taking the midpoint of the contour's `(lowest, highest)`
+range; the noise channel takes the first sounding period. Every later export reports
+that stored pitch as `initial_pitch` and writes each frame as `pitch − initial_pitch`,
+wrapped into the 16 available periods on noise. The offsets straddle zero and stay
+compact around one note, and the pattern cell holds the contour's midpoint — a rising
+contour prints its middle note and opens below it.
 
 ## C. FamiTracker capacity limits
 

@@ -3,13 +3,6 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    TreeElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsBrowserElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.general import (
@@ -62,6 +55,7 @@ class GUIBrowserPanel(GUITreePanel):
         is_operation_active: Callable[[], bool],
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self.on_refresh_tree: Optional[VoidCallback] = None
         self.on_reconstruct_file: Optional[VoidCallback] = None
         self.on_reconstruct_directory: Optional[VoidCallback] = None
@@ -71,42 +65,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         self._is_operation_active = is_operation_active
 
-        self._lbl_refresh = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.LABEL,
-            ReconstructionsBrowserElements.REFRESH_BUTTON,
-        ]
-        self._msg_status_refresh = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.STATUS_REFRESH,
-        ]
-        self._lbl_context_load = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.LABEL,
-            ReconstructionsBrowserElements.CONTEXT_LOAD_RECONSTRUCTION,
-        ]
-        self._lbl_context_remove_reconstruction = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.LABEL,
-            ReconstructionsBrowserElements.CONTEXT_REMOVE_RECONSTRUCTION,
-        ]
-        self._lbl_context_remove_directory = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.LABEL,
-            ReconstructionsBrowserElements.CONTEXT_REMOVE_DIRECTORY,
-        ]
-        self._lbl_reconstructions = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.LABEL,
-            ReconstructionsBrowserElements.RECONSTRUCTIONS_TREE,
-        ]
+        self._lbl_reconstructions = language_manager["reconstructions.browser.label.reconstructions_tree"]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -116,12 +75,7 @@ class GUIBrowserPanel(GUITreePanel):
             tree_tag=TAG_RECONSTRUCTIONS_BROWSER_TREE,
             tree_logic=tree_logic,
             scheduling=scheduling,
-            search_label=language_manager[
-                Page.GLOBAL,
-                Panel.BROWSER,
-                TextType.LABEL,
-                TreeElements.SEARCH,
-            ],
+            search_label=language_manager["global.browser.label.search"],
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
@@ -175,14 +129,14 @@ class GUIBrowserPanel(GUITreePanel):
         with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
-                label=self._lbl_refresh,
+                label=self._language_manager["reconstructions.browser.label.refresh_button"],
                 width=-1,
                 callback=self.rebuild_tree,
                 theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
         self._status_bar.bind_to_item(
             TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
-            self._msg_status_refresh,
+            self._language_manager["reconstructions.browser.message.status_refresh"],
         )
 
     def _create_tree_window(self) -> None:
@@ -342,7 +296,7 @@ class GUIBrowserPanel(GUITreePanel):
     ) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._lbl_context_load,
+            label=self._language_manager["reconstructions.browser.label.context_load_reconstruction"],
             callback=self._on_load_reconstruction,
             user_data=node,
         )
@@ -352,7 +306,7 @@ class GUIBrowserPanel(GUITreePanel):
         node: FileSystemNode,
     ) -> None:
         dpg.add_menu_item(
-            label=self._lbl_context_remove_reconstruction,
+            label=self._language_manager["reconstructions.browser.label.context_remove_reconstruction"],
             callback=lambda: self.call(
                 self.on_reconstruction_remove_requested,
                 node.filepath,
@@ -365,7 +319,7 @@ class GUIBrowserPanel(GUITreePanel):
     ) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._lbl_context_remove_directory,
+            label=self._language_manager["reconstructions.browser.label.context_remove_directory"],
             callback=lambda: self.call(
                 self.on_directory_remove_requested,
                 node.filepath,

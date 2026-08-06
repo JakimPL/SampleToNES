@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.categories.elements.global_ import GlobalMessageElements
+from sampletones_application.categories.key.text import compose_text_key
 from sampletones_application.config.managers.outcome import (
     ConfigLoadFailure,
     ConfigLoadFailureReason,
@@ -34,13 +34,13 @@ def _manager_with(*outcomes: Any, config_path: Path = Path("config.json")) -> Ma
 class ReasonCase:
     label: str
     reason: ConfigLoadFailureReason
-    element: GlobalMessageElements
+    key: str
 
 
 reason_cases = [
-    ReasonCase("load", ConfigLoadFailureReason.LOAD_ERROR, GlobalMessageElements.CONFIGURATION_LOAD_ERROR),
-    ReasonCase("parse", ConfigLoadFailureReason.PARSE_ERROR, GlobalMessageElements.CONFIGURATION_PARSE_ERROR),
-    ReasonCase("invalid", ConfigLoadFailureReason.INVALID, GlobalMessageElements.CONFIGURATION_INVALID_ERROR),
+    ReasonCase("load", ConfigLoadFailureReason.LOAD_ERROR, "global.dialog.message.configuration_load_error"),
+    ReasonCase("parse", ConfigLoadFailureReason.PARSE_ERROR, "global.dialog.message.configuration_parse_error"),
+    ReasonCase("invalid", ConfigLoadFailureReason.INVALID, "global.dialog.message.configuration_invalid_error"),
 ]
 
 
@@ -71,7 +71,7 @@ class TestPresentPendingLoadOutcomes:
 
         coordinator._dialogs.show_error.assert_called_once()
         lookup_key = coordinator._language_manager.__getitem__.call_args.args[0]
-        assert lookup_key[3] is case.element
+        assert compose_text_key(lookup_key) == case.key
         coordinator._dialogs.show_config_recovery.assert_not_called()
 
     def test_outcomes_are_cleared_after_presenting(self) -> None:

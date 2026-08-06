@@ -2,13 +2,9 @@ from typing import Callable, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import ContextElements
-from sampletones_application.categories.elements.sequencer import (
-    SequencerInstrumentsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
@@ -55,10 +51,11 @@ class GUISequencerSamplesPanel(GUIPanel):
         key_router: KeyRouter,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self._layout = layout
         self._router = key_router
-        self._row_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_TABLE}{SUF_HANDLER_REGISTRY}"
-        self._rename_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME}{SUF_HANDLER_REGISTRY}"
+        self._row_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_TABLE, SUF_HANDLER_REGISTRY)
+        self._rename_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME, SUF_HANDLER_REGISTRY)
         self._selected_sample_id: Optional[str] = None
         self._selected_row: Optional[int] = None
         self._editing_sample_id: Optional[str] = None
@@ -71,84 +68,6 @@ class GUISequencerSamplesPanel(GUIPanel):
         self.on_move_requested: Optional[Callable[[str, int], None]] = None
         self.on_rename_committed: Optional[Callable[[str, str], None]] = None
         self.on_duplicate_requested: Optional[StringCallback] = None
-        self._lbl_instruments = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.INSTRUMENTS_TEXT,
-        ]
-        self._lbl_column_id = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.COLUMN_ID,
-        ]
-        self._lbl_column_name = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.COLUMN_NAME,
-        ]
-        self._lbl_column_loop = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.COLUMN_LOOP,
-        ]
-        self._lbl_context_play = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.PLAY,
-        ]
-        self._lbl_context_edit = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.CONTEXT_EDIT,
-        ]
-        self._lbl_context_rename = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.CONTEXT_RENAME,
-        ]
-        self._lbl_context_duplicate = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.CONTEXT_DUPLICATE,
-        ]
-        self._lbl_context_remove = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.CONTEXT_REMOVE,
-        ]
-        self._lbl_context_move_up = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.CONTEXT_MOVE_UP,
-        ]
-        self._lbl_context_move_down = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.CONTEXT_MOVE_DOWN,
-        ]
-        self._lbl_context_move_top = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.CONTEXT_MOVE_TOP,
-        ]
-        self._lbl_context_move_bottom = language_manager[
-            Page.SEQUENCER,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            SequencerInstrumentsElements.CONTEXT_MOVE_BOTTOM,
-        ]
 
         super().__init__(
             tag=TAG_SEQUENCER_INSTRUMENTS_PANEL,
@@ -160,7 +79,7 @@ class GUISequencerSamplesPanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._lbl_instruments,
+            self._language_manager["sequencer.instruments.label.instruments_text"],
             glyph=self._glyphs.headers.samples,
         ):
             self._create_samples_table()
@@ -208,17 +127,17 @@ class GUISequencerSamplesPanel(GUIPanel):
                 policy=dpg.mvTable_SizingFixedFit,
             ):
                 dpg.add_table_column(
-                    label=self._lbl_column_id,
+                    label=self._language_manager["sequencer.instruments.label.column_id"],
                     width_fixed=True,
                     init_width_or_weight=self._layout.table_cells.instrument.id,
                 )
                 dpg.add_table_column(
-                    label=self._lbl_column_name,
+                    label=self._language_manager["sequencer.instruments.label.column_name"],
                     width_stretch=True,
                     init_width_or_weight=self._layout.table_cells.instrument.name,
                 )
                 dpg.add_table_column(
-                    label=self._lbl_column_loop,
+                    label=self._language_manager["sequencer.instruments.label.column_loop"],
                     width_fixed=True,
                     init_width_or_weight=self._layout.table_cells.instrument.loop,
                 )
@@ -544,54 +463,54 @@ class GUISequencerSamplesPanel(GUIPanel):
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             add_play_menu_item(
-                self._lbl_context_play,
+                self._language_manager["global.context.label.play"],
                 lambda: self.call(
                     self.on_play_requested,
                     sample_id,
                 ),
             )
             dpg.add_menu_item(
-                label=self._lbl_context_edit,
+                label=self._language_manager["sequencer.instruments.label.context_edit"],
                 callback=lambda: self.call(self.on_sample_edit_requested, sample_id),
             )
             dpg.add_menu_item(
-                label=self._lbl_context_rename,
+                label=self._language_manager["sequencer.instruments.label.context_rename"],
                 callback=lambda: self._start_rename(sample_id),
             )
             dpg.add_menu_item(
-                label=self._lbl_context_duplicate,
+                label=self._language_manager["sequencer.instruments.label.context_duplicate"],
                 callback=lambda: self.call(self.on_duplicate_requested, sample_id),
             )
             dpg.add_separator()
             dpg.add_menu_item(
-                label=self._lbl_context_remove,
+                label=self._language_manager["sequencer.instruments.label.context_remove"],
                 callback=lambda: self.call(self.on_remove_requested, sample_id),
             )
             dpg.add_separator()
             count = len(self._entries)
             self._add_move_item(
-                self._lbl_context_move_up,
+                self._language_manager["sequencer.instruments.label.context_move_up"],
                 sample_id,
                 position,
                 count,
                 MoveDirection.PREVIOUS,
             )
             self._add_move_item(
-                self._lbl_context_move_down,
+                self._language_manager["sequencer.instruments.label.context_move_down"],
                 sample_id,
                 position,
                 count,
                 MoveDirection.NEXT,
             )
             self._add_move_item(
-                self._lbl_context_move_top,
+                self._language_manager["sequencer.instruments.label.context_move_top"],
                 sample_id,
                 position,
                 count,
                 MoveDirection.FIRST,
             )
             self._add_move_item(
-                self._lbl_context_move_bottom,
+                self._language_manager["sequencer.instruments.label.context_move_bottom"],
                 sample_id,
                 position,
                 count,

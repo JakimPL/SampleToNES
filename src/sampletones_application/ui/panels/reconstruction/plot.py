@@ -2,17 +2,9 @@ from typing import Any, Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    ContextElements,
-    GlobalTemplateElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionPanelElements,
-    ReconstructionsInstrumentsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_CHANNEL_NOISE,
     TAG_GLOBAL_THEME_CHANNEL_PULSE1,
@@ -68,76 +60,9 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
         self.on_generators_changed: Optional[Callable[[List[GeneratorName]], None]] = None
 
-        self.autoscale_tag = (
-            f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
+        self.autoscale_tag = compose_tag(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT, SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE
         )
-
-        self._lbl_waveform = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.WAVEFORM_LABEL,
-        ]
-        self._lbl_autoscale = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.AUTOSCALE_CHECKBOX,
-        ]
-        self._tooltip_autoscale = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.TOOLTIP,
-            ReconstructionPanelElements.AUTOSCALE_TOOLTIP,
-        ]
-        self._lbl_pulse_1 = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.PULSE_1,
-        ]
-        self._lbl_pulse_2 = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.PULSE_2,
-        ]
-        self._lbl_triangle = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.TRIANGLE,
-        ]
-        self._lbl_noise = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.NOISE,
-        ]
-        self._msg_generator_toggle = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_GENERATOR_TOGGLE,
-        ]
-        self._msg_generator_not_available = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_GENERATOR_NOT_AVAILABLE,
-        ]
-        self._val_text_on = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.ON,
-        ]
-        self._val_text_off = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.OFF,
-        ]
 
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
@@ -150,7 +75,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._lbl_waveform,
+            self._language_manager["reconstructions.reconstruction.label.waveform_label"],
             glyph=self._glyphs.headers.waveform,
             width=0,
             no_scrollbar=True,
@@ -217,7 +142,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
     def _create_autoscale_checkbox(self) -> None:
         dpg.add_checkbox(
-            label=self._lbl_autoscale,
+            label=self._language_manager["reconstructions.reconstruction.label.autoscale_checkbox"],
             tag=self.autoscale_tag,
             parent=self._body_container,
             default_value=True,
@@ -236,10 +161,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
     def _create_generator_checkboxes(self) -> None:
         generator_labels = {
-            GeneratorName.PULSE1: self._lbl_pulse_1,
-            GeneratorName.PULSE2: self._lbl_pulse_2,
-            GeneratorName.TRIANGLE: self._lbl_triangle,
-            GeneratorName.NOISE: self._lbl_noise,
+            GeneratorName.PULSE1: self._language_manager["global.context.label.pulse_1"],
+            GeneratorName.PULSE2: self._language_manager["global.context.label.pulse_2"],
+            GeneratorName.TRIANGLE: self._language_manager["global.context.label.triangle"],
+            GeneratorName.NOISE: self._language_manager["global.context.label.noise"],
         }
 
         with dpg.group(
@@ -263,7 +188,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
                 )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(self.autoscale_tag, self._tooltip_autoscale)
+        show_tooltip(
+            self.autoscale_tag,
+            self._language_manager["reconstructions.reconstruction.tooltip.autoscale_tooltip"],
+        )
 
     def _create_message_function_for_generator_checkbox(
         self,
@@ -274,18 +202,24 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
         def message_function(*args: Any, **kwargs: Any) -> str:
             if not dpg.is_item_enabled(tag):
-                return self._msg_generator_not_available.format(generator_name=name)
+                return self._language_manager[
+                    "reconstructions.instruments.message.status_generator_not_available"
+                ].format(generator_name=name)
 
-            return self._msg_generator_toggle.format(
+            return self._language_manager["reconstructions.instruments.message.status_generator_toggle"].format(
                 generator_name=name,
-                on_or_off=(self._val_text_off if dpg.get_value(tag) else self._val_text_on),
+                on_or_off=(
+                    self._language_manager["global.dialog.template.off"]
+                    if dpg.get_value(tag)
+                    else self._language_manager["global.dialog.template.on"]
+                ),
             )
 
         return message_function
 
     @staticmethod
     def _get_generator_checkbox_tag(generator_name: GeneratorName) -> str:
-        return f"{PRE_RECONSTRUCTION_GENERATOR}{generator_name.value}"
+        return compose_tag(PRE_RECONSTRUCTION_GENERATOR, generator_name.value)
 
     def _read_selected_generators(self) -> List[GeneratorName]:
         selected_generators: List[GeneratorName] = []

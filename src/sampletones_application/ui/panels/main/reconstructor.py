@@ -2,15 +2,10 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    ContextElements,
-    StatusElements,
-)
-from sampletones_application.categories.elements.main import ReconstructorElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.main.reconstructor import ReconstructorLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
     TAG_GLOBAL_THEME_CHANNEL_NOISE,
@@ -52,68 +47,14 @@ class GUIReconstructorPanel(GUIPanel):
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self._view = initial_view
         self._layout = layout
         self._input_width = inputs.default_width
         self._label_width = inputs.label_width
         self._status_bar = status_bar
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
-        self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
-
-        self._lbl_section_settings = language_manager[
-            Page.MAIN,
-            Panel.RECONSTRUCTOR,
-            TextType.LABEL,
-            ReconstructorElements.SECTION_SETTINGS,
-        ]
-        self._lbl_section_generators = language_manager[
-            Page.MAIN,
-            Panel.RECONSTRUCTOR,
-            TextType.LABEL,
-            ReconstructorElements.SECTION_GENERATORS,
-        ]
-        self._lbl_drive = language_manager[
-            Page.MAIN,
-            Panel.RECONSTRUCTOR,
-            TextType.LABEL,
-            ReconstructorElements.SLIDER_DRIVE,
-        ]
-        self._tooltip_drive = language_manager[
-            Page.MAIN,
-            Panel.RECONSTRUCTOR,
-            TextType.TOOLTIP,
-            ReconstructorElements.TOOLTIP_DRIVE,
-        ]
-        self._lbl_triangle = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.TRIANGLE,
-        ]
-        self._lbl_pulse_1 = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.PULSE_1,
-        ]
-        self._lbl_pulse_2 = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.PULSE_2,
-        ]
-        self._lbl_noise = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.NOISE,
-        ]
-        self._msg_status_input = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.INPUT,
-        ]
+        self._item_handler_tag = compose_tag(TAG_MAIN_RECONSTRUCTOR_PANEL, SUF_HANDLER_REGISTRY)
 
         super().__init__(
             tag=TAG_MAIN_RECONSTRUCTOR_PANEL,
@@ -125,7 +66,7 @@ class GUIReconstructorPanel(GUIPanel):
         self._setup_handlers()
         with self._collapsible_card(
             parent,
-            self._lbl_section_settings,
+            self._language_manager["main.reconstructor.label.section_settings"],
             glyph=self._glyphs.headers.reconstruction,
             width=self.width,
         ):
@@ -141,7 +82,7 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
     def _create_generator_selection(self) -> None:
-        subheader(self._lbl_section_generators)
+        subheader(self._language_manager["main.reconstructor.label.section_generators"])
 
         with dpg.group():
             for generator, label, theme_tag in self._generator_chips():
@@ -156,14 +97,26 @@ class GUIReconstructorPanel(GUIPanel):
 
     def _generator_chips(self) -> List[Tuple[GeneratorName, str, str]]:
         return [
-            (GeneratorName.PULSE1, self._lbl_pulse_1, TAG_GLOBAL_THEME_CHANNEL_PULSE1),
-            (GeneratorName.PULSE2, self._lbl_pulse_2, TAG_GLOBAL_THEME_CHANNEL_PULSE2),
-            (GeneratorName.TRIANGLE, self._lbl_triangle, TAG_GLOBAL_THEME_CHANNEL_TRIANGLE),
-            (GeneratorName.NOISE, self._lbl_noise, TAG_GLOBAL_THEME_CHANNEL_NOISE),
+            (
+                GeneratorName.PULSE1,
+                self._language_manager["global.context.label.pulse_1"],
+                TAG_GLOBAL_THEME_CHANNEL_PULSE1,
+            ),
+            (
+                GeneratorName.PULSE2,
+                self._language_manager["global.context.label.pulse_2"],
+                TAG_GLOBAL_THEME_CHANNEL_PULSE2,
+            ),
+            (
+                GeneratorName.TRIANGLE,
+                self._language_manager["global.context.label.triangle"],
+                TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
+            ),
+            (GeneratorName.NOISE, self._language_manager["global.context.label.noise"], TAG_GLOBAL_THEME_CHANNEL_NOISE),
         ]
 
     def _create_drive_slider(self) -> None:
-        with labeled_field(self._lbl_drive, self._label_width):
+        with labeled_field(self._language_manager["main.reconstructor.label.slider_drive"], self._label_width):
             dpg.add_slider_float(
                 tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
                 min_value=0.0,
@@ -179,7 +132,7 @@ class GUIReconstructorPanel(GUIPanel):
         )
         self._status_bar.bind_to_item(
             TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
-            self._msg_status_input,
+            self._language_manager["global.status.message.input"],
         )
         FontRegistry.bind_to_item(
             TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
@@ -187,7 +140,10 @@ class GUIReconstructorPanel(GUIPanel):
         )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._tooltip_drive)
+        show_tooltip(
+            TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+            self._language_manager["main.reconstructor.tooltip.tooltip_drive"],
+        )
 
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         generators = [
@@ -207,4 +163,4 @@ class GUIReconstructorPanel(GUIPanel):
 
     @staticmethod
     def _get_generator_checkbox_tag(generator: GeneratorName) -> str:
-        return f"{PRE_MAIN_RECONSTRUCTOR_GENERATOR}{generator.value}"
+        return compose_tag(PRE_MAIN_RECONSTRUCTOR_GENERATOR, generator.value)

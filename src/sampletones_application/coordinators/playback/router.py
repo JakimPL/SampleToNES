@@ -1,7 +1,5 @@
 from typing import Callable, Optional, Sequence
 
-from sampletones_application.categories.elements.global_ import MenuElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_core.audio import AudioDeviceManager
@@ -29,27 +27,10 @@ class PlaybackRouter:
         audio_device_manager: AudioDeviceManager,
         language_manager: LanguageManager,
     ) -> None:
+        self._language_manager = language_manager
         self._sources = tuple(sources)
         self._active_source_resolver = active_source_resolver
         self._audio_device_manager = audio_device_manager
-        self._lbl_pause = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PLAYBACK_PAUSE,
-        ]
-        self._lbl_play = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PLAYBACK_PLAY,
-        ]
-        self._lbl_resume = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.ITEM_PLAYBACK_RESUME,
-        ]
 
     def play(self) -> None:
         """Play/Pause: pause or resume the target when engaged, otherwise start it."""
@@ -75,9 +56,13 @@ class PlaybackRouter:
     def play_label(self) -> str:
         target = self._target()
         if target is not None and target.is_engaged():
-            return self._lbl_resume if target.is_paused() else self._lbl_pause
+            return (
+                self._language_manager["global.menu.label.item_playback_resume"]
+                if target.is_paused()
+                else self._language_manager["global.menu.label.item_playback_pause"]
+            )
 
-        return self._lbl_play
+        return self._language_manager["global.menu.label.item_playback_play"]
 
     @property
     def is_play_enabled(self) -> bool:

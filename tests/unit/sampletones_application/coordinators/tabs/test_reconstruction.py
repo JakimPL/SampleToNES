@@ -1,4 +1,5 @@
-from pathlib import Path
+﻿from pathlib import Path
+from typing import Dict, Final
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,7 +12,8 @@ from sampletones_application.coordinators.tabs.reconstruction import (
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_application.services.export.truncation import ExportTruncation
+from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.trackers.format import TrackerFormat
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -21,6 +23,19 @@ from sampletones_shared.exceptions import (
     LoadReconstructionError,
     UnhandledReconstructionError,
 )
+from tests.suite.language import FakeLanguageManager
+
+FILE_NOT_FOUND_KEY: Final[str] = "reconstructions.browser.message.file_not_found"
+LOAD_ERROR_KEY: Final[str] = "reconstructions.browser.message.load_error"
+INVALID_METADATA_KEY: Final[str] = "global.dialog.message.invalid_metadata_error"
+INVALID_VALUES_KEY: Final[str] = "reconstructions.browser.message.invalid_values"
+INVALID_FILE_KEY: Final[str] = "reconstructions.browser.message.invalid_file"
+DESERIALIZATION_ERROR_KEY: Final[str] = "reconstructions.browser.message.deserialization_error"
+INCOMPATIBLE_VERSION_KEY: Final[str] = "reconstructions.browser.template.incompatible_version_template"
+REMOVE_RECONSTRUCTION_MESSAGE_KEY: Final[str] = "reconstructions.browser.message.remove_reconstruction_message"
+REMOVE_DIRECTORY_MESSAGE_KEY: Final[str] = "reconstructions.browser.message.remove_directory_message"
+
+TEXTS: Final[Dict[str, str]] = {INCOMPATIBLE_VERSION_KEY: "got {} expected {}"}
 
 
 @pytest.fixture
@@ -31,13 +46,8 @@ def coordinator() -> ReconstructionTabCoordinator:
     instance._browser_panel = MagicMock()
     instance._reconstruction_manager = MagicMock()
     instance._dialogs = MagicMock()
-    instance._msg_file_not_found = "file not found"
-    instance._msg_load_error = "load error"
-    instance._msg_invalid_metadata = "invalid metadata"
-    instance._msg_invalid_values = "invalid values"
-    instance._msg_invalid_file = "invalid file"
-    instance._msg_deserialization_error = "deserialization error"
-    instance._tpl_incompatible_version = "got {} expected {}"
+    instance._language_manager = FakeLanguageManager(TEXTS)
+    instance._msg_load_error = LOAD_ERROR_KEY
     return instance
 
 
@@ -48,12 +58,12 @@ class TestLoadReconstructionSurfacesConcreteErrors:
     @pytest.mark.parametrize(
         "error, expected_message",
         [
-            (InvalidMetadataError("bad metadata"), "invalid metadata"),
-            (InvalidReconstructionValuesError("bad values", ValueError("v")), "invalid values"),
-            (InvalidReconstructionError("bad file"), "invalid file"),
-            (DeserializationError("bad bytes"), "deserialization error"),
-            (LoadReconstructionError("unclassified"), "load error"),
-            (OSError("io"), "load error"),
+            (InvalidMetadataError("bad metadata"), INVALID_METADATA_KEY),
+            (InvalidReconstructionValuesError("bad values", ValueError("v")), INVALID_VALUES_KEY),
+            (InvalidReconstructionError("bad file"), INVALID_FILE_KEY),
+            (DeserializationError("bad bytes"), DESERIALIZATION_ERROR_KEY),
+            (LoadReconstructionError("unclassified"), LOAD_ERROR_KEY),
+            (OSError("io"), LOAD_ERROR_KEY),
         ],
     )
     def test_concrete_error_shows_populated_dialog(
@@ -79,7 +89,7 @@ class TestLoadReconstructionSurfacesConcreteErrors:
 
         coordinator.load_reconstruction(path)
 
-        coordinator._dialogs.show_file_not_found.assert_called_once_with(path, "file not found")
+        coordinator._dialogs.show_file_not_found.assert_called_once_with(path, FILE_NOT_FOUND_KEY)
         coordinator._browser_panel.unlock.assert_called_once_with()
 
     def test_incompatible_version_dialog_reports_both_versions(
@@ -114,7 +124,7 @@ class TestLoadReconstructionTail:
 
         coordinator.load_reconstruction(Path("sample.stn"))
 
-        coordinator._dialogs.show_error.assert_called_once_with(error, "load error")
+        coordinator._dialogs.show_error.assert_called_once_with(error, LOAD_ERROR_KEY)
         coordinator._browser_panel.unlock.assert_called_once_with()
 
     def test_unexpected_error_propagates_and_unlocks(
@@ -161,12 +171,9 @@ def removal_coordinator() -> ReconstructionTabCoordinator:
     instance._browser_logic = MagicMock()
     instance._browser_panel = MagicMock()
     instance._reconstruction_manager = MagicMock()
-    instance._ttl_remove_reconstruction = "Remove reconstruction"
-    instance._msg_remove_reconstruction = "Remove this reconstruction?"
-    instance._ttl_remove_directory = "Remove directory"
-    instance._msg_remove_directory = "Remove this directory and all included reconstructions?"
+    instance._language_manager = FakeLanguageManager(TEXTS)
     instance._lbl_remove = "Remove"
-    instance._msg_load_error = "load error"
+    instance._msg_load_error = LOAD_ERROR_KEY
     return instance
 
 
@@ -180,7 +187,7 @@ class TestRemoveTreeEntries:
         removal_coordinator._request_remove_reconstruction(path)
 
         confirmation = removal_coordinator._dialogs.show_confirmation.call_args.kwargs
-        assert confirmation["message"] == "Remove this reconstruction?"
+        assert confirmation["message"] == REMOVE_RECONSTRUCTION_MESSAGE_KEY
         assert confirmation["path"] == path
 
         confirmation["on_confirm"]()
@@ -223,7 +230,7 @@ class TestRemoveTreeEntries:
         removal_coordinator._request_remove_directory(directory)
 
         confirmation = removal_coordinator._dialogs.show_confirmation.call_args.kwargs
-        assert confirmation["message"] == "Remove this directory and all included reconstructions?"
+        assert confirmation["message"] == REMOVE_DIRECTORY_MESSAGE_KEY
         assert confirmation["path"] == directory
 
 
@@ -247,7 +254,12 @@ class TestExportResultReportsTruncation:
         export_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         export_coordinator._on_export_result(
-            ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=Path("lead.fti"), truncation=None)
+            ExportSuccess(
+                kind=ExportKind.INSTRUMENT,
+                filepath=Path("lead.fti"),
+                tracker_format=TrackerFormat.FAMITRACKER,
+                truncation=None,
+            )
         )
 
         assert _shown_message(export_coordinator) == export_coordinator._export_messages.instrument_success
@@ -260,7 +272,8 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.INSTRUMENT,
                 filepath=Path("lead.fti"),
-                truncation=ExportTruncation(frames=252, source_frames=300, instruments=1),
+                tracker_format=TrackerFormat.FAMITRACKER,
+                truncation=EnvelopeTruncation(frames=252, source_frames=300, instruments=1),
             )
         )
 
@@ -275,9 +288,10 @@ class TestExportResultReportsTruncation:
     ) -> None:
         export_coordinator._on_export_result(
             ExportSuccess(
-                kind=ExportKind.INSTRUMENTS,
+                kind=ExportKind.SAMPLE,
                 filepath=Path("instruments"),
-                truncation=ExportTruncation(frames=252, source_frames=410, instruments=3),
+                tracker_format=TrackerFormat.FAMITRACKER,
+                truncation=EnvelopeTruncation(frames=252, source_frames=410, instruments=3),
             )
         )
 
@@ -290,7 +304,7 @@ class TestExportResultReportsTruncation:
         export_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         export_coordinator._on_export_result(
-            ExportSuccess(kind=ExportKind.WAV, filepath=Path("track.wav"), truncation=None)
+            ExportSuccess(kind=ExportKind.WAV, filepath=Path("track.wav"), tracker_format=None, truncation=None)
         )
 
         assert _shown_message(export_coordinator) == export_coordinator._export_messages.wav_success

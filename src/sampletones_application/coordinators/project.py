@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
-from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
     FileFilterElements,
@@ -10,9 +9,15 @@ from sampletones_application.categories.elements.global_ import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.trackers import TRACKER_PROJECT_ELEMENTS
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.services.export.error import ExportError
+from sampletones_application.services.export.kind import ExportKind
+from sampletones_application.services.export.result import ExportResult
+from sampletones_application.services.export.service import ExportService
+from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
     TAG_GLOBAL_DIALOG_PROJECT_OPEN,
@@ -23,11 +28,15 @@ from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_core.paths import EXT_FILE_MODULE, EXT_FILE_PROJECT
+from sampletones_core.paths import EXT_FILE_PROJECT
+from sampletones_core.trackers.backend import TrackerBackend
+from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.constants.project import (
-    DEFAULT_MODULE_FILENAME,
+    DEFAULT_EXPORT_NAME,
     DEFAULT_PROJECT_FILENAME,
 )
 from sampletones_shared.exceptions import (
@@ -37,7 +46,7 @@ from sampletones_shared.exceptions import (
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
-from sampletones_shared.utils.system.paths import get_directory
+from sampletones_shared.utils.system.paths import get_directory, get_filename
 
 
 class ProjectCoordinator:
@@ -56,7 +65,9 @@ class ProjectCoordinator:
         project_controller: ProjectController,
         project_manager: ProjectManager,
         session_manager: SessionManager,
+        export_service: ExportService,
         *,
+        tracker_backends: Dict[TrackerFormat, TrackerBackend],
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
         on_tab_switch: Callback,
@@ -65,10 +76,14 @@ class ProjectCoordinator:
         self._project_controller = project_controller
         self._project_manager = project_manager
         self._session_manager = session_manager
+        self._export_service = export_service
+        self._tracker_backends = tracker_backends
         self._dialogs = dialogs
         self._language_manager = language_manager
         self._on_tab_switch = on_tab_switch
         self._project_manager.session.on_state_changed = on_session_state_changed
+
+        export_service.subscribe(self._on_export_result)
 
     @property
     def project_name(self) -> Optional[str]:
@@ -162,38 +177,56 @@ class ProjectCoordinator:
             title=self._title(GlobalDialogTitleElements.SAVE_PROJECT),
             initial_directory=directory,
             default_filename=filename,
-            extensions=[EXT_FILE_PROJECT],
-            filter_name=self._filter_name(FileFilterElements.PROJECT),
+            filters=self._project_filters(),
         )
 
         return self._handle_save_as(filepath)
 
-    def _get_project_filename(self) -> str:
-        return f"{self.project_name}{EXT_FILE_MODULE}" if self.project_name else DEFAULT_MODULE_FILENAME
+    def _project_filters(self) -> Tuple[FileFilter, ...]:
+        """The single type a project of this application's own is written as and read from."""
+        return (
+            FileFilter.for_extensions(
+                self._filter_name(FileFilterElements.PROJECT),
+                [EXT_FILE_PROJECT],
+            ),
+        )
 
-    def export_module_dialog(self) -> None:
+    def _get_project_filename(self, extension: str) -> str:
+        name = self.project_name or DEFAULT_EXPORT_NAME
+        return get_filename(name, extension)
+
+    def export_project_dialog(self, tracker_format: TrackerFormat) -> None:
+        """Prompts for a destination and writes the open project in ``tracker_format``.
+
+        Args:
+            tracker_format: The tracker the project is written for.
+        """
         if not self._project_controller.is_open:
             return
 
+        backend = self._tracker_backends[tracker_format]
+        elements = TRACKER_PROJECT_ELEMENTS[tracker_format]
+        extension = backend.extension(ExportScope.PROJECT)
         path = self._session_manager.get_project_path()
-        filename = self._get_project_filename()
-        directory = get_directory(path)
         filepath = save_file_dialog(
-            title=self._title(GlobalDialogTitleElements.EXPORT_MODULE),
-            initial_directory=directory,
-            default_filename=filename,
-            extensions=[EXT_FILE_MODULE],
-            filter_name=self._filter_name(FileFilterElements.MODULE),
+            title=self._title(elements.dialog_title),
+            initial_directory=get_directory(path),
+            default_filename=self._get_project_filename(extension),
+            filters=(
+                FileFilter.for_extensions(
+                    self._filter_name(elements.filter_name),
+                    [extension],
+                ),
+            ),
         )
 
-        self._handle_export_module(filepath)
+        self._handle_export_project(filepath, tracker_format)
 
     def _open_dialog(self) -> None:
         filepath = open_file_dialog(
             title=self._title(GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT),
             initial_directory=self._session_manager.get_project_path(),
-            extensions=[EXT_FILE_PROJECT],
-            filter_name=self._filter_name(FileFilterElements.PROJECT),
+            filters=self._project_filters(),
         )
 
         self._handle_open(filepath)
@@ -209,8 +242,12 @@ class ProjectCoordinator:
         return self._save(filepath)
 
     @ignore_none_path
-    def _handle_export_module(self, filepath: Path) -> None:
-        self._export_module(filepath)
+    def _handle_export_project(self, filepath: Path, tracker_format: TrackerFormat) -> None:
+        self._export_service.export_project(
+            filepath,
+            self._tracker_backends[tracker_format],
+            self._project_controller.export_request,
+        )
 
     def _new(self) -> None:
         self._project_controller.new()
@@ -257,32 +294,34 @@ class ProjectCoordinator:
         )
         return True
 
-    def _export_module(self, filepath: Path) -> None:
-        try:
-            self._project_controller.export_module(filepath)
-        except (ValueError, OSError) as exception:
-            logger.error_with_traceback(
-                exception,
-                f"Failed to export FamiTracker module to {filepath}",
-            )
-            self._dialogs.show_error(
-                exception,
-                self._message(GlobalMessageElements.PROJECT_EXPORT_FAILED),
-            )
-            return
-
-        self._dialogs.show_info(
-            TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
-            self._message(GlobalMessageElements.PROJECT_EXPORTED_SUCCESSFULLY),
-            self._title(GlobalDialogTitleElements.MODULE_EXPORTED),
-        )
+    def _on_export_result(self, result: ExportResult) -> None:
+        """Reports a finished project export in the words of the format it was written in."""
+        match result:
+            case ExportSuccess(
+                kind=ExportKind.PROJECT,
+                tracker_format=TrackerFormat() as tracker_format,
+            ):
+                self._dialogs.show_info(
+                    TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
+                    self._message(TRACKER_PROJECT_ELEMENTS[tracker_format].exported_message),
+                    self._title(GlobalDialogTitleElements.PROJECT_EXPORTED),
+                )
+            case ExportError(
+                kind=ExportKind.PROJECT,
+                tracker_format=TrackerFormat() as tracker_format,
+                exception=exception,
+            ):
+                self._dialogs.show_error(
+                    exception,
+                    self._message(TRACKER_PROJECT_ELEMENTS[tracker_format].export_failed_message),
+                )
 
     def _guard_open(
         self,
         *,
-        title: AbstractElement,
-        message: AbstractElement,
-        open_message: AbstractElement,
+        title: GlobalDialogTitleElements,
+        message: GlobalMessageElements,
+        open_message: GlobalMessageElements,
         on_confirm: Callback,
     ) -> None:
         if not self._project_controller.is_open:
@@ -307,7 +346,7 @@ class ProjectCoordinator:
                 ok_label=self._label(DialogElements.DISCARD),
             )
 
-    def _title(self, element: AbstractElement) -> str:
+    def _title(self, element: GlobalDialogTitleElements) -> str:
         return self._language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -315,7 +354,7 @@ class ProjectCoordinator:
             element,
         ]
 
-    def _message(self, element: AbstractElement) -> str:
+    def _message(self, element: GlobalMessageElements) -> str:
         return self._language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -323,7 +362,7 @@ class ProjectCoordinator:
             element,
         ]
 
-    def _label(self, element: AbstractElement) -> str:
+    def _label(self, element: DialogElements) -> str:
         return self._language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -331,7 +370,7 @@ class ProjectCoordinator:
             element,
         ]
 
-    def _filter_name(self, element: AbstractElement) -> str:
+    def _filter_name(self, element: FileFilterElements) -> str:
         return self._language_manager[
             Page.GLOBAL,
             Panel.DIALOG,

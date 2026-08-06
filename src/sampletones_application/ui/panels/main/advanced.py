@@ -3,13 +3,11 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import StatusElements
-from sampletones_application.categories.elements.main import AdvancedElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import PathColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.main.advanced import AdvancedLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
@@ -59,6 +57,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         path_colors: PathColors,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self.on_advanced_settings_changed: Optional[Callable[[AdvancedSettingsUpdate], None]] = None
         self.on_select_library_directory: Optional[VoidCallback] = None
         self.on_select_output_directory: Optional[VoidCallback] = None
@@ -76,102 +75,12 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._max_workers_minimum = layout.max_workers_minimum
         self._status_bar = status_bar
         self._path_colors = path_colors
-        self._msg_path = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.PATH,
-        ]
+        self._msg_path = language_manager["global.status.message.path"]
 
-        self._item_handler_tag = f"{TAG_MAIN_ADVANCED_PANEL}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = compose_tag(TAG_MAIN_ADVANCED_PANEL, SUF_HANDLER_REGISTRY)
 
         self.library_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
-
-        self._lbl_section = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.LABEL,
-            AdvancedElements.SECTION,
-        ]
-        self._lbl_select_library = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.LABEL,
-            AdvancedElements.SELECT_LIBRARY_DIRECTORY,
-        ]
-        self._lbl_select_output = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.LABEL,
-            AdvancedElements.SELECT_OUTPUT_DIRECTORY,
-        ]
-        self._lbl_section_method = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.LABEL,
-            AdvancedElements.SECTION_METHOD,
-        ]
-        self._lbl_spectrum_method = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.LABEL,
-            AdvancedElements.COMBO_SPECTRUM_METHOD,
-        ]
-        self._lbl_gamma = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.LABEL,
-            AdvancedElements.SLIDER_TRANSFORMATION_GAMMA,
-        ]
-        self._lbl_max_workers = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.LABEL,
-            AdvancedElements.INPUT_MAX_WORKERS,
-        ]
-        self._tooltip_spectrum_method = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.TOOLTIP,
-            AdvancedElements.TOOLTIP_SPECTRUM_METHOD,
-        ]
-        self._tooltip_gamma = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.TOOLTIP,
-            AdvancedElements.TOOLTIP_TRANSFORMATION_GAMMA,
-        ]
-        self._tooltip_max_workers = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.TOOLTIP,
-            AdvancedElements.TOOLTIP_MAX_WORKERS,
-        ]
-        self._msg_status_combo = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.COMBO,
-        ]
-        self._msg_status_input = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.INPUT,
-        ]
-        self._msg_status_select_library = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.MESSAGE,
-            AdvancedElements.STATUS_SELECT_LIBRARY,
-        ]
-        self._msg_status_select_output = language_manager[
-            Page.MAIN,
-            Panel.ADVANCED,
-            TextType.MESSAGE,
-            AdvancedElements.STATUS_SELECT_OUTPUT,
-        ]
 
         super().__init__(
             tag=TAG_MAIN_ADVANCED_PANEL,
@@ -185,7 +94,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._setup_handlers()
         with self._collapsible_card(
             parent,
-            self._lbl_section,
+            self._language_manager["main.advanced.label.section"],
             glyph=self._glyphs.headers.advanced,
             width=self.width,
         ):
@@ -224,8 +133,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._create_output_directory_selection()
 
     def _create_generation_method_settings(self) -> None:
-        subheader(self._lbl_section_method)
-        with labeled_field(self._lbl_spectrum_method, self._label_width):
+        subheader(self._language_manager["main.advanced.label.section_method"])
+        with labeled_field(self._language_manager["main.advanced.label.combo_spectrum_method"], self._label_width):
             dpg.add_combo(
                 tag=TAG_MAIN_ADVANCED_COMBO_SPECTRUM_METHOD,
                 items=[format_spectrum_method(method) for method in SpectrumMethod],
@@ -233,7 +142,10 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 width=self._input_width,
                 callback=self._on_parameter_change,
             )
-        with labeled_field(self._lbl_gamma, self._label_width):
+        with labeled_field(
+            self._language_manager["main.advanced.label.slider_transformation_gamma"],
+            self._label_width,
+        ):
             input_gamma = dpg.add_slider_int(
                 tag=TAG_MAIN_ADVANCED_INPUT_TRANSFORMATION_GAMMA,
                 default_value=self._transformation_gamma,
@@ -250,15 +162,15 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         )
         self._status_bar.bind_to_item(
             TAG_MAIN_ADVANCED_COMBO_SPECTRUM_METHOD,
-            self._msg_status_combo,
+            self._language_manager["global.status.message.combo"],
         )
         self._status_bar.bind_to_item(
             TAG_MAIN_ADVANCED_INPUT_TRANSFORMATION_GAMMA,
-            self._msg_status_input,
+            self._language_manager["global.status.message.input"],
         )
 
     def _create_workers_settings(self) -> None:
-        with labeled_field(self._lbl_max_workers, self._label_width):
+        with labeled_field(self._language_manager["main.advanced.label.input_max_workers"], self._label_width):
             input_value = dpg.add_input_int(
                 default_value=self._max_workers,
                 tag=TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
@@ -282,14 +194,14 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             GUIButton(
                 tag=TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
                 parent=TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
-                label=self._lbl_select_library,
+                label=self._language_manager["main.advanced.label.select_library_directory"],
                 width=-1,
                 height=self._button_height,
                 callback=self._on_select_library_directory,
             )
             self._status_bar.bind_to_item(
                 TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
-                self._msg_status_select_library,
+                self._language_manager["main.advanced.message.status_select_library"],
             )
 
             self.library_path_text = GUIPathText(
@@ -312,7 +224,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         ):
             GUIButton(
                 tag=TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
-                label=self._lbl_select_output,
+                label=self._language_manager["main.advanced.label.select_output_directory"],
                 parent=TAG_MAIN_ADVANCED_GROUP_RECONSTRUCTIONS_DIRECTORY,
                 width=-1,
                 height=self._button_height,
@@ -320,7 +232,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             )
             self._status_bar.bind_to_item(
                 TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
-                self._msg_status_select_output,
+                self._language_manager["main.advanced.message.status_select_output"],
             )
 
             self.output_path_text = GUIPathText(
@@ -337,15 +249,15 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def _create_tooltips(self) -> None:
         show_tooltip(
             TAG_MAIN_ADVANCED_COMBO_SPECTRUM_METHOD,
-            self._tooltip_spectrum_method,
+            self._language_manager["main.advanced.tooltip.tooltip_spectrum_method"],
         )
         show_tooltip(
             TAG_MAIN_ADVANCED_INPUT_TRANSFORMATION_GAMMA,
-            self._tooltip_gamma,
+            self._language_manager["main.advanced.tooltip.tooltip_transformation_gamma"],
         )
         show_tooltip(
             TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
-            self._tooltip_max_workers,
+            self._language_manager["main.advanced.tooltip.tooltip_max_workers"],
         )
 
     def _on_select_library_directory(self) -> None:

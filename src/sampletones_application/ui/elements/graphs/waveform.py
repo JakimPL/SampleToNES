@@ -3,11 +3,9 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones_application.categories.elements.global_ import GraphElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import (
     SUF_GRAPH_THEME,
     SUF_WAVEFORM_OVERLAY,
@@ -51,58 +49,20 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ):
+        self._language_manager = language_manager
         self._layout = layout
         self._status_bar = status_bar
 
-        self._lbl_waveform_original = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_ORIGINAL,
-        ]
-        self._lbl_waveform_reconstruction = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_RECONSTRUCTION,
-        ]
-        self._lbl_axis_time = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_TIME_AXIS,
-        ]
-        self._lbl_axis_amplitude = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_AMPLITUDE_AXIS,
-        ]
-        self._lbl_sample_name = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_SAMPLE_NAME,
-        ]
-        self._msg_navigation = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.MESSAGE,
-            GraphElements.WAVEFORM_NAVIGATION,
-        ]
-        self._msg_regenerating = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.MESSAGE,
-            GraphElements.WAVEFORM_REGENERATING,
-        ]
+        self._lbl_waveform_original = language_manager["global.graph.label.waveform_original"]
+        self._lbl_waveform_reconstruction = language_manager["global.graph.label.waveform_reconstruction"]
+        self._msg_regenerating = language_manager["global.graph.message.waveform_regenerating"]
 
         self.reconstruction_autoscale = True
         self._reconstruction_dimmed: bool = False
         self._top_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
 
-        self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
-        self.overlay_rectangle_tag = f"{tag}{SUF_WAVEFORM_OVERLAY}"
+        self.position_indicator_tag = compose_tag(tag, SUF_WAVEFORM_POSITION_INDICATOR)
+        self.overlay_rectangle_tag = compose_tag(tag, SUF_WAVEFORM_OVERLAY)
 
         self.indicator_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_INDICATOR)
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
@@ -153,14 +113,14 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 dpg.mvXAxis,
                 tag=self.x_axis_tag,
                 parent=self.plot_tag,
-                label=self._lbl_axis_time,
+                label=self._language_manager["global.graph.label.waveform_time_axis"],
                 no_label=True,
             )
             dpg.add_plot_axis(
                 dpg.mvYAxis,
                 tag=self.y_axis_tag,
                 parent=self.plot_tag,
-                label=self._lbl_axis_amplitude,
+                label=self._language_manager["global.graph.label.waveform_amplitude_axis"],
             )
             self._add_position_indicator()
             self._set_overlay_rectangle()
@@ -173,7 +133,11 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)
-        self._status_bar.set(self._msg_regenerating if self._reconstruction_dimmed else self._msg_navigation)
+        self._status_bar.set(
+            self._msg_regenerating
+            if self._reconstruction_dimmed
+            else self._language_manager["global.graph.message.waveform_navigation"]
+        )
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
         _min_y = self._layout.graph.min_y
@@ -205,7 +169,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.add_layer(
             InstructionLayer(
                 data=fragment,
-                name=self._lbl_sample_name,
+                name=self._language_manager["global.graph.label.waveform_sample_name"],
                 color=self._layout.colors.waveform_sample,
             )
         )
@@ -374,7 +338,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._update_ranges()
 
     def _series_tag(self, layer_name: str) -> str:
-        return f"{self.y_axis_tag}{TAG_SEPARATOR}{layer_name.replace(' ', '_')}".lower()
+        return compose_tag(self.y_axis_tag, layer_name)
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
@@ -437,7 +401,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         dimmed reconstruction line during regeneration — by binding the matching cached theme.
         """
         color_part = "_".join(str(channel) for channel in color)
-        theme_tag = f"{series_tag}{SUF_GRAPH_THEME}{TAG_SEPARATOR}{color_part}"
+        theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME, color_part)
         if not dpg.does_item_exist(theme_tag):
             with dpg.theme(tag=theme_tag):
                 with dpg.theme_component(dpg.mvLineSeries):

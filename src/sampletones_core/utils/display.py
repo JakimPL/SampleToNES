@@ -4,9 +4,13 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
+from sampletones_shared.constants.symbols import MINUS, PLUS
 
 DEFAULT_DISPLAY_LENGTH: Final[int] = 2
+
+BLANK: Final[str] = "."
 NOTE_OFF: Final[str] = "~~"
+NOTE_BLANK: Final[str] = "..."
 
 
 def display_value(
@@ -16,7 +20,7 @@ def display_value(
     hexadecimal: bool = True,
 ) -> str:
     if value is None:
-        return "." * length
+        return BLANK * length
 
     if hexadecimal:
         return f"{value:0{length}X}"
@@ -67,8 +71,8 @@ def display_volume(value: Optional[int]) -> str:
 
 def display_transpose(value: Optional[int]) -> str:
     if value is None or value == 0:
-        return "..."
+        return NOTE_BLANK
 
-    sign = "+" if value > 0 else "-"
+    sign = PLUS if value > 0 else MINUS
     abs_value = abs(value)
     return f"{sign}{abs_value:02X}"

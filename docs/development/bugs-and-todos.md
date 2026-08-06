@@ -3,12 +3,15 @@
 ### Navigation
 
 * Interface scale
+* VSync/frame rate options
 * Tree navigation using keys
 * Waveform LOD for zooming
 * Keybindings options
 * Tracker cell shortcuts
 * Drag and drop
 * Multiple Reconstruction views
+* Playing a fragment by clicking on a waveform
+* Transpose/note pitch display duality
 
 ### Tracker
 
@@ -25,6 +28,7 @@
 
 * Theme selector and palette management
 * In-application guide/tutorial
+* Language selector
 
 ### Technical
 
@@ -32,6 +36,7 @@
 * Code documentation (docstrings)
 * Backward compatibility: library/reconstruction upgrade scheme
 * Respecting FamiTracker limitations
+* Carrying the project comment and tempo into a Bitphase document, once the format holds them
 * Per-tab undo routing
 
 ## Bugs

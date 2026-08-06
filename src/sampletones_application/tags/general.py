@@ -1,6 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
-from sampletones_application.categories.key import TagName
-from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.categories.key.tag import TagName
+from sampletones_application.tags.compose import compose_tag
 
 TAG_GLOBAL_WINDOW_MAIN = TagName(
     Page.GLOBAL,
@@ -410,11 +410,11 @@ TAG_GLOBAL_MENU_ITEM_FILE_PROJECT_PROPERTIES = TagName(
     Widget.MENU,
     "item_file_project_properties",
 )
-TAG_GLOBAL_MENU_ITEM_FILE_EXPORT_MODULE = TagName(
+TAG_GLOBAL_MENU_ITEM_FILE_EXPORT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_file_export_module",
+    "item_file_export",
 )
 TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT = TagName(
     Page.GLOBAL,
@@ -645,38 +645,37 @@ TAG_GLOBAL_TAB_SEQUENCER = TagName(
     "sequencer",
 )
 
-PRE_GLOBAL_MENU_ITEM_PLAYBACK_CHANNEL = f"{TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS}{TAG_SEPARATOR}"
-SUF_BUTTON = f"{TAG_SEPARATOR}button"
-SUF_BUTTONS = f"{TAG_SEPARATOR}buttons"
-SUF_BUTTON_COPY = f"{SUF_BUTTON}{TAG_SEPARATOR}copy"
-SUF_BUTTON_OK = f"{SUF_BUTTON}{TAG_SEPARATOR}ok"
-SUF_BUTTON_SAVE = f"{SUF_BUTTON}{TAG_SEPARATOR}save"
-SUF_BUTTON_CANCEL = f"{SUF_BUTTON}{TAG_SEPARATOR}cancel"
-SUF_BUTTON_SEARCH = f"{SUF_BUTTON}{TAG_SEPARATOR}search"
-SUF_BUTTON_SHOW_TRACEBACK = f"{SUF_BUTTON}{TAG_SEPARATOR}show_traceback"
-SUF_BUTTON_DECREMENT = f"{SUF_BUTTON}{TAG_SEPARATOR}decrement"
-SUF_BUTTON_INCREMENT = f"{SUF_BUTTON}{TAG_SEPARATOR}increment"
-SUF_GROUP = f"{TAG_SEPARATOR}group"
-SUF_GROUP_TRACEBACK = f"{TAG_SEPARATOR}group{TAG_SEPARATOR}traceback"
-SUF_HANDLER_REGISTRY = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}registry"
-SUF_HANDLER_STATUS = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}status"
-SUF_HANDLER_NODE = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}node"
-SUF_HANDLER_DETAIL_TOOLTIP = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}detail_tooltip"
-SUF_HANDLER_HEADER = f"{TAG_SEPARATOR}handler{TAG_SEPARATOR}header"
-SUF_LABEL = f"{TAG_SEPARATOR}label"
-SUF_PATH = f"{TAG_SEPARATOR}path"
-SUF_TEXT = f"{TAG_SEPARATOR}text"
-SUF_INPUT = f"{TAG_SEPARATOR}input"
-SUF_INPUT_SEARCH = f"{TAG_SEPARATOR}input{TAG_SEPARATOR}search"
-SUF_CHECKBOX = f"{TAG_SEPARATOR}checkbox"
-SUF_TABLE = f"{TAG_SEPARATOR}table"
-SUF_TOOLTIP = f"{TAG_SEPARATOR}tooltip"
-SUF_TOOLTIP_DETAIL = f"{TAG_SEPARATOR}tooltip{TAG_SEPARATOR}detail"
-SUF_DIALOG_INFO = f"{TAG_SEPARATOR}dialog{TAG_SEPARATOR}info"
-SUF_PANEL_LEFT = f"{TAG_SEPARATOR}panel{TAG_SEPARATOR}left"
-SUF_PANEL_CENTER = f"{TAG_SEPARATOR}panel{TAG_SEPARATOR}center"
-SUF_PANEL_RIGHT = f"{TAG_SEPARATOR}panel{TAG_SEPARATOR}right"
-SUF_COLLAPSE_STRIP = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}strip"
-SUF_COLLAPSE_BODY = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}body"
-SUF_COLLAPSE_RAIL = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}rail"
-SUF_COLLAPSE_CHEVRON = f"{TAG_SEPARATOR}collapse{TAG_SEPARATOR}chevron"
+SUF_BUTTON = "button"
+SUF_BUTTONS = "buttons"
+SUF_BUTTON_COPY = compose_tag(SUF_BUTTON, "copy")
+SUF_BUTTON_OK = compose_tag(SUF_BUTTON, "ok")
+SUF_BUTTON_SAVE = compose_tag(SUF_BUTTON, "save")
+SUF_BUTTON_CANCEL = compose_tag(SUF_BUTTON, "cancel")
+SUF_BUTTON_SEARCH = compose_tag(SUF_BUTTON, "search")
+SUF_BUTTON_SHOW_TRACEBACK = compose_tag(SUF_BUTTON, "show_traceback")
+SUF_BUTTON_DECREMENT = compose_tag(SUF_BUTTON, "decrement")
+SUF_BUTTON_INCREMENT = compose_tag(SUF_BUTTON, "increment")
+SUF_GROUP = "group"
+SUF_GROUP_TRACEBACK = compose_tag(SUF_GROUP, "traceback")
+SUF_HANDLER_REGISTRY = compose_tag("handler", "registry")
+SUF_HANDLER_STATUS = compose_tag("handler", "status")
+SUF_HANDLER_NODE = compose_tag("handler", "node")
+SUF_HANDLER_DETAIL_TOOLTIP = compose_tag("handler", "detail_tooltip")
+SUF_HANDLER_HEADER = compose_tag("handler", "header")
+SUF_LABEL = "label"
+SUF_PATH = "path"
+SUF_TEXT = "text"
+SUF_INPUT = "input"
+SUF_INPUT_SEARCH = compose_tag(SUF_INPUT, "search")
+SUF_CHECKBOX = "checkbox"
+SUF_TABLE = "table"
+SUF_TOOLTIP = "tooltip"
+SUF_TOOLTIP_DETAIL = compose_tag(SUF_TOOLTIP, "detail")
+SUF_DIALOG_INFO = compose_tag("dialog", "info")
+SUF_PANEL_LEFT = compose_tag("panel", "left")
+SUF_PANEL_CENTER = compose_tag("panel", "center")
+SUF_PANEL_RIGHT = compose_tag("panel", "right")
+SUF_COLLAPSE_STRIP = compose_tag("collapse", "strip")
+SUF_COLLAPSE_BODY = compose_tag("collapse", "body")
+SUF_COLLAPSE_RAIL = compose_tag("collapse", "rail")
+SUF_COLLAPSE_CHEVRON = compose_tag("collapse", "chevron")

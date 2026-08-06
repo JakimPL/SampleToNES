@@ -2,9 +2,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional, Protocol
 
-from sampletones_application.categories.elements.global_ import GlobalTemplateElements
-from sampletones_application.categories.elements.main import ConverterElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.layout.behavior import SchedulingBehavior
@@ -76,88 +73,13 @@ class ConverterLogic(CallbackMixin):
         language_manager: LanguageManager,
         is_operation_active: Callable[[], bool],
     ) -> None:
+        self._language_manager = language_manager
         self._config_manager = config_manager
         self._service = conversion_service
         self._scheduling = scheduling
         self._is_operation_active = is_operation_active
-        self._msg_idle = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_IDLE,
-        ]
-        self._msg_waiting = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_WAITING,
-        ]
-        self._msg_cancelling = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_CANCELLING,
-        ]
-        self._msg_generating_library = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_GENERATING_LIBRARY,
-        ]
-        self._msg_completed = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_RECONSTRUCTION_COMPLETED,
-        ]
-        self._msg_error = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_ERROR,
-        ]
-        self._msg_cancelled = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_CANCELLED,
-        ]
-        self._lbl_convert = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CONVERT_SAMPLE_BUTTON,
-        ]
-        self._lbl_convert_directory = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CONVERT_DIRECTORY_BUTTON,
-        ]
-        self._lbl_cancel = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CANCEL_BUTTON,
-        ]
-        self._tpl_convert_label = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.TEMPLATE,
-            ConverterElements.CONVERT_LABEL_TEMPLATE,
-        ]
-        self._tpl_progress = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.TEMPLATE,
-            ConverterElements.PROGRESS_TEMPLATE,
-        ]
-        self._tpl_eta = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.TIME_ESTIMATION,
-        ]
+        self._msg_idle = language_manager["main.converter.message.status_idle"]
+        self._msg_cancelling = language_manager["main.converter.message.status_cancelling"]
 
         self._phase: ConversionPhase = ConversionPhase.IDLE
         self._input_path: Optional[Path] = None
@@ -217,7 +139,7 @@ class ConverterLogic(CallbackMixin):
             return
 
         self._phase = ConversionPhase.WAITING
-        self._emit_view_model(self._msg_waiting, 0.0)
+        self._emit_view_model(self._language_manager["main.converter.message.status_waiting"], 0.0)
         self.call(self.generate_library)
         self._wait_for_library_and_start()
 
@@ -280,10 +202,14 @@ class ConverterLogic(CallbackMixin):
         self._system_progress.set(progress.completed, progress.total)
         eta_string = ETAEstimator.format_duration(progress.eta_seconds)
         total = max(progress.total, 1)
-        status_text = self._tpl_progress.format(progress.completed, progress.total)
+        status_text = self._language_manager["main.converter.template.progress_template"].format(
+            progress.completed, progress.total
+        )
 
         if eta_string:
-            status_text += self._tpl_eta.format(eta_string=eta_string)
+            status_text += self._language_manager["global.dialog.template.time_estimation"].format(
+                eta_string=eta_string
+            )
 
         display_input_path = (
             to_path(str(progress.current_item)) if progress.current_item is not None else self._input_path
@@ -300,7 +226,7 @@ class ConverterLogic(CallbackMixin):
 
         total = max(progress.total, 1)
         fraction = progress.completed / total
-        self._emit_view_model(self._msg_generating_library, fraction)
+        self._emit_view_model(self._language_manager["main.converter.message.status_generating_library"], fraction)
 
     def _assign_paths(self, input_path: Path, config: Config) -> bool:
         try:
@@ -342,7 +268,7 @@ class ConverterLogic(CallbackMixin):
             self._output_path = output_path
 
         self._phase = ConversionPhase.COMPLETED
-        self._emit_view_model(self._msg_completed, 1.0)
+        self._emit_view_model(self._language_manager["main.converter.message.status_reconstruction_completed"], 1.0)
         self.call(
             self.on_success,
             ConversionSuccess(
@@ -354,7 +280,7 @@ class ConverterLogic(CallbackMixin):
     def _on_conversion_error(self, exception: Exception) -> None:
         self._system_progress.error()
         self._phase = ConversionPhase.FAILED
-        self._emit_view_model(self._msg_error, 0.0)
+        self._emit_view_model(self._language_manager["main.converter.message.status_error"], 0.0)
         self._schedule_return_to_idle()
         if isinstance(exception, NoFilesToProcessError):
             self.call(self.on_no_files_to_process)
@@ -363,7 +289,7 @@ class ConverterLogic(CallbackMixin):
 
     def _on_cancellation_complete(self) -> None:
         self._phase = ConversionPhase.CANCELLED
-        self._emit_view_model(self._msg_cancelled, 0.0)
+        self._emit_view_model(self._language_manager["main.converter.message.status_cancelled"], 0.0)
         self._schedule_return_to_idle()
         self.call(self.on_cancelled)
 
@@ -378,13 +304,17 @@ class ConverterLogic(CallbackMixin):
         """The label the single action button shows: the cancel label while a conversion holds
         resources, otherwise the convert label named after the selected input."""
         if self._phase in ACTIVE_PHASES:
-            return self._lbl_cancel
+            return self._language_manager["main.converter.label.cancel_button"]
 
-        base = self._lbl_convert if self._is_file else self._lbl_convert_directory
+        base = (
+            self._language_manager["main.converter.label.convert_sample_button"]
+            if self._is_file
+            else self._language_manager["main.converter.label.convert_directory_button"]
+        )
         if input_path is None:
             return base
 
-        return self._tpl_convert_label.format(base, input_path.name)
+        return self._language_manager["main.converter.template.convert_label_template"].format(base, input_path.name)
 
     def _emit_view_model(
         self,

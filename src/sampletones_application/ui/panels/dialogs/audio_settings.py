@@ -2,8 +2,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.settings import AudioSettingsElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
@@ -53,6 +51,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         language_manager: LanguageManager,
         key_router: KeyRouter,
     ) -> None:
+        self._language_manager = language_manager
         self._layout = layout
         self._router = key_router
         self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
@@ -70,72 +69,8 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._current_buffer_size_label: str = ""
         self._master_gain: float = DEFAULT_MASTER_GAIN
 
-        self._ttl_audio = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.TITLE,
-            AudioSettingsElements.WINDOW_TITLE,
-        ]
-        self._lbl_output_device = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.LABEL,
-            AudioSettingsElements.OUTPUT_DEVICE,
-        ]
-        self._fmt_device_label = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.TEMPLATE,
-            AudioSettingsElements.DEVICE_LABEL,
-        ]
-        self._lbl_sample_rate = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.LABEL,
-            AudioSettingsElements.SAMPLE_RATE,
-        ]
-        self._fmt_sample_rate = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.TEMPLATE,
-            AudioSettingsElements.SAMPLE_RATE_LABEL,
-        ]
-        self._lbl_buffer_size = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.LABEL,
-            AudioSettingsElements.BUFFER_SIZE,
-        ]
-        self._lbl_master_gain = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.LABEL,
-            AudioSettingsElements.MASTER_GAIN,
-        ]
-        self._fmt_master_gain_db = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.TEMPLATE,
-            AudioSettingsElements.MASTER_GAIN_DB,
-        ]
-        self._lbl_master_gain_silent = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.MESSAGE,
-            AudioSettingsElements.MASTER_GAIN_SILENT,
-        ]
-        self._lbl_apply_button = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.LABEL,
-            AudioSettingsElements.APPLY_BUTTON,
-        ]
-        self._lbl_refresh_button = language_manager[
-            Page.SETTINGS,
-            Panel.AUDIO,
-            TextType.LABEL,
-            AudioSettingsElements.REFRESH_DEVICES_BUTTON,
-        ]
+        self._fmt_device_label = language_manager["settings.audio.template.device_label"]
+        self._fmt_sample_rate = language_manager["settings.audio.template.sample_rate_label"]
 
         super().__init__(
             tag=TAG_SETTINGS_AUDIO_WINDOW,
@@ -169,7 +104,7 @@ class GUIAudioSettingsWindow(GUIWindow):
     def create_window(self) -> None:
         with dpg.window(
             tag=self.tag,
-            label=self._ttl_audio,
+            label=self._language_manager["settings.audio.title.window_title"],
             width=self.width,
             height=self.height,
             no_resize=True,
@@ -217,7 +152,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             self._navigator = None
 
     def _create_device_selection(self) -> None:
-        with labeled_field(self._lbl_output_device, self._layout.label_width):
+        with labeled_field(self._language_manager["settings.audio.label.output_device"], self._layout.label_width):
             dpg.add_combo(
                 tag=TAG_SETTINGS_AUDIO_COMBO_DEVICE,
                 items=self._device_items,
@@ -227,7 +162,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             )
 
     def _create_sample_rate_selection(self) -> None:
-        with labeled_field(self._lbl_sample_rate, self._layout.label_width):
+        with labeled_field(self._language_manager["settings.audio.label.sample_rate"], self._layout.label_width):
             dpg.add_combo(
                 tag=TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
                 items=[],
@@ -236,7 +171,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             )
 
     def _create_buffer_size_selection(self) -> None:
-        with labeled_field(self._lbl_buffer_size, self._layout.label_width):
+        with labeled_field(self._language_manager["settings.audio.label.buffer_size"], self._layout.label_width):
             dpg.add_combo(
                 tag=TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE,
                 items=list(BUFFER_SIZE_ITEMS),
@@ -251,7 +186,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         toward red as the gain drives past unity, warning that a boost is clipping into the output range.
         """
         readout = self._master_gain_readout(self._master_gain)
-        with labeled_field(self._lbl_master_gain, self._layout.label_width):
+        with labeled_field(self._language_manager["settings.audio.label.master_gain"], self._layout.label_width):
             dpg.add_slider_float(
                 tag=TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN,
                 min_value=MIN_MASTER_GAIN,
@@ -289,8 +224,8 @@ class GUIAudioSettingsWindow(GUIWindow):
     def _master_gain_readout(self, gain: float) -> MasterGainReadout:
         return MasterGainReadout.for_gain(
             gain,
-            decibel_format=self._fmt_master_gain_db,
-            silent_label=self._lbl_master_gain_silent,
+            decibel_format=self._language_manager["settings.audio.template.master_gain_db"],
+            silent_label=self._language_manager["settings.audio.message.master_gain_silent"],
         )
 
     def _clip_warning_color(self, clip_fraction: float) -> ColorRGBA:
@@ -302,13 +237,13 @@ class GUIAudioSettingsWindow(GUIWindow):
     def _create_action_buttons(self) -> None:
         GUIButton(
             tag=TAG_SETTINGS_AUDIO_BUTTON_REFRESH,
-            label=self._lbl_refresh_button,
+            label=self._language_manager["settings.audio.label.refresh_devices_button"],
             callback=self._refresh_devices,
             width=-1,
         )
         GUIButton(
             tag=TAG_SETTINGS_AUDIO_BUTTON_APPLY,
-            label=self._lbl_apply_button,
+            label=self._language_manager["settings.audio.label.apply_button"],
             callback=self._commit,
             width=-1,
         )

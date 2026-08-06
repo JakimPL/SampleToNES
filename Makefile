@@ -1,5 +1,6 @@
 .PHONY: help setup install build release system-deps run clean pre-commit test \
-	ftm-samples check-import-boundary calibration lint pylint mypy format
+	ftm-samples check-import-boundary check-tag-names check-unused-tags \
+	check-language-keys calibration lint pylint mypy format
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -106,7 +107,16 @@ ftm-samples:
 	uv run python -m pytest tests/integration/famitracker
 
 check-import-boundary:
-	uv run scripts/check_import_boundary.py --all
+	uv run scripts/checks/import_boundary.py --all
+
+check-tag-names:
+	uv run scripts/checks/tag_names.py --all
+
+check-unused-tags:
+	uv run scripts/checks/unused_tags.py
+
+check-language-keys:
+	uv run scripts/checks/language_keys.py
 
 calibration:
 	uv run scripts/calibration.py --all

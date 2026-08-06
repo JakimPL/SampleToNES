@@ -3,8 +3,8 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.glyphs import Glyphs
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_COLLAPSE_BODY,
     SUF_COLLAPSE_CHEVRON,
@@ -66,12 +66,12 @@ class CollapseController(CallbackMixin):
         self._auto_height = auto_height
         self._fill = fill
 
-        self.strip_tag = f"{card_tag}{SUF_COLLAPSE_STRIP}"
-        self.body_tag = f"{card_tag}{SUF_COLLAPSE_BODY}"
-        self.rail_tag = f"{card_tag}{SUF_COLLAPSE_RAIL}"
-        self.chevron_tag = f"{card_tag}{SUF_COLLAPSE_CHEVRON}"
-        self.strip_handler_tag = f"{self.strip_tag}{SUF_HANDLER_REGISTRY}"
-        self.click_handler_tag = f"{card_tag}{SUF_COLLAPSE_STRIP}{TAG_SEPARATOR}click{SUF_HANDLER_REGISTRY}"
+        self.strip_tag = compose_tag(card_tag, SUF_COLLAPSE_STRIP)
+        self.body_tag = compose_tag(card_tag, SUF_COLLAPSE_BODY)
+        self.rail_tag = compose_tag(card_tag, SUF_COLLAPSE_RAIL)
+        self.chevron_tag = compose_tag(card_tag, SUF_COLLAPSE_CHEVRON)
+        self.strip_handler_tag = compose_tag(self.strip_tag, SUF_HANDLER_REGISTRY)
+        self.click_handler_tag = compose_tag(self.strip_tag, "click", SUF_HANDLER_REGISTRY)
 
         self.on_toggle: Optional[Callable[[str, bool], None]] = None
         self._collapsed_height: Optional[int] = None

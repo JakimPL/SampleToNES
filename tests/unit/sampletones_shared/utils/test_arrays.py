@@ -11,6 +11,7 @@ from sampletones_shared.types.array import DTypeLike
 from sampletones_shared.utils.arrays import (
     cast_to_float,
     clamp,
+    hold,
     infer_dtype,
     interpolate_segment,
     is_increasing,
@@ -1688,6 +1689,120 @@ class TestTrim(BaseTestSuite):
 
         result = trim(test_case.input_array)
         assert_array_equal(result, test_case.expected)
+
+
+class TestHold(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        expected: Union[int, float, Type[Exception]]
+        array: Any
+        index: Any
+        default: Any
+
+    test_cases = [
+        TestCase(
+            array=np.array([12, 5, 0]),
+            index=0,
+            default=0,
+            expected=12,
+            label="first_frame",
+        ),
+        TestCase(
+            array=np.array([12, 5, 0]),
+            index=1,
+            default=0,
+            expected=5,
+            label="middle_frame",
+        ),
+        TestCase(
+            array=np.array([12, 5, 7]),
+            index=2,
+            default=0,
+            expected=7,
+            label="final_frame",
+        ),
+        TestCase(
+            array=np.array([12, 5, 7]),
+            index=3,
+            default=0,
+            expected=7,
+            label="one_frame_past_the_end_holds_the_final_value",
+        ),
+        TestCase(
+            array=np.array([12, 5, 7]),
+            index=100,
+            default=0,
+            expected=7,
+            label="far_past_the_end_holds_the_final_value",
+        ),
+        TestCase(
+            array=np.array([4]),
+            index=9,
+            default=0,
+            expected=4,
+            label="single_frame_envelope_holds_its_only_value",
+        ),
+        TestCase(
+            array=np.array([], dtype=np.int8),
+            index=0,
+            default=0,
+            expected=0,
+            label="empty_envelope_reads_as_the_default",
+        ),
+        TestCase(
+            array=np.array([], dtype=np.int8),
+            index=3,
+            default=7,
+            expected=7,
+            label="empty_envelope_reads_as_the_default_at_any_index",
+        ),
+        TestCase(
+            array=np.array([2.5, -1.5]),
+            index=5,
+            default=0.0,
+            expected=-1.5,
+            label="float_envelope_holds_its_final_value",
+        ),
+        TestCase(
+            array=np.array([1, 2, 3]),
+            index=-1,
+            default=0,
+            expected=ValueError,
+            label="negative_index_rejected",
+        ),
+        TestCase(
+            array=np.array([[1, 2], [3, 4]]),
+            index=0,
+            default=0,
+            expected=ValueError,
+            label="array_not_1d",
+        ),
+        TestCase(
+            array=[1, 2, 3],
+            index=0,
+            default=0,
+            expected=TypeError,
+            label="list_not_array",
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_hold(self, test_case: TestCase) -> None:
+        if expect_error(
+            hold,
+            test_case.expected,
+            test_case.array,
+            test_case.index,
+            default=test_case.default,
+        ):
+            return
+
+        result = hold(test_case.array, test_case.index, default=test_case.default)
+        assert result == test_case.expected
 
 
 class TestInterpolateSegment(BaseTestSuite):

@@ -1,10 +1,5 @@
 from pathlib import Path
 
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionPanelElements,
-    ReconstructionsBrowserElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.reconstruction.audio_location import resolve_original_audio
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
@@ -22,19 +17,8 @@ class OriginalAudioLocator:
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
     ) -> None:
+        self._language_manager = language_manager
         self._dialogs = dialogs
-        self._msg_load_error = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.LOAD_ERROR,
-        ]
-        self._msg_locate_failed = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.MESSAGE,
-            ReconstructionPanelElements.LOCATE_AUDIO_FAILED,
-        ]
 
     def locate(self, filepath: Path) -> None:
         """Reads the reconstruction at the path and reveals its recorded original audio.
@@ -47,7 +31,7 @@ class OriginalAudioLocator:
             audio_filepath = resolve_original_audio(filepath)
         except (SampleToNESError, OSError) as exception:
             logger.error_with_traceback(exception, f"Failed to read reconstruction from {filepath}")
-            self._dialogs.show_error(exception, self._msg_load_error)
+            self._dialogs.show_error(exception, self._language_manager["reconstructions.browser.message.load_error"])
             return
 
         if audio_filepath is None:
@@ -56,7 +40,7 @@ class OriginalAudioLocator:
         if not audio_filepath.exists():
             self._dialogs.show_file_not_found(
                 audio_filepath,
-                self._msg_locate_failed,
+                self._language_manager["reconstructions.reconstruction.message.locate_audio_failed"],
             )
             return
 

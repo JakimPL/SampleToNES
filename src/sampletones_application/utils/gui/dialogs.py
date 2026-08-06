@@ -5,21 +5,9 @@ from typing import Callable, Dict, List, Optional, Pattern, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
-    GlobalTemplateElements,
-    StatusElements,
-    TracebackElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsInstrumentsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_CANCEL,
     SUF_BUTTON_OK,
@@ -61,7 +49,7 @@ _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 
 def get_dialog_tag(base_tag: str) -> str:
     dialog_hash = uuid.uuid4().hex
-    return f"{base_tag}{TAG_SEPARATOR}{dialog_hash}"
+    return compose_tag(base_tag, dialog_hash)
 
 
 def _bind_dialog_theme(tag: str) -> None:
@@ -99,7 +87,7 @@ def _show_modal_dialog(
     key_router: KeyRouter,
     modal: bool = True,
 ) -> None:
-    ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+    ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
     navigator: Optional[DialogKeyboardNavigator] = None
 
     def close() -> None:
@@ -166,96 +154,10 @@ class DialogsRenderer:
         self._recovery_height = layout.dialogs.recovery.height
         self._recovery_wrap = layout.dialogs.recovery.width - 10
 
-        self._msg_path = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.PATH,
-        ]
-        self._lbl_ok = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.OK,
-        ]
-        self._lbl_cancel = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.CANCEL,
-        ]
-        self._lbl_save = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.SAVE,
-        ]
-        self._lbl_traceback_show = language_manager[
-            Page.GLOBAL,
-            Panel.TRACEBACK,
-            TextType.LABEL,
-            TracebackElements.SHOW,
-        ]
-        self._lbl_traceback_hide = language_manager[
-            Page.GLOBAL,
-            Panel.TRACEBACK,
-            TextType.LABEL,
-            TracebackElements.HIDE,
-        ]
-        self._ttl_error = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.ERROR,
-        ]
-        self._ttl_file_not_found = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.FILE_NOT_FOUND,
-        ]
-        self._ttl_reconstruction_not_loaded = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.NOT_LOADED_DIALOG,
-        ]
-        self._msg_reconstruction_no_data = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.RECONSTRUCTION_NO_DATA,
-        ]
-        self._ttl_config_recovery = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.CONFIGURATION_RECOVERY,
-        ]
-        self._tpl_config_recovery_intro = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.CONFIGURATION_RECOVERY_INTRO,
-        ]
-        self._msg_config_recovery_earlier_version = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.CONFIGURATION_RECOVERY_EARLIER_VERSION,
-        ]
-        self._msg_config_recovery_list_header = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.CONFIGURATION_RECOVERY_LIST_HEADER,
-        ]
-        self._msg_config_recovery_path_prefix = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.CONFIGURATION_RECOVERY_PATH_PREFIX,
-        ]
+        self._msg_path = language_manager["global.status.message.path"]
+        self._lbl_ok = language_manager["global.dialog.label.ok"]
+        self._lbl_cancel = language_manager["global.dialog.label.cancel"]
+        self._lbl_traceback_show = language_manager["global.traceback.label.show"]
 
     @property
     def default_wrap(self) -> int:
@@ -294,7 +196,7 @@ class DialogsRenderer:
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._error_wrap)
 
-        info_tag = f"{tag}{SUF_DIALOG_INFO}"
+        info_tag = compose_tag(tag, SUF_DIALOG_INFO)
         dpg_delete_item(info_tag)
         _show_modal_dialog(
             tag=info_tag,
@@ -323,17 +225,21 @@ class DialogsRenderer:
         highlight colour to stand apart from the surrounding prose, and the trailing path
         opens the configuration file's directory so the user can edit it directly.
         """
-        source = source_version if source_version is not None else self._msg_config_recovery_earlier_version
+        source = (
+            source_version
+            if source_version is not None
+            else self._language_manager["global.dialog.message.configuration_recovery_earlier_version"]
+        )
 
         def content(parent: str) -> None:
             self._render_template_bold(
                 parent,
-                self._tpl_config_recovery_intro,
+                self._language_manager["global.dialog.template.configuration_recovery_intro"],
                 {"source": source, "target": target_version},
             )
 
             dpg.add_text(
-                self._msg_config_recovery_list_header,
+                self._language_manager["global.dialog.message.configuration_recovery_list_header"],
                 parent=parent,
                 wrap=self._recovery_wrap,
             )
@@ -346,12 +252,12 @@ class DialogsRenderer:
                 )
 
             dpg.add_text(
-                self._msg_config_recovery_path_prefix,
+                self._language_manager["global.dialog.message.configuration_recovery_path_prefix"],
                 parent=parent,
                 wrap=self._recovery_wrap,
             )
             GUIPathText(
-                tag=f"{parent}{SUF_PATH}",
+                tag=compose_tag(parent, SUF_PATH),
                 path=config_path,
                 parent=parent,
                 color=self._col_path,
@@ -363,7 +269,7 @@ class DialogsRenderer:
         dpg_delete_item(tag)
         _show_modal_dialog(
             tag=tag,
-            title=self._ttl_config_recovery,
+            title=self._language_manager["global.dialog.title.configuration_recovery"],
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
@@ -386,7 +292,7 @@ class DialogsRenderer:
         natural word order in the language file while its dynamic values stand out. The
         literal spans carry their own spacing, so the runs sit flush at exactly that spacing.
         """
-        group_tag = f"{parent}{SUF_GROUP}"
+        group_tag = compose_tag(parent, SUF_GROUP)
         with dpg.group(
             horizontal=True,
             horizontal_spacing=0,
@@ -417,8 +323,8 @@ class DialogsRenderer:
         message: Optional[str] = None,
     ) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)
-        show_button_tag = f"{tag}{SUF_BUTTON_SHOW_TRACEBACK}"
-        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        show_button_tag = compose_tag(tag, SUF_BUTTON_SHOW_TRACEBACK)
+        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
         navigator: Optional[DialogKeyboardNavigator] = None
 
         def close() -> None:
@@ -428,7 +334,7 @@ class DialogsRenderer:
             dpg_delete_item(tag)
 
         with dpg.window(
-            label=self._ttl_error,
+            label=self._language_manager["global.dialog.title.error"],
             tag=tag,
             modal=True,
             min_size=(self._error_width, self._error_height),
@@ -440,7 +346,7 @@ class DialogsRenderer:
             if message is not None:
                 dpg.add_text(message, parent=tag, wrap=self._error_wrap)
 
-            group_tag = f"{tag}{SUF_GROUP}"
+            group_tag = compose_tag(tag, SUF_GROUP)
             with dpg.group(tag=group_tag, parent=tag):
                 dpg.add_text(
                     f"{str(type(exception).__name__)}: ",
@@ -466,7 +372,11 @@ class DialogsRenderer:
                 traceback.toggle_visibility()
                 dpg_configure_item(
                     show_button_tag,
-                    label=(self._lbl_traceback_show if not traceback.visible else self._lbl_traceback_hide),
+                    label=(
+                        self._lbl_traceback_show
+                        if not traceback.visible
+                        else self._language_manager["global.traceback.label.hide"]
+                    ),
                 )
 
             @table_wrapper(columns=2)
@@ -512,7 +422,7 @@ class DialogsRenderer:
 
         _show_modal_dialog(
             tag=tag,
-            title=self._ttl_file_not_found,
+            title=self._language_manager["global.dialog.title.file_not_found"],
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
@@ -542,10 +452,10 @@ class DialogsRenderer:
         confirms, ``on_opt_out`` runs as well — letting the caller suppress future prompts.
         """
         tag = get_dialog_tag(tag)
-        opt_out_tag = f"{tag}{SUF_CHECKBOX}"
+        opt_out_tag = compose_tag(tag, SUF_CHECKBOX)
         cancel_label = cancel_label if cancel_label is not None else self._lbl_cancel
-        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
-        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
+        cancel_button_tag = compose_tag(tag, SUF_BUTTON_CANCEL)
         navigator: Optional[DialogKeyboardNavigator] = None
 
         def disable() -> None:
@@ -578,7 +488,7 @@ class DialogsRenderer:
 
             if path is not None:
                 GUIPathText(
-                    tag=f"{tag}{SUF_PATH}",
+                    tag=compose_tag(tag, SUF_PATH),
                     path=path,
                     parent=parent,
                     color=self._col_path,
@@ -654,9 +564,9 @@ class DialogsRenderer:
         ``on_confirm`` to proceed, and Cancel — the initially focused button — dismisses the prompt.
         """
         tag = get_dialog_tag(tag)
-        save_button_tag = f"{tag}{SUF_BUTTON_SAVE}"
-        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
-        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+        save_button_tag = compose_tag(tag, SUF_BUTTON_SAVE)
+        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
+        cancel_button_tag = compose_tag(tag, SUF_BUTTON_CANCEL)
         navigator: Optional[DialogKeyboardNavigator] = None
 
         def disable() -> None:
@@ -694,7 +604,7 @@ class DialogsRenderer:
             def buttons(_: None) -> None:
                 GUIButton(
                     tag=save_button_tag,
-                    label=self._lbl_save,
+                    label=self._language_manager["global.dialog.label.save"],
                     callback=_on_save,
                     width=-1,
                 )
@@ -742,14 +652,14 @@ class DialogsRenderer:
 
         def content(parent: str) -> None:
             dpg.add_text(
-                self._msg_reconstruction_no_data,
+                self._language_manager["global.dialog.message.reconstruction_no_data"],
                 parent=parent,
                 wrap=self._error_wrap,
             )
 
         _show_modal_dialog(
             tag=tag,
-            title=self._ttl_reconstruction_not_loaded,
+            title=self._language_manager["reconstructions.instruments.title.not_loaded_dialog"],
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
@@ -767,11 +677,11 @@ class DialogsRenderer:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_PATH_MESSAGE)
 
         def content(parent: str) -> None:
-            group_tag = f"{parent}{SUF_GROUP}"
+            group_tag = compose_tag(parent, SUF_GROUP)
             with dpg.group(parent=parent):
                 dpg.add_text(message, parent=group_tag, wrap=self._error_wrap)
                 GUIPathText(
-                    tag=f"{group_tag}{SUF_PATH}",
+                    tag=compose_tag(group_tag, SUF_PATH),
                     path=path,
                     parent=group_tag,
                     color=self._col_path,

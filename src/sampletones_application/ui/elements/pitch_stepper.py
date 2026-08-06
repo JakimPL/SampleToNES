@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTONS,
     SUF_HANDLER_REGISTRY,
@@ -95,13 +96,13 @@ class GUIPitchStepper(CallbackMixin):
         self._value = kind.clamp(initial_value)
         self._emit_token = 0
 
-        self._label_tag = f"{tag}{SUF_LABEL}"
-        self._value_tag = f"{tag}{SUF_TEXT}"
-        self._input_tag = f"{tag}{SUF_INPUT}"
-        self._table_tag = f"{tag}{SUF_TABLE}"
-        self._buttons_tag = f"{tag}{SUF_BUTTONS}"
-        self._tooltip_tag = f"{tag}{SUF_TOOLTIP}"
-        self._input_handler_tag = f"{self._input_tag}{SUF_HANDLER_REGISTRY}"
+        self._label_tag = compose_tag(tag, SUF_LABEL)
+        self._value_tag = compose_tag(tag, SUF_TEXT)
+        self._input_tag = compose_tag(tag, SUF_INPUT)
+        self._table_tag = compose_tag(tag, SUF_TABLE)
+        self._buttons_tag = compose_tag(tag, SUF_BUTTONS)
+        self._tooltip_tag = compose_tag(tag, SUF_TOOLTIP)
+        self._input_handler_tag = compose_tag(self._input_tag, SUF_HANDLER_REGISTRY)
 
         self._buttons: Optional[GUIPlusMinusButtons] = None
 

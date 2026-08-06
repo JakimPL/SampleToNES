@@ -3,15 +3,6 @@ from typing import Callable, List, Optional, Protocol
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-    MenuElements,
-    PlayerElements,
-)
-from sampletones_application.categories.elements.instructions import (
-    InstructionsLibraryElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
@@ -27,6 +18,7 @@ from sampletones_application.logic.instruction.library_manager import (
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.instructions import InstructionsTabParameters
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -81,9 +73,9 @@ from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 
-_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}"
-_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}"
-_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}"
+_LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_LEFT)
+_CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_CENTER)
+_RIGHT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_RIGHT)
 
 
 class _StackedGraphPanel(Protocol):
@@ -109,6 +101,7 @@ class InstructionsTabCoordinator:
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
     ) -> None:
+        self._language_manager = language_manager
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
@@ -117,12 +110,6 @@ class InstructionsTabCoordinator:
         self._is_converter_visible = is_converter_visible
         self._dialogs = dialogs
 
-        self._tab_label = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.TAB_INSTRUCTIONS,
-        ]
         self._geometry = layout.geometry
         self._side_panel_count: int
         self._baseline_viewport_height = layout.baseline_viewport_height
@@ -130,72 +117,7 @@ class InstructionsTabCoordinator:
         self._max_stack_height = layout.max_stack_height
         self._details_width = layout.right_column_width
         self._right_height = layout.right_column_height
-        self._msg_display_error = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_DISPLAY_ERROR,
-        ]
-        self._lbl_regenerate_confirmation_ok = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.REGENERATE_CONFIRMATION_OK,
-        ]
-        self._msg_regenerate_confirmation = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.REGENERATE_CONFIRMATION_MESSAGE,
-        ]
-        self._ttl_regenerate_confirmation = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TITLE,
-            InstructionsLibraryElements.REGENERATE_CONFIRMATION_DIALOG,
-        ]
-        self._msg_generation_cancelled = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_GENERATION_CANCELLED,
-        ]
-        self._msg_generation_failed = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_GENERATION_FAILED,
-        ]
-        self._msg_generation_success = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_GENERATION_SUCCESS,
-        ]
-        self._ttl_generation_status = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TITLE,
-            InstructionsLibraryElements.GENERATION_STATUS_DIALOG,
-        ]
-        self._ttl_remove_library = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TITLE,
-            InstructionsLibraryElements.REMOVE_LIBRARY_DIALOG,
-        ]
-        self._msg_remove_library = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.REMOVE_LIBRARY_MESSAGE,
-        ]
-        self._lbl_remove = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.REMOVE,
-        ]
+        self._ttl_generation_status = language_manager["instructions.library.title.generation_status_dialog"]
 
         self._library_logic = LibraryLogic(
             config_manager,
@@ -249,12 +171,7 @@ class InstructionsTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,
             dialogs=dialogs,
-            error_message=language_manager[
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.MESSAGE,
-                PlayerElements.AUDIO_PLAYBACK_ERROR,
-            ],
+            error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._waveform_panel = GUIInstructionWaveformPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),
@@ -310,10 +227,10 @@ class InstructionsTabCoordinator:
         if self._library_logic.library_available_for_config():
             self._dialogs.show_confirmation(
                 TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
-                self._msg_regenerate_confirmation,
-                self._ttl_regenerate_confirmation,
+                self._language_manager["instructions.library.message.regenerate_confirmation_message"],
+                self._language_manager["instructions.library.title.regenerate_confirmation_dialog"],
                 self._library_logic.request_generation,
-                ok_label=self._lbl_regenerate_confirmation_ok,
+                ok_label=self._language_manager["instructions.library.label.regenerate_confirmation_ok"],
             )
             return
 
@@ -331,10 +248,10 @@ class InstructionsTabCoordinator:
         library_path = self._library_logic.get_path(library_key)
         self._dialogs.show_confirmation(
             tag=TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
-            title=self._ttl_remove_library,
-            message=self._msg_remove_library,
+            title=self._language_manager["instructions.library.title.remove_library_dialog"],
+            message=self._language_manager["instructions.library.message.remove_library_message"],
             on_confirm=lambda: self._remove_library(library_key),
-            ok_label=self._lbl_remove,
+            ok_label=self._language_manager["global.dialog.label.remove"],
             path=library_path,
         )
 
@@ -358,18 +275,21 @@ class InstructionsTabCoordinator:
         if not self._is_converter_visible():
             self._dialogs.show_info(
                 TAG_INSTRUCTIONS_LIBRARY_PANEL,
-                self._msg_generation_success,
+                self._language_manager["instructions.library.message.status_generation_success"],
                 self._ttl_generation_status,
                 modal=True,
             )
 
     def _on_generation_error(self, exception: Exception) -> None:
-        self._dialogs.show_error(exception, self._msg_generation_failed)
+        self._dialogs.show_error(
+            exception,
+            self._language_manager["instructions.library.message.status_generation_failed"],
+        )
 
     def _on_generation_cancelled(self) -> None:
         self._dialogs.show_info(
             TAG_INSTRUCTIONS_LIBRARY_PANEL,
-            self._msg_generation_cancelled,
+            self._language_manager["instructions.library.message.status_generation_cancelled"],
             self._ttl_generation_status,
             modal=True,
         )
@@ -478,7 +398,10 @@ class InstructionsTabCoordinator:
             self._display_instruction(instruction_data)
             self._instruction_details_logic.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
-            self._dialogs.show_error(exception, self._msg_display_error)
+            self._dialogs.show_error(
+                exception,
+                self._language_manager["instructions.library.message.status_display_error"],
+            )
 
         self._on_audio_state_changed()
 
@@ -486,7 +409,7 @@ class InstructionsTabCoordinator:
         with dpg.tab(
             tag=TAG_GLOBAL_TAB_INSTRUCTIONS,
             parent=TAG_GLOBAL_TABS,
-            label=self._tab_label,
+            label=self._language_manager["global.menu.label.tab_instructions"],
         ):
             self._side_panel_count = TabColumns.build(
                 panel_gap=self._geometry.panel_gap,

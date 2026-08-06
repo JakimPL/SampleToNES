@@ -1,6 +1,6 @@
 import threading
 from types import SimpleNamespace
-from typing import Any, Dict, List
+from typing import Any, Dict, Final, List
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -9,6 +9,31 @@ import pytest
 from sampletones_application.services.regeneration import RegenerationService
 from sampletones_application.services.result import ServiceCancelled, ServiceError, ServiceSuccess
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
+
+REFERENCE_PITCH: Final[int] = 60
+
+
+class FakeFeatures(Dict[Any, Any]):
+    """Stands in for ``Features``: records the edited dimension and carries a reference pitch.
+
+    Assigning ``FeatureKey.INITIAL_PITCH`` moves the reference pitch, matching the real model,
+    so the pitch stepper's edit is observable through ``initial_pitch``.
+    """
+
+    def __init__(self, initial_pitch: int) -> None:
+        super().__init__()
+        self.initial_pitch = initial_pitch
+
+    def __setitem__(self, feature_key: Any, value: Any) -> None:
+        if feature_key == FeatureKey.INITIAL_PITCH:
+            self.initial_pitch = value
+        else:
+            super().__setitem__(feature_key, value)
+
+
+@pytest.fixture
+def features() -> FakeFeatures:
+    return FakeFeatures(REFERENCE_PITCH)
 
 
 @pytest.fixture
@@ -119,7 +144,7 @@ class TestRegenerationServiceRun:
         assert len(results) == 1
         assert isinstance(results[0], ServiceCancelled)
 
-    def test_run_success_emits_service_success(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_success_emits_service_success(self, synthesis_mocks, reconstruction, features) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
@@ -127,7 +152,7 @@ class TestRegenerationServiceRun:
         service._run(
             reconstruction,
             synthesis_mocks.generator_name,
-            {},
+            features,
             FeatureKey.VOLUME,
             1,
         )
@@ -140,9 +165,8 @@ class TestRegenerationServiceRun:
         assert outcome.generator_name is synthesis_mocks.generator_name
         assert outcome.feature_key is FeatureKey.VOLUME
 
-    def test_run_updates_feature_before_synthesis(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_updates_feature_before_synthesis(self, synthesis_mocks, reconstruction, features) -> None:
         service = RegenerationService()
-        features: Dict[Any, Any] = {}
         feature_key = FeatureKey.VOLUME
         new_value = 42
 
@@ -156,13 +180,13 @@ class TestRegenerationServiceRun:
 
         assert features[feature_key] == new_value
 
-    def test_run_updates_reconstruction_copy(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_updates_reconstruction_copy(self, synthesis_mocks, reconstruction, features) -> None:
         service = RegenerationService()
 
         service._run(
             reconstruction,
             synthesis_mocks.generator_name,
-            {},
+            features,
             FeatureKey.VOLUME,
             1,
         )
@@ -173,7 +197,44 @@ class TestRegenerationServiceRun:
         call_args = updated.update_generator_data.call_args
         assert call_args.args[0] == synthesis_mocks.generator_name
 
-    def test_run_calls_generator_for_each_instruction(self, synthesis_mocks, reconstruction) -> None:
+    def test_run_carries_the_reference_pitch_through_an_arpeggio_edit(
+        self, synthesis_mocks, reconstruction, features
+    ) -> None:
+        """An arpeggio edit stores the reference pitch the edit was made from.
+
+        Handing the unchanged reference back to the reconstruction is what keeps a later
+        export measuring the envelope against the same base.
+        """
+        service = RegenerationService()
+
+        service._run(
+            reconstruction,
+            synthesis_mocks.generator_name,
+            features,
+            FeatureKey.ARPEGGIO,
+            np.array([12, 0], dtype=np.int8),
+        )
+
+        call_args = reconstruction.model_copy.return_value.update_generator_data.call_args
+        assert call_args.args[3] == REFERENCE_PITCH
+
+    def test_run_carries_a_moved_reference_pitch(self, synthesis_mocks, reconstruction, features) -> None:
+        """The pitch stepper's edit stores the new reference pitch."""
+        moved_pitch = REFERENCE_PITCH + 12
+        service = RegenerationService()
+
+        service._run(
+            reconstruction,
+            synthesis_mocks.generator_name,
+            features,
+            FeatureKey.INITIAL_PITCH,
+            moved_pitch,
+        )
+
+        call_args = reconstruction.model_copy.return_value.update_generator_data.call_args
+        assert call_args.args[3] == moved_pitch
+
+    def test_run_calls_generator_for_each_instruction(self, synthesis_mocks, reconstruction, features) -> None:
         extra_instruction = MagicMock()
         synthesis_mocks.exporter.from_features.return_value = [synthesis_mocks.instruction, extra_instruction]
         service = RegenerationService()
@@ -181,7 +242,7 @@ class TestRegenerationServiceRun:
         service._run(
             reconstruction,
             synthesis_mocks.generator_name,
-            {},
+            features,
             FeatureKey.VOLUME,
             1,
         )
@@ -241,7 +302,7 @@ class TestRegenerationServiceCancellationConstraints:
     synthesis that is already in progress.
     """
 
-    def test_cancel_while_running_does_not_interrupt_synthesis(self, synthesis_mocks) -> None:
+    def test_cancel_while_running_does_not_interrupt_synthesis(self, synthesis_mocks, features) -> None:
         service = RegenerationService()
         results: List[Any] = []
         done = threading.Event()
@@ -255,7 +316,7 @@ class TestRegenerationServiceCancellationConstraints:
         task_started = threading.Event()
         task_unblock = threading.Event()
 
-        def blocking_from_features(features):
+        def blocking_from_features(edited_features):
             task_started.set()
             task_unblock.wait(timeout=2.0)
             return [synthesis_mocks.instruction]
@@ -265,7 +326,13 @@ class TestRegenerationServiceCancellationConstraints:
         reconstruction.config = MagicMock()
 
         thread = threading.Thread(
-            target=lambda: service._run(reconstruction, synthesis_mocks.generator_name, {}, FeatureKey.VOLUME, 1),
+            target=lambda: service._run(
+                reconstruction,
+                synthesis_mocks.generator_name,
+                features,
+                FeatureKey.VOLUME,
+                1,
+            ),
         )
         thread.start()
         task_started.wait(timeout=2.0)

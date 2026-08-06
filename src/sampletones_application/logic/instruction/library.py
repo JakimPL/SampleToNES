@@ -2,14 +2,6 @@ import threading
 from pathlib import Path
 from typing import Callable, Optional
 
-from sampletones_application.categories.elements.global_ import (
-    GlobalMessageElements,
-    GlobalTemplateElements,
-)
-from sampletones_application.categories.elements.instructions import (
-    InstructionsLibraryElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.library_manager import (
@@ -63,6 +55,7 @@ class LibraryLogic(CallbackMixin):
         language_manager: LanguageManager,
         is_operation_active: Callable[[], bool],
     ) -> None:
+        self._language_manager = language_manager
         self._config_manager = config_manager
         self._library_manager = library_manager
         self._is_operation_active = is_operation_active
@@ -84,126 +77,8 @@ class LibraryLogic(CallbackMixin):
         self.on_load_file_not_found: Optional[Callable[[Path, str], None]] = None
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
-        self._lbl_generate_library = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
-        ]
-        self._lbl_regenerate_library = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.REGENERATE_LIBRARY_BUTTON,
-        ]
-        self._msg_invalid_metadata_error = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.INVALID_METADATA_ERROR,
-        ]
-        self._msg_generating = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_GENERATING,
-        ]
-        self._msg_generation_saving = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_SAVING,
-        ]
-        self._msg_generation_failed = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_GENERATION_FAILED,
-        ]
-        self._msg_generation_cancelled = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_GENERATION_CANCELLED,
-        ]
-        self._msg_window_not_available = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_WINDOW_NOT_AVAILABLE,
-        ]
-        self._msg_load_error = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_LOAD_ERROR,
-        ]
-        self._msg_invalid_data_error = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_INVALID_DATA,
-        ]
-        self._msg_invalid_data_values_error = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_INVALID_DATA_VALUES,
-        ]
-        self._msg_deserialization_error = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_DESERIALIZATION_ERROR,
-        ]
-        self._msg_file_not_found = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_FILE_NOT_FOUND,
-        ]
-        self._msg_file_load_error = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_FILE_LOAD_ERROR,
-        ]
-        self._tpl_time_estimation = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.TIME_ESTIMATION,
-        ]
-        self._tpl_generation_progress = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TEMPLATE,
-            InstructionsLibraryElements.GENERATION_PROGRESS_TEMPLATE,
-        ]
-        self._tpl_incompatible_version_error = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TEMPLATE,
-            InstructionsLibraryElements.INCOMPATIBLE_VERSION_TEMPLATE,
-        ]
-        self._tpl_not_exists = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TEMPLATE,
-            InstructionsLibraryElements.LIBRARY_NOT_EXISTS_TEMPLATE,
-        ]
-        self._tpl_library_exists = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TEMPLATE,
-            InstructionsLibraryElements.LIBRARY_EXISTS_TEMPLATE,
-        ]
-        self._tpl_library_loaded = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TEMPLATE,
-            InstructionsLibraryElements.LIBRARY_LOADED_TEMPLATE,
-        ]
+        self._msg_window_not_available = language_manager["instructions.library.message.status_window_not_available"]
+        self._msg_load_error = language_manager["instructions.library.message.status_load_error"]
 
         self._library_manager.set_callbacks(
             on_generation_start=self._on_generation_start,
@@ -357,7 +232,7 @@ class LibraryLogic(CallbackMixin):
             return
 
         self._library_manager.generate_library(config, window)
-        self._emit_view(self._msg_generating)
+        self._emit_view(self._language_manager["instructions.library.message.status_generating"])
 
     def cancel_generation(self) -> None:
         self._library_manager.cancel_generation()
@@ -409,7 +284,7 @@ class LibraryLogic(CallbackMixin):
             self.call(
                 self.on_load_file_not_found,
                 self._library_manager.get_path(library_key),
-                self._msg_file_not_found,
+                self._language_manager["instructions.library.message.status_file_not_found"],
             )
         except (
             IOError,
@@ -421,7 +296,11 @@ class LibraryLogic(CallbackMixin):
                 exception,
                 f"Error loading library file for key {library_key}",
             )
-            self.call(self.on_load_error, exception, self._msg_file_load_error)
+            self.call(
+                self.on_load_error,
+                exception,
+                self._language_manager["instructions.library.message.status_file_load_error"],
+            )
         except InvalidMetadataError as exception:
             logger.error_with_traceback(
                 exception,
@@ -430,7 +309,7 @@ class LibraryLogic(CallbackMixin):
             self.call(
                 self.on_load_error,
                 exception,
-                self._msg_invalid_metadata_error,
+                self._language_manager["global.dialog.message.invalid_metadata_error"],
             )
         except InvalidLibraryDataValuesError as exception:
             logger.error_with_traceback(
@@ -440,14 +319,18 @@ class LibraryLogic(CallbackMixin):
             self.call(
                 self.on_load_error,
                 exception,
-                self._msg_invalid_data_values_error,
+                self._language_manager["instructions.library.message.status_invalid_data_values"],
             )
         except InvalidLibraryDataError as exception:
             logger.error_with_traceback(
                 exception,
                 f"Invalid library data file for {library_key}",
             )
-            self.call(self.on_load_error, exception, self._msg_invalid_data_error)
+            self.call(
+                self.on_load_error,
+                exception,
+                self._language_manager["instructions.library.message.status_invalid_data"],
+            )
         except IncompatibleLibraryDataVersionError as exception:
             logger.error_with_traceback(
                 exception,
@@ -457,7 +340,7 @@ class LibraryLogic(CallbackMixin):
             self.call(
                 self.on_load_error,
                 exception,
-                self._tpl_incompatible_version_error.format(
+                self._language_manager["instructions.library.template.incompatible_version_template"].format(
                     exception.actual_version,
                     exception.expected_version,
                 ),
@@ -470,7 +353,7 @@ class LibraryLogic(CallbackMixin):
             self.call(
                 self.on_load_error,
                 exception,
-                self._msg_deserialization_error,
+                self._language_manager["instructions.library.message.status_deserialization_error"],
             )
         except LoadLibraryError as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
@@ -488,11 +371,11 @@ class LibraryLogic(CallbackMixin):
         with self._status_lock:
             match task_status:
                 case TaskStatus.COMPLETED:
-                    self._emit_view(self._msg_generation_saving, progress=1.0)
+                    self._emit_view(self._language_manager["instructions.library.message.status_saving"], progress=1.0)
                 case TaskStatus.FAILED:
-                    self._emit_view(self._msg_generation_failed)
+                    self._emit_view(self._language_manager["instructions.library.message.status_generation_failed"])
                 case TaskStatus.CANCELLED:
-                    self._emit_view(self._msg_generation_cancelled)
+                    self._emit_view(self._language_manager["instructions.library.message.status_generation_cancelled"])
                 case TaskStatus.RUNNING:
                     self._update_progress_state(task_progress)
 
@@ -504,12 +387,14 @@ class LibraryLogic(CallbackMixin):
         eta_seconds = self._eta_estimator.update(creator.completed_instructions)
         eta_string = ETAEstimator.format_duration(eta_seconds)
 
-        status_text = self._tpl_generation_progress.format(
+        status_text = self._language_manager["instructions.library.template.generation_progress_template"].format(
             creator.completed_instructions,
             creator.total_instructions,
         )
         if eta_string:
-            status_text += self._tpl_time_estimation.format(eta_string=eta_string)
+            status_text += self._language_manager["global.dialog.template.time_estimation"].format(
+                eta_string=eta_string
+            )
 
         self._emit_view(status_text, progress=task_progress.get_progress())
 
@@ -563,16 +448,22 @@ class LibraryLogic(CallbackMixin):
         if status_text is None:
             library_name = get_display_name_from_key(key)
             if self._library_manager.is_library_loaded(key):
-                status_text = self._tpl_library_loaded.format(library_name)
+                status_text = self._language_manager["instructions.library.template.library_loaded_template"].format(
+                    library_name
+                )
             elif self._library_manager.library_exists_for_key(key):
-                status_text = self._tpl_library_exists.format(library_name)
+                status_text = self._language_manager["instructions.library.template.library_exists_template"].format(
+                    library_name
+                )
             else:
-                status_text = self._tpl_not_exists.format(library_name)
+                status_text = self._language_manager[
+                    "instructions.library.template.library_not_exists_template"
+                ].format(library_name)
 
         if self._library_manager.is_library_loaded(key):
-            generate_button_label = self._lbl_regenerate_library
+            generate_button_label = self._language_manager["instructions.library.label.regenerate_library_button"]
         else:
-            generate_button_label = self._lbl_generate_library
+            generate_button_label = self._language_manager["instructions.library.label.generate_library_button"]
 
         view_model = LibraryPanelViewModel(
             status_text=status_text,

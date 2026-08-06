@@ -6,6 +6,7 @@ from sampletones_application.categories.elements.sequencer import SequencerGridE
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_HEADER, SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
@@ -120,9 +121,9 @@ class GUISequencerGridPanel(GUIPanel):
             SubColumn.VOLUME: widths.volume,
         }
 
-        self._item_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_REGISTRY}"
-        self._cell_handler_tag = f"{TAG_SEQUENCER_GRID_TABLE_TRACKER}{SUF_HANDLER_REGISTRY}"
-        self._header_handler_tag = f"{TAG_SEQUENCER_GRID_TABLE_TRACKER}{SUF_HANDLER_HEADER}"
+        self._item_handler_tag = compose_tag(TAG_SEQUENCER_GRID_PANEL, SUF_HANDLER_REGISTRY)
+        self._cell_handler_tag = compose_tag(TAG_SEQUENCER_GRID_TABLE_TRACKER, SUF_HANDLER_REGISTRY)
+        self._header_handler_tag = compose_tag(TAG_SEQUENCER_GRID_TABLE_TRACKER, SUF_HANDLER_HEADER)
 
         self._rows: Dict[Optional[int], Sender] = {}
         self._header_columns: Dict[Sender, Optional[GeneratorName]] = {}

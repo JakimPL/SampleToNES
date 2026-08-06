@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from sampletones_application.categories.elements.global_ import TreeElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_core.paths import (
@@ -27,21 +25,16 @@ class ExplorerManager:
         *,
         language_manager: LanguageManager,
     ) -> None:
+        self._language_manager = language_manager
         self.tree = Tree()
         self.config_manager = config_manager
-        self._root_label = language_manager[
-            Page.GLOBAL,
-            Panel.BROWSER,
-            TextType.LABEL,
-            TreeElements.ROOT,
-        ]
 
         self._expanded_directories: Dict[Path, bool] = {}
         self.depth = depth
 
     def refresh_tree(self) -> None:
         container_root = TreeNode(
-            name=self._root_label,
+            name=self._language_manager["global.browser.label.root"],
             node_type=NodeType.ROOT,
         )
 

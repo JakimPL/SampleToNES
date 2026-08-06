@@ -33,7 +33,10 @@ def pulse_instructions() -> list:
 
 @pytest.fixture
 def pulse_features(pulse_instructions) -> Features:
-    return PulseExporter().to_features(pulse_instructions)
+    return PulseExporter().to_features(
+        pulse_instructions,
+        PulseExporter.derive_initial_pitch(pulse_instructions),
+    )
 
 
 @pytest.fixture

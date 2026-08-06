@@ -3,12 +3,12 @@ from typing import Optional
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
-from sampletones_core.famitracker.export import write_ftm
 from sampletones_core.project import Project
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.trackers.request import ProjectExport
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -94,8 +94,10 @@ class ProjectController(CallbackMixin):
         self._project_manager.install(project, clean=clean)
         self.call(self.on_project_replaced)
 
-    def export_module(self, path: Path) -> None:
-        write_ftm(path, self.project)
+    @property
+    def export_request(self) -> ProjectExport:
+        """Packages the current project for a tracker backend to write."""
+        return ProjectExport(project=self.project)
 
     def mark_updated(self) -> None:
         self._touch()

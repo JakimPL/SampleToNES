@@ -1,23 +1,15 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-    FileFilterElements,
-    GlobalMessageElements,
-    MenuElements,
-    PlayerElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionPanelElements,
-    ReconstructionsBrowserElements,
-    ReconstructionsInstrumentsElements,
-)
 from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.trackers import (
+    INSTRUMENT_EXPORT_FORMATS,
+    TRACKER_INSTRUMENT_FILTERS,
+)
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
@@ -41,7 +33,7 @@ from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.result import ExportResult
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_application.services.export.truncation import ExportTruncation
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -72,10 +64,8 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
-from sampletones_application.utils.file_dialogs.api import (
-    save_file_dialog,
-    select_directory_dialog,
-)
+from sampletones_application.utils.file_dialogs.api import save_file_dialog
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -85,7 +75,12 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.paths import EXT_FILE_WAVE
+from sampletones_core.trackers.backend import TrackerBackend
+from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -97,9 +92,9 @@ from sampletones_shared.exceptions import (
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
-_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_LEFT}"
-_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_CENTER}"
-_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_RECONSTRUCTION}{SUF_PANEL_RIGHT}"
+_LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_RECONSTRUCTION, SUF_PANEL_LEFT)
+_CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_RECONSTRUCTION, SUF_PANEL_CENTER)
+_RIGHT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_RECONSTRUCTION, SUF_PANEL_RIGHT)
 
 
 class ReconstructionTabCoordinator:
@@ -111,6 +106,7 @@ class ReconstructionTabCoordinator:
         reconstruction_manager: ReconstructionManager,
         browser_manager: BrowserManager,
         export_service: ExportService,
+        tracker_backends: Dict[TrackerFormat, TrackerBackend],
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
         on_reconstruct_file: VoidCallback,
         on_reconstruct_directory: VoidCallback,
@@ -124,125 +120,30 @@ class ReconstructionTabCoordinator:
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
     ) -> None:
+        self._language_manager = language_manager
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
+        self._tracker_backends = tracker_backends
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
 
-        self._tab_label = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.TAB_RECONSTRUCTION,
-        ]
         self._geometry = layout.geometry
         self._side_panel_count: int
         self._instruments_width = layout.right_column_width
         self._right_height = layout.right_column_height
-        self._ttl_remove_reconstruction = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.TITLE,
-            ReconstructionsBrowserElements.REMOVE_RECONSTRUCTION_DIALOG,
-        ]
-        self._msg_remove_reconstruction = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.REMOVE_RECONSTRUCTION_MESSAGE,
-        ]
-        self._ttl_remove_directory = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.TITLE,
-            ReconstructionsBrowserElements.REMOVE_DIRECTORY_DIALOG,
-        ]
-        self._msg_remove_directory = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.REMOVE_DIRECTORY_MESSAGE,
-        ]
-        self._lbl_remove = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.REMOVE,
-        ]
+        self._lbl_remove = language_manager["global.dialog.label.remove"]
 
-        self._msg_file_not_found = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.FILE_NOT_FOUND,
-        ]
-        self._msg_load_error = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.LOAD_ERROR,
-        ]
-        self._msg_invalid_metadata = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.INVALID_METADATA_ERROR,
-        ]
-        self._msg_invalid_values = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.INVALID_VALUES,
-        ]
-        self._msg_invalid_file = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.INVALID_FILE,
-        ]
-        self._msg_deserialization_error = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.DESERIALIZATION_ERROR,
-        ]
-        self._tpl_incompatible_version = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.TEMPLATE,
-            ReconstructionsBrowserElements.INCOMPATIBLE_VERSION_TEMPLATE,
-        ]
+        self._msg_load_error = language_manager["reconstructions.browser.message.load_error"]
         self._export_messages = ExportMessages.build(language_manager)
-        self._ttl_export_instrument = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_DIALOG,
-        ]
-        self._ttl_export_instruments = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_DIALOG,
-        ]
-        self._filter_export_instrument = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.FILTER,
-            FileFilterElements.INSTRUMENT,
-        ]
-        self._filter_export_wav = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.FILTER,
-            FileFilterElements.WAVE,
-        ]
-        self._msg_locate_audio_failed = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.MESSAGE,
-            ReconstructionPanelElements.LOCATE_AUDIO_FAILED,
-        ]
+        self._instrument_filter_names: Dict[TrackerFormat, str] = {
+            tracker_format: language_manager[
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.FILTER,
+                element,
+            ]
+            for tracker_format, element in TRACKER_INSTRUMENT_FILTERS.items()
+        }
 
         self._browser_logic: BrowserLogic = BrowserLogic(
             config_manager,
@@ -275,12 +176,7 @@ class ReconstructionTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
             dialogs=dialogs,
-            error_message=language_manager[
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.MESSAGE,
-                PlayerElements.AUDIO_PLAYBACK_ERROR,
-            ],
+            error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.path_colors,
@@ -302,6 +198,7 @@ class ReconstructionTabCoordinator:
             session_manager,
             reconstruction_manager,
             export_service,
+            tracker_backends,
         )
         self._reconstruction_instruments_panel: GUIReconstructionInstrumentsPanel = GUIReconstructionInstrumentsPanel(
             pitch_stepper_style=layout.pitch_stepper_style,
@@ -343,7 +240,8 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
-            path, self._msg_locate_audio_failed
+            path,
+            language_manager["reconstructions.reconstruction.message.locate_audio_failed"],
         )
 
         export_service.subscribe(self._on_export_result)
@@ -392,7 +290,7 @@ class ReconstructionTabCoordinator:
                     fp,
                 )
             case ExportSuccess(
-                kind=ExportKind.INSTRUMENTS,
+                kind=ExportKind.SAMPLE,
                 filepath=fp,
                 truncation=truncation,
             ):
@@ -409,14 +307,14 @@ class ReconstructionTabCoordinator:
                 self._dialogs.show_error(exception, messages.wav_failed)
             case ExportError(kind=ExportKind.INSTRUMENT, exception=exception):
                 self._dialogs.show_error(exception, messages.instrument_failed)
-            case ExportError(kind=ExportKind.INSTRUMENTS, exception=exception):
+            case ExportError(kind=ExportKind.SAMPLE, exception=exception):
                 self._dialogs.show_error(exception, messages.instruments_failed)
 
     def _export_message(
         self,
         success: str,
         shortened: str,
-        truncation: Optional[ExportTruncation],
+        truncation: Optional[EnvelopeTruncation],
     ) -> str:
         """Follows the success line with the frames the FamiTracker sequence limit left out.
 
@@ -450,38 +348,84 @@ class ReconstructionTabCoordinator:
         self,
         default_filename: str,
         default_path: str,
+        generator_name: GeneratorName,
     ) -> None:
+        """Prompts for the file the ``generator_name`` slice is written to.
+
+        Every format that writes a single slice is offered at once, so the type picked in the
+        dialog names the tracker the slice is written for.
+        """
         filepath = save_file_dialog(
-            title=self._ttl_export_instrument,
+            title=self._language_manager["reconstructions.instruments.title.export_instrument_dialog"],
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[EXT_FILE_INSTRUMENT],
-            filter_name=self._filter_export_instrument,
+            filters=self._instrument_filters(),
         )
-        self._handle_export_instrument(filepath)
+        self._handle_export_instrument(filepath, generator_name)
+
+    def _instrument_filters(self) -> Tuple[FileFilter, ...]:
+        """The types a destination for one slice may be given, one per tracker offered.
+
+        Naming each tracker's own type puts the trackers an export can reach in the dialog's
+        type selector, so the one that is picked there names the format.
+        """
+        return tuple(
+            self._tracker_filter(tracker_format, ExportScope.INSTRUMENT) for tracker_format in INSTRUMENT_EXPORT_FORMATS
+        )
 
     @ignore_none_path
-    def _handle_export_instrument(self, filepath: Path) -> None:
-        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath)
+    def _handle_export_instrument(
+        self,
+        filepath: Path,
+        generator_name: GeneratorName,
+    ) -> None:
+        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath, generator_name)
 
-    def _open_export_instruments_dialog(self, default_path: str) -> None:
-        directory = select_directory_dialog(
-            title=self._ttl_export_instruments,
+    def _open_export_instruments_dialog(
+        self,
+        default_filename: str,
+        default_path: str,
+        tracker_format: TrackerFormat,
+    ) -> None:
+        """Prompts for the destination the loaded reconstruction's slices are named after.
+
+        The tracker was chosen with the action, so the dialog offers its file type alone: a
+        format that gathers the whole reconstruction into one document writes it at the
+        destination, while one that keeps an instrument per file writes its slices beside it.
+        """
+        destination = save_file_dialog(
+            title=self._language_manager["reconstructions.instruments.title.export_instruments_dialog"],
             initial_directory=default_path,
+            default_filename=default_filename,
+            filters=(self._tracker_filter(tracker_format, ExportScope.SAMPLE),),
         )
-        self._handle_export_instruments(directory)
+        self._handle_export_instruments(destination, tracker_format)
+
+    def _tracker_filter(
+        self,
+        tracker_format: TrackerFormat,
+        scope: ExportScope,
+    ) -> FileFilter:
+        """The type ``tracker_format`` writes ``scope`` files as, named after that tracker."""
+        return FileFilter.for_extensions(
+            self._instrument_filter_names[tracker_format],
+            [self._tracker_backends[tracker_format].extension(scope)],
+        )
 
     @ignore_none_path
-    def _handle_export_instruments(self, directory: Path) -> None:
-        self._reconstruction_panel_logic.handle_export_instruments_confirmed(directory)
+    def _handle_export_instruments(
+        self,
+        destination: Path,
+        tracker_format: TrackerFormat,
+    ) -> None:
+        self._reconstruction_panel_logic.handle_export_instruments_confirmed(destination, tracker_format)
 
     def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
         filepath = save_file_dialog(
             title=self._export_messages.wav_title,
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[EXT_FILE_WAVE],
-            filter_name=self._filter_export_wav,
+            filters=(FileFilter.for_extensions(self._language_manager["global.dialog.filter.wave"], [EXT_FILE_WAVE]),),
         )
         self._handle_export_wav(filepath)
 
@@ -493,7 +437,7 @@ class ReconstructionTabCoordinator:
         with dpg.tab(
             tag=TAG_GLOBAL_TAB_RECONSTRUCTION,
             parent=TAG_GLOBAL_TABS,
-            label=self._tab_label,
+            label=self._language_manager["global.menu.label.tab_reconstruction"],
         ):
             self._side_panel_count = TabColumns.build(
                 panel_gap=self._geometry.panel_gap,
@@ -614,8 +558,8 @@ class ReconstructionTabCoordinator:
     def _request_remove_reconstruction(self, filepath: Path) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
-            title=self._ttl_remove_reconstruction,
-            message=self._msg_remove_reconstruction,
+            title=self._language_manager["reconstructions.browser.title.remove_reconstruction_dialog"],
+            message=self._language_manager["reconstructions.browser.message.remove_reconstruction_message"],
             on_confirm=lambda: self._remove_reconstruction(filepath),
             ok_label=self._lbl_remove,
             path=filepath,
@@ -624,8 +568,8 @@ class ReconstructionTabCoordinator:
     def _request_remove_directory(self, directory: Path) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
-            title=self._ttl_remove_directory,
-            message=self._msg_remove_directory,
+            title=self._language_manager["reconstructions.browser.title.remove_directory_dialog"],
+            message=self._language_manager["reconstructions.browser.message.remove_directory_message"],
             on_confirm=lambda: self._remove_directory(directory),
             ok_label=self._lbl_remove,
             path=directory,
@@ -676,8 +620,8 @@ class ReconstructionTabCoordinator:
     def request_export_wav_dialog(self) -> None:
         self._reconstruction_panel_logic.request_export_wav_dialog()
 
-    def request_export_instruments_dialog(self) -> None:
-        self._reconstruction_panel_logic.request_export_instruments_dialog()
+    def request_export_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
+        self._reconstruction_panel_logic.request_export_instruments_dialog(tracker_format)
 
     def _on_browser_autoplay_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
@@ -712,7 +656,10 @@ class ReconstructionTabCoordinator:
                 exception,
                 f"Failed to load reconstruction data from {filepath}",
             )
-            self._dialogs.show_file_not_found(filepath, self._msg_file_not_found)
+            self._dialogs.show_file_not_found(
+                filepath,
+                self._language_manager["reconstructions.browser.message.file_not_found"],
+            )
         except (
             IOError,
             IsADirectoryError,
@@ -729,19 +676,22 @@ class ReconstructionTabCoordinator:
                 exception,
                 f"Invalid metadata in the reconstruction file {filepath}",
             )
-            self._dialogs.show_error(exception, self._msg_invalid_metadata)
+            self._dialogs.show_error(exception, self._language_manager["global.dialog.message.invalid_metadata_error"])
         except InvalidReconstructionValuesError as exception:
             logger.error_with_traceback(
                 exception,
                 f"Reconstruction contains invalid values: {filepath}",
             )
-            self._dialogs.show_error(exception, self._msg_invalid_values)
+            self._dialogs.show_error(
+                exception,
+                self._language_manager["reconstructions.browser.message.invalid_values"],
+            )
         except InvalidReconstructionError as exception:
             logger.error_with_traceback(
                 exception,
                 f"Invalid reconstruction file: {filepath}",
             )
-            self._dialogs.show_error(exception, self._msg_invalid_file)
+            self._dialogs.show_error(exception, self._language_manager["reconstructions.browser.message.invalid_file"])
         except IncompatibleReconstructionVersionError as exception:
             logger.error_with_traceback(
                 exception,
@@ -750,7 +700,7 @@ class ReconstructionTabCoordinator:
             )
             self._dialogs.show_error(
                 exception,
-                self._tpl_incompatible_version.format(
+                self._language_manager["reconstructions.browser.template.incompatible_version_template"].format(
                     exception.actual_version,
                     exception.expected_version,
                 ),
@@ -760,7 +710,10 @@ class ReconstructionTabCoordinator:
                 exception,
                 f"Deserialization error while loading reconstruction from {filepath}",
             )
-            self._dialogs.show_error(exception, self._msg_deserialization_error)
+            self._dialogs.show_error(
+                exception,
+                self._language_manager["reconstructions.browser.message.deserialization_error"],
+            )
         except LoadReconstructionError as exception:
             logger.error_with_traceback(
                 exception,

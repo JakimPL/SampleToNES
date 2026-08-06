@@ -87,6 +87,7 @@ class DataModel(BaseModel, ABC):
     def _construct(cls, fast: bool = True, **data: Any) -> Self:
         if fast:
             return cls.model_construct(**data)
+
         return cls(**data)
 
     def serialize_inner(self) -> SerializedData:
@@ -95,6 +96,7 @@ class DataModel(BaseModel, ABC):
             value = getattr(self, field_name)
             annotation = field_info.annotation
             result[field_name] = self._pack_value(value, annotation, field_name)
+
         return result
 
     @classmethod
@@ -108,10 +110,18 @@ class DataModel(BaseModel, ABC):
         for field_name, field_info in cls.model_fields.items():
             annotation = field_info.annotation
             raw = data.get(field_name)
-            value = cls._unpack_value(raw, annotation, field_name, validation, fast)
+            value = cls._unpack_value(
+                raw,
+                annotation,
+                field_name,
+                validation,
+                fast,
+            )
             if validation is not None:
                 validation(value)
+
             field_values[field_name] = value
+
         return cls._construct(fast=fast, **field_values)
 
     def _pack_value(self, value: Any, annotation: Any, field_name: str) -> Any:
@@ -126,7 +136,9 @@ class DataModel(BaseModel, ABC):
             if optional_inner is not None:
                 if value is None:
                     return None
+
                 return self._pack_value(value, optional_inner, field_name)
+
             return self._pack_union(value, field_name)
 
         if isinstance(annotation, TypeVar):
@@ -169,7 +181,9 @@ class DataModel(BaseModel, ABC):
             if optional_inner is not None:
                 if raw is None:
                     return None
+
                 return cls._unpack_value(raw, optional_inner, field_name, validation, fast)
+
             return cls._unpack_union(raw, field_name)
 
         if isinstance(annotation, TypeVar):

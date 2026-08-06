@@ -2,14 +2,10 @@ from typing import Any, Callable, List, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import StatusElements
-from sampletones_application.categories.elements.instructions import (
-    InstructionsDetailsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
 from sampletones_application.layout.tabs.instructions import InstructionsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,
@@ -63,93 +59,18 @@ class GUIInstructionChoicePanel(GUIPanel):
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
         self._status_bar = status_bar
         self._layout = layout
         self._pitch_stepper_style = pitch_stepper_style
-        self._item_handler_tag = f"{TAG_INSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = compose_tag(TAG_INSTRUCTIONS_DETAILS_PANEL, SUF_HANDLER_REGISTRY)
         self._current_instruction_data: Optional[InstructionPanelData] = None
         self._pitch_stepper: Optional[GUIPitchStepper] = None
 
-        self._lbl_section = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.DETAILS_TEXT,
-        ]
-        self._lbl_window_pulse_pitch = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.WINDOW_PULSE_PITCH,
-        ]
-        self._lbl_window_pulse_volume = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.WINDOW_PULSE_VOLUME,
-        ]
-        self._lbl_window_pulse_duty_cycle = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.WINDOW_PULSE_DUTY_CYCLE,
-        ]
-        self._lbl_window_noise_period = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.WINDOW_NOISE_PERIOD,
-        ]
-        self._lbl_window_noise_volume = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.WINDOW_NOISE_VOLUME,
-        ]
-        self._lbl_window_noise_short = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.WINDOW_NOISE_SHORT,
-        ]
-        self._lbl_window_triangle_pitch = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.WINDOW_TRIANGLE_PITCH,
-        ]
-        self._msg_no_instruction = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.MESSAGE,
-            InstructionsDetailsElements.NO_INSTRUCTION_SELECTED,
-        ]
-        self._msg_status_input = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.INPUT,
-        ]
-        self._msg_status_input_pitch = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.MESSAGE,
-            InstructionsDetailsElements.STATUS_INPUT_PITCH,
-        ]
-        self._msg_status_input_period = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.MESSAGE,
-            InstructionsDetailsElements.STATUS_INPUT_PERIOD,
-        ]
-        tooltip_template = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.TEMPLATE,
-            InstructionsDetailsElements.PITCH_TOOLTIP_TEMPLATE,
-        ]
+        self._msg_status_input = language_manager["global.status.message.input"]
+        tooltip_template = language_manager["instructions.details.template.pitch_tooltip_template"]
         self._pitch_tooltip = build_pitch_tooltip(
             language_manager,
             PITCH_VALUE_KIND,
@@ -173,7 +94,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         self._setup_handlers()
         with self._collapsible_card(
             parent,
-            self._lbl_section,
+            self._language_manager["instructions.details.label.details_text"],
             glyph=self._glyphs.headers.details,
         ):
             self._create_instructions_choice_inputs()
@@ -196,7 +117,7 @@ class GUIInstructionChoicePanel(GUIPanel):
 
     def _create_no_instruction_text(self) -> None:
         dpg.add_text(
-            self._msg_no_instruction,
+            self._language_manager["instructions.details.message.no_instruction_selected"],
             tag=TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
             parent=self._body_container,
         )
@@ -247,7 +168,11 @@ class GUIInstructionChoicePanel(GUIPanel):
             initial_value=initial_value,
             label=label,
             tooltip=self._period_tooltip if is_period else self._pitch_tooltip,
-            status_message=self._msg_status_input_period if is_period else self._msg_status_input_pitch,
+            status_message=(
+                self._language_manager["instructions.details.message.status_input_period"]
+                if is_period
+                else self._language_manager["instructions.details.message.status_input_pitch"]
+            ),
             status_bar=self._status_bar,
             layout=self._pitch_stepper_style.dimensions,
             plus_minus_layout=self._pitch_stepper_style.plus_minus,
@@ -262,11 +187,11 @@ class GUIInstructionChoicePanel(GUIPanel):
         self._create_pitch_stepper(
             kind=PITCH_VALUE_KIND,
             initial_value=instruction.pitch,
-            label=self._lbl_window_pulse_pitch,
+            label=self._language_manager["instructions.details.label.window_pulse_pitch"],
             tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_PULSE_PITCH,
         )
         with labeled_field(
-            self._lbl_window_pulse_volume,
+            self._language_manager["instructions.details.label.window_pulse_volume"],
             self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
@@ -279,7 +204,7 @@ class GUIInstructionChoicePanel(GUIPanel):
                 width=self._layout.choice.input_width,
             )
         with labeled_field(
-            self._lbl_window_pulse_duty_cycle,
+            self._language_manager["instructions.details.label.window_pulse_duty_cycle"],
             self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
@@ -307,7 +232,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         self._create_pitch_stepper(
             kind=PITCH_VALUE_KIND,
             initial_value=instruction.pitch,
-            label=self._lbl_window_triangle_pitch,
+            label=self._language_manager["instructions.details.label.window_triangle_pitch"],
             tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
         )
 
@@ -318,11 +243,11 @@ class GUIInstructionChoicePanel(GUIPanel):
         self._create_pitch_stepper(
             kind=PERIOD_VALUE_KIND,
             initial_value=instruction.period,
-            label=self._lbl_window_noise_period,
+            label=self._language_manager["instructions.details.label.window_noise_period"],
             tag=TAG_INSTRUCTIONS_DETAILS_INPUT_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
         )
         with labeled_field(
-            self._lbl_window_noise_volume,
+            self._language_manager["instructions.details.label.window_noise_volume"],
             self._layout.choice.label_width,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
         ):
@@ -337,7 +262,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         dpg.add_checkbox(
             tag=TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
-            label=self._lbl_window_noise_short,
+            label=self._language_manager["instructions.details.label.window_noise_short"],
             default_value=instruction.short,
             callback=self._on_instruction_changed,
         )

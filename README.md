@@ -24,7 +24,7 @@ It supports:
     * `pulse2`
     * `triangle`
     * `noise`
-* exporting reconstructed audio as FamiTracker `.fti` instruments or as `.wav`
+* exporting reconstructed audio as FamiTracker `.fti` instruments, Bitphase `.json` instrument presets, or `.wav`
 
 ## Installation
 

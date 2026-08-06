@@ -3,10 +3,6 @@ from typing import Any, Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import (
-    SequencerHistoryElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import FeatureColors
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
@@ -80,6 +76,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self._layout = layout
         self._feature_colors = feature_colors
         self._status_bar = status_bar
@@ -89,43 +86,6 @@ class GUISequencerHistoryPanel(GUIPanel):
         self.on_undo: Optional[VoidCallback] = None
         self.on_redo: Optional[VoidCallback] = None
         self.on_jump_to: Optional[Callable[[int], None]] = None
-
-        self._lbl_history = language_manager[
-            Page.SEQUENCER,
-            Panel.HISTORY,
-            TextType.LABEL,
-            SequencerHistoryElements.HISTORY_TEXT,
-        ]
-        self._lbl_undo = language_manager[
-            Page.SEQUENCER,
-            Panel.HISTORY,
-            TextType.LABEL,
-            SequencerHistoryElements.UNDO,
-        ]
-        self._lbl_redo = language_manager[
-            Page.SEQUENCER,
-            Panel.HISTORY,
-            TextType.LABEL,
-            SequencerHistoryElements.REDO,
-        ]
-        self._msg_status_undo = language_manager[
-            Page.SEQUENCER,
-            Panel.HISTORY,
-            TextType.MESSAGE,
-            SequencerHistoryElements.STATUS_UNDO,
-        ]
-        self._msg_status_redo = language_manager[
-            Page.SEQUENCER,
-            Panel.HISTORY,
-            TextType.MESSAGE,
-            SequencerHistoryElements.STATUS_REDO,
-        ]
-        self._lbl_empty = language_manager[
-            Page.SEQUENCER,
-            Panel.HISTORY,
-            TextType.LABEL,
-            SequencerHistoryElements.EMPTY,
-        ]
 
         super().__init__(
             tag=TAG_SEQUENCER_HISTORY_PANEL,
@@ -138,7 +98,7 @@ class GUISequencerHistoryPanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._lbl_history,
+            self._language_manager["sequencer.history.label.history_text"],
             glyph=self._glyphs.headers.history,
             width=0,
         ):
@@ -166,23 +126,23 @@ class GUISequencerHistoryPanel(GUIPanel):
                 with dpg.table_row():
                     GUIButton(
                         tag=TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
-                        label=self._lbl_undo,
+                        label=self._language_manager["sequencer.history.label.undo"],
                         callback=self._on_undo_clicked,
                         width=-1,
                     )
                     GUIButton(
                         tag=TAG_SEQUENCER_HISTORY_BUTTON_REDO,
-                        label=self._lbl_redo,
+                        label=self._language_manager["sequencer.history.label.redo"],
                         callback=self._on_redo_clicked,
                         width=-1,
                     )
         self._status_bar.bind_to_item(
             TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
-            self._msg_status_undo,
+            self._language_manager["sequencer.history.message.status_undo"],
         )
         self._status_bar.bind_to_item(
             TAG_SEQUENCER_HISTORY_BUTTON_REDO,
-            self._msg_status_redo,
+            self._language_manager["sequencer.history.message.status_redo"],
         )
 
     def update_view(self, view_model: HistoryViewModel) -> None:
@@ -273,7 +233,10 @@ class GUISequencerHistoryPanel(GUIPanel):
             self._show_empty()
 
     def _show_empty(self) -> None:
-        empty = dpg.add_text(self._lbl_empty, parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST)
+        empty = dpg.add_text(
+            self._language_manager["sequencer.history.label.empty"],
+            parent=TAG_SEQUENCER_HISTORY_WINDOW_LIST,
+        )
         FontRegistry.bind_to_item(empty, Font.REGULAR_SMALL)
 
     def _create_entry_list(self, window: EntryWindow) -> None:

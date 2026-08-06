@@ -118,7 +118,7 @@ each value sits in the tree stays in the factory.
 | Application | `application/` | `DeploymentConfig` (`sampletones_application/config/deployment/`) | `DeploymentConfig.load()`, with `SAMPLETONES_*` env overrides |
 | Behavior | `behavior/` | `BehaviorConfig` (`sampletones_application/layout/behavior.py`) | folded into `LayoutConfig.behavior` by `load_layout_config` |
 | Calibration | `calibration/` | `CorpusConfig`, `RefereeConfig` (`sampletones_core/calibration/config/`) | each model's own `.load()` |
-| Language | `lang/` | `LanguageManager` (`sampletones_application/categories/`) | flat dotted-key string map |
+| Language | `lang/` | `LanguageManager` (`sampletones_application/categories/`) | flat string map keyed `page.panel.text_type.element`, each key validated at load |
 | Layout | `layout/` | `LayoutConfig` (`sampletones_application/layout/config.py`) | `load_layout_config` (`layout/loader.py`) |
 | Theme | `theme/` | `ThemeSpec` (`sampletones_application/ui/themes/spec.py`) | `ThemeLoader.load_all()` → `ThemeRegistry` |
 

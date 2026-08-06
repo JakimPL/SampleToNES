@@ -109,6 +109,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 generator_name,
                 instructions,
                 audio,
+                features.initial_pitch,
             )
             self._emit(
                 ServiceSuccess(

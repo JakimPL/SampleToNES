@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON, TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -29,7 +30,7 @@ class GUIButton:
     ) -> None:
         self._tag = tag
         self._parent = parent
-        self._button_tag = f"{tag}{SUF_BUTTON}"
+        self._button_tag = compose_tag(tag, SUF_BUTTON)
         callback = callback if callback is not None else lambda: None
         resolved_theme = ThemeRegistry.resolve(theme, TAG_GLOBAL_THEME_DEFAULT)
 

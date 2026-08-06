@@ -1,14 +1,18 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Sequence
+from typing import Final, List, Optional, Sequence
 
 import pytest
 
-from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.coordinators.playback.router import PlaybackRouter
+from tests.suite.language import FakeLanguageManager
 
 IDLE = "idle"
 PLAYING = "playing"
 PAUSED = "paused"
+
+PLAY_LABEL_KEY: Final[str] = "global.menu.label.item_playback_play"
+PAUSE_LABEL_KEY: Final[str] = "global.menu.label.item_playback_pause"
+RESUME_LABEL_KEY: Final[str] = "global.menu.label.item_playback_resume"
 
 
 class FakeSource:
@@ -64,13 +68,6 @@ class FakeDevice:
     def stop(self) -> None:
         self.stop_calls += 1
         self.playing = False
-
-
-class FakeLanguageManager:
-    """Resolves a label key to its element, so ``play_label`` is checkable against a MenuElements."""
-
-    def __getitem__(self, key: Sequence[object]) -> object:
-        return key[-1]
 
 
 def _router(
@@ -173,7 +170,7 @@ class StateCase:
     pause_enabled: bool
     paused: bool
     stop_enabled: bool
-    play_label: MenuElements = field(default=MenuElements.ITEM_PLAYBACK_PLAY)
+    play_label: str = field(default=PLAY_LABEL_KEY)
 
 
 STATE_CASES = [
@@ -220,7 +217,7 @@ STATE_CASES = [
         pause_enabled=True,
         paused=False,
         stop_enabled=True,
-        play_label=MenuElements.ITEM_PLAYBACK_PAUSE,
+        play_label=PAUSE_LABEL_KEY,
     ),
     StateCase(
         "active_paused",
@@ -232,7 +229,7 @@ STATE_CASES = [
         pause_enabled=True,
         paused=True,
         stop_enabled=True,
-        play_label=MenuElements.ITEM_PLAYBACK_RESUME,
+        play_label=RESUME_LABEL_KEY,
     ),
     StateCase(
         "background_playing_on_sourceless_tab",
@@ -244,7 +241,7 @@ STATE_CASES = [
         pause_enabled=True,
         paused=False,
         stop_enabled=True,
-        play_label=MenuElements.ITEM_PLAYBACK_PAUSE,
+        play_label=PAUSE_LABEL_KEY,
     ),
     StateCase(
         "background_paused_on_sourceless_tab",
@@ -256,7 +253,7 @@ STATE_CASES = [
         pause_enabled=True,
         paused=True,
         stop_enabled=True,
-        play_label=MenuElements.ITEM_PLAYBACK_RESUME,
+        play_label=RESUME_LABEL_KEY,
     ),
     StateCase(
         "active_idle_over_background_playing",

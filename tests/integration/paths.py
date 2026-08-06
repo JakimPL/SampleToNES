@@ -21,3 +21,6 @@ SONG_PATH: Final[Path] = CONFIG_DIRECTORY / "song.yaml"
 
 MODULE_FILENAME: Final[str] = "drums.ftm"
 FTM_OUTPUT_ENV: Final[str] = "SAMPLETONES_FTM_OUTPUT_DIR"
+
+DOCUMENT_FILENAME: Final[str] = "drums.btp"
+BTP_OUTPUT_ENV: Final[str] = "SAMPLETONES_BTP_OUTPUT_DIR"

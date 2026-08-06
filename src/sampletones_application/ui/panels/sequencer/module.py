@@ -2,14 +2,10 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import StatusElements
-from sampletones_application.categories.elements.sequencer import (
-    SequencerModuleElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
@@ -49,61 +45,21 @@ class GUISequencerModulePanel(GUIPanel):
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self._initial_settings = initial_settings
         self._layout = layout
         self._input_width = inputs.default_width
         self._label_width = inputs.label_width
         self._status_bar = status_bar
-        self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
-        self._rows_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_ROWS}{SUF_HANDLER_REGISTRY}"
+        self._nes_frequency_handler_tag = compose_tag(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, SUF_HANDLER_REGISTRY)
+        self._rows_handler_tag = compose_tag(TAG_SEQUENCER_MODULE_INPUT_ROWS, SUF_HANDLER_REGISTRY)
 
         self.on_nes_frequency: Optional[Callable[[int], None]] = None
         self.on_rows_per_pattern: Optional[Callable[[int], None]] = None
         self.on_tempo: Optional[Callable[[int], None]] = None
         self.on_speed: Optional[Callable[[int], None]] = None
 
-        self._lbl_module_options = language_manager[
-            Page.SEQUENCER,
-            Panel.MODULE,
-            TextType.LABEL,
-            SequencerModuleElements.MODULE_OPTIONS,
-        ]
-        self._lbl_nes_frequency = language_manager[
-            Page.SEQUENCER,
-            Panel.MODULE,
-            TextType.LABEL,
-            SequencerModuleElements.NES_FREQUENCY,
-        ]
-        self._lbl_rows = language_manager[
-            Page.SEQUENCER,
-            Panel.MODULE,
-            TextType.LABEL,
-            SequencerModuleElements.ROWS,
-        ]
-        self._tpl_rows_tooltip = language_manager[
-            Page.SEQUENCER,
-            Panel.MODULE,
-            TextType.TOOLTIP,
-            SequencerModuleElements.ROWS,
-        ]
-        self._lbl_tempo = language_manager[
-            Page.SEQUENCER,
-            Panel.MODULE,
-            TextType.LABEL,
-            SequencerModuleElements.TEMPO,
-        ]
-        self._lbl_speed = language_manager[
-            Page.SEQUENCER,
-            Panel.MODULE,
-            TextType.LABEL,
-            SequencerModuleElements.SPEED,
-        ]
-        self._msg_status_input = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.INPUT,
-        ]
+        self._msg_status_input = language_manager["global.status.message.input"]
 
         super().__init__(
             tag=TAG_SEQUENCER_MODULE_PANEL,
@@ -116,7 +72,7 @@ class GUISequencerModulePanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._lbl_module_options,
+            self._language_manager["sequencer.module.label.module_options"],
             glyph=self._glyphs.headers.settings,
         ):
             self._create_module_options()
@@ -124,7 +80,7 @@ class GUISequencerModulePanel(GUIPanel):
     def _create_module_options(self) -> None:
         settings = self._initial_settings
         with dpg.group(tag=TAG_SEQUENCER_MODULE_GROUP_OPTIONS):
-            with labeled_field(self._lbl_nes_frequency, self._label_width):
+            with labeled_field(self._language_manager["sequencer.module.label.nes_frequency"], self._label_width):
                 dpg.add_input_int(
                     default_value=settings.nes_frequency,
                     tag=TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
@@ -134,7 +90,7 @@ class GUISequencerModulePanel(GUIPanel):
                     max_clamped=True,
                     width=self._input_width,
                 )
-            with labeled_field(self._lbl_rows, self._label_width):
+            with labeled_field(self._language_manager["sequencer.module.label.rows"], self._label_width):
                 dpg.add_input_int(
                     default_value=settings.rows_per_pattern,
                     tag=TAG_SEQUENCER_MODULE_INPUT_ROWS,
@@ -144,7 +100,7 @@ class GUISequencerModulePanel(GUIPanel):
                     max_clamped=True,
                     width=self._input_width,
                 )
-            with labeled_field(self._lbl_tempo, self._label_width):
+            with labeled_field(self._language_manager["sequencer.module.label.tempo"], self._label_width):
                 dpg.add_input_int(
                     default_value=settings.tempo,
                     tag=TAG_SEQUENCER_MODULE_INPUT_TEMPO,
@@ -155,7 +111,7 @@ class GUISequencerModulePanel(GUIPanel):
                     width=self._input_width,
                     callback=self._on_tempo_input,
                 )
-            with labeled_field(self._lbl_speed, self._label_width):
+            with labeled_field(self._language_manager["sequencer.module.label.speed"], self._label_width):
                 dpg.add_input_int(
                     default_value=settings.speed,
                     tag=TAG_SEQUENCER_MODULE_INPUT_SPEED,
@@ -185,7 +141,7 @@ class GUISequencerModulePanel(GUIPanel):
             self._rows_handler_tag,
             self._on_rows_per_pattern_input,
         )
-        show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._tpl_rows_tooltip)
+        show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._language_manager["sequencer.module.tooltip.rows"])
         self._status_bar.bind_to_item(
             TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
             self._msg_status_input,

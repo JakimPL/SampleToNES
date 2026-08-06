@@ -35,7 +35,15 @@ repos:
     hooks:
       - id: import-boundary
         name: import boundary
-        entry: uv run scripts/check_import_boundary.py --all
+        entry: uv run scripts/checks/import_boundary.py --all
+        language: system
+        types: [python]
+        pass_filenames: false
+        verbose: true
+
+      - id: unused-tags
+        name: unused tags
+        entry: uv run scripts/checks/unused_tags.py
         language: system
         types: [python]
         pass_filenames: false
@@ -43,10 +51,18 @@ repos:
 
       - id: tag-names
         name: tag names
-        entry: uv run scripts/check_tag_names.py
+        entry: uv run scripts/checks/tag_names.py
         language: system
         types: [python]
         files: ^src/sampletones_application/tags/
+        verbose: true
+
+      - id: language-keys
+        name: language keys
+        entry: uv run scripts/checks/language_keys.py
+        language: system
+        files: (\.py|^src/sampletones_config/lang/.*\.yaml)$
+        pass_filenames: false
         verbose: true
 
       - id: mypy

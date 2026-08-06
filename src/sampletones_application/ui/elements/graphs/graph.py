@@ -3,6 +3,7 @@ from typing import Any, Dict, Generic, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.graphs import (
     SUF_GRAPH_INFO,
@@ -32,12 +33,12 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         zoom_factor: float,
     ):
         self.label = label
-        self.plot_tag = f"{tag}{SUF_GRAPH_PLOT}"
-        self.x_axis_tag = f"{tag}{SUF_GRAPH_X_AXIS}"
-        self.y_axis_tag = f"{tag}{SUF_GRAPH_Y_AXIS}"
-        self.legend_tag = f"{tag}{SUF_GRAPH_LEGEND}"
-        self.info_tag = f"{tag}{SUF_GRAPH_INFO}"
-        self.event_handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
+        self.plot_tag = compose_tag(tag, SUF_GRAPH_PLOT)
+        self.x_axis_tag = compose_tag(tag, SUF_GRAPH_X_AXIS)
+        self.y_axis_tag = compose_tag(tag, SUF_GRAPH_Y_AXIS)
+        self.legend_tag = compose_tag(tag, SUF_GRAPH_LEGEND)
+        self.info_tag = compose_tag(tag, SUF_GRAPH_INFO)
+        self.event_handler_tag = compose_tag(tag, SUF_HANDLER_REGISTRY)
 
         self.zoom_factor = zoom_factor
         self._x_range: Tuple[float, float] = x_range

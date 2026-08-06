@@ -15,6 +15,7 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_core.parallelization import TaskProgress, TaskStatus
+from sampletones_shared.types.data import SerializedData
 
 
 @pytest.fixture

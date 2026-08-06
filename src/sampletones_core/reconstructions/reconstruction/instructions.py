@@ -12,9 +12,17 @@ from sampletones_core.instructions import InstructionData, InstructionUnion
 class InstructionsItem(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    generator_name: GeneratorName = Field(..., description="Name of the generator")
+    generator_name: GeneratorName = Field(
+        ...,
+        description="Name of the generator",
+    )
     instructions: List[InstructionData[InstructionUnion]] = Field(
-        ..., description="List of instruction data for the generator"
+        ...,
+        description="List of instruction data for the generator",
+    )
+    initial_pitch: int = Field(
+        ...,
+        description="Reference pitch the generator's arpeggio envelope is measured against",
     )
 
     @classmethod
@@ -22,6 +30,7 @@ class InstructionsItem(DataModel):
         cls,
         generator_name: GeneratorName,
         instructions: List[InstructionUnion],
+        initial_pitch: int,
     ) -> InstructionsItem:
         return InstructionsItem(
             generator_name=generator_name,
@@ -32,4 +41,5 @@ class InstructionsItem(DataModel):
                 )
                 for instruction in instructions
             ],
+            initial_pitch=initial_pitch,
         )

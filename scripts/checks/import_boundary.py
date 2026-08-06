@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+
+"""
+Enforces layer-boundary import rules across the sampletones_application package.
+
+Each import rule names a file glob, the import prefixes forbidden there, and the
+contract modules exempt from those prefixes: a layer may consume another
+layer's data contract (e.g. a service's result types) while its implementation
+modules stay out of reach. The script checks every Python source file matched
+by the glob and reports any import that begins with a forbidden prefix.
+
+Token rules additionally forbid a regex within a file glob, enforcing contracts
+a prefix cannot express — e.g. that panels never compose a column suffix
+(`SUF_PANEL_*`) or parent into another panel's container.
+
+Usage:
+    python scripts/checks/import_boundary.py [files...]   # check specific files
+    python scripts/checks/import_boundary.py --all        # run all rules against the source tree
+"""
+
+import re
+import sys
+from pathlib import Path
+from typing import Final, List, NamedTuple, Tuple
+
+from sampletones_shared.paths import REPOSITORY_ROOT
+
+APP_ROOT: Final[Path] = REPOSITORY_ROOT / "src" / "sampletones_application"
+
+IMPORT_RE = re.compile(r"^\s*(import|from)\s+([\w.]+)")
+
+VISUAL = [
+    "dearpygui",
+    "sampletones_application.ui",
+    "sampletones_application.utils.gui",
+]
+
+SERVICE_CONTRACTS = [
+    "sampletones_application.services.result",
+    "sampletones_application.services.song_player.result",
+]
+
+
+class BoundaryRule(NamedTuple):
+    pattern: str
+    forbidden: List[str]
+    contracts: List[str] = []
+
+
+class TokenRule(NamedTuple):
+    pattern: str
+    forbidden: str
+    message: str
+
+
+RULES: List[BoundaryRule] = [
+    BoundaryRule(
+        "config/**/*.py",
+        [
+            *VISUAL,
+            "sampletones_application.coordinators",
+            "sampletones_application.application",
+        ],
+    ),
+    BoundaryRule(
+        "logic/**/*.py",
+        [
+            *VISUAL,
+            "sampletones_application.coordinators",
+            "sampletones_application.services",
+        ],
+        contracts=SERVICE_CONTRACTS,
+    ),
+    BoundaryRule(
+        "view_model/**/*.py",
+        [
+            *VISUAL,
+            "sampletones_application.coordinators",
+            "sampletones_application.config",
+            "sampletones_application.logic",
+            "sampletones_application.services",
+        ],
+    ),
+    BoundaryRule(
+        "services/**/*.py",
+        [
+            *VISUAL,
+            "sampletones_application.view_model",
+            "sampletones_application.coordinators",
+            "sampletones_application.config",
+            "sampletones_application.logic",
+        ],
+    ),
+    BoundaryRule(
+        "shell.py",
+        [
+            "sampletones_application.logic",
+            "sampletones_application.services",
+        ],
+    ),
+    BoundaryRule(
+        "coordinators/**/*.py",
+        [
+            "sampletones_application.application",
+            "sampletones_application.shell",
+        ],
+    ),
+    BoundaryRule(
+        "ui/**/*.py",
+        [
+            "sampletones_application.coordinators",
+            "sampletones_application.logic",
+            "sampletones_application.services",
+            "sampletones_application.config",
+            "sampletones_application.application",
+            "sampletones_application.shell",
+            "sampletones_application.utils.gui.dialogs",
+        ],
+    ),
+]
+
+
+TOKEN_RULES: List[TokenRule] = [
+    TokenRule(
+        "ui/panels/**/*.py",
+        r"\bSUF_PANEL_",
+        "ui/panels must not reference a column suffix (SUF_PANEL_*); a panel receives its "
+        "parent through create_panel(parent), set by the coordinator that owns the layout",
+    ),
+    TokenRule(
+        "ui/panels/**/*.py",
+        r"parent\s*=\s*TAG_SEQUENCER_GRID_PANEL\b",
+        "ui/panels must not parent into another panel's container (TAG_SEQUENCER_GRID_PANEL); "
+        "the coordinator injects the parent through create_panel(parent)",
+    ),
+    TokenRule(
+        "ui/panels/**/*.py",
+        r"\bTAG_GLOBAL_THEME_PANEL_(SURFACE|GROUND)\b",
+        "ui/panels must not bind a structural depth theme (TAG_GLOBAL_THEME_PANEL_SURFACE/"
+        "GROUND); only the layout primitives own depth (TabColumns binds the column, card() "
+        "binds the card), and a panel binds only semantic themes",
+    ),
+]
+
+
+def _matches_prefix(module: str, prefix: str) -> bool:
+    return module == prefix or module.startswith(prefix + ".")
+
+
+def find_token_violations(
+    filepath: Path,
+    rule: TokenRule,
+) -> List[Tuple[str, str]]:
+    pattern = re.compile(rule.forbidden)
+    violations: List[Tuple[str, str]] = []
+    for line_number, line in enumerate(
+        filepath.read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        if pattern.search(line):
+            location = f"{filepath}:{line_number}"
+            violations.append((rule.message, f"{location}: {line.strip()}"))
+
+    return violations
+
+
+def find_violations(
+    filepath: Path,
+    rule: BoundaryRule,
+) -> List[Tuple[str, str]]:
+    violations: List[Tuple[str, str]] = []
+    for line_number, line in enumerate(
+        filepath.read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        match = IMPORT_RE.match(line)
+        if match is None:
+            continue
+
+        module = match.group(2)
+        if any(_matches_prefix(module, contract) for contract in rule.contracts):
+            continue
+
+        for prefix in rule.forbidden:
+            if _matches_prefix(module, prefix):
+                location = f"{filepath}:{line_number}"
+                violations.append((prefix, f"{location}: {line.strip()}"))
+                break
+
+    return violations
+
+
+def run_all_rules() -> List[Tuple[str, str]]:
+    all_violations: List[Tuple[str, str]] = []
+    for rule in RULES:
+        for filepath in sorted(APP_ROOT.glob(rule.pattern)):
+            all_violations.extend(find_violations(filepath, rule))
+
+    for token_rule in TOKEN_RULES:
+        for filepath in sorted(APP_ROOT.glob(token_rule.pattern)):
+            all_violations.extend(find_token_violations(filepath, token_rule))
+
+    return all_violations
+
+
+def run_on_files(filepaths: List[Path]) -> List[Tuple[str, str]]:
+    all_violations: List[Tuple[str, str]] = []
+    for rule in RULES:
+        matched = {path for path in filepaths if path.match(rule.pattern)}
+        for filepath in sorted(matched):
+            all_violations.extend(find_violations(filepath, rule))
+
+    for token_rule in TOKEN_RULES:
+        matched = {path for path in filepaths if path.match(token_rule.pattern)}
+        for filepath in sorted(matched):
+            all_violations.extend(find_token_violations(filepath, token_rule))
+
+    return all_violations
+
+
+def main() -> None:
+    args = sys.argv[1:]
+
+    if args == ["--all"]:
+        all_violations = run_all_rules()
+    else:
+        filepaths = [Path(argument) for argument in args]
+        all_violations = run_on_files(filepaths)
+
+    if all_violations:
+        print("Layer boundary violation(s) found:", file=sys.stderr)
+        for kind, location in all_violations:
+            print(f"  [forbidden: {kind}] {location}", file=sys.stderr)
+
+        print(f"\nFound {len(all_violations)} violation(s) in total.", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

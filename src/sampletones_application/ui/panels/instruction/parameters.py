@@ -2,10 +2,6 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.instructions import (
-    InstructionsDetailsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import TableColors
 from sampletones_application.layout.general.tables import TablesLayout
@@ -36,24 +32,14 @@ class GUIInstructionParametersPanel(GUIPanel):
         language_manager: LanguageManager,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self.general_table: GUITable
         self.parameters_table: GUITable
 
         self._table_colors = table_colors
         self._table_layout = table_layout
 
-        self._lbl_parameters = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.PARAMETERS_TEXT,
-        ]
-        self._lbl_general = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.GENERAL_TEXT,
-        ]
+        self._lbl_parameters = language_manager["instructions.details.label.parameters_text"]
 
         super().__init__(
             tag=TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
@@ -92,7 +78,7 @@ class GUIInstructionParametersPanel(GUIPanel):
             parent=self._body_container,
         ):
             dpg.add_text(
-                self._lbl_general,
+                self._language_manager["instructions.details.label.general_text"],
                 tag=TAG_INSTRUCTIONS_DETAILS_HEADER_GENERAL,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
             )

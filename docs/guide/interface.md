@@ -39,14 +39,20 @@ Open a saved reconstruction from the list on the left; if the current one has
 unsaved edits, you are asked whether to save it first. You can play it back and
 switch **Play audio source:** between **Reconstruction** and **Original audio** to
 compare the two, and **Locate original audio** re-links the source file if it has
-moved. To get your results out, **Export FamiTracker instruments** writes one
-`.fti` per channel, **Export reconstruction to WAV** renders the audio, and **Add
-to Sequencer** sends the reconstruction into a song as a sample (see the
+moved.
+
+To get your results out, **Reconstruction ▸ Export instruments** writes the
+whole reconstruction as one file per channel — `.fti` under **FamiTracker
+instruments...**, `.json` under **Bitphase presets...** — and **Reconstruction ▸
+Export to WAV...** renders the audio. **Add to Sequencer**, on a reconstruction's
+right-click menu, sends it into a song as a sample (see the
 [sequencer guide](sequencer.md)).
 
 For finer control, the **Instruments** panel on the right shows each channel's
 instrument — its pitch, volume, arpeggio, and duty sequences — which you can edit
-by dragging the bars or typing values, and export one channel at a time.
+by dragging the bars or typing values. **Export instrument...** writes the channel
+on show, for whichever tracker the save dialog's file type names — see
+[where your files live](files.md#exported-files).
 
 ## Instructions
 

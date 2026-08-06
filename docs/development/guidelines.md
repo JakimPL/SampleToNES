@@ -21,7 +21,7 @@ These rules govern the Python in this repository. They complement
 1. Change internal APIs, configs, and data shapes freely; preserve backward compatibility only when the user explicitly asks.
 1. Run `pre-commit` on new files after each change.
 
-## Shared Ownership
+## Ownership
 
 1. See `architecture.md` for project ownership rules.
 1. Put general-purpose, non-model-specific helpers in shared or common modules.
@@ -30,6 +30,8 @@ These rules govern the Python in this repository. They complement
 1. Import a shared helper straight from the module that implements it; a re-export or delegated-import module that exists only to route imports through is disallowed.
 1. An `__init__` exposes only names from within its own tree hierarchy.
 1. Give each module a single area of responsibility.
+1. If a module contains many class and function definitions, split into a subpackage divided by a single concern.
+1. If a private function serves only a class in the module it lives, move it to the class as a static/class method or isolate helper functions into a separate utility module.
 1. Prefer subpackages over a flat directory structure.
 1. Isolate platform-, desktop-, or external-tool-specific behaviour behind a `Protocol` with one implementation per target, selected by a runtime factory that probes availability and environment. Callers depend only on the `Protocol` and stay platform-agnostic.
 1. Wrap a third-party library or OS tool whose behaviour differs across platforms behind our own typed interface, and encode each quirk inside the matching implementation. A comment naming the third-party behaviour is warranted there.

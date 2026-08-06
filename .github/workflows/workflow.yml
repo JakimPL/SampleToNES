@@ -33,7 +33,7 @@ jobs:
       - name: Verify tag matches project version
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          python3 scripts/ci/check_version_tag.py \
+          python3 scripts/ci/checks/version_tag.py \
             --tag "$GITHUB_REF_NAME" \
             --project-version "$(uv version --short)"
 
@@ -137,7 +137,7 @@ jobs:
 
       - name: Check the bundle runs and carries its notices
         shell: bash
-        run: python scripts/ci/check_bundle.py bin/sampletones
+        run: python scripts/ci/checks/bundle.py bin/sampletones
 
       - name: Zip the bundle
         shell: bash

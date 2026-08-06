@@ -1,16 +1,7 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-    FileFilterElements,
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsBrowserElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
+from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.tabs.reconstruction import (
@@ -33,6 +24,7 @@ from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
@@ -43,6 +35,7 @@ from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
+from sampletones_shared.utils.system.paths import get_filename
 
 
 class ReconstructionCoordinator:
@@ -143,28 +136,26 @@ class ReconstructionCoordinator:
             default_filename = filepath.name
             default_path = str(filepath.parent)
         else:
-            default_filename = f"{reconstruction_data.name}{EXT_FILE_RECONSTRUCTION}"
+            default_filename = get_filename(reconstruction_data.name, EXT_FILE_RECONSTRUCTION)
             default_path = str(self._session_manager.get_reconstruction_path())
 
         filepath = save_file_dialog(
-            title=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.SAVE_RECONSTRUCTION,
-            ],
+            title=self._language_manager["global.dialog.title.save_reconstruction"],
             initial_directory=default_path,
             default_filename=default_filename,
-            extensions=[EXT_FILE_RECONSTRUCTION],
-            filter_name=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                FileFilterElements.RECONSTRUCTION,
-            ],
+            filters=self._reconstruction_filters(),
         )
 
         self._handle_save_as(filepath)
+
+    def _reconstruction_filters(self) -> Tuple[FileFilter, ...]:
+        """The single type a reconstruction is written as and read from."""
+        return (
+            FileFilter.for_extensions(
+                self._language_manager["global.dialog.filter.reconstruction"],
+                [EXT_FILE_RECONSTRUCTION],
+            ),
+        )
 
     @ignore_none_path
     def _handle_save_as(self, filepath: Path) -> None:
@@ -177,13 +168,9 @@ class ReconstructionCoordinator:
             )
             self._dialogs.show_error(
                 exception,
-                self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED,
-                ],
+                self._language_manager["global.dialog.message.reconstruction_save_failed"],
             )
+
             return
 
         self._session_manager.set_reconstruction_path(filepath.parent)
@@ -191,36 +178,15 @@ class ReconstructionCoordinator:
         self._tab.display_reconstruction()
         self._dialogs.show_info(
             TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
-            self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.RECONSTRUCTION_SAVED_SUCCESSFULLY,
-            ],
-            self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.RECONSTRUCTION_SAVED,
-            ],
+            self._language_manager["global.dialog.message.reconstruction_saved_successfully"],
+            self._language_manager["global.dialog.title.reconstruction_saved"],
         )
 
     def _load_dialog(self) -> None:
         filepath = open_file_dialog(
-            title=self._language_manager[
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.TITLE,
-                ReconstructionsBrowserElements.LOAD_RECONSTRUCTION_DIALOG,
-            ],
+            title=self._language_manager["reconstructions.browser.title.load_reconstruction_dialog"],
             initial_directory=self._session_manager.get_reconstruction_path(),
-            extensions=[EXT_FILE_RECONSTRUCTION],
-            filter_name=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                FileFilterElements.RECONSTRUCTION,
-            ],
+            filters=self._reconstruction_filters(),
         )
 
         self._handle_load(filepath)
@@ -238,26 +204,11 @@ class ReconstructionCoordinator:
 
         if self._requires_save_confirmation():
             self._show_save_confirmation(
-                title=self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.LOAD_UNSAVED_RECONSTRUCTION,
-                ],
-                message=self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.LOAD_UNSAVED_RECONSTRUCTION,
-                ],
+                title=self._language_manager["global.dialog.title.load_unsaved_reconstruction"],
+                message=self._language_manager["global.dialog.message.load_unsaved_reconstruction"],
                 on_save=self.save,
                 on_confirm=load_reconstruction,
-                ok_label=self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.LABEL,
-                    DialogElements.DISCARD,
-                ],
+                ok_label=self._language_manager["global.dialog.label.discard"],
             )
         else:
             load_reconstruction()
@@ -278,26 +229,11 @@ class ReconstructionCoordinator:
 
     def show_exit_save_confirmation(self, on_confirm: Callback) -> None:
         self._show_save_confirmation(
-            title=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.EXIT_CONFIRMATION,
-            ],
-            message=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.EXIT_UNSAVED_RECONSTRUCTION,
-            ],
+            title=self._language_manager["global.dialog.title.exit_confirmation"],
+            message=self._language_manager["global.dialog.message.exit_unsaved_reconstruction"],
             on_save=self.save,
             on_confirm=on_confirm,
-            ok_label=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.LABEL,
-                DialogElements.EXIT,
-            ],
+            ok_label=self._language_manager["global.dialog.label.exit"],
         )
 
     @ignore_none_path
@@ -316,26 +252,11 @@ class ReconstructionCoordinator:
     def close_with_confirmation(self) -> None:
         if self._requires_save_confirmation():
             self._show_save_confirmation(
-                title=self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.CLOSE_UNSAVED_RECONSTRUCTION,
-                ],
-                message=self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.CLOSE_UNSAVED_RECONSTRUCTION,
-                ],
+                title=self._language_manager["global.dialog.title.close_unsaved_reconstruction"],
+                message=self._language_manager["global.dialog.message.close_unsaved_reconstruction"],
                 on_confirm=self._close,
                 on_save=self.save,
-                ok_label=self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.LABEL,
-                    DialogElements.CLOSE,
-                ],
+                ok_label=self._language_manager["global.dialog.label.close"],
             )
         else:
             self._close()
@@ -374,12 +295,7 @@ class ReconstructionCoordinator:
         if audio_filepath is not None and not audio_filepath.exists():
             self._dialogs.show_file_not_found(
                 audio_filepath,
-                self._language_manager[
-                    Page.RECONSTRUCTIONS,
-                    Panel.BROWSER,
-                    TextType.MESSAGE,
-                    ReconstructionsBrowserElements.AUDIO_FILE_NOT_FOUND,
-                ],
+                self._language_manager["reconstructions.browser.message.audio_file_not_found"],
             )
 
         filepath = reconstruction_data.filepath

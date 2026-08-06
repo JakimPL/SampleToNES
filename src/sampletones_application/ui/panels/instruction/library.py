@@ -3,14 +3,6 @@ from typing import Any, Callable, Dict, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    GlobalMessageElements,
-    TreeElements,
-)
-from sampletones_application.categories.elements.instructions import (
-    InstructionsLibraryElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.general import (
@@ -103,6 +95,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         colors: TreeColors,
         is_operation_active: Callable[[], bool],
     ) -> None:
+        self._language_manager = language_manager
         self._library_logic = library_logic
 
         self._is_operation_active = is_operation_active
@@ -114,91 +107,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, LibraryGeneratorName], None]] = None
         self.on_library_remove_requested: Optional[Callable[[InstructionLibraryKey], None]] = None
 
-        self._lbl_generate = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
-        ]
-        self._tooltip_generate_disabled = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.OPERATION_IN_PROGRESS,
-        ]
-        self._lbl_refresh = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.REFRESH_LIBRARIES_BUTTON,
-        ]
-        self._lbl_cancel = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.CANCEL_GENERATION_BUTTON,
-        ]
-        self._lbl_libraries = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.LIBRARIES_TEXT,
-        ]
-        self._lbl_available_libraries = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.AVAILABLE_LIBRARIES_TEXT,
-        ]
-        self._lbl_ctx_load_generator = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.CONTEXT_LOAD_GENERATOR,
-        ]
-        self._lbl_ctx_load_library = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.CONTEXT_LOAD_LIBRARY,
-        ]
-        self._lbl_ctx_remove_library = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.CONTEXT_REMOVE_LIBRARY,
-        ]
-        self._msg_status_node_generator = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_NODE_GENERATOR,
-        ]
-        self._msg_status_node_library = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_NODE_LIBRARY,
-        ]
-        self._msg_status_generate = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_GENERATE,
-        ]
-        self._msg_status_cancel_generation = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_CANCEL_GENERATION,
-        ]
-        self._msg_status_refresh = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_REFRESH,
-        ]
-
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         super().__init__(
@@ -207,12 +115,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
             tree_logic=tree_logic,
             scheduling=scheduling,
-            search_label=language_manager[
-                Page.GLOBAL,
-                Panel.BROWSER,
-                TextType.LABEL,
-                TreeElements.SEARCH,
-            ],
+            search_label=language_manager["global.browser.label.search"],
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
@@ -251,7 +154,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             border=False,
         ):
             with self._collapsible_section(
-                self._lbl_libraries,
+                self._language_manager["instructions.library.label.libraries_text"],
                 glyph=self._glyphs.headers.instruction_data,
             ):
                 self._create_library_status()
@@ -269,7 +172,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_IDLE):
                 GUIButton(
                     tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
-                    label=self._lbl_refresh,
+                    label=self._language_manager["instructions.library.label.refresh_libraries_button"],
                     width=-1,
                     callback=self._on_refresh_clicked,
                     theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
@@ -277,7 +180,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE):
                     GUIButton(
                         tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
-                        label=self._lbl_generate,
+                        label=self._language_manager["instructions.library.label.generate_library_button"],
                         width=-1,
                         callback=self._on_generate_clicked,
                         font=Font.BOLD,
@@ -285,7 +188,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     )
                 attach_disabled_tooltip(
                     TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE,
-                    self._tooltip_generate_disabled,
+                    self._language_manager["global.dialog.message.operation_in_progress"],
                     tag=TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
                 )
             with dpg.group(
@@ -303,21 +206,21 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 )
                 GUIButton(
                     tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
-                    label=self._lbl_cancel,
+                    label=self._language_manager["instructions.library.label.cancel_generation_button"],
                     width=-1,
                     callback=self._on_cancel_clicked,
                 )
         self._status_bar.bind_to_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
-            self._msg_status_refresh,
+            self._language_manager["instructions.library.message.status_refresh"],
         )
         self._status_bar.bind_to_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
-            self._msg_status_generate,
+            self._language_manager["instructions.library.message.status_generate"],
         )
         self._status_bar.bind_to_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
-            self._msg_status_cancel_generation,
+            self._language_manager["instructions.library.message.status_cancel_generation"],
         )
 
     def _create_library_tree(self) -> None:
@@ -331,7 +234,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         ):
             with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE):
                 with dpg.tree_node(
-                    label=self._lbl_available_libraries,
+                    label=self._language_manager["instructions.library.label.available_libraries_text"],
                     tag=self.tree_tag,
                     default_open=True,
                 ):
@@ -454,12 +357,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             node, _ = user_data
             match node.node_type:
                 case NodeType.LIBRARY:
-                    message = self._msg_status_node_library
+                    message = self._language_manager["instructions.library.message.status_node_library"]
                 case NodeType.GENERATOR:
                     parent = node.parent
                     assert isinstance(node, GeneratorNode), "Node is not a GeneratorNode"
                     assert isinstance(parent, LibraryNode), "Generator node parent is not a LibraryNode"
-                    message = self._msg_status_node_generator.format(
+                    message = self._language_manager["instructions.library.message.status_node_generator"].format(
                         generator=node.generator_name,
                         library_key=parent.library_key.filename,
                     )
@@ -517,14 +420,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _add_context_menu_library_node(self, node: LibraryNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._lbl_ctx_load_library,
+            label=self._language_manager["instructions.library.label.context_load_library"],
             callback=lambda: self.call(
                 self.on_library_selected,
                 node.library_key,
             ),
         )
         dpg.add_menu_item(
-            label=self._lbl_ctx_remove_library,
+            label=self._language_manager["instructions.library.label.context_remove_library"],
             callback=lambda: self.call(
                 self.on_library_remove_requested,
                 node.library_key,
@@ -542,7 +445,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _add_context_menu_generator_node(self, node: GeneratorNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._lbl_ctx_load_generator,
+            label=self._language_manager["instructions.library.label.context_load_generator"],
             callback=self._on_load_generator,
             user_data=node,
         )

@@ -7,6 +7,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_HEADER, SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_ORDER_BUTTON_PAIR,
@@ -118,8 +119,8 @@ class GUISequencerOrderPanel(GUIPanel):
         self._highlighted_column: Optional[int] = None
         self._current_position: Optional[int] = None
         self._playing_position: Optional[int] = None
-        self._cell_handler_tag = f"{TAG_SEQUENCER_ORDER_TABLE}{SUF_HANDLER_REGISTRY}"
-        self._label_handler_tag = f"{TAG_SEQUENCER_ORDER_TABLE}{SUF_HANDLER_HEADER}"
+        self._cell_handler_tag = compose_tag(TAG_SEQUENCER_ORDER_TABLE, SUF_HANDLER_REGISTRY)
+        self._label_handler_tag = compose_tag(TAG_SEQUENCER_ORDER_TABLE, SUF_HANDLER_HEADER)
         self._label_rows: Dict[Sender, Optional[GeneratorName]] = {}
         self._entry_theme: int = 0
         self._muted_entry_theme: int = 0

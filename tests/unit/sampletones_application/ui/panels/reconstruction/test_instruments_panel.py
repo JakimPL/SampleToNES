@@ -1,4 +1,4 @@
-from typing import List
+from typing import Final, List
 from unittest.mock import MagicMock
 
 import pytest
@@ -26,7 +26,9 @@ from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette import Palette
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+
+SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_sequence"
 
 
 @pytest.fixture
@@ -107,6 +109,45 @@ class TestSequenceLengthWarning:
         assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING, TAG_GLOBAL_THEME_DEFAULT]
 
 
+class TestInstrumentExport:
+    """The export button carries the generator whose slice it writes; the destination the
+    dialog answers with names the tracker, so no format travels from here."""
+
+    def test_the_generator_reaches_the_export_callback(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        calls: List[GeneratorName] = []
+        panel.on_instrument_export = calls.append
+
+        panel._export_callback(GeneratorName.NOISE)()
+
+        assert calls == [GeneratorName.NOISE]
+
+    def test_each_generator_gets_its_own_handler(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        calls: List[GeneratorName] = []
+        panel.on_instrument_export = calls.append
+
+        for generator_name in GeneratorName.items():
+            panel._export_callback(generator_name)()
+
+        assert calls == list(GeneratorName.items())
+
+    def test_the_handler_is_one_the_framework_can_dispatch(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        """DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it,
+        so a press handler carries one and takes the arguments the framework offers a button.
+        """
+        callback = panel._export_callback(GeneratorName.NOISE)
+
+        assert callback.__code__.co_argcount == 0
+
+
 class TestSequenceStatusMessage:
     def test_a_sequence_within_the_limit_describes_editing(
         self,
@@ -115,7 +156,9 @@ class TestSequenceStatusMessage:
     ) -> None:
         panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, 16)
         message = panel._sequence_status_message(GeneratorName.PULSE1, FeatureKey.VOLUME)
-        assert message == panel._msg_sequence.format(instrument_feature=FeatureKey.VOLUME.capitalized)
+        assert message == panel._language_manager[SEQUENCE_STATUS_KEY].format(
+            instrument_feature=FeatureKey.VOLUME.capitalized
+        )
 
     def test_a_sequence_beyond_the_limit_names_the_limit(
         self,

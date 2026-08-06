@@ -5,9 +5,8 @@ from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import DialogElements, TracebackElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP_TRACEBACK,
@@ -35,7 +34,7 @@ class GUITraceback:
         button_theme: Optional[Theme] = None,
     ) -> None:
         self._parent = parent
-        self._tag = f"{parent}{SUF_GROUP_TRACEBACK}"
+        self._tag = compose_tag(parent, SUF_GROUP_TRACEBACK)
         self._text = "".join(
             traceback.format_exception(
                 type(exception),
@@ -44,26 +43,15 @@ class GUITraceback:
             ),
         )
 
-        self._lbl_copy = language_manager[
-            Page.GLOBAL,
-            Panel.TRACEBACK,
-            TextType.LABEL,
-            TracebackElements.COPY,
-        ]
-        self._lbl_copied = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.COPIED,
-        ]
+        self._lbl_copy = language_manager["global.traceback.label.copy"]
 
         self.theme = ThemeRegistry.resolve(theme, TAG_GLOBAL_THEME_TRACEBACK)
         resolved_button_theme = ThemeRegistry.resolve(
             button_theme,
             TAG_GLOBAL_THEME_DEFAULT,
         )
-        traceback_text_tag = f"{self._tag}{SUF_TEXT}"
-        traceback_copy_tag = f"{self._tag}{SUF_BUTTON_COPY}"
+        traceback_text_tag = compose_tag(self._tag, SUF_TEXT)
+        traceback_copy_tag = compose_tag(self._tag, SUF_BUTTON_COPY)
 
         with dpg.group(tag=self._tag, parent=parent, show=False):
             dpg.add_input_text(
@@ -86,7 +74,7 @@ class GUITraceback:
                     self._text,
                     self._lbl_copy,
                     traceback_copy_tag,
-                    copied_label=self._lbl_copied,
+                    copied_label=language_manager["global.dialog.label.copied"],
                 ),
                 width=-1,
                 theme=resolved_button_theme,
