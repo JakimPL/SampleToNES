@@ -10,6 +10,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
 from sampletones_application.layout.tabs.instructions import InstructionsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_CHECKBOX_INSTRUCTIONS_CHOICE_NOISE_SHORT,
@@ -68,7 +69,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         self._status_bar = status_bar
         self._layout = layout
         self._pitch_stepper_style = pitch_stepper_style
-        self._item_handler_tag = f"{TAG_INSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = compose_tag(TAG_INSTRUCTIONS_DETAILS_PANEL, SUF_HANDLER_REGISTRY)
         self._current_instruction_data: Optional[InstructionPanelData] = None
         self._pitch_stepper: Optional[GUIPitchStepper] = None
 

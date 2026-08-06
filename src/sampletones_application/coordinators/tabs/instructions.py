@@ -27,6 +27,7 @@ from sampletones_application.logic.instruction.library_manager import (
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.instructions import InstructionsTabParameters
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -81,9 +82,9 @@ from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 
-_LEFT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}"
-_CENTER_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}"
-_RIGHT_COLUMN_TAG = f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}"
+_LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_LEFT)
+_CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_CENTER)
+_RIGHT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_RIGHT)
 
 
 class _StackedGraphPanel(Protocol):

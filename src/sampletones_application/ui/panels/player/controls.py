@@ -3,6 +3,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.layout.glyphs import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.layout.primitives import Dimensions
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.player import SUF_PLAYER_TOOLTIP
 from sampletones_application.ui.elements.button import GUIButton
@@ -82,5 +83,5 @@ def _create_icon_button(
         width=button_layout.width,
         height=button_layout.height,
     )
-    with dpg.tooltip(parent=f"{tag}{SUF_BUTTON}"):
-        dpg.add_text(tooltip, tag=f"{tag}{SUF_PLAYER_TOOLTIP}")
+    with dpg.tooltip(parent=compose_tag(tag, SUF_BUTTON)):
+        dpg.add_text(tooltip, tag=compose_tag(tag, SUF_PLAYER_TOOLTIP))

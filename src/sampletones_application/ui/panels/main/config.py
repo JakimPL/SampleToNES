@@ -7,6 +7,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.main.config import ConfigLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
@@ -49,7 +50,7 @@ class GUIConfigPanel(GUIPanel):
         self._status_bar = status_bar
         self.on_audio_settings_changed: Optional[Callable[[AudioSettingsUpdate], None]] = None
         self.on_library_settings_changed: Optional[Callable[[LibrarySettingsUpdate], None]] = None
-        self._item_handler_tag = f"{TAG_MAIN_CONFIG_PANEL}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = compose_tag(TAG_MAIN_CONFIG_PANEL, SUF_HANDLER_REGISTRY)
 
         self._lbl_section = language_manager[
             Page.MAIN,

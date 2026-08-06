@@ -15,8 +15,8 @@ from sampletones_application.categories.elements.global_ import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_SEARCH,
     SUF_HANDLER_DETAIL_TOOLTIP,
@@ -125,8 +125,8 @@ class GUITreePanel(GUIPanel, ABC):
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
 
-        self._detail_tooltip_tag = f"{tag}{SUF_TOOLTIP_DETAIL}"
-        self._detail_tooltip_handler_tag = f"{tag}{SUF_HANDLER_DETAIL_TOOLTIP}"
+        self._detail_tooltip_tag = compose_tag(tag, SUF_TOOLTIP_DETAIL)
+        self._detail_tooltip_handler_tag = compose_tag(tag, SUF_HANDLER_DETAIL_TOOLTIP)
         self._detail_tooltip_owner_tag: Optional[str] = None
 
         self._node_handlers: Dict[NodeType, NodeHandler] = {}
@@ -359,8 +359,8 @@ class GUITreePanel(GUIPanel, ABC):
         return self._pending_specs
 
     def create_search(self, parent: str) -> None:
-        self._search_input_tag = f"{self.tag}{SUF_INPUT_SEARCH}"
-        self._search_button_tag = f"{self.tag}{SUF_BUTTON_SEARCH}"
+        self._search_input_tag = compose_tag(self.tag, SUF_INPUT_SEARCH)
+        self._search_button_tag = compose_tag(self.tag, SUF_BUTTON_SEARCH)
 
         with dpg.group(horizontal=True, parent=parent):
             dpg.add_input_text(
@@ -380,7 +380,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._status_bar.bind_to_item(self._search_button_tag, self._msg_clear_search)
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
-        return f"{self.tag}{TAG_SEPARATOR}{node_type.value}{SUF_HANDLER_NODE}"
+        return compose_tag(self.tag, node_type.value, SUF_HANDLER_NODE)
 
     def _append_spec(
         self,
@@ -620,8 +620,7 @@ class GUITreePanel(GUIPanel, ABC):
 
     def _generate_node_tag(self, node: TreeNode) -> str:
         path_parts = [ancestor.name for ancestor in node.path]
-        tag = f"{self.tag}{TAG_SEPARATOR}node_{'_'.join(path_parts)}"
-        return tag.replace(" ", "_").lower()
+        return compose_tag(self.tag, f"node_{'_'.join(path_parts)}")
 
     def _context_menu_header_name(self, node: TreeNode) -> str:
         """Returns the raw on-disk identifier, complementing the friendly label shown in the tree."""

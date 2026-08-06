@@ -5,7 +5,7 @@ from typing import Final, List, Optional
 
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
-from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.tags.compose import TAG_SEPARATOR
 
 TAG_PREFIX: Final = "TAG"
 TAG_NAME_CLASS_NAME: Final = "TagName"

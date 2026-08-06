@@ -15,9 +15,9 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.general.colors import FeatureColors
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP,
@@ -104,8 +104,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
-        self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE}"
-        self.mouse_item_handler_tag = f"{TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL}{SUF_HANDLER_REGISTRY}"
+        self.no_data_message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE)
+        self.mouse_item_handler_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL, SUF_HANDLER_REGISTRY)
 
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._sequence_lengths: Dict[Tuple[GeneratorName, FeatureKey], int] = {}
@@ -296,34 +296,34 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             self._create_tabs_for_generators()
 
     def _get_generator_tab_tag(self, generator_name: GeneratorName) -> str:
-        return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}"
+        return compose_tag(self.tab_bar_tag, generator_name)
 
     def _get_window_tag(self, tab_tag: str) -> str:
-        return f"{tab_tag}{SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW}"
+        return compose_tag(tab_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW)
 
     def _get_feature_group_tag(
         self,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
     ) -> str:
-        return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GROUP}"
+        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GROUP)
 
     def _get_feature_text_group_tag(
         self,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
     ) -> str:
-        return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GRAPH_RAW_DATA}"
+        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GRAPH_RAW_DATA)
 
     def _get_feature_text_tag(self, text_group_tag: str) -> str:
-        return f"{text_group_tag}{SUF_TEXT}"
+        return compose_tag(text_group_tag, SUF_TEXT)
 
     def _get_feature_plot_tag(
         self,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
     ) -> str:
-        return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GRAPH}"
+        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GRAPH)
 
     def _setup_mouse_event_handler(self) -> None:
         with dpg.handler_registry(tag=self.mouse_item_handler_tag):
@@ -365,7 +365,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             show=False,
         ):
             self.generator_plots[generator_name] = {}
-            button_tag = f"{TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT}{TAG_SEPARATOR}{tab_tag}"
+            button_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT, tab_tag)
             GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
@@ -702,7 +702,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         data: np.ndarray,
         plot_tag: str,
     ) -> None:
-        raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
+        raw_data_tag = compose_tag(plot_tag, SUF_GRAPH_RAW_DATA)
         dpg_set_value(raw_data_tag, self._format_data(data))
         self.call(self.on_bar_data_changed, generator_name, feature_key, data)
 
@@ -730,7 +730,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
         raw_data_text = self._format_data(data)
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
-        copy_button_tag = f"{text_group_tag}{SUF_BUTTON_COPY}"
+        copy_button_tag = compose_tag(text_group_tag, SUF_BUTTON_COPY)
 
         with dpg.group(tag=text_group_tag, parent=parent, horizontal=True):
             GUIButton(

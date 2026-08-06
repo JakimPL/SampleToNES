@@ -10,6 +10,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import PathColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.main.advanced import AdvancedLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
@@ -83,7 +84,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             StatusElements.PATH,
         ]
 
-        self._item_handler_tag = f"{TAG_MAIN_ADVANCED_PANEL}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = compose_tag(TAG_MAIN_ADVANCED_PANEL, SUF_HANDLER_REGISTRY)
 
         self.library_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None

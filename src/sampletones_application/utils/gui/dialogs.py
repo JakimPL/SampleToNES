@@ -18,8 +18,8 @@ from sampletones_application.categories.elements.reconstructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_CANCEL,
     SUF_BUTTON_OK,
@@ -61,7 +61,7 @@ _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 
 def get_dialog_tag(base_tag: str) -> str:
     dialog_hash = uuid.uuid4().hex
-    return f"{base_tag}{TAG_SEPARATOR}{dialog_hash}"
+    return compose_tag(base_tag, dialog_hash)
 
 
 def _bind_dialog_theme(tag: str) -> None:
@@ -99,7 +99,7 @@ def _show_modal_dialog(
     key_router: KeyRouter,
     modal: bool = True,
 ) -> None:
-    ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+    ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
     navigator: Optional[DialogKeyboardNavigator] = None
 
     def close() -> None:
@@ -294,7 +294,7 @@ class DialogsRenderer:
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._error_wrap)
 
-        info_tag = f"{tag}{SUF_DIALOG_INFO}"
+        info_tag = compose_tag(tag, SUF_DIALOG_INFO)
         dpg_delete_item(info_tag)
         _show_modal_dialog(
             tag=info_tag,
@@ -351,7 +351,7 @@ class DialogsRenderer:
                 wrap=self._recovery_wrap,
             )
             GUIPathText(
-                tag=f"{parent}{SUF_PATH}",
+                tag=compose_tag(parent, SUF_PATH),
                 path=config_path,
                 parent=parent,
                 color=self._col_path,
@@ -386,7 +386,7 @@ class DialogsRenderer:
         natural word order in the language file while its dynamic values stand out. The
         literal spans carry their own spacing, so the runs sit flush at exactly that spacing.
         """
-        group_tag = f"{parent}{SUF_GROUP}"
+        group_tag = compose_tag(parent, SUF_GROUP)
         with dpg.group(
             horizontal=True,
             horizontal_spacing=0,
@@ -417,8 +417,8 @@ class DialogsRenderer:
         message: Optional[str] = None,
     ) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)
-        show_button_tag = f"{tag}{SUF_BUTTON_SHOW_TRACEBACK}"
-        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        show_button_tag = compose_tag(tag, SUF_BUTTON_SHOW_TRACEBACK)
+        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
         navigator: Optional[DialogKeyboardNavigator] = None
 
         def close() -> None:
@@ -440,7 +440,7 @@ class DialogsRenderer:
             if message is not None:
                 dpg.add_text(message, parent=tag, wrap=self._error_wrap)
 
-            group_tag = f"{tag}{SUF_GROUP}"
+            group_tag = compose_tag(tag, SUF_GROUP)
             with dpg.group(tag=group_tag, parent=tag):
                 dpg.add_text(
                     f"{str(type(exception).__name__)}: ",
@@ -542,10 +542,10 @@ class DialogsRenderer:
         confirms, ``on_opt_out`` runs as well — letting the caller suppress future prompts.
         """
         tag = get_dialog_tag(tag)
-        opt_out_tag = f"{tag}{SUF_CHECKBOX}"
+        opt_out_tag = compose_tag(tag, SUF_CHECKBOX)
         cancel_label = cancel_label if cancel_label is not None else self._lbl_cancel
-        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
-        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
+        cancel_button_tag = compose_tag(tag, SUF_BUTTON_CANCEL)
         navigator: Optional[DialogKeyboardNavigator] = None
 
         def disable() -> None:
@@ -578,7 +578,7 @@ class DialogsRenderer:
 
             if path is not None:
                 GUIPathText(
-                    tag=f"{tag}{SUF_PATH}",
+                    tag=compose_tag(tag, SUF_PATH),
                     path=path,
                     parent=parent,
                     color=self._col_path,
@@ -654,9 +654,9 @@ class DialogsRenderer:
         ``on_confirm`` to proceed, and Cancel — the initially focused button — dismisses the prompt.
         """
         tag = get_dialog_tag(tag)
-        save_button_tag = f"{tag}{SUF_BUTTON_SAVE}"
-        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
-        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+        save_button_tag = compose_tag(tag, SUF_BUTTON_SAVE)
+        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
+        cancel_button_tag = compose_tag(tag, SUF_BUTTON_CANCEL)
         navigator: Optional[DialogKeyboardNavigator] = None
 
         def disable() -> None:
@@ -767,11 +767,11 @@ class DialogsRenderer:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_PATH_MESSAGE)
 
         def content(parent: str) -> None:
-            group_tag = f"{parent}{SUF_GROUP}"
+            group_tag = compose_tag(parent, SUF_GROUP)
             with dpg.group(parent=parent):
                 dpg.add_text(message, parent=group_tag, wrap=self._error_wrap)
                 GUIPathText(
-                    tag=f"{group_tag}{SUF_PATH}",
+                    tag=compose_tag(group_tag, SUF_PATH),
                     path=path,
                     parent=group_tag,
                     color=self._col_path,

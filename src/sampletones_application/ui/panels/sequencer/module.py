@@ -10,6 +10,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
@@ -54,8 +55,8 @@ class GUISequencerModulePanel(GUIPanel):
         self._input_width = inputs.default_width
         self._label_width = inputs.label_width
         self._status_bar = status_bar
-        self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
-        self._rows_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_ROWS}{SUF_HANDLER_REGISTRY}"
+        self._nes_frequency_handler_tag = compose_tag(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, SUF_HANDLER_REGISTRY)
+        self._rows_handler_tag = compose_tag(TAG_SEQUENCER_MODULE_INPUT_ROWS, SUF_HANDLER_REGISTRY)
 
         self.on_nes_frequency: Optional[Callable[[int], None]] = None
         self.on_rows_per_pattern: Optional[Callable[[int], None]] = None

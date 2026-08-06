@@ -4,7 +4,7 @@ from typing import Dict, Final, NamedTuple
 
 from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.categories.hierarchy import Page, Panel, TextType, Widget
-from sampletones_application.constants.global_ import TAG_SEPARATOR
+from sampletones_application.tags.compose import compose_tag
 
 _PANEL_SHORT_NAMES: Final[Dict[Panel, str]] = {Panel.CONFIG: "config"}
 
@@ -16,7 +16,7 @@ class TextKey(NamedTuple):
     element: AbstractElement
 
     def compose(self) -> str:
-        return TAG_SEPARATOR.join(str(part) for part in self)  # pylint: disable=not-an-iterable
+        return compose_tag(*(str(part) for part in self))  # pylint: disable=not-an-iterable
 
     def __str__(self) -> str:
         return self.compose()
@@ -50,7 +50,7 @@ class TagName(str):
         if element and element != panel_str:
             parts.append(element)
 
-        instance: TagName = super().__new__(cls, TAG_SEPARATOR.join(parts))
+        instance: TagName = super().__new__(cls, compose_tag(*parts))
         instance.page = page
         instance.panel = panel
         instance.widget = widget

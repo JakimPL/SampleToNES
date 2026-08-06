@@ -4,6 +4,7 @@ from typing import Any, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_HANDLER_STATUS,
     TAG_GLOBAL_STATUS_BAR,
@@ -121,7 +122,7 @@ class GUIStatusBar:
         message_or_function: Union[str, MessageCallback],
     ) -> str:
         message_function = self.create_message_function(message_or_function)
-        handler_tag = f"{tag}{SUF_HANDLER_STATUS}"
+        handler_tag = compose_tag(tag, SUF_HANDLER_STATUS)
         hover_tag = GUIButton.hover_tag(tag)
 
         def on_mouse_action(sender: Sender, app_data: Any, user_data: str) -> None:

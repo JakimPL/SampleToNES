@@ -9,6 +9,7 @@ from sampletones_application.categories.elements.sequencer import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
@@ -57,8 +58,8 @@ class GUISequencerSamplesPanel(GUIPanel):
     ) -> None:
         self._layout = layout
         self._router = key_router
-        self._row_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_TABLE}{SUF_HANDLER_REGISTRY}"
-        self._rename_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME}{SUF_HANDLER_REGISTRY}"
+        self._row_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_TABLE, SUF_HANDLER_REGISTRY)
+        self._rename_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME, SUF_HANDLER_REGISTRY)
         self._selected_sample_id: Optional[str] = None
         self._selected_row: Optional[int] = None
         self._editing_sample_id: Optional[str] = None

@@ -11,6 +11,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.main.reconstructor import ReconstructorLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
     TAG_GLOBAL_THEME_CHANNEL_NOISE,
@@ -58,7 +59,7 @@ class GUIReconstructorPanel(GUIPanel):
         self._label_width = inputs.label_width
         self._status_bar = status_bar
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
-        self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = compose_tag(TAG_MAIN_RECONSTRUCTOR_PANEL, SUF_HANDLER_REGISTRY)
 
         self._lbl_section_settings = language_manager[
             Page.MAIN,
@@ -207,4 +208,4 @@ class GUIReconstructorPanel(GUIPanel):
 
     @staticmethod
     def _get_generator_checkbox_tag(generator: GeneratorName) -> str:
-        return f"{PRE_MAIN_RECONSTRUCTOR_GENERATOR}{generator.value}"
+        return compose_tag(PRE_MAIN_RECONSTRUCTOR_GENERATOR, generator.value)

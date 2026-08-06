@@ -16,8 +16,8 @@ from sampletones_application.categories.trackers import (
 )
 from sampletones_application.layout.glyphs import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    PRE_GLOBAL_MENU_ITEM_PLAYBACK_CHANNEL,
     TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
     TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
     TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
@@ -133,10 +133,10 @@ class MenuBar:
             GlobalTemplateElements.FPS,
         ]
 
-        self._play_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_PLAY}"
-        self._pause_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_PAUSE}"
-        self._stop_button_tag = f"{TAG_GLOBAL_PANEL_PLAYER}{SUF_PLAYER_STOP}"
-        self._pause_tooltip_tag = f"{self._pause_button_tag}{SUF_PLAYER_TOOLTIP}"
+        self._play_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_PLAY)
+        self._pause_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_PAUSE)
+        self._stop_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_STOP)
+        self._pause_tooltip_tag = compose_tag(self._pause_button_tag, SUF_PLAYER_TOOLTIP)
         self._lbl_play = language_manager[
             Page.GLOBAL,
             Panel.PLAYER,
@@ -609,4 +609,4 @@ class MenuBar:
     @staticmethod
     def _channel_menu_item_tag(generator: GeneratorName) -> str:
         """The tag of the Channels submenu item that switches ``generator``."""
-        return f"{PRE_GLOBAL_MENU_ITEM_PLAYBACK_CHANNEL}{generator.value}"
+        return compose_tag(TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS, generator.value)

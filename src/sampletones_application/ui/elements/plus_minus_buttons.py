@@ -4,6 +4,7 @@ from typing import Any, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_DECREMENT,
     SUF_BUTTON_INCREMENT,
@@ -66,10 +67,10 @@ class GUIPlusMinusButtons(CallbackMixin):
         self._hold_direction: Optional[int] = None
         self._hold_timer: Optional[float] = None
 
-        self._table_tag = f"{tag}{SUF_TABLE}"
-        self._decrement_button_tag = f"{tag}{SUF_BUTTON_DECREMENT}"
-        self._increment_button_tag = f"{tag}{SUF_BUTTON_INCREMENT}"
-        self._mouse_handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
+        self._table_tag = compose_tag(tag, SUF_TABLE)
+        self._decrement_button_tag = compose_tag(tag, SUF_BUTTON_DECREMENT)
+        self._increment_button_tag = compose_tag(tag, SUF_BUTTON_INCREMENT)
+        self._mouse_handler_tag = compose_tag(tag, SUF_HANDLER_REGISTRY)
 
         self._decrement_button: Optional[GUIButton] = None
         self._increment_button: Optional[GUIButton] = None

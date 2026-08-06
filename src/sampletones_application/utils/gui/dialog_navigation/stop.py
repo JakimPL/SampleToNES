@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON, TAG_GLOBAL_THEME_DEFAULT
 from sampletones_shared.types.callback import VoidCallback
 
@@ -39,7 +40,7 @@ class FocusStop:
         outline leaves the button.
         """
         return cls(
-            focus_tag=f"{tag}{SUF_BUTTON}",
+            focus_tag=compose_tag(tag, SUF_BUTTON),
             enabled_tag=tag,
             activate=activate,
             base_theme_tag=base_theme_tag,

@@ -6,8 +6,8 @@ import numpy as np
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import SUF_GRAPH_THEME
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.spectrum import SpectrumLayer
@@ -146,7 +146,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
 
     def _get_color_theme_tag(self, color: Color) -> str:
         color_part = "_".join(str(c) for c in color)
-        return f"{self.tag}{SUF_GRAPH_THEME}{TAG_SEPARATOR}{color_part}"
+        return compose_tag(self.tag, SUF_GRAPH_THEME, color_part)
 
     def _create_brightness_theme(self, color_dim: Color, color_bright: Color, brightness: float) -> str:
         t = brightness / 255.0
@@ -178,7 +178,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
             for index, (frequency, band_width, brightness) in enumerate(layer):
-                series_tag = f"{self.y_axis_tag}{TAG_SEPARATOR}{layer.name.replace(' ', '_')}_{index}".lower()
+                series_tag = compose_tag(self.y_axis_tag, f"{layer.name}_{index}")
                 dpg.add_bar_series(
                     x=[self._layout.graph.max_x],
                     y=[frequency],

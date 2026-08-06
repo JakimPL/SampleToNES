@@ -8,6 +8,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import DialogElements, TracebackElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP_TRACEBACK,
@@ -35,7 +36,7 @@ class GUITraceback:
         button_theme: Optional[Theme] = None,
     ) -> None:
         self._parent = parent
-        self._tag = f"{parent}{SUF_GROUP_TRACEBACK}"
+        self._tag = compose_tag(parent, SUF_GROUP_TRACEBACK)
         self._text = "".join(
             traceback.format_exception(
                 type(exception),
@@ -62,8 +63,8 @@ class GUITraceback:
             button_theme,
             TAG_GLOBAL_THEME_DEFAULT,
         )
-        traceback_text_tag = f"{self._tag}{SUF_TEXT}"
-        traceback_copy_tag = f"{self._tag}{SUF_BUTTON_COPY}"
+        traceback_text_tag = compose_tag(self._tag, SUF_TEXT)
+        traceback_copy_tag = compose_tag(self._tag, SUF_BUTTON_COPY)
 
         with dpg.group(tag=self._tag, parent=parent, show=False):
             dpg.add_input_text(

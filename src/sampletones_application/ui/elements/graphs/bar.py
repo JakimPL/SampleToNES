@@ -7,8 +7,8 @@ import numpy as np
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import (
     SUF_BAR_PLOT_HOVER_BAR,
     SUF_BAR_PLOT_ZERO_LINE,
@@ -73,11 +73,11 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         else:
             _label = ""
 
-        self.hover_bar_tag = f"{tag}{SUF_BAR_PLOT_HOVER_BAR}"
-        self.hover_theme_tag = f"{self.hover_bar_tag}{SUF_GRAPH_THEME}"
-        self.mouse_handler_tag = f"{tag}{SUF_HANDLER_MOUSE}"
+        self.hover_bar_tag = compose_tag(tag, SUF_BAR_PLOT_HOVER_BAR)
+        self.hover_theme_tag = compose_tag(self.hover_bar_tag, SUF_GRAPH_THEME)
+        self.mouse_handler_tag = compose_tag(tag, SUF_HANDLER_MOUSE)
 
-        self.zero_line_tag = f"{tag}{SUF_BAR_PLOT_ZERO_LINE}"
+        self.zero_line_tag = compose_tag(tag, SUF_BAR_PLOT_ZERO_LINE)
         self.zero_line_theme = ThemeRegistry.resolve(zero_line_theme, TAG_GLOBAL_GRAPH_THEME_ZERO_LINE)
 
         self.data_range = data_range
@@ -253,8 +253,8 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             return
 
         for layer in self.layers.values():
-            series_tag = f"{self.y_axis_tag}{TAG_SEPARATOR}{layer.name.replace(' ', '_')}".lower()
-            theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
+            series_tag = compose_tag(self.y_axis_tag, layer.name)
+            theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME)
             self._set_layer(layer, series_tag, theme_tag)
 
     def _add_hover_bar(self) -> None:

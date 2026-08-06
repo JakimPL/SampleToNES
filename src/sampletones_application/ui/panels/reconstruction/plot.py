@@ -13,6 +13,7 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_CHANNEL_NOISE,
     TAG_GLOBAL_THEME_CHANNEL_PULSE1,
@@ -68,8 +69,8 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
         self.on_generators_changed: Optional[Callable[[List[GeneratorName]], None]] = None
 
-        self.autoscale_tag = (
-            f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
+        self.autoscale_tag = compose_tag(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT, SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE
         )
 
         self._lbl_waveform = language_manager[
@@ -285,7 +286,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
     @staticmethod
     def _get_generator_checkbox_tag(generator_name: GeneratorName) -> str:
-        return f"{PRE_RECONSTRUCTION_GENERATOR}{generator_name.value}"
+        return compose_tag(PRE_RECONSTRUCTION_GENERATOR, generator_name.value)
 
     def _read_selected_generators(self) -> List[GeneratorName]:
         selected_generators: List[GeneratorName] = []

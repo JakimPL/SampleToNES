@@ -6,8 +6,8 @@ import numpy as np
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.global_ import TAG_SEPARATOR
 from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import (
     SUF_GRAPH_THEME,
     SUF_WAVEFORM_OVERLAY,
@@ -101,8 +101,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._reconstruction_dimmed: bool = False
         self._top_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
 
-        self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
-        self.overlay_rectangle_tag = f"{tag}{SUF_WAVEFORM_OVERLAY}"
+        self.position_indicator_tag = compose_tag(tag, SUF_WAVEFORM_POSITION_INDICATOR)
+        self.overlay_rectangle_tag = compose_tag(tag, SUF_WAVEFORM_OVERLAY)
 
         self.indicator_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_INDICATOR)
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
@@ -374,7 +374,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._update_ranges()
 
     def _series_tag(self, layer_name: str) -> str:
-        return f"{self.y_axis_tag}{TAG_SEPARATOR}{layer_name.replace(' ', '_')}".lower()
+        return compose_tag(self.y_axis_tag, layer_name)
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
@@ -437,7 +437,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         dimmed reconstruction line during regeneration — by binding the matching cached theme.
         """
         color_part = "_".join(str(channel) for channel in color)
-        theme_tag = f"{series_tag}{SUF_GRAPH_THEME}{TAG_SEPARATOR}{color_part}"
+        theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME, color_part)
         if not dpg.does_item_exist(theme_tag):
             with dpg.theme(tag=theme_tag):
                 with dpg.theme_component(dpg.mvLineSeries):
