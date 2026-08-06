@@ -3,15 +3,15 @@ from dataclasses import dataclass
 import numpy as np
 
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_core.audio import minmax_decimate
-from sampletones_shared.types.application import Color
 
 
 @dataclass(frozen=True)
 class ArrayLayer(Layer):
     data: np.ndarray
     name: str
-    color: Color
+    color: PaletteColor
     max_display_points: int
 
     def __post_init__(self) -> None:

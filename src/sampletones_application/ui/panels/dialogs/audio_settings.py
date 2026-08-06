@@ -231,7 +231,7 @@ class GUIAudioSettingsWindow(GUIWindow):
     def _clip_warning_color(self, clip_fraction: float) -> ColorRGBA:
         """Reddens the readout colour along the layout gradient by the projected boost fraction."""
         colors = self._layout.master_gain
-        return blend(colors.label_color, colors.clip_color, clip_fraction)
+        return blend(colors.label_color.rgba, colors.clip_color.rgba, clip_fraction)
 
     @table_wrapper(columns=2)
     def _create_action_buttons(self) -> None:

@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.ui.elements.graphs import waveform as waveform_module
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
+from sampletones_application.utils.palette.color import PaletteColor
 
 
 class _FakeDPG:
@@ -80,7 +81,7 @@ class _Layer:
         self.name = name
         self.x_data = _Array()
         self.y_data = _Array()
-        self.color = (255, 255, 255, 255)
+        self.color = PaletteColor(value=(255, 255, 255, 255))
 
 
 class _Array:
@@ -105,7 +106,7 @@ def _graph() -> GUIWaveformGraph:
 
 def _with_layout(graph: GUIWaveformGraph, opacity: float = 0.4) -> None:
     graph._layout = SimpleNamespace(  # type: ignore[assignment]
-        colors=SimpleNamespace(waveform_reconstruction=(255, 200, 100, 255)),
+        colors=SimpleNamespace(waveform_reconstruction=PaletteColor(value=(255, 200, 100, 255))),
         waveform=SimpleNamespace(reconstruction_dim_opacity=opacity),
     )
 
@@ -144,7 +145,7 @@ class TestWaveformReconstructionDim:
         graph = _graph()
         layer = _Layer("Reconstruction")
 
-        assert graph._series_color(layer) == layer.color
+        assert graph._series_color(layer) == layer.color.rgba
 
     def test_series_color_greys_the_reconstruction_when_dimmed(self) -> None:
         graph = _graph()
@@ -162,7 +163,7 @@ class TestWaveformReconstructionDim:
         graph._reconstruction_dimmed = True
         layer = _Layer("Sample Name")
 
-        assert graph._series_color(layer) == layer.color
+        assert graph._series_color(layer) == layer.color.rgba
 
     def test_set_dimmed_rebinds_the_reconstruction_series_once(
         self,

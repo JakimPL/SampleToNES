@@ -281,7 +281,7 @@ class GUISequencerGridPanel(GUIPanel):
     def _create_themes(self) -> None:
         self._create_subcolumn_themes()
         self._create_header_themes()
-        self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
+        self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row.rgba)
 
     def _create_subcolumn_themes(self) -> None:
         """Builds each subcolumn's text theme in its full and its dimmed colour.
@@ -297,9 +297,9 @@ class GUISequencerGridPanel(GUIPanel):
         }
         fraction = self._layout.tracker.muted_text_fraction
         for subcolumn, color in theme_colors.items():
-            self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color)
+            self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color.rgba)
             self._muted_subcolumn_themes[subcolumn] = create_selectable_text_theme(
-                with_alpha_fraction(color, fraction),
+                with_alpha_fraction(color.rgba, fraction),
             )
 
     def _create_header_themes(self) -> None:
@@ -310,14 +310,14 @@ class GUISequencerGridPanel(GUIPanel):
         """
         header = self._layout.colors.header
         self._header_theme = create_header_selectable_theme(
-            self._layout.colors.label,
-            header.hovered,
-            header.active,
+            self._layout.colors.label.rgba,
+            header.hovered.rgba,
+            header.active.rgba,
         )
         self._muted_header_theme = create_header_selectable_theme(
-            self._layout.colors.muted.text,
-            header.hovered,
-            header.active,
+            self._layout.colors.muted.text.rgba,
+            header.hovered.rgba,
+            header.active.rgba,
         )
 
     def _create_tracker_view(self, parent: str) -> None:
@@ -437,12 +437,12 @@ class GUISequencerGridPanel(GUIPanel):
         dpg.highlight_table_column(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             SAMPLE_TABLE_COLUMN,
-            self._layout.colors.sample.column,
+            self._layout.colors.sample.column.rgba,
         )
         dpg.highlight_table_column(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             DIVIDER_TABLE_COLUMN,
-            self._layout.colors.sample.divider,
+            self._layout.colors.sample.divider.rgba,
         )
 
     def _highlight_header_row(self) -> None:
@@ -457,7 +457,7 @@ class GUISequencerGridPanel(GUIPanel):
                 TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 HEADER_TABLE_ROW,
                 column,
-                color=self._layout.colors.header.background,
+                color=self._layout.colors.header.background.rgba,
             )
 
     def _tint_channel_columns(self) -> None:
@@ -477,10 +477,10 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _channel_column_tint(self, generator: GeneratorName) -> ColorRGBA:
         if self._is_muted(generator):
-            return self._layout.colors.muted.background
+            return self._layout.colors.muted.background.rgba
 
         return with_alpha_fraction(
-            channel_color(self._layout.colors.channels, generator),
+            channel_color(self._layout.colors.channels, generator).rgba,
             self._layout.tracker.channel_column_tint,
         )
 
@@ -848,14 +848,14 @@ class GUISequencerGridPanel(GUIPanel):
         dpg.highlight_table_row(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             table_row,
-            color=self._layout.colors.cursor_row,
+            color=self._layout.colors.cursor_row.rgba,
         )
         column_index = tracker_table_column(generator)
         dpg.highlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             table_row,
             column_index,
-            color=self._layout.colors.cell_cursor,
+            color=self._layout.colors.cell_cursor.rgba,
         )
 
     def _remove_cell_highlight(
@@ -1277,7 +1277,7 @@ class GUISequencerGridPanel(GUIPanel):
         dpg.highlight_table_row(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             tracker_table_row(row_index),
-            color=self._layout.colors.pattern_highlight,
+            color=self._layout.colors.pattern_highlight.rgba,
         )
 
     def unhighlight_row(self, row_index: Optional[int] = None) -> None:
@@ -1311,7 +1311,7 @@ class GUISequencerGridPanel(GUIPanel):
             dpg.highlight_table_row(
                 TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 tracker_table_row(self._playing_row),
-                color=self._layout.colors.playback_row,
+                color=self._layout.colors.playback_row.rgba,
             )
 
     def _live_row_count(self) -> int:

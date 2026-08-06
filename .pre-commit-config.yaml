@@ -57,6 +57,14 @@ repos:
         files: ^src/sampletones_application/tags/
         verbose: true
 
+      - id: palette-colors
+        name: palette colors
+        entry: uv run scripts/checks/palette_colors.py
+        language: system
+        files: (^src/sampletones_application/.*\.py|^src/sampletones_config/.*\.yaml)$
+        pass_filenames: false
+        verbose: true
+
       - id: language-keys
         name: language keys
         entry: uv run scripts/checks/language_keys.py

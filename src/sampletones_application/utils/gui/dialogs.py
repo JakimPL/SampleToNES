@@ -248,7 +248,7 @@ class DialogsRenderer:
                     f"- {property_name}",
                     parent=parent,
                     wrap=self._recovery_wrap,
-                    color=self._col_text_highlight,
+                    color=self._col_text_highlight.rgba,
                 )
 
             dpg.add_text(
@@ -351,13 +351,13 @@ class DialogsRenderer:
                 dpg.add_text(
                     f"{str(type(exception).__name__)}: ",
                     parent=group_tag,
-                    color=self._col_text_error,
+                    color=self._col_text_error.rgba,
                 )
                 dpg.add_text(
                     str(exception),
                     parent=group_tag,
                     wrap=self._error_wrap,
-                    color=self._col_text_error,
+                    color=self._col_text_error.rgba,
                 )
 
             traceback = GUITraceback(
@@ -416,7 +416,7 @@ class DialogsRenderer:
             dpg.add_text(
                 str(filepath),
                 parent=parent,
-                color=self._col_path,
+                color=self._col_path.rgba,
                 wrap=self._error_wrap,
             )
 

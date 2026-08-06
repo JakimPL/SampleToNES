@@ -27,11 +27,9 @@ from sampletones_application.ui.themes.style import (
     ThemeValue,
 )
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.palette.color import ColorSource
-from sampletones_application.utils.palette.palette import Palette
-from sampletones_application.utils.palette.reference import PaletteReference
+from sampletones_application.utils.palette.color import PALETTE_SOURCE_CONTEXT_KEY
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_core.paths import EXT_FILE_YAML
-from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.serialization import load_yaml
 
 _BASE_THEME_NAME: Final[str] = "default"
@@ -45,9 +43,9 @@ class ThemeLoader:
     describes both item states and stays authoritative wherever it is bound.
     """
 
-    def __init__(self, theme_directory: Path, palette: Palette) -> None:
+    def __init__(self, theme_directory: Path, palette_source: PaletteSource) -> None:
         self._directory = theme_directory
-        self._palette = palette
+        self._context: Dict[str, PaletteSource] = {PALETTE_SOURCE_CONTEXT_KEY: palette_source}
 
     def load_all(self) -> List[Theme]:
         specs = self._load_specs()
@@ -74,7 +72,7 @@ class ThemeLoader:
             if not isinstance(raw, dict):
                 raise TypeError(f"Theme file {path} must contain a mapping, got {type(raw)}")
 
-            specs.append(ThemeSpec.model_validate(raw))
+            specs.append(ThemeSpec.model_validate(raw, context=self._context))
 
         return specs
 
@@ -132,7 +130,7 @@ class ThemeLoader:
         if isinstance(entry, ThemeColorEntrySpec):
             return ThemeColor(
                 key=self._resolve_color_key(entry.key, entry.category),
-                color=self._resolve_color(entry.value),
+                color=entry.value,
                 category=category,
             )
 
@@ -142,12 +140,6 @@ class ThemeLoader:
             y=entry.y,
             category=category,
         )
-
-    def _resolve_color(self, value: ColorSource) -> ColorRGBA:
-        if isinstance(value, PaletteReference):
-            return self._palette.resolve(value)
-
-        return value
 
     @classmethod
     def _entry_key(

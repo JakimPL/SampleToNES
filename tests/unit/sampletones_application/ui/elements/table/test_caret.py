@@ -3,7 +3,9 @@ from unittest.mock import patch
 
 import pytest
 
+from sampletones_application.layout.general.caret import CaretLayout
 from sampletones_application.ui.elements.table.caret import CaretOverlay
+from sampletones_application.utils.palette.color import PaletteColor
 
 ROOT_WINDOW = "global.window.main"
 ROOT_ID = 5
@@ -17,14 +19,23 @@ DIALOG_ID = 20
 _PARENTS: Dict[int, Optional[int]] = {PANEL_ID: ROOT_ID, ROOT_ID: None, DIALOG_ID: None}
 _ALIAS_IDS: Dict[str, int] = {ROOT_WINDOW: ROOT_ID, PANEL_WINDOW: PANEL_ID, DIALOG_WINDOW: DIALOG_ID}
 
+CARET_LAYOUT = CaretLayout(
+    fill=PaletteColor(value=(102, 187, 255, 64)),
+    border=PaletteColor(value=(102, 187, 255, 255)),
+    offset=3,
+    width_padding=2,
+)
+
 
 @pytest.fixture(autouse=True)
 def caret_state() -> Iterator[None]:
     CaretOverlay._root_window = ROOT_WINDOW
+    CaretOverlay._layout = CARET_LAYOUT
     CaretOverlay._rectangle = 123
     CaretOverlay._widget = None
     yield
     CaretOverlay._root_window = None
+    CaretOverlay._layout = None
     CaretOverlay._rectangle = None
     CaretOverlay._widget = None
 

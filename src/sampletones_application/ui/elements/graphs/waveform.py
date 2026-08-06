@@ -29,7 +29,7 @@ from sampletones_application.utils.gui.dpg import (
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
-from sampletones_shared.types.application import Color, Sender
+from sampletones_shared.types.application import Color, ColorRGBA, Sender
 from sampletones_shared.utils.color import to_grayscale, with_alpha_fraction
 
 
@@ -350,7 +350,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._upsert_series(series_tag, layer)
             self._bind_series_theme(series_tag, self._series_color(layer))
 
-    def _series_color(self, layer: Union[ArrayLayer, InstructionLayer]) -> Color:
+    def _series_color(self, layer: Union[ArrayLayer, InstructionLayer]) -> ColorRGBA:
         """Resolves a layer's line colour, greying the reconstruction while a regeneration runs.
 
         The dimmed reconstruction is desaturated to gray and faded, so the drawn waveform — not just
@@ -358,11 +358,11 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """
         if self._reconstruction_dimmed and layer.name == self._lbl_waveform_reconstruction:
             return with_alpha_fraction(
-                to_grayscale(self._layout.colors.waveform_reconstruction),
+                to_grayscale(self._layout.colors.waveform_reconstruction.rgba),
                 self._layout.waveform.reconstruction_dim_opacity,
             )
 
-        return layer.color
+        return layer.color.rgba
 
     def _prune_stale_series(self) -> None:
         """Aligns the y-axis series with the current layers, keeping the position indicator

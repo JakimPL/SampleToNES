@@ -1,11 +1,12 @@
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Final, Tuple, Type
+from typing import TYPE_CHECKING, Callable, Final, List, Tuple, Type
 
 from sampletones_shared.exceptions import SampleToNESError
 
 if TYPE_CHECKING:
     from sampletones_application.utils.palette.catalog import PaletteCatalog
+    from sampletones_application.utils.palette.source import PaletteSource
 
 CHECK_FAILURES: Final[Tuple[Type[Exception], ...]] = (
     ImportError,
@@ -68,23 +69,29 @@ def _check_palettes() -> str:
     return f"{', '.join(catalog.names)}, {len(catalog.default.colors)} colors each"
 
 
+def _palette_sources() -> "List[PaletteSource]":
+    from sampletones_application.utils.palette.source import PaletteSource
+
+    return [PaletteSource(palette) for palette in _load_palette_catalog().palettes.values()]
+
+
 def _check_layout_config() -> str:
-    """Resolves the layout against every shipped palette, since each resolves the colour tokens itself."""
+    """Resolves the layout against every shipped palette, since each answers the colour tokens itself."""
     from sampletones_application.layout import LayoutConfig, load_layout_config
     from sampletones_application.paths import BEHAVIOR_DIRECTORY, LAYOUT_DIRECTORY
 
-    for palette in _load_palette_catalog().palettes.values():
-        load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, palette)
+    for source in _palette_sources():
+        load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source)
 
     return f"{len(LayoutConfig.model_fields)} sections"
 
 
 def _check_themes() -> str:
-    """Resolves the theme set against every shipped palette, since each resolves the colour tokens itself."""
+    """Resolves the theme set against every shipped palette, since each answers the colour tokens itself."""
     from sampletones_application.paths import THEME_DIRECTORY
     from sampletones_application.ui.themes.loader import ThemeLoader
 
-    themes = [ThemeLoader(THEME_DIRECTORY, palette).load_all() for palette in _load_palette_catalog().palettes.values()]
+    themes = [ThemeLoader(THEME_DIRECTORY, source).load_all() for source in _palette_sources()]
     return f"{len(themes[0])} themes"
 
 

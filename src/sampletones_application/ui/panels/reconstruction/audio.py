@@ -17,6 +17,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
     ReconstructionPathViewModel,
@@ -24,7 +25,6 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_core.constants.enums import AudioSourceType
 from sampletones_shared.types.application import Sender
-from sampletones_shared.utils.color import RGBA
 
 
 class GUIReconstructionAudioPanel(GUIPanel):
@@ -32,7 +32,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
         self,
         *,
         path_colors: PathColors,
-        path_status_color: RGBA,
+        path_status_color: PaletteColor,
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,

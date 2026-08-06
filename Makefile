@@ -1,6 +1,6 @@
 .PHONY: help setup install build release system-deps run clean pre-commit test \
 	ftm-samples check-import-boundary check-tag-names check-unused-tags \
-	check-language-keys calibration lint pylint mypy format
+	check-language-keys check-palette-colors calibration lint pylint mypy format
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -117,6 +117,9 @@ check-unused-tags:
 
 check-language-keys:
 	uv run scripts/checks/language_keys.py
+
+check-palette-colors:
+	uv run scripts/checks/palette_colors.py
 
 calibration:
 	uv run scripts/calibration.py --all

@@ -14,10 +14,12 @@ from sampletones_application.utils.gui.dpg import (
     dpg_bind_item_theme,
     dpg_delete_children,
 )
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.general import MIN_FREQUENCY
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Color, Sender
+from sampletones_shared.utils.color import MAX_CHANNEL_VALUE, blend
 
 
 class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
@@ -101,8 +103,8 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 data=fragment,
                 name=self._language_manager["global.graph.label.spectrum_name"],
                 max_display_bins=self._layout.spectrum.max_display_bins,
-                color_dim=self._layout.spectrum.color_dim[:3],
-                color_bright=self._layout.spectrum.color_bright[:3],
+                color_dim=self._layout.spectrum.color_dim,
+                color_bright=self._layout.spectrum.color_bright,
             )
         )
 
@@ -122,14 +124,13 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         color_part = "_".join(str(c) for c in color)
         return compose_tag(self.tag, SUF_GRAPH_THEME, color_part)
 
-    def _create_brightness_theme(self, color_dim: Color, color_bright: Color, brightness: float) -> str:
-        t = brightness / 255.0
-        color = (
-            round(color_dim[0] + (color_bright[0] - color_dim[0]) * t),
-            round(color_dim[1] + (color_bright[1] - color_dim[1]) * t),
-            round(color_dim[2] + (color_bright[2] - color_dim[2]) * t),
-            255,
-        )
+    def _create_brightness_theme(
+        self,
+        color_dim: PaletteColor,
+        color_bright: PaletteColor,
+        brightness: float,
+    ) -> str:
+        color = blend(color_dim.rgba, color_bright.rgba, brightness / MAX_CHANNEL_VALUE)
         if color in self.themes:
             return self.themes[color]
 

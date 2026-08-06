@@ -14,17 +14,17 @@ from sampletones_application.layout.tabs.instructions import InstructionsLayout
 from sampletones_application.layout.tabs.main import MainLayout
 from sampletones_application.layout.tabs.reconstruction import ReconstructionLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
-from sampletones_application.utils.palette.color import PALETTE_CONTEXT_KEY
-from sampletones_application.utils.palette.palette import Palette
+from sampletones_application.utils.palette.color import PALETTE_SOURCE_CONTEXT_KEY
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_shared.utils.serialization import load_yaml_model, load_yaml_model_dir
 
 
 def load_layout_config(
     layout_directory: Path,
     behavior_directory: Path,
-    palette: Palette,
+    palette_source: PaletteSource,
 ) -> LayoutConfig:
-    context = {PALETTE_CONTEXT_KEY: palette}
+    context = {PALETTE_SOURCE_CONTEXT_KEY: palette_source}
     tabs_directory = layout_directory / "tabs"
     return LayoutConfig(
         general=load_yaml_model_dir(

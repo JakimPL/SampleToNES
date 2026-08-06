@@ -129,8 +129,9 @@ each value sits in the tree stays in the factory.
 | Palettes | `palettes/` | `Palette` (`sampletones_application/utils/palette/`) | `PaletteCatalog.load()`, indexed by palette name |
 | Theme | `theme/` | `ThemeSpec` (`sampletones_application/ui/themes/spec.py`) | `ThemeLoader.load_all()` → `ThemeRegistry` |
 
-The palettes load first, and the active one is injected as validation **context**, so any
-colour field in layout or theme resolves its tokens against it. `PaletteCatalog` names the
+The palettes load first, and the source holding the active one is injected as validation
+**context**, so any colour field in layout or theme keeps the token it was written as and
+reads its value from the palette in place when it is drawn with. `PaletteCatalog` names the
 palette a preference selects and answers with the default (`studio`) for a name the build
 does not ship, so a preference outlives the build that wrote it.
 

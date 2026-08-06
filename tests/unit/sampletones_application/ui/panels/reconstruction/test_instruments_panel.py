@@ -25,6 +25,7 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
 
@@ -33,13 +34,14 @@ SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_se
 
 @pytest.fixture
 def layout_config() -> LayoutConfig:
-    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source)
 
 
 @pytest.fixture(autouse=True)
 def registered_themes(layout_config: LayoutConfig) -> None:
     """Registers the themes the panel resolves on construction, as startup does."""
-    setup_themes(THEME_DIRECTORY, PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    setup_themes(THEME_DIRECTORY, PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default))
     GUIPanel.configure_section_header(
         layout_config.glyphs,
         layout_config.general.section_header,

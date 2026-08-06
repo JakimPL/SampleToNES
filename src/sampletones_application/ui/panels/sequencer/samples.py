@@ -173,7 +173,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             dpg.highlight_table_row(
                 TAG_SEQUENCER_INSTRUMENTS_TABLE,
                 position,
-                color=self._layout.colors.cell_cursor,
+                color=self._layout.colors.cell_cursor.rgba,
             )
 
     def _build_id_cell(
@@ -268,7 +268,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         dpg.highlight_table_row(
             TAG_SEQUENCER_INSTRUMENTS_TABLE,
             position,
-            color=self._layout.colors.cell_cursor,
+            color=self._layout.colors.cell_cursor.rgba,
         )
         self.call(self.on_sample_selected, sample_id)
 

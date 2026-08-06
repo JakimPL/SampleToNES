@@ -15,7 +15,8 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.tooltip import show_tooltip
-from sampletones_shared.types.application import Color, Sender
+from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import (
@@ -33,8 +34,8 @@ class GUIPathText(CallbackMixin):
         tag: str,
         path: Optional[Path],
         parent: str,
-        color: Color,
-        hover_color: Color,
+        color: PaletteColor,
+        hover_color: PaletteColor,
         status_message: str,
         prefix: Optional[str] = None,
         font: Optional[Font] = None,
@@ -78,7 +79,7 @@ class GUIPathText(CallbackMixin):
             self.display_text,
             tag=self.tag,
             parent=parent,
-            color=self.color,
+            color=self.color.rgba,
         )
 
         if self.font is not None:
@@ -113,13 +114,13 @@ class GUIPathText(CallbackMixin):
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
                 self._status_bar.set(self._status_message)
-                dpg.configure_item(self.tag, color=self.hover_color)
+                dpg.configure_item(self.tag, color=self.hover_color.rgba)
                 FrameCallbackManager.set_frame_callback(
                     self._on_hover,
                     2,
                 )
             else:
-                dpg.configure_item(self.tag, color=self.color)
+                dpg.configure_item(self.tag, color=self.color.rgba)
 
     def _on_clicked(self) -> None:
         if not self.path.exists():
@@ -137,11 +138,11 @@ class GUIPathText(CallbackMixin):
         self.color = self._path_color
         self.hover_color = self._path_hover_color
         dpg_set_value(self.tag, self.display_text)
-        dpg.configure_item(self.tag, color=self.color)
+        dpg.configure_item(self.tag, color=self.color.rgba)
         if self.tooltip is not None:
             dpg.set_value(self.tooltip, self.path_text)
 
-    def set_status(self, text: str, color: Color) -> None:
+    def set_status(self, text: str, color: PaletteColor) -> None:
         """Displays a non-path status (missing or not applicable) in a muted colour.
 
         The path is cleared so the row is inert: hovering holds the muted colour and a
@@ -152,7 +153,7 @@ class GUIPathText(CallbackMixin):
         self.color = color
         self.hover_color = color
         dpg_set_value(self.tag, text)
-        dpg.configure_item(self.tag, color=color)
+        dpg.configure_item(self.tag, color=color.rgba)
         if self.tooltip is not None:
             dpg.set_value(self.tooltip, text)
 

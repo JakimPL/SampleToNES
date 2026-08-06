@@ -11,6 +11,7 @@ from sampletones_application.ui.themes.spec import ThemeSpec
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
+from sampletones_application.utils.palette.source import PaletteSource
 
 _BASE_NAME = "default"
 
@@ -69,8 +70,8 @@ class TestLoadedInheritance:
 
     @pytest.fixture
     def themes(self) -> Dict[str, Theme]:
-        palette = PaletteCatalog.load(PALETTES_DIRECTORY).default
-        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, palette).load_all()}
+        source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, source).load_all()}
 
     def test_every_theme_carries_the_base_table_border(self, themes: Dict[str, Theme]) -> None:
         dpg.create_context()
@@ -150,7 +151,7 @@ class TestDisabledStateMirroring:
         palette_path.write_text(_SYNTHETIC_PALETTE)
         dpg.create_context()
         try:
-            theme = ThemeLoader(themes_path, Palette.load(palette_path)).load_all()[0]
+            theme = ThemeLoader(themes_path, PaletteSource(Palette.load(palette_path))).load_all()[0]
             theme.create()
             yield theme
         finally:

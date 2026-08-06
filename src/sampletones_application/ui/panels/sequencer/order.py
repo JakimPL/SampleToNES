@@ -255,22 +255,22 @@ class GUISequencerOrderPanel(GUIPanel):
         carries the header's hover and press washes instead, so it reads as the switch it is.
         """
         colors = self._layout.colors
-        self._entry_theme = create_selectable_text_theme(colors.text.order)
+        self._entry_theme = create_selectable_text_theme(colors.text.order.rgba)
         self._muted_entry_theme = create_selectable_text_theme(
             with_alpha_fraction(
-                colors.text.order,
+                colors.text.order.rgba,
                 self._layout.tracker.muted_text_fraction,
             ),
         )
         self._label_theme = create_header_selectable_theme(
-            colors.label,
-            colors.header.hovered,
-            colors.header.active,
+            colors.label.rgba,
+            colors.header.hovered.rgba,
+            colors.header.active.rgba,
         )
         self._muted_label_theme = create_header_selectable_theme(
-            colors.muted.text,
-            colors.header.hovered,
-            colors.header.active,
+            colors.muted.text.rgba,
+            colors.header.hovered.rgba,
+            colors.header.active.rgba,
         )
 
     def _create_button_row(self) -> None:
@@ -501,7 +501,7 @@ class GUISequencerOrderPanel(GUIPanel):
         dpg.highlight_table_column(
             TAG_SEQUENCER_ORDER_TABLE,
             0,
-            self._layout.colors.order.label,
+            self._layout.colors.order.label.rgba,
         )
 
     def _highlight_master_row(self, position_count: int) -> None:
@@ -517,7 +517,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 TAG_SEQUENCER_ORDER_TABLE,
                 DIVIDER_TABLE_ROW,
                 column,
-                color=self._layout.colors.order.master_divider,
+                color=self._layout.colors.order.master_divider.rgba,
             )
 
     def _highlight_master_cell_at(self, column: int) -> None:
@@ -525,7 +525,7 @@ class GUISequencerOrderPanel(GUIPanel):
             TAG_SEQUENCER_ORDER_TABLE,
             MASTER_TABLE_ROW,
             column,
-            color=self._layout.colors.order.master,
+            color=self._layout.colors.order.master.rgba,
         )
 
     def _tint_channel_rows(self) -> None:
@@ -546,10 +546,10 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _channel_row_tint(self, generator: GeneratorName) -> ColorRGBA:
         if self._is_muted(generator):
-            return self._layout.colors.muted.background
+            return self._layout.colors.muted.background.rgba
 
         return with_alpha_fraction(
-            channel_color(self._layout.colors.channels, generator),
+            channel_color(self._layout.colors.channels, generator).rgba,
             self._layout.tracker.channel_column_tint,
         )
 
@@ -561,7 +561,7 @@ class GUISequencerOrderPanel(GUIPanel):
         else:
             color = self._layout.colors.order.column_current
 
-        dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, color)
+        dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, color.rgba)
         self._highlighted_column = position
 
     def set_playing_position(self, position: Optional[int]) -> None:
@@ -666,7 +666,7 @@ class GUISequencerOrderPanel(GUIPanel):
             TAG_SEQUENCER_ORDER_TABLE,
             self._table_row(cursor.generator),
             cursor.position + 1,
-            color=self._layout.colors.cell_cursor,
+            color=self._layout.colors.cell_cursor.rgba,
         )
         self._highlighted = cursor
 

@@ -27,7 +27,6 @@ from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_core.utils.pitch_kind import PitchValueKind
-from sampletones_shared.types.application import Color
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -78,7 +77,7 @@ class GUIPitchStepper(CallbackMixin):
         status_bar: GUIStatusBar,
         layout: PitchStepperLayout,
         plus_minus_layout: PlusMinusButtonsLayout,
-        value_color: Color,
+        value_color: PaletteColor,
     ) -> None:
         self.on_value_changed: Optional[Callable[[int], None]] = None
         self._status_bar = status_bar
@@ -154,7 +153,7 @@ class GUIPitchStepper(CallbackMixin):
                     dpg.add_text(
                         str(self._value),
                         tag=self._value_tag,
-                        color=self._value_color,
+                        color=self._value_color.rgba,
                     )
                     FontRegistry.bind_to_item(self._value_tag, Font.MONO)
                 with dpg.table_cell():

@@ -103,7 +103,7 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialo
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.palette.catalog import PaletteCatalog
-from sampletones_application.utils.palette.palette import Palette
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
@@ -164,7 +164,7 @@ class Application:
         self._set_logging_level()
 
         self._palette_catalog: PaletteCatalog = PaletteCatalog.load(PALETTES_DIRECTORY)
-        self._palette: Palette = self._palette_catalog.default
+        self._palette_source: PaletteSource = PaletteSource(self._palette_catalog.default)
         self.layout: LayoutConfig = self._load_layout_config()
         self._setup_gui_elements()
 
@@ -437,7 +437,7 @@ class Application:
 
     def _load_layout_config(self) -> LayoutConfig:
         try:
-            return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, self._palette)
+            return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, self._palette_source)
         except ValidationError as exception:
             raise SystemError(f"Invalid layout configuration: {exception}") from exception
 
@@ -450,7 +450,7 @@ class Application:
         )
 
         try:
-            setup_themes(THEME_DIRECTORY, self._palette)
+            setup_themes(THEME_DIRECTORY, self._palette_source)
         except ValidationError as exception:
             raise SystemError(f"Invalid theme configuration: {exception}") from exception
 

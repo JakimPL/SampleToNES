@@ -10,8 +10,9 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_application.view_model.instruction.cell import TableCell
-from sampletones_shared.types.application import Color, Sender
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.data import SerializedData
 
 
@@ -24,8 +25,8 @@ class GUITable:
         rows: Tuple[TableCell, ...],
         *,
         label_column_width: int,
-        label_color: Color,
-        value_color: Color,
+        label_color: PaletteColor,
+        value_color: PaletteColor,
         parent: Optional[str] = None,
         before: Optional[str] = None,
         header_row: bool = False,
@@ -116,12 +117,12 @@ class GUITable:
             label_text = dpg.add_text(cell.label)
             label_font = Font.BOLD_SMALL if self._bold_labels else Font.REGULAR_SMALL
             FontRegistry.bind_to_item(label_text, label_font)
-            dpg.configure_item(label_text, color=self._label_color)
+            dpg.configure_item(label_text, color=self._label_color.rgba)
             self._labels.append(label_text)
 
             value_text = dpg.add_text(cell.value)
             FontRegistry.bind_to_item(value_text, Font.REGULAR_SMALL)
-            dpg.configure_item(value_text, color=self._value_color)
+            dpg.configure_item(value_text, color=self._value_color.rgba)
             self._values.append(value_text)
 
     @classmethod

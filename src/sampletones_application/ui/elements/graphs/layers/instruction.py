@@ -4,16 +4,16 @@ from typing import Any
 import numpy as np
 
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_core.generators import MIXER_LEVELS
 from sampletones_core.library import InstructionLibraryFragment
-from sampletones_shared.types.application import Color
 
 
 @dataclass(frozen=True)
 class InstructionLayer(Layer):
     data: InstructionLibraryFragment[Any]
     name: str
-    color: Color
+    color: PaletteColor
 
     def __post_init__(self) -> None:
         mixer = MIXER_LEVELS[self.data.generator_class]

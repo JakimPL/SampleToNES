@@ -12,6 +12,7 @@ from sampletones_application.ui.panels.sequencer import grid as grid_module
 from sampletones_application.ui.panels.sequencer.columns import tracker_table_column
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS, ModifierSet
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
@@ -26,10 +27,10 @@ MUTED_TEXT_FRACTION = 0.25
 
 MUTED_BACKGROUND: ColorRGBA = (10, 8, 18, 96)
 CHANNEL_COLORS = ChannelColors(
-    pulse1=(240, 146, 86, 255),
-    pulse2=(242, 209, 95, 255),
-    triangle=(140, 193, 237, 255),
-    noise=(187, 184, 194, 255),
+    pulse1=PaletteColor(value=(240, 146, 86, 255)),
+    pulse2=PaletteColor(value=(242, 209, 95, 255)),
+    triangle=PaletteColor(value=(140, 193, 237, 255)),
+    noise=PaletteColor(value=(187, 184, 194, 255)),
 )
 
 HEADER_THEME = 1
@@ -90,7 +91,7 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
             channels=CHANNEL_COLORS,
-            muted=SimpleNamespace(background=MUTED_BACKGROUND),
+            muted=SimpleNamespace(background=PaletteColor(value=MUTED_BACKGROUND)),
         ),
         tracker=SimpleNamespace(
             channel_column_tint=TINT_FRACTION,

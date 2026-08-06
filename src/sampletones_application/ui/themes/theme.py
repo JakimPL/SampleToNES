@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -11,7 +11,10 @@ from sampletones_application.ui.themes.style import (
     ThemeStyle,
     ThemeValue,
 )
-from sampletones_shared.types.application import Color
+from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_shared.types.application import ColorRGBA, Sender
+
+ThemeColorItems = List[Tuple[Sender, PaletteColor]]
 
 
 class Theme:
@@ -19,6 +22,7 @@ class Theme:
         self.tag = tag
         self._items = items
         self._dictionary: ThemeDictionary = self._index(items)
+        self._color_items: ThemeColorItems = []
 
     @staticmethod
     def _index(items: ThemeItems) -> ThemeDictionary:
@@ -39,12 +43,15 @@ class Theme:
 
         return dictionary
 
-    def create(self, *, override: bool = False) -> None:
-        if not override and dpg.does_item_exist(self.tag):
-            return
+    def create(self) -> None:
+        """Builds the DearPyGui theme once, keeping hold of the colour items it fills.
 
-        if override and dpg.does_item_exist(self.tag):
-            dpg.delete_item(self.tag)
+        DearPyGui copies each colour into the item it creates, so the theme records the
+        item alongside the :class:`PaletteColor` it was filled from and :meth:`restyle`
+        writes the current value back into it.
+        """
+        if dpg.does_item_exist(self.tag):
+            return
 
         with dpg.theme(tag=self.tag):
             for parameter, values in self._items.items.items():
@@ -54,11 +61,7 @@ class Theme:
                 ):
                     for item in values:
                         if isinstance(item, ThemeColor):
-                            dpg.add_theme_color(
-                                item.key,
-                                item.color,
-                                category=item.category,
-                            )
+                            self._add_color(item)
                         elif isinstance(item, ThemeStyle):
                             dpg.add_theme_style(
                                 item.key,
@@ -66,6 +69,24 @@ class Theme:
                                 item.y,
                                 category=item.category,
                             )
+
+    def _add_color(self, item: ThemeColor) -> None:
+        color_item = dpg.add_theme_color(
+            item.key,
+            item.color.rgba,
+            category=item.category,
+        )
+        self._color_items.append((color_item, item.color))
+
+    def restyle(self) -> None:
+        """Writes the current value of every colour this theme carries back into DearPyGui.
+
+        Setting a live theme colour item repaints each item bound to the theme on the next
+        frame and leaves the bindings themselves in place, so a palette swap reaches every
+        themed widget through the theme it already has.
+        """
+        for color_item, color in self._color_items:
+            dpg.set_value(color_item, color.rgba)
 
     def bind_to_item(self, item: int | str) -> None:
         self.create()
@@ -97,7 +118,8 @@ class Theme:
         *,
         enabled_state: bool = True,
         category: int = dpg.mvThemeCat_Core,
-    ) -> Optional[Color]:
+    ) -> Optional[ColorRGBA]:
+        """The value a theme colour carries under the active palette."""
         theme_item = self.get(
             item_type,
             key,
@@ -106,7 +128,7 @@ class Theme:
             is_style=False,
         )
         if isinstance(theme_item, ThemeColor):
-            return theme_item.color
+            return theme_item.color.rgba
 
         return None
 

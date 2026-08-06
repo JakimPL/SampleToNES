@@ -53,6 +53,7 @@ from sampletones_application.utils.gui.tooltip import (
     create_detail_tooltip,
     populate_detail_tooltip,
 )
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_application.utils.parallelization.thread import (
     BackgroundWorkCancelled,
     SingleThreadExecutor,
@@ -73,7 +74,7 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
-from sampletones_shared.types.application import ColorRGBA, Sender
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import (
     Callback,
     MessageCallback,
@@ -487,7 +488,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         return str(node.name)
 
-    def _node_header_color(self, node: TreeNode) -> ColorRGBA:
+    def _node_header_color(self, node: TreeNode) -> PaletteColor:
         if self._logic.is_node_favorite(node):
             return self._colors.favorite
 
@@ -514,10 +515,10 @@ class GUITreePanel(GUIPanel, ABC):
 
         with dpg.group(horizontal=True):
             if is_favorite:
-                star_text = dpg.add_text(self._glyphs.common.favorite, color=color)
+                star_text = dpg.add_text(self._glyphs.common.favorite, color=color.rgba)
                 FontRegistry.bind_to_item(star_text, Font.ICON)
 
-            text = dpg.add_text(self._context_menu_header_name(node), color=color)
+            text = dpg.add_text(self._context_menu_header_name(node), color=color.rgba)
             FontRegistry.bind_to_item(text, Font.BOLD)
 
     def _node_detail_items(self, node: TreeNode) -> List[Tuple[str, str]]:
@@ -562,7 +563,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         dpg.add_separator()
         for label, value in detail_items:
-            detail_text = dpg.add_text(f"{label}: {value}", color=self._colors.muted)
+            detail_text = dpg.add_text(f"{label}: {value}", color=self._colors.muted.rgba)
             FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:

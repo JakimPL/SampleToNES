@@ -24,7 +24,8 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
     dpg_is_item_hovered,
 )
-from sampletones_shared.types.application import Color, Sender
+from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.arrays import interpolate_segment
 
 OnBarPointClickedCallback = Callable[[np.ndarray], None]
@@ -154,7 +155,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             with dpg.theme_component(dpg.mvBarSeries):
                 dpg.add_theme_color(
                     dpg.mvPlotCol_Fill,
-                    layer.color,
+                    layer.color.rgba,
                     category=dpg.mvThemeCat_Plots,
                 )
 
@@ -168,12 +169,8 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if layer is None:
             raise RuntimeError("No layers available to bind hover theme")
 
-        hover_color = (
-            layer.color[0],
-            layer.color[1],
-            layer.color[2],
-            self._hover_alpha,
-        )
+        red, green, blue, _ = layer.color.rgba
+        hover_color = (red, green, blue, self._hover_alpha)
         with dpg.theme(tag=self.hover_theme_tag):
             with dpg.theme_component(dpg.mvBarSeries):
                 dpg.add_theme_color(
@@ -188,7 +185,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self,
         data: np.ndarray,
         name: str,
-        color: Color,
+        color: PaletteColor,
         y_ticks: Optional[Tuple[int, ...]] = None,
     ) -> None:
         self._delete_hover_bar()

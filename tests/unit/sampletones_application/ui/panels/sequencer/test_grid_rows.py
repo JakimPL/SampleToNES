@@ -10,6 +10,7 @@ from sampletones_application.ui.panels.sequencer.columns import (
     tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.utils.palette.color import PaletteColor
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import ColorRGBA
 
@@ -57,10 +58,10 @@ def _panel() -> GUISequencerGridPanel:
     panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
-            cursor_row=CURSOR_ROW,
-            cell_cursor=CELL_CURSOR,
-            pattern_highlight=PATTERN_HIGHLIGHT,
-            playback_row=PLAYBACK_ROW,
+            cursor_row=PaletteColor(value=CURSOR_ROW),
+            cell_cursor=PaletteColor(value=CELL_CURSOR),
+            pattern_highlight=PaletteColor(value=PATTERN_HIGHLIGHT),
+            playback_row=PaletteColor(value=PLAYBACK_ROW),
         ),
     )
     panel._current_row_count = PATTERN_ROWS
@@ -213,7 +214,9 @@ class TestHeaderRowBackground:
         recorder: _TableRecorder,
     ) -> None:
         panel = _panel()
-        panel._layout = SimpleNamespace(colors=SimpleNamespace(header=SimpleNamespace(background=HEADER_SHADE)))
+        panel._layout = SimpleNamespace(
+            colors=SimpleNamespace(header=SimpleNamespace(background=PaletteColor(value=HEADER_SHADE)))
+        )
 
         panel._highlight_header_row()
 
@@ -229,7 +232,9 @@ class TestHeaderRowBackground:
         """The washes are column highlights, which DearPyGui draws over a row highlight, so the
         header is painted per cell to read as one band."""
         panel = _panel()
-        panel._layout = SimpleNamespace(colors=SimpleNamespace(header=SimpleNamespace(background=HEADER_SHADE)))
+        panel._layout = SimpleNamespace(
+            colors=SimpleNamespace(header=SimpleNamespace(background=PaletteColor(value=HEADER_SHADE)))
+        )
 
         panel._highlight_header_row()
 
