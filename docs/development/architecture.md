@@ -75,17 +75,35 @@ Services execute long-running work on background threads. Their results are post
 
 ### 8. All display text comes from `LanguageManager`
 
-Every user-visible string is looked up via `LanguageManager[Page, Panel, TextType, Element]`, where `Element` is a `StrEnum` member defined under `categories/elements/`. This makes the text system the single source of truth and enables future localisation. Log messages are developer-facing and exempt.
+Every user-visible string is looked up on `LanguageManager` by the key the language file spells:
 
-### 9. `constants/` holds only DPG identifiers
-
-The `constants/` package contains only `TAG_*` values (DPG widget string identifiers) and `SUF_*` values (suffix fragments used to compose tags programmatically). Dimensions, colours, timings, and display strings live in YAML configuration loaded at startup (`layout/`).
-
-Tag naming convention:
 ```
-TAG_<MODULE>_<WIDGET_TYPE>[_<DETAIL>]
+page.panel.text_type.element
 ```
-`MODULE` is the feature area (`GLOBAL`, `MAIN`, `RECONSTRUCTIONS`, `SEQUENCER`, `INSTRUCTIONS`, `PLAYER`, `SETTINGS`); `WIDGET_TYPE` is the DPG element kind (`WINDOW`, `PANEL`, `TREE`, `TABLE`, `BUTTON`, `INPUT`, `TABS`, `TAB`, `THEME`, `FONT`, `MENU`); `DETAIL` disambiguates multiple instances of the same type in the same module.
+
+The first three segments name members of `Page`, `Panel`, and `TextType` (`categories/hierarchy.py`); the element segment names a member of one of the element enums under `categories/elements/`. `en.yaml` is a flat map keyed exactly this way, so the dotted string is the lookup form — `language_manager["global.dialog.label.ok"]` — and a reader holds a key against the language file by eye. `categories/key/` owns the grammar: `validate_text_key` checks every key the file holds at load time, and a lookup that misses raises `MissingTextError` naming the key and the file. This makes the text system the single source of truth and enables future localisation. Log messages are developer-facing and exempt.
+
+Text resolves where it is displayed. A class that reads text holds the manager as `self._language_manager`, assigned in its own `__init__`, and looks each string up at the point of use, so a language change takes effect on the next read. Where the same text is read at more than one site in a class, one named binding serves them all and the reads stay in step.
+
+A key assembled at runtime passes its four members instead — `language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, element]` — with the variable part annotated as the concrete element enum it carries (`SequencerOrderElements`, `DialogElements`). That annotation is what keeps the key checkable: the `language-keys` hook expands it to the enum's members and holds every key it reaches against the language file. A lookup therefore states its key as literals, as annotated members, or as a conditional between two literal keys — the three forms the hook reads values from:
+
+```python
+language_manager["global.pitch.label.period_name" if is_period else "global.pitch.label.pitch_name"]
+```
+
+### 9. `tags/` holds only DPG identifiers
+
+The `tags/` package contains only DPG widget string identifiers: `TAG_*` whole tags, and `SUF_*`/`PRE_*` fragments that compose into them. Dimensions, colours, timings, and display strings live in YAML configuration loaded at startup (`layout/`).
+
+**`compose_tag` is the one composer.** `tags/compose.py` owns `TAG_SEPARATOR` and the joiner; every tag reaches its final spelling through it. Each part is lowercased and its whitespace runs become single underscores, so a tag built from a runtime name — a sample title, a layer label — reads the same however that name arrives cased or spaced, and a part already holding a composed tag contributes its own segments, which is how a child tag extends its parent. Fragments hold bare segments (`SUF_GRAPH_PLOT = "plot"`) and gain separators only from the joiner, so a fragment reads as the segment it names and either end composes onto it.
+
+**A whole tag is a `TagName`**, the `str` subclass in `categories/key/tag.py` that names its four parts and composes them:
+
+```python
+TAG_MAIN_EXPLORER_TREE = TagName(Page.MAIN, Panel.EXPLORER, Widget.TREE, "explorer")   # main.explorer.tree
+```
+
+The spelling is `page[.panel].widget[.element]` — `Panel.IMPLICIT` names a widget belonging to no panel, and an element repeating its panel's name is carried by the panel segment alone. A constant's name is its composed tag upper-cased with each separator turned into an underscore, behind the `TAG_` prefix, so reading either one states the other; the `tag-names` hook holds the two together.
 
 ### 10. Exclusive operations expose a lifecycle-accurate active state
 
@@ -136,6 +154,16 @@ Two mechanisms keep the codebase aligned with this document.
 
 **Import-expressible contracts are enforced by script.** `scripts/checks/import_boundary.py` (a pre-commit hook, also run via `make check-import-boundary`) encodes one rule per layer, mirroring the **Must not import** lists in the Layer Reference; the Layer Reference is the source of truth, and a divergence between it and the script is itself a defect. Where a layer may consume another layer's data contract while its implementation stays out of reach (logic and the service result types), the rule carries an explicit contract exemption. The hook audits the entire source tree on every commit (`--all`), so strengthening a rule surfaces violations in files a commit never touched. That property sets the working idiom for structural refactors: turn the stricter rule on first, and let the failing hook enumerate the remaining work.
 
+**The identifier vocabularies are enforced the same way.** Three more scripts under `scripts/checks/` run whole-tree as pre-commit hooks, each also available as a `make check-*` target:
+
+| Hook | Script | What it holds |
+|------|--------|---------------|
+| `language-keys` | `language_keys.py` | Code and `en.yaml` against each other, in both directions: a literal key names an entry, every entry is reached by some lookup, and a lookup states values the check can read (principle 8) |
+| `tag-names` | `tag_names.py` | A tag constant's name against the tag it composes (principle 9) |
+| `unused-tags` | `unused_tags.py` | Every `TAG_*`/`SUF_*`/`PRE_*` the `tags/` package declares against the reads of it across `src/`, `tests/`, and `scripts/`, where an import alone stands at no reads |
+
+All three read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
+
 **Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. Deviations that survive review are recorded in `docs/development/bugs-and-todos.md § Architecture` until they are paid off; the ledger, not the codebase, is the memory of what is currently out of line.
 
 ---
@@ -167,7 +195,7 @@ Two mechanisms keep the codebase aligned with this document.
 | `ui/resources/` | Icons and image resources loaded at startup |
 | `ui/menu.py` | `MenuBar` — the application's top menu bar |
 
-**May import:** `view_model/`, `utils/`, `categories/`, `constants/`, `layout/`, `sampletones_core` types, `sampletones_shared`.
+**May import:** `view_model/`, `utils/`, `categories/`, `tags/`, `layout/`, `sampletones_core` types, `sampletones_shared`.
 **Must not import:** `coordinators/`, `logic/`, `services/`, `config/`, `application.py`, `shell.py`, `utils/gui/dialogs` (`DialogsRenderer` is coordinator territory).
 
 ---
@@ -282,9 +310,9 @@ There are two coordinator kinds:
 | Package | Purpose |
 |---------|---------|
 | `config/` | `ConfigManager` (domain generation config), `SessionManager` (runtime session: last paths, audio device, window geometry). Presentation-free: it records load outcomes (`ConfigLoadOutcome`) as domain data for `ConfigCoordinator` to present. Must not import the visual packages, `coordinators/`, or `application.py` |
-| `categories/` | `LanguageManager` and the `Page / Panel / TextType / Element` enum hierarchy used as lookup keys |
+| `categories/` | `LanguageManager`, the `Page / Panel / TextType / Widget` enum hierarchy and the element enums that name lookup keys, and the key grammar under `categories/key/` |
 | `layout/` | Pydantic models loaded from YAML at startup; injected into coordinators and panels as `LayoutConfig` |
-| `constants/` | DPG widget tags (`TAG_*`) and tag suffix fragments (`SUF_*`) |
+| `tags/` | DPG widget tags (`TAG_*`), the fragments composing into them (`SUF_*`, `PRE_*`), and `compose_tag` |
 | `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/`, colour, threading, and `utils/file_dialogs/` — OS-native file dialogs behind a `FileDialogBackend` Protocol, with the D-Bus desktop-portal client under `utils/file_dialogs/backends/portal/`). DPG-bound helpers live in `utils/gui/` and are off-limits to the non-visual layers |
 | `viewport.py` | Manages DPG viewport geometry and fullscreen state |
 
@@ -412,9 +440,9 @@ sampletones_application/
 ├── logic/                  ← domain state machines; one subpackage per feature area, plus history/ and shared/
 ├── services/               ← ServiceBase + one module or subpackage per background worker
 ├── config/                 ← ConfigManager + SessionManager
-├── categories/             ← LanguageManager + lookup enums
+├── categories/             ← LanguageManager + lookup enums, with the key grammar under key/
 ├── layout/                 ← LayoutConfig (Pydantic) + YAML loaders
-├── constants/              ← TAG_* and SUF_* identifiers only
+├── tags/                   ← TAG_*, SUF_*, PRE_* identifiers and compose_tag only
 └── utils/                  ← dpg-free helpers; dpg-bound helpers under utils/gui/
 ```
 
@@ -431,8 +459,10 @@ sampletones_application/
 | Manager class | `<Domain>Manager` | `ReconstructionManager` |
 | Controller class | `<Domain>Controller` | `ProjectController` |
 | Service class | `<Domain>Service` | `ConversionService` |
-| DPG widget tag | `TAG_<MODULE>_<WIDGET>[_<DETAIL>]` | `TAG_MAIN_PANEL_CONFIG` |
+| DPG widget tag | `TAG_` + the composed tag, upper-cased | `TAG_MAIN_CONFIG_TABLE_CONFIG_ROW` (`main.config.table.config_row`) |
 | Tag suffix | `SUF_<ROLE>` | `SUF_PANEL_LEFT` |
+| Tag prefix | `PRE_<ROLE>` | `PRE_RECONSTRUCTION_GENERATOR` |
+| Text key | `page.panel.text_type.element` | `global.dialog.label.ok` |
 | Panel callback hook | `on_<event>` attribute | `on_convert_requested` |
 | Panel state hook | `can_<action>` or `<action>_<subject>` attribute | `can_add_to_sequencer`, `replace_in_sequencer_label` |
 | Logic callback | `on_<event>` attribute | `on_view_changed` |
