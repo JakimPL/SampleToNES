@@ -1,25 +1,11 @@
 from __future__ import annotations
 
-from typing import Dict, Final, NamedTuple
+from typing import Dict, Final
 
-from sampletones_application.categories.abstract import AbstractElement
-from sampletones_application.categories.hierarchy import Page, Panel, TextType, Widget
+from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.tags.compose import compose_tag
 
 _PANEL_SHORT_NAMES: Final[Dict[Panel, str]] = {Panel.CONFIG: "config"}
-
-
-class TextKey(NamedTuple):
-    page: Page
-    panel: Panel
-    text_type: TextType
-    element: AbstractElement
-
-    def compose(self) -> str:
-        return compose_tag(*(str(part) for part in self))  # pylint: disable=not-an-iterable
-
-    def __str__(self) -> str:
-        return self.compose()
 
 
 class TagName(str):

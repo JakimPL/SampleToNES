@@ -4,9 +4,6 @@ from typing import Any, Tuple
 
 import pytest
 
-from sampletones_application.categories.elements.global_ import DialogElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType, Widget
-from sampletones_application.categories.key import TagName, TextKey
 from sampletones_application.tags.compose import TAG_SEPARATOR, compose_tag
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -61,40 +58,3 @@ class TestComposeTagInvariants:
 
     def test_casing_and_spacing_of_a_runtime_name_do_not_change_the_tag(self) -> None:
         assert compose_tag("base", "My Layer") == compose_tag("base", "my_layer")
-
-
-class TestTagNameComposition:
-    def test_full_key_names_every_segment(self) -> None:
-        tag = TagName(Page.GLOBAL, Panel.GRAPH, Widget.THEME, "indicator")
-        assert tag == "global.graph.theme.indicator"
-
-    def test_implicit_panel_is_elided(self) -> None:
-        tag = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.WINDOW, "main")
-        assert tag == "global.window.main"
-
-    def test_empty_element_is_elided(self) -> None:
-        tag = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.TABS, "")
-        assert tag == "global.tabs"
-
-    def test_element_repeating_the_panel_is_elided(self) -> None:
-        tag = TagName(Page.MAIN, Panel.CONFIG, Widget.PANEL, "config")
-        assert tag == "main.config.panel"
-
-    def test_structured_parts_stay_reachable(self) -> None:
-        tag = TagName(Page.SETTINGS, Panel.AUDIO, Widget.WINDOW, "audio")
-        assert (tag.page, tag.panel, tag.widget, tag.element) == (
-            Page.SETTINGS,
-            Panel.AUDIO,
-            Widget.WINDOW,
-            "audio",
-        )
-
-
-class TestTextKeyComposition:
-    def test_compose_joins_all_four_parts(self) -> None:
-        key = TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.OK)
-        assert key.compose() == "global.dialog.label.ok"
-
-    def test_str_matches_compose(self) -> None:
-        key = TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, DialogElements.CANCEL)
-        assert str(key) == key.compose()

@@ -1,5 +1,5 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
-from sampletones_application.categories.key import TagName
+from sampletones_application.categories.key.tag import TagName
 from sampletones_application.tags.compose import compose_tag
 
 TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED = TagName(

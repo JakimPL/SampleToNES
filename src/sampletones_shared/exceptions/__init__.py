@@ -3,6 +3,7 @@ from .base import SampleToNESError
 from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning
 from .dialog import FileDialogUnavailableError
+from .language import LanguageError, MalformedTextKeyError, MissingTextError
 from .library import (
     IncompatibleLibraryDataVersionError,
     InstructionTypeMismatchError,
@@ -76,4 +77,7 @@ __all__ = [
     "CallbackQueueStop",
     "IncompleteHistogramRebinningWarning",
     "FileDialogUnavailableError",
+    "LanguageError",
+    "MalformedTextKeyError",
+    "MissingTextError",
 ]
