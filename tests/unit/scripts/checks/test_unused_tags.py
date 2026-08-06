@@ -9,6 +9,9 @@ from tests.suite.source import parse_source
 
 check_unused_tags = load_script("scripts/checks/unused_tags.py")
 
+TAGS_MODULE: Final[Path] = Path("tags/general.py")
+PANEL_MODULE: Final[Path] = Path("ui/panel.py")
+
 TAGS_SOURCE: Final[str] = """
 TAG_GLOBAL_WINDOW_MAIN = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.WINDOW, "main")
 SUF_BUTTON = "button"
@@ -25,18 +28,18 @@ def build() -> None:
 """
 
 
-def module(name: str, source: str) -> SourceModule:
-    return SourceModule(path=Path(name), tree=parse_source(source))
+def module(path: Path, source: str) -> SourceModule:
+    return SourceModule(path=path, tree=parse_source(source))
 
 
 def fragment_names(source: str) -> List[str]:
-    return [fragment.name for fragment in check_unused_tags.declared_fragments([module("tags/general.py", source)])]
+    return [fragment.name for fragment in check_unused_tags.declared_fragments([module(TAGS_MODULE, source)])]
 
 
 def unread(tags_source: str, panel_source: str) -> List[str]:
-    tags = [module("tags/general.py", tags_source)]
+    tags = [module(TAGS_MODULE, tags_source)]
     fragments = check_unused_tags.declared_fragments(tags)
-    counts = check_unused_tags.reference_counts([*tags, module("ui/panel.py", panel_source)])
+    counts = check_unused_tags.reference_counts([*tags, module(PANEL_MODULE, panel_source)])
     return [fragment.name for fragment in check_unused_tags.unread_fragments(fragments, counts)]
 
 
@@ -54,17 +57,17 @@ class TestDeclaredFragments:
         assert "PANEL_WIDTH" not in fragment_names(TAGS_SOURCE)
 
     def test_a_fragment_carries_where_it_is_declared(self) -> None:
-        declared = check_unused_tags.declared_fragments([module("tags/general.py", TAGS_SOURCE)])
-        assert declared[0].location == "tags/general.py:2"
+        declared = check_unused_tags.declared_fragments([module(TAGS_MODULE, TAGS_SOURCE)])
+        assert declared[0].location == f"{TAGS_MODULE}:2"
 
 
 class TestReferenceCounts:
     def test_a_read_raises_the_count(self) -> None:
-        counts: Dict[str, int] = check_unused_tags.reference_counts([module("ui/panel.py", PANEL_SOURCE)])
+        counts: Dict[str, int] = check_unused_tags.reference_counts([module(PANEL_MODULE, PANEL_SOURCE)])
         assert counts["TAG_GLOBAL_WINDOW_MAIN"] == 1
 
     def test_an_import_alone_raises_no_count(self) -> None:
-        counts: Dict[str, int] = check_unused_tags.reference_counts([module("ui/panel.py", PANEL_SOURCE)])
+        counts: Dict[str, int] = check_unused_tags.reference_counts([module(PANEL_MODULE, PANEL_SOURCE)])
         assert "PRE_RECONSTRUCTION_GENERATOR" not in counts
 
 
