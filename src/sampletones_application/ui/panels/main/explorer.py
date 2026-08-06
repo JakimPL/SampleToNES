@@ -3,9 +3,6 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import TreeElements
-from sampletones_application.categories.elements.main import ExplorerElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
@@ -79,86 +76,10 @@ class GUIExplorerPanel(GUITreePanel):
         colors: TreeColors,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self._explorer_logic = explorer_logic
 
-        self._lbl_section = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.SECTION,
-        ]
-        self._lbl_refresh = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.REFRESH_BUTTON,
-        ]
-        self._lbl_collapse_all = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.COLLAPSE_ALL_BUTTON,
-        ]
-        self._lbl_ctx_load_reconstruction = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.CONTEXT_LOAD_RECONSTRUCTION,
-        ]
-        self._lbl_ctx_load_library = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.CONTEXT_LOAD_LIBRARY,
-        ]
-        self._lbl_ctx_reconstruct_file = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.CONTEXT_RECONSTRUCT_FILE,
-        ]
-        self._lbl_ctx_reconstruct_directory = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.CONTEXT_RECONSTRUCT_DIRECTORY,
-        ]
-        self._lbl_ctx_set_library = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.CONTEXT_SET_LIBRARY_DIRECTORY,
-        ]
-        self._lbl_ctx_set_output = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.LABEL,
-            ExplorerElements.CONTEXT_SET_OUTPUT_DIRECTORY,
-        ]
-        self._msg_status_audio_no_autoplay = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.MESSAGE,
-            ExplorerElements.STATUS_NODE_AUDIO_NO_AUTOPLAY,
-        ]
-        self._msg_status_audio = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.MESSAGE,
-            ExplorerElements.STATUS_NODE_AUDIO,
-        ]
-        self._msg_status_refresh = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.MESSAGE,
-            ExplorerElements.STATUS_REFRESH,
-        ]
-        self._msg_status_collapse_all = language_manager[
-            Page.MAIN,
-            Panel.EXPLORER,
-            TextType.MESSAGE,
-            ExplorerElements.STATUS_COLLAPSE_ALL,
-        ]
+        self._lbl_section = language_manager["main.explorer.label.section"]
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
@@ -176,12 +97,7 @@ class GUIExplorerPanel(GUITreePanel):
             tree_tag=TAG_MAIN_EXPLORER_TREE,
             tree_logic=tree_logic,
             scheduling=scheduling,
-            search_label=language_manager[
-                Page.GLOBAL,
-                Panel.BROWSER,
-                TextType.LABEL,
-                TreeElements.FILTER,
-            ],
+            search_label=language_manager["global.browser.label.filter"],
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
@@ -235,7 +151,7 @@ class GUIExplorerPanel(GUITreePanel):
         with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_REFRESH,
-                label=self._lbl_refresh,
+                label=self._language_manager["main.explorer.label.refresh_button"],
                 parent=self._body_container,
                 width=-1,
                 callback=self.refresh,
@@ -243,18 +159,18 @@ class GUIExplorerPanel(GUITreePanel):
             )
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
-                label=self._lbl_collapse_all,
+                label=self._language_manager["main.explorer.label.collapse_all_button"],
                 parent=self._body_container,
                 width=-1,
                 callback=self.collapse_all,
             )
         self._status_bar.bind_to_item(
             TAG_MAIN_EXPLORER_BUTTON_REFRESH,
-            self._msg_status_refresh,
+            self._language_manager["main.explorer.message.status_refresh"],
         )
         self._status_bar.bind_to_item(
             TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
-            self._msg_status_collapse_all,
+            self._language_manager["main.explorer.message.status_collapse_all"],
         )
 
     def _create_tree_window(self) -> None:
@@ -465,9 +381,9 @@ class GUIExplorerPanel(GUITreePanel):
     ) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
             if self._logic.autoplay_enabled:
-                return self._msg_status_audio
+                return self._language_manager["main.explorer.message.status_node_audio"]
 
-            return self._msg_status_audio_no_autoplay
+            return self._language_manager["main.explorer.message.status_node_audio_no_autoplay"]
 
         return self._create_status_bar_message_function(message_function)
 
@@ -534,17 +450,17 @@ class GUIExplorerPanel(GUITreePanel):
         match suffix:
             case paths.EXT_FILE_RECONSTRUCTION:
                 dpg.add_menu_item(
-                    label=self._lbl_ctx_load_reconstruction,
+                    label=self._language_manager["main.explorer.label.context_load_reconstruction"],
                     callback=lambda: self._load_reconstruction(node),
                 )
             case paths.EXT_FILE_LIBRARY:
                 dpg.add_menu_item(
-                    label=self._lbl_ctx_load_library,
+                    label=self._language_manager["main.explorer.label.context_load_library"],
                     callback=lambda: self._load_library(node),
                 )
             case suffix if suffix in paths.EXT_FILES_AUDIO:
                 dpg.add_menu_item(
-                    label=self._lbl_ctx_reconstruct_file,
+                    label=self._language_manager["main.explorer.label.context_reconstruct_file"],
                     callback=lambda: self._context_reconstruct_file(node),
                 )
 
@@ -565,19 +481,19 @@ class GUIExplorerPanel(GUITreePanel):
     ) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._lbl_ctx_reconstruct_directory,
+            label=self._language_manager["main.explorer.label.context_reconstruct_directory"],
             callback=lambda: self._context_reconstruct_directory(node),
         )
 
     def _add_context_menu_set_directory_items(self, node: FileSystemNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._lbl_ctx_set_output,
+            label=self._language_manager["main.explorer.label.context_set_output_directory"],
             callback=lambda: self._context_set_as_output_directory(node),
         )
 
         dpg.add_menu_item(
-            label=self._lbl_ctx_set_library,
+            label=self._language_manager["main.explorer.label.context_set_library_directory"],
             callback=lambda: self._context_set_as_library_directory(node),
         )
 

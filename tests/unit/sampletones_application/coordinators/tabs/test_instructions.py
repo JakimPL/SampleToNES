@@ -1,11 +1,16 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
 from sampletones_shared.exceptions import LibraryDisplayError
+from tests.suite.language import FakeLanguageManager
+
+GENERATION_STATUS_TITLE_KEY: Final[str] = "instructions.library.title.generation_status_dialog"
+REMOVE_LIBRARY_MESSAGE_KEY: Final[str] = "instructions.library.message.remove_library_message"
+DISPLAY_ERROR_KEY: Final[str] = "instructions.library.message.status_display_error"
 
 
 def _coordinator(*, library_exists: bool) -> InstructionsTabCoordinator:
@@ -15,9 +20,7 @@ def _coordinator(*, library_exists: bool) -> InstructionsTabCoordinator:
     coordinator._library_logic = MagicMock()
     coordinator._library_logic.library_available_for_config.return_value = library_exists
     coordinator._dialogs = MagicMock()
-    coordinator._msg_regenerate_confirmation = "message"
-    coordinator._ttl_regenerate_confirmation = "title"
-    coordinator._lbl_regenerate_confirmation_ok = "Regenerate"
+    coordinator._language_manager = FakeLanguageManager()
     return coordinator
 
 
@@ -50,8 +53,8 @@ def _generation_coordinator(*, converter_visible: bool) -> InstructionsTabCoordi
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._is_converter_visible = lambda: converter_visible
     coordinator._dialogs = MagicMock()
-    coordinator._msg_generation_success = "success"
-    coordinator._ttl_generation_status = "title"
+    coordinator._language_manager = FakeLanguageManager()
+    coordinator._ttl_generation_status = GENERATION_STATUS_TITLE_KEY
     return coordinator
 
 
@@ -83,9 +86,7 @@ def _remove_library_coordinator(*, current_library_key: Any) -> InstructionsTabC
     coordinator._on_audio_state_changed = MagicMock()
     coordinator._close_instruction = MagicMock()
     coordinator._instruction_details_logic = MagicMock()
-    coordinator._ttl_remove_library = "Remove library"
-    coordinator._msg_remove_library = "Remove this library?"
-    coordinator._lbl_remove = "Remove"
+    coordinator._language_manager = FakeLanguageManager()
     return coordinator
 
 
@@ -98,7 +99,7 @@ class TestRemoveLibrary:
         coordinator._request_remove_library(key)
 
         confirmation = coordinator._dialogs.show_confirmation.call_args.kwargs
-        assert confirmation["message"] == "Remove this library?"
+        assert confirmation["message"] == REMOVE_LIBRARY_MESSAGE_KEY
         assert confirmation["path"] == Path("lead.stnlib")
 
         confirmation["on_confirm"]()
@@ -253,7 +254,7 @@ def _loaded_coordinator(*, display_error: Exception) -> InstructionsTabCoordinat
     coordinator._instruction_player_logic = MagicMock()
     coordinator._instruction_details_logic = MagicMock()
     coordinator._dialogs = MagicMock()
-    coordinator._msg_display_error = "display error"
+    coordinator._language_manager = FakeLanguageManager()
     coordinator._on_audio_state_changed = MagicMock()
     return coordinator
 
@@ -269,7 +270,7 @@ class TestInstructionLoadedRecovery:
 
         coordinator._on_instruction_loaded(MagicMock())
 
-        coordinator._dialogs.show_error.assert_called_once_with(error, "display error")
+        coordinator._dialogs.show_error.assert_called_once_with(error, DISPLAY_ERROR_KEY)
         coordinator._on_audio_state_changed.assert_called_once_with()
 
     def test_unexpected_error_propagates(self) -> None:

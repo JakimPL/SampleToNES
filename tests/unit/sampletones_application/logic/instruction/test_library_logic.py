@@ -1,10 +1,9 @@
 import threading
+from typing import Dict, Final
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.paths import LANG_EN
@@ -18,6 +17,29 @@ from sampletones_shared.exceptions import (
     LoadLibraryError,
     UnhandledLibraryError,
 )
+from tests.suite.language import FakeLanguageManager
+
+LOAD_ERROR_KEY: Final[str] = "instructions.library.message.status_load_error"
+FILE_NOT_FOUND_KEY: Final[str] = "instructions.library.message.status_file_not_found"
+FILE_LOAD_ERROR_KEY: Final[str] = "instructions.library.message.status_file_load_error"
+INVALID_METADATA_KEY: Final[str] = "global.dialog.message.invalid_metadata_error"
+INVALID_DATA_VALUES_KEY: Final[str] = "instructions.library.message.status_invalid_data_values"
+INVALID_DATA_KEY: Final[str] = "instructions.library.message.status_invalid_data"
+DESERIALIZATION_ERROR_KEY: Final[str] = "instructions.library.message.status_deserialization_error"
+INCOMPATIBLE_VERSION_KEY: Final[str] = "instructions.library.template.incompatible_version_template"
+GENERATION_CANCELLED_KEY: Final[str] = "instructions.library.message.status_generation_cancelled"
+
+TEXTS: Final[Dict[str, str]] = {
+    INCOMPATIBLE_VERSION_KEY: "got {} expected {}",
+    "instructions.library.message.status_saving": "saving",
+    "instructions.library.message.status_generation_failed": "failed",
+    GENERATION_CANCELLED_KEY: "cancelled",
+    "instructions.library.label.generate_library_button": "Generate",
+    "instructions.library.label.regenerate_library_button": "Regenerate",
+    "instructions.library.template.library_loaded_template": "{} loaded.",
+    "instructions.library.template.library_exists_template": "{} exists.",
+    "instructions.library.template.library_not_exists_template": "{} doesn't exist.",
+}
 
 
 def _logic(*, operation_active: bool) -> LibraryLogic:
@@ -48,13 +70,15 @@ class TestRequestGeneration:
 def _load_logic(*, load_error: Exception) -> LibraryLogic:
     """A library logic with only the state ``_load_library`` touches, bypassing the heavy
     constructor."""
+    language_manager = FakeLanguageManager(TEXTS)
     logic = LibraryLogic.__new__(LibraryLogic)
     logic._is_locked_function = None
     logic._lock_function = None
     logic._unlock_function = MagicMock()
     logic._library_manager = MagicMock()
     logic._library_manager.load_library.side_effect = load_error
-    logic._msg_load_error = "load error"
+    logic._language_manager = language_manager
+    logic._msg_load_error = language_manager[LOAD_ERROR_KEY]
     logic.on_load_error = MagicMock()
     return logic
 
@@ -70,7 +94,7 @@ class TestLoadLibraryTail:
 
         logic._load_library(MagicMock())
 
-        logic.on_load_error.assert_called_once_with(error, "load error")
+        logic.on_load_error.assert_called_once_with(error, LOAD_ERROR_KEY)
         logic._unlock_function.assert_called_once_with()
 
     def test_unexpected_error_propagates_and_unlocks(self) -> None:
@@ -84,17 +108,10 @@ class TestLoadLibraryTail:
 
 
 def _surfacing_load_logic(*, load_error: Exception) -> LibraryLogic:
-    """A library logic wired with every callback and message the ``_load_library`` ladder reports
-    through, so a concrete failure can be observed reaching the user-facing callbacks."""
+    """A library logic wired with every callback the ``_load_library`` ladder reports through, so a
+    concrete failure can be observed reaching the user-facing callbacks."""
     logic = _load_logic(load_error=load_error)
     logic.on_load_file_not_found = MagicMock()
-    logic._msg_file_not_found = "file not found"
-    logic._msg_file_load_error = "file load error"
-    logic._msg_invalid_metadata_error = "invalid metadata"
-    logic._msg_invalid_data_values_error = "invalid values"
-    logic._msg_invalid_data_error = "invalid data"
-    logic._msg_deserialization_error = "deserialization error"
-    logic._tpl_incompatible_version_error = "got {} expected {}"
     return logic
 
 
@@ -106,12 +123,12 @@ class TestLoadLibrarySurfacesConcreteErrors:
     @pytest.mark.parametrize(
         "error, expected_message",
         [
-            (OSError("io"), "file load error"),
-            (InvalidMetadataError("bad metadata"), "invalid metadata"),
-            (InvalidLibraryDataValuesError("bad values", ValueError("v")), "invalid values"),
-            (InvalidLibraryDataError("bad data"), "invalid data"),
-            (DeserializationError("bad bytes"), "deserialization error"),
-            (LoadLibraryError("unclassified"), "load error"),
+            (OSError("io"), FILE_LOAD_ERROR_KEY),
+            (InvalidMetadataError("bad metadata"), INVALID_METADATA_KEY),
+            (InvalidLibraryDataValuesError("bad values", ValueError("v")), INVALID_DATA_VALUES_KEY),
+            (InvalidLibraryDataError("bad data"), INVALID_DATA_KEY),
+            (DeserializationError("bad bytes"), DESERIALIZATION_ERROR_KEY),
+            (LoadLibraryError("unclassified"), LOAD_ERROR_KEY),
         ],
     )
     def test_concrete_error_reports_populated_message(
@@ -133,7 +150,7 @@ class TestLoadLibrarySurfacesConcreteErrors:
 
         logic.on_load_file_not_found.assert_called_once_with(
             logic._library_manager.get_path.return_value,
-            "file not found",
+            FILE_NOT_FOUND_KEY,
         )
         logic.on_load_error.assert_not_called()
         logic._unlock_function.assert_called_once_with()
@@ -161,11 +178,7 @@ def _generation_logic(*, generating: bool = True) -> LibraryLogic:
     logic._library_manager = MagicMock()
     logic._library_manager.is_generating.return_value = generating
     logic._library_manager.is_library_loaded.return_value = False
-    logic._lbl_generate_library = "Generate"
-    logic._lbl_regenerate_library = "Regenerate"
-    logic._msg_generation_saving = "saving"
-    logic._msg_generation_failed = "failed"
-    logic._msg_generation_cancelled = "cancelled"
+    logic._language_manager = FakeLanguageManager(TEXTS)
     logic.on_view_changed = MagicMock()
     return logic
 
@@ -211,7 +224,6 @@ class TestGenerationEmits:
     def test_update_status_repaints_the_idle_state(self) -> None:
         logic = _generation_logic(generating=False)
         logic._library_manager.library_exists_for_key.return_value = False
-        logic._tpl_not_exists = "{} doesn't exist."
 
         with patch(
             "sampletones_application.logic.instruction.library.get_display_name_from_key",
@@ -226,7 +238,6 @@ class TestGenerationEmits:
     def test_update_status_reports_a_loaded_library(self) -> None:
         logic = _generation_logic(generating=False)
         logic._library_manager.is_library_loaded.return_value = True
-        logic._tpl_library_loaded = "{} loaded."
 
         with patch(
             "sampletones_application.logic.instruction.library.get_display_name_from_key",
@@ -241,7 +252,6 @@ class TestGenerationEmits:
     def test_update_status_reports_an_existing_unloaded_library(self) -> None:
         logic = _generation_logic(generating=False)
         logic._library_manager.library_exists_for_key.return_value = True
-        logic._tpl_library_exists = "{} exists."
 
         with patch(
             "sampletones_application.logic.instruction.library.get_display_name_from_key",
@@ -261,11 +271,4 @@ class TestCancelledStatusLanguageKey:
     def test_cancelled_status_resolves_from_the_language_file(self) -> None:
         language_manager = LanguageManager(LANG_EN)
 
-        text = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.MESSAGE,
-            InstructionsLibraryElements.STATUS_GENERATION_CANCELLED,
-        ]
-
-        assert text
+        assert language_manager[GENERATION_CANCELLED_KEY]

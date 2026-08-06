@@ -4,8 +4,6 @@ from typing import Any, Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones_application.categories.elements.global_ import GraphElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
@@ -64,12 +62,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if label:
             _label = label
         elif language_manager is not None:
-            _label = language_manager[
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.BAR_DISPLAY,
-            ]
+            _label = language_manager["global.graph.label.bar_display"]
         else:
             _label = ""
 

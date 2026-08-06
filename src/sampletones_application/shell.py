@@ -5,10 +5,7 @@ from typing import Any, Callable, Dict, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    GlobalDialogTitleElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
+from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -444,12 +441,7 @@ class ApplicationShell:
         initial_menu_state: MenuBarViewModel,
     ) -> None:
         with dpg.window(
-            label=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.MAIN_WINDOW,
-            ],
+            label=self._language_manager["global.dialog.title.main_window"],
             tag=TAG_GLOBAL_WINDOW_MAIN,
             no_scrollbar=True,
             no_scroll_with_mouse=True,

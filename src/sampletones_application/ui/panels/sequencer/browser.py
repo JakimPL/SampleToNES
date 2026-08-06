@@ -2,11 +2,6 @@ from typing import Any, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import TreeElements
-from sampletones_application.categories.elements.sequencer import (
-    SequencerBrowserElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
@@ -56,26 +51,10 @@ class GUISequencerBrowserPanel(GUITreePanel):
         colors: TreeColors,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self.on_refresh_tree: Optional[VoidCallback] = None
 
-        self._lbl_refresh = language_manager[
-            Page.SEQUENCER,
-            Panel.BROWSER,
-            TextType.LABEL,
-            SequencerBrowserElements.REFRESH_BUTTON,
-        ]
-        self._msg_status_refresh = language_manager[
-            Page.SEQUENCER,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            SequencerBrowserElements.STATUS_REFRESH,
-        ]
-        self._lbl_reconstructions = language_manager[
-            Page.SEQUENCER,
-            Panel.BROWSER,
-            TextType.LABEL,
-            SequencerBrowserElements.RECONSTRUCTIONS_TREE,
-        ]
+        self._lbl_reconstructions = language_manager["sequencer.browser.label.reconstructions_tree"]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -85,12 +64,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
             tree_tag=TAG_SEQUENCER_BROWSER_TREE,
             tree_logic=tree_logic,
             scheduling=scheduling,
-            search_label=language_manager[
-                Page.GLOBAL,
-                Panel.BROWSER,
-                TextType.LABEL,
-                TreeElements.SEARCH,
-            ],
+            search_label=language_manager["global.browser.label.search"],
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
@@ -144,14 +118,14 @@ class GUISequencerBrowserPanel(GUITreePanel):
         with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS):
             GUIButton(
                 tag=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
-                label=self._lbl_refresh,
+                label=self._language_manager["sequencer.browser.label.refresh_button"],
                 width=-1,
                 callback=self.rebuild_tree,
                 theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
             )
         self._status_bar.bind_to_item(
             TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
-            self._msg_status_refresh,
+            self._language_manager["sequencer.browser.message.status_refresh"],
         )
 
     def _create_tree_window(self) -> None:

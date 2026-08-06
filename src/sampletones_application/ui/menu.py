@@ -2,12 +2,7 @@ from typing import Dict, Final, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    ContextElements,
-    GlobalTemplateElements,
-    MenuElements,
-    PlayerElements,
-)
+from sampletones_application.categories.elements.global_ import ContextElements, MenuElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.trackers import (
@@ -126,41 +121,13 @@ class MenuBar:
         self._on_play_from_start = on_play_from_start
         self._on_pause_or_resume = on_pause_or_resume
         self._on_stop = on_stop
-        self._tpl_fps = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.FPS,
-        ]
+        self._tpl_fps = language_manager["global.dialog.template.fps"]
 
         self._play_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_PLAY)
         self._pause_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_PAUSE)
         self._stop_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_STOP)
         self._pause_tooltip_tag = compose_tag(self._pause_button_tag, SUF_PLAYER_TOOLTIP)
-        self._lbl_play = language_manager[
-            Page.GLOBAL,
-            Panel.PLAYER,
-            TextType.LABEL,
-            PlayerElements.PLAY,
-        ]
-        self._lbl_pause = language_manager[
-            Page.GLOBAL,
-            Panel.PLAYER,
-            TextType.LABEL,
-            PlayerElements.PAUSE,
-        ]
-        self._lbl_resume = language_manager[
-            Page.GLOBAL,
-            Panel.PLAYER,
-            TextType.LABEL,
-            PlayerElements.RESUME,
-        ]
-        self._lbl_stop = language_manager[
-            Page.GLOBAL,
-            Panel.PLAYER,
-            TextType.LABEL,
-            PlayerElements.STOP,
-        ]
+        self._lbl_pause = language_manager["global.player.label.pause"]
 
     def _label(self, element: MenuElements) -> str:
         return self._language_manager[
@@ -481,9 +448,9 @@ class MenuBar:
                 play_tag=self._play_button_tag,
                 pause_tag=self._pause_button_tag,
                 stop_tag=self._stop_button_tag,
-                play_tooltip=self._lbl_play,
+                play_tooltip=self._language_manager["global.player.label.play"],
                 pause_tooltip=self._lbl_pause,
-                stop_tooltip=self._lbl_stop,
+                stop_tooltip=self._language_manager["global.player.label.stop"],
                 on_play=self._on_play_from_start,
                 on_pause_or_resume=self._on_pause_or_resume,
                 on_stop=self._on_stop,
@@ -592,7 +559,7 @@ class MenuBar:
                 self._pause_button_tag,
                 self._player_glyphs.resume,
             )
-            dpg_set_value(self._pause_tooltip_tag, self._lbl_resume)
+            dpg_set_value(self._pause_tooltip_tag, self._language_manager["global.player.label.resume"])
         else:
             dpg_set_item_label(
                 self._pause_button_tag,

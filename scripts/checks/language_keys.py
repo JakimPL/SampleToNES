@@ -14,7 +14,7 @@ Three things are reported:
     unreached entry    — an entry no lookup asks for
 
 Usage:
-    python check_language_keys.py
+    python scripts/checks/language_keys.py
 """
 
 import argparse

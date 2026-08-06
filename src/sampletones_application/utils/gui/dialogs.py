@@ -5,18 +5,6 @@ from typing import Callable, Dict, List, Optional, Pattern, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
-    GlobalTemplateElements,
-    StatusElements,
-    TracebackElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsInstrumentsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.tags.compose import compose_tag
@@ -166,96 +154,10 @@ class DialogsRenderer:
         self._recovery_height = layout.dialogs.recovery.height
         self._recovery_wrap = layout.dialogs.recovery.width - 10
 
-        self._msg_path = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.PATH,
-        ]
-        self._lbl_ok = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.OK,
-        ]
-        self._lbl_cancel = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.CANCEL,
-        ]
-        self._lbl_save = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.SAVE,
-        ]
-        self._lbl_traceback_show = language_manager[
-            Page.GLOBAL,
-            Panel.TRACEBACK,
-            TextType.LABEL,
-            TracebackElements.SHOW,
-        ]
-        self._lbl_traceback_hide = language_manager[
-            Page.GLOBAL,
-            Panel.TRACEBACK,
-            TextType.LABEL,
-            TracebackElements.HIDE,
-        ]
-        self._ttl_error = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.ERROR,
-        ]
-        self._ttl_file_not_found = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.FILE_NOT_FOUND,
-        ]
-        self._ttl_reconstruction_not_loaded = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.NOT_LOADED_DIALOG,
-        ]
-        self._msg_reconstruction_no_data = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.RECONSTRUCTION_NO_DATA,
-        ]
-        self._ttl_config_recovery = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.CONFIGURATION_RECOVERY,
-        ]
-        self._tpl_config_recovery_intro = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.CONFIGURATION_RECOVERY_INTRO,
-        ]
-        self._msg_config_recovery_earlier_version = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.CONFIGURATION_RECOVERY_EARLIER_VERSION,
-        ]
-        self._msg_config_recovery_list_header = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.CONFIGURATION_RECOVERY_LIST_HEADER,
-        ]
-        self._msg_config_recovery_path_prefix = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.CONFIGURATION_RECOVERY_PATH_PREFIX,
-        ]
+        self._msg_path = language_manager["global.status.message.path"]
+        self._lbl_ok = language_manager["global.dialog.label.ok"]
+        self._lbl_cancel = language_manager["global.dialog.label.cancel"]
+        self._lbl_traceback_show = language_manager["global.traceback.label.show"]
 
     @property
     def default_wrap(self) -> int:
@@ -323,17 +225,21 @@ class DialogsRenderer:
         highlight colour to stand apart from the surrounding prose, and the trailing path
         opens the configuration file's directory so the user can edit it directly.
         """
-        source = source_version if source_version is not None else self._msg_config_recovery_earlier_version
+        source = (
+            source_version
+            if source_version is not None
+            else self._language_manager["global.dialog.message.configuration_recovery_earlier_version"]
+        )
 
         def content(parent: str) -> None:
             self._render_template_bold(
                 parent,
-                self._tpl_config_recovery_intro,
+                self._language_manager["global.dialog.template.configuration_recovery_intro"],
                 {"source": source, "target": target_version},
             )
 
             dpg.add_text(
-                self._msg_config_recovery_list_header,
+                self._language_manager["global.dialog.message.configuration_recovery_list_header"],
                 parent=parent,
                 wrap=self._recovery_wrap,
             )
@@ -346,7 +252,7 @@ class DialogsRenderer:
                 )
 
             dpg.add_text(
-                self._msg_config_recovery_path_prefix,
+                self._language_manager["global.dialog.message.configuration_recovery_path_prefix"],
                 parent=parent,
                 wrap=self._recovery_wrap,
             )
@@ -363,7 +269,7 @@ class DialogsRenderer:
         dpg_delete_item(tag)
         _show_modal_dialog(
             tag=tag,
-            title=self._ttl_config_recovery,
+            title=self._language_manager["global.dialog.title.configuration_recovery"],
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
@@ -428,7 +334,7 @@ class DialogsRenderer:
             dpg_delete_item(tag)
 
         with dpg.window(
-            label=self._ttl_error,
+            label=self._language_manager["global.dialog.title.error"],
             tag=tag,
             modal=True,
             min_size=(self._error_width, self._error_height),
@@ -466,7 +372,11 @@ class DialogsRenderer:
                 traceback.toggle_visibility()
                 dpg_configure_item(
                     show_button_tag,
-                    label=(self._lbl_traceback_show if not traceback.visible else self._lbl_traceback_hide),
+                    label=(
+                        self._lbl_traceback_show
+                        if not traceback.visible
+                        else self._language_manager["global.traceback.label.hide"]
+                    ),
                 )
 
             @table_wrapper(columns=2)
@@ -512,7 +422,7 @@ class DialogsRenderer:
 
         _show_modal_dialog(
             tag=tag,
-            title=self._ttl_file_not_found,
+            title=self._language_manager["global.dialog.title.file_not_found"],
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
@@ -694,7 +604,7 @@ class DialogsRenderer:
             def buttons(_: None) -> None:
                 GUIButton(
                     tag=save_button_tag,
-                    label=self._lbl_save,
+                    label=self._language_manager["global.dialog.label.save"],
                     callback=_on_save,
                     width=-1,
                 )
@@ -742,14 +652,14 @@ class DialogsRenderer:
 
         def content(parent: str) -> None:
             dpg.add_text(
-                self._msg_reconstruction_no_data,
+                self._language_manager["global.dialog.message.reconstruction_no_data"],
                 parent=parent,
                 wrap=self._error_wrap,
             )
 
         _show_modal_dialog(
             tag=tag,
-            title=self._ttl_reconstruction_not_loaded,
+            title=self._language_manager["reconstructions.instruments.title.not_loaded_dialog"],
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,

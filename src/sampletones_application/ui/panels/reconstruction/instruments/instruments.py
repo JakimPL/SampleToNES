@@ -4,15 +4,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones_application.categories.elements.global_ import (
-    ContextElements,
-    DialogElements,
-    GlobalMessageElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionsInstrumentsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
 from sampletones_application.layout.general.colors import FeatureColors
@@ -98,6 +89,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self._status_bar = status_bar
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
@@ -128,84 +120,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_bar_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
         self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
 
-        self._lbl_section = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            ReconstructionsInstrumentsElements.SECTION,
-        ]
-        self._lbl_export_instrument = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_BUTTON,
-        ]
-        self._lbl_copy = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            ReconstructionsInstrumentsElements.COPY_BUTTON,
-        ]
-        self._lbl_initial_period = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            ReconstructionsInstrumentsElements.INITIAL_PERIOD,
-        ]
-        self._lbl_initial_pitch = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.LABEL,
-            ReconstructionsInstrumentsElements.INITIAL_PITCH,
-        ]
-        self._msg_input_pitch = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_INPUT_PITCH,
-        ]
-        self._msg_input_period = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_INPUT_PERIOD,
-        ]
-        self._msg_bar = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_BAR,
-        ]
-        self._msg_sequence = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_SEQUENCE,
-        ]
-        self._msg_sequence_too_long = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_SEQUENCE_TOO_LONG,
-        ]
-        self._msg_copy_sequence = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_COPY_SEQUENCE,
-        ]
-        self._msg_export_instrument = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.MESSAGE,
-            ReconstructionsInstrumentsElements.STATUS_EXPORT_INSTRUMENT,
-        ]
-        tooltip_template = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TEMPLATE,
-            ReconstructionsInstrumentsElements.INITIAL_PITCH_TOOLTIP_TEMPLATE,
-        ]
+        self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
+        tooltip_template = language_manager["reconstructions.instruments.template.initial_pitch_tooltip_template"]
         self._pitch_tooltip = build_pitch_tooltip(
             language_manager,
             PITCH_VALUE_KIND,
@@ -216,43 +132,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             PERIOD_VALUE_KIND,
             tooltip_template,
         )
-        self._msg_reconstruction_no_data = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.RECONSTRUCTION_NO_DATA,
-        ]
-        self._lbl_copied = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.COPIED,
-        ]
         self._generator_labels: Dict[GeneratorName, str] = {
-            GeneratorName.PULSE1: language_manager[
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.PULSE_1,
-            ],
-            GeneratorName.PULSE2: language_manager[
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.PULSE_2,
-            ],
-            GeneratorName.TRIANGLE: language_manager[
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.TRIANGLE,
-            ],
-            GeneratorName.NOISE: language_manager[
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.NOISE,
-            ],
+            GeneratorName.PULSE1: language_manager["global.context.label.pulse_1"],
+            GeneratorName.PULSE2: language_manager["global.context.label.pulse_2"],
+            GeneratorName.TRIANGLE: language_manager["global.context.label.triangle"],
+            GeneratorName.NOISE: language_manager["global.context.label.noise"],
         }
 
         super().__init__(
@@ -273,7 +157,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             no_scrollbar=True,
         ):
             with self._collapsible_section(
-                self._lbl_section,
+                self._language_manager["reconstructions.instruments.label.section"],
                 glyph=self._glyphs.headers.instruments,
             ):
                 self._create_content()
@@ -284,7 +168,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dpg.add_text(
             tag=self.no_data_message_tag,
             parent=self._body_container,
-            default_value=self._msg_reconstruction_no_data,
+            default_value=self._language_manager["global.dialog.message.reconstruction_no_data"],
             show=True,
         )
 
@@ -369,13 +253,15 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
-                label=self._lbl_export_instrument,
+                label=self._language_manager["reconstructions.instruments.label.export_instrument_button"],
                 width=-1,
                 callback=self._export_callback(generator_name),
             )
             self._status_bar.bind_to_item(
                 button_tag,
-                self._msg_export_instrument.format(generator=self._generator_labels[generator_name]),
+                self._language_manager["reconstructions.instruments.message.status_export_instrument"].format(
+                    generator=self._generator_labels[generator_name]
+                ),
             )
 
             with dpg.child_window(
@@ -565,9 +451,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             parent=parent,
             kind=kind,
             initial_value=initial_pitch,
-            label=self._lbl_initial_period if is_noise else self._lbl_initial_pitch,
+            label=(
+                self._language_manager["reconstructions.instruments.label.initial_period"]
+                if is_noise
+                else self._language_manager["reconstructions.instruments.label.initial_pitch"]
+            ),
             tooltip=self._period_tooltip if is_noise else self._pitch_tooltip,
-            status_message=self._msg_input_period if is_noise else self._msg_input_pitch,
+            status_message=(
+                self._language_manager["reconstructions.instruments.message.status_input_period"]
+                if is_noise
+                else self._language_manager["reconstructions.instruments.message.status_input_pitch"]
+            ),
             status_bar=self._status_bar,
             layout=self._pitch_stepper_style.dimensions,
             plus_minus_layout=self._pitch_stepper_style.plus_minus,
@@ -713,7 +607,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> None:
         self.call(self.on_reconstruction_instrument_hovered, index)
         if label is not None:
-            self._status_bar.set(self._msg_bar.format(instrument_feature=label))
+            self._status_bar.set(
+                self._language_manager["reconstructions.instruments.message.status_bar"].format(
+                    instrument_feature=label
+                )
+            )
 
     def _add_raw_data_text(
         self,
@@ -760,7 +658,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             )
             FontRegistry.bind_to_item(raw_data_tag, Font.MONO)
 
-        self._status_bar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
+        self._status_bar.bind_to_item(
+            copy_button_tag,
+            self._language_manager["reconstructions.instruments.message.status_copy_sequence"],
+        )
         self._status_bar.bind_to_item(
             raw_data_tag,
             partial(self._sequence_status_message, generator_name, feature_key),
@@ -776,13 +677,15 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         """Describes the sequence input, naming the export limit once a sequence passes it."""
         item_count = self._sequence_lengths.get((generator_name, feature_key), 0)
         if item_count > MAX_SEQUENCE_ITEMS:
-            return self._msg_sequence_too_long.format(
+            return self._language_manager["reconstructions.instruments.message.status_sequence_too_long"].format(
                 instrument_feature=feature_key.capitalized,
                 items=item_count,
                 limit=MAX_SEQUENCE_ITEMS,
             )
 
-        return self._msg_sequence.format(instrument_feature=feature_key.capitalized)
+        return self._language_manager["reconstructions.instruments.message.status_sequence"].format(
+            instrument_feature=feature_key.capitalized
+        )
 
     def _apply_input_theme(
         self,
@@ -853,5 +756,5 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             text,
             self._lbl_copy,
             button_tag,
-            copied_label=self._lbl_copied,
+            copied_label=self._language_manager["global.dialog.label.copied"],
         )

@@ -2,8 +2,6 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.main import ConfigPanelElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.main.config import ConfigLayout
@@ -44,6 +42,7 @@ class GUIConfigPanel(GUIPanel):
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
+        self._language_manager = language_manager
         self._view = initial_view
         self._input_width = inputs.default_width
         self._label_width = inputs.label_width
@@ -52,66 +51,6 @@ class GUIConfigPanel(GUIPanel):
         self.on_library_settings_changed: Optional[Callable[[LibrarySettingsUpdate], None]] = None
         self._item_handler_tag = compose_tag(TAG_MAIN_CONFIG_PANEL, SUF_HANDLER_REGISTRY)
 
-        self._lbl_section = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.LABEL,
-            ConfigPanelElements.SECTION,
-        ]
-        self._lbl_section_library = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.LABEL,
-            ConfigPanelElements.SECTION_LIBRARY,
-        ]
-        self._lbl_normalize = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.LABEL,
-            ConfigPanelElements.CHECKBOX_NORMALIZE,
-        ]
-        self._lbl_quantize = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.LABEL,
-            ConfigPanelElements.CHECKBOX_QUANTIZE,
-        ]
-        self._lbl_sample_rate = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.LABEL,
-            ConfigPanelElements.INPUT_SAMPLE_RATE,
-        ]
-        self._lbl_nes_frequency = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.LABEL,
-            ConfigPanelElements.INPUT_NES_FREQUENCY,
-        ]
-        self._tooltip_normalize = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.TOOLTIP,
-            ConfigPanelElements.TOOLTIP_NORMALIZE,
-        ]
-        self._tooltip_quantize = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.TOOLTIP,
-            ConfigPanelElements.TOOLTIP_QUANTIZE,
-        ]
-        self._tooltip_sample_rate = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.TOOLTIP,
-            ConfigPanelElements.TOOLTIP_SAMPLE_RATE,
-        ]
-        self._tooltip_nes_frequency = language_manager[
-            Page.MAIN,
-            Panel.CONFIG,
-            TextType.TOOLTIP,
-            ConfigPanelElements.TOOLTIP_NES_FREQUENCY,
-        ]
         super().__init__(
             tag=TAG_MAIN_CONFIG_PANEL,
             height=layout.height,
@@ -122,7 +61,7 @@ class GUIConfigPanel(GUIPanel):
         self._setup_handlers()
         with self._collapsible_card(
             parent,
-            self._lbl_section,
+            self._language_manager["main.config.label.section"],
             glyph=self._glyphs.headers.settings,
             width=self.width,
         ):
@@ -151,21 +90,21 @@ class GUIConfigPanel(GUIPanel):
 
     def _create_audio_options(self) -> None:
         dpg.add_checkbox(
-            label=self._lbl_normalize,
+            label=self._language_manager["main.config.label.checkbox_normalize"],
             default_value=self._view.normalize,
             tag=TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
-            label=self._lbl_quantize,
+            label=self._language_manager["main.config.label.checkbox_quantize"],
             default_value=self._view.quantize,
             tag=TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE,
             callback=self._on_parameter_change,
         )
 
     def _create_library_settings(self) -> None:
-        subheader(self._lbl_section_library)
-        with labeled_field(self._lbl_sample_rate, self._label_width):
+        subheader(self._language_manager["main.config.label.section_library"])
+        with labeled_field(self._language_manager["main.config.label.input_sample_rate"], self._label_width):
             dpg.add_input_int(
                 default_value=self._view.sample_rate,
                 tag=TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
@@ -174,7 +113,7 @@ class GUIConfigPanel(GUIPanel):
                 width=self._input_width,
                 callback=self._on_parameter_change,
             )
-        with labeled_field(self._lbl_nes_frequency, self._label_width):
+        with labeled_field(self._language_manager["main.config.label.input_nes_frequency"], self._label_width):
             dpg.add_input_int(
                 default_value=self._view.nes_frequency,
                 tag=TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
@@ -191,10 +130,19 @@ class GUIConfigPanel(GUIPanel):
             FontRegistry.bind_to_item(tag, Font.MONO)
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE, self._tooltip_normalize)
-        show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, self._tooltip_quantize)
-        show_tooltip(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, self._tooltip_sample_rate)
-        show_tooltip(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, self._tooltip_nes_frequency)
+        show_tooltip(
+            TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
+            self._language_manager["main.config.tooltip.tooltip_normalize"],
+        )
+        show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, self._language_manager["main.config.tooltip.tooltip_quantize"])
+        show_tooltip(
+            TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
+            self._language_manager["main.config.tooltip.tooltip_sample_rate"],
+        )
+        show_tooltip(
+            TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
+            self._language_manager["main.config.tooltip.tooltip_nes_frequency"],
+        )
 
     def update_view(self, view_model: ConfigPanelViewModel) -> None:
         self._view = view_model

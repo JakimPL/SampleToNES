@@ -1,4 +1,4 @@
-from typing import List
+from typing import Final, List
 from unittest.mock import MagicMock
 
 import pytest
@@ -27,6 +27,8 @@ from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette import Palette
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+
+SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_sequence"
 
 
 @pytest.fixture
@@ -154,7 +156,9 @@ class TestSequenceStatusMessage:
     ) -> None:
         panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, 16)
         message = panel._sequence_status_message(GeneratorName.PULSE1, FeatureKey.VOLUME)
-        assert message == panel._msg_sequence.format(instrument_feature=FeatureKey.VOLUME.capitalized)
+        assert message == panel._language_manager[SEQUENCE_STATUS_KEY].format(
+            instrument_feature=FeatureKey.VOLUME.capitalized
+        )
 
     def test_a_sequence_beyond_the_limit_names_the_limit(
         self,

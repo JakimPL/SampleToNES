@@ -3,18 +3,6 @@ from typing import Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-    FileFilterElements,
-    GlobalMessageElements,
-    MenuElements,
-    PlayerElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionPanelElements,
-    ReconstructionsBrowserElements,
-    ReconstructionsInstrumentsElements,
-)
 from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -132,114 +120,21 @@ class ReconstructionTabCoordinator:
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
     ) -> None:
+        self._language_manager = language_manager
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
         self._tracker_backends = tracker_backends
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
 
-        self._tab_label = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.TAB_RECONSTRUCTION,
-        ]
         self._geometry = layout.geometry
         self._side_panel_count: int
         self._instruments_width = layout.right_column_width
         self._right_height = layout.right_column_height
-        self._ttl_remove_reconstruction = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.TITLE,
-            ReconstructionsBrowserElements.REMOVE_RECONSTRUCTION_DIALOG,
-        ]
-        self._msg_remove_reconstruction = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.REMOVE_RECONSTRUCTION_MESSAGE,
-        ]
-        self._ttl_remove_directory = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.TITLE,
-            ReconstructionsBrowserElements.REMOVE_DIRECTORY_DIALOG,
-        ]
-        self._msg_remove_directory = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.REMOVE_DIRECTORY_MESSAGE,
-        ]
-        self._lbl_remove = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.REMOVE,
-        ]
+        self._lbl_remove = language_manager["global.dialog.label.remove"]
 
-        self._msg_file_not_found = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.FILE_NOT_FOUND,
-        ]
-        self._msg_load_error = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.LOAD_ERROR,
-        ]
-        self._msg_invalid_metadata = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.INVALID_METADATA_ERROR,
-        ]
-        self._msg_invalid_values = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.INVALID_VALUES,
-        ]
-        self._msg_invalid_file = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.INVALID_FILE,
-        ]
-        self._msg_deserialization_error = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.MESSAGE,
-            ReconstructionsBrowserElements.DESERIALIZATION_ERROR,
-        ]
-        self._tpl_incompatible_version = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.TEMPLATE,
-            ReconstructionsBrowserElements.INCOMPATIBLE_VERSION_TEMPLATE,
-        ]
+        self._msg_load_error = language_manager["reconstructions.browser.message.load_error"]
         self._export_messages = ExportMessages.build(language_manager)
-        self._ttl_export_instrument = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_DIALOG,
-        ]
-        self._ttl_export_instruments = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            TextType.TITLE,
-            ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_DIALOG,
-        ]
-        self._filter_export_wav = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.FILTER,
-            FileFilterElements.WAVE,
-        ]
         self._instrument_filter_names: Dict[TrackerFormat, str] = {
             tracker_format: language_manager[
                 Page.GLOBAL,
@@ -249,12 +144,6 @@ class ReconstructionTabCoordinator:
             ]
             for tracker_format, element in TRACKER_INSTRUMENT_FILTERS.items()
         }
-        self._msg_locate_audio_failed = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.MESSAGE,
-            ReconstructionPanelElements.LOCATE_AUDIO_FAILED,
-        ]
 
         self._browser_logic: BrowserLogic = BrowserLogic(
             config_manager,
@@ -287,12 +176,7 @@ class ReconstructionTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
             dialogs=dialogs,
-            error_message=language_manager[
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.MESSAGE,
-                PlayerElements.AUDIO_PLAYBACK_ERROR,
-            ],
+            error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.path_colors,
@@ -356,7 +240,8 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
-            path, self._msg_locate_audio_failed
+            path,
+            language_manager["reconstructions.reconstruction.message.locate_audio_failed"],
         )
 
         export_service.subscribe(self._on_export_result)
@@ -471,7 +356,7 @@ class ReconstructionTabCoordinator:
         dialog names the tracker the slice is written for.
         """
         filepath = save_file_dialog(
-            title=self._ttl_export_instrument,
+            title=self._language_manager["reconstructions.instruments.title.export_instrument_dialog"],
             initial_directory=default_path,
             default_filename=default_filename,
             filters=self._instrument_filters(),
@@ -509,7 +394,7 @@ class ReconstructionTabCoordinator:
         destination, while one that keeps an instrument per file writes its slices beside it.
         """
         destination = save_file_dialog(
-            title=self._ttl_export_instruments,
+            title=self._language_manager["reconstructions.instruments.title.export_instruments_dialog"],
             initial_directory=default_path,
             default_filename=default_filename,
             filters=(self._tracker_filter(tracker_format, ExportScope.SAMPLE),),
@@ -540,7 +425,7 @@ class ReconstructionTabCoordinator:
             title=self._export_messages.wav_title,
             initial_directory=default_path,
             default_filename=default_filename,
-            filters=(FileFilter.for_extensions(self._filter_export_wav, [EXT_FILE_WAVE]),),
+            filters=(FileFilter.for_extensions(self._language_manager["global.dialog.filter.wave"], [EXT_FILE_WAVE]),),
         )
         self._handle_export_wav(filepath)
 
@@ -552,7 +437,7 @@ class ReconstructionTabCoordinator:
         with dpg.tab(
             tag=TAG_GLOBAL_TAB_RECONSTRUCTION,
             parent=TAG_GLOBAL_TABS,
-            label=self._tab_label,
+            label=self._language_manager["global.menu.label.tab_reconstruction"],
         ):
             self._side_panel_count = TabColumns.build(
                 panel_gap=self._geometry.panel_gap,
@@ -673,8 +558,8 @@ class ReconstructionTabCoordinator:
     def _request_remove_reconstruction(self, filepath: Path) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
-            title=self._ttl_remove_reconstruction,
-            message=self._msg_remove_reconstruction,
+            title=self._language_manager["reconstructions.browser.title.remove_reconstruction_dialog"],
+            message=self._language_manager["reconstructions.browser.message.remove_reconstruction_message"],
             on_confirm=lambda: self._remove_reconstruction(filepath),
             ok_label=self._lbl_remove,
             path=filepath,
@@ -683,8 +568,8 @@ class ReconstructionTabCoordinator:
     def _request_remove_directory(self, directory: Path) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
-            title=self._ttl_remove_directory,
-            message=self._msg_remove_directory,
+            title=self._language_manager["reconstructions.browser.title.remove_directory_dialog"],
+            message=self._language_manager["reconstructions.browser.message.remove_directory_message"],
             on_confirm=lambda: self._remove_directory(directory),
             ok_label=self._lbl_remove,
             path=directory,
@@ -771,7 +656,10 @@ class ReconstructionTabCoordinator:
                 exception,
                 f"Failed to load reconstruction data from {filepath}",
             )
-            self._dialogs.show_file_not_found(filepath, self._msg_file_not_found)
+            self._dialogs.show_file_not_found(
+                filepath,
+                self._language_manager["reconstructions.browser.message.file_not_found"],
+            )
         except (
             IOError,
             IsADirectoryError,
@@ -788,19 +676,22 @@ class ReconstructionTabCoordinator:
                 exception,
                 f"Invalid metadata in the reconstruction file {filepath}",
             )
-            self._dialogs.show_error(exception, self._msg_invalid_metadata)
+            self._dialogs.show_error(exception, self._language_manager["global.dialog.message.invalid_metadata_error"])
         except InvalidReconstructionValuesError as exception:
             logger.error_with_traceback(
                 exception,
                 f"Reconstruction contains invalid values: {filepath}",
             )
-            self._dialogs.show_error(exception, self._msg_invalid_values)
+            self._dialogs.show_error(
+                exception,
+                self._language_manager["reconstructions.browser.message.invalid_values"],
+            )
         except InvalidReconstructionError as exception:
             logger.error_with_traceback(
                 exception,
                 f"Invalid reconstruction file: {filepath}",
             )
-            self._dialogs.show_error(exception, self._msg_invalid_file)
+            self._dialogs.show_error(exception, self._language_manager["reconstructions.browser.message.invalid_file"])
         except IncompatibleReconstructionVersionError as exception:
             logger.error_with_traceback(
                 exception,
@@ -809,7 +700,7 @@ class ReconstructionTabCoordinator:
             )
             self._dialogs.show_error(
                 exception,
-                self._tpl_incompatible_version.format(
+                self._language_manager["reconstructions.browser.template.incompatible_version_template"].format(
                     exception.actual_version,
                     exception.expected_version,
                 ),
@@ -819,7 +710,10 @@ class ReconstructionTabCoordinator:
                 exception,
                 f"Deserialization error while loading reconstruction from {filepath}",
             )
-            self._dialogs.show_error(exception, self._msg_deserialization_error)
+            self._dialogs.show_error(
+                exception,
+                self._language_manager["reconstructions.browser.message.deserialization_error"],
+            )
         except LoadReconstructionError as exception:
             logger.error_with_traceback(
                 exception,

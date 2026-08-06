@@ -6,7 +6,7 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 
-check_version_tag = load_script("scripts/ci/check_version_tag.py")
+check_version_tag = load_script("scripts/ci/checks/version_tag.py")
 
 
 class TestVersionFromTag(BaseTestSuite):

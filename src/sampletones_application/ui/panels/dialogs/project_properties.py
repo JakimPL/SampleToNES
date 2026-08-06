@@ -2,9 +2,6 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-)
 from sampletones_application.categories.elements.settings import (
     ProjectPropertiesElements,
 )
@@ -58,6 +55,7 @@ class GUIProjectPropertiesWindow(GUIWindow):
         language_manager: LanguageManager,
         key_router: KeyRouter,
     ) -> None:
+        self._language_manager = language_manager
         self._layout = layout
         self._router = key_router
         self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
@@ -71,12 +69,6 @@ class GUIProjectPropertiesWindow(GUIWindow):
         self._created_text = ""
         self._modified_text = ""
 
-        self._ttl_window = language_manager[
-            Page.SETTINGS,
-            Panel.PROPERTIES,
-            TextType.TITLE,
-            ProjectPropertiesElements.WINDOW_TITLE,
-        ]
         self._lbl_title = self._label(
             language_manager,
             ProjectPropertiesElements.TITLE,
@@ -97,18 +89,6 @@ class GUIProjectPropertiesWindow(GUIWindow):
             language_manager,
             ProjectPropertiesElements.MODIFIED,
         )
-        self._lbl_ok = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.OK,
-        ]
-        self._lbl_cancel = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.CANCEL,
-        ]
 
         super().__init__(
             tag=TAG_SETTINGS_PROPERTIES_WINDOW,
@@ -131,7 +111,7 @@ class GUIProjectPropertiesWindow(GUIWindow):
     def create_window(self) -> None:
         with dpg.window(
             tag=self.tag,
-            label=self._ttl_window,
+            label=self._language_manager["settings.properties.title.window_title"],
             width=self.width,
             height=self.height,
             no_resize=True,
@@ -218,13 +198,13 @@ class GUIProjectPropertiesWindow(GUIWindow):
     def _create_action_buttons(self) -> None:
         GUIButton(
             tag=TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL,
-            label=self._lbl_cancel,
+            label=self._language_manager["global.dialog.label.cancel"],
             callback=self.hide,
             width=-1,
         )
         GUIButton(
             tag=TAG_SETTINGS_PROPERTIES_BUTTON_OK,
-            label=self._lbl_ok,
+            label=self._language_manager["global.dialog.label.ok"],
             callback=self._commit,
             width=-1,
         )

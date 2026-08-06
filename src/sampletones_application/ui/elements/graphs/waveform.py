@@ -3,8 +3,6 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones_application.categories.elements.global_ import GraphElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
@@ -51,51 +49,13 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ):
+        self._language_manager = language_manager
         self._layout = layout
         self._status_bar = status_bar
 
-        self._lbl_waveform_original = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_ORIGINAL,
-        ]
-        self._lbl_waveform_reconstruction = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_RECONSTRUCTION,
-        ]
-        self._lbl_axis_time = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_TIME_AXIS,
-        ]
-        self._lbl_axis_amplitude = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_AMPLITUDE_AXIS,
-        ]
-        self._lbl_sample_name = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.LABEL,
-            GraphElements.WAVEFORM_SAMPLE_NAME,
-        ]
-        self._msg_navigation = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.MESSAGE,
-            GraphElements.WAVEFORM_NAVIGATION,
-        ]
-        self._msg_regenerating = language_manager[
-            Page.GLOBAL,
-            Panel.GRAPH,
-            TextType.MESSAGE,
-            GraphElements.WAVEFORM_REGENERATING,
-        ]
+        self._lbl_waveform_original = language_manager["global.graph.label.waveform_original"]
+        self._lbl_waveform_reconstruction = language_manager["global.graph.label.waveform_reconstruction"]
+        self._msg_regenerating = language_manager["global.graph.message.waveform_regenerating"]
 
         self.reconstruction_autoscale = True
         self._reconstruction_dimmed: bool = False
@@ -153,14 +113,14 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 dpg.mvXAxis,
                 tag=self.x_axis_tag,
                 parent=self.plot_tag,
-                label=self._lbl_axis_time,
+                label=self._language_manager["global.graph.label.waveform_time_axis"],
                 no_label=True,
             )
             dpg.add_plot_axis(
                 dpg.mvYAxis,
                 tag=self.y_axis_tag,
                 parent=self.plot_tag,
-                label=self._lbl_axis_amplitude,
+                label=self._language_manager["global.graph.label.waveform_amplitude_axis"],
             )
             self._add_position_indicator()
             self._set_overlay_rectangle()
@@ -173,7 +133,11 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)
-        self._status_bar.set(self._msg_regenerating if self._reconstruction_dimmed else self._msg_navigation)
+        self._status_bar.set(
+            self._msg_regenerating
+            if self._reconstruction_dimmed
+            else self._language_manager["global.graph.message.waveform_navigation"]
+        )
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
         _min_y = self._layout.graph.min_y
@@ -205,7 +169,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.add_layer(
             InstructionLayer(
                 data=fragment,
-                name=self._lbl_sample_name,
+                name=self._language_manager["global.graph.label.waveform_sample_name"],
                 color=self._layout.colors.waveform_sample,
             )
         )

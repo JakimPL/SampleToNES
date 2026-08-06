@@ -1,9 +1,5 @@
 from typing import Any
 
-from sampletones_application.categories.elements.instructions import (
-    InstructionPanelElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.instructions import (
@@ -30,13 +26,6 @@ class GUIInstructionWaveformPanel(GUIPanel):
         self._status_bar = status_bar
         self.display: GUIWaveformGraph
 
-        self._lbl_waveform = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.INSTRUCTION,
-            TextType.LABEL,
-            InstructionPanelElements.WAVEFORM_LABEL,
-        ]
-
         super().__init__(
             tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
         )
@@ -48,7 +37,7 @@ class GUIInstructionWaveformPanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._lbl_waveform,
+            self._language_manager["instructions.instruction.label.waveform_label"],
             glyph=self._glyphs.headers.waveform,
             width=0,
             no_scrollbar=True,

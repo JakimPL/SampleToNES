@@ -9,7 +9,7 @@ scripts: a fragment feeding another fragment's value counts as read, while an im
 which is what makes a re-exported yet unread fragment visible.
 
 Usage:
-    python check_unused_tags.py
+    python scripts/checks/unused_tags.py
 """
 
 import argparse

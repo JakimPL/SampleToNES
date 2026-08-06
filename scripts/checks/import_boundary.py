@@ -14,16 +14,18 @@ a prefix cannot express — e.g. that panels never compose a column suffix
 (`SUF_PANEL_*`) or parent into another panel's container.
 
 Usage:
-    python check_import_boundary.py [files...]   # check specific files
-    python check_import_boundary.py --all        # run all rules against the source tree
+    python scripts/checks/import_boundary.py [files...]   # check specific files
+    python scripts/checks/import_boundary.py --all        # run all rules against the source tree
 """
 
 import re
 import sys
 from pathlib import Path
-from typing import List, NamedTuple, Tuple
+from typing import Final, List, NamedTuple, Tuple
 
-APP_ROOT = Path(__file__).parent.parent / "src" / "sampletones_application"
+from sampletones_shared.paths import REPOSITORY_ROOT
+
+APP_ROOT: Final[Path] = REPOSITORY_ROOT / "src" / "sampletones_application"
 
 IMPORT_RE = re.compile(r"^\s*(import|from)\s+([\w.]+)")
 

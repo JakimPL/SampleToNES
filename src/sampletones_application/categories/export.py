@@ -2,11 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionPanelElements,
-    ReconstructionsInstrumentsElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 
 
@@ -53,69 +48,14 @@ class ExportMessages:
             ExportMessages: The bundle the export result handler reads.
         """
         return cls(
-            status_title=cls._instruments_text(
-                language_manager,
-                TextType.TITLE,
-                ReconstructionsInstrumentsElements.EXPORT_STATUS_DIALOG,
-            ),
-            wav_title=cls._instruments_text(
-                language_manager,
-                TextType.TITLE,
-                ReconstructionsInstrumentsElements.EXPORT_WAV_DIALOG,
-            ),
-            instrument_success=cls._instruments_text(
-                language_manager,
-                TextType.MESSAGE,
-                ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_SUCCESS,
-            ),
-            instrument_truncated=cls._instruments_text(
-                language_manager,
-                TextType.MESSAGE,
-                ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_TRUNCATED,
-            ),
-            instrument_failed=cls._instruments_text(
-                language_manager,
-                TextType.MESSAGE,
-                ReconstructionsInstrumentsElements.EXPORT_INSTRUMENT_FAILED,
-            ),
-            instruments_success=cls._instruments_text(
-                language_manager,
-                TextType.MESSAGE,
-                ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_SUCCESS,
-            ),
-            instruments_truncated=cls._instruments_text(
-                language_manager,
-                TextType.MESSAGE,
-                ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_TRUNCATED,
-            ),
-            instruments_failed=cls._instruments_text(
-                language_manager,
-                TextType.MESSAGE,
-                ReconstructionsInstrumentsElements.EXPORT_INSTRUMENTS_FAILED,
-            ),
-            wav_success=language_manager[
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.MESSAGE,
-                ReconstructionPanelElements.EXPORT_WAV_SUCCESS,
-            ],
-            wav_failed=language_manager[
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.MESSAGE,
-                ReconstructionPanelElements.EXPORT_WAV_FAILED,
-            ],
+            status_title=language_manager["reconstructions.instruments.title.export_status_dialog"],
+            wav_title=language_manager["reconstructions.instruments.title.export_wav_dialog"],
+            instrument_success=language_manager["reconstructions.instruments.message.export_instrument_success"],
+            instrument_truncated=language_manager["reconstructions.instruments.message.export_instrument_truncated"],
+            instrument_failed=language_manager["reconstructions.instruments.message.export_instrument_failed"],
+            instruments_success=language_manager["reconstructions.instruments.message.export_instruments_success"],
+            instruments_truncated=language_manager["reconstructions.instruments.message.export_instruments_truncated"],
+            instruments_failed=language_manager["reconstructions.instruments.message.export_instruments_failed"],
+            wav_success=language_manager["reconstructions.reconstruction.message.export_wav_success"],
+            wav_failed=language_manager["reconstructions.reconstruction.message.export_wav_failed"],
         )
-
-    @staticmethod
-    def _instruments_text(
-        language_manager: LanguageManager,
-        text_type: TextType,
-        element: ReconstructionsInstrumentsElements,
-    ) -> str:
-        return language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.INSTRUMENTS,
-            text_type,
-            element,
-        ]

@@ -4,16 +4,7 @@ from typing import Any, Dict, Final, Optional
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
 
-from sampletones_application.categories.elements.global_ import (
-    DialogElements,
-    FileFilterElements,
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
-    GlobalTemplateElements,
-    MenuElements,
-    StatusElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
+from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.deployment.deployment import (
     DeploymentConfig,
@@ -563,12 +554,7 @@ class Application:
             reconstruction_audio_recorded=self.reconstruction_manager.audio_filepath is not None,
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
-            play_label=self.language_manager[
-                Page.GLOBAL,
-                Panel.MENU,
-                TextType.LABEL,
-                MenuElements.ITEM_PLAYBACK_PLAY,
-            ],
+            play_label=self.language_manager["global.menu.label.item_playback_play"],
             play_or_pause_enabled=False,
             play_from_start_enabled=False,
             play_from_frame_enabled=False,
@@ -670,21 +656,11 @@ class Application:
         self._instructions_tab.ensure_library_loaded()
 
         filepath = open_file_dialog(
-            title=self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.RECONSTRUCT_FILE,
-            ],
+            title=self.language_manager["global.dialog.title.reconstruct_file"],
             initial_directory=self.session_manager.get_audio_input_path(),
             filters=(
                 FileFilter.for_extensions(
-                    self.language_manager[
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.FILTER,
-                        FileFilterElements.AUDIO,
-                    ],
+                    self.language_manager["global.dialog.filter.audio"],
                     EXT_FILES_AUDIO,
                 ),
             ),
@@ -700,12 +676,7 @@ class Application:
         self._instructions_tab.ensure_library_loaded()
 
         directory = select_directory_dialog(
-            title=self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY,
-            ],
+            title=self.language_manager["global.dialog.title.reconstruct_directory"],
             initial_directory=self.session_manager.get_audio_input_path(),
         )
 
@@ -773,12 +744,7 @@ class Application:
         logger.error_with_traceback(exception, "Playback error occurred")
         self.dialogs.show_error(
             exception,
-            self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.AUDIO_PLAYBACK_ERROR,
-            ],
+            self.language_manager["global.dialog.message.audio_playback_error"],
         )
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
@@ -888,14 +854,7 @@ class Application:
         if not self.retune_service.start(targets, nes_frequency):
             return
 
-        self.status_bar.set(
-            self.language_manager[
-                Page.GLOBAL,
-                Panel.STATUS,
-                TextType.MESSAGE,
-                StatusElements.RETUNING_SAMPLES,
-            ]
-        )
+        self.status_bar.set(self.language_manager["global.status.message.retuning_samples"])
         if self._editing_retuned_sample(nes_frequency):
             self._reconstructions_tab.set_reconstruction_dimmed(True)
 
@@ -1002,18 +961,8 @@ class Application:
 
     def _open_about_dialog(self) -> None:
         """Presents the application name, version, description, and authorship in a modal notice."""
-        description = self.language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.ABOUT_DESCRIPTION,
-        ]
-        author_line = self.language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.ABOUT_AUTHOR,
-        ].format(
+        description = self.language_manager["global.dialog.message.about_description"]
+        author_line = self.language_manager["global.dialog.template.about_author"].format(
             author=SAMPLETONES_AUTHOR,
             group=SAMPLETONES_GROUP,
         )
@@ -1032,12 +981,7 @@ class Application:
 
         self.dialogs.show_modal(
             get_dialog_tag(TAG_GLOBAL_DIALOG_ABOUT),
-            self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.ABOUT,
-            ],
+            self.language_manager["global.dialog.title.about"],
             content,
         )
 
@@ -1117,24 +1061,14 @@ class Application:
         )
 
     def _update_title(self) -> None:
-        untitled = self.language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.UNTITLED,
-        ]
+        untitled = self.language_manager["global.dialog.label.untitled"]
         document = document_title(
             self.project_manager.session,
             self._reconstruction_title_part(),
             untitled=untitled,
             project_open=self.project_manager.is_open,
         )
-        application_name = self.language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            GlobalDialogTitleElements.MAIN_WINDOW,
-        ]
+        application_name = self.language_manager["global.dialog.title.main_window"]
         self._viewport_manager.update_title(
             window_title(
                 application_name,
@@ -1221,12 +1155,7 @@ class Application:
     ) -> None:
         self.dialogs.show_confirmation(
             tag=TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
-            title=self.language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.EXIT_CONFIRMATION,
-            ],
+            title=self.language_manager["global.dialog.title.exit_confirmation"],
             message=message,
             on_confirm=self._exit_application,
             ok_label=ok_label,
@@ -1241,34 +1170,14 @@ class Application:
 
         elif self._is_converter_active():
             self._show_confirmation_dialog(
-                self.language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.EXIT_CONVERSION_IN_PROGRESS,
-                ],
-                ok_label=self.language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.LABEL,
-                    DialogElements.EXIT,
-                ],
+                self.language_manager["global.dialog.message.exit_conversion_in_progress"],
+                ok_label=self.language_manager["global.dialog.label.exit"],
             )
 
         elif self._is_library_generating():
             self._show_confirmation_dialog(
-                self.language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.EXIT_LIBRARY_GENERATION_IN_PROGRESS,
-                ],
-                ok_label=self.language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.LABEL,
-                    DialogElements.EXIT,
-                ],
+                self.language_manager["global.dialog.message.exit_library_generation_in_progress"],
+                ok_label=self.language_manager["global.dialog.label.exit"],
             )
 
         else:

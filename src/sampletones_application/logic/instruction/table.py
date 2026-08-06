@@ -1,8 +1,5 @@
 from typing import Any, List, Optional, Tuple, Union
 
-from sampletones_application.categories.elements.global_ import DialogElements
-from sampletones_application.categories.elements.instructions import InstructionsDetailsElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.view_model.instruction.cell import TableCell
 from sampletones_application.view_model.instruction.data import InstructionPanelData
@@ -19,85 +16,10 @@ class InstructionTableLogic:
         language_manager: LanguageManager,
         float_precision: int,
     ) -> None:
+        self._language_manager = language_manager
         self._float_precision = float_precision
-        self._lbl_nes_frequency = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.CELL_NES_FREQUENCY,
-        ]
-        self._lbl_generator = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.CELL_GENERATOR,
-        ]
-        self._lbl_frequency = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.CELL_FREQUENCY,
-        ]
-        self._lbl_sample_length = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.CELL_SAMPLE_LENGTH,
-        ]
-        self._lbl_samples = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.CELL_SAMPLES_SUFFIX,
-        ]
-        self._lbl_name = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.CELL_NAME,
-        ]
-        self._lbl_no_frequency = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            InstructionsDetailsElements.CELL_NO_FREQUENCY,
-        ]
-        self._lbl_yes = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.YES,
-        ]
-        self._lbl_no = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.LABEL,
-            DialogElements.NO,
-        ]
-        self._tpl_frequency = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.TEMPLATE,
-            InstructionsDetailsElements.FREQUENCY_TEMPLATE,
-        ]
-        self._tpl_pitch = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.TEMPLATE,
-            InstructionsDetailsElements.PITCH_TEMPLATE,
-        ]
-        self._tpl_period = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.TEMPLATE,
-            InstructionsDetailsElements.PERIOD_TEMPLATE,
-        ]
-        self._tpl_duty_cycle = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.TEMPLATE,
-            InstructionsDetailsElements.DUTY_CYCLE_TEMPLATE,
-        ]
+        self._lbl_generator = language_manager["instructions.details.label.cell_generator"]
+        self._lbl_frequency = language_manager["instructions.details.label.cell_frequency"]
 
         self._current_data: Optional[InstructionPanelData] = None
         self._current_hash: str = ""
@@ -127,7 +49,7 @@ class InstructionTableLogic:
             fragment = self.current_data.fragment
             rows.append(
                 TableCell(
-                    label=self._lbl_nes_frequency,
+                    label=self._language_manager["instructions.details.label.cell_nes_frequency"],
                     value=str(self._current_nes_frequency),
                 )
             )
@@ -140,13 +62,16 @@ class InstructionTableLogic:
             rows.append(
                 TableCell(
                     label=self._lbl_frequency,
-                    value=self._tpl_frequency.format(fragment.frequency),
+                    value=self._language_manager["instructions.details.template.frequency_template"].format(
+                        fragment.frequency
+                    ),
                 )
             )
+            samples_suffix = self._language_manager["instructions.details.label.cell_samples_suffix"]
             rows.append(
                 TableCell(
-                    label=self._lbl_sample_length,
-                    value=f"{fragment.length}{self._lbl_samples}",
+                    label=self._language_manager["instructions.details.label.cell_sample_length"],
+                    value=f"{fragment.length}{samples_suffix}",
                 )
             )
         else:
@@ -158,14 +83,14 @@ class InstructionTableLogic:
             )
             rows.append(
                 TableCell(
-                    label=self._lbl_name,
+                    label=self._language_manager["instructions.details.label.cell_name"],
                     value=self.current_data.instruction.name,
                 )
             )
             rows.append(
                 TableCell(
                     label=self._lbl_frequency,
-                    value=self._lbl_no_frequency,
+                    value=self._language_manager["instructions.details.label.cell_no_frequency"],
                 )
             )
 
@@ -193,21 +118,27 @@ class InstructionTableLogic:
         value: Union[float, bool, List[Any], Tuple[Any, ...], str, int],
     ) -> str:
         if name == "pitch" and isinstance(value, (int, float)):
-            return self._tpl_pitch.format(pitch_to_name(round(value)), value)
+            return self._language_manager["instructions.details.template.pitch_template"].format(
+                pitch_to_name(round(value)), value
+            )
 
         if name == "duty_cycle" and isinstance(value, int):
             duty_cycle = DUTY_CYCLES[value] * 100
-            return self._tpl_duty_cycle.format(duty_cycle, value)
+            return self._language_manager["instructions.details.template.duty_cycle_template"].format(duty_cycle, value)
 
         if name == "period" and isinstance(value, int):
             period = NOISE_PERIODS[value]
-            return self._tpl_period.format(period, value)
+            return self._language_manager["instructions.details.template.period_template"].format(period, value)
 
         if isinstance(value, float):
             return f"{value:.{self._float_precision}f}"
 
         if isinstance(value, bool):
-            return self._lbl_yes if value else self._lbl_no
+            return (
+                self._language_manager["global.dialog.label.yes"]
+                if value
+                else self._language_manager["global.dialog.label.no"]
+            )
 
         if isinstance(value, (list, tuple)):
             return f"[{', '.join(str(element) for element in value)}]"

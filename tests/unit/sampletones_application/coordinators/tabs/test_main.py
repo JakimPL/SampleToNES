@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Final
 from unittest.mock import MagicMock
 
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
@@ -8,6 +9,16 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
+from tests.suite.language import FakeLanguageManager
+
+CONVERTER_RUNNING_MESSAGE_KEY: Final[str] = "main.explorer.message.converter_running_msg"
+CONVERTER_RUNNING_TITLE_KEY: Final[str] = "main.explorer.title.converter_running_dialog"
+LOAD_FILE_MESSAGE_KEY: Final[str] = "main.converter.message.load_file_prompt"
+LOAD_BUTTON_KEY: Final[str] = "main.converter.label.load_button"
+OPEN_BUTTON_KEY: Final[str] = "main.converter.label.open_button"
+CLOSE_BUTTON_KEY: Final[str] = "main.converter.label.close_button"
+STOP_BUTTON_KEY: Final[str] = "main.converter.label.stop_button"
+CONTINUE_BUTTON_KEY: Final[str] = "main.converter.label.continue_button"
 
 
 def _coordinator(*, operation_active: bool) -> MainTabCoordinator:
@@ -16,8 +27,7 @@ def _coordinator(*, operation_active: bool) -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
     coordinator._is_operation_active = lambda: operation_active
     coordinator._dialogs = MagicMock()
-    coordinator._msg_converter_running = "running"
-    coordinator._ttl_converter_running = "title"
+    coordinator._language_manager = FakeLanguageManager()
     coordinator._on_reconstruct_file = MagicMock()
     coordinator._on_reconstruct_directory = MagicMock()
     return coordinator
@@ -35,8 +45,8 @@ class TestConverterRunningNotice:
 
         coordinator._dialogs.show_info.assert_called_once_with(
             TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
-            "running",
-            "title",
+            CONVERTER_RUNNING_MESSAGE_KEY,
+            CONVERTER_RUNNING_TITLE_KEY,
         )
 
     def test_idle_reports_false_silently(self) -> None:
@@ -91,12 +101,7 @@ def _success_coordinator() -> MainTabCoordinator:
     coordinator._dialogs = MagicMock()
     coordinator._on_refresh_trees = MagicMock()
     coordinator._converter_logic = MagicMock()
-    coordinator._ttl_load = "complete"
-    coordinator._msg_load_file = "load file"
-    coordinator._msg_load_directory = "open tab"
-    coordinator._lbl_load = "load"
-    coordinator._lbl_open = "open"
-    coordinator._lbl_close = "close"
+    coordinator._language_manager = FakeLanguageManager()
     return coordinator
 
 
@@ -114,10 +119,10 @@ class TestConversionSuccessDialog:
         coordinator._dialogs.show_confirmation.assert_called_once()
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_MAIN_CONVERTER_DIALOG_LOAD
-        assert args[1] == "load file"
+        assert args[1] == LOAD_FILE_MESSAGE_KEY
         assert args[3] == coordinator._converter_logic.handle_load_request
-        assert kwargs["ok_label"] == "load"
-        assert kwargs["cancel_label"] == "close"
+        assert kwargs["ok_label"] == LOAD_BUTTON_KEY
+        assert kwargs["cancel_label"] == CLOSE_BUTTON_KEY
         assert kwargs["path"] == output_path
         assert kwargs["on_cancel"] == coordinator._converter_logic.close
 
@@ -127,7 +132,7 @@ class TestConversionSuccessDialog:
         coordinator._on_conversion_success(ConversionSuccess(is_file=False, output_path=Path("/reconstructions")))
 
         _, kwargs = coordinator._dialogs.show_confirmation.call_args
-        assert kwargs["ok_label"] == "open"
+        assert kwargs["ok_label"] == OPEN_BUTTON_KEY
         assert kwargs["path"] is None
 
 
@@ -139,10 +144,7 @@ class TestCancelConfirmation:
         coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
         coordinator._dialogs = MagicMock()
         coordinator._converter_logic = MagicMock()
-        coordinator._ttl_cancel = "cancel?"
-        coordinator._msg_cancel = "stop it?"
-        coordinator._lbl_stop = "stop"
-        coordinator._lbl_continue = "continue"
+        coordinator._language_manager = FakeLanguageManager()
 
         coordinator._request_cancel_confirmation()
 
@@ -151,5 +153,5 @@ class TestCancelConfirmation:
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_MAIN_CONVERTER_DIALOG_CANCEL
         assert args[3] == coordinator._converter_logic.cancel
-        assert kwargs["ok_label"] == "stop"
-        assert kwargs["cancel_label"] == "continue"
+        assert kwargs["ok_label"] == STOP_BUTTON_KEY
+        assert kwargs["cancel_label"] == CONTINUE_BUTTON_KEY

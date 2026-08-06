@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict, Final
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +10,14 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
+from tests.suite.language import FakeLanguageManager
+
+TEXTS: Final[Dict[str, str]] = {
+    "main.converter.label.convert_sample_button": "Convert sample",
+    "main.converter.label.convert_directory_button": "Convert directory",
+    "main.converter.label.cancel_button": "Cancel",
+    "main.converter.template.convert_label_template": "{}: {}",
+}
 
 
 @pytest.fixture
@@ -21,14 +30,11 @@ def converter_logic() -> ConverterLogic:
         priorities=MagicMock(schedule=0),
         delays=MagicMock(schedule=0, cancel=0),
     )
-    language_manager = MagicMock()
-    language_manager.__getitem__.return_value = "message"
-
     logic = ConverterLogic(
         config_manager,
         service,
         scheduling=scheduling,
-        language_manager=language_manager,
+        language_manager=FakeLanguageManager(TEXTS),  # type: ignore[arg-type]
         is_operation_active=lambda: False,
     )
     logic.on_view_changed = MagicMock()
@@ -141,13 +147,6 @@ class TestActionLabel:
     """The one action button's label is a projection of converter state, composed where the display
     strings are resolved (the logic layer) rather than glued together in the panel: it names the
     selected input while idle and reads the cancel label once a conversion holds resources."""
-
-    @pytest.fixture(autouse=True)
-    def _labels(self, converter_logic: ConverterLogic) -> None:
-        converter_logic._lbl_convert = "Convert sample"
-        converter_logic._lbl_convert_directory = "Convert directory"
-        converter_logic._lbl_cancel = "Cancel"
-        converter_logic._tpl_convert_label = "{}: {}"
 
     def test_idle_file_label_names_the_selected_file(self, converter_logic: ConverterLogic) -> None:
         converter_logic._is_file = True

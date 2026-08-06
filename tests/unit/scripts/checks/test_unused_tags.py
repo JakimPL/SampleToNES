@@ -7,7 +7,7 @@ from sampletones_shared.meta.source.modules import SourceModule
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source
 
-check_unused_tags = load_script("scripts/check_unused_tags.py")
+check_unused_tags = load_script("scripts/checks/unused_tags.py")
 
 TAGS_SOURCE: Final[str] = """
 TAG_GLOBAL_WINDOW_MAIN = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.WINDOW, "main")

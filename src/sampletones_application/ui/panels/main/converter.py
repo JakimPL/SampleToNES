@@ -2,12 +2,6 @@ from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    GlobalMessageElements,
-    StatusElements,
-)
-from sampletones_application.categories.elements.main import ConverterElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import PathColors
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
@@ -61,6 +55,7 @@ class GUIConverterPanel(GUIPanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ) -> None:
+        self._language_manager = language_manager
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
         self._status_bar = status_bar
@@ -73,66 +68,8 @@ class GUIConverterPanel(GUIPanel):
 
         self._layout = layout
         self._path_colors = path_colors
-        self._msg_path = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.PATH,
-        ]
-        self._lbl_section = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.SECTION,
-        ]
-        self._lbl_convert_button = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.LABEL,
-            ConverterElements.CONVERT_SAMPLE_BUTTON,
-        ]
-        self._tooltip_convert_disabled = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.OPERATION_IN_PROGRESS,
-        ]
-        self._msg_input = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_INPUT_LABEL,
-        ]
-        self._msg_output = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_OUTPUT_LABEL,
-        ]
-        self._msg_waiting = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_WAITING,
-        ]
-        self._msg_empty_hint = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_EMPTY_HINT,
-        ]
-        self._msg_status_convert = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_CONVERT,
-        ]
-        self._msg_status_cancel = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.MESSAGE,
-            ConverterElements.STATUS_CANCEL,
-        ]
+        self._msg_path = language_manager["global.status.message.path"]
+        self._msg_status_convert = language_manager["main.converter.message.status_convert"]
         self._status_action_message = self._msg_status_convert
 
         super().__init__(
@@ -144,7 +81,7 @@ class GUIConverterPanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._lbl_section,
+            self._language_manager["main.converter.label.section"],
             glyph=self._glyphs.headers.converter,
             width=self.width,
             card_theme=TAG_GLOBAL_THEME_PANEL_EMPHASIS,
@@ -186,7 +123,7 @@ class GUIConverterPanel(GUIPanel):
             case ConverterAction.CANCEL:
                 callback: VoidCallback = self._on_cancel_clicked
                 theme = self._theme_cancel
-                self._status_action_message = self._msg_status_cancel
+                self._status_action_message = self._language_manager["main.converter.message.status_cancel"]
             case ConverterAction.CONVERT:
                 callback = self._on_convert_clicked
                 theme = self._theme_convert
@@ -210,7 +147,7 @@ class GUIConverterPanel(GUIPanel):
         self._theme_cancel = ThemeRegistry.get(TAG_GLOBAL_THEME_DANGER_BUTTON)
         with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_CONVERT):
             self._action_button = GUIButton(
-                label=self._lbl_convert_button,
+                label=self._language_manager["main.converter.label.convert_sample_button"],
                 tag=TAG_MAIN_CONVERTER_BUTTON_ACTION,
                 width=self._layout.width,
                 height=self._layout.button_height,
@@ -221,7 +158,7 @@ class GUIConverterPanel(GUIPanel):
             )
         attach_disabled_tooltip(
             TAG_MAIN_CONVERTER_GROUP_CONVERT,
-            self._tooltip_convert_disabled,
+            self._language_manager["global.dialog.message.operation_in_progress"],
             tag=TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
         )
         self._status_bar.bind_to_item(
@@ -240,14 +177,14 @@ class GUIConverterPanel(GUIPanel):
             border=False,
         ):
             hint = dpg.add_text(
-                self._msg_empty_hint,
+                self._language_manager["main.converter.message.status_empty_hint"],
                 tag=TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT,
             )
             FontRegistry.bind_to_item(hint, Font.REGULAR_SMALL)
             with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_SUMMARY, show=False):
                 self.input_path_text = GUIPathText(
                     path=None,
-                    prefix=self._msg_input,
+                    prefix=self._language_manager["main.converter.message.status_input_label"],
                     tag=TAG_MAIN_CONVERTER_PATH_INPUT_PATH,
                     parent=TAG_MAIN_CONVERTER_GROUP_SUMMARY,
                     color=self._path_colors.default,
@@ -258,7 +195,7 @@ class GUIConverterPanel(GUIPanel):
                 )
                 self.output_path_text = GUIPathText(
                     path=None,
-                    prefix=self._msg_output,
+                    prefix=self._language_manager["main.converter.message.status_output_label"],
                     tag=TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH,
                     parent=TAG_MAIN_CONVERTER_GROUP_SUMMARY,
                     color=self._path_colors.default,
@@ -274,7 +211,7 @@ class GUIConverterPanel(GUIPanel):
             show=False,
         ):
             dpg.add_text(
-                self._msg_waiting,
+                self._language_manager["main.converter.message.status_waiting"],
                 tag=TAG_MAIN_CONVERTER_TEXT_STATUS,
                 parent=TAG_MAIN_CONVERTER_GROUP,
             )

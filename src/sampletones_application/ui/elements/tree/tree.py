@@ -5,15 +5,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    ContextElements,
-    GlobalMessageElements,
-    GlobalTemplateElements,
-    NodeDetailElements,
-    StatusElements,
-    TreeElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.tags.compose import compose_tag
@@ -112,6 +103,7 @@ class GUITreePanel(GUIPanel, ABC):
         status_bar: GUIStatusBar,
         colors: TreeColors,
     ) -> None:
+        self._language_manager = language_manager
         self._logic = tree_logic
         self._status_bar = status_bar
         self._scheduling = scheduling
@@ -135,162 +127,13 @@ class GUITreePanel(GUIPanel, ABC):
 
         self._colors = colors
 
-        self._lbl_clear_search = language_manager[
-            Page.GLOBAL,
-            Panel.BROWSER,
-            TextType.LABEL,
-            TreeElements.CLEAR_SEARCH,
-        ]
-        self._msg_no_results = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.MESSAGE,
-            GlobalMessageElements.TREE_NO_RESULTS,
-        ]
-        self._msg_tree_search = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.TREE_SEARCH,
-        ]
-        self._msg_clear_search = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.CLEAR_SEARCH,
-        ]
-        self._msg_node_reconstruction = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.NODE_RECONSTRUCTION,
-        ]
-        self._msg_node_reconstruction_no_autoplay = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.NODE_RECONSTRUCTION_NO_AUTOPLAY,
-        ]
-        self._msg_node_library = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.NODE_LIBRARY,
-        ]
-        self._template_node_directory = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.NODE_DIRECTORY,
-        ]
-        self._msg_expand = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.EXPAND,
-        ]
-        self._msg_collapse = language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TEMPLATE,
-            GlobalTemplateElements.COLLAPSE,
-        ]
-        self._lbl_ctx_play = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.PLAY,
-        ]
-        self._lbl_ctx_copy_filename = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.COPY_FILENAME,
-        ]
-        self._lbl_ctx_copy_path = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.COPY_PATH,
-        ]
-        self._lbl_ctx_open_in_explorer = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.OPEN_IN_EXPLORER,
-        ]
-        self._lbl_ctx_add_to_sequencer = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.ADD_TO_SEQUENCER,
-        ]
-        self._tpl_ctx_replace_sample = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.TEMPLATE,
-            ContextElements.REPLACE_SAMPLE,
-        ]
-        self._lbl_ctx_locate_audio = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.LOCATE_ORIGINAL_AUDIO,
-        ]
-        self._lbl_ctx_mark_as_favorite = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.MARK_AS_FAVORITE,
-        ]
-        self._lbl_ctx_unmark_as_favorite = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            ContextElements.UNMARK_AS_FAVORITE,
-        ]
-        self._lbl_detail_sample_rate = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            NodeDetailElements.SAMPLE_RATE,
-        ]
-        self._lbl_detail_nes_frequency = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            NodeDetailElements.NES_FREQUENCY,
-        ]
-        self._lbl_detail_generators = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            NodeDetailElements.GENERATORS,
-        ]
-        self._lbl_detail_spectrum_method = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            NodeDetailElements.SPECTRUM_METHOD,
-        ]
-        self._lbl_detail_transformation_gamma = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            NodeDetailElements.TRANSFORMATION_GAMMA,
-        ]
-        self._lbl_detail_window_size = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            NodeDetailElements.WINDOW_SIZE,
-        ]
-        self._lbl_detail_configuration = language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            NodeDetailElements.CONFIGURATION,
-        ]
+        self._lbl_detail_sample_rate = language_manager["global.context.label.detail_sample_rate"]
+        self._lbl_detail_nes_frequency = language_manager["global.context.label.detail_nes_frequency"]
+        self._lbl_detail_spectrum_method = language_manager["global.context.label.detail_spectrum_method"]
+        self._lbl_detail_transformation_gamma = language_manager["global.context.label.detail_transformation_gamma"]
+        self._lbl_detail_window_size = language_manager["global.context.label.detail_window_size"]
+        self._lbl_detail_generators = language_manager["global.context.label.detail_generators"]
+        self._lbl_detail_configuration = language_manager["global.context.label.detail_configuration"]
 
         self.on_add_to_sequencer: Optional[PathCallback] = None
         self.can_add_to_sequencer: Optional[Callable[[], bool]] = None
@@ -370,14 +213,20 @@ class GUITreePanel(GUIPanel, ABC):
                 width=-80,
             )
             GUIButton(
-                label=self._lbl_clear_search,
+                label=self._language_manager["global.browser.label.clear_search"],
                 tag=self._search_button_tag,
                 callback=self._on_clear_search_clicked,
                 width=-1,
             )
 
-        self._status_bar.bind_to_item(self._search_input_tag, self._msg_tree_search)
-        self._status_bar.bind_to_item(self._search_button_tag, self._msg_clear_search)
+        self._status_bar.bind_to_item(
+            self._search_input_tag,
+            self._language_manager["global.status.message.tree_search"],
+        )
+        self._status_bar.bind_to_item(
+            self._search_button_tag,
+            self._language_manager["global.status.message.clear_search"],
+        )
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
         return compose_tag(self.tag, node_type.value, SUF_HANDLER_NODE)
@@ -433,7 +282,7 @@ class GUITreePanel(GUIPanel, ABC):
         an active search, and releasing the lock hands control back to interactive rebuilds.
         """
         if root_tag == self.tree_tag and self.tree.is_filtered() and self.tree.get_root() is None:
-            dpg.add_text(self._msg_no_results, parent=root_tag)
+            dpg.add_text(self._language_manager["global.dialog.message.tree_no_results"], parent=root_tag)
 
         if on_finished is not None:
             on_finished()
@@ -597,24 +446,30 @@ class GUITreePanel(GUIPanel, ABC):
     ) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
             if self._logic.autoplay_enabled:
-                return self._msg_node_reconstruction
+                return self._language_manager["global.status.message.node_reconstruction"]
 
-            return self._msg_node_reconstruction_no_autoplay
+            return self._language_manager["global.status.message.node_reconstruction_no_autoplay"]
 
         return self._create_status_bar_message_function(message_function)
 
     def _create_status_bar_message_function_for_library_node(
         self,
     ) -> MessageCallback:
-        return self._create_status_bar_message_function(self._msg_node_library)
+        return self._create_status_bar_message_function(self._language_manager["global.status.message.node_library"])
 
     def _create_status_bar_message_function_for_directory_node(
         self,
     ) -> MessageCallback:
         def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
             _, node_tag = user_data
-            expand_or_collapse = self._msg_collapse if dpg_get_value(node_tag) else self._msg_expand
-            return self._template_node_directory.format(expand_or_collapse=expand_or_collapse)
+            expand_or_collapse = (
+                self._language_manager["global.dialog.template.collapse"]
+                if dpg_get_value(node_tag)
+                else self._language_manager["global.dialog.template.expand"]
+            )
+            return self._language_manager["global.status.message.node_directory"].format(
+                expand_or_collapse=expand_or_collapse
+            )
 
         return self._create_status_bar_message_function(message_function)
 
@@ -715,20 +570,20 @@ class GUITreePanel(GUIPanel, ABC):
             return
 
         dpg.add_separator()
-        add_play_menu_item(self._lbl_ctx_play, lambda: self._logic.play_node(node))
+        add_play_menu_item(self._language_manager["global.context.label.play"], lambda: self._logic.play_node(node))
 
     def _add_context_menu_path_items(self, path: Path) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._lbl_ctx_copy_filename,
+            label=self._language_manager["global.context.label.copy_filename"],
             callback=lambda: dpg.set_clipboard_text(str(path.name)),
         )
         dpg.add_menu_item(
-            label=self._lbl_ctx_copy_path,
+            label=self._language_manager["global.context.label.copy_path"],
             callback=lambda: dpg.set_clipboard_text(str(path)),
         )
         dpg.add_menu_item(
-            label=self._lbl_ctx_open_in_explorer,
+            label=self._language_manager["global.context.label.open_in_explorer"],
             callback=lambda: open_path_in_explorer(path),
         )
 
@@ -736,7 +591,7 @@ class GUITreePanel(GUIPanel, ABC):
         """Add the send-to-sequencer item, live while its host reports the sequencer accepts one."""
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._lbl_ctx_add_to_sequencer,
+            label=self._language_manager["global.context.label.add_to_sequencer"],
             callback=self._on_add_to_sequencer,
             user_data=node,
             enabled=self.query(self.can_add_to_sequencer, default=False),
@@ -755,14 +610,14 @@ class GUITreePanel(GUIPanel, ABC):
             return
 
         dpg.add_menu_item(
-            label=self._tpl_ctx_replace_sample.format(sample=target),
+            label=self._language_manager["global.context.template.replace_sample"].format(sample=target),
             callback=self._on_replace_in_sequencer,
             user_data=node,
         )
 
     def _add_context_menu_locate_audio_item(self, node: FileSystemNode) -> None:
         dpg.add_menu_item(
-            label=self._lbl_ctx_locate_audio,
+            label=self._language_manager["global.context.label.locate_original_audio"],
             callback=self._on_locate_original_audio,
             user_data=node,
         )
@@ -775,7 +630,9 @@ class GUITreePanel(GUIPanel, ABC):
 
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (
-            self._lbl_ctx_unmark_as_favorite if self._logic.is_node_favorite(node) else self._lbl_ctx_mark_as_favorite
+            self._language_manager["global.context.label.unmark_as_favorite"]
+            if self._logic.is_node_favorite(node)
+            else self._language_manager["global.context.label.mark_as_favorite"]
         )
         dpg.add_separator()
         dpg.add_menu_item(

@@ -8,7 +8,7 @@ from sampletones_shared.meta.source.lookups import LookupSite
 from sampletones_shared.meta.source.values import EnumTable
 from tests.suite.scripts import load_script
 
-check_language_keys = load_script("scripts/check_language_keys.py")
+check_language_keys = load_script("scripts/checks/language_keys.py")
 
 ENUMS: Final[EnumTable] = check_language_keys.enum_table()
 

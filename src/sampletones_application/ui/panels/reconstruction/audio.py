@@ -2,13 +2,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import (
-    StatusElements,
-)
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionPanelElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors import PathColors
 from sampletones_application.tags.reconstructions import (
@@ -44,6 +37,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ) -> None:
+        self._language_manager = language_manager
         self._status_bar = status_bar
         self._path_colors = path_colors
         self._path_status_color = path_status_color
@@ -53,25 +47,9 @@ class GUIReconstructionAudioPanel(GUIPanel):
 
         self.on_audio_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
-        self._lbl_audio_source = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.AUDIO_SOURCE_LABEL,
-        ]
         self._load_path_text(language_manager)
-        self._lbl_original_audio_radio = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.ORIGINAL_AUDIO_RADIO,
-        ]
-        self._lbl_reconstruction_radio = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.RECONSTRUCTION_RADIO,
-        ]
+        self._lbl_original_audio_radio = language_manager["reconstructions.reconstruction.label.original_audio_radio"]
+        self._lbl_reconstruction_radio = language_manager["reconstructions.reconstruction.label.reconstruction_radio"]
 
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
@@ -82,41 +60,12 @@ class GUIReconstructionAudioPanel(GUIPanel):
         )
 
     def _load_path_text(self, language_manager: LanguageManager) -> None:
-        self._lbl_reconstruction_file = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.RECONSTRUCTION_FILE_LABEL,
-        ]
-        self._lbl_original_audio = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.ORIGINAL_AUDIO_LABEL,
-        ]
-        self._msg_path_not_found = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.PATH_NOT_FOUND,
-        ]
-        self._msg_path_not_applicable = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.RECONSTRUCTION,
-            TextType.LABEL,
-            ReconstructionPanelElements.PATH_NOT_APPLICABLE,
-        ]
-        self._msg_path_status = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.PATH,
-        ]
+        self._msg_path_status = language_manager["global.status.message.path"]
 
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._lbl_audio_source,
+            self._language_manager["reconstructions.reconstruction.label.audio_source_label"],
             glyph=self._glyphs.headers.source,
             width=0,
             no_scrollbar=True,
@@ -151,9 +100,15 @@ class GUIReconstructionAudioPanel(GUIPanel):
             case ReconstructionPathState.AVAILABLE:
                 path_widget.set_path(view_model.path)
             case ReconstructionPathState.NOT_FOUND:
-                path_widget.set_status(self._msg_path_not_found, self._path_status_color)
+                path_widget.set_status(
+                    self._language_manager["reconstructions.reconstruction.label.path_not_found"],
+                    self._path_status_color,
+                )
             case ReconstructionPathState.NOT_APPLICABLE:
-                path_widget.set_status(self._msg_path_not_applicable, self._path_status_color)
+                path_widget.set_status(
+                    self._language_manager["reconstructions.reconstruction.label.path_not_applicable"],
+                    self._path_status_color,
+                )
             case ReconstructionPathState.EMPTY:
                 path_widget.set_status("", self._path_status_color)
 
@@ -165,7 +120,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
             color=self._path_colors.default,
             hover_color=self._path_colors.hover,
             status_message=self._msg_path_status,
-            prefix=self._lbl_reconstruction_file,
+            prefix=self._language_manager["reconstructions.reconstruction.label.reconstruction_file_label"],
             font=Font.REGULAR_SMALL,
             status_bar=self._status_bar,
         )
@@ -176,7 +131,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
             color=self._path_colors.default,
             hover_color=self._path_colors.hover,
             status_message=self._msg_path_status,
-            prefix=self._lbl_original_audio,
+            prefix=self._language_manager["reconstructions.reconstruction.label.original_audio_label"],
             font=Font.REGULAR_SMALL,
             status_bar=self._status_bar,
         )

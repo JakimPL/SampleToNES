@@ -9,7 +9,7 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 
-check_bundle = load_script("scripts/ci/check_bundle.py")
+check_bundle = load_script("scripts/ci/checks/bundle.py")
 
 NOTICES = ("LICENSE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES.txt")
 
@@ -25,7 +25,7 @@ def bundle(tmp_path: Path) -> Path:
 
 
 def _install_launcher(bundle: Path) -> Path:
-    launcher = check_bundle.launcher_path(bundle, system=check_bundle.platform.system())
+    launcher: Path = check_bundle.launcher_path(bundle, system=check_bundle.platform.system())
     launcher.write_bytes(b"launcher")
     return launcher
 

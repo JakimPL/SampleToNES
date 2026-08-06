@@ -1,6 +1,6 @@
 import contextlib
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Final, Iterator, List, Optional
 
 import pytest
 
@@ -8,23 +8,28 @@ from sampletones_application.ui.elements.tree import tree as tree_module
 from sampletones_application.ui.panels.sequencer import browser as browser_module
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_core.structures.tree.node import FileSystemNode, NodeType
+from tests.suite.language import FakeLanguageManager
 
 RECONSTRUCTION_PATH = Path("/reconstructions/kick_02.rec")
 
 ADD_LABEL = "Add to Sequencer"
 REPLACE_TEMPLATE = "Replace {sample}"
 
+TEXTS: Final[Dict[str, str]] = {
+    "global.context.label.add_to_sequencer": ADD_LABEL,
+    "global.context.template.replace_sample": REPLACE_TEMPLATE,
+}
+
 
 def _panel(replace_target: Optional[str]) -> GUISequencerBrowserPanel:
     """Builds a panel without its DearPyGui-dependent constructor.
 
-    The sequencer context-menu builders touch only their hook attributes, the cached label
-    strings, and ``CallbackMixin.call``, so a running GUI context is unnecessary. ``replace_target``
-    stands in for whatever the samples panel currently has selected.
+    The sequencer context-menu builders touch only their hook attributes, the language manager,
+    and ``CallbackMixin.call``, so a running GUI context is unnecessary. ``replace_target`` stands
+    in for whatever the samples panel currently has selected.
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
-    panel._lbl_ctx_add_to_sequencer = ADD_LABEL
-    panel._tpl_ctx_replace_sample = REPLACE_TEMPLATE
+    panel._language_manager = FakeLanguageManager(TEXTS)
     panel.on_add_to_sequencer = None
     panel.can_add_to_sequencer = lambda: True
     panel.on_replace_in_sequencer = None

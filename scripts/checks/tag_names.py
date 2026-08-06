@@ -9,8 +9,8 @@ underscore, behind the `TAG_` prefix. Reading the name therefore states the tag,
 states where its constant lives.
 
 Usage:
-    python check_tag_names.py [files...]   # check the given modules
-    python check_tag_names.py --all        # check every module of the tags package
+    python scripts/checks/tag_names.py [files...]   # check the given modules
+    python scripts/checks/tag_names.py --all        # check every module of the tags package
 """
 
 import argparse

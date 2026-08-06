@@ -5,11 +5,7 @@ from typing import Dict, Final, Tuple
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
 
-from sampletones_application.categories.elements.global_ import (
-    FileFilterElements,
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
-)
+from sampletones_application.categories.elements.global_ import GlobalMessageElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -68,12 +64,7 @@ class ConfigCoordinator:
 
     def save_dialog(self) -> None:
         filepath = save_file_dialog(
-            title=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.SAVE_CONFIG,
-            ],
+            title=self._language_manager["global.dialog.title.save_config"],
             initial_directory=self._session_manager.get_config_path(),
             default_filename=DEFAULT_CONFIG_FILENAME,
             filters=self._config_filters(),
@@ -85,36 +76,19 @@ class ConfigCoordinator:
     def _handle_save(self, filepath: Path) -> None:
         try:
             self._config_manager.save_config_to_file(filepath)
-            self._show_status_dialog(
-                self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.CONFIGURATION_SAVED_SUCCESSFULLY,
-                ]
-            )
+            self._show_status_dialog(self._language_manager["global.dialog.message.configuration_saved_successfully"])
         except (OSError, ValueError) as exception:
             logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
             self._dialogs.show_error(
                 exception,
-                self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.CONFIG_SAVE_FAILED,
-                ],
+                self._language_manager["global.dialog.message.config_save_failed"],
             )
 
         self._session_manager.set_config_path(filepath)
 
     def load_dialog(self) -> None:
         filepath = open_file_dialog(
-            title=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.LOAD_CONFIG,
-            ],
+            title=self._language_manager["global.dialog.title.load_config"],
             initial_directory=self._session_manager.get_config_path(),
             filters=self._config_filters(),
         )
@@ -125,12 +99,7 @@ class ConfigCoordinator:
         """The single type a configuration is written as and read from."""
         return (
             FileFilter.for_extensions(
-                self._language_manager[
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.FILTER,
-                    FileFilterElements.CONFIG,
-                ],
+                self._language_manager["global.dialog.filter.config"],
                 [EXT_FILE_JSON],
             ),
         )
@@ -197,11 +166,6 @@ class ConfigCoordinator:
 
         self._dialogs.show_modal(
             tag=TAG_GLOBAL_DIALOG_CONFIG_STATUS,
-            title=self._language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.CONFIG_STATUS,
-            ],
+            title=self._language_manager["global.dialog.title.config_status"],
             content=content,
         )

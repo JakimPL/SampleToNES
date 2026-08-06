@@ -1,10 +1,6 @@
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
-from sampletones_application.categories.elements.instructions import (
-    InstructionsLibraryElements,
-)
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
@@ -46,13 +42,8 @@ class InstructionsLibraryManager(CallbackMixin):
         *,
         language_manager: LanguageManager,
     ) -> None:
+        self._language_manager = language_manager
         self._config_manager = config_manager
-        self._libraries_node_label = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.LABEL,
-            InstructionsLibraryElements.LIBRARIES_NODE,
-        ]
         library_directory = config_manager.get_library_directory()
         self._library = InstructionLibrary(directory=str(library_directory))
         self._library_files: Dict[InstructionLibraryKey, str] = {}
@@ -282,7 +273,7 @@ class InstructionsLibraryManager(CallbackMixin):
         return get_display_name_from_key(key)
 
     def rebuild_tree(self) -> None:
-        root = TreeNode(self._libraries_node_label, node_type=NodeType.ROOT)
+        root = TreeNode(self._language_manager["instructions.library.label.libraries_node"], node_type=NodeType.ROOT)
 
         for library_key in sorted(self._library_files.keys(), key=get_display_name_from_key):
             self._build_library_node(library_key, root)
