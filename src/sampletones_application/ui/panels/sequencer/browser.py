@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,

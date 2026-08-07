@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Final, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.colors import FeatureColors
+from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_REDO,
@@ -21,7 +21,8 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
@@ -308,19 +309,20 @@ class GUISequencerHistoryPanel(GUIPanel):
             color = self._layout.colors.history.future if entry.is_future else self._role_color(segment.role)
             self._add_text(segment.text, parent=group, color=color)
 
-    def _add_text(self, value: str, *, parent: int, color: Optional[PaletteColor]) -> None:
-        text = (
-            dpg.add_text(value, parent=parent)
-            if color is None
-            else dpg.add_text(
-                value,
-                parent=parent,
-                color=color.rgba,
-            )
-        )
+    def _add_text(
+        self,
+        value: str,
+        *,
+        parent: int,
+        color: Optional[BaseColor],
+    ) -> None:
+        text = dpg.add_text(value, parent=parent)
+        if color is not None:
+            dpg_set_palette_color(text, color)
+
         FontRegistry.bind_to_item(text, Font.MONO_SMALL)
 
-    def _role_color(self, role: HistoryDetailRole) -> PaletteColor:
+    def _role_color(self, role: HistoryDetailRole) -> BaseColor:
         colors = self._layout.colors
         roles = colors.history.roles
         text = colors.text

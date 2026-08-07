@@ -1,4 +1,4 @@
-from typing import ClassVar, Dict, Optional, Tuple
+from typing import ClassVar, Dict, Optional
 
 from sampletones_application.ui.themes.theme import Theme
 
@@ -9,11 +9,6 @@ class ThemeRegistry:
     @classmethod
     def register(cls, theme: Theme) -> None:
         cls._registry[theme.tag] = theme
-
-    @classmethod
-    def themes(cls) -> Tuple[Theme, ...]:
-        """Every registered theme, for an operation that addresses the whole set at once."""
-        return tuple(cls._registry.values())
 
     @classmethod
     def get(cls, tag: str) -> Theme:

@@ -1,12 +1,10 @@
-from __future__ import annotations
-
 from typing import Callable, Dict, List, Optional
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.logic.reconstruction.instruments import ReconstructionInstrumentsLogic
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -23,7 +21,8 @@ def mock_reconstruction_manager() -> MagicMock:
 
 @pytest.fixture
 def instruments_logic(
-    mock_reconstruction_manager: MagicMock, scheduling: SchedulingBehavior
+    mock_reconstruction_manager: MagicMock,
+    scheduling: SchedulingBehavior,
 ) -> ReconstructionInstrumentsLogic:
     return ReconstructionInstrumentsLogic(
         mock_reconstruction_manager,

@@ -10,7 +10,7 @@ from sampletones_application.ui.panels.sequencer.columns import (
     tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import ColorRGBA
 
@@ -58,10 +58,10 @@ def _panel() -> GUISequencerGridPanel:
     panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
-            cursor_row=PaletteColor(value=CURSOR_ROW),
-            cell_cursor=PaletteColor(value=CELL_CURSOR),
-            pattern_highlight=PaletteColor(value=PATTERN_HIGHLIGHT),
-            playback_row=PaletteColor(value=PLAYBACK_ROW),
+            cursor_row=LiteralColor(CURSOR_ROW),
+            cell_cursor=LiteralColor(CELL_CURSOR),
+            pattern_highlight=LiteralColor(PATTERN_HIGHLIGHT),
+            playback_row=LiteralColor(PLAYBACK_ROW),
         ),
     )
     panel._current_row_count = PATTERN_ROWS
@@ -215,7 +215,7 @@ class TestHeaderRowBackground:
     ) -> None:
         panel = _panel()
         panel._layout = SimpleNamespace(
-            colors=SimpleNamespace(header=SimpleNamespace(background=PaletteColor(value=HEADER_SHADE)))
+            colors=SimpleNamespace(header=SimpleNamespace(background=LiteralColor(HEADER_SHADE)))
         )
 
         panel._highlight_header_row()
@@ -233,7 +233,7 @@ class TestHeaderRowBackground:
         header is painted per cell to read as one band."""
         panel = _panel()
         panel._layout = SimpleNamespace(
-            colors=SimpleNamespace(header=SimpleNamespace(background=PaletteColor(value=HEADER_SHADE)))
+            colors=SimpleNamespace(header=SimpleNamespace(background=LiteralColor(HEADER_SHADE)))
         )
 
         panel._highlight_header_row()

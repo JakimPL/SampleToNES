@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Self
 
-from sampletones_application.layout.general.colors import GeneralColors
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.layout.general.colors.colors import GeneralColors
+from sampletones_application.utils.palette.colors.base import BaseColor
 
 
 @dataclass(frozen=True)
@@ -13,13 +13,13 @@ class TreeColors:
     per browser, while the others are shared across browsers.
     """
 
-    favorite: PaletteColor
-    node: PaletteColor
-    muted: PaletteColor
-    accent: PaletteColor
+    favorite: BaseColor
+    node: BaseColor
+    muted: BaseColor
+    accent: BaseColor
 
     @classmethod
-    def create(cls, colors: GeneralColors, *, accent: PaletteColor) -> Self:
+    def create(cls, colors: GeneralColors, *, accent: BaseColor) -> Self:
         """Assigns shared palette entries to tree roles; only ``accent`` differs between browsers.
 
         Defining the shared mapping in one place keeps every browser's favorite/node/muted colors

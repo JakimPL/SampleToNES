@@ -3,7 +3,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.colors import PathColors
+from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
@@ -17,7 +17,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
     ReconstructionPathViewModel,
@@ -32,7 +32,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
         self,
         *,
         path_colors: PathColors,
-        path_status_color: PaletteColor,
+        path_status_color: BaseColor,
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,

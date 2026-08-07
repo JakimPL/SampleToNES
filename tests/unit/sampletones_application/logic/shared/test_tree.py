@@ -4,12 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.layout.behavior import (
-    SchedulingBehavior,
-    SchedulingDelays,
-    SchedulingEmit,
-    SchedulingPriorities,
-)
+from sampletones_application.layout.behavior.scheduling.delays import SchedulingDelays
+from sampletones_application.layout.behavior.scheduling.emit import SchedulingEmit
+from sampletones_application.layout.behavior.scheduling.priorities import SchedulingPriorities
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_core import paths

@@ -3,7 +3,7 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.colors import TableColors
+from sampletones_application.layout.general.colors.table import TableColors
 from sampletones_application.layout.general.tables import TablesLayout
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,

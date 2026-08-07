@@ -8,7 +8,7 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 class PaletteSource(CallbackMixin):
     """The palette every colour token resolves against, and the one place it changes.
 
-    A :class:`PaletteColor` keeps the token it was written as and reads its value from
+    A :class:`BaseColor` keeps the token it was written as and reads its value from
     here, so activating another palette gives every colour in the application a new
     value with no reload and no re-injection. Whatever DearPyGui has already copied is
     repainted by the listener on ``on_palette_changed``.

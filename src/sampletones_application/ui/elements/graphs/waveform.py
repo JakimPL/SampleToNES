@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Any, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
@@ -26,11 +27,19 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
+from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
-from sampletones_shared.types.application import Color, ColorRGBA, Sender
-from sampletones_shared.utils.color import to_grayscale, with_alpha_fraction
+from sampletones_shared.types.application import Sender
+
+
+class SeriesShade(StrEnum):
+    """How strongly a waveform series is drawn, which decides the colour its theme carries."""
+
+    FULL = "full"
+    DIMMED = "dimmed"
 
 
 class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
@@ -268,7 +277,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         series_tag = self._series_tag(layer.name)
         if dpg.does_item_exist(series_tag):
-            self._bind_series_theme(series_tag, self._series_color(layer))
+            self._bind_series_theme(series_tag, layer)
 
     def reconstruction_layer(self, data: np.ndarray) -> ArrayLayer:
         return ArrayLayer(
@@ -348,21 +357,27 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         for layer in self.layers.values():
             series_tag = self._series_tag(layer.name)
             self._upsert_series(series_tag, layer)
-            self._bind_series_theme(series_tag, self._series_color(layer))
+            self._bind_series_theme(series_tag, layer)
 
-    def _series_color(self, layer: Union[ArrayLayer, InstructionLayer]) -> ColorRGBA:
-        """Resolves a layer's line colour, greying the reconstruction while a regeneration runs.
+    def _series_shade(self, layer: Union[ArrayLayer, InstructionLayer]) -> SeriesShade:
+        dimmed = self._reconstruction_dimmed and layer.name == self._lbl_waveform_reconstruction
+        return SeriesShade.DIMMED if dimmed else SeriesShade.FULL
+
+    def _series_color(
+        self,
+        layer: Union[ArrayLayer, InstructionLayer],
+        shade: SeriesShade,
+    ) -> BaseColor:
+        """A layer's line colour in one of its two shades.
 
         The dimmed reconstruction is desaturated to gray and faded, so the drawn waveform — not just
         the legend swatch — clearly reads as inactive while its audio is recomputed.
         """
-        if self._reconstruction_dimmed and layer.name == self._lbl_waveform_reconstruction:
-            return with_alpha_fraction(
-                to_grayscale(self._layout.colors.waveform_reconstruction.rgba),
-                self._layout.waveform.reconstruction_dim_opacity,
-            )
+        if shade is SeriesShade.DIMMED:
+            reconstruction = self._layout.colors.waveform_reconstruction
+            return reconstruction.grayscale().faded(self._layout.waveform.reconstruction_dim_opacity)
 
-        return layer.color.rgba
+        return layer.color
 
     def _prune_stale_series(self) -> None:
         """Aligns the y-axis series with the current layers, keeping the position indicator
@@ -394,20 +409,25 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 tag=series_tag,
             )
 
-    def _bind_series_theme(self, series_tag: str, color: Color) -> None:
-        """Binds a line-color theme to a series, creating one cached theme per colour.
+    def _bind_series_theme(
+        self,
+        series_tag: str,
+        layer: Union[ArrayLayer, InstructionLayer],
+    ) -> None:
+        """Binds a line-colour theme to a series, holding one theme per shade the series takes.
 
-        Keying the theme by colour lets a series switch between colour variants — such as the
-        dimmed reconstruction line during regeneration — by binding the matching cached theme.
+        A series switches between its full and dimmed shades — the reconstruction line greys while
+        its audio is recomputed — by binding the theme built for that shade, and each theme carries
+        the colour token behind its shade, so both follow a palette swap.
         """
-        color_part = "_".join(str(channel) for channel in color)
-        theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME, color_part)
+        shade = self._series_shade(layer)
+        theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME, shade)
         if not dpg.does_item_exist(theme_tag):
             with dpg.theme(tag=theme_tag):
                 with dpg.theme_component(dpg.mvLineSeries):
-                    dpg.add_theme_color(
+                    dpg_add_palette_theme_color(
                         dpg.mvPlotCol_Line,
-                        color,
+                        self._series_color(layer, shade),
                         category=dpg.mvThemeCat_Plots,
                     )
 

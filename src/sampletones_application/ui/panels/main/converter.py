@@ -3,7 +3,7 @@ from typing import Any, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.colors import PathColors
+from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DANGER_BUTTON,

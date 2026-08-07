@@ -4,7 +4,7 @@ from typing import Any, Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.colors import PathColors
+from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.main.advanced import AdvancedLayout
 from sampletones_application.tags.compose import compose_tag

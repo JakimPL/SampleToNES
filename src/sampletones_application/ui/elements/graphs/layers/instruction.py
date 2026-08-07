@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_core.generators import MIXER_LEVELS
 from sampletones_core.library import InstructionLibraryFragment
 
@@ -13,7 +13,7 @@ from sampletones_core.library import InstructionLibraryFragment
 class InstructionLayer(Layer):
     data: InstructionLibraryFragment[Any]
     name: str
-    color: PaletteColor
+    color: BaseColor
 
     def __post_init__(self) -> None:
         mixer = MIXER_LEVELS[self.data.generator_class]

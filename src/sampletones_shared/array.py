@@ -43,7 +43,7 @@ try:
 except (AttributeError, ImportError, ModuleNotFoundError):
     import warnings
 
-    from sampletones_shared.exceptions import CuPyNotInstalledWarning
+    from sampletones_shared.exceptions import CuPyNotInstalledWarning  # pylint: disable=ungrouped-imports
 
     def _format_warning_no_location(
         message: Union[Warning, str],

@@ -101,8 +101,10 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.frame_limiter import FrameLimiter
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
@@ -542,6 +544,19 @@ class Application:
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
         self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
         self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
+        self._palette_source.on_palette_changed = self._on_palette_changed
+
+    def _on_palette_changed(self, palette: Palette) -> None:
+        """Repaints what holds a colour DearPyGui has copied, once another palette is in place.
+
+        Every layout and theme colour already answers with the new palette, so the work left is
+        handing those values to the copies DearPyGui keeps: the registered theme colours and item
+        arguments, the viewport clear colour, and the sequencer tables, whose tints belong to the
+        table rather than to an item.
+        """
+        PaletteBindings.apply()
+        self._viewport_manager.refresh_clear_color()
+        self._sequencer_tab.repaint()
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()

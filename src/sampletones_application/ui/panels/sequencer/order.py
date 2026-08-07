@@ -69,7 +69,6 @@ from sampletones_core.utils.display import display_id
 from sampletones_shared.constants.symbols import MINUS, PLUS
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.utils.color import with_alpha_fraction
 
 OrderKey = Tuple[Optional[GeneratorName], int]
 
@@ -255,22 +254,19 @@ class GUISequencerOrderPanel(GUIPanel):
         carries the header's hover and press washes instead, so it reads as the switch it is.
         """
         colors = self._layout.colors
-        self._entry_theme = create_selectable_text_theme(colors.text.order.rgba)
+        self._entry_theme = create_selectable_text_theme(colors.text.order)
         self._muted_entry_theme = create_selectable_text_theme(
-            with_alpha_fraction(
-                colors.text.order.rgba,
-                self._layout.tracker.muted_text_fraction,
-            ),
+            colors.text.order.faded(self._layout.tracker.muted_text_fraction),
         )
         self._label_theme = create_header_selectable_theme(
-            colors.label.rgba,
-            colors.header.hovered.rgba,
-            colors.header.active.rgba,
+            colors.label,
+            colors.header.hovered,
+            colors.header.active,
         )
         self._muted_label_theme = create_header_selectable_theme(
-            colors.muted.text.rgba,
-            colors.header.hovered.rgba,
-            colors.header.active.rgba,
+            colors.muted.text,
+            colors.header.hovered,
+            colors.header.active,
         )
 
     def _create_button_row(self) -> None:
@@ -548,10 +544,8 @@ class GUISequencerOrderPanel(GUIPanel):
         if self._is_muted(generator):
             return self._layout.colors.muted.background.rgba
 
-        return with_alpha_fraction(
-            channel_color(self._layout.colors.channels, generator).rgba,
-            self._layout.tracker.channel_column_tint,
-        )
+        channel = channel_color(self._layout.colors.channels, generator)
+        return channel.faded(self._layout.tracker.channel_column_tint).rgba
 
     def _apply_column_highlight(self, position: int, *, focused: bool) -> None:
         if focused:

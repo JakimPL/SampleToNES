@@ -65,6 +65,14 @@ class ViewportManager:
             vsync=self._vsync,
         )
 
+        self.refresh_clear_color()
+
+    def refresh_clear_color(self) -> None:
+        """Paints the area around the windows in the main theme's background colour.
+
+        DearPyGui holds the clear colour outside the theme system, so it is issued again
+        whenever the theme's background answers with a new value.
+        """
         color = self._theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
         assert color is not None, "Background color is not defined in the main theme"
         dpg.set_viewport_clear_color(list(color))

@@ -24,9 +24,11 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
     dpg_is_item_hovered,
 )
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.arrays import interpolate_segment
+from sampletones_shared.utils.color import MAX_CHANNEL_VALUE
 
 OnBarPointClickedCallback = Callable[[np.ndarray], None]
 OnBarPointHoveredCallback = Callable[[Optional[str], Optional[int]], None]
@@ -153,9 +155,9 @@ class GUIBarGraph(GUIGraph[BarLayer]):
 
         with dpg.theme(tag=theme_tag):
             with dpg.theme_component(dpg.mvBarSeries):
-                dpg.add_theme_color(
+                dpg_add_palette_theme_color(
                     dpg.mvPlotCol_Fill,
-                    layer.color.rgba,
+                    layer.color,
                     category=dpg.mvThemeCat_Plots,
                 )
 
@@ -169,11 +171,10 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if layer is None:
             raise RuntimeError("No layers available to bind hover theme")
 
-        red, green, blue, _ = layer.color.rgba
-        hover_color = (red, green, blue, self._hover_alpha)
+        hover_color = layer.color.faded(fraction=self._hover_alpha / MAX_CHANNEL_VALUE)
         with dpg.theme(tag=self.hover_theme_tag):
             with dpg.theme_component(dpg.mvBarSeries):
-                dpg.add_theme_color(
+                dpg_add_palette_theme_color(
                     dpg.mvPlotCol_Fill,
                     hover_color,
                     category=dpg.mvThemeCat_Plots,
@@ -185,7 +186,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self,
         data: np.ndarray,
         name: str,
-        color: PaletteColor,
+        color: BaseColor,
         y_ticks: Optional[Tuple[int, ...]] = None,
     ) -> None:
         self._delete_hover_bar()

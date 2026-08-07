@@ -707,6 +707,17 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.set_enabled(is_open)
         self._sequencer_history_panel.set_enabled(is_open)
 
+    def repaint(self) -> None:
+        """Draws both tables again so their tints take the palette now in place.
+
+        DearPyGui keeps a table's row, column and cell tints as state of the table rather than
+        as a property of an item, so they take a new colour by being issued again — which is
+        what pushing the current view models through the panels does.
+        """
+        self._sequencer_channels_logic.push_channels()
+        self._sequencer_grid_logic.refresh()
+        self._sequencer_order_logic.refresh()
+
     def refresh_browser(self) -> None:
         self._sequencer_browser_panel.refresh()
 

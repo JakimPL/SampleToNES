@@ -42,6 +42,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
 )
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_shared.types.callback import Callback, StringCallback, VoidCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
@@ -244,12 +245,12 @@ class DialogsRenderer:
                 wrap=self._recovery_wrap,
             )
             for property_name in properties:
-                dpg.add_text(
+                property_text = dpg.add_text(
                     f"- {property_name}",
                     parent=parent,
                     wrap=self._recovery_wrap,
-                    color=self._col_text_highlight.rgba,
                 )
+                dpg_set_palette_color(property_text, self._col_text_highlight)
 
             dpg.add_text(
                 self._language_manager["global.dialog.message.configuration_recovery_path_prefix"],
@@ -348,17 +349,17 @@ class DialogsRenderer:
 
             group_tag = compose_tag(tag, SUF_GROUP)
             with dpg.group(tag=group_tag, parent=tag):
-                dpg.add_text(
+                name_text = dpg.add_text(
                     f"{str(type(exception).__name__)}: ",
                     parent=group_tag,
-                    color=self._col_text_error.rgba,
                 )
-                dpg.add_text(
+                dpg_set_palette_color(name_text, self._col_text_error)
+                message_text = dpg.add_text(
                     str(exception),
                     parent=group_tag,
                     wrap=self._error_wrap,
-                    color=self._col_text_error.rgba,
                 )
+                dpg_set_palette_color(message_text, self._col_text_error)
 
             traceback = GUITraceback(
                 parent=tag,
@@ -413,12 +414,12 @@ class DialogsRenderer:
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._error_wrap)
-            dpg.add_text(
+            path_text = dpg.add_text(
                 str(filepath),
                 parent=parent,
-                color=self._col_path.rgba,
                 wrap=self._error_wrap,
             )
+            dpg_set_palette_color(path_text, self._col_path)
 
         _show_modal_dialog(
             tag=tag,

@@ -83,7 +83,6 @@ from sampletones_core.utils.display import NOTE_OFF, display_id
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.utils.color import with_alpha_fraction
 
 OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[GeneratorName], SubColumn], None]
@@ -281,7 +280,7 @@ class GUISequencerGridPanel(GUIPanel):
     def _create_themes(self) -> None:
         self._create_subcolumn_themes()
         self._create_header_themes()
-        self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row.rgba)
+        self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
 
     def _create_subcolumn_themes(self) -> None:
         """Builds each subcolumn's text theme in its full and its dimmed colour.
@@ -297,10 +296,8 @@ class GUISequencerGridPanel(GUIPanel):
         }
         fraction = self._layout.tracker.muted_text_fraction
         for subcolumn, color in theme_colors.items():
-            self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color.rgba)
-            self._muted_subcolumn_themes[subcolumn] = create_selectable_text_theme(
-                with_alpha_fraction(color.rgba, fraction),
-            )
+            self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color)
+            self._muted_subcolumn_themes[subcolumn] = create_selectable_text_theme(color.faded(fraction))
 
     def _create_header_themes(self) -> None:
         """Builds the two shades a channel's header label takes: audible and silenced.
@@ -310,14 +307,14 @@ class GUISequencerGridPanel(GUIPanel):
         """
         header = self._layout.colors.header
         self._header_theme = create_header_selectable_theme(
-            self._layout.colors.label.rgba,
-            header.hovered.rgba,
-            header.active.rgba,
+            self._layout.colors.label,
+            header.hovered,
+            header.active,
         )
         self._muted_header_theme = create_header_selectable_theme(
-            self._layout.colors.muted.text.rgba,
-            header.hovered.rgba,
-            header.active.rgba,
+            self._layout.colors.muted.text,
+            header.hovered,
+            header.active,
         )
 
     def _create_tracker_view(self, parent: str) -> None:
@@ -479,10 +476,8 @@ class GUISequencerGridPanel(GUIPanel):
         if self._is_muted(generator):
             return self._layout.colors.muted.background.rgba
 
-        return with_alpha_fraction(
-            channel_color(self._layout.colors.channels, generator).rgba,
-            self._layout.tracker.channel_column_tint,
-        )
+        channel = channel_color(self._layout.colors.channels, generator)
+        return channel.faded(self._layout.tracker.channel_column_tint).rgba
 
     def _compute_cell_values(
         self,

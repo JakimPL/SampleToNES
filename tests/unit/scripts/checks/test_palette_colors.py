@@ -36,6 +36,11 @@ def locations(source: str) -> List[str]:
     return [finding.location for finding in check_palette_colors.stored_colors(module)]
 
 
+def theme_color_messages(source: str, path: Path = PANEL_MODULE) -> List[str]:
+    module = SourceModule(path=path, tree=parse_source(source))
+    return [finding.message for finding in check_palette_colors.unregistered_theme_colors(module)]
+
+
 class TestStoredColors:
     def test_an_attribute_assigned_the_resolved_value_is_reported(self) -> None:
         assert len(messages(PANEL_SOURCE)) == 2
@@ -56,6 +61,29 @@ class TestStoredColors:
 
     def test_a_local_holding_the_resolved_value_passes(self) -> None:
         assert not messages("def f(layout) -> None:\n    local = layout.colors.text.rgba\n")
+
+
+class TestUnregisteredThemeColors:
+    def test_a_theme_colour_filled_directly_is_reported(self) -> None:
+        source = "def build() -> None:\n    dpg.add_theme_color(dpg.mvThemeCol_Text, color.rgba)\n"
+
+        assert len(theme_color_messages(source)) == 1
+
+    def test_the_helper_that_records_it_passes(self) -> None:
+        source = "def build() -> None:\n    dpg_add_palette_theme_color(dpg.mvThemeCol_Text, color)\n"
+
+        assert not theme_color_messages(source)
+
+    def test_the_bindings_module_may_fill_it(self) -> None:
+        """The helper is where the call belongs, since it records the token in the same breath."""
+        source = "def build() -> None:\n    dpg.add_theme_color(dpg.mvThemeCol_Text, color.rgba)\n"
+
+        assert not theme_color_messages(source, check_palette_colors.BINDINGS_MODULE)
+
+    def test_a_theme_style_passes(self) -> None:
+        source = "def build() -> None:\n    dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 0, 0)\n"
+
+        assert not theme_color_messages(source)
 
 
 class TestLiteralColors:

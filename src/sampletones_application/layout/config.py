@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.behavior import BehaviorConfig
+from sampletones_application.layout.behavior.behavior import BehaviorConfig
 from sampletones_application.layout.fonts import FontsLayout
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.glyphs import Glyphs

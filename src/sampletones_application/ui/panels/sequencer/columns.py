@@ -1,8 +1,8 @@
 from typing import Final, Optional, Tuple
 
-from sampletones_application.layout.tabs.sequencer.colors import ChannelColors
+from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 
@@ -30,7 +30,7 @@ def from_flat(row: int, index: int) -> TrackerCursor:
     return TrackerCursor(row, COLUMNS[column], SUBCOLUMNS[sub])
 
 
-def channel_color(colors: ChannelColors, generator: GeneratorName) -> PaletteColor:
+def channel_color(colors: ChannelColors, generator: GeneratorName) -> BaseColor:
     match generator:
         case GeneratorName.PULSE1:
             return colors.pulse1

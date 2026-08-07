@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from itertools import chain
 from typing import Iterable, Optional, Tuple
@@ -21,7 +23,7 @@ class FileFilter:
         cls,
         name: str,
         extensions: Iterable[str],
-    ) -> "FileFilter":
+    ) -> FileFilter:
         """
         Returns the type matching ``extensions``, shown under ``name``.
 

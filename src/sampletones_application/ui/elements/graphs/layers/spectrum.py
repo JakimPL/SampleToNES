@@ -4,7 +4,7 @@ from typing import Any, Iterator, Tuple
 import numpy as np
 
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_core.structures.histogram import Histogram
 
@@ -13,8 +13,8 @@ from sampletones_core.structures.histogram import Histogram
 class SpectrumLayer(Layer):
     data: InstructionLibraryFragment[Any]
     name: str
-    color_dim: PaletteColor
-    color_bright: PaletteColor
+    color_dim: BaseColor
+    color_bright: BaseColor
     max_display_bins: int
 
     spectrum: Histogram = field(init=False)

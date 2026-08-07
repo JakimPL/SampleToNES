@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_SEARCH,
@@ -49,11 +49,12 @@ from sampletones_application.utils.gui.dpg import (
     dpg_get_value,
     dpg_is_item_hovered,
 )
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import (
     create_detail_tooltip,
     populate_detail_tooltip,
 )
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.parallelization.thread import (
     BackgroundWorkCancelled,
     SingleThreadExecutor,
@@ -488,7 +489,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         return str(node.name)
 
-    def _node_header_color(self, node: TreeNode) -> PaletteColor:
+    def _node_header_color(self, node: TreeNode) -> BaseColor:
         if self._logic.is_node_favorite(node):
             return self._colors.favorite
 
@@ -515,10 +516,12 @@ class GUITreePanel(GUIPanel, ABC):
 
         with dpg.group(horizontal=True):
             if is_favorite:
-                star_text = dpg.add_text(self._glyphs.common.favorite, color=color.rgba)
+                star_text = dpg.add_text(self._glyphs.common.favorite)
+                dpg_set_palette_color(star_text, color)
                 FontRegistry.bind_to_item(star_text, Font.ICON)
 
-            text = dpg.add_text(self._context_menu_header_name(node), color=color.rgba)
+            text = dpg.add_text(self._context_menu_header_name(node))
+            dpg_set_palette_color(text, color)
             FontRegistry.bind_to_item(text, Font.BOLD)
 
     def _node_detail_items(self, node: TreeNode) -> List[Tuple[str, str]]:
@@ -563,7 +566,8 @@ class GUITreePanel(GUIPanel, ABC):
 
         dpg.add_separator()
         for label, value in detail_items:
-            detail_text = dpg.add_text(f"{label}: {value}", color=self._colors.muted.rgba)
+            detail_text = dpg.add_text(f"{label}: {value}")
+            dpg_set_palette_color(detail_text, self._colors.muted)
             FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:

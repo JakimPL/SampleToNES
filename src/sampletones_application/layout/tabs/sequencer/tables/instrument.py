@@ -9,11 +9,3 @@ class InstrumentColumnWidths(BaseModel, extra="forbid", frozen=True):
     id: int
     name: int
     loop: int
-
-
-class SequencerTableCells(BaseModel, extra="forbid", frozen=True):
-    row: int
-    sample: int
-    divider: int
-    generator: int
-    instrument: InstrumentColumnWidths

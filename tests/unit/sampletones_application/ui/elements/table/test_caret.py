@@ -5,7 +5,7 @@ import pytest
 
 from sampletones_application.layout.general.caret import CaretLayout
 from sampletones_application.ui.elements.table.caret import CaretOverlay
-from sampletones_application.utils.palette.color import PaletteColor
+from sampletones_application.utils.palette.colors.written import LiteralColor
 
 ROOT_WINDOW = "global.window.main"
 ROOT_ID = 5
@@ -20,8 +20,8 @@ _PARENTS: Dict[int, Optional[int]] = {PANEL_ID: ROOT_ID, ROOT_ID: None, DIALOG_I
 _ALIAS_IDS: Dict[str, int] = {ROOT_WINDOW: ROOT_ID, PANEL_WINDOW: PANEL_ID, DIALOG_WINDOW: DIALOG_ID}
 
 CARET_LAYOUT = CaretLayout(
-    fill=PaletteColor(value=(102, 187, 255, 64)),
-    border=PaletteColor(value=(102, 187, 255, 255)),
+    fill=LiteralColor((102, 187, 255, 64)),
+    border=LiteralColor((102, 187, 255, 255)),
     offset=3,
     width_padding=2,
 )

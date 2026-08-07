@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.ui.themes.loader import ThemeLoader
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_shared.types.application import ColorRGBA
@@ -103,13 +104,13 @@ class TestRestyle:
         light: Palette,
     ) -> None:
         styled.source.activate(light)
-        styled.theme.restyle()
+        PaletteBindings.apply()
 
         assert _live_colors(styled.theme)[dpg.mvThemeCol_Text] == LIGHT_TEXT
 
     def test_a_literal_colour_stays_as_written(self, styled: _Styled, light: Palette) -> None:
         styled.source.activate(light)
-        styled.theme.restyle()
+        PaletteBindings.apply()
 
         assert _live_colors(styled.theme)[dpg.mvThemeCol_WindowBg] == LITERAL_BACKGROUND
 

@@ -3,7 +3,7 @@ from typing import Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.themes.registry import ThemeRegistry

@@ -4,7 +4,7 @@ from typing import Callable, Optional, Protocol
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.services.result import (
     ConversionResult,
     ServiceCancelled,

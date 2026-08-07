@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,

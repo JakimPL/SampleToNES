@@ -1,10 +1,7 @@
 from pydantic import BaseModel
 
+from sampletones_application.layout.general.dialogs.height import DialogSizeNoWidth
 from sampletones_application.layout.primitives import Dimensions
-
-
-class DialogSizeNoWidth(BaseModel, extra="forbid", frozen=True):
-    height: int
 
 
 class DialogsLayout(BaseModel, extra="forbid", frozen=True):

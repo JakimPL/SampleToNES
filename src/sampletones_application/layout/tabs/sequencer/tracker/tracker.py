@@ -1,10 +1,6 @@
 from pydantic import BaseModel
 
-
-class SubcolumnWidths(BaseModel, extra="forbid", frozen=True):
-    instrument: int
-    transpose: int
-    volume: int
+from sampletones_application.layout.tabs.sequencer.tracker.subcolumn import SubcolumnWidths
 
 
 class TrackerLayout(BaseModel, extra="forbid", frozen=True):

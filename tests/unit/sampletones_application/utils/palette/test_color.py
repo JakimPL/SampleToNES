@@ -1,81 +1,74 @@
 import pytest
-from pydantic import BaseModel, ValidationError
 
-from sampletones_application.utils.palette.color import PALETTE_SOURCE_CONTEXT_KEY, PaletteColor
+from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.written import LiteralColor, NamedColor
 from sampletones_application.utils.palette.palette import Palette
+from sampletones_application.utils.palette.reference import PaletteReference
 from sampletones_application.utils.palette.source import PaletteSource
 
-
-class _Swatch(BaseModel, frozen=True):
-    color: PaletteColor
-
-
-@pytest.fixture
-def studio() -> Palette:
-    return Palette.model_validate({"name": "studio", "colors": {"accent": "#a97fe3", "overlay": "#ffffff40"}})
+BLACK = LiteralColor((0, 0, 0, 255))
+WHITE = LiteralColor((255, 255, 255, 255))
 
 
 @pytest.fixture
-def light() -> Palette:
-    return Palette.model_validate({"name": "light", "colors": {"accent": "#6b3fb0", "overlay": "#00000040"}})
+def accent(source: PaletteSource) -> BaseColor:
+    return NamedColor(
+        reference=PaletteReference(token="accent"),
+        source=source,
+    )
 
 
-@pytest.fixture
-def source(studio: Palette) -> PaletteSource:
-    return PaletteSource(studio)
+class TestDerivedColor:
+    """Fading, desaturating and mixing each answer with a colour that still reads the palette."""
 
+    def test_fading_keeps_the_hue_and_sets_the_opacity(self, accent: BaseColor) -> None:
+        assert accent.faded(0.5).rgba == (169, 127, 227, 128)
 
-def _swatch(written: str, source: PaletteSource) -> _Swatch:
-    return _Swatch.model_validate({"color": written}, context={PALETTE_SOURCE_CONTEXT_KEY: source})
+    def test_desaturating_collapses_the_channels_to_one_luminance(self, accent: BaseColor) -> None:
+        gray = round(0.299 * 169 + 0.587 * 127 + 0.114 * 227)
 
+        assert accent.grayscale().rgba == (gray, gray, gray, 255)
 
-class TestPaletteColor:
-    def test_a_hex_literal_resolves_without_a_palette(self) -> None:
-        assert _Swatch.model_validate({"color": "#a97fe3"}).color.rgba == (169, 127, 227, 255)
+    def test_mixing_lands_between_the_two_ends(self) -> None:
+        assert BLACK.blended(WHITE, 0.5).rgba == (128, 128, 128, 255)
 
-    def test_a_reference_resolves_against_the_source_palette(self, source: PaletteSource) -> None:
-        assert _swatch(".accent", source).color.rgba == (169, 127, 227, 255)
-
-    def test_a_reference_alpha_override_is_applied(self, source: PaletteSource) -> None:
-        assert _swatch(".accent/0.5", source).color.rgba == (169, 127, 227, 128)
-
-    def test_a_reference_without_a_palette_source_context_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            _Swatch.model_validate({"color": ".accent"})
-
-    def test_a_palette_source_context_of_the_wrong_type_raises(self, studio: Palette) -> None:
-        with pytest.raises(TypeError):
-            _Swatch.model_validate({"color": ".accent"}, context={PALETTE_SOURCE_CONTEXT_KEY: studio})
-
-    def test_a_token_the_palette_in_place_omits_raises_at_load(self, source: PaletteSource) -> None:
-        with pytest.raises(KeyError):
-            _swatch(".missing", source)
-
-
-class TestActivatedPalette:
-    """A reference is read at the moment it is drawn with, so a swap needs no reload."""
-
-    def test_a_reference_answers_with_the_newly_activated_palette(
+    def test_a_derived_colour_answers_with_the_newly_activated_palette(
         self,
         source: PaletteSource,
         light: Palette,
+        accent: BaseColor,
     ) -> None:
-        swatch = _swatch(".accent", source)
+        faded = accent.faded(0.5)
 
         source.activate(light)
 
-        assert swatch.color.rgba == (107, 63, 176, 255)
+        assert faded.rgba == (107, 63, 176, 128)
 
-    def test_an_alpha_override_survives_the_swap(self, source: PaletteSource, light: Palette) -> None:
-        swatch = _swatch(".accent/0.5", source)
-
-        source.activate(light)
-
-        assert swatch.color.rgba == (107, 63, 176, 128)
-
-    def test_a_literal_stands_apart_from_the_palette(self, source: PaletteSource, light: Palette) -> None:
-        swatch = _swatch("#a97fe3", source)
+    def test_derivations_compose(
+        self,
+        source: PaletteSource,
+        light: Palette,
+        accent: BaseColor,
+    ) -> None:
+        dimmed = accent.grayscale().faded(0.25)
 
         source.activate(light)
 
-        assert swatch.color.rgba == (169, 127, 227, 255)
+        gray = round(0.299 * 107 + 0.587 * 63 + 0.114 * 176)
+        assert dimmed.rgba == (gray, gray, gray, 64)
+
+    def test_the_same_derivation_of_the_same_colour_is_one_value(
+        self,
+        accent: BaseColor,
+    ) -> None:
+        """A theme cache keyed by colour holds one entry per shade the application draws."""
+        assert {accent.faded(0.5), accent.faded(0.5), accent.faded(0.25)} == {
+            accent.faded(0.5),
+            accent.faded(0.25),
+        }
+
+    def test_the_same_derivation_of_two_colours_stays_two_values(
+        self,
+        accent: BaseColor,
+    ) -> None:
+        assert accent.faded(0.5) != WHITE.faded(0.5)
