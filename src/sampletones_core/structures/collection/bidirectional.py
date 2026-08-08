@@ -77,7 +77,10 @@ class BidirectionalHashMap(Generic[ValueT]):
         if mapping:
             self.update(mapping)
 
-    def __getitem__(self, key_or_value: Union[str, ValueT]) -> Optional[Union[str, ValueT]]:
+    def __getitem__(
+        self,
+        key_or_value: Union[str, ValueT],
+    ) -> Optional[Union[str, ValueT]]:
         """
         Retrieves a value by string key or a key by value.
 

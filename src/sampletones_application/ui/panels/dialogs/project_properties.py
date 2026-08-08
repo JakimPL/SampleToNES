@@ -109,15 +109,9 @@ class GUIProjectPropertiesWindow(GUIWindow):
         """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
 
     def create_window(self) -> None:
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._language_manager["settings.properties.title.window_title"],
-            width=self.width,
-            height=self.height,
-            no_resize=True,
-            no_collapse=True,
             on_close=self.hide,
-            modal=True,
         ):
             self._create_text_field(
                 TAG_SETTINGS_PROPERTIES_INPUT_TITLE,

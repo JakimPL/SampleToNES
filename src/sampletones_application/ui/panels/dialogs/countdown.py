@@ -79,16 +79,9 @@ class GUICountdownWindow(GUIWindow):
         """The seconds left are seeded by :meth:`open` before the tree rebuilds."""
 
     def create_window(self) -> None:
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._title,
-            width=self.width,
-            height=self.height,
-            no_resize=True,
-            no_collapse=True,
-            no_close=True,
-            autosize=True,
-            modal=True,
+            on_close=None,
         ):
             dpg.add_text(self._message, wrap=self.width)
             dpg.add_text(self._remaining_text(), tag=TAG_SETTINGS_DISPLAY_TEXT_COUNTDOWN)

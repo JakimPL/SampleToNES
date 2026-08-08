@@ -102,15 +102,9 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._master_gain = view_model.master_gain
 
     def create_window(self) -> None:
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._language_manager["settings.audio.title.window_title"],
-            width=self.width,
-            height=self.height,
-            no_resize=True,
-            no_collapse=True,
             on_close=self.hide,
-            modal=True,
         ):
             self._create_device_selection()
             self._create_sample_rate_selection()

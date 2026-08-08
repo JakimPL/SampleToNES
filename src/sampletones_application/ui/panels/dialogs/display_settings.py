@@ -91,16 +91,9 @@ class GUIDisplaySettingsWindow(GUIWindow):
         dpg_configure_item(self.tag, show=True)
 
     def create_window(self) -> None:
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._language_manager["settings.display.title.window_title"],
-            width=self.width,
-            height=self.height,
-            no_resize=True,
-            no_collapse=True,
-            autosize=True,
             on_close=self._request_cancel,
-            modal=True,
         ):
             self._create_window_section()
             dpg.add_separator()
