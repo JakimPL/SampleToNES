@@ -2,7 +2,9 @@ from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import SequencerGridElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerTrackerElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
@@ -12,11 +14,11 @@ from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
 )
 from sampletones_application.tags.sequencer import (
-    TAG_SEQUENCER_GRID_GROUP_TRACKER,
-    TAG_SEQUENCER_GRID_PANEL,
-    TAG_SEQUENCER_GRID_TABLE_TRACKER,
-    TAG_SEQUENCER_GRID_WINDOW_TRACKER,
     TAG_SEQUENCER_THEME_TABLE_PATTERN,
+    TAG_SEQUENCER_TRACKER_GROUP,
+    TAG_SEQUENCER_TRACKER_PANEL,
+    TAG_SEQUENCER_TRACKER_TABLE,
+    TAG_SEQUENCER_TRACKER_WINDOW,
 )
 from sampletones_application.ui.elements.context_menu import (
     add_play_menu_item,
@@ -78,14 +80,14 @@ from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
-from sampletones_application.view_model.sequencer.grid import (
-    SequencerGridViewModel,
-    SequencerRowViewModel,
-)
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import (
+    SequencerRowViewModel,
+    SequencerTrackerViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id
@@ -109,7 +111,7 @@ VOLUME_FINE_STEP: Final[int] = 1
 VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
 
 
-class GUISequencerGridPanel(GUIPanel):
+class GUISequencerTrackerPanel(GUIPanel):
     def __init__(
         self,
         *,
@@ -129,9 +131,9 @@ class GUISequencerGridPanel(GUIPanel):
             SubColumn.VOLUME: widths.volume,
         }
 
-        self._item_handler_tag = compose_tag(TAG_SEQUENCER_GRID_PANEL, SUF_HANDLER_REGISTRY)
-        self._cell_handler_tag = compose_tag(TAG_SEQUENCER_GRID_TABLE_TRACKER, SUF_HANDLER_REGISTRY)
-        self._header_handler_tag = compose_tag(TAG_SEQUENCER_GRID_TABLE_TRACKER, SUF_HANDLER_HEADER)
+        self._item_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_PANEL, SUF_HANDLER_REGISTRY)
+        self._cell_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_REGISTRY)
+        self._header_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_HEADER)
 
         self._rows: Dict[Optional[int], Sender] = {}
         self._header_columns: Dict[Sender, Optional[GeneratorName]] = {}
@@ -167,7 +169,7 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._lbl_tracker = self._label(
             language_manager,
-            SequencerGridElements.TRACKER_TEXT,
+            SequencerTrackerElements.TRACKER_TEXT,
         )
         self._load_column_labels(language_manager)
         self._load_context_labels(language_manager)
@@ -181,63 +183,63 @@ class GUISequencerGridPanel(GUIPanel):
         self._sc_play_from_frame = KeyCombination(dpg.mvKey_Spacebar, CTRL).display()
 
         super().__init__(
-            tag=TAG_SEQUENCER_GRID_PANEL,
+            tag=TAG_SEQUENCER_TRACKER_PANEL,
             height=-1,
         )
         self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
 
     def _load_column_labels(self, language_manager: LanguageManager) -> None:
         """Reads the name each column carries, which its header label and its menu title show."""
-        self._lbl_col_row = self._label(language_manager, SequencerGridElements.COLUMN_ROW)
+        self._lbl_col_row = self._label(language_manager, SequencerTrackerElements.COLUMN_ROW)
         self._column_labels: Dict[Optional[GeneratorName], str] = {
-            None: self._label(language_manager, SequencerGridElements.COLUMN_SAMPLE),
-            GeneratorName.PULSE1: self._label(language_manager, SequencerGridElements.COLUMN_PULSE_1),
-            GeneratorName.PULSE2: self._label(language_manager, SequencerGridElements.COLUMN_PULSE_2),
-            GeneratorName.TRIANGLE: self._label(language_manager, SequencerGridElements.COLUMN_TRIANGLE),
-            GeneratorName.NOISE: self._label(language_manager, SequencerGridElements.COLUMN_NOISE),
+            None: self._label(language_manager, SequencerTrackerElements.COLUMN_SAMPLE),
+            GeneratorName.PULSE1: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_1),
+            GeneratorName.PULSE2: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_2),
+            GeneratorName.TRIANGLE: self._label(language_manager, SequencerTrackerElements.COLUMN_TRIANGLE),
+            GeneratorName.NOISE: self._label(language_manager, SequencerTrackerElements.COLUMN_NOISE),
         }
 
     @staticmethod
     def _label(
         language_manager: LanguageManager,
-        element: SequencerGridElements,
+        element: SequencerTrackerElements,
     ) -> str:
         return language_manager[
             Page.SEQUENCER,
-            Panel.GRID,
+            Panel.TRACKER,
             TextType.LABEL,
             element,
         ]
 
     def _load_context_labels(self, language_manager: LanguageManager) -> None:
-        def label(element: SequencerGridElements) -> str:
+        def label(element: SequencerTrackerElements) -> str:
             return self._label(language_manager, element)
 
-        self._lbl_context_play = label(SequencerGridElements.CONTEXT_PLAY)
-        self._lbl_context_play_from_frame = label(SequencerGridElements.CONTEXT_PLAY_FROM_FRAME)
-        self._lbl_context_note_off = label(SequencerGridElements.CONTEXT_NOTE_OFF)
-        self._lbl_context_set_instrument = label(SequencerGridElements.CONTEXT_SET_INSTRUMENT)
-        self._lbl_context_no_samples = label(SequencerGridElements.CONTEXT_NO_SAMPLES)
-        self._lbl_context_clear_subcolumn = label(SequencerGridElements.CONTEXT_CLEAR_SUBCOLUMN)
-        self._lbl_context_clear_cell = label(SequencerGridElements.CONTEXT_CLEAR_CELL)
-        self._lbl_context_clear_row = label(SequencerGridElements.CONTEXT_CLEAR_ROW)
-        self._lbl_context_transpose_up = label(SequencerGridElements.CONTEXT_TRANSPOSE_UP)
-        self._lbl_context_transpose_down = label(SequencerGridElements.CONTEXT_TRANSPOSE_DOWN)
-        self._lbl_context_transpose_octave_up = label(SequencerGridElements.CONTEXT_TRANSPOSE_OCTAVE_UP)
-        self._lbl_context_transpose_octave_down = label(SequencerGridElements.CONTEXT_TRANSPOSE_OCTAVE_DOWN)
-        self._lbl_context_volume_up = label(SequencerGridElements.CONTEXT_VOLUME_UP)
-        self._lbl_context_volume_down = label(SequencerGridElements.CONTEXT_VOLUME_DOWN)
-        self._lbl_context_volume_up_coarse = label(SequencerGridElements.CONTEXT_VOLUME_UP_COARSE)
-        self._lbl_context_volume_down_coarse = label(SequencerGridElements.CONTEXT_VOLUME_DOWN_COARSE)
+        self._lbl_context_play = label(SequencerTrackerElements.CONTEXT_PLAY)
+        self._lbl_context_play_from_frame = label(SequencerTrackerElements.CONTEXT_PLAY_FROM_FRAME)
+        self._lbl_context_note_off = label(SequencerTrackerElements.CONTEXT_NOTE_OFF)
+        self._lbl_context_set_instrument = label(SequencerTrackerElements.CONTEXT_SET_INSTRUMENT)
+        self._lbl_context_no_samples = label(SequencerTrackerElements.CONTEXT_NO_SAMPLES)
+        self._lbl_context_clear_subcolumn = label(SequencerTrackerElements.CONTEXT_CLEAR_SUBCOLUMN)
+        self._lbl_context_clear_cell = label(SequencerTrackerElements.CONTEXT_CLEAR_CELL)
+        self._lbl_context_clear_row = label(SequencerTrackerElements.CONTEXT_CLEAR_ROW)
+        self._lbl_context_transpose_up = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_UP)
+        self._lbl_context_transpose_down = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_DOWN)
+        self._lbl_context_transpose_octave_up = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_UP)
+        self._lbl_context_transpose_octave_down = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_DOWN)
+        self._lbl_context_volume_up = label(SequencerTrackerElements.CONTEXT_VOLUME_UP)
+        self._lbl_context_volume_down = label(SequencerTrackerElements.CONTEXT_VOLUME_DOWN)
+        self._lbl_context_volume_up_coarse = label(SequencerTrackerElements.CONTEXT_VOLUME_UP_COARSE)
+        self._lbl_context_volume_down_coarse = label(SequencerTrackerElements.CONTEXT_VOLUME_DOWN_COARSE)
 
     def _load_header_tooltips(self, language_manager: LanguageManager) -> None:
         """Reads the header tooltips, which name the click gestures the labels carry."""
 
-        def tooltip(element: SequencerGridElements) -> str:
-            return language_manager[Page.SEQUENCER, Panel.GRID, TextType.TOOLTIP, element]
+        def tooltip(element: SequencerTrackerElements) -> str:
+            return language_manager[Page.SEQUENCER, Panel.TRACKER, TextType.TOOLTIP, element]
 
-        self._tooltip_header_channel = channel_tooltip(tooltip(SequencerGridElements.HEADER_CHANNEL))
-        self._tooltip_header_sample = tooltip(SequencerGridElements.HEADER_SAMPLE)
+        self._tooltip_header_channel = channel_tooltip(tooltip(SequencerTrackerElements.HEADER_CHANNEL))
+        self._tooltip_header_sample = tooltip(SequencerTrackerElements.HEADER_SAMPLE)
 
     def _create_channel_switch(self, language_manager: LanguageManager) -> None:
         """Builds the switch a column header's click and menu act through.
@@ -246,12 +248,12 @@ class GUISequencerGridPanel(GUIPanel):
         the coordinator wires them once the panel exists.
         """
         labels = ChannelMenuLabels(
-            mute=self._label(language_manager, SequencerGridElements.CONTEXT_MUTE),
-            unmute=self._label(language_manager, SequencerGridElements.CONTEXT_UNMUTE),
-            solo=self._label(language_manager, SequencerGridElements.CONTEXT_SOLO),
-            unsolo=self._label(language_manager, SequencerGridElements.CONTEXT_UNSOLO),
-            mute_all=self._label(language_manager, SequencerGridElements.CONTEXT_MUTE_ALL),
-            unmute_all=self._label(language_manager, SequencerGridElements.CONTEXT_UNMUTE_ALL),
+            mute=self._label(language_manager, SequencerTrackerElements.CONTEXT_MUTE),
+            unmute=self._label(language_manager, SequencerTrackerElements.CONTEXT_UNMUTE),
+            solo=self._label(language_manager, SequencerTrackerElements.CONTEXT_SOLO),
+            unsolo=self._label(language_manager, SequencerTrackerElements.CONTEXT_UNSOLO),
+            mute_all=self._label(language_manager, SequencerTrackerElements.CONTEXT_MUTE_ALL),
+            unmute_all=self._label(language_manager, SequencerTrackerElements.CONTEXT_UNMUTE_ALL),
         )
         self._channel_switch = ChannelSwitch(
             labels=labels,
@@ -350,17 +352,17 @@ class GUISequencerGridPanel(GUIPanel):
             self._lbl_tracker,
             glyph=self._glyphs.headers.tracker,
         ):
-            dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER)
+            dpg.add_group(tag=TAG_SEQUENCER_TRACKER_GROUP)
             with (
                 dpg.child_window(
-                    tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
-                    parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
+                    tag=TAG_SEQUENCER_TRACKER_WINDOW,
+                    parent=TAG_SEQUENCER_TRACKER_GROUP,
                     border=False,
                     width=0,
                     height=-1,
                 ),
                 dpg.table(
-                    tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                    tag=TAG_SEQUENCER_TRACKER_TABLE,
                     width=0,
                     header_row=False,
                     resizable=False,
@@ -399,9 +401,9 @@ class GUISequencerGridPanel(GUIPanel):
                     )
                 dpg.add_table_column(width_stretch=True)
 
-        self.pattern_theme.bind_to_item(TAG_SEQUENCER_GRID_TABLE_TRACKER)
+        self.pattern_theme.bind_to_item(TAG_SEQUENCER_TRACKER_TABLE)
 
-    def update_grid(self, view_model: SequencerGridViewModel) -> None:
+    def update_tracker(self, view_model: SequencerTrackerViewModel) -> None:
         """Reconciles the tracker body with the visible order frame.
 
         The grid is only torn down and rebuilt when the row count changes; for the
@@ -417,10 +419,10 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _rebuild_table(
         self,
-        view_model: SequencerGridViewModel,
+        view_model: SequencerTrackerViewModel,
         cell_values: CellValues,
     ) -> None:
-        dpg_delete_children(TAG_SEQUENCER_GRID_TABLE_TRACKER, slot=1)
+        dpg_delete_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self._highlight_sample_column()
@@ -448,12 +450,12 @@ class GUISequencerGridPanel(GUIPanel):
         once the rows are replaced.
         """
         dpg.highlight_table_column(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            TAG_SEQUENCER_TRACKER_TABLE,
             SAMPLE_TABLE_COLUMN,
             self._layout.colors.sample.column.rgba,
         )
         dpg.highlight_table_column(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            TAG_SEQUENCER_TRACKER_TABLE,
             DIVIDER_TABLE_COLUMN,
             self._layout.colors.sample.divider.rgba,
         )
@@ -467,7 +469,7 @@ class GUISequencerGridPanel(GUIPanel):
         """
         for column in range(TRACKER_TABLE_COLUMNS):
             dpg.highlight_table_cell(
-                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                TAG_SEQUENCER_TRACKER_TABLE,
                 HEADER_TABLE_ROW,
                 column,
                 color=self._layout.colors.header.background.rgba,
@@ -483,7 +485,7 @@ class GUISequencerGridPanel(GUIPanel):
         """
         for generator in GeneratorName.items():
             dpg.highlight_table_column(
-                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                TAG_SEQUENCER_TRACKER_TABLE,
                 tracker_table_column(generator),
                 self._channel_column_tint(generator),
             )
@@ -500,7 +502,7 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _compute_cell_values(
         self,
-        view_model: SequencerGridViewModel,
+        view_model: SequencerTrackerViewModel,
     ) -> CellValues:
         cell_values: CellValues = {}
         for row in view_model.rows:
@@ -523,7 +525,7 @@ class GUISequencerGridPanel(GUIPanel):
 
         return cell_values
 
-    def _build_table(self, view_model: SequencerGridViewModel) -> None:
+    def _build_table(self, view_model: SequencerTrackerViewModel) -> None:
         self._rows = {}
         self._current_row_count = len(view_model.rows)
         self._build_header_row()
@@ -538,7 +540,7 @@ class GUISequencerGridPanel(GUIPanel):
         positional like a pattern row's, so the labels line up with the columns they name.
         """
         self._header_columns = {}
-        row_id = dpg.add_table_row(parent=TAG_SEQUENCER_GRID_TABLE_TRACKER)
+        row_id = dpg.add_table_row(parent=TAG_SEQUENCER_TRACKER_TABLE)
         self._add_empty_cell(row_id)
         self._add_header_label_cell(row_id)
         self._add_header_selectable(row_id, None)
@@ -584,7 +586,7 @@ class GUISequencerGridPanel(GUIPanel):
         keeps the channel cells aligned with their (shifted) table columns.
         """
         row_id = dpg.add_table_row(
-            parent=TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            parent=TAG_SEQUENCER_TRACKER_TABLE,
             user_data=row.index,
         )
         self._add_empty_cell(row_id)
@@ -717,7 +719,7 @@ class GUISequencerGridPanel(GUIPanel):
         while its values stay legible, so the channel is visibly out of the mix and still open
         for editing.
         """
-        if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
             return
 
         self._tint_channel_columns()
@@ -745,7 +747,7 @@ class GUISequencerGridPanel(GUIPanel):
         return self._current_channels is not None and self._current_channels.is_muted(generator)
 
     def set_enabled(self, enabled: bool) -> None:
-        dpg.configure_item(TAG_SEQUENCER_GRID_GROUP_TRACKER, enabled=enabled)
+        dpg.configure_item(TAG_SEQUENCER_TRACKER_GROUP, enabled=enabled)
 
     def _update_cell_display(
         self,
@@ -762,17 +764,17 @@ class GUISequencerGridPanel(GUIPanel):
         """Arms (or clears) the shared caret box on the active subcolumn cell."""
         cursor = self._input_state.cursor
         if cursor is None:
-            CaretOverlay.clear(TAG_SEQUENCER_GRID_TABLE_TRACKER)
+            CaretOverlay.clear(TAG_SEQUENCER_TRACKER_TABLE)
             return
 
         key = (cursor.row, cursor.generator, cursor.subcolumn)
         font = Font.MONO_BOLD_SMALL if cursor.generator is None else Font.MONO_SMALL
         CaretOverlay.set_target(
-            owner=TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            owner=TAG_SEQUENCER_TRACKER_TABLE,
             widget=self._editable_cells.widget(key),
             caret_index=len(self._input_state.pending),
             font=font,
-            clip_widget=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
+            clip_widget=TAG_SEQUENCER_TRACKER_WINDOW,
         )
 
     def _resolve_sample_id(
@@ -859,13 +861,13 @@ class GUISequencerGridPanel(GUIPanel):
     ) -> None:
         table_row = tracker_table_row(row_index)
         dpg.highlight_table_row(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            TAG_SEQUENCER_TRACKER_TABLE,
             table_row,
             color=self._layout.colors.cursor_row.rgba,
         )
         column_index = tracker_table_column(generator)
         dpg.highlight_table_cell(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            TAG_SEQUENCER_TRACKER_TABLE,
             table_row,
             column_index,
             color=self._layout.colors.cell_cursor.rgba,
@@ -878,12 +880,12 @@ class GUISequencerGridPanel(GUIPanel):
     ) -> None:
         table_row = tracker_table_row(row_index)
         dpg.unhighlight_table_row(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            TAG_SEQUENCER_TRACKER_TABLE,
             table_row,
         )
         col_idx = tracker_table_column(generator)
         dpg.unhighlight_table_cell(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            TAG_SEQUENCER_TRACKER_TABLE,
             table_row,
             col_idx,
         )
@@ -1217,15 +1219,15 @@ class GUISequencerGridPanel(GUIPanel):
         if cursor is None or self._current_row_count <= 1:
             return
 
-        if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
             return
 
-        scroll_max = dpg.get_y_scroll_max(TAG_SEQUENCER_GRID_TABLE_TRACKER)
+        scroll_max = dpg.get_y_scroll_max(TAG_SEQUENCER_TRACKER_TABLE)
         if scroll_max <= 0:
             return
 
         fraction = cursor.row / (self._current_row_count - 1)
-        dpg.set_y_scroll(TAG_SEQUENCER_GRID_TABLE_TRACKER, fraction * scroll_max)
+        dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, fraction * scroll_max)
 
     def _clear_row(self) -> None:
         state, clear_action = self._input_state.clear()
@@ -1288,7 +1290,7 @@ class GUISequencerGridPanel(GUIPanel):
             return
 
         dpg.highlight_table_row(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            TAG_SEQUENCER_TRACKER_TABLE,
             tracker_table_row(row_index),
             color=self._layout.colors.pattern_highlight.rgba,
         )
@@ -1298,7 +1300,7 @@ class GUISequencerGridPanel(GUIPanel):
             return
 
         dpg.unhighlight_table_row(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            TAG_SEQUENCER_TRACKER_TABLE,
             tracker_table_row(row_index),
         )
         self._highlighted_row = None
@@ -1306,7 +1308,7 @@ class GUISequencerGridPanel(GUIPanel):
     def set_playing_row(self, row_index: Optional[int]) -> None:
         if self._playing_row is not None and self._playing_row < self._live_row_count():
             dpg.unhighlight_table_row(
-                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                TAG_SEQUENCER_TRACKER_TABLE,
                 tracker_table_row(self._playing_row),
             )
 
@@ -1322,7 +1324,7 @@ class GUISequencerGridPanel(GUIPanel):
         """
         if self._playing_row is not None and self._playing_row < self._live_row_count():
             dpg.highlight_table_row(
-                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                TAG_SEQUENCER_TRACKER_TABLE,
                 tracker_table_row(self._playing_row),
                 color=self._layout.colors.playback_row.rgba,
             )
@@ -1335,8 +1337,8 @@ class GUISequencerGridPanel(GUIPanel):
         actual children directly. The count covers the pattern rows that follow the header row,
         so it compares against a pattern row index.
         """
-        if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
             return 0
 
-        rows = dpg.get_item_children(TAG_SEQUENCER_GRID_TABLE_TRACKER, slot=1)
+        rows = dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
         return len(rows) - HEADER_TABLE_ROWS if rows else 0

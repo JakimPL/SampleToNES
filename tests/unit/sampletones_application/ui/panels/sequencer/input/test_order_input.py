@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sampletones_application.ui.panels.sequencer.order_input import (
+from sampletones_application.ui.panels.sequencer.input.order import (
     ORDER_ROWS,
     OrderCursor,
     OrderInputState,

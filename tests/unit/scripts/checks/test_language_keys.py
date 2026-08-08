@@ -67,7 +67,7 @@ class TestEnumTable:
         assert ENUMS["DialogElements"]["OK"] == DialogElements.OK.value
 
     def test_every_element_enum_of_the_package_is_read(self) -> None:
-        assert {"MenuElements", "SequencerGridElements", "InstructionsLibraryElements"}.issubset(ENUMS)
+        assert {"MenuElements", "SequencerTrackerElements", "InstructionsLibraryElements"}.issubset(ENUMS)
 
     def test_the_element_base_states_no_members(self) -> None:
         assert ENUMS[check_language_keys.ELEMENT_BASE] == {}

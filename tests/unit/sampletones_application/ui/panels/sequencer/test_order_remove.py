@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from sampletones_application.ui.panels.sequencer.input.order import OrderCursor, OrderInputState
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
-from sampletones_application.ui.panels.sequencer.order_input import OrderCursor, OrderInputState
 from sampletones_core.constants.enums import GeneratorName
 
 POSITION_COUNT = 4

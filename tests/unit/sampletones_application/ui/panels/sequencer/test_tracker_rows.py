@@ -3,13 +3,13 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import pytest
 
-from sampletones_application.ui.panels.sequencer import grid as grid_module
+from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.columns import (
     HEADER_TABLE_ROW,
     tracker_table_column,
     tracker_table_row,
 )
-from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import ColorRGBA
@@ -53,9 +53,9 @@ class _TableRecorder:
         self.unhighlighted_cells.append((row, column))
 
 
-def _panel() -> GUISequencerGridPanel:
+def _panel() -> GUISequencerTrackerPanel:
     """Builds a panel around the state the row highlights read, with no DearPyGui context."""
-    panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
+    panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
             cursor_row=LiteralColor(CURSOR_ROW),
@@ -73,12 +73,12 @@ def _panel() -> GUISequencerGridPanel:
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> _TableRecorder:
     instance = _TableRecorder(row_children=range(HEADER_AND_PATTERN_ROWS))
-    monkeypatch.setattr(grid_module.dpg, "does_item_exist", instance.does_item_exist)
-    monkeypatch.setattr(grid_module.dpg, "get_item_children", instance.get_item_children)
-    monkeypatch.setattr(grid_module.dpg, "highlight_table_row", instance.highlight_table_row)
-    monkeypatch.setattr(grid_module.dpg, "unhighlight_table_row", instance.unhighlight_table_row)
-    monkeypatch.setattr(grid_module.dpg, "highlight_table_cell", instance.highlight_table_cell)
-    monkeypatch.setattr(grid_module.dpg, "unhighlight_table_cell", instance.unhighlight_table_cell)
+    monkeypatch.setattr(tracker_module.dpg, "does_item_exist", instance.does_item_exist)
+    monkeypatch.setattr(tracker_module.dpg, "get_item_children", instance.get_item_children)
+    monkeypatch.setattr(tracker_module.dpg, "highlight_table_row", instance.highlight_table_row)
+    monkeypatch.setattr(tracker_module.dpg, "unhighlight_table_row", instance.unhighlight_table_row)
+    monkeypatch.setattr(tracker_module.dpg, "highlight_table_cell", instance.highlight_table_cell)
+    monkeypatch.setattr(tracker_module.dpg, "unhighlight_table_cell", instance.unhighlight_table_cell)
     return instance
 
 
@@ -223,7 +223,7 @@ class TestHeaderRowBackground:
         painted = {row for row, _ in recorder.highlighted_cells}
         columns = {column for _, column in recorder.highlighted_cells}
         assert painted == {HEADER_TABLE_ROW}
-        assert columns == set(range(grid_module.TRACKER_TABLE_COLUMNS))
+        assert columns == set(range(tracker_module.TRACKER_TABLE_COLUMNS))
 
     def test_the_header_shade_covers_the_sample_and_channel_columns(
         self,

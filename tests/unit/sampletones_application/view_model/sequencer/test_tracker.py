@@ -3,7 +3,7 @@ from typing import Dict, FrozenSet
 
 import pytest
 
-from sampletones_application.view_model.sequencer.grid import (
+from sampletones_application.view_model.sequencer.tracker import (
     SequencerCellViewModel,
     SequencerRowViewModel,
 )

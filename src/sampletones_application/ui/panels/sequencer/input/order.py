@@ -8,7 +8,6 @@ from sampletones_core.constants.enums import GeneratorName
 
 INDEX_DIGITS: Final[int] = 2
 ORDER_ROWS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
-"""Order-table rows top to bottom: the master row (``None``) then the four channels."""
 
 
 @dataclass(frozen=True)

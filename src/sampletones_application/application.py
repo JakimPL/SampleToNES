@@ -20,7 +20,9 @@ from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.coordinators.reconstruction import (
     ReconstructionCoordinator,
 )
-from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.instructions import (
+    InstructionsTabCoordinator,
+)
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
@@ -592,7 +594,12 @@ class Application:
         self._viewport_manager.refresh_clear_color()
         self._sequencer_tab.repaint()
 
-    def _on_tab_changed(self, _sender: Sender, _app_data: Any, _user_data: Any) -> None:
+    def _on_tab_changed(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        _user_data: Any,
+    ) -> None:
         self._update_menu()
 
     def _build_initial_menu_state(self) -> MenuBarViewModel:

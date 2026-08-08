@@ -1,12 +1,14 @@
 from typing import Callable, Dict, FrozenSet, List, Optional, Set
 
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.view_model.sequencer.grid import (
-    SequencerCellViewModel,
-    SequencerGridViewModel,
-    SequencerRowViewModel,
+from sampletones_application.view_model.sequencer.settings import (
+    SequencerSettingsViewModel,
 )
-from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
+from sampletones_application.view_model.sequencer.tracker import (
+    SequencerCellViewModel,
+    SequencerRowViewModel,
+    SequencerTrackerViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.instruments.instrument import Instrument
@@ -29,7 +31,7 @@ _EMPTY_CELL = SequencerCellViewModel(
 )
 
 
-class SequencerGridLogic(CallbackMixin):
+class SequencerTrackerLogic(CallbackMixin):
     """Builds the tracker grid and module-options view models from the project.
 
     Holds the only piece of grid-local UI state, the visible order frame, and
@@ -43,7 +45,7 @@ class SequencerGridLogic(CallbackMixin):
         self._frame_index: int = 0
 
         self.on_settings_changed: Optional[Callable[[SequencerSettingsViewModel], None]] = None
-        self.on_grid_changed: Optional[Callable[[SequencerGridViewModel], None]] = None
+        self.on_tracker_changed: Optional[Callable[[SequencerTrackerViewModel], None]] = None
         self.on_frame_changed: Optional[Callable[[int], None]] = None
 
     @property
@@ -57,7 +59,7 @@ class SequencerGridLogic(CallbackMixin):
             rows_per_pattern=project.song.rows_per_pattern,
         )
 
-    def build_grid(self) -> SequencerGridViewModel:
+    def build_grid(self) -> SequencerTrackerViewModel:
         song = self._controller.project.song
         frame_count = song.order_length()
         frame_index = self._clamp_frame(frame_count)
@@ -72,7 +74,7 @@ class SequencerGridLogic(CallbackMixin):
 
         row_count = self._frame_row_count(patterns, song.rows_per_pattern) if frame_count > 0 else 0
         rows = tuple(self._build_row(index, patterns) for index in range(row_count))
-        return SequencerGridViewModel(
+        return SequencerTrackerViewModel(
             frame_index=frame_index,
             frame_count=frame_count,
             rows=rows,
@@ -98,14 +100,14 @@ class SequencerGridLogic(CallbackMixin):
     def push_settings(self) -> None:
         self.call(self.on_settings_changed, self.settings)
 
-    def push_grid(self) -> None:
+    def push_tracker(self) -> None:
         view_model = self.build_grid()
-        self.call(self.on_grid_changed, view_model)
+        self.call(self.on_tracker_changed, view_model)
         self.call(self.on_frame_changed, view_model.frame_index)
 
     def refresh(self) -> None:
         self.push_settings()
-        self.push_grid()
+        self.push_tracker()
 
     def set_nes_frequency(self, nes_frequency: int) -> None:
         self._controller.set_nes_frequency(nes_frequency)
@@ -356,7 +358,7 @@ class SequencerGridLogic(CallbackMixin):
 
     def select_frame(self, frame_index: int) -> None:
         self._frame_index = frame_index
-        self.push_grid()
+        self.push_tracker()
 
     def used_generators(self, sample_id: str) -> List[GeneratorName]:
         """The channels a sample provides instructions for, empty when it is unknown."""
@@ -504,5 +506,7 @@ class SequencerGridLogic(CallbackMixin):
         if frame_count == 0:
             return 0
 
+        self._frame_index = max(0, min(self._frame_index, frame_count - 1))
+        return self._frame_index
         self._frame_index = max(0, min(self._frame_index, frame_count - 1))
         return self._frame_index

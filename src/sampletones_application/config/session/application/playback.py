@@ -8,7 +8,7 @@ class PlaybackConfig(BaseModel):
     )
     follow_playback: bool = Field(
         default=True,
-        description="If the sequencer grid follows the playhead during playback.",
+        description="If the sequencer tracker follows the playhead during playback.",
     )
     loop_song: bool = Field(
         default=False,

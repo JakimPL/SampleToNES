@@ -24,11 +24,11 @@ class TestValidateTextKey(BaseTestSuite):
         key: str
         expected: Optional[Type[MalformedTextKeyError]]
 
-    test_cases = [
+    test_cases = (
         TestCase(label="well_formed_key", key="global.dialog.label.ok", expected=None),
         TestCase(label="element_holding_digits", key="global.context.label.pulse_1", expected=None),
         TestCase(label="element_holding_many_words", key="main.config.tooltip.window_size_input", expected=None),
-        TestCase(label="another_page_and_panel", key="sequencer.grid.title.pattern", expected=None),
+        TestCase(label="another_page_and_panel", key="sequencer.tracker.title.pattern", expected=None),
         TestCase(label="too_few_segments", key="global.dialog.label", expected=MalformedTextKeyError),
         TestCase(label="too_many_segments", key="global.dialog.label.ok.extra", expected=MalformedTextKeyError),
         TestCase(label="single_segment", key="ok", expected=MalformedTextKeyError),
@@ -49,7 +49,7 @@ class TestValidateTextKey(BaseTestSuite):
         TestCase(label="doubled_underscore", key="global.dialog.label.not__ok", expected=MalformedTextKeyError),
         TestCase(label="leading_underscore", key="global.dialog.label._ok", expected=MalformedTextKeyError),
         TestCase(label="trailing_underscore", key="global.dialog.label.ok_", expected=MalformedTextKeyError),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_validate_text_key(self, test_case: TestCase) -> None:

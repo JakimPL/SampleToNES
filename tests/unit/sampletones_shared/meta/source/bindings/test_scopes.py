@@ -23,7 +23,7 @@ class Panel:
         return self._language_manager[element]
 
     def _load(self, language_manager: LanguageManager) -> None:
-        def label(element: SequencerGridElements) -> str:
+        def label(element: SequencerTrackerElements) -> str:
             return language_manager[element]
 
         self._labels = [label(item) for item in FILTERS.values()]
@@ -90,7 +90,7 @@ class TestScopeIsolation:
         assert panel_environment("_load").type_of("element") is None
 
     def test_a_nested_scope_states_its_own_parameter(self) -> None:
-        assert panel_environment("label").type_of("element") == "SequencerGridElements"
+        assert panel_environment("label").type_of("element") == "SequencerTrackerElements"
 
     def test_a_nested_scope_sees_the_enclosing_parameters(self) -> None:
         assert panel_environment("label").type_of("language_manager") == "LanguageManager"

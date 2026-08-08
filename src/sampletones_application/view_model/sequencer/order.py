@@ -23,7 +23,7 @@ class SequencerOrderViewModel(BaseModel, frozen=True):
     entries: Tuple[OrderEntryViewModel, ...]
 
 
-class SequencerOrderGridViewModel(BaseModel, frozen=True):
+class SequencerOrderTrackerViewModel(BaseModel, frozen=True):
     """The whole arrangement: order positions (columns) across channels (rows).
 
     The master row summarises each position across channels — the horizontal analog

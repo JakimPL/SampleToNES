@@ -41,7 +41,7 @@ from sampletones_application.ui.panels.sequencer.channels import (
     channel_tooltip,
 )
 from sampletones_application.ui.panels.sequencer.columns import channel_color
-from sampletones_application.ui.panels.sequencer.order_input import (
+from sampletones_application.ui.panels.sequencer.input.order import (
     INDEX_DIGITS,
     ORDER_ROWS,
     OrderCursor,
@@ -73,7 +73,7 @@ from sampletones_application.view_model.sequencer.channels import (
 )
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.order import (
-    SequencerOrderGridViewModel,
+    SequencerOrderTrackerViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id
@@ -320,7 +320,7 @@ class GUISequencerOrderPanel(GUIPanel):
         with dpg.item_handler_registry(tag=self._label_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_label_right_clicked)
 
-    def update_order(self, view_model: SequencerOrderGridViewModel) -> None:
+    def update_order(self, view_model: SequencerOrderTrackerViewModel) -> None:
         """Reconciles the order table; rebuilds only when the position count changes."""
         cell_values = self._compute_cell_values(view_model)
         if view_model.position_count != self._position_count:
@@ -427,7 +427,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _compute_cell_values(
         self,
-        view_model: SequencerOrderGridViewModel,
+        view_model: SequencerOrderTrackerViewModel,
     ) -> Dict[OrderKey, str]:
         cell_values: Dict[OrderKey, str] = {}
         for position in range(view_model.position_count):
@@ -442,7 +442,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _rebuild_table(
         self,
-        view_model: SequencerOrderGridViewModel,
+        view_model: SequencerOrderTrackerViewModel,
         cell_values: Dict[OrderKey, str],
     ) -> None:
         """Recreates the whole table when the position count changes.

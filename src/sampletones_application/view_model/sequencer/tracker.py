@@ -4,7 +4,12 @@ from pydantic import BaseModel
 
 from sampletones_application.view_model.sequencer.aggregate import aggregate_labels
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import NOTE_OFF, display_id, display_transpose, display_volume
+from sampletones_core.utils.display import (
+    NOTE_OFF,
+    display_id,
+    display_transpose,
+    display_volume,
+)
 
 
 class SequencerCellViewModel(BaseModel, frozen=True):
@@ -12,7 +17,7 @@ class SequencerCellViewModel(BaseModel, frozen=True):
 
     The columns are produced by :mod:`sampletones_core.utils.display`, the single
     source of tracker cell formatting (sample position, transpose, volume). The
-    grid renders :attr:`label`, the combined cell text.
+    tracker grid renders :attr:`label`, the combined cell text.
     """
 
     instrument: str
@@ -85,7 +90,7 @@ class SequencerRowViewModel(BaseModel, frozen=True):
         return aggregate_labels(values, default=default)
 
 
-class SequencerGridViewModel(BaseModel, frozen=True):
+class SequencerTrackerViewModel(BaseModel, frozen=True):
     """The tracker view for a single order frame across the four channels.
 
     Each channel plays its ``order[frame_index]`` pattern; the grid shows those

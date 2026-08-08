@@ -38,27 +38,27 @@ TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS = TagName(
     "refresh_reconstructions",
 )
 
-TAG_SEQUENCER_GRID_PANEL = TagName(
+TAG_SEQUENCER_TRACKER_PANEL = TagName(
     Page.SEQUENCER,
-    Panel.GRID,
+    Panel.TRACKER,
     Widget.PANEL,
-    "grid",
+    "tracker",
 )
-TAG_SEQUENCER_GRID_TABLE_TRACKER = TagName(
+TAG_SEQUENCER_TRACKER_TABLE = TagName(
     Page.SEQUENCER,
-    Panel.GRID,
+    Panel.TRACKER,
     Widget.TABLE,
     "tracker",
 )
-TAG_SEQUENCER_GRID_GROUP_TRACKER = TagName(
+TAG_SEQUENCER_TRACKER_GROUP = TagName(
     Page.SEQUENCER,
-    Panel.GRID,
+    Panel.TRACKER,
     Widget.GROUP,
     "tracker",
 )
-TAG_SEQUENCER_GRID_WINDOW_TRACKER = TagName(
+TAG_SEQUENCER_TRACKER_WINDOW = TagName(
     Page.SEQUENCER,
-    Panel.GRID,
+    Panel.TRACKER,
     Widget.WINDOW,
     "tracker",
 )

@@ -35,7 +35,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
     character's position and redrawn every frame (from the application loop) so it
     follows the table as it scrolls. Because at
     most one cell across both tracker tables holds the cursor at a time, one
-    shared rectangle is enough; the ``owner`` token keeps the order and grid
+    shared rectangle is enough; the ``owner`` token keeps the order and tracker
     panels' arm/clear calls from clobbering each other during focus hand-off.
     """
 

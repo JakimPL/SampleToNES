@@ -5,7 +5,7 @@ import numpy as np
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.sequencer.grid import SequencerGridLogic
+from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME
@@ -57,7 +57,7 @@ def _place_instrument(controller: ProjectController, generator: GeneratorName, s
 class TestSetNoteOff:
     def test_set_note_off_writes_note_off_command(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
 
         logic.set_note_off(GeneratorName.PULSE1, 0)
 
@@ -65,7 +65,7 @@ class TestSetNoteOff:
 
     def test_set_note_off_all_generators_cuts_every_channel(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
 
         logic.set_note_off_all_generators(0)
 
@@ -76,7 +76,7 @@ class TestSetNoteOff:
 class TestSetSampleInstrument:
     def test_fills_only_used_generators(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -86,7 +86,7 @@ class TestSetSampleInstrument:
 
         for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
             command = _row(controller, generator).command
-            assert command is not None
+            assert isinstance(command, Instrument)
             assert command.sample_id == sample.id
             assert command.generator_name == generator
 
@@ -95,7 +95,7 @@ class TestSetSampleInstrument:
 
     def test_clears_channels_the_new_sample_does_not_use(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         stale = controller.add_sample(_reconstruction([GeneratorName.PULSE2]), name="bass")
         pattern_index = controller.project.song.order[0][GeneratorName.PULSE2]
         controller.set_row(
@@ -116,7 +116,7 @@ class TestSetSampleInstrument:
 
     def test_none_sample_clears_the_whole_row(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
         logic.set_sample_instrument(0, sample.id)
 
@@ -129,7 +129,7 @@ class TestSetSampleInstrument:
 class TestSampleSubcolumn:
     def test_synchronises_across_relevant_channels_even_without_instrument(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -156,7 +156,7 @@ class TestSampleSubcolumn:
 
     def test_synchronises_across_all_channels_when_no_sample_is_referenced(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
 
         logic.set_sample_subcolumn(0, transpose=5, volume=10)
 
@@ -168,7 +168,7 @@ class TestSampleSubcolumn:
 
     def test_clear_removes_one_subcolumn_across_relevant_channels(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -189,7 +189,7 @@ class TestSampleSubcolumn:
 class TestAdjustTranspose:
     def test_first_nudge_writes_the_delta_from_zero(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
 
         logic.adjust_transpose(GeneratorName.PULSE1, 0, 1)
 
@@ -197,7 +197,7 @@ class TestAdjustTranspose:
 
     def test_repeated_nudges_accumulate(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
 
         logic.adjust_transpose(GeneratorName.PULSE1, 0, 1)
         logic.adjust_transpose(GeneratorName.PULSE1, 0, 12)
@@ -206,7 +206,7 @@ class TestAdjustTranspose:
 
     def test_clamps_to_max_transpose(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         logic.set_row(GeneratorName.PULSE1, 0, transpose=MAX_TRANSPOSE)
 
         logic.adjust_transpose(GeneratorName.PULSE1, 0, 12)
@@ -215,7 +215,7 @@ class TestAdjustTranspose:
 
     def test_preserves_instrument_and_volume(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
         _place_instrument(controller, GeneratorName.PULSE1, sample.id)
         logic.adjust_volume(GeneratorName.PULSE1, 0, -1)
@@ -231,7 +231,7 @@ class TestAdjustTranspose:
 class TestAdjustVolume:
     def test_unset_volume_steps_down_from_full(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
 
         logic.adjust_volume(GeneratorName.PULSE1, 0, -1)
 
@@ -239,7 +239,7 @@ class TestAdjustVolume:
 
     def test_unset_volume_up_stays_full(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
 
         logic.adjust_volume(GeneratorName.PULSE1, 0, 1)
 
@@ -247,7 +247,7 @@ class TestAdjustVolume:
 
     def test_clamps_to_zero(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         logic.set_row(GeneratorName.PULSE1, 0, volume=1)
 
         logic.adjust_volume(GeneratorName.PULSE1, 0, -4)
@@ -258,7 +258,7 @@ class TestAdjustVolume:
 class TestAdjustSampleColumn:
     def test_sample_transpose_shifts_only_relevant_channels(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -275,7 +275,7 @@ class TestAdjustSampleColumn:
 
     def test_sample_volume_steps_relevant_channels_down_from_full(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -288,10 +288,10 @@ class TestAdjustSampleColumn:
             assert _row(controller, generator).volume == MAX_VOLUME - 1
 
 
-class TestBuildGridAggregation:
+class TestBuildTrackerAggregation:
     def test_single_channel_of_a_multi_channel_sample_reads_mixed(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -304,7 +304,7 @@ class TestBuildGridAggregation:
 
     def test_full_placement_reads_as_the_sample(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -318,7 +318,7 @@ class TestBuildGridAggregation:
 
     def test_diverging_transpose_renders_as_mixed(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -332,7 +332,7 @@ class TestBuildGridAggregation:
 
     def test_shared_transpose_is_reflected_in_the_sample_column(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
             _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
@@ -352,7 +352,7 @@ class TestEmptyFrameAutoCreate:
 
     def test_editing_an_empty_slot_creates_and_assigns_a_pattern(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         self._append_empty_frame(controller)
         logic.select_frame(1)
 
@@ -366,10 +366,10 @@ class TestEmptyFrameAutoCreate:
 
     def test_empty_frame_still_shows_editable_rows(self) -> None:
         controller = _controller()
-        logic = SequencerGridLogic(controller)
+        logic = SequencerTrackerLogic(controller)
         self._append_empty_frame(controller)
         logic.select_frame(1)
 
-        grid = logic.build_grid()
+        tracker = logic.build_grid()
 
-        assert len(grid.rows) == controller.project.song.rows_per_pattern
+        assert len(tracker.rows) == controller.project.song.rows_per_pattern

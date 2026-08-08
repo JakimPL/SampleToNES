@@ -88,7 +88,9 @@ Text resolves where it is displayed. A class that reads text holds the manager a
 A key assembled at runtime passes its four members instead — `language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, element]` — with the variable part annotated as the concrete element enum it carries (`SequencerOrderElements`, `DialogElements`). That annotation is what keeps the key checkable: the `language-keys` hook expands it to the enum's members and holds every key it reaches against the language file. A lookup therefore states its key as literals, as annotated members, or as a conditional between two literal keys — the three forms the hook reads values from:
 
 ```python
-language_manager["global.pitch.label.period_name" if is_period else "global.pitch.label.pitch_name"]
+language_manager[
+    "global.pitch.label.period_name" if is_period else "global.pitch.label.pitch_name"
+]
 ```
 
 ### 9. `tags/` holds only DPG identifiers
@@ -100,7 +102,9 @@ The `tags/` package contains only DPG widget string identifiers: `TAG_*` whole t
 **A whole tag is a `TagName`**, the `str` subclass in `categories/key/tag.py` that names its four parts and composes them:
 
 ```python
-TAG_MAIN_EXPLORER_TREE = TagName(Page.MAIN, Panel.EXPLORER, Widget.TREE, "explorer")   # main.explorer.tree
+TAG_MAIN_EXPLORER_TREE = TagName(
+    Page.MAIN, Panel.EXPLORER, Widget.TREE, "explorer"
+)  # main.explorer.tree
 ```
 
 The spelling is `page[.panel].widget[.element]` — `Panel.IMPLICIT` names a widget belonging to no panel, and an element repeating its panel's name is carried by the panel segment alone. A constant's name is its composed tag upper-cased with each separator turned into an underscore, behind the `TAG_` prefix, so reading either one states the other; the `tag-names` hook holds the two together.
@@ -211,7 +215,7 @@ All three read the source as an AST through the shared layer in `sampletones_sha
 - Edit payloads — frozen `*Update` models a panel emits through its `on_*_changed` hooks — also live here: they are the UI's outbound contract, the mirror of view models.
 - Domain data containers (frozen dataclasses that wrap core types and are used across logic and services) belong in `logic/`. A type belongs in `view_model/` only if its purpose is to carry data across the UI boundary — a panel-feeding snapshot, an edit payload, or a projection a display renders (`WaveformData`).
 
-**Naming convention:** `<Feature><Component>ViewModel`, e.g. `ConverterViewModel`, `SequencerGridViewModel`.
+**Naming convention:** `<Feature><Component>ViewModel`, e.g. `ConverterViewModel`, `SequencerTrackerViewModel`.
 
 **May import:** `sampletones_core` types, `sampletones_shared`, Python standard library.
 **Must not import:** `ui/`, `coordinators/`, `logic/`, `services/`, `config/`.

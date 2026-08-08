@@ -18,7 +18,7 @@ class SequencerModuleElements(AbstractElement):
     SPEED = "speed"
 
 
-class SequencerGridElements(AbstractElement):
+class SequencerTrackerElements(AbstractElement):
     TRACKER_TEXT = "tracker_text"
     COLUMN_ROW = "column_row"
     COLUMN_SAMPLE = "column_sample"

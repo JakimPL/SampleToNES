@@ -8,12 +8,18 @@ from sampletones_application.layout.tabs.sequencer.colors.channel import Channel
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
-from sampletones_application.ui.panels.sequencer import grid as grid_module
+from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.columns import tracker_table_column
-from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
-from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS, ModifierSet
+from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    CTRL,
+    NO_MODIFIERS,
+    ModifierSet,
+)
 from sampletones_application.utils.palette.colors.written import LiteralColor
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import ColorRGBA, Sender
@@ -81,13 +87,13 @@ def _cell_widget(generator: GeneratorName, row_index: int, subcolumn: SubColumn)
     return 1000 + 100 * GeneratorName.items().index(generator) + 10 * row_index + list(SubColumn).index(subcolumn)
 
 
-def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
+def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerTrackerPanel:
     """Builds a panel around the state the channel cues read, with no DearPyGui context.
 
     The cues touch the layout colours, the theme ids, the header widgets, and the cell
     registry, so those are wired directly and the rest of the panel is left out.
     """
-    panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
+    panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
             channels=CHANNEL_COLORS,
@@ -121,10 +127,10 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> _DearPyGuiRecorder:
     instance = _DearPyGuiRecorder()
-    monkeypatch.setattr(grid_module.dpg, "does_item_exist", instance.does_item_exist)
-    monkeypatch.setattr(grid_module.dpg, "highlight_table_column", instance.highlight_table_column)
-    monkeypatch.setattr(grid_module.dpg, "bind_item_theme", instance.bind_item_theme)
-    monkeypatch.setattr(grid_module.dpg, "set_value", instance.set_value)
+    monkeypatch.setattr(tracker_module.dpg, "does_item_exist", instance.does_item_exist)
+    monkeypatch.setattr(tracker_module.dpg, "highlight_table_column", instance.highlight_table_column)
+    monkeypatch.setattr(tracker_module.dpg, "bind_item_theme", instance.bind_item_theme)
+    monkeypatch.setattr(tracker_module.dpg, "set_value", instance.set_value)
     return instance
 
 
@@ -325,9 +331,9 @@ class TestCuesAwaitTheTable:
     def test_the_model_is_kept_while_the_table_is_absent(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A mute set pushed before the table exists is reapplied by the next rebuild."""
         instance = _DearPyGuiRecorder(table_exists=False)
-        monkeypatch.setattr(grid_module.dpg, "does_item_exist", instance.does_item_exist)
-        monkeypatch.setattr(grid_module.dpg, "highlight_table_column", instance.highlight_table_column)
-        monkeypatch.setattr(grid_module.dpg, "bind_item_theme", instance.bind_item_theme)
+        monkeypatch.setattr(tracker_module.dpg, "does_item_exist", instance.does_item_exist)
+        monkeypatch.setattr(tracker_module.dpg, "highlight_table_column", instance.highlight_table_column)
+        monkeypatch.setattr(tracker_module.dpg, "bind_item_theme", instance.bind_item_theme)
         panel = _panel(frozenset())
 
         panel.update_channels(SequencerChannelsViewModel(muted=frozenset({GeneratorName.PULSE1})))

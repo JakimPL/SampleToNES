@@ -21,4 +21,3 @@ class ClearAction:
     row: int
     generator: Optional[GeneratorName]
     subcolumn: Optional[SubColumn] = None
-    """The subcolumn to clear, or ``None`` to clear the whole row."""

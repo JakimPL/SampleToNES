@@ -3,9 +3,9 @@ from typing import List
 
 import pytest
 
-from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
@@ -14,8 +14,8 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 PAGE_SIZE = 16
 
 
-def _panel() -> GUISequencerGridPanel:
-    panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
+def _panel() -> GUISequencerTrackerPanel:
+    panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._input_state = TrackerInputState(cursor=TrackerCursor(5, None, SubColumn.INSTRUMENT), pending="")
     panel._layout = SimpleNamespace(tracker=SimpleNamespace(page_size=PAGE_SIZE))
     return panel

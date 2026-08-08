@@ -2,16 +2,16 @@ from typing import List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 
 
-def _panel(cursor: Optional[TrackerCursor]) -> GUISequencerGridPanel:
-    panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
+def _panel(cursor: Optional[TrackerCursor]) -> GUISequencerTrackerPanel:
+    panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._input_state = TrackerInputState(cursor=cursor, pending="")
     return panel
 

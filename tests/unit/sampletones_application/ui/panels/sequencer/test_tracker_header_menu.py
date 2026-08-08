@@ -6,10 +6,12 @@ import pytest
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.paths import LANG_EN
-from sampletones_application.ui.panels.sequencer import grid as grid_module
-from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer import tracker as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
@@ -82,7 +84,7 @@ class _MenuRecorder:
         self.callbacks[label]()
 
 
-def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
+def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerTrackerPanel:
     """Builds a panel around the state the header menu reads, with no DearPyGui context.
 
     The menu touches the column labels, the pushed mute set, and the map from header widget to
@@ -90,7 +92,7 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
     the menu is built the way the panel builds it, from the real language file, so the item labels
     under test are the ones a user reads.
     """
-    panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
+    panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._column_labels = dict(COLUMN_LABELS)
     panel._header_columns = {widget: column for column, widget in HEADER_WIDGETS.items()}
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
@@ -101,20 +103,20 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerGridPanel:
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     instance = _MenuRecorder()
-    monkeypatch.setattr(grid_module.dpg, "add_menu_item", instance.add_menu_item)
-    monkeypatch.setattr(grid_module.dpg, "add_text", instance.add_text)
-    monkeypatch.setattr(grid_module.dpg, "add_separator", instance.add_separator)
-    monkeypatch.setattr(grid_module.FontRegistry, "bind_to_item", lambda item, font: None)
+    monkeypatch.setattr(tracker_module.dpg, "add_menu_item", instance.add_menu_item)
+    monkeypatch.setattr(tracker_module.dpg, "add_text", instance.add_text)
+    monkeypatch.setattr(tracker_module.dpg, "add_separator", instance.add_separator)
+    monkeypatch.setattr(tracker_module.FontRegistry, "bind_to_item", lambda item, font: None)
 
     @contextlib.contextmanager
     def _popup() -> Iterator[None]:
         yield
 
-    monkeypatch.setattr(grid_module, "context_menu", _popup)
+    monkeypatch.setattr(tracker_module, "context_menu", _popup)
     return instance
 
 
-def _right_click(panel: GUISequencerGridPanel, column: Optional[GeneratorName]) -> None:
+def _right_click(panel: GUISequencerTrackerPanel, column: Optional[GeneratorName]) -> None:
     panel._on_header_right_clicked(
         SENDER_WIDGET_ID,
         (dpg.mvMouseButton_Right, HEADER_WIDGETS[column]),
@@ -378,18 +380,18 @@ class TestHeaderMenuActions:
 
 class TestHeaderTooltips:
     @pytest.fixture
-    def panel(self) -> GUISequencerGridPanel:
-        instance = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
+    def panel(self) -> GUISequencerTrackerPanel:
+        instance = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         instance._load_header_tooltips(LanguageManager(LANG_EN))
         return instance
 
-    def test_the_channel_tooltip_names_the_solo_modifier(self, panel: GUISequencerGridPanel) -> None:
+    def test_the_channel_tooltip_names_the_solo_modifier(self, panel: GUISequencerTrackerPanel) -> None:
         assert Modifier.CTRL.value in panel._tooltip_header_channel
 
-    def test_the_channel_tooltip_leaves_no_placeholder_behind(self, panel: GUISequencerGridPanel) -> None:
+    def test_the_channel_tooltip_leaves_no_placeholder_behind(self, panel: GUISequencerTrackerPanel) -> None:
         assert "{" not in panel._tooltip_header_channel
 
-    def test_both_headers_explain_their_click(self, panel: GUISequencerGridPanel) -> None:
+    def test_both_headers_explain_their_click(self, panel: GUISequencerTrackerPanel) -> None:
         assert panel._tooltip_header_channel
         assert panel._tooltip_header_sample
         assert panel._tooltip_header_channel != panel._tooltip_header_sample

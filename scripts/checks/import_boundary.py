@@ -138,8 +138,8 @@ TOKEN_RULES: List[TokenRule] = [
     ),
     TokenRule(
         "ui/panels/**/*.py",
-        r"parent\s*=\s*TAG_SEQUENCER_GRID_PANEL\b",
-        "ui/panels must not parent into another panel's container (TAG_SEQUENCER_GRID_PANEL); "
+        r"parent\s*=\s*TAG_SEQUENCER_TRACKER_PANEL\b",
+        "ui/panels must not parent into another panel's container (TAG_SEQUENCER_TRACKER_PANEL); "
         "the coordinator injects the parent through create_panel(parent)",
     ),
     TokenRule(
