@@ -15,7 +15,9 @@ from sampletones_shared.constants.symbols import MIXED
 _EMPTY = display_id(None)
 
 
-def _tracker(channels: Dict[GeneratorName, List[Optional[int]]]) -> SequencerOrderTrackerViewModel:
+def _tracker(
+    channels: Dict[GeneratorName, List[Optional[int]]],
+) -> SequencerOrderTrackerViewModel:
     views = {
         generator: SequencerOrderViewModel(
             generator=generator,

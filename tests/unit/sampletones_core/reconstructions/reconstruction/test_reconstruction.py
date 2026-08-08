@@ -236,7 +236,11 @@ class TestInitialPitchReference:
         the stored reference and reads the octave straight back.
         """
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
-        arpeggiated = [_pulse(_BASE_PITCH + _OCTAVE), _pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]
+        arpeggiated = [
+            _pulse(_BASE_PITCH + _OCTAVE),
+            _pulse(_BASE_PITCH),
+            _pulse(_BASE_PITCH),
+        ]
         reconstruction.update_generator_data(
             GeneratorName.PULSE1,
             arpeggiated,

@@ -24,8 +24,10 @@ def _tree(
         session_manager = MagicMock()
         session_manager.autoplay = True
         session_manager.favorites = set()
+
     if audio_device_manager is None:
         audio_device_manager = MagicMock()
+
     if scheduling is None:
         scheduling = SchedulingBehavior(
             delays=SchedulingDelays(
@@ -41,7 +43,12 @@ def _tree(
             emit=SchedulingEmit(priority=0, batch_size=128),
             queue_budget_seconds=0.005,
         )
-    return TreeLogic(session_manager, audio_device_manager, scheduling=scheduling)
+
+    return TreeLogic(
+        session_manager,
+        audio_device_manager,
+        scheduling=scheduling,
+    )
 
 
 def _file_node(filepath: Path) -> FileSystemNode:
@@ -118,7 +125,10 @@ class TestTreeLogicAutoplay:
             priority=PlaybackPriority.PREVIEW,
         )
 
-    def test_autoplay_with_directory_node_is_no_op(self, tmp_path: Path) -> None:
+    def test_autoplay_with_directory_node_is_no_op(
+        self,
+        tmp_path: Path,
+    ) -> None:
         audio_device_manager = MagicMock()
         session_manager = MagicMock()
         session_manager.autoplay = True
@@ -155,7 +165,10 @@ class TestTreeLogicAutoplay:
 
 
 class TestTreeLogicPlayNode:
-    def test_play_node_uses_normal_priority_and_ignores_autoplay(self, tmp_path: Path) -> None:
+    def test_play_node_uses_normal_priority_and_ignores_autoplay(
+        self,
+        tmp_path: Path,
+    ) -> None:
         audio_device_manager = MagicMock()
         session_manager = MagicMock()
         session_manager.autoplay = False
@@ -297,7 +310,11 @@ class TestReconstructionAutoplayFailure:
         [InvalidReconstructionError("corrupt"), PermissionError("denied")],
         ids=["domain", "io"],
     )
-    def test_load_failure_reports_autoplay_error(self, tmp_path: Path, error: Exception) -> None:
+    def test_load_failure_reports_autoplay_error(
+        self,
+        tmp_path: Path,
+        error: Exception,
+    ) -> None:
         audio_device_manager = MagicMock()
         tree = _tree(audio_device_manager=audio_device_manager)
         tree.on_autoplay_error = MagicMock()
@@ -317,11 +334,13 @@ class TestReconstructionAutoplayFailure:
         tree.on_autoplay_error = MagicMock()
         node = _file_node(tmp_path / f"sample{paths.EXT_FILE_RECONSTRUCTION}")
 
-        with patch(
-            "sampletones_application.logic.shared.tree.Reconstruction.load",
-            side_effect=RuntimeError("bug"),
+        with (
+            patch(
+                "sampletones_application.logic.shared.tree.Reconstruction.load",
+                side_effect=RuntimeError("bug"),
+            ),
+            pytest.raises(RuntimeError),
         ):
-            with pytest.raises(RuntimeError):
-                tree.request_autoplay(node)
+            tree.request_autoplay(node)
 
         tree.on_autoplay_error.assert_not_called()

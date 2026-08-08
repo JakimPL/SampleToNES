@@ -17,7 +17,11 @@ DIALOG_ID = 20
 # Parent chains keyed by item id: the tracker's panel sits under the primary window,
 # while the dialog is a top-level window outside it.
 _PARENTS: Dict[int, Optional[int]] = {PANEL_ID: ROOT_ID, ROOT_ID: None, DIALOG_ID: None}
-_ALIAS_IDS: Dict[str, int] = {ROOT_WINDOW: ROOT_ID, PANEL_WINDOW: PANEL_ID, DIALOG_WINDOW: DIALOG_ID}
+_ALIAS_IDS: Dict[str, int] = {
+    ROOT_WINDOW: ROOT_ID,
+    PANEL_WINDOW: PANEL_ID,
+    DIALOG_WINDOW: DIALOG_ID,
+}
 
 CARET_LAYOUT = CaretLayout(
     fill=LiteralColor((102, 187, 255, 64)),
@@ -72,7 +76,10 @@ class TestActiveWithinRoot:
         with patch("dearpygui.dearpygui.get_active_window", return_value=stale_id):
             with patch("dearpygui.dearpygui.get_alias_id", side_effect=_alias_id):
                 with patch("dearpygui.dearpygui.does_item_exist", return_value=False):
-                    with patch("dearpygui.dearpygui.get_item_parent", side_effect=AssertionError("must not walk")):
+                    with patch(
+                        "dearpygui.dearpygui.get_item_parent",
+                        side_effect=AssertionError("must not walk"),
+                    ):
                         assert not CaretOverlay._active_within_root()
 
 

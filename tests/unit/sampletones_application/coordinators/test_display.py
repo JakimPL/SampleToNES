@@ -97,7 +97,10 @@ class _SessionRecorder:
 
 class _ViewportRecorder:
     def __init__(self) -> None:
-        self.resolution: Tuple[int, int] = (DEFAULT_RESOLUTION.width, DEFAULT_RESOLUTION.height)
+        self.resolution: Tuple[int, int] = (
+            DEFAULT_RESOLUTION.width,
+            DEFAULT_RESOLUTION.height,
+        )
         self.fullscreen_toggles = 0
         self.calls: List[Tuple[str, Any]] = []
 
@@ -281,7 +284,10 @@ class TestLiveApplication:
     def test_a_size_reaches_the_viewport_the_moment_it_is_picked(self, harness: Harness) -> None:
         harness.change(harness.settings.with_window(harness.settings.window.with_resolution(WIDESCREEN)))
 
-        assert ("resolution", (WIDESCREEN.width, WIDESCREEN.height)) in harness.viewport.calls
+        assert (
+            "resolution",
+            (WIDESCREEN.width, WIDESCREEN.height),
+        ) in harness.viewport.calls
 
     def test_nothing_is_written_to_the_session_before_it_is_confirmed(self, harness: Harness) -> None:
         harness.change(harness.settings.with_palette(DARK))

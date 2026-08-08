@@ -3,7 +3,10 @@ from typing import Dict, Generator
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color, dpg_set_palette_color
+from sampletones_application.utils.gui.palette.dpg import (
+    dpg_add_palette_theme_color,
+    dpg_set_palette_color,
+)
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
@@ -161,4 +164,9 @@ class TestThemeColorBinding:
         PaletteBindings.apply()
 
         red, green, blue, _ = LIGHT_ACCENT
-        assert tuple(int(channel) for channel in dpg.get_value(item)) == (red, green, blue, 128)
+        assert tuple(int(channel) for channel in dpg.get_value(item)) == (
+            red,
+            green,
+            blue,
+            128,
+        )

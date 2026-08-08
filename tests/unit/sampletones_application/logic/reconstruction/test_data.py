@@ -18,7 +18,10 @@ class TestFromReconstruction:
     ) -> None:
         reconstruction = reconstruction_factory()
 
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         assert data.reconstruction is reconstruction
 
@@ -28,14 +31,20 @@ class TestFromReconstruction:
     ) -> None:
         reconstruction = reconstruction_factory()
 
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
         assert data.filepath is None
 
     def test_uses_the_supplied_display_name(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Kick drum")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction_factory(),
+            name="Kick drum",
+        )
         assert data.name == "Kick drum"
 
     def test_detached_reconstruction_has_no_original_audio(
@@ -45,7 +54,10 @@ class TestFromReconstruction:
         reconstruction = reconstruction_factory()
         reconstruction.detach_source()
 
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         assert reconstruction.audio_filepath is None
         assert data.original_audio is None
@@ -56,10 +68,17 @@ class TestFromReconstruction:
         tmp_path: Path,
     ) -> None:
         source_audio = tmp_path / "source.wav"
-        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        write_wave(
+            source_audio,
+            Config().library.sample_rate,
+            np.ones(64, dtype=np.float32) * 0.5,
+        )
         reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
 
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         assert data.original_audio is not None
 
@@ -99,7 +118,10 @@ class TestDetachedCopy:
         tmp_path: Path,
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
@@ -110,7 +132,10 @@ class TestDetachedCopy:
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction_factory(),
+            name="Sample",
+        )
         target = tmp_path / "lead.stn"
 
         copy = data.detached_copy(target)
@@ -124,7 +149,10 @@ class TestDetachedCopy:
     ) -> None:
         reconstruction = reconstruction_factory()
         reconstruction.detach_source()
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
@@ -136,7 +164,10 @@ class TestDetachedCopy:
         tmp_path: Path,
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
@@ -149,9 +180,16 @@ class TestDetachedCopy:
         tmp_path: Path,
     ) -> None:
         source_audio = tmp_path / "source.wav"
-        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        write_wave(
+            source_audio,
+            Config().library.sample_rate,
+            np.ones(64, dtype=np.float32) * 0.5,
+        )
         reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
@@ -165,7 +203,10 @@ class TestWaveformData:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         waveform_data = data.waveform_data()
 
@@ -182,7 +223,10 @@ class TestReconstructionDataGetPartials:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         result = data.get_partials([])
 
@@ -193,7 +237,10 @@ class TestReconstructionDataGetPartials:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         result = data.get_partials([GeneratorName.TRIANGLE])
 
@@ -204,7 +251,10 @@ class TestReconstructionDataGetPartials:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        data = ReconstructionData.from_reconstruction(
+            reconstruction,
+            name="Sample",
+        )
 
         result = data.get_partials([GeneratorName.PULSE1])
 

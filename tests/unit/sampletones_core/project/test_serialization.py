@@ -7,7 +7,10 @@ from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
-from sampletones_shared.constants.project import MAX_ROWS_PER_PATTERN, MIN_ROWS_PER_PATTERN
+from sampletones_shared.constants.project import (
+    MAX_ROWS_PER_PATTERN,
+    MIN_ROWS_PER_PATTERN,
+)
 
 
 def _pattern_with_instrument() -> Pattern:

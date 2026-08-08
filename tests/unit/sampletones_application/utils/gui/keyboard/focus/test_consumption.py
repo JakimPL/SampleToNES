@@ -3,7 +3,9 @@ from dataclasses import dataclass
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.utils.gui.keyboard.focus.consumption import field_consumes_key
+from sampletones_application.utils.gui.keyboard.focus.consumption import (
+    field_consumes_key,
+)
 from sampletones_application.utils.gui.keyboard.focus.kind import FieldKind
 from sampletones_application.utils.gui.keyboard.modifiers import (
     ALT,
@@ -32,7 +34,12 @@ class TestFieldConsumesKey(BaseTestSuite):
             key=dpg.mvKey_Spacebar,
             expected=False,
         ),
-        TestCase(label="text field types a space", kind=FieldKind.TEXT_ENTRY, key=dpg.mvKey_Spacebar, expected=True),
+        TestCase(
+            label="text field types a space",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Spacebar,
+            expected=True,
+        ),
         TestCase(
             label="text field types a shifted space",
             kind=FieldKind.TEXT_ENTRY,
@@ -54,8 +61,18 @@ class TestFieldConsumesKey(BaseTestSuite):
             modifiers=CTRL_SHIFT,
             expected=False,
         ),
-        TestCase(label="text field cancels on Escape", kind=FieldKind.TEXT_ENTRY, key=dpg.mvKey_Escape, expected=True),
-        TestCase(label="text field commits on Enter", kind=FieldKind.TEXT_ENTRY, key=dpg.mvKey_Return, expected=True),
+        TestCase(
+            label="text field cancels on Escape",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Escape,
+            expected=True,
+        ),
+        TestCase(
+            label="text field commits on Enter",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Return,
+            expected=True,
+        ),
         TestCase(
             label="text field selects all on Ctrl+A",
             kind=FieldKind.TEXT_ENTRY,
@@ -98,14 +115,24 @@ class TestFieldConsumesKey(BaseTestSuite):
             modifiers=ALT,
             expected=False,
         ),
-        TestCase(label="text field yields F11", kind=FieldKind.TEXT_ENTRY, key=dpg.mvKey_F11, expected=False),
+        TestCase(
+            label="text field yields F11",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_F11,
+            expected=False,
+        ),
         TestCase(
             label="open combo yields a plain space",
             kind=FieldKind.CHOICE,
             key=dpg.mvKey_Spacebar,
             expected=False,
         ),
-        TestCase(label="open combo closes on Escape", kind=FieldKind.CHOICE, key=dpg.mvKey_Escape, expected=True),
+        TestCase(
+            label="open combo closes on Escape",
+            kind=FieldKind.CHOICE,
+            key=dpg.mvKey_Escape,
+            expected=True,
+        ),
         TestCase(
             label="open combo yields Ctrl+A",
             kind=FieldKind.CHOICE,

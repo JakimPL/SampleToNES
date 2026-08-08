@@ -149,7 +149,11 @@ class TestOctaveWeightAllocation:
         fastest (the K-weighting shelf knee around 2 kHz).
         """
         shares_per_method = []
-        for method in (SpectrumMethod.FFT, SpectrumMethod.LOG_SPACED_FFT, SpectrumMethod.CQT):
+        for method in (
+            SpectrumMethod.FFT,
+            SpectrumMethod.LOG_SPACED_FFT,
+            SpectrumMethod.CQT,
+        ):
             edges = np.asarray(probe(method).tone_spectrum(440.0).edges)
             shares = np.asarray(
                 octave_weight_shares(edges, perceptual_exponent=PERCEPTUAL_EXPONENT, bands=OCTAVE_BANDS)
@@ -179,7 +183,11 @@ class TestWindowScaling:
         across NES frequencies.
         """
         responses = [
-            band_energy(probe(SpectrumMethod.CQT, nes_frequency).tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
+            band_energy(
+                probe(SpectrumMethod.CQT, nes_frequency).tone_spectrum(440.0),
+                440.0,
+                radius=BAND_RADIUS,
+            )
             for nes_frequency in (30, 60, 300)
         ]
         assert max(responses) / min(responses) < 1.2
@@ -190,7 +198,11 @@ class TestWindowScaling:
         same tone energy at every NES frequency, matching the constant-Q behavior.
         """
         responses = [
-            band_energy(probe(SpectrumMethod.FFT, nes_frequency).tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
+            band_energy(
+                probe(SpectrumMethod.FFT, nes_frequency).tone_spectrum(440.0),
+                440.0,
+                radius=BAND_RADIUS,
+            )
             for nes_frequency in (30, 60, 300)
         ]
         assert max(responses) / min(responses) < 1.2

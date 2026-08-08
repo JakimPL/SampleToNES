@@ -8,7 +8,12 @@ from sampletones_application.view_model.sequencer.tracker import (
     SequencerRowViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import NOTE_OFF, display_id, display_transpose, display_volume
+from sampletones_core.utils.display import (
+    NOTE_OFF,
+    display_id,
+    display_transpose,
+    display_volume,
+)
 from sampletones_shared.constants.symbols import MIXED
 
 _EMPTY_INSTRUMENT = display_id(None)
@@ -42,7 +47,9 @@ class AggregateCase:
 _OCCUPIED = _cell(instrument=display_id(0), transpose=display_transpose(5), volume=display_volume(8))
 
 
-def _row_cells(**overrides: SequencerCellViewModel) -> Dict[GeneratorName, SequencerCellViewModel]:
+def _row_cells(
+    **overrides: SequencerCellViewModel,
+) -> Dict[GeneratorName, SequencerCellViewModel]:
     cells = {generator: _empty_cell() for generator in GeneratorName.items()}
     for name, cell in overrides.items():
         cells[GeneratorName[name.upper()]] = cell
@@ -95,7 +102,11 @@ _CASES = [
         name="diverging_transpose_is_mixed_while_instrument_is_uniform",
         cells=_row_cells(
             pulse1=_OCCUPIED,
-            triangle=_cell(instrument=display_id(0), transpose=_EMPTY_TRANSPOSE, volume=display_volume(8)),
+            triangle=_cell(
+                instrument=display_id(0),
+                transpose=_EMPTY_TRANSPOSE,
+                volume=display_volume(8),
+            ),
         ),
         relevant_generators=frozenset({GeneratorName.PULSE1, GeneratorName.TRIANGLE}),
         expected_instrument=display_id(0),

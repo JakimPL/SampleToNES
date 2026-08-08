@@ -4,9 +4,13 @@ from sampletones_application.parameters.geometry import TabGeometry
 
 class TestTabGeometryFromConfig:
     """The shared geometry core reads its six scalars from the storage paths the coordinators
-    used to reach through, so the deep-path knowledge lives in one factory instead of four."""
+    used to reach through, so the deep-path knowledge lives in one factory instead of four.
+    """
 
-    def test_flattens_the_geometry_paths(self, layout_config: LayoutConfig) -> None:
+    def test_flattens_the_geometry_paths(
+        self,
+        layout_config: LayoutConfig,
+    ) -> None:
         geometry = TabGeometry.from_config(layout_config)
 
         assert geometry.side_width == layout_config.general.columns.side.width

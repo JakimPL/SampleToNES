@@ -258,7 +258,11 @@ class TestLoadRejectsInvalidArchives:
         path = tmp_path / "demo.stp"
         ProjectContainer.save(Project.create(title="Demo"), path)
 
-        with patch.object(ProjectContainer, "_build_project", side_effect=RuntimeError("runtime_error")):
+        with patch.object(
+            ProjectContainer,
+            "_build_project",
+            side_effect=RuntimeError("runtime_error"),
+        ):
             with pytest.raises(UnhandledProjectError):
                 ProjectContainer.load(path)
 

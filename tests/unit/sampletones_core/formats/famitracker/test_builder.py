@@ -2,11 +2,25 @@ import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.formats.famitracker.builder import build_instrument_table, project_to_module
-from sampletones_core.formats.famitracker.specification.channels import CHANNEL_COUNT_2A03, ChannelId
-from sampletones_core.formats.famitracker.specification.instruments import MAX_INSTRUMENTS
-from sampletones_core.formats.famitracker.specification.parameters import EXPANSION_NONE, Machine
-from sampletones_core.formats.famitracker.specification.patterns import EMPTY_INSTRUMENT, NoteValue
+from sampletones_core.formats.famitracker.builder import (
+    build_instrument_table,
+    project_to_module,
+)
+from sampletones_core.formats.famitracker.specification.channels import (
+    CHANNEL_COUNT_2A03,
+    ChannelId,
+)
+from sampletones_core.formats.famitracker.specification.instruments import (
+    MAX_INSTRUMENTS,
+)
+from sampletones_core.formats.famitracker.specification.parameters import (
+    EXPANSION_NONE,
+    Machine,
+)
+from sampletones_core.formats.famitracker.specification.patterns import (
+    EMPTY_INSTRUMENT,
+    NoteValue,
+)
 from sampletones_core.formats.famitracker.specification.sequences import (
     LOOP_FROM_START,
     NO_LOOP_POINT,

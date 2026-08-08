@@ -68,8 +68,16 @@ class TestRouting:
     def test_inactive_scope_is_skipped(self) -> None:
         router = KeyRouter()
         log: List[str] = []
-        router.register(_recorder(log, "inactive", True), priority=PRIORITY_MODAL, active=lambda: False)
-        router.register(_recorder(log, "active", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+        router.register(
+            _recorder(log, "inactive", True),
+            priority=PRIORITY_MODAL,
+            active=lambda: False,
+        )
+        router.register(
+            _recorder(log, "active", True),
+            priority=PRIORITY_SHORTCUT,
+            active=lambda: True,
+        )
 
         router.route(_event())
 
@@ -77,7 +85,11 @@ class TestRouting:
 
     def test_unclaimed_event_reports_not_handled(self) -> None:
         router = KeyRouter()
-        router.register(_recorder([], "declines", False), priority=PRIORITY_SHORTCUT, active=lambda: True)
+        router.register(
+            _recorder([], "declines", False),
+            priority=PRIORITY_SHORTCUT,
+            active=lambda: True,
+        )
 
         assert not router.route(_event())
 
@@ -109,7 +121,11 @@ class TestModal:
     def test_an_open_modal_claims_the_key_and_suppresses_lower_scopes(self) -> None:
         router = KeyRouter()
         log: List[str] = []
-        router.register(_recorder(log, "shortcut", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+        router.register(
+            _recorder(log, "shortcut", True),
+            priority=PRIORITY_SHORTCUT,
+            active=lambda: True,
+        )
         modal = _RecordingModal()
         router.push_modal(modal)
 
@@ -134,7 +150,11 @@ class TestModal:
     def test_a_closed_modal_returns_the_keyboard_to_lower_scopes(self) -> None:
         router = KeyRouter()
         log: List[str] = []
-        router.register(_recorder(log, "shortcut", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+        router.register(
+            _recorder(log, "shortcut", True),
+            priority=PRIORITY_SHORTCUT,
+            active=lambda: True,
+        )
         router.push_modal(_RecordingModal())
         router.pop_modal()
 

@@ -9,7 +9,10 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.formats.bitphase.btp import project_to_bytes, write_btp
 from sampletones_core.formats.bitphase.builder import sample_to_bitphase
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
-from sampletones_core.formats.bitphase.specification.chip import CHIP_TYPE_NES, TUNING_TABLE_LENGTH
+from sampletones_core.formats.bitphase.specification.chip import (
+    CHIP_TYPE_NES,
+    TUNING_TABLE_LENGTH,
+)
 from sampletones_core.paths import EXT_FILE_BITPHASE
 
 from .conftest import build_features, build_instrument, build_sample

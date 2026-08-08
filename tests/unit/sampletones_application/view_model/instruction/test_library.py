@@ -33,7 +33,14 @@ class TestProgressOverlay:
 
     @pytest.mark.parametrize(
         ("progress", "overlay"),
-        [(-0.5, "0%"), (0.0, "0%"), (0.333, "33%"), (0.5, "50%"), (1.0, "100%"), (1.5, "100%")],
+        [
+            (-0.5, "0%"),
+            (0.0, "0%"),
+            (0.333, "33%"),
+            (0.5, "50%"),
+            (1.0, "100%"),
+            (1.5, "100%"),
+        ],
     )
     def test_overlay_renders_the_clamped_percentage(self, progress: float, overlay: str) -> None:
         view_model = _view_model(generating=True, progress=progress)

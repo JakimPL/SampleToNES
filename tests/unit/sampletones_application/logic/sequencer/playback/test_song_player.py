@@ -9,7 +9,9 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_core.project.song_position import SongPosition
-from tests.unit.sampletones_application.logic.sequencer.playback.conftest import make_controller
+from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
+    make_controller,
+)
 
 
 def _make_logic(*, is_open: bool = True) -> SongPlayerLogic:
@@ -179,7 +181,14 @@ class TestOnServiceResult:
         logic = _make_logic()
         logic.on_view_changed = lambda _: None
 
-        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=3, row_index=5)))
+        logic._on_service_result(
+            SongPositionUpdate(
+                position=SongPosition(
+                    order_position=3,
+                    row_index=5,
+                )
+            )
+        )
 
         assert logic._position.order_position == 3
         assert logic._position.row_index == 5
@@ -188,9 +197,21 @@ class TestOnServiceResult:
         logic = _make_logic()
         logic.on_view_changed = lambda _: None
         received: List[Tuple[int, int]] = []
-        logic.on_position_changed = lambda order, row: received.append((order, row))
+        logic.on_position_changed = lambda order, row: received.append(
+            (
+                order,
+                row,
+            )
+        )
 
-        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=2, row_index=6)))
+        logic._on_service_result(
+            SongPositionUpdate(
+                position=SongPosition(
+                    order_position=2,
+                    row_index=6,
+                )
+            )
+        )
 
         assert received == [(2, 6)]
 
@@ -199,7 +220,14 @@ class TestOnServiceResult:
         logic.on_position_changed = lambda _order, _row: None
         views = _capture_views(logic)
 
-        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=1, row_index=4)))
+        logic._on_service_result(
+            SongPositionUpdate(
+                position=SongPosition(
+                    order_position=1,
+                    row_index=4,
+                )
+            )
+        )
 
         assert views[-1].order_position == 1
         assert views[-1].row_index == 4
@@ -212,9 +240,12 @@ class TestOnServiceResult:
 
         assert len(views) == 1
 
-    def test_playback_stopped_emits_idle_view_even_when_worker_still_reports_playing(self) -> None:
+    def test_playback_stopped_emits_idle_view_even_when_worker_still_reports_playing(
+        self,
+    ) -> None:
         """The worker thread may still be closing its stream when the stop result is processed;
-        the emitted view must report idle regardless so the playhead highlight clears."""
+        the emitted view must report idle regardless so the playhead highlight clears.
+        """
         logic = _make_logic()
         logic._service.is_playing = True
         logic._service.is_paused = True
@@ -309,10 +340,22 @@ class TestSeekSuppression:
         logic._service.alive = True
         logic.on_view_changed = lambda _: None
         received: List[Tuple[int, int]] = []
-        logic.on_position_changed = lambda order, row: received.append((order, row))
+        logic.on_position_changed = lambda order, row: received.append(
+            (
+                order,
+                row,
+            )
+        )
 
         logic.seek(5)
-        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=2, row_index=7)))
+        logic._on_service_result(
+            SongPositionUpdate(
+                position=SongPosition(
+                    order_position=2,
+                    row_index=7,
+                )
+            )
+        )
 
         assert received == []
 
@@ -321,12 +364,38 @@ class TestSeekSuppression:
         logic._service.alive = True
         logic.on_view_changed = lambda _: None
         received: List[Tuple[int, int]] = []
-        logic.on_position_changed = lambda order, row: received.append((order, row))
+        logic.on_position_changed = lambda order, row: received.append(
+            (
+                order,
+                row,
+            )
+        )
 
         logic.seek(5)
-        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=2, row_index=7)))
-        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=5, row_index=0)))
-        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=6, row_index=0)))
+        logic._on_service_result(
+            SongPositionUpdate(
+                position=SongPosition(
+                    order_position=2,
+                    row_index=7,
+                )
+            )
+        )
+        logic._on_service_result(
+            SongPositionUpdate(
+                position=SongPosition(
+                    order_position=5,
+                    row_index=0,
+                )
+            )
+        )
+        logic._on_service_result(
+            SongPositionUpdate(
+                position=SongPosition(
+                    order_position=6,
+                    row_index=0,
+                )
+            )
+        )
 
         assert received == [(5, 0), (6, 0)]
 
@@ -335,10 +404,22 @@ class TestSeekSuppression:
         logic._service.alive = False
         logic.on_view_changed = lambda _: None
         received: List[Tuple[int, int]] = []
-        logic.on_position_changed = lambda order, row: received.append((order, row))
+        logic.on_position_changed = lambda order, row: received.append(
+            (
+                order,
+                row,
+            )
+        )
 
         logic.seek(5)
-        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=2, row_index=7)))
+        logic._on_service_result(
+            SongPositionUpdate(
+                position=SongPosition(
+                    order_position=2,
+                    row_index=7,
+                )
+            )
+        )
 
         assert received == [(2, 7)]
 

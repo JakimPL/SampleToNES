@@ -37,7 +37,11 @@ class FakeBackend:
         self.calls: List[Call] = []
 
     def open_file(
-        self, *, title: str, initial_directory: Optional[Path], filters: Tuple[FileFilter, ...]
+        self,
+        *,
+        title: str,
+        initial_directory: Optional[Path],
+        filters: Tuple[FileFilter, ...],
     ) -> Optional[Path]:
         self.calls.append(("open", title, initial_directory, filters))
         return self._result
@@ -113,7 +117,9 @@ class TestSaveFileDialog:
 
         assert result == Path("/home/user/kick.fti")
 
-    def test_an_extension_outside_the_offered_types_takes_the_reported_one(self) -> None:
+    def test_an_extension_outside_the_offered_types_takes_the_reported_one(
+        self,
+    ) -> None:
         backend = FakeBackend(Path("/home/user/kick.xm"), reported_type=PRESET_FILTER)
         with patch(f"{MODULE}.select_file_dialog_backend", return_value=backend):
             result = save_file_dialog(title="Save", filters=INSTRUMENT_FILTERS)

@@ -58,7 +58,9 @@ def fake_dpg(monkeypatch: pytest.MonkeyPatch) -> _FakeDPG:
     monkeypatch.setattr(waveform_module.dpg, "get_item_alias", instance.get_item_alias)
     monkeypatch.setattr(waveform_module, "dpg_delete_item", instance.delete_item)
     monkeypatch.setattr(
-        waveform_module.dpg, "configure_item", lambda *args, **kwargs: instance.configured.append(args[0])
+        waveform_module.dpg,
+        "configure_item",
+        lambda *args, **kwargs: instance.configured.append(args[0]),
     )
     monkeypatch.setattr(waveform_module.dpg, "add_line_series", lambda *args, **kwargs: None)
     monkeypatch.setattr(waveform_module, "dpg_bind_item_theme", lambda *args, **kwargs: None)
@@ -177,7 +179,11 @@ class TestWaveformReconstructionDim:
         series_tag = graph._series_tag("Reconstruction")
         fake_dpg.set_children("axis", [series_tag])
         binds: List[str] = []
-        monkeypatch.setattr(waveform_module, "dpg_bind_item_theme", lambda tag, theme: binds.append(theme))
+        monkeypatch.setattr(
+            waveform_module,
+            "dpg_bind_item_theme",
+            lambda tag, theme: binds.append(theme),
+        )
 
         graph.set_reconstruction_dimmed(True)
         assert graph._reconstruction_dimmed is True

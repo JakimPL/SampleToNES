@@ -13,8 +13,15 @@ from sampletones_core.paths import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.implementation.bitphase import BitphaseBackend, BitphasePresetBackend
-from sampletones_core.trackers.request import InstrumentExport, ProjectExport, SampleExport
+from sampletones_core.trackers.implementation.bitphase import (
+    BitphaseBackend,
+    BitphasePresetBackend,
+)
+from sampletones_core.trackers.request import (
+    InstrumentExport,
+    ProjectExport,
+    SampleExport,
+)
 from sampletones_core.trackers.scope import ExportScope
 
 NES_FREQUENCY: Final[int] = 60

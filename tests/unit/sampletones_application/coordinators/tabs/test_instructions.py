@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.instructions import (
+    InstructionsTabCoordinator,
+)
 from sampletones_shared.exceptions import LibraryDisplayError
 from tests.suite.language import FakeLanguageManager
 
@@ -47,7 +49,10 @@ class TestGenerateRequest:
         coordinator._library_logic.request_generation.assert_called_once_with()
 
 
-def _generation_coordinator(*, converter_visible: bool) -> InstructionsTabCoordinator:
+def _generation_coordinator(
+    *,
+    converter_visible: bool,
+) -> InstructionsTabCoordinator:
     """A coordinator with only the state the generation-completed notice touches, bypassing the
     heavy constructor."""
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
@@ -77,7 +82,10 @@ class TestGenerationCompletedNotice:
         coordinator._dialogs.show_info.assert_not_called()
 
 
-def _remove_library_coordinator(*, current_library_key: Any) -> InstructionsTabCoordinator:
+def _remove_library_coordinator(
+    *,
+    current_library_key: Any,
+) -> InstructionsTabCoordinator:
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._library_logic = MagicMock()
     coordinator._library_logic.current_library_key = current_library_key
@@ -226,7 +234,11 @@ class TestRenderInstructionClassification:
 
     @pytest.mark.parametrize(
         "error",
-        [KeyError("generator"), IndexError("empty histogram"), ValueError("degenerate data")],
+        [
+            KeyError("generator"),
+            IndexError("empty histogram"),
+            ValueError("degenerate data"),
+        ],
         ids=["key", "index", "value"],
     )
     def test_data_shape_failure_raises_library_display_error(self, error: Exception) -> None:

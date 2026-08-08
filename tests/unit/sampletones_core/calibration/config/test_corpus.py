@@ -41,7 +41,11 @@ INVALID_FIELD_CASES: Final[Tuple[InvalidFieldCase, ...]] = (
     InvalidFieldCase(name="amplitude_above_full_scale", field="amplitude", value=1.5),
     InvalidFieldCase(name="zero_reference_frequency", field="reference_frequency", value=0.0),
     InvalidFieldCase(name="empty_tone_frequencies", field="tone", value={"frequencies": ()}),
-    InvalidFieldCase(name="nonpositive_tone_frequency", field="tone", value={"frequencies": (440.0, 0.0)}),
+    InvalidFieldCase(
+        name="nonpositive_tone_frequency",
+        field="tone",
+        value={"frequencies": (440.0, 0.0)},
+    ),
     InvalidFieldCase(
         name="empty_duty_cycles",
         field="timbre",

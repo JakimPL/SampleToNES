@@ -170,7 +170,9 @@ class TestSettingsChanges:
         assert changed.palette == "dark"
         assert changed.window == settings().window
 
-    def test_changing_one_part_of_the_window_mode_leaves_the_rest_standing(self) -> None:
+    def test_changing_one_part_of_the_window_mode_leaves_the_rest_standing(
+        self,
+    ) -> None:
         window = settings().window.with_borderless(True)
 
         assert window.borderless is True
@@ -188,7 +190,9 @@ class TestDisplaySettingsViewModel:
     def test_the_offer_holds_only_what_the_monitor_leaves_room_for(self) -> None:
         assert view_model(settings(), DESKTOP_BOUND).resolutions == offered(DESKTOP_BOUND)
 
-    def test_a_window_at_a_size_of_its_own_selects_the_nearest_offered_one(self) -> None:
+    def test_a_window_at_a_size_of_its_own_selects_the_nearest_offered_one(
+        self,
+    ) -> None:
         built = view_model(settings(resolution=Resolution(width=1290, height=810)))
 
         assert built.settings.window.resolution == Resolution(width=1280, height=800)

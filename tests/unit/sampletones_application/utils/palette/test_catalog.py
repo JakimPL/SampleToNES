@@ -3,7 +3,10 @@ from pathlib import Path
 import pytest
 
 from sampletones_application.paths import PALETTES_DIRECTORY
-from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME, PaletteCatalog
+from sampletones_application.utils.palette.catalog import (
+    DEFAULT_PALETTE_NAME,
+    PaletteCatalog,
+)
 
 _STUDIO = """
 name: studio

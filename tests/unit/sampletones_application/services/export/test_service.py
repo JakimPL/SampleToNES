@@ -52,19 +52,37 @@ class StubBackend:
     def extension(self, scope: ExportScope) -> str:
         return ".fti"
 
-    def write_instrument(self, destination: Path, request: InstrumentExport) -> ExportArtifact:
+    def write_instrument(
+        self,
+        destination: Path,
+        request: InstrumentExport,
+    ) -> ExportArtifact:
         return self._write("instrument", destination, request)
 
-    def write_sample(self, destination: Path, request: SampleExport) -> ExportArtifact:
+    def write_sample(
+        self,
+        destination: Path,
+        request: SampleExport,
+    ) -> ExportArtifact:
         return self._write("sample", destination, request)
 
-    def write_project(self, destination: Path, request: ProjectExport) -> ExportArtifact:
+    def write_project(
+        self,
+        destination: Path,
+        request: ProjectExport,
+    ) -> ExportArtifact:
         return self._write("project", destination, request)
 
-    def _write(self, scope: str, destination: Path, request: Any) -> ExportArtifact:
+    def _write(
+        self,
+        scope: str,
+        destination: Path,
+        request: Any,
+    ) -> ExportArtifact:
         self.calls.append((scope, destination, request))
         if self.exception is not None:
             raise self.exception
+
         return ExportArtifact(paths=(destination,), truncation=self.truncation)
 
 
@@ -119,7 +137,11 @@ class TestExportWav:
         assert result.kind == ExportKind.WAV
         assert result.filepath == filepath
 
-    def test_success_calls_write_wave_with_correct_args(self, service, tmp_path) -> None:
+    def test_success_calls_write_wave_with_correct_args(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, _ = service
         filepath = tmp_path / "track.wav"
         audio = np.zeros(100)
@@ -134,7 +156,10 @@ class TestExportWav:
         filepath = tmp_path / "track.wav"
         exception = OSError("disk full")
 
-        with patch("sampletones_application.services.export.service.write_wave", side_effect=exception):
+        with patch(
+            "sampletones_application.services.export.service.write_wave",
+            side_effect=exception,
+        ):
             export_service.export_wav(filepath, 44100, np.zeros(100))
 
         assert len(results) == 1
@@ -160,7 +185,11 @@ class TestExportInstrument:
         export_service, results = service
         filepath = tmp_path / "instrument.fti"
 
-        export_service.export_instrument(filepath, StubBackend(), build_instrument())
+        export_service.export_instrument(
+            filepath,
+            StubBackend(),
+            build_instrument(),
+        )
 
         assert len(results) == 1
         result = results[0]
@@ -168,7 +197,11 @@ class TestExportInstrument:
         assert result.kind == ExportKind.INSTRUMENT
         assert result.filepath == filepath
 
-    def test_the_backend_receives_the_destination_and_the_request(self, service, tmp_path) -> None:
+    def test_the_backend_receives_the_destination_and_the_request(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, _ = service
         filepath = tmp_path / "instrument.fti"
         backend = StubBackend()
@@ -207,7 +240,11 @@ class TestExportInstrument:
 
 
 class TestExportSample:
-    def test_success_emits_export_success_with_the_destination(self, service, tmp_path) -> None:
+    def test_success_emits_export_success_with_the_destination(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, results = service
 
         export_service.export_sample(tmp_path, StubBackend(), build_sample())
@@ -218,7 +255,11 @@ class TestExportSample:
         assert result.kind == ExportKind.SAMPLE
         assert result.filepath == tmp_path
 
-    def test_the_backend_receives_every_slice_in_one_call(self, service, tmp_path) -> None:
+    def test_the_backend_receives_every_slice_in_one_call(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, _ = service
         backend = StubBackend()
         request = build_sample(3)
@@ -231,7 +272,11 @@ class TestExportSample:
         export_service, results = service
         exception = OSError("no space")
 
-        export_service.export_sample(tmp_path, StubBackend(exception=exception), build_sample())
+        export_service.export_sample(
+            tmp_path,
+            StubBackend(exception=exception),
+            build_sample(),
+        )
 
         assert len(results) == 1
         result = results[0]
@@ -239,7 +284,11 @@ class TestExportSample:
         assert result.kind == ExportKind.SAMPLE
         assert result.exception is exception
 
-    def test_a_sample_with_no_slices_emits_success(self, service, tmp_path) -> None:
+    def test_a_sample_with_no_slices_emits_success(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, results = service
 
         export_service.export_sample(tmp_path, StubBackend(), build_sample(0))
@@ -262,7 +311,11 @@ class TestExportProject:
         assert result.kind == ExportKind.PROJECT
         assert result.filepath == filepath
 
-    def test_the_backend_receives_the_destination_and_the_request(self, service, tmp_path) -> None:
+    def test_the_backend_receives_the_destination_and_the_request(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, _ = service
         filepath = tmp_path / "song.ftm"
         backend = StubBackend()
@@ -290,17 +343,33 @@ class TestExportProject:
 
 
 class TestExportFormatReporting:
-    def test_a_tracker_export_names_the_format_it_was_written_in(self, service, tmp_path) -> None:
+    def test_a_tracker_export_names_the_format_it_was_written_in(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, results = service
 
-        export_service.export_instrument(tmp_path / "inst.fti", StubBackend(), build_instrument())
+        export_service.export_instrument(
+            tmp_path / "inst.fti",
+            StubBackend(),
+            build_instrument(),
+        )
 
         assert results[0].tracker_format == TrackerFormat.FAMITRACKER
 
-    def test_a_failed_tracker_export_names_the_format_it_was_written_in(self, service, tmp_path) -> None:
+    def test_a_failed_tracker_export_names_the_format_it_was_written_in(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, results = service
 
-        export_service.export_sample(tmp_path, StubBackend(exception=OSError("fail")), build_sample())
+        export_service.export_sample(
+            tmp_path,
+            StubBackend(exception=OSError("fail")),
+            build_sample(),
+        )
 
         assert results[0].tracker_format == TrackerFormat.FAMITRACKER
 
@@ -308,22 +377,42 @@ class TestExportFormatReporting:
         export_service, results = service
 
         with patch("sampletones_application.services.export.service.write_wave"):
-            export_service.export_wav(tmp_path / "track.wav", 44100, np.zeros(100))
+            export_service.export_wav(
+                tmp_path / "track.wav",
+                44100,
+                np.zeros(100),
+            )
 
         assert results[0].tracker_format is None
 
 
 class TestExportTruncationReporting:
-    def test_a_complete_instrument_reports_no_truncation(self, service, tmp_path) -> None:
+    def test_a_complete_instrument_reports_no_truncation(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, results = service
 
-        export_service.export_instrument(tmp_path / "inst.fti", StubBackend(), build_instrument())
+        export_service.export_instrument(
+            tmp_path / "inst.fti",
+            StubBackend(),
+            build_instrument(),
+        )
 
         assert results[0].truncation is None
 
-    def test_a_shortened_instrument_carries_the_backend_report(self, service, tmp_path) -> None:
+    def test_a_shortened_instrument_carries_the_backend_report(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, results = service
-        truncation = EnvelopeTruncation(frames=252, source_frames=300, instruments=1)
+        truncation = EnvelopeTruncation(
+            frames=252,
+            source_frames=300,
+            instruments=1,
+        )
 
         export_service.export_instrument(
             tmp_path / "inst.fti",
@@ -333,35 +422,69 @@ class TestExportTruncationReporting:
 
         assert results[0].truncation == truncation
 
-    def test_a_shortened_sample_carries_the_backend_report(self, service, tmp_path) -> None:
+    def test_a_shortened_sample_carries_the_backend_report(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, results = service
-        truncation = EnvelopeTruncation(frames=252, source_frames=410, instruments=2)
+        truncation = EnvelopeTruncation(
+            frames=252,
+            source_frames=410,
+            instruments=2,
+        )
 
-        export_service.export_sample(tmp_path, StubBackend(truncation=truncation), build_sample(3))
+        export_service.export_sample(
+            tmp_path,
+            StubBackend(truncation=truncation),
+            build_sample(3),
+        )
 
         assert results[0].truncation == truncation
 
-    def test_a_wav_export_reports_no_truncation(self, service, tmp_path) -> None:
+    def test_a_wav_export_reports_no_truncation(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
         export_service, results = service
 
         with patch("sampletones_application.services.export.service.write_wave"):
-            export_service.export_wav(tmp_path / "track.wav", 44100, np.zeros(100))
+            export_service.export_wav(
+                tmp_path / "track.wav",
+                44100,
+                np.zeros(100),
+            )
 
         assert results[0].truncation is None
 
 
 class TestExportServiceConcurrency:
-    def test_second_export_while_first_running_is_rejected(self, tmp_path) -> None:
+    def test_second_export_while_first_running_is_rejected(
+        self,
+        tmp_path,
+    ) -> None:
         export_service = ExportService()
         results: List[Any] = []
         export_service.subscribe(results.append)
 
-        with patch.object(export_service._executor, "execute", return_value=False):
-            export_service.export_wav(tmp_path / "track.wav", 44100, np.zeros(10))
+        with patch.object(
+            export_service._executor,
+            "execute",
+            return_value=False,
+        ):
+            export_service.export_wav(
+                tmp_path / "track.wav",
+                44100,
+                np.zeros(10),
+            )
 
         assert results == []
 
-    def test_multiple_simultaneous_calls_do_not_stack_up(self, tmp_path) -> None:
+    def test_multiple_simultaneous_calls_do_not_stack_up(
+        self,
+        tmp_path,
+    ) -> None:
         export_service = ExportService()
         call_count = 0
 
@@ -371,8 +494,16 @@ class TestExportServiceConcurrency:
 
         export_service.subscribe(on_result)
 
-        with patch.object(export_service._executor, "execute", return_value=False):
+        with patch.object(
+            export_service._executor,
+            "execute",
+            return_value=False,
+        ):
             for _ in range(5):
-                export_service.export_wav(tmp_path / "track.wav", 44100, np.zeros(10))
+                export_service.export_wav(
+                    tmp_path / "track.wav",
+                    44100,
+                    np.zeros(10),
+                )
 
         assert call_count == 0

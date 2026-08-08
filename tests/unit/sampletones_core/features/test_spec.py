@@ -1,4 +1,8 @@
-from sampletones_core.constants.enums import FeatureKey, GeneratorName, LibraryGeneratorName
+from sampletones_core.constants.enums import (
+    FeatureKey,
+    GeneratorName,
+    LibraryGeneratorName,
+)
 from sampletones_core.exporters.implementation.noise import NoiseExporter
 from sampletones_core.exporters.implementation.pulse import PulseExporter
 from sampletones_core.exporters.implementation.triangle import TriangleExporter
@@ -9,7 +13,10 @@ from sampletones_core.features import (
     supported_features,
     supports,
 )
-from sampletones_core.formats.famitracker.specification.sequences import FEATURE_KEY_TO_SEQUENCE_KIND, SequenceKind
+from sampletones_core.formats.famitracker.specification.sequences import (
+    FEATURE_KEY_TO_SEQUENCE_KIND,
+    SequenceKind,
+)
 
 
 def test_supported_features_follow_dimension_order() -> None:

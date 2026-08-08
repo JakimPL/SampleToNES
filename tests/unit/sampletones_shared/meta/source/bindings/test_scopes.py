@@ -59,11 +59,18 @@ IMPORTED_FILTERS: Final[Mapping[str, Tuple[str, ...]]] = {
 }
 
 
-def read_scopes(source: str, imported_item_types: Mapping[str, Tuple[str, ...]]) -> List[Scope]:
+def read_scopes(
+    source: str,
+    imported_item_types: Mapping[str, Tuple[str, ...]],
+) -> List[Scope]:
     return module_scopes(parse_source(source), imported_item_types=imported_item_types)
 
 
-def environment_of(source: str, name: str, imported_item_types: Mapping[str, Tuple[str, ...]]) -> TypeEnvironment:
+def environment_of(
+    source: str,
+    name: str,
+    imported_item_types: Mapping[str, Tuple[str, ...]],
+) -> TypeEnvironment:
     return scope_named(read_scopes(source, imported_item_types), name).environment
 
 
@@ -129,7 +136,10 @@ class TestAttributeTypes:
 class TestLoopTargets:
     def test_walking_items_states_the_key_and_the_value_type(self) -> None:
         environment = panel_environment("_filters")
-        assert (environment.type_of("tracker_format"), environment.type_of("element")) == (
+        assert (
+            environment.type_of("tracker_format"),
+            environment.type_of("element"),
+        ) == (
             "TrackerFormat",
             "FileFilterElements",
         )
@@ -141,8 +151,19 @@ class TestLoopTargets:
         assert panel_environment("_names").type_of("name") == "TrackerFormat"
 
     def test_an_imported_container_states_its_item_types(self) -> None:
-        assert environment_of(IMPORTED_SOURCE, "create", IMPORTED_FILTERS).type_of("element") == "FileFilterElements"
+        assert (
+            environment_of(
+                IMPORTED_SOURCE,
+                "create",
+                IMPORTED_FILTERS,
+            ).type_of("element")
+            == "FileFilterElements"
+        )
 
     def test_a_container_the_module_annotates_states_its_own_item_types(self) -> None:
-        environment = environment_of(LOCAL_OVER_IMPORTED_SOURCE, "create", IMPORTED_FILTERS)
+        environment = environment_of(
+            LOCAL_OVER_IMPORTED_SOURCE,
+            "create",
+            IMPORTED_FILTERS,
+        )
         assert environment.type_of("element") == "MenuElements"

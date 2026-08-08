@@ -25,17 +25,30 @@ def bundle(tmp_path: Path) -> Path:
 
 
 def _install_launcher(bundle: Path) -> Path:
-    launcher: Path = check_bundle.launcher_path(bundle, system=check_bundle.platform.system())
+    launcher: Path = check_bundle.launcher_path(
+        bundle,
+        system=check_bundle.platform.system(),
+    )
     launcher.write_bytes(b"launcher")
     return launcher
 
 
-def _stub_run(monkeypatch: pytest.MonkeyPatch, *, returncode: int) -> List[Sequence[str]]:
+def _stub_run(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    returncode: int,
+) -> List[Sequence[str]]:
     commands: List[Sequence[str]] = []
 
-    def fake_run(command: Sequence[str], **_: Any) -> subprocess.CompletedProcess[str]:
+    def fake_run(
+        command: Sequence[str],
+        **_: Any,
+    ) -> subprocess.CompletedProcess[str]:
         commands.append(command)
-        return subprocess.CompletedProcess(args=list(command), returncode=returncode)
+        return subprocess.CompletedProcess(
+            args=list(command),
+            returncode=returncode,
+        )
 
     monkeypatch.setattr(check_bundle.subprocess, "run", fake_run)
     return commands
@@ -47,14 +60,34 @@ class TestLauncherPath(BaseTestSuite):
         system: str
         expected: str
 
-    test_cases = [
-        TestCase(label="windows_launcher_carries_an_extension", system="Windows", expected="sampletones.exe"),
-        TestCase(label="linux_launcher", system="Linux", expected="sampletones"),
-        TestCase(label="macos_launcher", system="Darwin", expected="sampletones"),
-    ]
+    test_cases = (
+        TestCase(
+            label="windows_launcher_carries_an_extension",
+            system="Windows",
+            expected="sampletones.exe",
+        ),
+        TestCase(
+            label="linux_launcher",
+            system="Linux",
+            expected="sampletones",
+        ),
+        TestCase(
+            label="macos_launcher",
+            system="Darwin",
+            expected="sampletones",
+        ),
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_launcher_path(self, test_case: "TestLauncherPath.TestCase", tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_launcher_path(
+        self,
+        test_case: "TestLauncherPath.TestCase",
+        tmp_path: Path,
+    ) -> None:
         assert check_bundle.launcher_path(tmp_path, system=test_case.system).name == test_case.expected
 
 
@@ -66,7 +99,10 @@ class TestMissingNotices:
         (bundle / "LICENSE").unlink()
         (bundle / "THIRD-PARTY-LICENSES.txt").unlink()
 
-        assert check_bundle.missing_notices(bundle) == ["LICENSE", "THIRD-PARTY-LICENSES.txt"]
+        assert check_bundle.missing_notices(bundle) == [
+            "LICENSE",
+            "THIRD-PARTY-LICENSES.txt",
+        ]
 
     def test_a_notice_directory_counts_as_absent(self, bundle: Path) -> None:
         (bundle / "LICENSE").unlink()
@@ -76,7 +112,11 @@ class TestMissingNotices:
 
 
 class TestMain:
-    def test_a_complete_bundle_passes(self, bundle: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_a_complete_bundle_passes(
+        self,
+        bundle: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         launcher = _install_launcher(bundle)
         commands = _stub_run(monkeypatch, returncode=0)
 

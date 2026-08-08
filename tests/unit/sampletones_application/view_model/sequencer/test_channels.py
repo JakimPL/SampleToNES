@@ -3,7 +3,9 @@ from typing import FrozenSet
 
 import pytest
 
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from tests.suite.case import BaseRegularTestCase
 

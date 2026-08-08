@@ -5,7 +5,12 @@ from typing import Final, List, Mapping, Tuple
 import pytest
 
 from sampletones_shared.meta.source.index import source_index
-from sampletones_shared.meta.source.lookups import LookupSite, composed_values, module_lookups, tree_lookups
+from sampletones_shared.meta.source.lookups import (
+    LookupSite,
+    composed_values,
+    module_lookups,
+    tree_lookups,
+)
 from sampletones_shared.meta.source.modules import SourceModule
 from sampletones_shared.meta.source.values import UNRESOLVED, EnumTable, ResolvedValues
 from tests.suite.base import BaseTestSuite
@@ -95,7 +100,7 @@ class TestComposedValues(BaseTestSuite):
     literal_dialog = ResolvedValues(values=("dialog",), exact=True)
     literal_label = ResolvedValues(values=("label",), exact=True)
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="one_part",
             resolutions=(ResolvedValues(values=("global.dialog.label.ok",), exact=True),),
@@ -146,10 +151,14 @@ class TestComposedValues(BaseTestSuite):
             resolutions=(),
             expected=("",),
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_composed_values(self, test_case: "TestComposedValues.TestCase") -> None:
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_composed_values(self, test_case: TestCase) -> None:
         assert composed_values(test_case.resolutions, SEPARATOR) == test_case.expected
 
 
@@ -164,14 +173,21 @@ class TestModuleLookups:
 
     def test_a_part_arriving_in_a_variable_states_every_member(self) -> None:
         site = site_on_line(PANEL_SOURCE, 8)
-        assert set(site.values) == {"global.dialog.label.ok", "global.dialog.label.exit"}
+        assert set(site.values) == {
+            "global.dialog.label.ok",
+            "global.dialog.label.exit",
+        }
 
     def test_a_value_reached_through_an_enum_is_no_literal(self) -> None:
         assert site_on_line(PANEL_SOURCE, 8).exact is False
 
     def test_a_part_typed_by_an_enum_without_members_reaches_nothing(self) -> None:
         site = site_on_line(PANEL_SOURCE, 14)
-        assert (site.values, site.unresolved_parts, site.resolved) == ((), ("'element'",), False)
+        assert (site.values, site.unresolved_parts, site.resolved) == (
+            (),
+            ("'element'",),
+            False,
+        )
 
     def test_a_value_an_f_string_builds_reaches_nothing(self) -> None:
         site = site_on_line(PANEL_SOURCE, 17)
@@ -199,7 +215,9 @@ class TestTreeLookups:
         (site,) = lookups(CONSTANT_SOURCE)
         assert site.values == ("global.dialog.label.ok",)
 
-    def test_a_container_annotated_in_another_module_types_a_walked_target(self) -> None:
+    def test_a_container_annotated_in_another_module_types_a_walked_target(
+        self,
+    ) -> None:
         declaring = "from typing import Dict, Final\n\nFILTERS: Final[Dict[str, DialogElements]] = {}\n"
         reading = (
             "def labels(language_manager: LanguageManager) -> None:\n"
@@ -207,7 +225,10 @@ class TestTreeLookups:
             "        print(language_manager[Page.GLOBAL, Panel.DIALOG, TextType.LABEL, element])\n"
         )
         (site,) = lookups(declaring, reading)
-        assert set(site.values) == {"global.dialog.label.ok", "global.dialog.label.exit"}
+        assert set(site.values) == {
+            "global.dialog.label.ok",
+            "global.dialog.label.exit",
+        }
 
     def test_every_module_of_the_tree_is_read(self) -> None:
         first = "def label(language_manager: LanguageManager) -> str:\n    return language_manager['global.dialog.label.ok']"

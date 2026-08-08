@@ -11,7 +11,9 @@ from sampletones_core.reconstructions import Reconstruction
 
 
 @pytest.fixture
-def reconstruction(reconstruction_factory: Callable[[], Reconstruction]) -> Reconstruction:
+def reconstruction(
+    reconstruction_factory: Callable[[], Reconstruction],
+) -> Reconstruction:
     return reconstruction_factory()
 
 

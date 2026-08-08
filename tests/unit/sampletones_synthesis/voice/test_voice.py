@@ -16,8 +16,17 @@ VOICE_MAPPING: Final[Dict[str, Any]] = {
     "duration_seconds": DURATION_SECONDS,
     "layers": [
         {
-            "oscillator": {"kind": "geometric_sweep", "frequency_start": 67, "frequency_end": 29},
-            "envelopes": [{"kind": "exponential_decay", "time_constant_seconds": 0.066}],
+            "oscillator": {
+                "kind": "geometric_sweep",
+                "frequency_start": 67,
+                "frequency_end": 29,
+            },
+            "envelopes": [
+                {
+                    "kind": "exponential_decay",
+                    "time_constant_seconds": 0.066,
+                }
+            ],
             "gain": 1.0,
         },
         {
@@ -26,19 +35,37 @@ VOICE_MAPPING: Final[Dict[str, Any]] = {
             "gain": 0.15,
         },
     ],
-    "filters": [{"kind": "butterworth_highpass", "cutoff_hz": 5000.0, "order": 4}],
+    "filters": [
+        {
+            "kind": "butterworth_highpass",
+            "cutoff_hz": 5000.0,
+            "order": 4,
+        }
+    ],
 }
 
 
 def _tone_layer(frequency: float, gain: float) -> Layer:
-    return Layer(oscillator=SineOscillator(kind="sine", frequency=frequency), envelopes=(), gain=gain)
+    return Layer(
+        oscillator=SineOscillator(kind="sine", frequency=frequency),
+        envelopes=(),
+        gain=gain,
+    )
 
 
 class TestVoice:
-    def test_layers_sum(self, sample_rate: int, generator: np.random.Generator) -> None:
+    def test_layers_sum(
+        self,
+        sample_rate: int,
+        generator: np.random.Generator,
+    ) -> None:
         low = _tone_layer(LOW_FREQUENCY, gain=1.0)
         high = _tone_layer(HIGH_FREQUENCY, gain=0.25)
-        voice = Voice(duration_seconds=DURATION_SECONDS, layers=(low, high), filters=())
+        voice = Voice(
+            duration_seconds=DURATION_SECONDS,
+            layers=(low, high),
+            filters=(),
+        )
 
         audio = voice.render(sample_rate=sample_rate, generator=generator)
         time = np.arange(round(DURATION_SECONDS * sample_rate), dtype=np.float64) / sample_rate
@@ -50,15 +77,25 @@ class TestVoice:
         sample_rate: int,
         generator: np.random.Generator,
     ) -> None:
-        voice = Voice(duration_seconds=DURATION_SECONDS, layers=(_tone_layer(LOW_FREQUENCY, 1.0),), filters=())
+        voice = Voice(
+            duration_seconds=DURATION_SECONDS,
+            layers=(_tone_layer(LOW_FREQUENCY, 1.0),),
+            filters=(),
+        )
         audio = voice.render(sample_rate=sample_rate, generator=generator)
         assert audio.dtype == np.float64
         assert audio.shape == (round(DURATION_SECONDS * sample_rate),)
 
     def test_seeded_render_is_deterministic(self, sample_rate: int) -> None:
         voice = Voice.model_validate(VOICE_MAPPING)
-        first = voice.render(sample_rate=sample_rate, generator=np.random.default_rng(7))
-        second = voice.render(sample_rate=sample_rate, generator=np.random.default_rng(7))
+        first = voice.render(
+            sample_rate=sample_rate,
+            generator=np.random.default_rng(7),
+        )
+        second = voice.render(
+            sample_rate=sample_rate,
+            generator=np.random.default_rng(7),
+        )
         assert np.array_equal(first, second)
 
     def test_mapping_round_trip_preserves_the_voice(self) -> None:
@@ -69,7 +106,14 @@ class TestVoice:
         with pytest.raises(ValidationError):
             Voice(duration_seconds=DURATION_SECONDS, layers=(), filters=())
 
-    def test_duration_below_two_samples_is_rejected(self, generator: np.random.Generator) -> None:
-        voice = Voice(duration_seconds=1e-6, layers=(_tone_layer(LOW_FREQUENCY, 1.0),), filters=())
+    def test_duration_below_two_samples_is_rejected(
+        self,
+        generator: np.random.Generator,
+    ) -> None:
+        voice = Voice(
+            duration_seconds=1e-6,
+            layers=(_tone_layer(LOW_FREQUENCY, 1.0),),
+            filters=(),
+        )
         with pytest.raises(ValueError):
             voice.render(sample_rate=22050, generator=generator)

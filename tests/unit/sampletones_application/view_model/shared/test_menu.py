@@ -2,7 +2,9 @@ from dataclasses import dataclass
 
 import pytest
 
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 
 EVERY_CHANNEL_AUDIBLE = SequencerChannelsViewModel(muted=frozenset())

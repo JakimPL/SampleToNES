@@ -70,7 +70,11 @@ class TestNoiseExporterExtractData:
 
 class TestNoiseExporterDeriveInitialPitch:
     def test_reference_is_the_first_sounding_period(self) -> None:
-        instructions = [_off(), _noise(period=7, volume=10), _noise(period=2, volume=10)]
+        instructions = [
+            _off(),
+            _noise(period=7, volume=10),
+            _noise(period=2, volume=10),
+        ]
         assert NoiseExporter.derive_initial_pitch(instructions) == 7
 
     def test_empty_instruction_list_references_period_zero(self) -> None:
@@ -85,7 +89,9 @@ class TestNoiseExporterGetFeatureMap:
         assert FeatureKey.ARPEGGIO in feature_map
         assert FeatureKey.DUTY_CYCLE in feature_map
 
-    def test_arpeggio_is_relative_to_the_given_reference_modulo_num_periods(self) -> None:
+    def test_arpeggio_is_relative_to_the_given_reference_modulo_num_periods(
+        self,
+    ) -> None:
         instructions = [
             _noise(period=2, volume=10),
             _noise(period=5, volume=8),

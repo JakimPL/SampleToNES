@@ -6,9 +6,13 @@ import pytest
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.feature import FeatureData
-from sampletones_application.logic.reconstruction.instruments import ReconstructionInstrumentsLogic
+from sampletones_application.logic.reconstruction.instruments import (
+    ReconstructionInstrumentsLogic,
+)
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
+from sampletones_application.view_model.reconstruction.instruments import (
+    ReconstructionInstrumentsViewModel,
+)
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction

@@ -83,7 +83,12 @@ class TestMenuDispatchPreservesPayload:
         panel._add_transpose_items(2, GeneratorName.PULSE1)
         recorder.dispatch_as_dpg()
 
-        assert deltas == [SEMITONE_STEP, -SEMITONE_STEP, OCTAVE_SEMITONES, -OCTAVE_SEMITONES]
+        assert deltas == [
+            SEMITONE_STEP,
+            -SEMITONE_STEP,
+            OCTAVE_SEMITONES,
+            -OCTAVE_SEMITONES,
+        ]
 
     def test_volume_items_pass_the_configured_step(self, recorder: _MenuItemRecorder) -> None:
         panel = _panel()

@@ -23,7 +23,12 @@ def _logic() -> Tuple[ProjectController, SequencerSamplesLogic]:
     return controller, logic
 
 
-def _logic_with_mocks() -> Tuple[ProjectController, SequencerSamplesLogic, MagicMock, MagicMock]:
+def _logic_with_mocks() -> Tuple[
+    ProjectController,
+    SequencerSamplesLogic,
+    MagicMock,
+    MagicMock,
+]:
     controller = ProjectController(ProjectManager())
     session_manager = MagicMock()
     audio_device_manager = MagicMock()
@@ -36,7 +41,11 @@ def _logic_with_mocks() -> Tuple[ProjectController, SequencerSamplesLogic, Magic
     return controller, logic, session_manager, audio_device_manager
 
 
-def _place_instrument(controller: ProjectController, generator: GeneratorName, sample_id: str) -> None:
+def _place_instrument(
+    controller: ProjectController,
+    generator: GeneratorName,
+    sample_id: str,
+) -> None:
     pattern_index = controller.project.song.order[0][generator]
     controller.set_row(
         generator,
@@ -47,19 +56,28 @@ def _place_instrument(controller: ProjectController, generator: GeneratorName, s
 
 
 class TestSampleName:
-    def test_returns_the_sample_name(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_returns_the_sample_name(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         assert logic.sample_name(sample.id) == "lead"
 
 
 class TestIsSampleUsed:
-    def test_false_for_unreferenced_sample(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_false_for_unreferenced_sample(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         assert logic.is_sample_used(sample.id) is False
 
-    def test_true_after_placing_in_a_pattern(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_true_after_placing_in_a_pattern(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         _place_instrument(controller, GeneratorName.PULSE1, sample.id)
@@ -67,7 +85,10 @@ class TestIsSampleUsed:
 
 
 class TestRemoveSample:
-    def test_removes_unused_sample_from_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_removes_unused_sample_from_pool(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
 
@@ -89,36 +110,57 @@ class TestRemoveSample:
 
 
 class TestMoveSample:
-    def test_move_sample_reorders_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_move_sample_reorders_pool(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         first = controller.add_sample(reconstruction_factory(), name="first")
         controller.add_sample(reconstruction_factory(), name="second")
 
         logic.move_sample(first.id, 1)
 
-        assert [sample.name for sample in controller.project.samples] == ["second", "first"]
+        assert [sample.name for sample in controller.project.samples] == [
+            "second",
+            "first",
+        ]
 
 
 class TestDuplicateSample:
-    def test_duplicate_sample_appends_copy(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_duplicate_sample_appends_copy(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         source = controller.add_sample(reconstruction_factory(), name="lead")
 
         logic.duplicate_sample(source.id)
 
-        assert [sample.name for sample in controller.project.samples] == ["lead", "lead"]
+        assert [sample.name for sample in controller.project.samples] == [
+            "lead",
+            "lead",
+        ]
 
 
 class TestBuildSamples:
-    def test_lists_added_samples_in_insertion_order(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_lists_added_samples_in_insertion_order(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         first = controller.add_sample(reconstruction_factory(), name="first")
         second = controller.add_sample(reconstruction_factory(), name="second")
 
         view_model = logic.build_samples()
 
-        assert [entry.sample_id for entry in view_model.samples] == [first.id, second.id]
-        assert [entry.name for entry in view_model.samples] == ["first", "second"]
+        assert [entry.sample_id for entry in view_model.samples] == [
+            first.id,
+            second.id,
+        ]
+        assert [entry.name for entry in view_model.samples] == [
+            "first",
+            "second",
+        ]
 
 
 class TestPlaySample:
@@ -186,7 +228,10 @@ class TestAutoplay:
 
         audio_device_manager.play.assert_not_called()
 
-    def test_request_edit_cancels_pending_preview(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_request_edit_cancels_pending_preview(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
         session_manager.autoplay = True
         sample = controller.add_sample(reconstruction_factory(), name="lead")

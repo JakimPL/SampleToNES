@@ -5,7 +5,10 @@ import pytest
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import NUM_PERIODS
-from sampletones_core.formats.bitphase.envelopes import ChannelEnvelopes, features_to_envelopes
+from sampletones_core.formats.bitphase.envelopes import (
+    ChannelEnvelopes,
+    features_to_envelopes,
+)
 from sampletones_core.formats.bitphase.specification.instruments import (
     FLAT_PULSE_WIDTH,
     LOOP_FROM_START,

@@ -332,7 +332,11 @@ class TestCuesAwaitTheTable:
         """A mute set pushed before the table exists is reapplied by the next rebuild."""
         instance = _DearPyGuiRecorder(table_exists=False)
         monkeypatch.setattr(tracker_module.dpg, "does_item_exist", instance.does_item_exist)
-        monkeypatch.setattr(tracker_module.dpg, "highlight_table_column", instance.highlight_table_column)
+        monkeypatch.setattr(
+            tracker_module.dpg,
+            "highlight_table_column",
+            instance.highlight_table_column,
+        )
         monkeypatch.setattr(tracker_module.dpg, "bind_item_theme", instance.bind_item_theme)
         panel = _panel(frozenset())
 

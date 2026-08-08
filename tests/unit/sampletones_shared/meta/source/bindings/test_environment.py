@@ -24,10 +24,18 @@ class TestTypeOf:
 
 class TestSpellingsOf:
     def test_every_holder_of_a_type_is_named(self) -> None:
-        assert ENVIRONMENT.spellings_of("LanguageManager") == ("language_manager", "self._language_manager")
+        assert ENVIRONMENT.spellings_of("LanguageManager") == (
+            "language_manager",
+            "self._language_manager",
+        )
 
     def test_holders_arrive_in_the_order_they_were_read(self) -> None:
-        environment = TypeEnvironment(types={"second": "Manager", "first": "Manager"})
+        environment = TypeEnvironment(
+            types={
+                "second": "Manager",
+                "first": "Manager",
+            }
+        )
         assert environment.spellings_of("Manager") == ("second", "first")
 
     def test_a_type_no_spelling_holds_names_nobody(self) -> None:

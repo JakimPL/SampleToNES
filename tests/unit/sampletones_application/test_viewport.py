@@ -54,17 +54,24 @@ class FitCase:
     height: int
 
 
-_FIT_CASES = (
-    FitCase("oversized_from_larger_monitor", (_PRIMARY,), _PRIMARY, 200, 200, 2560, 1440),
-    FitCase("equal_to_monitor", (_PRIMARY,), _PRIMARY, 0, 0, 1920, 1080),
-    FitCase("off_screen_top_left", (_PRIMARY,), _PRIMARY, -500, -500, 1280, 800),
-    FitCase("off_screen_bottom_right", (_PRIMARY,), _PRIMARY, 5000, 5000, 1280, 800),
-    FitCase("on_secondary_monitor", (_PRIMARY, _SECONDARY), _SECONDARY, 2000, 100, 4000, 3000),
-)
-
-
 class TestFitWindowToMonitor:
-    @pytest.mark.parametrize("case", _FIT_CASES, ids=lambda case: case.name)
+    test_cases = (
+        FitCase("oversized_from_larger_monitor", (_PRIMARY,), _PRIMARY, 200, 200, 2560, 1440),
+        FitCase("equal_to_monitor", (_PRIMARY,), _PRIMARY, 0, 0, 1920, 1080),
+        FitCase("off_screen_top_left", (_PRIMARY,), _PRIMARY, -500, -500, 1280, 800),
+        FitCase("off_screen_bottom_right", (_PRIMARY,), _PRIMARY, 5000, 5000, 1280, 800),
+        FitCase(
+            "on_secondary_monitor",
+            (_PRIMARY, _SECONDARY),
+            _SECONDARY,
+            2000,
+            100,
+            4000,
+            3000,
+        ),
+    )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.name)
     def test_result_stays_within_usable_area(
         self,
         case: FitCase,
@@ -76,7 +83,12 @@ class TestFitWindowToMonitor:
         )
         manager = _manager()
 
-        x, y, width, height = manager._fit_window_to_monitor(case.x, case.y, case.width, case.height)
+        x, y, width, height = manager._fit_window_to_monitor(
+            case.x,
+            case.y,
+            case.width,
+            case.height,
+        )
 
         usable_width, usable_height, margin_x, margin_y = _usable_bounds(case.target)
         assert width <= usable_width
@@ -86,28 +98,47 @@ class TestFitWindowToMonitor:
         assert x + width <= case.target.x + case.target.width - margin_x
         assert y + height <= case.target.y + case.target.height - margin_y
 
-    def test_window_that_already_fits_is_unchanged(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_window_that_already_fits_is_unchanged(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         monkeypatch.setattr(
             "sampletones_application.utils.monitors.get_monitors",
             lambda: [_PRIMARY],
         )
         manager = _manager()
 
-        assert manager._fit_window_to_monitor(300, 200, 1280, 800) == (300, 200, 1280, 800)
+        assert manager._fit_window_to_monitor(300, 200, 1280, 800) == (
+            300,
+            200,
+            1280,
+            800,
+        )
 
-    def test_monitor_sized_window_is_shrunk_below_monitor(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_monitor_sized_window_is_shrunk_below_monitor(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         monkeypatch.setattr(
             "sampletones_application.utils.monitors.get_monitors",
             lambda: [_PRIMARY],
         )
         manager = _manager()
 
-        _, _, width, height = manager._fit_window_to_monitor(0, 0, _PRIMARY.width, _PRIMARY.height)
+        _, _, width, height = manager._fit_window_to_monitor(
+            0,
+            0,
+            _PRIMARY.width,
+            _PRIMARY.height,
+        )
 
         assert width < _PRIMARY.width
         assert height < _PRIMARY.height
 
-    def test_window_below_minimum_is_held_at_minimum(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_window_below_minimum_is_held_at_minimum(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         monkeypatch.setattr(
             "sampletones_application.utils.monitors.get_monitors",
             lambda: [_PRIMARY],
@@ -119,20 +150,31 @@ class TestFitWindowToMonitor:
         assert width >= _MIN_WIDTH
         assert height >= _MIN_HEIGHT
 
-    def test_falls_back_to_assumed_dimensions_without_monitors(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_falls_back_to_assumed_dimensions_without_monitors(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         monkeypatch.setattr(
             "sampletones_application.utils.monitors.get_monitors",
             list,
         )
         manager = _manager()
 
-        x, y, width, height = manager._fit_window_to_monitor(200, 200, 4000, 4000)
+        x, y, width, height = manager._fit_window_to_monitor(
+            200,
+            200,
+            4000,
+            4000,
+        )
 
         assert 0 <= x and 0 <= y
         assert x + width <= 1920
         assert y + height <= 1080
 
-    def test_falls_back_to_assumed_dimensions_when_enumeration_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_falls_back_to_assumed_dimensions_when_enumeration_fails(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """A display server exposing no enumerator makes screeninfo raise, which stays recoverable."""
 
         def raise_screen_info_error() -> List[Monitor]:
@@ -144,7 +186,12 @@ class TestFitWindowToMonitor:
         )
         manager = _manager()
 
-        x, y, width, height = manager._fit_window_to_monitor(200, 200, 4000, 4000)
+        x, y, width, height = manager._fit_window_to_monitor(
+            200,
+            200,
+            4000,
+            4000,
+        )
 
         assert 0 <= x and 0 <= y
         assert x + width <= 1920
@@ -160,15 +207,26 @@ class FakeSession:
     window_height: int = 800
     set_calls: List[bool] = field(default_factory=list)
 
-    def set_window_state(self, *, fullscreen: bool, x: int, y: int, width: int, height: int) -> None:
+    def set_window_state(
+        self,
+        *,
+        fullscreen: bool,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+    ) -> None:
         self.set_calls.append(fullscreen)
         self.fullscreen = fullscreen
 
 
-def _fullscreen_manager(session: FakeSession, changes: List[int]) -> ViewportManager:
+def _fullscreen_manager(
+    session: FakeSession,
+    changes: List[int],
+) -> ViewportManager:
     manager = ViewportManager.__new__(ViewportManager)
     manager._session_manager = session  # type: ignore[assignment]
-    manager._on_fullscreen_state_changed = lambda: changes.append(1)  # type: ignore[assignment]
+    manager._on_fullscreen_state_changed = lambda: changes.append(1)
     return manager
 
 
@@ -179,14 +237,13 @@ class ToggleCase:
     expect_fullscreen: bool
 
 
-_TOGGLE_CASES = (
-    ToggleCase("enters_from_windowed", False, True),
-    ToggleCase("exits_from_fullscreen", True, False),
-)
-
-
 class TestToggleFullscreen:
-    @pytest.mark.parametrize("case", _TOGGLE_CASES, ids=lambda case: case.name)
+    test_cases = (
+        ToggleCase("enters_from_windowed", False, True),
+        ToggleCase("exits_from_fullscreen", True, False),
+    )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.name)
     def test_toggle_flips_dpg_and_session_together(
         self,
         case: ToggleCase,
@@ -207,7 +264,10 @@ class TestToggleFullscreen:
 
 
 class TestApplyFullscreenState:
-    def test_enters_fullscreen_when_session_requests_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_enters_fullscreen_when_session_requests_it(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         toggles: List[int] = []
         monkeypatch.setattr(_TOGGLE_FULLSCREEN, lambda: toggles.append(1))
         session = FakeSession(fullscreen=True)
@@ -219,7 +279,10 @@ class TestApplyFullscreenState:
         assert session.fullscreen is True
         assert session.set_calls == []
 
-    def test_stays_windowed_when_session_is_windowed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_stays_windowed_when_session_is_windowed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         toggles: List[int] = []
         monkeypatch.setattr(_TOGGLE_FULLSCREEN, lambda: toggles.append(1))
         session = FakeSession(fullscreen=False)

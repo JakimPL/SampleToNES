@@ -16,7 +16,9 @@ from sampletones_application.utils.file_dialogs.backends.portal.client import (
     RESPONSE_SIGNAL,
     FileChooserClient,
 )
-from sampletones_application.utils.file_dialogs.backends.portal.response import ChooserResult
+from sampletones_application.utils.file_dialogs.backends.portal.response import (
+    ChooserResult,
+)
 from sampletones_application.utils.file_dialogs.backends.portal.variant import Variant
 
 HANDLE: Final[str] = "/org/freedesktop/portal/desktop/request/1_42/sampletones"
@@ -190,7 +192,11 @@ class TestCall:
         connection = FakeConnection(
             replies=[_message(("ok",)), _message(("ok",)), _message((HANDLE,))],
             signals=[
-                _response(0, {"uris": ("as", ["file:///elsewhere/other.json"])}, path=OTHER_HANDLE),
+                _response(
+                    0,
+                    {"uris": ("as", ["file:///elsewhere/other.json"])},
+                    path=OTHER_HANDLE,
+                ),
                 _response(0, {"uris": ("as", ["file:///home/user/kick.json"])}),
             ],
         )

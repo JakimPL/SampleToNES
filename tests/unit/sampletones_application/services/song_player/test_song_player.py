@@ -2,7 +2,10 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from sampletones_application.services.song_player.player import SongPlayerService, _RenderedRow
+from sampletones_application.services.song_player.player import (
+    SongPlayerService,
+    _RenderedRow,
+)
 from sampletones_application.services.song_player.result import (
     SongPlaybackStopped,
     SongPositionUpdate,

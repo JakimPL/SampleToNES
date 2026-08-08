@@ -25,7 +25,15 @@ def _controller() -> ProjectController:
 
 def _reconstruction(generators: List[GeneratorName]) -> Reconstruction:
     instructions = {
-        generator: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)] for generator in generators
+        generator: [
+            PulseInstruction(
+                on=True,
+                pitch=60,
+                volume=8,
+                duty_cycle=0,
+            )
+        ]
+        for generator in generators
     }
     approximations = {generator: np.zeros(_LENGTH, dtype=np.float32) for generator in generators}
     return Reconstruction.create(
@@ -38,13 +46,21 @@ def _reconstruction(generators: List[GeneratorName]) -> Reconstruction:
     )
 
 
-def _row(controller: ProjectController, generator: GeneratorName, row_index: int = 0) -> Row:
+def _row(
+    controller: ProjectController,
+    generator: GeneratorName,
+    row_index: int = 0,
+) -> Row:
     song = controller.project.song
     pattern_index = song.order[0][generator]
     return song[generator].get_row(pattern_index, row_index)
 
 
-def _place_instrument(controller: ProjectController, generator: GeneratorName, sample_id: str) -> None:
+def _place_instrument(
+    controller: ProjectController,
+    generator: GeneratorName,
+    sample_id: str,
+) -> None:
     pattern_index = controller.project.song.order[0][generator]
     controller.set_row(
         generator,
@@ -61,7 +77,10 @@ class TestSetNoteOff:
 
         logic.set_note_off(GeneratorName.PULSE1, 0)
 
-        assert isinstance(_row(controller, GeneratorName.PULSE1).command, NoteOff)
+        assert isinstance(
+            _row(controller, GeneratorName.PULSE1).command,
+            NoteOff,
+        )
 
     def test_set_note_off_all_generators_cuts_every_channel(self) -> None:
         controller = _controller()
@@ -96,17 +115,26 @@ class TestSetSampleInstrument:
     def test_clears_channels_the_new_sample_does_not_use(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        stale = controller.add_sample(_reconstruction([GeneratorName.PULSE2]), name="bass")
+        stale = controller.add_sample(
+            _reconstruction([GeneratorName.PULSE2]),
+            name="bass",
+        )
         pattern_index = controller.project.song.order[0][GeneratorName.PULSE2]
         controller.set_row(
             GeneratorName.PULSE2,
             pattern_index,
             0,
-            command=Instrument(sample_id=stale.id, generator_name=GeneratorName.PULSE2),
+            command=Instrument(
+                sample_id=stale.id,
+                generator_name=GeneratorName.PULSE2,
+            ),
             volume=15,
         )
 
-        lead = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        lead = controller.add_sample(
+            _reconstruction([GeneratorName.PULSE1]),
+            name="lead",
+        )
         logic.set_sample_instrument(0, lead.id)
 
         assert _row(controller, GeneratorName.PULSE1).command is not None
@@ -117,7 +145,10 @@ class TestSetSampleInstrument:
     def test_none_sample_clears_the_whole_row(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        sample = controller.add_sample(
+            _reconstruction([GeneratorName.PULSE1]),
+            name="lead",
+        )
         logic.set_sample_instrument(0, sample.id)
 
         logic.set_sample_instrument(0, None)
@@ -127,7 +158,9 @@ class TestSetSampleInstrument:
 
 
 class TestSampleSubcolumn:
-    def test_synchronises_across_relevant_channels_even_without_instrument(self) -> None:
+    def test_synchronises_across_relevant_channels_even_without_instrument(
+        self,
+    ) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
@@ -154,7 +187,9 @@ class TestSampleSubcolumn:
             assert row.transpose is None
             assert row.volume is None
 
-    def test_synchronises_across_all_channels_when_no_sample_is_referenced(self) -> None:
+    def test_synchronises_across_all_channels_when_no_sample_is_referenced(
+        self,
+    ) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
 

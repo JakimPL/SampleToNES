@@ -78,7 +78,11 @@ class TestDeploymentConfigEnvironmentOverride:
         ],
     )
     def test_strict_history_boolean_coercion(
-        self, deployment_path: Path, monkeypatch: pytest.MonkeyPatch, value: str, expected: bool
+        self,
+        deployment_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        value: str,
+        expected: bool,
     ) -> None:
         monkeypatch.setenv(STRICT_HISTORY_ENV, value)
 

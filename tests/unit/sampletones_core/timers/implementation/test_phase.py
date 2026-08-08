@@ -25,7 +25,13 @@ class TestFrequencyToTimer:
             (0.001, 0x7FF),
             (1e9, 0),
         ],
-        ids=["zero_frequency", "negative_frequency", "a4_440hz", "very_low_clamps_at_max", "very_high_clamps_at_zero"],
+        ids=[
+            "zero_frequency",
+            "negative_frequency",
+            "a4_440hz",
+            "very_low_clamps_at_max",
+            "very_high_clamps_at_zero",
+        ],
     )
     def test_timer_value_correct(self, frequency: float, expected: int) -> None:
         assert PhaseTimer.frequency_to_timer(frequency) == expected
@@ -40,7 +46,12 @@ class TestGetTimerTicks:
             (1, 32),
             (100, 1616),
         ],
-        ids=["zero_returns_zero", "negative_returns_zero", "timer_1_gives_32", "timer_100_gives_1616"],
+        ids=[
+            "zero_returns_zero",
+            "negative_returns_zero",
+            "timer_1_gives_32",
+            "timer_100_gives_1616",
+        ],
     )
     def test_tick_count_correct(self, timer: int, expected: int) -> None:
         assert PhaseTimer.get_timer_ticks(timer) == expected

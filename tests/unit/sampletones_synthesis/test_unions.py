@@ -38,7 +38,11 @@ DISCRIMINATION_CASES: Final[Tuple[DiscriminationCase, ...]] = (
     DiscriminationCase(
         name="geometric_sweep",
         adapter=OSCILLATOR_ADAPTER,
-        payload={"kind": "geometric_sweep", "frequency_start": 67, "frequency_end": 29},
+        payload={
+            "kind": "geometric_sweep",
+            "frequency_start": 67,
+            "frequency_end": 29,
+        },
         expected_type=GeometricSweepOscillator,
     ),
     DiscriminationCase(
@@ -92,9 +96,19 @@ DISCRIMINATION_CASES: Final[Tuple[DiscriminationCase, ...]] = (
 
 
 class TestUnionDiscrimination:
-    @pytest.mark.parametrize("case", DISCRIMINATION_CASES, ids=lambda case: case.name)
-    def test_kind_selects_the_member_class(self, case: DiscriminationCase) -> None:
-        assert isinstance(case.adapter.validate_python(case.payload), case.expected_type)
+    @pytest.mark.parametrize(
+        "case",
+        DISCRIMINATION_CASES,
+        ids=lambda case: case.name,
+    )
+    def test_kind_selects_the_member_class(
+        self,
+        case: DiscriminationCase,
+    ) -> None:
+        assert isinstance(
+            case.adapter.validate_python(case.payload),
+            case.expected_type,
+        )
 
     @pytest.mark.parametrize(
         "adapter",
@@ -107,4 +121,10 @@ class TestUnionDiscrimination:
 
     def test_extra_field_is_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            OSCILLATOR_ADAPTER.validate_python({"kind": "sine", "frequency": 440.0, "volume": 1.0})
+            OSCILLATOR_ADAPTER.validate_python(
+                {
+                    "kind": "sine",
+                    "frequency": 440.0,
+                    "volume": 1.0,
+                }
+            )

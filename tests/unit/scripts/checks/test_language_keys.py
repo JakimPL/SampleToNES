@@ -67,7 +67,11 @@ class TestEnumTable:
         assert ENUMS["DialogElements"]["OK"] == DialogElements.OK.value
 
     def test_every_element_enum_of_the_package_is_read(self) -> None:
-        assert {"MenuElements", "SequencerTrackerElements", "InstructionsLibraryElements"}.issubset(ENUMS)
+        assert {
+            "MenuElements",
+            "SequencerTrackerElements",
+            "InstructionsLibraryElements",
+        }.issubset(ENUMS)
 
     def test_the_element_base_states_no_members(self) -> None:
         assert ENUMS[check_language_keys.ELEMENT_BASE] == {}
@@ -75,11 +79,21 @@ class TestEnumTable:
 
 class TestLanguageEntries:
     def test_every_entry_is_read_with_its_line(self, tmp_path: Path) -> None:
-        entries: Dict[str, int] = check_language_keys.language_entries(language_file(tmp_path, LANGUAGE_FILE))
+        entries: Dict[str, int] = check_language_keys.language_entries(
+            language_file(
+                tmp_path,
+                LANGUAGE_FILE,
+            )
+        )
         assert entries == {OK_KEY: 4, EXIT_KEY: 5}
 
     def test_a_comment_states_no_entry(self, tmp_path: Path) -> None:
-        entries: Dict[str, int] = check_language_keys.language_entries(language_file(tmp_path, LANGUAGE_FILE))
+        entries: Dict[str, int] = check_language_keys.language_entries(
+            language_file(
+                tmp_path,
+                LANGUAGE_FILE,
+            )
+        )
         assert all(not key.startswith("#") for key in entries)
 
     def test_a_file_holding_no_mapping_is_refused(self, tmp_path: Path) -> None:
@@ -142,21 +156,39 @@ class TestUnreachedEntries:
 
 
 class TestCheckLanguageKeys:
-    def test_a_tree_asking_for_every_entry_reports_nothing(self, tmp_path: Path) -> None:
+    def test_a_tree_asking_for_every_entry_reports_nothing(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(tmp_path, LOOKUP_SOURCE.format(key=OK_KEY))
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n')
 
         assert check_language_keys.check_language_keys(source, entries) == []
 
-    def test_a_key_the_file_omits_is_a_broken_lookup(self, tmp_path: Path) -> None:
+    def test_a_key_the_file_omits_is_a_broken_lookup(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(tmp_path, LOOKUP_SOURCE.format(key=ABSENT_KEY))
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n')
 
-        kinds = [finding.kind for finding in check_language_keys.check_language_keys(source, entries)]
+        kinds = [
+            finding.kind
+            for finding in check_language_keys.check_language_keys(
+                source,
+                entries,
+            )
+        ]
 
-        assert kinds == [check_language_keys.BROKEN_LOOKUP, check_language_keys.UNREACHED_ENTRY]
+        assert kinds == [
+            check_language_keys.BROKEN_LOOKUP,
+            check_language_keys.UNREACHED_ENTRY,
+        ]
 
-    def test_an_entry_nobody_asks_for_is_unreached(self, tmp_path: Path) -> None:
+    def test_an_entry_nobody_asks_for_is_unreached(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(tmp_path, LOOKUP_SOURCE.format(key=OK_KEY))
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n{EXIT_KEY}: "Exit"\n')
 
@@ -165,7 +197,10 @@ class TestCheckLanguageKeys:
         assert [finding.kind for finding in findings] == [check_language_keys.UNREACHED_ENTRY]
         assert findings[0].location.endswith("en.yaml:2")
 
-    def test_a_dynamic_part_reaching_no_enum_is_unresolved(self, tmp_path: Path) -> None:
+    def test_a_dynamic_part_reaching_no_enum_is_unresolved(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(
             tmp_path,
             "def label(language_manager: LanguageManager, element: AbstractElement) -> str:\n"
@@ -173,11 +208,20 @@ class TestCheckLanguageKeys:
         )
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n')
 
-        kinds = [finding.kind for finding in check_language_keys.check_language_keys(source, entries)]
+        kinds = [
+            finding.kind
+            for finding in check_language_keys.check_language_keys(
+                source,
+                entries,
+            )
+        ]
 
         assert check_language_keys.UNRESOLVED_PART in kinds
 
-    def test_a_dynamic_part_of_a_concrete_enum_reaches_its_entries(self, tmp_path: Path) -> None:
+    def test_a_dynamic_part_of_a_concrete_enum_reaches_its_entries(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(
             tmp_path,
             "def label(language_manager: LanguageManager, element: DialogElements) -> str:\n"

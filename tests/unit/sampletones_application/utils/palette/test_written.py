@@ -22,7 +22,12 @@ def _swatch(written: object, source: PaletteSource) -> _Swatch:
 
 class TestWrittenColor:
     def test_a_hex_literal_resolves_without_a_palette(self) -> None:
-        assert _Swatch.model_validate({"color": "#a97fe3"}).color.rgba == (169, 127, 227, 255)
+        assert _Swatch.model_validate({"color": "#a97fe3"}).color.rgba == (
+            169,
+            127,
+            227,
+            255,
+        )
 
     def test_a_reference_resolves_against_the_source_palette(self, source: PaletteSource) -> None:
         assert _swatch(".accent", source).color.rgba == (169, 127, 227, 255)

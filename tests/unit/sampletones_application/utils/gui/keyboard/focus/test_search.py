@@ -39,33 +39,75 @@ class TestEditedFieldKind(BaseTestSuite):
 
     test_cases = [
         TestCase(
-            label="actively edited text input", items={FOCUSED: editing(INPUT_TEXT)}, expected=FieldKind.TEXT_ENTRY
+            label="actively edited text input",
+            items={FOCUSED: editing(INPUT_TEXT)},
+            expected=FieldKind.TEXT_ENTRY,
         ),
         TestCase(
-            label="actively edited integer input", items={FOCUSED: editing(INPUT_INT)}, expected=FieldKind.TEXT_ENTRY
+            label="actively edited integer input",
+            items={FOCUSED: editing(INPUT_INT)},
+            expected=FieldKind.TEXT_ENTRY,
         ),
-        TestCase(label="open combo", items={FOCUSED: editing(COMBO)}, expected=FieldKind.CHOICE),
-        TestCase(label="focused but idle text input", items={FOCUSED: idle(INPUT_TEXT)}, expected=FieldKind.NONE),
-        TestCase(label="idle slider", items={FOCUSED: idle(SLIDER_INT)}, expected=FieldKind.NONE),
-        TestCase(label="pressed button", items={FOCUSED: editing(BUTTON)}, expected=FieldKind.NONE),
+        TestCase(
+            label="open combo",
+            items={FOCUSED: editing(COMBO)},
+            expected=FieldKind.CHOICE,
+        ),
+        TestCase(
+            label="focused but idle text input",
+            items={FOCUSED: idle(INPUT_TEXT)},
+            expected=FieldKind.NONE,
+        ),
+        TestCase(
+            label="idle slider",
+            items={FOCUSED: idle(SLIDER_INT)},
+            expected=FieldKind.NONE,
+        ),
+        TestCase(
+            label="pressed button",
+            items={FOCUSED: editing(BUTTON)},
+            expected=FieldKind.NONE,
+        ),
         TestCase(
             label="focused selectable reporting no state",
             items={FOCUSED: FakeItem(SELECTABLE)},
             expected=FieldKind.NONE,
         ),
-        TestCase(label="sequence input beside its copy button", items=SEQUENCE_ROW, expected=FieldKind.TEXT_ENTRY),
-        TestCase(label="input under nested groups", items=NESTED_GROUPS, expected=FieldKind.TEXT_ENTRY),
-        TestCase(label="input inside a card inside a group", items=GROUP_OVER_CARD, expected=FieldKind.TEXT_ENTRY),
         TestCase(
-            label="input inside a table row inside a group", items=GROUP_OVER_TABLE_ROW, expected=FieldKind.TEXT_ENTRY
+            label="sequence input beside its copy button",
+            items=SEQUENCE_ROW,
+            expected=FieldKind.TEXT_ENTRY,
+        ),
+        TestCase(
+            label="input under nested groups",
+            items=NESTED_GROUPS,
+            expected=FieldKind.TEXT_ENTRY,
+        ),
+        TestCase(
+            label="input inside a card inside a group",
+            items=GROUP_OVER_CARD,
+            expected=FieldKind.TEXT_ENTRY,
+        ),
+        TestCase(
+            label="input inside a table row inside a group",
+            items=GROUP_OVER_TABLE_ROW,
+            expected=FieldKind.TEXT_ENTRY,
         ),
         TestCase(
             label="sequence input under the instruments card body",
             items=INSTRUMENTS_CARD_BODY,
             expected=FieldKind.TEXT_ENTRY,
         ),
-        TestCase(label="tracker cell holding the cursor", items=TRACKER_CELLS, expected=FieldKind.NONE),
-        TestCase(label="group holding a pressed button", items=GROUP_HOLDING_A_PRESSED_BUTTON, expected=FieldKind.NONE),
+        TestCase(
+            label="tracker cell holding the cursor",
+            items=TRACKER_CELLS,
+            expected=FieldKind.NONE,
+        ),
+        TestCase(
+            label="group holding a pressed button",
+            items=GROUP_HOLDING_A_PRESSED_BUTTON,
+            expected=FieldKind.NONE,
+        ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)

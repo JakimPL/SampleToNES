@@ -4,7 +4,11 @@ from unittest.mock import Mock
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.utils.gui.keyboard import KeyCombination, KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard import (
+    KeyCombination,
+    KeyEvent,
+    KeyRouter,
+)
 from sampletones_application.utils.gui.keyboard import focus as focus_module
 from sampletones_application.utils.gui.keyboard.focus import FieldKind
 from sampletones_application.utils.gui.keyboard.modifiers import (
@@ -39,7 +43,11 @@ class TestShortcutDispatch:
     def test_matching_shortcut_fires_and_is_claimed(self) -> None:
         manager = _manager()
         callback = Mock()
-        manager.register(ShortcutId.SAVE_PROJECT, Shortcut(combination=KeyCombination(KEY, CTRL)), callback)
+        manager.register(
+            ShortcutId.SAVE_PROJECT,
+            Shortcut(combination=KeyCombination(KEY, CTRL)),
+            callback,
+        )
         manager.bind_all()
 
         claimed = manager._dispatch(_event(modifiers=CTRL))
@@ -50,7 +58,11 @@ class TestShortcutDispatch:
     def test_modifier_mismatch_does_not_fire(self) -> None:
         manager = _manager()
         callback = Mock()
-        manager.register(ShortcutId.SAVE_PROJECT, Shortcut(combination=KeyCombination(KEY, CTRL)), callback)
+        manager.register(
+            ShortcutId.SAVE_PROJECT,
+            Shortcut(combination=KeyCombination(KEY, CTRL)),
+            callback,
+        )
         manager.bind_all()
 
         claimed = manager._dispatch(_event())
@@ -79,7 +91,11 @@ class TestFieldFocusGate:
     def test_text_field_keeps_a_plain_space(self, field_kind: Dict[str, FieldKind]) -> None:
         manager = _manager()
         callback = Mock()
-        manager.register(ShortcutId.PLAY, Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar)), callback)
+        manager.register(
+            ShortcutId.PLAY,
+            Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar)),
+            callback,
+        )
         manager.bind_all()
         field_kind["kind"] = FieldKind.TEXT_ENTRY
 
@@ -92,7 +108,9 @@ class TestFieldFocusGate:
         manager = _manager()
         callback = Mock()
         manager.register(
-            ShortcutId.PLAY_FROM_FRAME, Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar, CTRL)), callback
+            ShortcutId.PLAY_FROM_FRAME,
+            Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar, CTRL)),
+            callback,
         )
         manager.bind_all()
         field_kind["kind"] = FieldKind.TEXT_ENTRY
@@ -105,7 +123,11 @@ class TestFieldFocusGate:
     def test_text_field_keeps_its_editing_chord(self, field_kind: Dict[str, FieldKind]) -> None:
         manager = _manager()
         callback = Mock()
-        manager.register(ShortcutId.AUDIO_SETTINGS, Shortcut(combination=KeyCombination(dpg.mvKey_A, CTRL)), callback)
+        manager.register(
+            ShortcutId.AUDIO_SETTINGS,
+            Shortcut(combination=KeyCombination(dpg.mvKey_A, CTRL)),
+            callback,
+        )
         manager.bind_all()
         field_kind["kind"] = FieldKind.TEXT_ENTRY
 
@@ -119,7 +141,9 @@ class TestFieldFocusGate:
         manager = _manager()
         callback = Mock()
         manager.register(
-            ShortcutId.TOGGLE_ADVANCED_SETTINGS, Shortcut(combination=KeyCombination(dpg.mvKey_A, CTRL_SHIFT)), callback
+            ShortcutId.TOGGLE_ADVANCED_SETTINGS,
+            Shortcut(combination=KeyCombination(dpg.mvKey_A, CTRL_SHIFT)),
+            callback,
         )
         manager.bind_all()
         field_kind["kind"] = FieldKind.TEXT_ENTRY
@@ -132,7 +156,11 @@ class TestFieldFocusGate:
     def test_focused_field_keeps_escape(self, field_kind: Dict[str, FieldKind]) -> None:
         manager = _manager()
         callback = Mock()
-        manager.register(ShortcutId.STOP, Shortcut(combination=KeyCombination(dpg.mvKey_Escape)), callback)
+        manager.register(
+            ShortcutId.STOP,
+            Shortcut(combination=KeyCombination(dpg.mvKey_Escape)),
+            callback,
+        )
         manager.bind_all()
         field_kind["kind"] = FieldKind.TEXT_ENTRY
 

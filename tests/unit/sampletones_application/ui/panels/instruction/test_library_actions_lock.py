@@ -52,7 +52,8 @@ def _panel(*, busy: bool = False) -> GUIInstructionsLibraryPanel:
 
 class TestGenerateButtonLock:
     """The generate button stays enabled only while the panel is unlocked and no long operation is
-    running. Both inputs are read live, and the tree-rebuild lock composes with the busy state."""
+    running. Both inputs are read live, and the tree-rebuild lock composes with the busy state.
+    """
 
     def test_busy_disables_generate_button(self, recorder: _ConfigureRecorder) -> None:
         panel = _panel(busy=True)

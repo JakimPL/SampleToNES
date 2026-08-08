@@ -81,7 +81,11 @@ class TestSweepOscillators:
                 initial=0.0,
             )
         )
-        assert np.allclose(audio, np.sin(numerical_phase), atol=PHASE_TOLERANCE_RADIANS)
+        assert np.allclose(
+            audio,
+            np.sin(numerical_phase),
+            atol=PHASE_TOLERANCE_RADIANS,
+        )
 
     def test_equal_endpoints_render_a_steady_tone(
         self,

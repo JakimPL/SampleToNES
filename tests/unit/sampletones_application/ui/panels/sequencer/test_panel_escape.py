@@ -4,7 +4,10 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.ui.panels.sequencer.input.order import OrderCursor, OrderInputState
+from sampletones_application.ui.panels.sequencer.input.order import (
+    OrderCursor,
+    OrderInputState,
+)
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel

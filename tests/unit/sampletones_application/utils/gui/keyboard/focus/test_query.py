@@ -35,7 +35,12 @@ class TestFocusedFieldKind(BaseTestSuite):
         expected: FieldKind
 
     test_cases = [
-        TestCase(label="nothing focused", items={}, focused_item=NO_ITEM, expected=FieldKind.NONE),
+        TestCase(
+            label="nothing focused",
+            items={},
+            focused_item=NO_ITEM,
+            expected=FieldKind.NONE,
+        ),
         TestCase(
             label="stale item destroyed by a table rebuild",
             items={},

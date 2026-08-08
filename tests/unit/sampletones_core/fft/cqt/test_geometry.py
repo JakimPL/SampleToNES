@@ -96,7 +96,12 @@ class TestResolvableBins(BaseTestSuite):
     def test_unresolvable_count(self, test_case: TestCase) -> None:
         n_bins = calculate_n_bins(test_case.sample_rate, self.CUTOFF, bins_per_octave=12)
         frequencies = calculate_cqt_frequencies(n_bins, self.CUTOFF, bins_per_octave=12)
-        mask = resolvable_bins(frequencies, test_case.sample_rate, test_case.signal_length, bins_per_octave=12)
+        mask = resolvable_bins(
+            frequencies,
+            test_case.sample_rate,
+            test_case.signal_length,
+            bins_per_octave=12,
+        )
         assert int((~mask).sum()) == test_case.expected
 
     def test_unresolvable_bins_are_the_lowest(self) -> None:

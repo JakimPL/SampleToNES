@@ -7,7 +7,9 @@ import numpy as np
 
 from sampletones_core.formats.famitracker.instrument import write_fti
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
-from sampletones_core.formats.famitracker.sequences.features import features_to_instrument_sequences
+from sampletones_core.formats.famitracker.sequences.features import (
+    features_to_instrument_sequences,
+)
 
 GOLDEN_INSTRUMENT_NAME = "Test Instrument"
 GOLDEN_VOLUME = np.array([15, 12, 8, 0])

@@ -49,7 +49,11 @@ class TestCaptureModifiers(BaseTestSuite):
         TestCase(label="right alt", held=[R_ALT], expected=ALT),
         TestCase(label="control and shift", held=[L_CONTROL, R_SHIFT], expected=CTRL_SHIFT),
         TestCase(label="control and alt", held=[R_CONTROL, L_ALT], expected=CTRL_ALT),
-        TestCase(label="every modifier", held=[L_CONTROL, L_SHIFT, L_ALT], expected=CTRL_ALT_SHIFT),
+        TestCase(
+            label="every modifier",
+            held=[L_CONTROL, L_SHIFT, L_ALT],
+            expected=CTRL_ALT_SHIFT,
+        ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -77,13 +81,22 @@ class TestModifiersDisplay(BaseTestSuite):
         TestCase(label="alt", modifiers=ALT, expected=("Alt",)),
         TestCase(label="control and shift", modifiers=CTRL_SHIFT, expected=("Ctrl", "Shift")),
         TestCase(label="control and alt", modifiers=CTRL_ALT, expected=("Ctrl", "Alt")),
-        TestCase(label="every modifier", modifiers=CTRL_ALT_SHIFT, expected=("Ctrl", "Alt", "Shift")),
+        TestCase(
+            label="every modifier",
+            modifiers=CTRL_ALT_SHIFT,
+            expected=("Ctrl", "Alt", "Shift"),
+        ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_modifiers_display(self, test_case: TestCase) -> None:
         assert modifiers_display(test_case.modifiers) == test_case.expected
 
-    def test_the_order_a_caller_names_its_modifiers_leaves_the_display_unchanged(self) -> None:
+    def test_the_order_a_caller_names_its_modifiers_leaves_the_display_unchanged(
+        self,
+    ) -> None:
         """One combination reads the same wherever it is shown, whatever order it was declared in."""
-        assert modifiers_display(frozenset({Modifier.SHIFT, Modifier.CTRL})) == ("Ctrl", "Shift")
+        assert modifiers_display(frozenset({Modifier.SHIFT, Modifier.CTRL})) == (
+            "Ctrl",
+            "Shift",
+        )

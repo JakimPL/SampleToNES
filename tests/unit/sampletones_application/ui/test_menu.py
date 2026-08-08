@@ -16,7 +16,9 @@ from sampletones_application.utils.gui.shortcuts.ids import (
     SAMPLE_EXPORT_SHORTCUT_IDS,
     ShortcutId,
 )
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_core.constants.enums import GeneratorName
 

@@ -6,7 +6,12 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
-from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY, PALETTES_DIRECTORY
+from sampletones_application.paths import (
+    BEHAVIOR_DIRECTORY,
+    LANG_EN,
+    LAYOUT_DIRECTORY,
+    PALETTES_DIRECTORY,
+)
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
 from sampletones_application.utils.palette.catalog import PaletteCatalog

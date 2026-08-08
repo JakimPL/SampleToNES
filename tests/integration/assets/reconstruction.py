@@ -110,7 +110,10 @@ def load_instrument_catalog(
         transformation_gamma=settings["transformation_gamma"],
     )
     sample_rate = library_config.sample_rate
-    library = build_mini_library(Config(library=library_config), per_generator=settings["instructions_per_generator"])
+    library = build_mini_library(
+        Config(library=library_config),
+        per_generator=settings["instructions_per_generator"],
+    )
 
     catalog: Dict[str, Sample] = {}
     for entry in spec["instruments"]:

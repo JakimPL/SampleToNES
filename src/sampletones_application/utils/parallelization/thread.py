@@ -44,9 +44,7 @@ class SingleThreadExecutor:
                 target()
             finally:
                 with SingleThreadExecutor._live_threads_lock:
-                    SingleThreadExecutor._live_threads.discard(
-                        threading.current_thread(),
-                    )
+                    SingleThreadExecutor._live_threads.discard(threading.current_thread())
 
         with self._lock:
             thread = threading.Thread(
@@ -108,6 +106,7 @@ class SingleThreadExecutor:
                     if remaining <= 0.0:
                         cls._report_surviving_workers(live_threads)
                         return
+
                 thread.join(remaining)
 
     @classmethod
@@ -138,6 +137,7 @@ def concurrent(
             def task() -> None:
                 if SingleThreadExecutor.is_shutting_down():
                     return
+
                 try:
                     function(self, *args, **kwargs)
                 except BackgroundWorkCancelled:

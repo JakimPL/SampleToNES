@@ -35,7 +35,10 @@ class TestRegisteredThemes:
         ThemeRegistry.register(default)
         ThemeRegistry.register(table)
 
-        assert (ThemeRegistry.get(default.tag), ThemeRegistry.get(table.tag)) == (default, table)
+        assert (ThemeRegistry.get(default.tag), ThemeRegistry.get(table.tag)) == (
+            default,
+            table,
+        )
 
     def test_registering_a_tag_twice_keeps_the_later_theme(self) -> None:
         replacement = _theme("global.theme.default")

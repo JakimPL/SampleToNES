@@ -25,17 +25,41 @@ class TestAnnotationTypeName(BaseTestSuite):
 
     test_cases = [
         TestCase(label="plain_name", annotation="LanguageManager", expected="LanguageManager"),
-        TestCase(label="optional", annotation="Optional[LanguageManager]", expected="LanguageManager"),
+        TestCase(
+            label="optional",
+            annotation="Optional[LanguageManager]",
+            expected="LanguageManager",
+        ),
         TestCase(label="final", annotation="Final[str]", expected="str"),
         TestCase(label="class_variable", annotation="ClassVar[Page]", expected="Page"),
         TestCase(label="annotated", annotation="Annotated[Page, 'unit']", expected="Page"),
-        TestCase(label="qualified_wrapper", annotation="typing.Optional[LanguageManager]", expected="LanguageManager"),
-        TestCase(label="qualified_name", annotation="categories.LanguageManager", expected="LanguageManager"),
+        TestCase(
+            label="qualified_wrapper",
+            annotation="typing.Optional[LanguageManager]",
+            expected="LanguageManager",
+        ),
+        TestCase(
+            label="qualified_name",
+            annotation="categories.LanguageManager",
+            expected="LanguageManager",
+        ),
         TestCase(label="generic_states_itself", annotation="Dict[str, int]", expected="Dict"),
-        TestCase(label="wrapped_generic", annotation="Final[Dict[Page, Panel]]", expected="Dict"),
-        TestCase(label="nested_wrappers", annotation="Final[Optional[LanguageManager]]", expected="LanguageManager"),
+        TestCase(
+            label="wrapped_generic",
+            annotation="Final[Dict[Page, Panel]]",
+            expected="Dict",
+        ),
+        TestCase(
+            label="nested_wrappers",
+            annotation="Final[Optional[LanguageManager]]",
+            expected="LanguageManager",
+        ),
         TestCase(label="quoted", annotation="'LanguageManager'", expected="LanguageManager"),
-        TestCase(label="quoted_inside_wrapper", annotation="Optional['LanguageManager']", expected="LanguageManager"),
+        TestCase(
+            label="quoted_inside_wrapper",
+            annotation="Optional['LanguageManager']",
+            expected="LanguageManager",
+        ),
         TestCase(label="none", annotation="None", expected=None),
         TestCase(label="call", annotation="build()", expected=None),
         TestCase(label="quoted_beyond_python", annotation="'not python('", expected=None),
@@ -66,12 +90,28 @@ class TestAnnotationItemTypes(BaseTestSuite):
             annotation="Final[Dict[TrackerFormat, FileFilterElements]]",
             expected=("TrackerFormat", "FileFilterElements"),
         ),
-        TestCase(label="homogeneous_tuple", annotation="Tuple[MenuElements, ...]", expected=("MenuElements",)),
+        TestCase(
+            label="homogeneous_tuple",
+            annotation="Tuple[MenuElements, ...]",
+            expected=("MenuElements",),
+        ),
         TestCase(label="list", annotation="List[MenuElements]", expected=("MenuElements",)),
-        TestCase(label="optional_item", annotation="List[Optional[MenuElements]]", expected=("MenuElements",)),
-        TestCase(label="nested_mapping", annotation="Dict[str, Dict[str, MenuElements]]", expected=("str", "Dict")),
+        TestCase(
+            label="optional_item",
+            annotation="List[Optional[MenuElements]]",
+            expected=("MenuElements",),
+        ),
+        TestCase(
+            label="nested_mapping",
+            annotation="Dict[str, Dict[str, MenuElements]]",
+            expected=("str", "Dict"),
+        ),
         TestCase(label="plain_name_holds_nothing", annotation="str", expected=()),
-        TestCase(label="unwrapped_scalar_holds_nothing", annotation="Optional[MenuElements]", expected=()),
+        TestCase(
+            label="unwrapped_scalar_holds_nothing",
+            annotation="Optional[MenuElements]",
+            expected=(),
+        ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)

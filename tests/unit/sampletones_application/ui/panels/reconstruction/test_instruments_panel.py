@@ -27,7 +27,9 @@ from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.formats.famitracker.specification.sequences import (
+    MAX_SEQUENCE_ITEMS,
+)
 
 SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_sequence"
 
@@ -99,7 +101,10 @@ class TestSequenceLengthWarning:
     ) -> None:
         panel._apply_input_theme(GeneratorName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 40)
         panel._apply_input_theme(GeneratorName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS)
-        assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING, TAG_GLOBAL_THEME_DEFAULT]
+        assert bound_themes == [
+            TAG_GLOBAL_THEME_INPUT_WARNING,
+            TAG_GLOBAL_THEME_DEFAULT,
+        ]
 
     def test_each_dimension_carries_its_own_length(
         self,
@@ -108,7 +113,10 @@ class TestSequenceLengthWarning:
     ) -> None:
         panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
         panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.ARPEGGIO, 8)
-        assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING, TAG_GLOBAL_THEME_DEFAULT]
+        assert bound_themes == [
+            TAG_GLOBAL_THEME_INPUT_WARNING,
+            TAG_GLOBAL_THEME_DEFAULT,
+        ]
 
 
 class TestInstrumentExport:

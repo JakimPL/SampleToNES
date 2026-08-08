@@ -10,7 +10,9 @@ import pytest
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import Fragment
 from sampletones_core.instructions import PulseInstruction
-from sampletones_core.reconstructions.reconstructor.approximation import ApproximationData
+from sampletones_core.reconstructions.reconstructor.approximation import (
+    ApproximationData,
+)
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from tests.suite.case import BaseTestCase
 

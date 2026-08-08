@@ -4,15 +4,23 @@ from typing import List
 import pytest
 
 from sampletones_application.ui.panels.instruction import choice as choice_module
-from sampletones_application.ui.panels.instruction.choice import GUIInstructionChoicePanel
+from sampletones_application.ui.panels.instruction.choice import (
+    GUIInstructionChoicePanel,
+)
 from sampletones_core.constants.enums import GeneratorClassName
-from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
+from sampletones_core.instructions import (
+    InstructionUnion,
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
 
 
 @pytest.fixture(autouse=True)
 def stub_dpg(monkeypatch: pytest.MonkeyPatch) -> None:
     """The volume, duty-cycle, and short controls are read straight from DearPyGui; the pitch and period
-    come from the stepper. Returning fixed slider values isolates the rebuild from a live GUI."""
+    come from the stepper. Returning fixed slider values isolates the rebuild from a live GUI.
+    """
     monkeypatch.setattr(choice_module.dpg, "get_value", lambda tag: 7)
     monkeypatch.setattr(choice_module.dpg, "set_value", lambda tag, value: None)
 

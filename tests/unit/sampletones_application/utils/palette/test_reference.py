@@ -1,6 +1,9 @@
 import pytest
 
-from sampletones_application.utils.palette.reference import PaletteReference, is_reference
+from sampletones_application.utils.palette.reference import (
+    PaletteReference,
+    is_reference,
+)
 
 
 class TestPaletteReference:

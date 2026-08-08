@@ -11,9 +11,15 @@ from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer import order as order_module
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
-from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS, ModifierSet
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    CTRL,
+    NO_MODIFIERS,
+    ModifierSet,
+)
 from sampletones_application.utils.palette.colors.written import LiteralColor
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
@@ -270,7 +276,12 @@ class TestRowWash:
 
         panel._apply_channel_cues()
 
-        assert recorder.row_tints[CHANNEL_TABLE_ROWS[GeneratorName.PULSE1]] == (240, 146, 86, 128)
+        assert recorder.row_tints[CHANNEL_TABLE_ROWS[GeneratorName.PULSE1]] == (
+            240,
+            146,
+            86,
+            128,
+        )
 
     def test_muted_channel_takes_the_neutral_wash(self, recorder: _DearPyGuiRecorder) -> None:
         panel = _panel(frozenset({GeneratorName.PULSE1}))
@@ -439,7 +450,12 @@ class TestRowLabelMenuItems:
 
         _right_click(panel, GeneratorName.PULSE1)
 
-        assert menu.labels == [LABEL_MUTE, LABEL_UNSOLO, LABEL_MUTE_ALL, LABEL_UNMUTE_ALL]
+        assert menu.labels == [
+            LABEL_MUTE,
+            LABEL_UNSOLO,
+            LABEL_MUTE_ALL,
+            LABEL_UNMUTE_ALL,
+        ]
 
     def test_muting_everything_is_withheld_in_full_silence(self, menu: _MenuRecorder) -> None:
         panel = _panel(frozenset(GeneratorName.items()))

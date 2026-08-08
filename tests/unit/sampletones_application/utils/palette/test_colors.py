@@ -34,7 +34,12 @@ class TestComposedColor:
         assert GrayscaleColor(color=accent).rgba == (gray, gray, gray, 255)
 
     def test_mixing_lands_between_the_two_ends(self) -> None:
-        assert BlendedColor(start=BLACK, end=WHITE, fraction=0.5).rgba == (128, 128, 128, 255)
+        assert BlendedColor(start=BLACK, end=WHITE, fraction=0.5).rgba == (
+            128,
+            128,
+            128,
+            255,
+        )
 
     def test_a_composed_colour_answers_with_the_newly_activated_palette(
         self,
