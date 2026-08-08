@@ -35,7 +35,10 @@ def generate_library(config: Config) -> None:
         logger.info(f"Library {key.filename} generated successfully")
         progress_bar.close()
 
-    def on_progress(task_status: TaskStatus, task_progress: TaskProgress) -> None:
+    def on_progress(
+        task_status: TaskStatus,
+        _task_progress: TaskProgress,
+    ) -> None:
         total = creator.total_instructions
         if total and total != progress_bar.total:
             progress_bar.total = total
@@ -56,7 +59,7 @@ def generate_library(config: Config) -> None:
         logger.info("Library generation cancelled by user")
         progress_bar.close()
 
-    def on_error(exception: Exception) -> None:
+    def on_error(_exception: Exception) -> None:
         progress_bar.close()
 
     creator.set_callbacks(

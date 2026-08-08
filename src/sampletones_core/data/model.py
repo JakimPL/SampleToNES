@@ -139,13 +139,13 @@ class DataModel(BaseModel, ABC):
 
                 return self._pack_value(value, optional_inner, field_name)
 
-            return self._pack_union(value, field_name)
+            return self._pack_union(value)
 
         if isinstance(annotation, TypeVar):
-            return self._pack_union(value, field_name)
+            return self._pack_union(value)
 
         if get_origin(annotation) is list:
-            return self._pack_list(value, annotation, field_name)
+            return self._pack_list(value, field_name)
 
         if issubclass(annotation, DataModel):
             return value.serialize_inner()
@@ -182,16 +182,28 @@ class DataModel(BaseModel, ABC):
                 if raw is None:
                     return None
 
-                return cls._unpack_value(raw, optional_inner, field_name, validation, fast)
+                return cls._unpack_value(
+                    raw,
+                    optional_inner,
+                    field_name,
+                    validation,
+                    fast,
+                )
 
-            return cls._unpack_union(raw, field_name)
+            return cls._unpack_union(raw)
 
         if isinstance(annotation, TypeVar):
-            return cls._unpack_union(raw, field_name)
+            return cls._unpack_union(raw)
 
         if get_origin(annotation) is list:
             list_class = get_args(annotation)[0]
-            return cls._unpack_list(raw, field_name, list_class, validation, fast)
+            return cls._unpack_list(
+                raw,
+                field_name,
+                list_class,
+                validation,
+                fast,
+            )
 
         if issubclass(annotation, DataModel):
             return annotation.deserialize_inner(raw, validation, fast=fast)
@@ -207,7 +219,11 @@ class DataModel(BaseModel, ABC):
 
         raise DeserializationError(f"Unsupported field type {annotation} for field '{field_name}'")
 
-    def _pack_list(self, collection: List[Any], annotation: Any, field_name: str) -> List[Any]:
+    def _pack_list(
+        self,
+        collection: List[Any],
+        field_name: str,
+    ) -> List[Any]:
         if not collection:
             return []
 
@@ -238,7 +254,14 @@ class DataModel(BaseModel, ABC):
             return []
 
         if issubclass(element_class, DataModel):
-            return [element_class.deserialize_inner(item, validation, fast=fast) for item in raw_list]
+            return [
+                element_class.deserialize_inner(
+                    item,
+                    validation,
+                    fast=fast,
+                )
+                for item in raw_list
+            ]
 
         if issubclass(element_class, (str, StrEnum)):
             return [cls._deserialize_string(item, element_class) for item in raw_list]
@@ -277,7 +300,11 @@ class DataModel(BaseModel, ABC):
         return array
 
     @classmethod
-    def _deserialize_string(cls, raw: Union[str, bytes], string_class: type) -> Union[str, StrEnum]:
+    def _deserialize_string(
+        cls,
+        raw: Union[str, bytes],
+        string_class: Type[Union[str, bytes]],
+    ) -> Union[str, StrEnum]:
         if isinstance(raw, bytes):
             try:
                 string = raw.decode("utf-8")
@@ -291,7 +318,7 @@ class DataModel(BaseModel, ABC):
 
         return string
 
-    def _pack_union(self, value: Any, field_name: str) -> SerializedData:
+    def _pack_union(self, value: Any) -> SerializedData:
         union_map: Optional[Dict[int, Type[DataModel]]] = self.__class__.union_map()
         if union_map is None:
             raise SerializationError(f"No union map defined for {self.__class__.__name__}")
@@ -308,7 +335,7 @@ class DataModel(BaseModel, ABC):
         return {"_type": tag, "_data": value.serialize_inner()}
 
     @classmethod
-    def _unpack_union(cls, raw: SerializedData, field_name: str) -> Any:
+    def _unpack_union(cls, raw: SerializedData) -> Any:
         union_map = cls.union_map()
         if union_map is None:
             raise DeserializationError(f"No union map defined for {cls.__name__}")

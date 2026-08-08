@@ -5,10 +5,15 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
+from sampletones_application.layout.general.plus_minus_buttons import (
+    PlusMinusButtonsLayout,
+)
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_HANDLER_HEADER, SUF_HANDLER_REGISTRY
+from sampletones_application.tags.general import (
+    SUF_HANDLER_HEADER,
+    SUF_HANDLER_REGISTRY,
+)
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_ORDER_BUTTON_PAIR,
     TAG_SEQUENCER_ORDER_PANEL,
@@ -53,7 +58,12 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.keyboard.modifiers import ALT, CTRL, SHIFT, Modifier
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    ALT,
+    CTRL,
+    SHIFT,
+    Modifier,
+)
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -766,17 +776,24 @@ class GUISequencerOrderPanel(GUIPanel):
     def _on_cell_clicked(
         self,
         sender: Sender,
-        app_data: bool,
+        _app_data: bool,
         user_data: OrderKey,
     ) -> None:
         dpg.set_value(sender, False)
         self._committed_state()
         generator, position = user_data
-        self._apply_state(OrderInputState(cursor=OrderCursor(generator, position)))
+        self._apply_state(
+            OrderInputState(
+                cursor=OrderCursor(
+                    generator,
+                    position,
+                )
+            )
+        )
 
     def _on_cell_right_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
     ) -> None:
         """Opens the frame-operations menu for the right-clicked frame.
@@ -798,14 +815,14 @@ class GUISequencerOrderPanel(GUIPanel):
     def _on_label_clicked(
         self,
         sender: Sender,
-        app_data: bool,
+        _app_data: bool,
         user_data: Optional[GeneratorName],
     ) -> None:
         self._channel_switch.click(sender, user_data)
 
     def _on_label_right_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
     ) -> None:
         """Opens the channel menu for the right-clicked row label.

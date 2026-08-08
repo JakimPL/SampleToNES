@@ -357,16 +357,16 @@ class GUISequencerHistoryPanel(GUIPanel):
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_HISTORY_GROUP_ACTIONS, enabled=enabled)
 
-    def _on_undo_clicked(self, sender: Sender, app_data: Any) -> None:
+    def _on_undo_clicked(self, _sender: Sender, _app_data: Any) -> None:
         self.call(self.on_undo)
 
-    def _on_redo_clicked(self, sender: Sender, app_data: Any) -> None:
+    def _on_redo_clicked(self, _sender: Sender, _app_data: Any) -> None:
         self.call(self.on_redo)
 
     def _on_entry_clicked(
         self,
-        sender: Sender,
-        app_data: Any,
+        _sender: Sender,
+        _app_data: Any,
         user_data: int,
     ) -> None:
         self.call(self.on_jump_to, user_data)

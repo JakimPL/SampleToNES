@@ -477,20 +477,22 @@ class ApplicationShell:
 
     def _create_tabs(self, on_tab_changed: Callback) -> None:
         status_bar_layout = self._layout.general.status_bar
-        with dpg.child_window(
-            height=-(status_bar_layout.height + status_bar_layout.reserved_margin),
-            border=False,
-            no_scrollbar=True,
-            no_scroll_with_mouse=True,
-        ) as tab_container:
-            with dpg.tab_bar(
+        with (
+            dpg.child_window(
+                height=-(status_bar_layout.height + status_bar_layout.reserved_margin),
+                border=False,
+                no_scrollbar=True,
+                no_scroll_with_mouse=True,
+            ) as tab_container,
+            dpg.tab_bar(
                 tag=TAG_GLOBAL_TABS,
                 callback=on_tab_changed,
-            ):
-                self._main_tab.create_tab()
-                self._reconstructions_tab.create_tab()
-                self._sequencer_tab.create_tab()
-                self._instructions_tab.create_tab()
+            ),
+        ):
+            self._main_tab.create_tab()
+            self._reconstructions_tab.create_tab()
+            self._sequencer_tab.create_tab()
+            self._instructions_tab.create_tab()
 
         ThemeRegistry.get(TAG_GLOBAL_THEME_TAB_STRIP).bind_to_item(tab_container)
         for tab_tag in (

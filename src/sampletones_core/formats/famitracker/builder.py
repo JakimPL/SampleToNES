@@ -22,13 +22,17 @@ from sampletones_core.formats.famitracker.notes import (
     pitch_to_note_cell,
     resolve_machine,
 )
-from sampletones_core.formats.famitracker.sequences.features import features_to_instrument_sequences
+from sampletones_core.formats.famitracker.sequences.features import (
+    features_to_instrument_sequences,
+)
 from sampletones_core.formats.famitracker.specification.channels import (
     CHANNEL_COUNT_2A03,
     GENERATOR_NAME_TO_CHANNEL_ID,
     ChannelId,
 )
-from sampletones_core.formats.famitracker.specification.instruments import MAX_INSTRUMENTS
+from sampletones_core.formats.famitracker.specification.instruments import (
+    MAX_INSTRUMENTS,
+)
 from sampletones_core.formats.famitracker.specification.parameters import (
     DEFAULT_COPYRIGHT,
     DEFAULT_HIGHLIGHT_FIRST,
@@ -94,7 +98,6 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
 
 
 def _note_and_octave(
-    command: Instrument,
     transpose: int,
     channel_generator: GeneratorName,
     slot: InstrumentSlot,
@@ -104,6 +107,7 @@ def _note_and_octave(
         cell = period_to_note_cell(base_pitch)
     else:
         cell = pitch_to_note_cell(base_pitch)
+
     return cell.note, cell.octave
 
 
@@ -130,7 +134,6 @@ def _row_cell(
                 )
             instrument = slot.index
             note, octave = _note_and_octave(
-                reference,
                 row.transpose or 0,
                 channel_generator,
                 slot,
@@ -200,6 +203,7 @@ def _channel_patterns(
 def _reserved_empty_index(channel: Channel) -> int:
     if not channel.patterns:
         return DPCM_EMPTY_PATTERN_INDEX
+
     return max(channel.patterns) + 1
 
 

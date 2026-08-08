@@ -200,7 +200,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         tag = self._get_generator_checkbox_tag(generator_name)
         name = generator_name.capitalized
 
-        def message_function(*args: Any, **kwargs: Any) -> str:
+        def message_function(*_args: Any, **_kwargs: Any) -> str:
             if not dpg.is_item_enabled(tag):
                 return self._language_manager[
                     "reconstructions.instruments.message.status_generator_not_available"
@@ -233,5 +233,5 @@ class GUIReconstructionPlotPanel(GUIPanel):
         selected_generators = self._read_selected_generators()
         self.call(self.on_generators_changed, selected_generators)
 
-    def _on_autoscale_changed(self, sender: Sender, app_data: bool) -> None:
+    def _on_autoscale_changed(self, _sender: Sender, app_data: bool) -> None:
         self.waveform_display.set_autoscale(app_data)

@@ -95,8 +95,8 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
     def load_library_fragment(
         self,
         fragment: InstructionLibraryFragment[Any],
-        sample_rate: int,
-        frame_length: int,
+        _sample_rate: int,
+        _frame_length: int,
     ) -> None:
         self.clear_layers()
 
@@ -112,7 +112,12 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
 
         self._update_ranges()
 
-    def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+    def _on_hover(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        _user_data: Any,
+    ) -> None:
         self._status_bar.set(self._language_manager["global.graph.message.spectrum_navigation"])
 
     def _update_ranges(self) -> None:

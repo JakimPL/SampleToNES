@@ -7,7 +7,10 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_HANDLER_HEADER, SUF_HANDLER_REGISTRY
+from sampletones_application.tags.general import (
+    SUF_HANDLER_HEADER,
+    SUF_HANDLER_REGISTRY,
+)
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_GRID_GROUP_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
@@ -63,7 +66,12 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL_SHIFT,
     Modifier,
 )
-from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS
+from sampletones_application.utils.gui.shortcuts.keys import (
+    HEX_KEYS,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    SIGN_KEYS,
+)
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.faded import FadedColor
@@ -89,9 +97,9 @@ OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[GeneratorName], SubColumn], None]
 OnSetRowCallback = Callable[[int, Optional[GeneratorName], Optional[str], Optional[int], Optional[int]], None]
 OnSetNoteOffCallback = Callable[[int, Optional[GeneratorName]], None]
-OnCellSelectedCallback = Callable[[int, Optional[GeneratorName]], None]
+OnCellSelectedCallback = VoidCallback
 OnPlayFromRowCallback = Callable[[int], None]
-OnPlayFromFrameCallback = Callable[[], None]
+OnPlayFromFrameCallback = VoidCallback
 OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
 OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
 OnChannelSoloedCallback = Callable[[GeneratorName], None]
@@ -343,14 +351,15 @@ class GUISequencerGridPanel(GUIPanel):
             glyph=self._glyphs.headers.tracker,
         ):
             dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER)
-            with dpg.child_window(
-                tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
-                parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
-                border=False,
-                width=0,
-                height=-1,
-            ):
-                with dpg.table(
+            with (
+                dpg.child_window(
+                    tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
+                    parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
+                    border=False,
+                    width=0,
+                    height=-1,
+                ),
+                dpg.table(
                     tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
                     width=0,
                     header_row=False,
@@ -364,30 +373,31 @@ class GUISequencerGridPanel(GUIPanel):
                     freeze_rows=HEADER_TABLE_ROWS,
                     row_background=True,
                     policy=dpg.mvTable_SizingFixedFit,
-                ):
-                    FontRegistry.bind_to_item(dpg.last_item(), Font.MONO_BOLD)
-                    dpg.add_table_column(width_stretch=True)
+                ),
+            ):
+                FontRegistry.bind_to_item(dpg.last_item(), Font.MONO_BOLD)
+                dpg.add_table_column(width_stretch=True)
+                dpg.add_table_column(
+                    width_fixed=True,
+                    init_width_or_weight=self._layout.table_cells.row,
+                    no_clip=True,
+                )
+                dpg.add_table_column(
+                    width_fixed=True,
+                    init_width_or_weight=self._layout.table_cells.sample,
+                    no_clip=True,
+                )
+                dpg.add_table_column(
+                    width_fixed=True,
+                    init_width_or_weight=self._layout.table_cells.divider,
+                )
+                for _ in GeneratorName.items():
                     dpg.add_table_column(
                         width_fixed=True,
-                        init_width_or_weight=self._layout.table_cells.row,
+                        init_width_or_weight=self._layout.table_cells.generator,
                         no_clip=True,
                     )
-                    dpg.add_table_column(
-                        width_fixed=True,
-                        init_width_or_weight=self._layout.table_cells.sample,
-                        no_clip=True,
-                    )
-                    dpg.add_table_column(
-                        width_fixed=True,
-                        init_width_or_weight=self._layout.table_cells.divider,
-                    )
-                    for _ in GeneratorName.items():
-                        dpg.add_table_column(
-                            width_fixed=True,
-                            init_width_or_weight=self._layout.table_cells.generator,
-                            no_clip=True,
-                        )
-                    dpg.add_table_column(width_stretch=True)
+                dpg.add_table_column(width_stretch=True)
 
         self.pattern_theme.bind_to_item(TAG_SEQUENCER_GRID_TABLE_TRACKER)
 
@@ -684,8 +694,7 @@ class GUISequencerGridPanel(GUIPanel):
             self._update_cell_display(new_cursor.row, new_cursor.generator)
 
         if new_pos != old_pos and new_cursor is not None:
-            if self.on_cell_selected is not None:
-                self.on_cell_selected(new_cursor.row, new_cursor.generator)
+            self.call(self.on_cell_selected)
 
         self._update_caret()
 
@@ -882,7 +891,7 @@ class GUISequencerGridPanel(GUIPanel):
     def _on_cell_clicked(
         self,
         sender: Sender,
-        app_data: bool,
+        _app_data: bool,
         user_data: Tuple[int, Optional[GeneratorName], SubColumn],
     ) -> None:
         dpg.set_value(sender, False)
@@ -897,14 +906,14 @@ class GUISequencerGridPanel(GUIPanel):
     def _on_header_clicked(
         self,
         sender: Sender,
-        app_data: bool,
+        _app_data: bool,
         user_data: Optional[GeneratorName],
     ) -> None:
         self._channel_switch.click(sender, user_data)
 
     def _on_header_right_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
     ) -> None:
         """Opens the channel menu for the right-clicked column header.
@@ -1045,8 +1054,8 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _on_set_instrument_menu(
         self,
-        sender: Sender,
-        app_data: None,
+        _sender: Sender,
+        _app_data: None,
         user_data: Tuple[int, Optional[GeneratorName], str],
     ) -> None:
         row_index, generator, sample_id = user_data
@@ -1054,8 +1063,8 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _on_transpose_menu(
         self,
-        sender: Sender,
-        app_data: None,
+        _sender: Sender,
+        _app_data: None,
         user_data: Tuple[int, Optional[GeneratorName], int],
     ) -> None:
         row_index, generator, delta = user_data
@@ -1063,8 +1072,8 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _on_volume_menu(
         self,
-        sender: Sender,
-        app_data: None,
+        _sender: Sender,
+        _app_data: None,
         user_data: Tuple[int, Optional[GeneratorName], int],
     ) -> None:
         row_index, generator, delta = user_data
@@ -1246,7 +1255,7 @@ class GUISequencerGridPanel(GUIPanel):
     def _on_row_number_clicked(
         self,
         sender: Sender,
-        app_data: bool,
+        _app_data: bool,
         user_data: int,
     ) -> None:
         dpg.set_value(sender, False)
@@ -1264,7 +1273,7 @@ class GUISequencerGridPanel(GUIPanel):
             )
         )
 
-    def _on_row_hovered(self, sender: Sender, app_data: int) -> None:
+    def _on_row_hovered(self, _sender: Sender, app_data: int) -> None:
         if not dpg.does_item_exist(app_data):
             return
 

@@ -302,7 +302,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             tick_labels = [str(val) for val in self.y_ticks]
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
 
-    def _on_mouse_action(self, sender: Sender) -> None:
+    def _on_mouse_action(self, _sender: Sender) -> None:
         previous_stroke = self._draw_stroke
         self._draw_stroke = None
 

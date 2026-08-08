@@ -3,7 +3,9 @@ from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
+from sampletones_application.layout.general.plus_minus_buttons import (
+    PlusMinusButtonsLayout,
+)
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_DECREMENT,
@@ -188,8 +190,8 @@ class GUIPlusMinusButtons(CallbackMixin):
     def _on_mouse_down(
         self,
         sender: Sender,
-        app_data: Any,
-        user_data: Any,
+        _app_data: Any,
+        _user_data: Any,
     ) -> None:
         if not dpg.does_item_exist(self._decrement_button_tag) or not dpg.does_item_exist(self._increment_button_tag):
             dpg_delete_item(sender)
@@ -207,9 +209,9 @@ class GUIPlusMinusButtons(CallbackMixin):
 
     def _on_mouse_release(
         self,
-        sender: Sender,
-        app_data: Any,
-        user_data: Any,
+        _sender: Sender,
+        _app_data: Any,
+        _user_data: Any,
     ) -> None:
         self._hold_timer = None
         self._hold_direction = None

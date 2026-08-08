@@ -86,7 +86,11 @@ class ConversionService(ServiceBase[ConversionResult]):
         self._eta_estimator = ETAEstimator(total=total)
         self._emit(ServiceStarted(total=total))
 
-    def _on_progress(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
+    def _on_progress(
+        self,
+        task_status: TaskStatus,
+        task_progress: TaskProgress,
+    ) -> None:
         current_item: Optional[Path] = None
         if task_progress.current_item is not None:
             current_item = to_path(task_progress.current_item)

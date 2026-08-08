@@ -48,9 +48,9 @@ except (AttributeError, ImportError, ModuleNotFoundError):
     def _format_warning_no_location(
         message: Union[Warning, str],
         category: Type[Warning],
-        filename: str,
-        lineno: int,
-        line: Optional[str] = None,
+        filename: str,  # pylint: disable=unused-argument
+        lineno: int,  # pylint: disable=unused-argument
+        line: Optional[str] = None,  # pylint: disable=unused-argument
     ) -> str:
         return f"{category.__name__}: {message}\n"
 

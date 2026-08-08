@@ -55,7 +55,7 @@ def dpg_delete_item(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
     dpg.delete_item(tag, *args, **kwargs)
 
 
-def dpg_delete_children(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
+def dpg_delete_children(tag: Sender, /, *_args: Any, **kwargs: Any) -> None:
     dpg_delete_item(tag, children_only=True, **kwargs)
 
 

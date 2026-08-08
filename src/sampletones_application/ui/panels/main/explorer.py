@@ -4,7 +4,9 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
@@ -110,20 +112,22 @@ class GUIExplorerPanel(GUITreePanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            width=self.width,
-            height=self.height,
-            parent=parent,
-            border=False,
-        ):
-            with self._collapsible_section(
+        with (
+            dpg.child_window(
+                tag=self.tag,
+                width=self.width,
+                height=self.height,
+                parent=parent,
+                border=False,
+            ),
+            self._collapsible_section(
                 self._lbl_section,
                 glyph=self._glyphs.headers.filesystem,
-            ):
-                self._create_buttons()
-                dpg.add_separator()
-                self._create_tree_window()
+            ),
+        ):
+            self._create_buttons()
+            dpg.add_separator()
+            self._create_tree_window()
 
         self._create_detail_tooltip(TAG_MAIN_EXPLORER_WINDOW_TREE)
         self.rebuild_tree()
@@ -175,23 +179,25 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(
-            tag=TAG_MAIN_EXPLORER_WINDOW_TREE,
-            horizontal_scrollbar=True,
+        with (
+            dpg.child_window(
+                tag=TAG_MAIN_EXPLORER_WINDOW_TREE,
+                horizontal_scrollbar=True,
+            ),
+            dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE),
+            dpg.tree_node(
+                label=self._lbl_section,
+                tag=self.tree_tag,
+                default_open=True,
+            ),
         ):
-            with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE):
-                with dpg.tree_node(
-                    label=self._lbl_section,
-                    tag=self.tree_tag,
-                    default_open=True,
-                ):
-                    pass
+            pass
 
     def collapse_all(
         self,
-        sender: Sender,
-        app_data: int,
-        user_data: Any,
+        _sender: Sender,
+        _app_data: int,
+        _user_data: Any,
     ) -> None:
         self._explorer_logic.collapse_all()
         children = dpg.get_item_children(self.tree_tag, 1)
@@ -321,7 +327,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _on_file_node_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
         user_data: Tuple[FileSystemNode, Sender],
     ) -> None:
@@ -342,7 +348,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _on_file_node_double_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
         user_data: Tuple[FileSystemNode, Sender],
     ) -> None:
@@ -362,7 +368,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _on_directory_node_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
         user_data: Tuple[FileSystemNode, str],
     ) -> None:
@@ -379,7 +385,7 @@ class GUIExplorerPanel(GUITreePanel):
     def _create_status_bar_message_function_for_audio_node(
         self,
     ) -> MessageCallback:
-        def message_function(*args: Any, **kwargs: Any) -> str:
+        def message_function(*_args: Any, **_kwargs: Any) -> str:
             if self._logic.autoplay_enabled:
                 return self._language_manager["main.explorer.message.status_node_audio"]
 

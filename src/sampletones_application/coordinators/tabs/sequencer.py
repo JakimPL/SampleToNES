@@ -1268,11 +1268,7 @@ class SequencerTabCoordinator:
         if not self._song_player_logic.is_playing():
             self._sequencer_grid_logic.select_frame(frame_index)
 
-    def _on_tracker_cell_focused(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
+    def _on_tracker_cell_focused(self) -> None:
         """Drops the order cursor and sample selection when the tracker grid takes focus.
 
         The tracker, order, and samples panels each register a key-router scope active only while

@@ -192,25 +192,25 @@ class GUISequencerModulePanel(GUIPanel):
 
         dpg.bind_item_handler_registry(input_tag, handler_tag)
 
-    def _on_nes_frequency_input(self, sender: Sender, app_data: int) -> None:
+    def _on_nes_frequency_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(
             self.on_nes_frequency,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)),
         )
 
-    def _on_rows_per_pattern_input(self, sender: Sender, app_data: int) -> None:
+    def _on_rows_per_pattern_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(
             self.on_rows_per_pattern,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_ROWS)),
         )
 
-    def _on_tempo_input(self, sender: Sender, app_data: int) -> None:
+    def _on_tempo_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(
             self.on_tempo,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_TEMPO)),
         )
 
-    def _on_speed_input(self, sender: Sender, app_data: int) -> None:
+    def _on_speed_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(
             self.on_speed,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_SPEED)),

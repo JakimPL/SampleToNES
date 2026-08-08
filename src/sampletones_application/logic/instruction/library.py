@@ -367,7 +367,11 @@ class LibraryLogic(CallbackMixin):
         self._eta_estimator = ETAEstimator(self._library_manager.creator.total_instructions)
         self.call(self.on_generation_state_changed)
 
-    def _on_generation_progress(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
+    def _on_generation_progress(
+        self,
+        task_status: TaskStatus,
+        task_progress: TaskProgress,
+    ) -> None:
         with self._status_lock:
             match task_status:
                 case TaskStatus.COMPLETED:

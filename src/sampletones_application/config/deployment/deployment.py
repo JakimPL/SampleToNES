@@ -33,7 +33,7 @@ class DeploymentConfig(BaseModel, frozen=True):
     def _environment_overrides() -> Dict[str, str]:
         return {
             field: value
-            for field in DeploymentConfig.model_fields.keys()
+            for field in DeploymentConfig.model_fields
             if (value := os.getenv(f"{SAMPLETONES_ENV_PREFIX}{field.upper()}"))
         }
 

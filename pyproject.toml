@@ -163,15 +163,23 @@ disable = [
     "missing-function-docstring",
     "missing-module-docstring",
     "too-few-public-methods",
+    "too-many-ancestors",
     "too-many-arguments",
+    "too-many-branches",
     "too-many-instance-attributes",
     "too-many-lines",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
     "too-many-return-statements",
     "too-many-statements",
 ]
 
 [tool.pylint.format]
 max-line-length = 120
+
+[tool.pylint.similarities]
+min-similarity-lines = 5
 
 [tool.pylint.typecheck]
 ignored-modules = ["pydantic"]

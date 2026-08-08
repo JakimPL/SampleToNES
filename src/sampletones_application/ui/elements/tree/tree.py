@@ -6,7 +6,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_SEARCH,
@@ -299,7 +301,7 @@ class GUITreePanel(GUIPanel, ABC):
         status_bar_callback: Optional[MessageCallback],
     ) -> Callback:
         def hover_callback(
-            sender: Sender,
+            _sender: Sender,
             app_data: int,
         ) -> None:
             user_data = dpg.get_item_user_data(app_data)
@@ -349,7 +351,11 @@ class GUITreePanel(GUIPanel, ABC):
         self._detail_tooltip_owner_tag = None
         dpg_configure_item(self._detail_tooltip_tag, show=False)
 
-    def _on_detail_tooltip_mouse_move(self, sender: Sender, app_data: Any) -> None:
+    def _on_detail_tooltip_mouse_move(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+    ) -> None:
         owner_tag = self._detail_tooltip_owner_tag
         if owner_tag is None:
             return
@@ -446,7 +452,7 @@ class GUITreePanel(GUIPanel, ABC):
     def _create_status_bar_message_function_for_reconstruction_node(
         self,
     ) -> MessageCallback:
-        def message_function(*args: Any, **kwargs: Any) -> str:
+        def message_function(*_args: Any, **_kwargs: Any) -> str:
             if self._logic.autoplay_enabled:
                 return self._language_manager["global.status.message.node_reconstruction"]
 
@@ -462,7 +468,11 @@ class GUITreePanel(GUIPanel, ABC):
     def _create_status_bar_message_function_for_directory_node(
         self,
     ) -> MessageCallback:
-        def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
+        def message_function(
+            *_args: Any,
+            user_data: Tuple[FileSystemNode, str],
+            **_kwargs: Any,
+        ) -> str:
             _, node_tag = user_data
             expand_or_collapse = (
                 self._language_manager["global.dialog.template.collapse"]
@@ -627,7 +637,12 @@ class GUITreePanel(GUIPanel, ABC):
             user_data=node,
         )
 
-    def _on_locate_original_audio(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_locate_original_audio(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
@@ -645,19 +660,29 @@ class GUITreePanel(GUIPanel, ABC):
             callback=lambda: self._context_mark_as_favorite(node),
         )
 
-    def _on_add_to_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_add_to_sequencer(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
         self.call(self.on_add_to_sequencer, user_data.filepath)
 
-    def _on_replace_in_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_replace_in_sequencer(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
         self.call(self.on_replace_in_sequencer, user_data.filepath)
 
-    def _on_search_changed(self, sender: Sender, query: str) -> None:
+    def _on_search_changed(self, _sender: Sender, query: str) -> None:
         if query:
             self.apply_filter(query, self._default_search_predicate)
         else:

@@ -111,7 +111,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
-    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
+    def _on_parameter_change(self, _sender: Sender, _app_data: Any) -> None:
         self.call(self.on_advanced_settings_changed, self._current_update())
 
     def _current_update(self) -> AdvancedSettingsUpdate:

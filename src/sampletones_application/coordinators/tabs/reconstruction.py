@@ -27,7 +27,9 @@ from sampletones_application.logic.reconstruction.reconstruction import (
 )
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
-from sampletones_application.parameters.reconstruction import ReconstructionTabParameters
+from sampletones_application.parameters.reconstruction import (
+    ReconstructionTabParameters,
+)
 from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.result import ExportResult
@@ -660,12 +662,7 @@ class ReconstructionTabCoordinator:
                 filepath,
                 self._language_manager["reconstructions.browser.message.file_not_found"],
             )
-        except (
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ) as exception:
+        except (IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(
                 exception,
                 f"Error while loading reconstruction data from {filepath}",

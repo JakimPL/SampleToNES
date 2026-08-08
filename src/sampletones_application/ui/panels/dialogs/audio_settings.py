@@ -248,7 +248,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             width=-1,
         )
 
-    def _on_device_changed(self, sender: Sender, app_data: str) -> None:
+    def _on_device_changed(self, _sender: Sender, app_data: str) -> None:
         self._current_device_label = app_data
         self._update_combos()
 

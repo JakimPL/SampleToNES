@@ -164,7 +164,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
             enabled=False,
         )
 
-    def _on_audio_source_changed(self, sender: Sender, app_data: str) -> None:
+    def _on_audio_source_changed(self, _sender: Sender, app_data: str) -> None:
         if app_data == self._lbl_original_audio_radio:
             audio_source = AudioSourceType.ORIGINAL
         else:

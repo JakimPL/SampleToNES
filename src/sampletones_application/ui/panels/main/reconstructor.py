@@ -145,7 +145,7 @@ class GUIReconstructorPanel(GUIPanel):
             self._language_manager["main.reconstructor.tooltip.tooltip_drive"],
         )
 
-    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
+    def _on_parameter_change(self, _sender: Sender, _app_data: Any) -> None:
         generators = [
             generator for generator in GeneratorName if dpg.get_value(self._get_generator_checkbox_tag(generator))
         ]

@@ -166,7 +166,7 @@ class GUIConverterPanel(GUIPanel):
             self._action_status_message,
         )
 
-    def _action_status_message(self, *args: Any, **kwargs: Any) -> str:
+    def _action_status_message(self, *_args: Any, **_kwargs: Any) -> str:
         return self._status_action_message
 
     def _create_summary(self) -> None:

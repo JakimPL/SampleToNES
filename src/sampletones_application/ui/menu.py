@@ -2,14 +2,17 @@ from typing import Dict, Final, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import ContextElements, MenuElements
+from sampletones_application.categories.elements.global_ import (
+    ContextElements,
+    MenuElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.trackers import (
     TRACKER_PROJECT_MENU_LABELS,
     TRACKER_SAMPLE_MENU_LABELS,
 )
-from sampletones_application.layout.glyphs import PlayerGlyphs
+from sampletones_application.layout.glyphs.player import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (

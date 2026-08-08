@@ -5,7 +5,9 @@ import pytest
 
 from sampletones_application.layout.general.collapse import CollapseLayout
 from sampletones_application.layout.general.section_header import SectionHeaderLayout
-from sampletones_application.layout.glyphs import CommonGlyphs, GlyphLayout, Glyphs
+from sampletones_application.layout.glyphs.common import CommonGlyphs
+from sampletones_application.layout.glyphs.glyph import GlyphLayout
+from sampletones_application.layout.glyphs.glyphs import Glyphs
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_COLLAPSE_HEADER,
     TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED,
@@ -88,16 +90,18 @@ def _controller(
 
 def _build_card(controller: CollapseController) -> None:
     """Mirrors the item subtree ``_collapsible_section`` builds, without fonts or the header theme."""
-    with dpg.window():
-        with dpg.child_window(tag=controller.card_tag, height=_EXPANDED_HEIGHT):
-            with dpg.child_window(tag=controller.strip_tag, height=_HEADER_BAR_HEIGHT, border=False):
-                dpg.add_text(controller.chevron_glyph, tag=controller.chevron_tag)
-            if controller.is_horizontal:
-                with dpg.child_window(tag=controller.rail_tag, width=_RAIL_WIDTH, show=False):
-                    dpg.add_text(".")
-            controller.attach()
-            with dpg.group(tag=controller.body_tag):
-                dpg.add_text("body")
+    with dpg.window(), dpg.child_window(tag=controller.card_tag, height=_EXPANDED_HEIGHT):
+        with dpg.child_window(tag=controller.strip_tag, height=_HEADER_BAR_HEIGHT, border=False):
+            dpg.add_text(controller.chevron_glyph, tag=controller.chevron_tag)
+
+        if controller.is_horizontal:
+            with dpg.child_window(tag=controller.rail_tag, width=_RAIL_WIDTH, show=False):
+                dpg.add_text(".")
+
+        controller.attach()
+        with dpg.group(tag=controller.body_tag):
+            dpg.add_text("body")
+
     controller.set_collapsed(controller.collapsed, notify=False)
 
 

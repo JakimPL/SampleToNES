@@ -580,7 +580,7 @@ class Application:
         self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
         self._palette_source.on_palette_changed = self._on_palette_changed
 
-    def _on_palette_changed(self, palette: Palette) -> None:
+    def _on_palette_changed(self, _palette: Palette) -> None:
         """Repaints what holds a colour DearPyGui has copied, once another palette is in place.
 
         Every layout and theme colour already answers with the new palette, so the work left is
@@ -592,7 +592,7 @@ class Application:
         self._viewport_manager.refresh_clear_color()
         self._sequencer_tab.repaint()
 
-    def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+    def _on_tab_changed(self, _sender: Sender, _app_data: Any, _user_data: Any) -> None:
         self._update_menu()
 
     def _build_initial_menu_state(self) -> MenuBarViewModel:
@@ -665,36 +665,36 @@ class Application:
 
     def _toggle_autoplay(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self.session_manager.toggle_autoplay()
         self._update_menu()
 
     def _toggle_follow_playback(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self.session_manager.set_follow_playback(not self.session_manager.follow_playback)
         self._update_menu()
 
     def _toggle_loop_song(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self.session_manager.set_loop_song(not self.session_manager.loop_song)
         self._update_menu()
 
     def _toggle_advanced_settings(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self._main_tab.toggle_advanced_settings()
         self._update_menu()

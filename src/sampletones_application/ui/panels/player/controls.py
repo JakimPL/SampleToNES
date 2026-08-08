@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.glyphs import PlayerGlyphs
+from sampletones_application.layout.glyphs.player import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.layout.primitives import Dimensions
 from sampletones_application.tags.compose import compose_tag

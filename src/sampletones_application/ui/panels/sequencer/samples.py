@@ -105,13 +105,14 @@ class GUISequencerSamplesPanel(GUIPanel):
         )
 
     def _create_samples_table(self) -> None:
-        with dpg.child_window(
-            tag=TAG_SEQUENCER_INSTRUMENTS_WINDOW,
-            border=False,
-            width=-1,
-            height=-1,
-        ):
-            with dpg.table(
+        with (
+            dpg.child_window(
+                tag=TAG_SEQUENCER_INSTRUMENTS_WINDOW,
+                border=False,
+                width=-1,
+                height=-1,
+            ),
+            dpg.table(
                 tag=TAG_SEQUENCER_INSTRUMENTS_TABLE,
                 width=-1,
                 height=-1,
@@ -125,22 +126,23 @@ class GUISequencerSamplesPanel(GUIPanel):
                 freeze_rows=FROZEN_HEADER_ROWS,
                 row_background=True,
                 policy=dpg.mvTable_SizingFixedFit,
-            ):
-                dpg.add_table_column(
-                    label=self._language_manager["sequencer.instruments.label.column_id"],
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.instrument.id,
-                )
-                dpg.add_table_column(
-                    label=self._language_manager["sequencer.instruments.label.column_name"],
-                    width_stretch=True,
-                    init_width_or_weight=self._layout.table_cells.instrument.name,
-                )
-                dpg.add_table_column(
-                    label=self._language_manager["sequencer.instruments.label.column_loop"],
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.instrument.loop,
-                )
+            ),
+        ):
+            dpg.add_table_column(
+                label=self._language_manager["sequencer.instruments.label.column_id"],
+                width_fixed=True,
+                init_width_or_weight=self._layout.table_cells.instrument.id,
+            )
+            dpg.add_table_column(
+                label=self._language_manager["sequencer.instruments.label.column_name"],
+                width_stretch=True,
+                init_width_or_weight=self._layout.table_cells.instrument.name,
+            )
+            dpg.add_table_column(
+                label=self._language_manager["sequencer.instruments.label.column_loop"],
+                width_fixed=True,
+                init_width_or_weight=self._layout.table_cells.instrument.loop,
+            )
         ThemeRegistry.get(TAG_SEQUENCER_INSTRUMENTS_THEME_ROW).bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
 
     def update_view(self, view_model: SequencerSamplesViewModel) -> None:
@@ -252,7 +254,7 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _on_sample_selected(
         self,
         sender: Sender,
-        app_data: bool,
+        _app_data: bool,
         user_data: Tuple[int, str],
     ) -> None:
         position, sample_id = user_data
@@ -409,23 +411,27 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._editing_sample_id = None
         self._rebuild()
 
-    def _on_rename_enter(self, sender: Sender, app_data: str) -> None:
+    def _on_rename_enter(self, _sender: Sender, _app_data: str) -> None:
         self._commit_rename()
 
-    def _on_rename_deactivated(self, sender: Sender, app_data: int) -> None:
+    def _on_rename_deactivated(self, _sender: Sender, _app_data: int) -> None:
         self._commit_rename()
 
     def _on_loop_toggled(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: bool,
         user_data: str,
     ) -> None:
-        self.call(self.on_loop_changed, user_data, app_data)
+        self.call(
+            self.on_loop_changed,
+            user_data,
+            app_data,
+        )
 
     def _on_sample_double_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: List[int],
     ) -> None:
         clicked_item = app_data[1]
@@ -436,7 +442,7 @@ class GUISequencerSamplesPanel(GUIPanel):
 
     def _on_sample_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
     ) -> None:
         mouse_button, clicked_item = app_data
