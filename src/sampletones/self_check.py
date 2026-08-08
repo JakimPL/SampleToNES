@@ -14,6 +14,7 @@ CHECK_FAILURES: Final[Tuple[Type[Exception], ...]] = (
     KeyError,
     TypeError,
     ValueError,
+    SystemError,
     SampleToNESError,
 )
 
@@ -75,6 +76,15 @@ def _palette_sources() -> "List[PaletteSource]":
     return [PaletteSource(palette) for palette in _load_palette_catalog().palettes.values()]
 
 
+def _check_keybindings() -> str:
+    """Loads every shipped scheme, which is where an unanswered action or a clashing key surfaces."""
+    from sampletones_application.paths import KEYBINDINGS_DIRECTORY
+    from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
+
+    catalog = ShortcutCatalog.load(KEYBINDINGS_DIRECTORY)
+    return f"{', '.join(catalog.names)}, {len(catalog.default.bindings)} actions each"
+
+
 def _check_layout_config() -> str:
     """Resolves the layout against every shipped palette, since each answers the colour tokens itself."""
     from sampletones_application.layout import LayoutConfig, load_layout_config
@@ -126,6 +136,7 @@ CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="application import", run=_check_application_import),
     SelfCheck(name="deployment config", run=_check_deployment_config),
     SelfCheck(name="palettes", run=_check_palettes),
+    SelfCheck(name="keybindings", run=_check_keybindings),
     SelfCheck(name="layout config", run=_check_layout_config),
     SelfCheck(name="themes", run=_check_themes),
     SelfCheck(name="language", run=_check_language),

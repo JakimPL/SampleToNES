@@ -20,6 +20,7 @@ The data package must not import a schema, and a schema package must not inline 
 | `application/` | Deployment-time environment knobs | `DeploymentConfig` |
 | `behavior/` | Non-visual runtime behavior | `BehaviorConfig` |
 | `calibration/` | DSP calibration tuning | `CorpusConfig`, `RefereeConfig` |
+| `keybindings/` | The key combinations each named action answers | `ShortcutScheme` |
 | `lang/` | Interface strings (i18n) | `LanguageManager` |
 | `layout/` | UI geometry, dimensions, fonts | `LayoutConfig` |
 | `palettes/` | The colour sets layout and theme resolve against | `Palette` |

@@ -1,0 +1,107 @@
+name: default
+
+bindings:
+  # project
+  NewProject: {combination: "Ctrl+N"}
+  OpenProject: {combination: "Ctrl+O"}
+  SaveProject: {combination: "Ctrl+S"}
+  SaveProjectAs: {combination: "Ctrl+Shift+S"}
+  ProjectProperties: {combination: "Alt+P"}
+  ExportProjectFamiTracker: {combination: "Ctrl+M"}
+  ExportProjectBitphase: {combination: "Ctrl+B"}
+  CloseProject: {combination: "Ctrl+W"}
+  Exit: {combination: "Alt+F4"}
+
+  # editing
+  Undo: {combination: "Ctrl+Z"}
+  Redo: {combination: "Ctrl+Y", aliases: ["Ctrl+Shift+Z"]}
+
+  # reconstruction
+  ReconstructFile: {combination: "Ctrl+R"}
+  ReconstructDirectory: {combination: "Ctrl+Shift+R"}
+  LoadGenerationSettings: {combination: ~}
+  SaveGenerationSettings: {combination: ~}
+  OpenReconstruction: {combination: "Ctrl+Alt+O"}
+  SaveReconstruction: {combination: "Ctrl+Alt+S"}
+  SaveReconstructionAs: {combination: "Ctrl+Alt+Shift+S"}
+  CloseReconstruction: {combination: "Ctrl+Alt+W"}
+  ExportReconstructionWav: {combination: "Ctrl+E"}
+  ExportInstrumentsFamiTracker: {combination: "Ctrl+I"}
+  ExportInstrumentsBitphasePreset: {combination: ~}
+  AddReconstructionToSequencer: {combination: ~}
+  OpenReconstructionInExplorer: {combination: ~}
+  LocateOriginalAudio: {combination: ~}
+
+  # playback
+  Play: {combination: "Space"}
+  PlayFromStart: {combination: "Shift+Space"}
+  PlayFromFrame: {combination: "Ctrl+Space"}
+  Stop: {combination: "Esc"}
+  ToggleAutoplay: {combination: "Ctrl+P"}
+  ToggleFollowPlayback: {combination: ~}
+  ToggleLoopSong: {combination: ~}
+  ToggleChannelPulse1: {combination: ~}
+  ToggleChannelPulse2: {combination: ~}
+  ToggleChannelTriangle: {combination: ~}
+  ToggleChannelNoise: {combination: ~}
+  UnmuteAllChannels: {combination: ~}
+
+  # view
+  AudioSettings: {combination: "Ctrl+A"}
+  DisplaySettings: {combination: ~}
+  ToggleAdvancedSettings: {combination: "Ctrl+Shift+A"}
+  ToggleFullscreen: {combination: "F11"}
+  AboutDialog: {combination: ~}
+  NextTab: {combination: "Ctrl+PgDn", field_transparent: true}
+  PreviousTab: {combination: "Ctrl+PgUp", field_transparent: true}
+
+  # order table
+  OrderPreviousPosition: {combination: "Left"}
+  OrderNextPosition: {combination: "Right", aliases: ["Enter"]}
+  OrderPreviousChannel: {combination: "Up"}
+  OrderNextChannel: {combination: "Down"}
+  OrderFirstPosition: {combination: "Home"}
+  OrderLastPosition: {combination: "End"}
+  OrderMoveFrameLeft: {combination: "Alt+Left"}
+  OrderMoveFrameRight: {combination: "Alt+Right"}
+  OrderMoveFrameToStart: {combination: "Alt+Home"}
+  OrderMoveFrameToEnd: {combination: "Alt+End"}
+  OrderAddFrame: {combination: "Ins"}
+  OrderInsertFrame: {combination: "+", aliases: ["Num+"]}
+  OrderRemoveFrame: {combination: "-", aliases: ["Num-"]}
+  OrderDuplicateFrame: {combination: "Ctrl+D"}
+  OrderClearFrame: {combination: "Shift+Del"}
+  OrderClearCell: {combination: "Del"}
+  OrderClearPreviousCell: {combination: "Backspace"}
+  OrderCancelEntry: {combination: "Esc"}
+
+  # tracker
+  TrackerPreviousRow: {combination: "Up"}
+  TrackerNextRow: {combination: "Down", aliases: ["Enter"]}
+  TrackerPreviousSubcolumn: {combination: "Left"}
+  TrackerNextSubcolumn: {combination: "Right"}
+  TrackerPreviousColumn: {combination: "Shift+Tab"}
+  TrackerNextColumn: {combination: "Tab"}
+  TrackerFirstRow: {combination: "Home"}
+  TrackerLastRow: {combination: "End"}
+  TrackerPageUp: {combination: "PgUp"}
+  TrackerPageDown: {combination: "PgDn"}
+  TrackerClearRow: {combination: "Del"}
+  TrackerClearPreviousRow: {combination: "Backspace"}
+  TrackerCancelEntry: {combination: "Esc"}
+  TrackerPlayFromRow: {combination: "Ctrl+Shift+Space"}
+
+  # samples
+  SamplesRenameSample: {combination: "F2"}
+  SamplesRemoveSample: {combination: "Del"}
+  SamplesMoveSampleUp: {combination: "Alt+Up"}
+  SamplesMoveSampleDown: {combination: "Alt+Down"}
+  SamplesMoveSampleToTop: {combination: "Alt+Home"}
+  SamplesMoveSampleToBottom: {combination: "Alt+End"}
+  SamplesCancelRename: {combination: "Esc"}
+
+  # dialogs
+  DialogNextControl: {combination: "Tab"}
+  DialogPreviousControl: {combination: "Shift+Tab"}
+  DialogActivate: {combination: "Enter"}
+  DialogCancel: {combination: "Esc"}

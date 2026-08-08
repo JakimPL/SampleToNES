@@ -52,6 +52,7 @@ from sampletones_application.parameters import (
 from sampletones_application.paths import (
     BEHAVIOR_DIRECTORY,
     DEPLOYMENT_CONFIG_PATH,
+    KEYBINDINGS_DIRECTORY,
     LANG_EN,
     LAYOUT_DIRECTORY,
     PALETTES_DIRECTORY,
@@ -109,7 +110,9 @@ from sampletones_application.utils.frame_limiter import FrameLimiter
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
+from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.utils.palette.source import PaletteSource
@@ -186,7 +189,13 @@ class Application:
             display_time=self.layout.behavior.ui.status_bar_display_time,
         )
         self.key_router: KeyRouter = KeyRouter()
-        self.shortcut_manager: ShortcutManager = ShortcutManager(key_router=self.key_router)
+        self._shortcut_source: ShortcutSource = ShortcutSource(
+            ShortcutCatalog.load(KEYBINDINGS_DIRECTORY).default,
+        )
+        self.shortcut_manager: ShortcutManager = ShortcutManager(
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
         self.dialogs: DialogsRenderer = DialogsRenderer(
             layout=self.layout.general,
             language_manager=self.language_manager,

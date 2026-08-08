@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, Optional
+from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -34,19 +34,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
-from sampletones_application.utils.gui.keyboard import KeyCombination, KeyRouter
-from sampletones_application.utils.gui.keyboard.keys import (
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
-)
-from sampletones_application.utils.gui.keyboard.modifiers import (
-    ALT,
-    CTRL,
-    CTRL_ALT,
-    CTRL_ALT_SHIFT,
-    CTRL_SHIFT,
-    SHIFT,
-)
+from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
     PROJECT_EXPORT_SHORTCUT_IDS,
@@ -54,7 +42,6 @@ from sampletones_application.utils.gui.shortcuts.ids import (
     ShortcutId,
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
@@ -70,14 +57,6 @@ _TAB_TAGS: Dict[Tab, str] = {
     Tab.INSTRUCTIONS: TAG_GLOBAL_TAB_INSTRUCTIONS,
 }
 _TAG_TABS: Dict[str, Tab] = {tag: Tab(tab) for tab, tag in _TAB_TAGS.items()}
-_PROJECT_EXPORT_SHORTCUTS: Final[Dict[TrackerFormat, Shortcut]] = {
-    TrackerFormat.FAMITRACKER: Shortcut(combination=KeyCombination(dpg.mvKey_M, CTRL)),
-    TrackerFormat.BITPHASE: Shortcut(combination=KeyCombination(dpg.mvKey_B, CTRL)),
-}
-_SAMPLE_EXPORT_SHORTCUTS: Final[Dict[TrackerFormat, Shortcut]] = {
-    TrackerFormat.FAMITRACKER: Shortcut(combination=KeyCombination(dpg.mvKey_I, CTRL)),
-    TrackerFormat.BITPHASE_PRESET: Shortcut(combination=None),
-}
 
 
 @dataclass(frozen=True)
@@ -213,235 +192,91 @@ class ApplicationShell:
         self._theme.bind()
 
     def _register_shortcuts(self, bindings: ShortcutBindings) -> None:
-        self._shortcut_manager.register(
-            ShortcutId.NEW_PROJECT,
-            Shortcut(combination=KeyCombination(dpg.mvKey_N, CTRL)),
-            bindings.new_project,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.OPEN_PROJECT,
-            Shortcut(combination=KeyCombination(dpg.mvKey_O, CTRL)),
-            bindings.open_project,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.SAVE_PROJECT,
-            Shortcut(combination=KeyCombination(dpg.mvKey_S, CTRL)),
-            bindings.save_project,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.SAVE_PROJECT_AS,
-            Shortcut(combination=KeyCombination(dpg.mvKey_S, CTRL_SHIFT)),
-            bindings.save_project_as,
-        )
-        self._register_export_shortcuts(bindings)
-        self._shortcut_manager.register(
-            ShortcutId.PROJECT_PROPERTIES,
-            Shortcut(combination=KeyCombination(dpg.mvKey_P, ALT)),
-            bindings.project_properties,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.CLOSE_PROJECT,
-            Shortcut(combination=KeyCombination(dpg.mvKey_W, CTRL)),
-            bindings.close_project,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.SAVE_RECONSTRUCTION,
-            Shortcut(combination=KeyCombination(dpg.mvKey_S, CTRL_ALT)),
-            bindings.save_reconstruction,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.SAVE_RECONSTRUCTION_AS,
-            Shortcut(combination=KeyCombination(dpg.mvKey_S, CTRL_ALT_SHIFT)),
-            bindings.save_reconstruction_as,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.OPEN_RECONSTRUCTION,
-            Shortcut(combination=KeyCombination(dpg.mvKey_O, CTRL_ALT)),
-            bindings.open_reconstruction,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.CLOSE_RECONSTRUCTION,
-            Shortcut(combination=KeyCombination(dpg.mvKey_W, CTRL_ALT)),
-            bindings.close_reconstruction,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.SAVE_GENERATION_SETTINGS,
-            Shortcut(combination=None),
-            bindings.save_generation_settings,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.LOAD_GENERATION_SETTINGS,
-            Shortcut(combination=None),
-            bindings.load_generation_settings,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.AUDIO_SETTINGS,
-            Shortcut(combination=KeyCombination(dpg.mvKey_A, CTRL)),
-            bindings.audio_settings,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.EXIT,
-            Shortcut(combination=KeyCombination(dpg.mvKey_F4, ALT)),
-            bindings.exit,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.RECONSTRUCT_FILE,
-            Shortcut(combination=KeyCombination(dpg.mvKey_R, CTRL)),
-            bindings.reconstruct_file,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.RECONSTRUCT_DIRECTORY,
-            Shortcut(combination=KeyCombination(dpg.mvKey_R, CTRL_SHIFT)),
-            bindings.reconstruct_directory,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-            Shortcut(combination=KeyCombination(dpg.mvKey_E, CTRL)),
-            bindings.export_wav,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
-            Shortcut(combination=None),
-            bindings.add_reconstruction_to_sequencer,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER,
-            Shortcut(combination=None),
-            bindings.open_reconstruction_in_explorer,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.LOCATE_ORIGINAL_AUDIO,
-            Shortcut(combination=None),
-            bindings.locate_original_audio,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.TOGGLE_FULLSCREEN,
-            Shortcut(combination=KeyCombination(dpg.mvKey_F11)),
-            bindings.toggle_fullscreen,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.DISPLAY_SETTINGS,
-            Shortcut(combination=None),
-            bindings.display_settings,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.TOGGLE_ADVANCED_SETTINGS,
-            Shortcut(combination=KeyCombination(dpg.mvKey_A, CTRL_SHIFT)),
-            bindings.toggle_advanced_settings,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.PLAY,
-            Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar)),
-            bindings.play,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.PLAY_FROM_START,
-            Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar, SHIFT)),
-            bindings.play_from_start,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.PLAY_FROM_FRAME,
-            Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar, CTRL)),
-            bindings.play_from_frame,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.STOP,
-            Shortcut(combination=KeyCombination(dpg.mvKey_Escape)),
-            bindings.stop,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.TOGGLE_AUTOPLAY,
-            Shortcut(combination=KeyCombination(dpg.mvKey_P, CTRL)),
-            bindings.toggle_autoplay,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
-            Shortcut(combination=None),
-            bindings.toggle_follow_playback,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.TOGGLE_LOOP_SONG,
-            Shortcut(combination=None),
-            bindings.toggle_loop_song,
-        )
-        self._register_channel_shortcuts(bindings)
-        self._shortcut_manager.register(
-            ShortcutId.UNDO,
-            Shortcut(combination=KeyCombination(dpg.mvKey_Z, CTRL)),
-            bindings.undo,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.REDO,
-            Shortcut(
-                combination=KeyCombination(dpg.mvKey_Y, CTRL),
-                aliases=(KeyCombination(dpg.mvKey_Z, CTRL_SHIFT),),
-            ),
-            bindings.redo,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.ABOUT_DIALOG,
-            Shortcut(combination=None),
-            bindings.about,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.NEXT_TAB,
-            Shortcut(
-                combination=KeyCombination(KEY_PAGE_DOWN, CTRL),
-                field_transparent=True,
-            ),
-            bindings.next_tab,
-        )
-        self._shortcut_manager.register(
-            ShortcutId.PREVIOUS_TAB,
-            Shortcut(
-                combination=KeyCombination(KEY_PAGE_UP, CTRL),
-                field_transparent=True,
-            ),
-            bindings.previous_tab,
-        )
+        """Names the call each application action makes, then binds the scope to the key router.
+
+        Which combination reaches an action is the keybinding scheme's to say, so the shell states
+        only the pairing of an action with its coordinator call.
+        """
+        for shortcut_id, callback in ApplicationShell._shortcut_callbacks(bindings).items():
+            self._shortcut_manager.register(shortcut_id, callback)
 
         self._shortcut_manager.bind_all()
 
-    def _register_export_shortcuts(self, bindings: ShortcutBindings) -> None:
-        """Registers one export action per tracker format, the entries the Export submenus list.
+    @staticmethod
+    def _shortcut_callbacks(bindings: ShortcutBindings) -> Dict[ShortcutId, Callback]:
+        """The call every application action makes, one entry per action the menus offer."""
+        return {
+            ShortcutId.NEW_PROJECT: bindings.new_project,
+            ShortcutId.OPEN_PROJECT: bindings.open_project,
+            ShortcutId.SAVE_PROJECT: bindings.save_project,
+            ShortcutId.SAVE_PROJECT_AS: bindings.save_project_as,
+            ShortcutId.PROJECT_PROPERTIES: bindings.project_properties,
+            ShortcutId.CLOSE_PROJECT: bindings.close_project,
+            ShortcutId.EXIT: bindings.exit,
+            ShortcutId.UNDO: bindings.undo,
+            ShortcutId.REDO: bindings.redo,
+            ShortcutId.RECONSTRUCT_FILE: bindings.reconstruct_file,
+            ShortcutId.RECONSTRUCT_DIRECTORY: bindings.reconstruct_directory,
+            ShortcutId.LOAD_GENERATION_SETTINGS: bindings.load_generation_settings,
+            ShortcutId.SAVE_GENERATION_SETTINGS: bindings.save_generation_settings,
+            ShortcutId.OPEN_RECONSTRUCTION: bindings.open_reconstruction,
+            ShortcutId.SAVE_RECONSTRUCTION: bindings.save_reconstruction,
+            ShortcutId.SAVE_RECONSTRUCTION_AS: bindings.save_reconstruction_as,
+            ShortcutId.CLOSE_RECONSTRUCTION: bindings.close_reconstruction,
+            ShortcutId.EXPORT_RECONSTRUCTION_WAV: bindings.export_wav,
+            ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER: bindings.add_reconstruction_to_sequencer,
+            ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER: bindings.open_reconstruction_in_explorer,
+            ShortcutId.LOCATE_ORIGINAL_AUDIO: bindings.locate_original_audio,
+            ShortcutId.PLAY: bindings.play,
+            ShortcutId.PLAY_FROM_START: bindings.play_from_start,
+            ShortcutId.PLAY_FROM_FRAME: bindings.play_from_frame,
+            ShortcutId.STOP: bindings.stop,
+            ShortcutId.TOGGLE_AUTOPLAY: bindings.toggle_autoplay,
+            ShortcutId.TOGGLE_FOLLOW_PLAYBACK: bindings.toggle_follow_playback,
+            ShortcutId.TOGGLE_LOOP_SONG: bindings.toggle_loop_song,
+            ShortcutId.AUDIO_SETTINGS: bindings.audio_settings,
+            ShortcutId.DISPLAY_SETTINGS: bindings.display_settings,
+            ShortcutId.TOGGLE_ADVANCED_SETTINGS: bindings.toggle_advanced_settings,
+            ShortcutId.TOGGLE_FULLSCREEN: bindings.toggle_fullscreen,
+            ShortcutId.ABOUT_DIALOG: bindings.about,
+            ShortcutId.NEXT_TAB: bindings.next_tab,
+            ShortcutId.PREVIOUS_TAB: bindings.previous_tab,
+            **ApplicationShell._export_callbacks(bindings),
+            **ApplicationShell._channel_callbacks(bindings),
+        }
+
+    @staticmethod
+    def _export_callbacks(bindings: ShortcutBindings) -> Dict[ShortcutId, Callback]:
+        """One export action per tracker format, the entries the Export submenus list.
 
         Each action carries the format it writes, so a menu entry and its key combination reach
-        the same coordinator call. A format registered without a key is offered by the menu
-        alone, which leaves the assignment to the keybindings options.
+        the same coordinator call.
         """
-        for tracker_format, shortcut in _PROJECT_EXPORT_SHORTCUTS.items():
-            self._shortcut_manager.register(
-                PROJECT_EXPORT_SHORTCUT_IDS[tracker_format],
-                shortcut,
-                partial(bindings.export_project, tracker_format),
-            )
+        project = {
+            shortcut_id: partial(bindings.export_project, tracker_format)
+            for tracker_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items()
+        }
+        instruments = {
+            shortcut_id: partial(bindings.export_instruments, tracker_format)
+            for tracker_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items()
+        }
+        return {**project, **instruments}
 
-        for tracker_format, shortcut in _SAMPLE_EXPORT_SHORTCUTS.items():
-            self._shortcut_manager.register(
-                SAMPLE_EXPORT_SHORTCUT_IDS[tracker_format],
-                shortcut,
-                partial(bindings.export_instruments, tracker_format),
-            )
-
-    def _register_channel_shortcuts(self, bindings: ShortcutBindings) -> None:
-        """Registers one action per tracker channel, plus the one that brings the whole mix back.
+    @staticmethod
+    def _channel_callbacks(bindings: ShortcutBindings) -> Dict[ShortcutId, Callback]:
+        """One action per tracker channel, plus the one that brings the whole mix back.
 
         Each action carries the channel it switches, so the Playback menu lists them as its
-        Channels submenu. They are registered without a key combination, which leaves the
-        assignment to the keybindings options.
+        Channels submenu.
         """
-        for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
-            self._shortcut_manager.register(
-                shortcut_id,
-                Shortcut(combination=None),
-                partial(bindings.toggle_channel, generator),
-            )
-
-        self._shortcut_manager.register(
-            ShortcutId.UNMUTE_ALL_CHANNELS,
-            Shortcut(combination=None),
-            bindings.unmute_all_channels,
-        )
+        channels: Dict[ShortcutId, Callback] = {
+            shortcut_id: partial(bindings.toggle_channel, generator)
+            for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items()
+        }
+        return {
+            **channels,
+            ShortcutId.UNMUTE_ALL_CHANNELS: bindings.unmute_all_channels,
+        }
 
     def _setup_handlers(self) -> None:
         self._key_router.bind()
