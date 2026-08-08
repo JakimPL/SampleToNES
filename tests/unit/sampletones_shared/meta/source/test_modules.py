@@ -80,9 +80,40 @@ class TestSourcePaths:
         assert source_paths([tmp_path]) == [visible]
 
 
+class TestSweptRoots:
+    """A sweep reading nothing leaves a check reporting nothing, which reads as a clean tree."""
+
+    def test_an_absent_root_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(NotADirectoryError):
+            source_paths([tmp_path / "absent"])
+
+    def test_a_root_naming_a_module_raises(self, tmp_path: Path) -> None:
+        """A package resource resolves to `__init__.py`, which a sweep reads nothing under."""
+        path = write_module(tmp_path, "first.py", MODULE_BODY)
+        with pytest.raises(NotADirectoryError):
+            source_paths([path])
+
+    def test_a_root_beside_a_readable_one_is_held_to_the_same_rule(self, tmp_path: Path) -> None:
+        write_module(tmp_path / "package", "first.py", MODULE_BODY)
+        with pytest.raises(NotADirectoryError):
+            source_paths([tmp_path / "package", tmp_path / "absent"])
+
+    def test_roots_holding_no_source_raise(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            source_paths([tmp_path])
+
+    def test_the_report_names_the_root_it_read_nothing_under(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError, match=str(tmp_path)):
+            source_paths([tmp_path])
+
+
 class TestDiscoverModules:
     def test_every_module_found_is_parsed(self, tmp_path: Path) -> None:
         write_module(tmp_path, "first.py", MODULE_BODY)
         write_module(tmp_path / "inner", "second.py", MODULE_BODY)
         modules = discover_modules([tmp_path])
         assert [module.path.name for module in modules] == ["first.py", "second.py"]
+
+    def test_a_root_holding_no_module_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            discover_modules([tmp_path])

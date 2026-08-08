@@ -19,7 +19,6 @@ import logging
 import re
 import sys
 from collections.abc import Iterator, Sequence
-from importlib.resources import files
 from itertools import chain
 from pathlib import Path
 from typing import Final, List, NamedTuple, Tuple, Union
@@ -28,9 +27,10 @@ from sampletones_application.paths import PALETTES_DIRECTORY
 from sampletones_shared.logger import logger
 from sampletones_shared.meta.source.modules import SourceModule, discover_modules
 from sampletones_shared.meta.source.nodes import terminal_name
+from sampletones_shared.meta.source.packages import package_directory
 from sampletones_shared.paths import CONFIG_DIRECTORY
 
-APPLICATION_PACKAGE: Final[Path] = Path(str(files("sampletones_application")))
+APPLICATION_PACKAGE: Final[Path] = package_directory("sampletones_application")
 
 HEX_COLOR: Final[re.Pattern[str]] = re.compile(r"[\"']#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?[\"']")
 
@@ -176,12 +176,23 @@ def find_detached_colors(
 
 
 def find_literal_colors(package: Path, palettes: Path) -> List[ColorFinding]:
-    return [
-        finding
-        for path in sorted(package.rglob(CONFIG_PATTERN))
-        if palettes not in path.parents
-        for finding in literal_colors(path)
-    ]
+    """Every hex colour the shipped configuration writes out, outside the palettes that carry values.
+
+    Args:
+        package: Configuration package to sweep.
+        palettes: Directory holding the palettes, where a colour value belongs.
+
+    Returns:
+        List[ColorFinding]: One finding per literal, in file order.
+
+    Raises:
+        FileNotFoundError: If the package holds no configuration file to read.
+    """
+    paths = sorted(package.rglob(CONFIG_PATTERN))
+    if not paths:
+        raise FileNotFoundError(f"The configuration package {package} holds no {CONFIG_PATTERN} file to read")
+
+    return [finding for path in paths if palettes not in path.parents for finding in literal_colors(path)]
 
 
 def main(argv: Sequence[str]) -> int:

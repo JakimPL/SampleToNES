@@ -4,7 +4,9 @@ from typing import Dict, Final, Tuple
 import pytest
 
 from sampletones_application.categories.elements.global_ import DialogElements
+from sampletones_application.paths import LANG_EN
 from sampletones_shared.meta.source.lookups import LookupSite
+from sampletones_shared.meta.source.modules import source_paths
 from sampletones_shared.meta.source.values import EnumTable
 from tests.suite.scripts import load_script
 
@@ -184,6 +186,16 @@ class TestCheckLanguageKeys:
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n{EXIT_KEY}: "Exit"\n')
 
         assert check_language_keys.check_language_keys(source, entries) == []
+
+
+class TestSweptRoots:
+    """A root the sweep reads nothing under reports nothing, which reads as a clean tree."""
+
+    def test_the_source_root_holds_modules(self) -> None:
+        assert source_paths([check_language_keys.SOURCE_ROOT])
+
+    def test_the_language_file_is_there_to_read(self) -> None:
+        assert LANG_EN.is_file()
 
 
 class TestMain:

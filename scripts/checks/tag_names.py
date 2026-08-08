@@ -26,9 +26,9 @@ from sampletones_application.tags.compose import TAG_SEPARATOR
 from sampletones_shared.meta.source.constants import ModuleConstant, module_constants
 from sampletones_shared.meta.source.modules import SourceModule, discover_modules, parse_module
 from sampletones_shared.meta.source.nodes import terminal_name
-from sampletones_shared.paths import REPOSITORY_ROOT
+from sampletones_shared.meta.source.packages import package_directory
 
-TAGS_PACKAGE: Final[Path] = REPOSITORY_ROOT / "src" / "sampletones_application" / "tags"
+TAGS_PACKAGE: Final[Path] = package_directory("sampletones_application", "tags")
 
 TAG_PREFIX: Final[str] = "TAG"
 TAG_NAME_CLASS: Final[str] = "TagName"

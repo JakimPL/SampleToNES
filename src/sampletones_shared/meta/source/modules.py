@@ -55,15 +55,31 @@ def source_paths(roots: Iterable[Path]) -> List[Path]:
     """Every Python file under the given roots, in path order.
 
     The sweep visits visible paths, so a virtual environment or a tooling cache sitting inside a
-    root stays aside from a whole-repository run.
+    root stays aside from a whole-repository run. A check built on a sweep that reads nothing
+    reports nothing, which reads as a clean tree, so each root must name a directory and the roots
+    together must hold source to read.
 
     Args:
         roots: Directories to search.
 
     Returns:
         List[Path]: The paths found, each listed once however many roots hold it.
+
+    Raises:
+        NotADirectoryError: If a root names something other than a directory, such as the
+            `__init__.py` a package resource resolves to.
+        FileNotFoundError: If the roots together hold no Python file.
     """
-    found = {path for root in roots for path in root.rglob(SOURCE_PATTERN) if is_visible(path)}
+    directories = list(roots)
+    for root in directories:
+        if not root.is_dir():
+            raise NotADirectoryError(f"The source root {root} names no directory to sweep")
+
+    found = {path for root in directories for path in root.rglob(SOURCE_PATTERN) if is_visible(path)}
+    if not found:
+        listed = ", ".join(str(root) for root in directories)
+        raise FileNotFoundError(f"The source roots hold no {SOURCE_PATTERN} file to read: {listed}")
+
     return sorted(found)
 
 
@@ -77,6 +93,8 @@ def discover_modules(roots: Iterable[Path]) -> List[SourceModule]:
         List[SourceModule]: One entry per file found.
 
     Raises:
+        NotADirectoryError: If a root names something other than a directory.
+        FileNotFoundError: If the roots together hold no Python file.
         SyntaxError: If a file holds source Python rejects.
     """
     return [parse_module(path) for path in source_paths(roots)]

@@ -3,7 +3,8 @@ from typing import Dict, Final, List
 
 import pytest
 
-from sampletones_shared.meta.source.modules import SourceModule
+from sampletones_shared.meta.source.modules import SourceModule, source_paths
+from sampletones_shared.paths import SOURCE_ROOT
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source
 
@@ -84,6 +85,19 @@ class TestUnreadFragments:
     def test_a_tree_reading_every_fragment_reports_nothing(self) -> None:
         panel = PANEL_SOURCE.replace("SUF_BUTTON_COPY)", "SUF_BUTTON_COPY, PRE_RECONSTRUCTION_GENERATOR)")
         assert unread(TAGS_SOURCE, panel) == []
+
+
+class TestSweptRoots:
+    """A root the sweep reads nothing under reports nothing, which reads as a clean tree."""
+
+    def test_the_tags_package_holds_modules(self) -> None:
+        assert source_paths([check_unused_tags.TAGS_PACKAGE])
+
+    def test_every_reference_root_holds_modules(self) -> None:
+        assert all(source_paths([root]) for root in check_unused_tags.REFERENCE_ROOTS)
+
+    def test_the_tags_package_sits_under_the_source_root(self) -> None:
+        assert SOURCE_ROOT in check_unused_tags.TAGS_PACKAGE.parents
 
 
 class TestMain:

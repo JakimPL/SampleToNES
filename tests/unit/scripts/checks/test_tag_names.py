@@ -6,7 +6,8 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key.tag import TagName
-from sampletones_shared.meta.source.modules import SourceModule
+from sampletones_shared.meta.source.modules import SourceModule, source_paths
+from sampletones_shared.paths import SOURCE_ROOT
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
@@ -138,6 +139,16 @@ class TestCheckModule(BaseTestSuite):
         assert len(found) == len(test_case.expected)
         for message, fragment in zip(found, test_case.expected, strict=True):
             assert fragment in message
+
+
+class TestSweptRoots:
+    """A root the sweep reads nothing under reports nothing, which reads as a clean tree."""
+
+    def test_the_tags_package_holds_modules(self) -> None:
+        assert source_paths([check_tag_names.TAGS_PACKAGE])
+
+    def test_the_tags_package_sits_under_the_source_root(self) -> None:
+        assert SOURCE_ROOT in check_tag_names.TAGS_PACKAGE.parents
 
 
 class TestMain:

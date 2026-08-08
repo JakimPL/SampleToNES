@@ -37,9 +37,7 @@ from sampletones_shared.meta.source.index import source_index
 from sampletones_shared.meta.source.lookups import LookupSite, tree_lookups
 from sampletones_shared.meta.source.modules import discover_modules
 from sampletones_shared.meta.source.values import EnumTable
-from sampletones_shared.paths import REPOSITORY_ROOT
-
-SOURCE_ROOT: Final[Path] = REPOSITORY_ROOT / "src"
+from sampletones_shared.paths import SOURCE_ROOT
 
 RECEIVER_TYPE: Final[str] = "LanguageManager"
 ELEMENT_BASE: Final[str] = AbstractElement.__name__
