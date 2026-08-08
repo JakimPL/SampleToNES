@@ -1,12 +1,11 @@
-from typing import Iterator, List, Tuple
+from typing import Final, List, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.settings import SettingsLayout
-from sampletones_application.paths import LANG_EN, LAYOUT_DIRECTORY
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
+from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_BUTTON_CANCEL,
     TAG_SETTINGS_DISPLAY_BUTTON_OK,
@@ -17,33 +16,27 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_COMBO_PALETTE,
     TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION,
 )
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.panels.dialogs.display_settings import (
     GUIDisplaySettingsWindow,
 )
-from sampletones_application.ui.themes.items import ThemeItems
-from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.keyboard import KeyRouter
-from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.shared.display_settings import (
     DisplaySettings,
     DisplaySettingsViewModel,
     WindowMode,
 )
 from sampletones_shared.display import UNLIMITED_FRAME_RATE, Resolution
-from sampletones_shared.utils.serialization import load_yaml_model_dir
-from tests.unit.sampletones_application.utils.palette.helpers import build_palette
 
-UNLIMITED_LABEL = "Unlimited"
+LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
+UNLIMITED_LABEL: Final[str] = LANGUAGE_MANAGER["settings.display.label.unlimited_frame_rate"]
 
-RESOLUTIONS: Tuple[Resolution, ...] = (
+RESOLUTIONS: Final[Tuple[Resolution, ...]] = (
     Resolution(width=1024, height=768),
     Resolution(width=1280, height=800),
     Resolution(width=1600, height=900),
 )
-FRAME_RATES: Tuple[int, ...] = (UNLIMITED_FRAME_RATE, 30, 60, 120)
-PALETTES: Tuple[str, ...] = ("dark", "light", "studio")
+FRAME_RATES: Final[Tuple[int, ...]] = (UNLIMITED_FRAME_RATE, 30, 60, 120)
+PALETTES: Final[Tuple[str, ...]] = ("dark", "light", "studio")
 
 
 def view_model(*, fullscreen: bool = False) -> DisplaySettingsViewModel:
@@ -64,28 +57,11 @@ def view_model(*, fullscreen: bool = False) -> DisplaySettingsViewModel:
     )
 
 
-@pytest.fixture(name="dpg_context")
-def dpg_context_fixture() -> Iterator[None]:
-    dpg.create_context()
-    FontRegistry.register_fonts()
-    ThemeRegistry.register(Theme(tag=TAG_GLOBAL_THEME_DIALOG, items=ThemeItems()))
-    try:
-        yield
-    finally:
-        ThemeRegistry.clear()
-        dpg.destroy_context()
-
-
 @pytest.fixture(name="window")
-def window_fixture(dpg_context: None) -> GUIDisplaySettingsWindow:
-    layout = load_yaml_model_dir(
-        LAYOUT_DIRECTORY / "settings",
-        SettingsLayout,
-        context={"palette_source": PaletteSource(build_palette())},
-    )
+def window_fixture(dpg_context: None, layout_config: LayoutConfig) -> GUIDisplaySettingsWindow:
     return GUIDisplaySettingsWindow(
-        layout=layout,
-        language_manager=LanguageManager(LANG_EN),
+        layout=layout_config.settings,
+        language_manager=LANGUAGE_MANAGER,
         key_router=KeyRouter(),
     )
 
