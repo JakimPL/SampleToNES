@@ -1,4 +1,4 @@
-from typing import Callable, Final, List, Optional, Tuple
+from typing import Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -28,7 +28,8 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.keyboard.modifiers import Modifier
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
@@ -41,6 +42,13 @@ from sampletones_shared.types.callback import StringCallback
 
 FROZEN_HEADER_ROWS: Final[int] = 1
 
+MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {
+    ShortcutId.SAMPLES_MOVE_SAMPLE_UP: MoveDirection.PREVIOUS,
+    ShortcutId.SAMPLES_MOVE_SAMPLE_DOWN: MoveDirection.NEXT,
+    ShortcutId.SAMPLES_MOVE_SAMPLE_TO_TOP: MoveDirection.FIRST,
+    ShortcutId.SAMPLES_MOVE_SAMPLE_TO_BOTTOM: MoveDirection.LAST,
+}
+
 
 class GUISequencerSamplesPanel(GUIPanel):
     def __init__(
@@ -49,11 +57,13 @@ class GUISequencerSamplesPanel(GUIPanel):
         layout: SequencerLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
         initial_collapsed: bool = False,
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
         self._router = key_router
+        self._shortcuts = shortcut_source
         self._row_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_TABLE, SUF_HANDLER_REGISTRY)
         self._rename_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME, SUF_HANDLER_REGISTRY)
         self._selected_sample_id: Optional[str] = None
@@ -324,40 +334,51 @@ class GUISequencerSamplesPanel(GUIPanel):
         return self._selected_sample_id is not None and not self._router.is_field_focused
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
-        """Applies a samples key to the selected sample, reporting whether the panel consumed it."""
+        """Applies a samples key to the selected sample, reporting whether the panel consumed it.
+
+        The scheme says which press each samples action answers to; a press the samples category
+        leaves unnamed goes to the application's global shortcuts.
+        """
+        shortcut_id = self._shortcuts.action(ShortcutCategory.SAMPLES, event)
         if self._editing_sample_id is not None:
-            if event.key == dpg.mvKey_Escape:
-                self._cancel_rename()
-                return True
-            return False
+            return self._cancel_edit(shortcut_id)
 
         sample_id = self._selected_sample_id
-        if sample_id is None:
+        if sample_id is None or shortcut_id is None:
             return False
 
-        if Modifier.CTRL in event.modifiers:
+        if self._move_sample(shortcut_id):
+            return True
+
+        match shortcut_id:
+            case ShortcutId.SAMPLES_REMOVE_SAMPLE:
+                self.call(self.on_remove_requested, sample_id)
+            case ShortcutId.SAMPLES_RENAME_SAMPLE:
+                self._start_rename(sample_id)
+            case _:
+                return False
+
+        return True
+
+    def _cancel_edit(self, shortcut_id: Optional[ShortcutId]) -> bool:
+        """Drops the name being edited, reporting whether the press was the cancel.
+
+        A rename in progress keeps every other key for the input, so typing a name reaches the
+        field rather than the panel.
+        """
+        if shortcut_id is not ShortcutId.SAMPLES_CANCEL_RENAME:
             return False
 
-        if Modifier.ALT in event.modifiers:
-            return self._handle_alt_move(event.key)
+        self._cancel_rename()
+        return True
 
-        if event.key == dpg.mvKey_Delete:
-            self.call(self.on_remove_requested, sample_id)
-            return True
+    def _move_sample(self, shortcut_id: ShortcutId) -> bool:
+        """Moves the selected sample up, down, to the top or to the bottom of the list.
 
-        if event.key == dpg.mvKey_F2:
-            self._start_rename(sample_id)
-            return True
-
-        return False
-
-    def _handle_alt_move(self, key: int) -> bool:
-        """Moves the selected sample up/down/to-top/to-bottom on Alt + arrow / Home / End.
-
-        Returns whether the key was an Alt move gesture, so a boundary with nowhere to go still
+        Returns whether the action was one of the moves, so a boundary with nowhere to go still
         counts as consumed and stays out of the global shortcuts.
         """
-        direction = self._alt_move_direction(key)
+        direction = MOVE_DIRECTIONS.get(shortcut_id)
         if direction is None or self._selected_sample_id is None or self._selected_row is None:
             return False
 
@@ -366,19 +387,6 @@ class GUISequencerSamplesPanel(GUIPanel):
             self.call(self.on_move_requested, self._selected_sample_id, target)
 
         return True
-
-    def _alt_move_direction(self, key: int) -> Optional[MoveDirection]:
-        match key:
-            case dpg.mvKey_Up:
-                return MoveDirection.PREVIOUS
-            case dpg.mvKey_Down:
-                return MoveDirection.NEXT
-            case dpg.mvKey_Home:
-                return MoveDirection.FIRST
-            case dpg.mvKey_End:
-                return MoveDirection.LAST
-            case _:
-                return None
 
     def _start_rename(self, sample_id: str) -> None:
         """Turns the sample's name cell into a focused text input."""

@@ -55,17 +55,13 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
-    KeyCombination,
     KeyEvent,
     KeyRouter,
 )
 from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS
-from sampletones_application.utils.gui.keyboard.modifiers import (
-    ALT,
-    CTRL,
-    SHIFT,
-    Modifier,
-)
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.view_model.sequencer.channels import (
@@ -77,7 +73,6 @@ from sampletones_application.view_model.sequencer.order import (
 )
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id
-from sampletones_shared.constants.symbols import MINUS, PLUS
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -91,6 +86,13 @@ OnSetOrderEntryCallback = Callable[[GeneratorName, int, Optional[int]], None]
 OnSetMasterEntryCallback = Callable[[int, Optional[int]], None]
 OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
 OnChannelSoloedCallback = Callable[[GeneratorName], None]
+
+MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {
+    ShortcutId.ORDER_MOVE_FRAME_LEFT: MoveDirection.PREVIOUS,
+    ShortcutId.ORDER_MOVE_FRAME_RIGHT: MoveDirection.NEXT,
+    ShortcutId.ORDER_MOVE_FRAME_TO_START: MoveDirection.FIRST,
+    ShortcutId.ORDER_MOVE_FRAME_TO_END: MoveDirection.LAST,
+}
 
 MASTER_TABLE_ROW: Final[int] = 0
 DIVIDER_TABLE_ROW: Final[int] = 1
@@ -116,11 +118,13 @@ class GUISequencerOrderPanel(GUIPanel):
         plus_minus_layout: PlusMinusButtonsLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._plus_minus_layout = plus_minus_layout
         self._router = key_router
+        self._shortcuts = shortcut_source
         self._buttons: Optional[GUIPlusMinusButtons] = None
         self._position_count: int = 0
         self._order: EditableCells[OrderKey] = EditableCells()
@@ -161,8 +165,6 @@ class GUISequencerOrderPanel(GUIPanel):
         self._load_label_tooltips(language_manager)
         self._create_channel_switch(language_manager)
 
-        self._load_shortcut_hints()
-
         super().__init__(
             tag=TAG_SEQUENCER_ORDER_PANEL,
         )
@@ -199,18 +201,6 @@ class GUISequencerOrderPanel(GUIPanel):
         self._lbl_context_move_right = label(SequencerOrderElements.CONTEXT_MOVE_RIGHT)
         self._lbl_context_move_start = label(SequencerOrderElements.CONTEXT_MOVE_START)
         self._lbl_context_move_end = label(SequencerOrderElements.CONTEXT_MOVE_END)
-
-    def _load_shortcut_hints(self) -> None:
-        """Spells the accelerator each frame-operation menu item shows beside its label."""
-        self._sc_play_from_frame = KeyCombination(dpg.mvKey_Spacebar, CTRL).display()
-        self._sc_move_left = KeyCombination(dpg.mvKey_Left, ALT).display()
-        self._sc_move_right = KeyCombination(dpg.mvKey_Right, ALT).display()
-        self._sc_move_start = KeyCombination(dpg.mvKey_Home, ALT).display()
-        self._sc_move_end = KeyCombination(dpg.mvKey_End, ALT).display()
-        self._sc_duplicate = KeyCombination(dpg.mvKey_D, CTRL).display()
-        self._sc_insert = PLUS
-        self._sc_remove = MINUS
-        self._sc_clear = KeyCombination(dpg.mvKey_Delete, SHIFT).display()
 
     def _load_label_tooltips(self, language_manager: LanguageManager) -> None:
         """Reads the row-label tooltips, which name the click gestures the labels carry."""
@@ -857,67 +847,66 @@ class GUISequencerOrderPanel(GUIPanel):
             add_play_menu_item(
                 self._lbl_context_play,
                 lambda: self.call(self.on_play_from_requested, position),
-                shortcut=self._sc_play_from_frame,
+                shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
             dpg.add_separator()
             dpg.add_menu_item(
                 label=self._lbl_context_duplicate,
-                shortcut=self._sc_duplicate,
+                shortcut=self._shortcuts.display(ShortcutId.ORDER_DUPLICATE_FRAME),
                 callback=lambda: self.call(self.on_duplicate_requested, position),
             )
             dpg.add_menu_item(
                 label=self._lbl_context_insert,
-                shortcut=self._sc_insert,
+                shortcut=self._shortcuts.display(ShortcutId.ORDER_INSERT_FRAME),
                 callback=lambda: self.call(self.on_insert_requested, position),
             )
             dpg.add_menu_item(
                 label=self._lbl_context_clear,
-                shortcut=self._sc_clear,
+                shortcut=self._shortcuts.display(ShortcutId.ORDER_CLEAR_FRAME),
                 callback=lambda: self.call(self.on_clear_requested, position),
             )
             dpg.add_menu_item(
                 label=self._lbl_context_remove,
-                shortcut=self._sc_remove,
+                shortcut=self._shortcuts.display(ShortcutId.ORDER_REMOVE_FRAME),
                 callback=lambda: self.call(self.on_remove_requested, position),
             )
             dpg.add_separator()
             self._add_move_item(
                 self._lbl_context_move_left,
-                self._sc_move_left,
+                ShortcutId.ORDER_MOVE_FRAME_LEFT,
                 position,
-                MoveDirection.PREVIOUS,
             )
             self._add_move_item(
                 self._lbl_context_move_right,
-                self._sc_move_right,
+                ShortcutId.ORDER_MOVE_FRAME_RIGHT,
                 position,
-                MoveDirection.NEXT,
             )
             self._add_move_item(
                 self._lbl_context_move_start,
-                self._sc_move_start,
+                ShortcutId.ORDER_MOVE_FRAME_TO_START,
                 position,
-                MoveDirection.FIRST,
             )
             self._add_move_item(
                 self._lbl_context_move_end,
-                self._sc_move_end,
+                ShortcutId.ORDER_MOVE_FRAME_TO_END,
                 position,
-                MoveDirection.LAST,
             )
 
     def _add_move_item(
         self,
         label: str,
-        shortcut: str,
+        shortcut_id: ShortcutId,
         position: int,
-        direction: MoveDirection,
     ) -> None:
-        """Adds a move item, greyed out (disabled) when the move would have no effect."""
-        target = direction.target(position, self._position_count)
+        """Adds a move item, greyed out (disabled) when the move would have no effect.
+
+        The action names both the direction it moves and the accelerator it prints, so the item a
+        reader sees is the one the key press performs.
+        """
+        target = MOVE_DIRECTIONS[shortcut_id].target(position, self._position_count)
         dpg.add_menu_item(
             label=label,
-            shortcut=shortcut,
+            shortcut=self._shortcuts.display(shortcut_id),
             enabled=target is not None,
             callback=lambda: self.call(self.on_move_requested, position, target),
         )
@@ -934,90 +923,99 @@ class GUISequencerOrderPanel(GUIPanel):
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies an order key to the active cell, reporting whether the table consumed it.
 
-        Alt drives the frame moves and Ctrl+D duplicates; any other modifier press belongs to the
-        application's global shortcuts, so the table yields it and keeps the plain keys for editing.
+        The scheme says which press each order action answers to; a press the order category
+        leaves unnamed goes to cell entry, which keeps the hex digits and hands the rest to the
+        application's global shortcuts.
         """
         cursor = self._input_state.cursor
         if cursor is None:
             return False
 
-        if Modifier.ALT in event.modifiers:
-            return self._handle_alt_move(event.key, cursor.position)
+        shortcut_id = self._shortcuts.action(ShortcutCategory.ORDER, event)
+        if shortcut_id is None:
+            return self._type_character(event)
 
-        if Modifier.CTRL in event.modifiers:
-            if event.key == dpg.mvKey_D:
-                self.call(self.on_duplicate_requested, cursor.position)
-                return True
-            return False
+        if self._move_cursor(shortcut_id):
+            return True
 
-        match event.key:
-            case dpg.mvKey_Plus | dpg.mvKey_Add:
-                self.call(self.on_insert_requested, cursor.position)
-            case dpg.mvKey_Minus | dpg.mvKey_Subtract:
-                self._on_remove_clicked()
-            case dpg.mvKey_Left:
+        if self._edit_cell(shortcut_id):
+            return True
+
+        return self._act_on_frame(shortcut_id, cursor.position)
+
+    def _move_cursor(self, shortcut_id: ShortcutId) -> bool:
+        """Moves the edit cursor over the table, reporting whether the action was one of its moves."""
+        match shortcut_id:
+            case ShortcutId.ORDER_PREVIOUS_POSITION:
                 self._move_position(-1)
-            case dpg.mvKey_Right:
+            case ShortcutId.ORDER_NEXT_POSITION:
                 self._move_position(1)
-            case dpg.mvKey_Up:
+            case ShortcutId.ORDER_PREVIOUS_CHANNEL:
                 self._move_channel(-1)
-            case dpg.mvKey_Down:
+            case ShortcutId.ORDER_NEXT_CHANNEL:
                 self._move_channel(1)
-            case dpg.mvKey_Home:
+            case ShortcutId.ORDER_FIRST_POSITION:
                 self._jump_position(0)
-            case dpg.mvKey_End:
+            case ShortcutId.ORDER_LAST_POSITION:
                 self._jump_position(self._position_count - 1)
-            case dpg.mvKey_Return:
+            case _:
+                return False
+
+        return True
+
+    def _edit_cell(self, shortcut_id: ShortcutId) -> bool:
+        """Empties the cell under the cursor or drops a partial entry, reporting whether the action
+        was one of the cell edits.
+
+        A cancel with nothing typed leaves the press to the application, so Escape stops playback
+        while the table holds a cursor.
+        """
+        match shortcut_id:
+            case ShortcutId.ORDER_CLEAR_CELL:
+                self._clear_cell()
                 self._move_position(1)
-            case dpg.mvKey_Delete:
-                if Modifier.SHIFT in event.modifiers:
-                    self.call(self.on_clear_requested, cursor.position)
-                else:
-                    self._clear_cell()
-                    self._move_position(1)
-            case dpg.mvKey_Back:
+            case ShortcutId.ORDER_CLEAR_PREVIOUS_CELL:
                 self._clear_cell()
                 self._move_position(-1)
-            case dpg.mvKey_Insert:
-                self._on_add_clicked()
-            case dpg.mvKey_Escape:
+            case ShortcutId.ORDER_CANCEL_ENTRY:
                 if not self._input_state.pending:
                     return False
 
                 self._apply_state(self._input_state.cancel())
             case _:
-                return self._handle_printable_key(event.key)
+                return False
 
         return True
 
-    def _handle_alt_move(self, key: int, position: int) -> bool:
-        """Moves the selected frame left/right/to-start/to-end on Alt + arrow / Home / End.
+    def _act_on_frame(self, shortcut_id: ShortcutId, position: int) -> bool:
+        """Adds, removes or moves a whole frame, reporting whether the action was one of them.
 
-        Returns whether the key was an Alt move gesture, so a boundary with nowhere to go still
-        counts as consumed and stays out of the global shortcuts.
+        A move with nowhere to go still counts as consumed, so a press at either boundary stays
+        out of the global shortcuts.
         """
-        direction = self._alt_move_direction(key)
-        if direction is None:
-            return False
+        direction = MOVE_DIRECTIONS.get(shortcut_id)
+        if direction is not None:
+            target = direction.target(position, self._position_count)
+            if target is not None:
+                self.call(self.on_move_requested, position, target)
 
-        target = direction.target(position, self._position_count)
-        if target is not None:
-            self.call(self.on_move_requested, position, target)
+            return True
+
+        match shortcut_id:
+            case ShortcutId.ORDER_ADD_FRAME:
+                self._on_add_clicked()
+            case ShortcutId.ORDER_INSERT_FRAME:
+                self.call(self.on_insert_requested, position)
+            case ShortcutId.ORDER_REMOVE_FRAME:
+                self._on_remove_clicked()
+            case ShortcutId.ORDER_DUPLICATE_FRAME:
+                self.call(self.on_duplicate_requested, position)
+            case ShortcutId.ORDER_CLEAR_FRAME:
+                self.call(self.on_clear_requested, position)
+            case _:
+                return False
 
         return True
-
-    def _alt_move_direction(self, key: int) -> Optional[MoveDirection]:
-        match key:
-            case dpg.mvKey_Left:
-                return MoveDirection.PREVIOUS
-            case dpg.mvKey_Right:
-                return MoveDirection.NEXT
-            case dpg.mvKey_Home:
-                return MoveDirection.FIRST
-            case dpg.mvKey_End:
-                return MoveDirection.LAST
-            case _:
-                return None
 
     def _move_position(self, delta: int) -> None:
         self._apply_state(
@@ -1046,8 +1044,16 @@ class GUISequencerOrderPanel(GUIPanel):
 
         return state
 
-    def _handle_printable_key(self, key: int) -> bool:
-        char = HEX_KEYS.get(key)
+    def _type_character(self, event: KeyEvent) -> bool:
+        """Types a hex digit into the cell under the cursor, reporting whether the press was one.
+
+        A press holding Ctrl or Alt is an application gesture, so cell entry reads the plain keys
+        and leaves the rest to the global shortcuts.
+        """
+        if Modifier.CTRL in event.modifiers or Modifier.ALT in event.modifiers:
+            return False
+
+        char = HEX_KEYS.get(event.key)
         if char is None:
             return False
 

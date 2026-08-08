@@ -43,6 +43,7 @@ from sampletones_application.utils.gui.dpg import (
 )
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_shared.types.callback import Callback, StringCallback, VoidCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
@@ -63,6 +64,7 @@ def _install_navigation(
     stops: List[FocusStop],
     on_escape: VoidCallback,
     key_router: KeyRouter,
+    shortcut_source: ShortcutSource,
     initial_index: int = 0,
 ) -> DialogKeyboardNavigator:
     """Builds and installs the keyboard navigator that claims the keyboard for ``window_tag``."""
@@ -71,6 +73,7 @@ def _install_navigation(
         stops=stops,
         on_escape=on_escape,
         key_router=key_router,
+        shortcut_source=shortcut_source,
         initial_index=initial_index,
     )
     navigator.install()
@@ -86,6 +89,7 @@ def _show_modal_dialog(
     width: int,
     height: int,
     key_router: KeyRouter,
+    shortcut_source: ShortcutSource,
     modal: bool = True,
 ) -> None:
     ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
@@ -125,6 +129,7 @@ def _show_modal_dialog(
             stops=[FocusStop.button(ok_button_tag, close)],
             on_escape=close,
             key_router=key_router,
+            shortcut_source=shortcut_source,
         )
 
 
@@ -136,10 +141,12 @@ class DialogsRenderer:
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
     ) -> None:
         self._language_manager = language_manager
         self._status_bar = status_bar
         self._router = key_router
+        self._shortcuts = shortcut_source
         self._default_width = layout.dialogs.default.width
         self._default_height = layout.dialogs.default.height
         self._error_width = layout.dialogs.error.width
@@ -181,6 +188,7 @@ class DialogsRenderer:
             content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=width if width is not None else self._default_width,
             height=height if height is not None else self._default_height,
             modal=modal,
@@ -205,6 +213,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._default_width,
             height=self._default_height,
             modal=modal,
@@ -274,6 +283,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._recovery_width,
             height=self._recovery_height,
             modal=False,
@@ -405,6 +415,7 @@ class DialogsRenderer:
             ],
             on_escape=close,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             initial_index=1,
         )
         center_when_settled(tag)
@@ -427,6 +438,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._error_width,
             height=self._default_height,
         )
@@ -542,6 +554,7 @@ class DialogsRenderer:
             ],
             on_escape=_on_cancel,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             initial_index=1,
         )
         center_when_settled(tag)
@@ -644,6 +657,7 @@ class DialogsRenderer:
             ],
             on_escape=_on_cancel,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             initial_index=2,
         )
         center_when_settled(tag)
@@ -664,6 +678,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._error_width,
             height=self._default_height,
             modal=False,
@@ -697,6 +712,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._error_width,
             height=self._default_height,
             modal=False,

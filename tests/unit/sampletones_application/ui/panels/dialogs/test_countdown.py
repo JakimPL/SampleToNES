@@ -15,6 +15,7 @@ from sampletones_application.tags.settings import (
 )
 from sampletones_application.ui.panels.dialogs.countdown import GUICountdownWindow
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from tests.suite.shortcuts import shipped_source
 
 LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
 REMAINING_FORMAT: Final[str] = LANGUAGE_MANAGER["settings.display.template.countdown_remaining"]
@@ -30,6 +31,7 @@ def window_fixture(dpg_context: None, layout_config: LayoutConfig) -> GUICountdo
         keep_label=LANGUAGE_MANAGER["settings.display.label.keep_button"],
         revert_label=LANGUAGE_MANAGER["settings.display.label.revert_button"],
         key_router=KeyRouter(),
+        shortcut_source=shipped_source(),
     )
 
 

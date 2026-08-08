@@ -8,10 +8,12 @@ from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrac
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from tests.suite.shortcuts import shipped_source
 
 
 def _panel(cursor: Optional[TrackerCursor]) -> GUISequencerTrackerPanel:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+    panel._shortcuts = shipped_source()
     panel._input_state = TrackerInputState(cursor=cursor, pending="")
     return panel
 

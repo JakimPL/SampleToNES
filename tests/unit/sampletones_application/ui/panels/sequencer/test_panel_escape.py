@@ -14,6 +14,7 @@ from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrac
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from tests.suite.shortcuts import shipped_source
 
 
 def _escape() -> KeyEvent:
@@ -25,12 +26,14 @@ class TestTrackerEscapeYieldsToGlobalStop:
 
     def test_escape_yields_when_no_pending_edit(self) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+        panel._shortcuts = shipped_source()
         panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.INSTRUMENT), pending="")
 
         assert panel._on_key_pressed(_escape()) is False
 
     def test_escape_cancels_a_pending_edit_and_consumes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+        panel._shortcuts = shipped_source()
         panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.INSTRUMENT), pending="3")
         applied: List[TrackerInputState] = []
         monkeypatch.setattr(panel, "_apply_state", applied.append)
@@ -44,21 +47,17 @@ class TestOrderEscapeYieldsToGlobalStop:
 
     def test_escape_yields_when_no_pending_edit(self) -> None:
         panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+        panel._shortcuts = shipped_source()
         panel._input_state = OrderInputState(cursor=OrderCursor(None, 0), pending="")
 
         assert panel._on_key_pressed(_escape()) is False
 
     def test_escape_cancels_a_pending_edit_and_consumes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+        panel._shortcuts = shipped_source()
         panel._input_state = OrderInputState(cursor=OrderCursor(None, 0), pending="3")
         applied: List[OrderInputState] = []
         monkeypatch.setattr(panel, "_apply_state", applied.append)
-
-        assert panel._on_key_pressed(_escape()) is True
-        assert applied and applied[0].pending == ""
-
-        assert panel._on_key_pressed(_escape()) is True
-        assert applied and applied[0].pending == ""
 
         assert panel._on_key_pressed(_escape()) is True
         assert applied and applied[0].pending == ""

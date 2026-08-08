@@ -48,7 +48,7 @@ bindings:
 
   # view
   AudioSettings: {combination: "Ctrl+A"}
-  DisplaySettings: {combination: ~}
+  DisplaySettings: {combination: "Ctrl+D"}
   ToggleAdvancedSettings: {combination: "Ctrl+Shift+A"}
   ToggleFullscreen: {combination: "F11"}
   AboutDialog: {combination: ~}
@@ -69,7 +69,7 @@ bindings:
   OrderAddFrame: {combination: "Ins"}
   OrderInsertFrame: {combination: "+", aliases: ["Num+"]}
   OrderRemoveFrame: {combination: "-", aliases: ["Num-"]}
-  OrderDuplicateFrame: {combination: "Ctrl+D"}
+  OrderDuplicateFrame: {combination: "Ctrl+Ins"}
   OrderClearFrame: {combination: "Shift+Del"}
   OrderClearCell: {combination: "Del"}
   OrderClearPreviousCell: {combination: "Backspace"}

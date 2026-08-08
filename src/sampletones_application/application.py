@@ -201,6 +201,7 @@ class Application:
             language_manager=self.language_manager,
             status_bar=self.status_bar,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
@@ -245,6 +246,7 @@ class Application:
             layout=self.layout.settings,
             language_manager=self.language_manager,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
@@ -253,6 +255,7 @@ class Application:
             layout=self.layout.settings,
             language_manager=self.language_manager,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.display_countdown_window: GUICountdownWindow = GUICountdownWindow(
             layout=self.layout.settings.display.countdown,
@@ -262,11 +265,13 @@ class Application:
             keep_label=self.language_manager["settings.display.label.keep_button"],
             revert_label=self.language_manager["settings.display.label.revert_button"],
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.project_properties_window.on_commit = self._commit_project_properties
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
@@ -404,6 +409,7 @@ class Application:
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,

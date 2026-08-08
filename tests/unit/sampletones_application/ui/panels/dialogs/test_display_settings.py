@@ -26,6 +26,7 @@ from sampletones_application.view_model.shared.display_settings import (
     WindowMode,
 )
 from sampletones_shared.display import UNLIMITED_FRAME_RATE, Resolution
+from tests.suite.shortcuts import shipped_source
 
 LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
 UNLIMITED_LABEL: Final[str] = LANGUAGE_MANAGER["settings.display.label.unlimited_frame_rate"]
@@ -63,6 +64,7 @@ def window_fixture(dpg_context: None, layout_config: LayoutConfig) -> GUIDisplay
         layout=layout_config.settings,
         language_manager=LANGUAGE_MANAGER,
         key_router=KeyRouter(),
+        shortcut_source=shipped_source(),
     )
 
 

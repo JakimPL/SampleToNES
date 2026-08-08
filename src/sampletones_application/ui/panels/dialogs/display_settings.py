@@ -27,6 +27,7 @@ from sampletones_application.utils.gui.dialog_navigation import (
 )
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.shared.display_settings import (
     DisplaySettings,
     DisplaySettingsViewModel,
@@ -53,10 +54,12 @@ class GUIDisplaySettingsWindow(GUIWindow):
         layout: SettingsLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
         self._router = key_router
+        self._shortcuts = shortcut_source
         self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
         self._navigator: Optional[DialogKeyboardNavigator] = None
         self._view_model: Optional[DisplaySettingsViewModel] = None
@@ -208,6 +211,7 @@ class GUIDisplaySettingsWindow(GUIWindow):
             ],
             on_escape=self._request_cancel,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
         )
         self._navigator.install()
 

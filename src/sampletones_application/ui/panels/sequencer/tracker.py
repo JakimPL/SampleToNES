@@ -60,21 +60,13 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
-    KeyCombination,
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.keyboard.keys import (
-    HEX_KEYS,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
-    SIGN_KEYS,
-)
-from sampletones_application.utils.gui.keyboard.modifiers import (
-    CTRL,
-    CTRL_SHIFT,
-    Modifier,
-)
+from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS, SIGN_KEYS
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.view_model.sequencer.channels import (
@@ -118,11 +110,13 @@ class GUISequencerTrackerPanel(GUIPanel):
         layout: SequencerLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._language_manager = language_manager
         self._router = key_router
+        self._shortcuts = shortcut_source
 
         widths = layout.tracker.subcolumn_widths
         self._subcolumn_widths: Dict[SubColumn, int] = {
@@ -175,12 +169,6 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._load_context_labels(language_manager)
         self._load_header_tooltips(language_manager)
         self._create_channel_switch(language_manager)
-
-        self._sc_play_from_here = KeyCombination(
-            dpg.mvKey_Spacebar,
-            CTRL_SHIFT,
-        ).display()
-        self._sc_play_from_frame = KeyCombination(dpg.mvKey_Spacebar, CTRL).display()
 
         super().__init__(
             tag=TAG_SEQUENCER_TRACKER_PANEL,
@@ -979,12 +967,12 @@ class GUISequencerTrackerPanel(GUIPanel):
             add_play_menu_item(
                 self._lbl_context_play,
                 lambda: self.call(self.on_play_from_row, row_index),
-                shortcut=self._sc_play_from_here,
+                shortcut=self._shortcuts.display(ShortcutId.TRACKER_PLAY_FROM_ROW),
             )
             add_play_menu_item(
                 self._lbl_context_play_from_frame,
                 lambda: self.call(self.on_play_from_frame),
-                shortcut=self._sc_play_from_frame,
+                shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
             dpg.add_separator()
             self._add_instrument_submenu(row_index, generator)
@@ -1127,55 +1115,76 @@ class GUISequencerTrackerPanel(GUIPanel):
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies a tracker key to the active cell, reporting whether the grid consumed it.
 
-        A modifier-carrying press belongs to the application's global shortcuts, so the grid
-        yields it to the lower-priority scopes and keeps the plain keys for tracker editing.
-        Ctrl+Shift+Space is the exception: it plays the song from the cursor's row.
+        The scheme says which press each tracker action answers to; a press the tracker category
+        leaves unnamed goes to cell entry, which keeps the note and hex keys and hands the rest to
+        the application's global shortcuts.
         """
         cursor = self._input_state.cursor
         if cursor is None:
             return False
 
-        if event.modifiers == CTRL_SHIFT and event.key == dpg.mvKey_Spacebar:
+        shortcut_id = self._shortcuts.action(ShortcutCategory.TRACKER, event)
+        if shortcut_id is None:
+            return self._type_character(event)
+
+        if shortcut_id is ShortcutId.TRACKER_PLAY_FROM_ROW:
             self.call(self.on_play_from_row, cursor.row)
             return True
 
-        if Modifier.CTRL in event.modifiers:
-            return False
+        if self._move_cursor(shortcut_id):
+            return True
 
-        match event.key:
-            case dpg.mvKey_Up:
+        return self._edit_row(shortcut_id)
+
+    def _move_cursor(self, shortcut_id: ShortcutId) -> bool:
+        """Moves the edit cursor over the grid, reporting whether the action was one of its moves."""
+        match shortcut_id:
+            case ShortcutId.TRACKER_PREVIOUS_ROW:
                 self._move_row(-1)
-            case dpg.mvKey_Down:
+            case ShortcutId.TRACKER_NEXT_ROW:
                 self._move_row(1)
-            case dpg.mvKey_Left:
+            case ShortcutId.TRACKER_PREVIOUS_SUBCOLUMN:
                 self._move_subcolumn(-1)
-            case dpg.mvKey_Right:
+            case ShortcutId.TRACKER_NEXT_SUBCOLUMN:
                 self._move_subcolumn(1)
-            case dpg.mvKey_Tab:
-                self._move_column(-1 if Modifier.SHIFT in event.modifiers else 1)
-            case dpg.mvKey_Home:
+            case ShortcutId.TRACKER_PREVIOUS_COLUMN:
+                self._move_column(-1)
+            case ShortcutId.TRACKER_NEXT_COLUMN:
+                self._move_column(1)
+            case ShortcutId.TRACKER_FIRST_ROW:
                 self._jump_to_row(0)
-            case dpg.mvKey_End:
+            case ShortcutId.TRACKER_LAST_ROW:
                 self._jump_to_row(self._current_row_count - 1)
-            case _ if event.key == KEY_PAGE_UP:
+            case ShortcutId.TRACKER_PAGE_UP:
                 self._page(-self._layout.tracker.page_size)
-            case _ if event.key == KEY_PAGE_DOWN:
+            case ShortcutId.TRACKER_PAGE_DOWN:
                 self._page(self._layout.tracker.page_size)
-            case dpg.mvKey_Return:
-                self._move_row(1)
-            case dpg.mvKey_Delete:
+            case _:
+                return False
+
+        return True
+
+    def _edit_row(self, shortcut_id: ShortcutId) -> bool:
+        """Empties the cell under the cursor or drops a partial entry, reporting whether the action
+        was one of the cell edits.
+
+        A cancel with nothing typed leaves the press to the application, so Escape stops playback
+        while the grid holds a cursor.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_CLEAR_ROW:
                 self._clear_row()
                 self._move_row(1)
-            case dpg.mvKey_Back:
+            case ShortcutId.TRACKER_CLEAR_PREVIOUS_ROW:
                 self._clear_row()
                 self._move_row(-1)
-            case dpg.mvKey_Escape:
+            case ShortcutId.TRACKER_CANCEL_ENTRY:
                 if not self._input_state.pending:
                     return False
 
                 self._apply_state(self._input_state.cancel())
             case _:
-                return self._handle_printable_key(event.key)
+                return False
 
         return True
 
@@ -1241,8 +1250,17 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         return state
 
-    def _handle_printable_key(self, key: int) -> bool:
-        char = HEX_KEYS.get(key) or SIGN_KEYS.get(key)
+    def _type_character(self, event: KeyEvent) -> bool:
+        """Types a note, digit or sign into the cell under the cursor, reporting whether the press
+        was one.
+
+        A press holding Ctrl or Alt is an application gesture, so cell entry reads the plain keys
+        and leaves the rest to the global shortcuts.
+        """
+        if Modifier.CTRL in event.modifiers or Modifier.ALT in event.modifiers:
+            return False
+
+        char = HEX_KEYS.get(event.key) or SIGN_KEYS.get(event.key)
         if char is None:
             return False
 

@@ -1,6 +1,7 @@
 from typing import Optional
 
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.keyboard.event import KeyEvent
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_shared.types.callback import Callback
@@ -30,6 +31,14 @@ class ShortcutSource(CallbackMixin):
     def display(self, shortcut_id: ShortcutId) -> str:
         """The combination an action reads under, as a menu or a tooltip prints it."""
         return self.shortcut(shortcut_id).display()
+
+    def action(self, category: ShortcutCategory, event: KeyEvent) -> Optional[ShortcutId]:
+        """The action a scope's press means under the scheme in place.
+
+        A panel asks with its own category, so the press it acts on follows the scheme rather than
+        a combination written into the handler.
+        """
+        return self._scheme.action(category, event)
 
     def activate(self, scheme: ShortcutScheme) -> None:
         """Make ``scheme`` the one every action resolves its keys against.

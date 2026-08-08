@@ -6,9 +6,10 @@ from pydantic import ValidationError
 
 from sampletones_application.paths import KEYBINDINGS_DIRECTORY
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT
 from sampletones_application.utils.gui.shortcuts.catalog import DEFAULT_SCHEME_NAME
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_application.utils.gui.shortcuts.written import WrittenShortcut
 from sampletones_core.paths import EXT_FILE_YAML
@@ -24,6 +25,12 @@ name: minimal
 bindings:
   Play: {combination: "Space"}
 """
+
+
+def _press(text: str) -> KeyEvent:
+    """The press a written combination names, as the router delivers it."""
+    combination = KeyCombination.parse(text)
+    return KeyEvent(key=combination.key, modifiers=combination.modifiers)
 
 
 class TestBindings:
@@ -106,6 +113,30 @@ class TestCollisions:
     def test_a_combination_naming_no_key_raises(self, rebound: RebindScheme) -> None:
         with pytest.raises(KeyError):
             rebound({ShortcutId.PLAY: WrittenShortcut(combination="Ctrl+Meta")})
+
+
+class TestAction:
+    def test_a_press_resolves_to_the_action_its_category_binds_it_to(self, shipped: ShortcutScheme) -> None:
+        assert shipped.action(ShortcutCategory.ORDER, _press("Alt+Left")) is ShortcutId.ORDER_MOVE_FRAME_LEFT
+
+    def test_an_alias_resolves_to_the_action_it_extends(self, shipped: ShortcutScheme) -> None:
+        assert shipped.action(ShortcutCategory.ORDER, _press("Num+")) is ShortcutId.ORDER_INSERT_FRAME
+
+    def test_a_press_the_category_leaves_unnamed_resolves_to_nothing(self, shipped: ShortcutScheme) -> None:
+        assert shipped.action(ShortcutCategory.SAMPLES, _press("Ctrl+S")) is None
+
+    def test_each_category_answers_a_shared_combination_with_its_own_action(
+        self,
+        shipped: ShortcutScheme,
+    ) -> None:
+        """Escape cancels a pending entry in either editing scope and cancels a dialog in a modal."""
+        assert shipped.action(ShortcutCategory.ORDER, _press("Esc")) is ShortcutId.ORDER_CANCEL_ENTRY
+        assert shipped.action(ShortcutCategory.TRACKER, _press("Esc")) is ShortcutId.TRACKER_CANCEL_ENTRY
+        assert shipped.action(ShortcutCategory.DIALOG, _press("Esc")) is ShortcutId.DIALOG_CANCEL
+
+    def test_a_modifier_the_combination_omits_leaves_the_press_unnamed(self, shipped: ShortcutScheme) -> None:
+        """A binding names the modifiers held with it, so Shift+Left is not the plain Left move."""
+        assert shipped.action(ShortcutCategory.ORDER, _press("Shift+Left")) is None
 
 
 class TestLoad:

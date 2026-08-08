@@ -18,6 +18,7 @@ from sampletones_application.utils.gui.dialog_navigation import (
 )
 from sampletones_application.utils.gui.dpg import dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -43,6 +44,7 @@ class GUICountdownWindow(GUIWindow):
         keep_label: str,
         revert_label: str,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
     ) -> None:
         self._title = title
         self._message = message
@@ -50,6 +52,7 @@ class GUICountdownWindow(GUIWindow):
         self._keep_label = keep_label
         self._revert_label = revert_label
         self._router = key_router
+        self._shortcuts = shortcut_source
         self._navigator: Optional[DialogKeyboardNavigator] = None
         self._remaining = 0
 
@@ -118,6 +121,7 @@ class GUICountdownWindow(GUIWindow):
             ],
             on_escape=self._revert,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             initial_index=1,
         )
         self._navigator.install()
