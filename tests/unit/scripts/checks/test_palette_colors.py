@@ -3,7 +3,9 @@ from typing import Final, List, Tuple
 
 from pytest import fixture
 
-from sampletones_shared.meta.source.modules import SourceModule
+from sampletones_application.paths import PALETTES_DIRECTORY
+from sampletones_shared.meta.source.modules import SourceModule, source_paths
+from sampletones_shared.paths import CONFIG_DIRECTORY
 from scripts.checks.palette_colors import dpg_module_helper
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source
@@ -100,6 +102,16 @@ class TestUnregisteredThemeColors:
 
         assert not theme_color_messages(source, module_helpers)
 
+    def test_the_bindings_module_may_fill_it(
+        self,
+        module_helpers: Tuple[Path, str],
+    ) -> None:
+        """The helper is where the call belongs, since it records the token in the same breath."""
+        bindings_module, _ = module_helpers
+        source = "def build() -> None:\n    dpg.add_theme_color(dpg.mvThemeCol_Text, color.rgba)\n"
+
+        assert not theme_color_messages(source, module_helpers, bindings_module)
+
     def test_a_theme_style_passes(
         self,
         module_helpers: Tuple[Path, str],
@@ -107,6 +119,19 @@ class TestUnregisteredThemeColors:
         source = "def build() -> None:\n    dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 0, 0)\n"
 
         assert not theme_color_messages(source, module_helpers)
+
+
+class TestSweptRoots:
+    """A root the sweep reads nothing under reports nothing, which reads as a clean tree."""
+
+    def test_the_application_package_holds_modules(self) -> None:
+        assert source_paths([check_palette_colors.APPLICATION_PACKAGE])
+
+    def test_the_configuration_package_holds_files_to_read(self) -> None:
+        assert list(CONFIG_DIRECTORY.rglob(check_palette_colors.CONFIG_PATTERN))
+
+    def test_the_palettes_sit_inside_the_configuration_package(self) -> None:
+        assert CONFIG_DIRECTORY in PALETTES_DIRECTORY.parents
 
 
 class TestLiteralColors:

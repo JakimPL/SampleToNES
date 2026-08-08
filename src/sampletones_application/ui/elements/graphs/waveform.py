@@ -29,6 +29,8 @@ from sampletones_application.utils.gui.dpg import (
 )
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
 from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.faded import FadedColor
+from sampletones_application.utils.palette.colors.grayscale import GrayscaleColor
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
@@ -375,7 +377,10 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """
         if shade is SeriesShade.DIMMED:
             reconstruction = self._layout.colors.waveform_reconstruction
-            return reconstruction.grayscale().faded(self._layout.waveform.reconstruction_dim_opacity)
+            return FadedColor(
+                color=GrayscaleColor(color=reconstruction),
+                fraction=self._layout.waveform.reconstruction_dim_opacity,
+            )
 
         return layer.color
 

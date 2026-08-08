@@ -16,6 +16,7 @@ from sampletones_application.utils.gui.dpg import (
 )
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
 from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.blended import BlendedColor
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.general import MIN_FREQUENCY
 from sampletones_core.library import InstructionLibraryFragment
@@ -133,7 +134,11 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         blend of the two tokens rather than as the value it currently reads, so every band the
         spectrum has drawn takes the new gradient when another palette is activated.
         """
-        color = color_dim.blended(color_bright, brightness / MAX_CHANNEL_VALUE)
+        color = BlendedColor(
+            start=color_dim,
+            end=color_bright,
+            fraction=brightness / MAX_CHANNEL_VALUE,
+        )
         if color in self.themes:
             return self.themes[color]
 

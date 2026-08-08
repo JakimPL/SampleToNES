@@ -2,9 +2,10 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.faded import FadedColor
+from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_application.utils.palette.colors.written import (
     PALETTE_SOURCE_CONTEXT_KEY,
-    LiteralColor,
     WrittenColor,
 )
 from sampletones_application.utils.palette.palette import Palette
@@ -31,7 +32,10 @@ class TestWrittenColor:
 
     def test_a_colour_built_in_code_stands_as_it_is(self, source: PaletteSource) -> None:
         """A derived shade reaches a field as the colour it already is."""
-        color: BaseColor = LiteralColor((240, 146, 86, 255)).faded(0.5)
+        color: BaseColor = FadedColor(
+            color=LiteralColor((240, 146, 86, 255)),
+            fraction=0.5,
+        )
 
         assert _swatch(color, source).color is color
 

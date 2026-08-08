@@ -4,7 +4,9 @@ from typing import List, Tuple
 import pytest
 from screeninfo import Monitor, ScreenInfoError
 
-from sampletones_application.viewport import _MAX_WINDOW_MONITOR_RATIO, ViewportManager
+from sampletones_application.layout.general.window import WindowLayout
+from sampletones_application.viewport import ViewportManager
+from sampletones_shared.display import Resolution
 
 _TOGGLE_FULLSCREEN = "dearpygui.dearpygui.toggle_viewport_fullscreen"
 
@@ -13,18 +15,29 @@ _SECONDARY = Monitor(x=1920, y=0, width=2560, height=1440)
 
 _MIN_WIDTH = 1024
 _MIN_HEIGHT = 640
+_USABLE_RATIO = 0.9
+
+_WINDOW = WindowLayout(
+    width=1280,
+    height=800,
+    min_width=_MIN_WIDTH,
+    min_height=_MIN_HEIGHT,
+    position_x=200,
+    fullscreen=False,
+    max_monitor_ratio=_USABLE_RATIO,
+    fallback_monitor=Resolution(width=1920, height=1080),
+)
 
 
 def _manager() -> ViewportManager:
     manager = ViewportManager.__new__(ViewportManager)
-    manager._min_width = _MIN_WIDTH
-    manager._min_height = _MIN_HEIGHT
+    manager._window = _WINDOW
     return manager
 
 
 def _usable_bounds(monitor: Monitor) -> Tuple[int, int, int, int]:
-    usable_width = int(monitor.width * _MAX_WINDOW_MONITOR_RATIO)
-    usable_height = int(monitor.height * _MAX_WINDOW_MONITOR_RATIO)
+    usable_width = int(monitor.width * _USABLE_RATIO)
+    usable_height = int(monitor.height * _USABLE_RATIO)
     margin_x = (monitor.width - usable_width) // 2
     margin_y = (monitor.height - usable_height) // 2
     return usable_width, usable_height, margin_x, margin_y
@@ -58,7 +71,7 @@ class TestFitWindowToMonitor:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            "sampletones_application.viewport.get_monitors",
+            "sampletones_application.utils.monitors.get_monitors",
             lambda: list(case.monitors),
         )
         manager = _manager()
@@ -75,7 +88,7 @@ class TestFitWindowToMonitor:
 
     def test_window_that_already_fits_is_unchanged(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "sampletones_application.viewport.get_monitors",
+            "sampletones_application.utils.monitors.get_monitors",
             lambda: [_PRIMARY],
         )
         manager = _manager()
@@ -84,7 +97,7 @@ class TestFitWindowToMonitor:
 
     def test_monitor_sized_window_is_shrunk_below_monitor(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "sampletones_application.viewport.get_monitors",
+            "sampletones_application.utils.monitors.get_monitors",
             lambda: [_PRIMARY],
         )
         manager = _manager()
@@ -96,7 +109,7 @@ class TestFitWindowToMonitor:
 
     def test_window_below_minimum_is_held_at_minimum(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "sampletones_application.viewport.get_monitors",
+            "sampletones_application.utils.monitors.get_monitors",
             lambda: [_PRIMARY],
         )
         manager = _manager()
@@ -106,13 +119,12 @@ class TestFitWindowToMonitor:
         assert width >= _MIN_WIDTH
         assert height >= _MIN_HEIGHT
 
-    def test_falls_back_to_screen_dimensions_without_monitors(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_falls_back_to_assumed_dimensions_without_monitors(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "sampletones_application.viewport.get_monitors",
+            "sampletones_application.utils.monitors.get_monitors",
             list,
         )
         manager = _manager()
-        manager._get_screen_dimensions = lambda: (1920, 1080)  # type: ignore[method-assign]
 
         x, y, width, height = manager._fit_window_to_monitor(200, 200, 4000, 4000)
 
@@ -120,18 +132,17 @@ class TestFitWindowToMonitor:
         assert x + width <= 1920
         assert y + height <= 1080
 
-    def test_falls_back_to_screen_dimensions_when_enumeration_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_falls_back_to_assumed_dimensions_when_enumeration_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A display server exposing no enumerator makes screeninfo raise, which stays recoverable."""
 
         def raise_screen_info_error() -> List[Monitor]:
             raise ScreenInfoError("No enumerators available")
 
         monkeypatch.setattr(
-            "sampletones_application.viewport.get_monitors",
+            "sampletones_application.utils.monitors.get_monitors",
             raise_screen_info_error,
         )
         manager = _manager()
-        manager._get_screen_dimensions = lambda: (1920, 1080)  # type: ignore[method-assign]
 
         x, y, width, height = manager._fit_window_to_monitor(200, 200, 4000, 4000)
 

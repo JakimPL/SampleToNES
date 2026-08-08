@@ -37,7 +37,12 @@ PAGE_ARGUMENT: Final[str] = "page"
 PANEL_ARGUMENT: Final[str] = "panel"
 WIDGET_ARGUMENT: Final[str] = "widget"
 ELEMENT_ARGUMENT: Final[str] = "element"
-TAG_ARGUMENTS: Final[Tuple[str, ...]] = (PAGE_ARGUMENT, PANEL_ARGUMENT, WIDGET_ARGUMENT, ELEMENT_ARGUMENT)
+TAG_ARGUMENTS: Final[Tuple[str, ...]] = (
+    PAGE_ARGUMENT,
+    PANEL_ARGUMENT,
+    WIDGET_ARGUMENT,
+    ELEMENT_ARGUMENT,
+)
 
 EnumMember = TypeVar("EnumMember", bound=StrEnum)
 

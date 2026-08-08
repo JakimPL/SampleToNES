@@ -66,6 +66,7 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS, KEY_PAGE_DOWN, KEY_PAGE_UP, SIGN_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
@@ -297,7 +298,12 @@ class GUISequencerGridPanel(GUIPanel):
         fraction = self._layout.tracker.muted_text_fraction
         for subcolumn, color in theme_colors.items():
             self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color)
-            self._muted_subcolumn_themes[subcolumn] = create_selectable_text_theme(color.faded(fraction))
+            self._muted_subcolumn_themes[subcolumn] = create_selectable_text_theme(
+                FadedColor(
+                    color=color,
+                    fraction=fraction,
+                ),
+            )
 
     def _create_header_themes(self) -> None:
         """Builds the two shades a channel's header label takes: audible and silenced.
@@ -477,7 +483,10 @@ class GUISequencerGridPanel(GUIPanel):
             return self._layout.colors.muted.background.rgba
 
         channel = channel_color(self._layout.colors.channels, generator)
-        return channel.faded(self._layout.tracker.channel_column_tint).rgba
+        return FadedColor(
+            color=channel,
+            fraction=self._layout.tracker.channel_column_tint,
+        ).rgba
 
     def _compute_cell_values(
         self,

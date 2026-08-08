@@ -127,6 +127,18 @@ class SessionManager:
     def set_master_gain(self, value: float) -> None:
         self._config_manager.set_master_gain(value)
 
+    def set_palette_name(self, name: str) -> None:
+        self._config_manager.set_palette_name(name)
+
+    def set_vsync(self, vsync: bool) -> None:
+        self._config_manager.set_vsync(vsync)
+
+    def set_max_fps(self, max_fps: int) -> None:
+        self._config_manager.set_max_fps(max_fps)
+
+    def set_borderless(self, borderless: bool) -> None:
+        self._config_manager.set_borderless(borderless)
+
     def save_config(self) -> None:
         self._config_manager.save()
         self._state_manager.save()
@@ -170,6 +182,22 @@ class SessionManager:
     @property
     def master_gain(self) -> float:
         return self._config_manager.master_gain
+
+    @property
+    def palette_name(self) -> str:
+        return self._config_manager.palette_name
+
+    @property
+    def vsync(self) -> bool:
+        return self._config_manager.vsync
+
+    @property
+    def max_fps(self) -> int:
+        return self._config_manager.max_fps
+
+    @property
+    def borderless(self) -> bool:
+        return self._config_manager.borderless
 
     @property
     def advanced_settings(self) -> bool:

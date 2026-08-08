@@ -18,13 +18,18 @@ import ast
 import logging
 import re
 import sys
+from importlib.resources import files
 from itertools import chain
 from pathlib import Path
 from typing import Final, Iterator, List, NamedTuple, Sequence, Tuple, Union
 
+from sampletones_application.paths import PALETTES_DIRECTORY
 from sampletones_shared.logger import logger
 from sampletones_shared.meta.source.modules import SourceModule, discover_modules
 from sampletones_shared.meta.source.nodes import terminal_name
+from sampletones_shared.paths import CONFIG_DIRECTORY
+
+APPLICATION_PACKAGE: Final[Path] = Path(str(files("sampletones_application")))
 
 HEX_COLOR: Final[re.Pattern[str]] = re.compile(r"[\"']#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?[\"']")
 
@@ -91,11 +96,14 @@ def stored_colors(module: SourceModule) -> Iterator[ColorFinding]:
 
 
 def dpg_module_helper() -> Tuple[Path, str]:
-    from sampletones_application.utils.gui.palette import dpg
+    """The module allowed to fill a theme colour, and the helper every other module calls.
 
-    bindings_module = Path(dpg.__file__).resolve()
-    theme_color_helper = dpg.dpg_add_palette_theme_color.__name__
-    return bindings_module, theme_color_helper
+    Returns:
+        Tuple[Path, str]: The resolved path of the bindings module, and the helper's name.
+    """
+    import sampletones_application.utils.gui.palette.dpg as bindings
+
+    return Path(bindings.__file__).resolve(), bindings.dpg_add_palette_theme_color.__name__
 
 
 def unregistered_theme_colors(
@@ -108,12 +116,14 @@ def unregistered_theme_colors(
 
     Args:
         module: Module to read.
+        bindings_module: Module the call belongs in, which records the token in the same breath.
+        theme_color_helper: Name of the helper a report points at.
 
     Yields:
         ColorFinding: One per call, naming the theme colour that stays at the shade it was
             built with.
     """
-    if module.path == bindings_module:
+    if module.path.resolve() == bindings_module:
         return
 
     for node in ast.walk(module.tree):
@@ -177,13 +187,6 @@ def main(argv: Sequence[str]) -> int:
     """Report every colour the application stores resolved or the configuration writes out."""
 
     logger.set_level(level=logging.ERROR)
-
-    import sampletones_application
-    import sampletones_config
-
-    config_package = Path(sampletones_config.__file__).resolve()
-    palettes_directory = config_package / "palettes"
-
     bindings_module, theme_color_helper = dpg_module_helper()
 
     parser = argparse.ArgumentParser(
@@ -192,19 +195,19 @@ def main(argv: Sequence[str]) -> int:
     parser.add_argument(
         "--package",
         type=Path,
-        default=Path(sampletones_application.__file__).resolve(),
+        default=APPLICATION_PACKAGE,
         help="package whose colour reads to check",
     )
     parser.add_argument(
         "--config",
         type=Path,
-        default=config_package,
+        default=CONFIG_DIRECTORY,
         help="shipped configuration package whose colours must name palette tokens",
     )
     parser.add_argument(
         "--palettes",
         type=Path,
-        default=palettes_directory,
+        default=PALETTES_DIRECTORY,
         help="directory holding the palettes, where colour values belong",
     )
     arguments = parser.parse_args(list(argv))

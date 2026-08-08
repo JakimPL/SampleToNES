@@ -219,8 +219,8 @@ class Application:
         self.project_controller.on_saved = self.history.mark_saved
         self.history.on_history_changed = self._on_history_changed
 
-        self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.main.fps_update_interval)
-        self.frame_limiter: FrameLimiter = FrameLimiter(self.layout.behavior.main.max_fps)
+        self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.ui.fps_update_interval)
+        self.frame_limiter: FrameLimiter = FrameLimiter(self.session_manager.max_fps)
         self._audio_was_playing: bool = False
 
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
@@ -258,9 +258,7 @@ class Application:
         self._viewport_manager = ViewportManager(
             self.session_manager,
             self.theme,
-            min_width=self.layout.general.window.min_width,
-            min_height=self.layout.general.window.min_height,
-            vsync=self.layout.behavior.main.vsync,
+            self.layout.general.window,
             on_fullscreen_state_changed=self._update_menu,
         )
 

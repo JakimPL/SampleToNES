@@ -73,6 +73,34 @@ class ApplicationConfigManager:
         self.config.audio.master_gain = value
 
     @property
+    def palette_name(self) -> str:
+        return self.config.display.palette
+
+    def set_palette_name(self, name: str) -> None:
+        self.config.display.palette = name
+
+    @property
+    def vsync(self) -> bool:
+        return self.config.display.vsync
+
+    def set_vsync(self, vsync: bool) -> None:
+        self.config.display.vsync = vsync
+
+    @property
+    def max_fps(self) -> int:
+        return self.config.display.max_fps
+
+    def set_max_fps(self, max_fps: int) -> None:
+        self.config.display.max_fps = max_fps
+
+    @property
+    def borderless(self) -> bool:
+        return self.config.display.borderless
+
+    def set_borderless(self, borderless: bool) -> None:
+        self.config.display.borderless = borderless
+
+    @property
     def favorites(self) -> Set[Path]:
         return self.config.favorites.paths
 

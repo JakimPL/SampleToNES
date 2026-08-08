@@ -6,7 +6,9 @@ import pytest
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color, dpg_set_palette_color
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.palette.colors.base import BaseColor
-from sampletones_application.utils.palette.colors.written import LiteralColor, NamedColor
+from sampletones_application.utils.palette.colors.faded import FadedColor
+from sampletones_application.utils.palette.colors.literal import LiteralColor
+from sampletones_application.utils.palette.colors.named import NamedColor
 from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.utils.palette.reference import PaletteReference
 from sampletones_application.utils.palette.source import PaletteSource
@@ -150,7 +152,10 @@ class TestThemeColorBinding:
     ) -> None:
         with dpg.theme():
             with dpg.theme_component(dpg.mvAll):
-                item = dpg_add_palette_theme_color(dpg.mvThemeCol_Text, accent.faded(0.5))
+                item = dpg_add_palette_theme_color(
+                    dpg.mvThemeCol_Text,
+                    FadedColor(color=accent, fraction=0.5),
+                )
 
         source.activate(light)
         PaletteBindings.apply()

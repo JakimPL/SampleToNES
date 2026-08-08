@@ -57,6 +57,7 @@ from sampletones_application.utils.gui.keyboard.modifiers import ALT, CTRL, SHIF
 from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
@@ -256,7 +257,10 @@ class GUISequencerOrderPanel(GUIPanel):
         colors = self._layout.colors
         self._entry_theme = create_selectable_text_theme(colors.text.order)
         self._muted_entry_theme = create_selectable_text_theme(
-            colors.text.order.faded(self._layout.tracker.muted_text_fraction),
+            FadedColor(
+                color=colors.text.order,
+                fraction=self._layout.tracker.muted_text_fraction,
+            ),
         )
         self._label_theme = create_header_selectable_theme(
             colors.label,
@@ -545,7 +549,10 @@ class GUISequencerOrderPanel(GUIPanel):
             return self._layout.colors.muted.background.rgba
 
         channel = channel_color(self._layout.colors.channels, generator)
-        return channel.faded(self._layout.tracker.channel_column_tint).rgba
+        return FadedColor(
+            color=channel,
+            fraction=self._layout.tracker.channel_column_tint,
+        ).rgba
 
     def _apply_column_highlight(self, position: int, *, focused: bool) -> None:
         if focused:

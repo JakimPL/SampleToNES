@@ -26,6 +26,7 @@ from sampletones_application.utils.gui.dpg import (
 )
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
 from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.arrays import interpolate_segment
 from sampletones_shared.utils.color import MAX_CHANNEL_VALUE
@@ -171,7 +172,10 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if layer is None:
             raise RuntimeError("No layers available to bind hover theme")
 
-        hover_color = layer.color.faded(fraction=self._hover_alpha / MAX_CHANNEL_VALUE)
+        hover_color = FadedColor(
+            color=layer.color,
+            fraction=self._hover_alpha / MAX_CHANNEL_VALUE,
+        )
         with dpg.theme(tag=self.hover_theme_tag):
             with dpg.theme_component(dpg.mvBarSeries):
                 dpg_add_palette_theme_color(
