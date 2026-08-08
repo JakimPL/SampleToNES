@@ -17,7 +17,6 @@ class ShortcutManager:
     def __init__(self, *, key_router: KeyRouter) -> None:
         self._router = key_router
         self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, Callback]] = {}
-        self._aliases: Dict[ShortcutId, List[Shortcut]] = {}
         self._bindings_by_key: Dict[int, List[Tuple[Shortcut, Callback]]] = {}
 
     def register(
@@ -28,24 +27,11 @@ class ShortcutManager:
     ) -> None:
         self._shortcuts[shortcut_id] = (shortcut, callback)
 
-    def register_alias(
-        self,
-        shortcut_id: ShortcutId,
-        shortcut: Shortcut,
-    ) -> None:
-        """Binds an additional key combination to an already registered action.
-
-        The primary shortcut keeps the action's display string in menus and
-        tooltips; an alias extends only the key handling, so one action honours
-        several conventional combinations.
-        """
-        self._aliases.setdefault(shortcut_id, []).append(shortcut)
-
     def add_menu_item(self, shortcut_id: ShortcutId, **kwargs: Any) -> None:
         shortcut, callback = self._shortcuts[shortcut_id]
         dpg.add_menu_item(
             callback=lambda s, a, u: callback(),
-            shortcut=shortcut.get_display_string(),
+            shortcut=shortcut.display(),
             **kwargs,
         )
 
@@ -56,10 +42,8 @@ class ShortcutManager:
         at a higher priority, so this scope handles a press whenever no dialog holds the keyboard.
         """
         self._bindings_by_key = {}
-        for shortcut_id, (shortcut, callback) in self._shortcuts.items():
+        for shortcut, callback in self._shortcuts.values():
             self._add_binding(shortcut, callback)
-            for alias in self._aliases.get(shortcut_id, []):
-                self._add_binding(alias, callback)
 
         self._router.register(
             self._dispatch,
@@ -68,15 +52,14 @@ class ShortcutManager:
         )
 
     def _add_binding(self, shortcut: Shortcut, callback: Callback) -> None:
-        if shortcut.key is None:
-            return
-
-        self._bindings_by_key.setdefault(shortcut.key, []).append(
-            (
-                shortcut,
-                callback,
+        """Indexes the binding under each key any of its combinations names."""
+        for key in sorted({combination.key for combination in shortcut.combinations()}):
+            self._bindings_by_key.setdefault(key, []).append(
+                (
+                    shortcut,
+                    callback,
+                )
             )
-        )
 
     def _dispatch(self, event: KeyEvent) -> bool:
         """Fires the shortcut matching the event, yielding its key to a focused field that acts on
@@ -86,12 +69,14 @@ class ShortcutManager:
         while Ctrl+Space and Escape still reach playback and Stop from the same field.
         """
         for shortcut, callback in self._bindings_by_key.get(event.key, ()):
-            if event.modifiers == shortcut.modifiers:
-                if not shortcut.field_transparent and self._field_consumes(event):
-                    return False
+            if not shortcut.matches(event):
+                continue
 
-                callback()
-                return True
+            if not shortcut.field_transparent and self._field_consumes(event):
+                return False
+
+            callback()
+            return True
 
         return False
 

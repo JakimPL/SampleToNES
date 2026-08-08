@@ -34,7 +34,11 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
-from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.keyboard import KeyCombination, KeyRouter
+from sampletones_application.utils.gui.keyboard.keys import (
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+)
 from sampletones_application.utils.gui.keyboard.modifiers import (
     ALT,
     CTRL,
@@ -48,10 +52,6 @@ from sampletones_application.utils.gui.shortcuts.ids import (
     PROJECT_EXPORT_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
     ShortcutId,
-)
-from sampletones_application.utils.gui.shortcuts.keys import (
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
@@ -71,12 +71,12 @@ _TAB_TAGS: Dict[Tab, str] = {
 }
 _TAG_TABS: Dict[str, Tab] = {tag: Tab(tab) for tab, tag in _TAB_TAGS.items()}
 _PROJECT_EXPORT_SHORTCUTS: Final[Dict[TrackerFormat, Shortcut]] = {
-    TrackerFormat.FAMITRACKER: Shortcut(dpg.mvKey_M, CTRL),
-    TrackerFormat.BITPHASE: Shortcut(dpg.mvKey_B, CTRL),
+    TrackerFormat.FAMITRACKER: Shortcut(combination=KeyCombination(dpg.mvKey_M, CTRL)),
+    TrackerFormat.BITPHASE: Shortcut(combination=KeyCombination(dpg.mvKey_B, CTRL)),
 }
 _SAMPLE_EXPORT_SHORTCUTS: Final[Dict[TrackerFormat, Shortcut]] = {
-    TrackerFormat.FAMITRACKER: Shortcut(dpg.mvKey_I, CTRL),
-    TrackerFormat.BITPHASE_PRESET: Shortcut(),
+    TrackerFormat.FAMITRACKER: Shortcut(combination=KeyCombination(dpg.mvKey_I, CTRL)),
+    TrackerFormat.BITPHASE_PRESET: Shortcut(combination=None),
 }
 
 
@@ -215,183 +215,188 @@ class ApplicationShell:
     def _register_shortcuts(self, bindings: ShortcutBindings) -> None:
         self._shortcut_manager.register(
             ShortcutId.NEW_PROJECT,
-            Shortcut(dpg.mvKey_N, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_N, CTRL)),
             bindings.new_project,
         )
         self._shortcut_manager.register(
             ShortcutId.OPEN_PROJECT,
-            Shortcut(dpg.mvKey_O, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_O, CTRL)),
             bindings.open_project,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_PROJECT,
-            Shortcut(dpg.mvKey_S, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_S, CTRL)),
             bindings.save_project,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_PROJECT_AS,
-            Shortcut(dpg.mvKey_S, CTRL_SHIFT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_S, CTRL_SHIFT)),
             bindings.save_project_as,
         )
         self._register_export_shortcuts(bindings)
         self._shortcut_manager.register(
             ShortcutId.PROJECT_PROPERTIES,
-            Shortcut(dpg.mvKey_P, ALT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_P, ALT)),
             bindings.project_properties,
         )
         self._shortcut_manager.register(
             ShortcutId.CLOSE_PROJECT,
-            Shortcut(dpg.mvKey_W, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_W, CTRL)),
             bindings.close_project,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_S, CTRL_ALT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_S, CTRL_ALT)),
             bindings.save_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_RECONSTRUCTION_AS,
-            Shortcut(dpg.mvKey_S, CTRL_ALT_SHIFT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_S, CTRL_ALT_SHIFT)),
             bindings.save_reconstruction_as,
         )
         self._shortcut_manager.register(
             ShortcutId.OPEN_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_O, CTRL_ALT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_O, CTRL_ALT)),
             bindings.open_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.CLOSE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_W, CTRL_ALT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_W, CTRL_ALT)),
             bindings.close_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_GENERATION_SETTINGS,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.save_generation_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.LOAD_GENERATION_SETTINGS,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.load_generation_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.AUDIO_SETTINGS,
-            Shortcut(dpg.mvKey_A, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_A, CTRL)),
             bindings.audio_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.EXIT,
-            Shortcut(dpg.mvKey_F4, ALT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_F4, ALT)),
             bindings.exit,
         )
         self._shortcut_manager.register(
             ShortcutId.RECONSTRUCT_FILE,
-            Shortcut(dpg.mvKey_R, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_R, CTRL)),
             bindings.reconstruct_file,
         )
         self._shortcut_manager.register(
             ShortcutId.RECONSTRUCT_DIRECTORY,
-            Shortcut(dpg.mvKey_R, CTRL_SHIFT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_R, CTRL_SHIFT)),
             bindings.reconstruct_directory,
         )
         self._shortcut_manager.register(
             ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-            Shortcut(dpg.mvKey_E, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_E, CTRL)),
             bindings.export_wav,
         )
         self._shortcut_manager.register(
             ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.add_reconstruction_to_sequencer,
         )
         self._shortcut_manager.register(
             ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.open_reconstruction_in_explorer,
         )
         self._shortcut_manager.register(
             ShortcutId.LOCATE_ORIGINAL_AUDIO,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.locate_original_audio,
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_FULLSCREEN,
-            Shortcut(dpg.mvKey_F11),
+            Shortcut(combination=KeyCombination(dpg.mvKey_F11)),
             bindings.toggle_fullscreen,
         )
         self._shortcut_manager.register(
             ShortcutId.DISPLAY_SETTINGS,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.display_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_ADVANCED_SETTINGS,
-            Shortcut(dpg.mvKey_A, CTRL_SHIFT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_A, CTRL_SHIFT)),
             bindings.toggle_advanced_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.PLAY,
-            Shortcut(dpg.mvKey_Spacebar),
+            Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar)),
             bindings.play,
         )
         self._shortcut_manager.register(
             ShortcutId.PLAY_FROM_START,
-            Shortcut(dpg.mvKey_Spacebar, SHIFT),
+            Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar, SHIFT)),
             bindings.play_from_start,
         )
         self._shortcut_manager.register(
             ShortcutId.PLAY_FROM_FRAME,
-            Shortcut(dpg.mvKey_Spacebar, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_Spacebar, CTRL)),
             bindings.play_from_frame,
         )
         self._shortcut_manager.register(
             ShortcutId.STOP,
-            Shortcut(dpg.mvKey_Escape),
+            Shortcut(combination=KeyCombination(dpg.mvKey_Escape)),
             bindings.stop,
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_AUTOPLAY,
-            Shortcut(dpg.mvKey_P, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_P, CTRL)),
             bindings.toggle_autoplay,
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.toggle_follow_playback,
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_LOOP_SONG,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.toggle_loop_song,
         )
         self._register_channel_shortcuts(bindings)
         self._shortcut_manager.register(
             ShortcutId.UNDO,
-            Shortcut(dpg.mvKey_Z, CTRL),
+            Shortcut(combination=KeyCombination(dpg.mvKey_Z, CTRL)),
             bindings.undo,
         )
         self._shortcut_manager.register(
             ShortcutId.REDO,
-            Shortcut(dpg.mvKey_Y, CTRL),
+            Shortcut(
+                combination=KeyCombination(dpg.mvKey_Y, CTRL),
+                aliases=(KeyCombination(dpg.mvKey_Z, CTRL_SHIFT),),
+            ),
             bindings.redo,
-        )
-        self._shortcut_manager.register_alias(
-            ShortcutId.REDO,
-            Shortcut(dpg.mvKey_Z, CTRL_SHIFT),
         )
         self._shortcut_manager.register(
             ShortcutId.ABOUT_DIALOG,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.about,
         )
         self._shortcut_manager.register(
             ShortcutId.NEXT_TAB,
-            Shortcut(KEY_PAGE_DOWN, CTRL, field_transparent=True),
+            Shortcut(
+                combination=KeyCombination(KEY_PAGE_DOWN, CTRL),
+                field_transparent=True,
+            ),
             bindings.next_tab,
         )
         self._shortcut_manager.register(
             ShortcutId.PREVIOUS_TAB,
-            Shortcut(KEY_PAGE_UP, CTRL, field_transparent=True),
+            Shortcut(
+                combination=KeyCombination(KEY_PAGE_UP, CTRL),
+                field_transparent=True,
+            ),
             bindings.previous_tab,
         )
 
@@ -428,13 +433,13 @@ class ApplicationShell:
         for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
             self._shortcut_manager.register(
                 shortcut_id,
-                Shortcut(),
+                Shortcut(combination=None),
                 partial(bindings.toggle_channel, generator),
             )
 
         self._shortcut_manager.register(
             ShortcutId.UNMUTE_ALL_CHANNELS,
-            Shortcut(),
+            Shortcut(combination=None),
             bindings.unmute_all_channels,
         )
 

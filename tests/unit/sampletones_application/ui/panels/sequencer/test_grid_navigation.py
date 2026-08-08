@@ -7,8 +7,8 @@ from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPan
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.utils.gui.keyboard import KeyEvent
+from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
-from sampletones_application.utils.gui.shortcuts.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 
 PAGE_SIZE = 16

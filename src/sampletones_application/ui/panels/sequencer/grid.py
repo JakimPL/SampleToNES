@@ -58,21 +58,21 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
+    KeyCombination,
     KeyEvent,
     KeyRouter,
+)
+from sampletones_application.utils.gui.keyboard.keys import (
+    HEX_KEYS,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    SIGN_KEYS,
 )
 from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL,
     CTRL_SHIFT,
     Modifier,
 )
-from sampletones_application.utils.gui.shortcuts.keys import (
-    HEX_KEYS,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
-    SIGN_KEYS,
-)
-from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.view_model.sequencer.channels import (
@@ -174,11 +174,11 @@ class GUISequencerGridPanel(GUIPanel):
         self._load_header_tooltips(language_manager)
         self._create_channel_switch(language_manager)
 
-        self._sc_play_from_here = Shortcut(
+        self._sc_play_from_here = KeyCombination(
             dpg.mvKey_Spacebar,
             CTRL_SHIFT,
-        ).get_display_string()
-        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, CTRL).get_display_string()
+        ).display()
+        self._sc_play_from_frame = KeyCombination(dpg.mvKey_Spacebar, CTRL).display()
 
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,

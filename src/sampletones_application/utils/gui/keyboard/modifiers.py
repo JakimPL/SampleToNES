@@ -22,6 +22,8 @@ CTRL_ALT: Final[ModifierSet] = frozenset({Modifier.CTRL, Modifier.ALT})
 CTRL_SHIFT: Final[ModifierSet] = frozenset({Modifier.CTRL, Modifier.SHIFT})
 CTRL_ALT_SHIFT: Final[ModifierSet] = frozenset({Modifier.CTRL, Modifier.ALT, Modifier.SHIFT})
 
+MODIFIER_NAMES: Final[Dict[str, Modifier]] = {modifier.value.casefold(): modifier for modifier in Modifier}
+
 MODIFIER_KEYS: Final[Dict[Modifier, Tuple[int, int]]] = {
     Modifier.CTRL: (dpg.mvKey_LControl, dpg.mvKey_RControl),
     Modifier.ALT: (dpg.mvKey_LAlt, dpg.mvKey_RAlt),

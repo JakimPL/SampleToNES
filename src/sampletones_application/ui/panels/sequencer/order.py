@@ -55,17 +55,17 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
+    KeyCombination,
     KeyEvent,
     KeyRouter,
 )
+from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS
 from sampletones_application.utils.gui.keyboard.modifiers import (
     ALT,
     CTRL,
     SHIFT,
     Modifier,
 )
-from sampletones_application.utils.gui.shortcuts.keys import HEX_KEYS
-from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.view_model.sequencer.channels import (
@@ -202,15 +202,15 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _load_shortcut_hints(self) -> None:
         """Spells the accelerator each frame-operation menu item shows beside its label."""
-        self._sc_play_from_frame = Shortcut(dpg.mvKey_Spacebar, CTRL).get_display_string()
-        self._sc_move_left = Shortcut(dpg.mvKey_Left, ALT).get_display_string()
-        self._sc_move_right = Shortcut(dpg.mvKey_Right, ALT).get_display_string()
-        self._sc_move_start = Shortcut(dpg.mvKey_Home, ALT).get_display_string()
-        self._sc_move_end = Shortcut(dpg.mvKey_End, ALT).get_display_string()
-        self._sc_duplicate = Shortcut(dpg.mvKey_D, CTRL).get_display_string()
+        self._sc_play_from_frame = KeyCombination(dpg.mvKey_Spacebar, CTRL).display()
+        self._sc_move_left = KeyCombination(dpg.mvKey_Left, ALT).display()
+        self._sc_move_right = KeyCombination(dpg.mvKey_Right, ALT).display()
+        self._sc_move_start = KeyCombination(dpg.mvKey_Home, ALT).display()
+        self._sc_move_end = KeyCombination(dpg.mvKey_End, ALT).display()
+        self._sc_duplicate = KeyCombination(dpg.mvKey_D, CTRL).display()
         self._sc_insert = PLUS
         self._sc_remove = MINUS
-        self._sc_clear = Shortcut(dpg.mvKey_Delete, SHIFT).get_display_string()
+        self._sc_clear = KeyCombination(dpg.mvKey_Delete, SHIFT).display()
 
     def _load_label_tooltips(self, language_manager: LanguageManager) -> None:
         """Reads the row-label tooltips, which name the click gestures the labels carry."""
