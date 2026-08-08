@@ -84,7 +84,7 @@ def dpg_get_item_parent(
     """
     try:
         parent: Optional[Sender] = dpg.get_item_parent(tag, *args, **kwargs)
-    except Exception:
+    except Exception:  # TODO: unsafe broad exception
         return None
 
     return parent
@@ -103,7 +103,7 @@ def dpg_set_item_callback(
     *args: Any,
     **kwargs: Any,
 ) -> None:
-    dpg.set_item_callback(tag, callback=callback, *args, **kwargs)
+    dpg.set_item_callback(tag, *args, callback=callback, **kwargs)
 
 
 @dpg_wrapper(button_function=GUIButton.set_item_label)
@@ -114,7 +114,7 @@ def dpg_set_item_label(
     *args: Any,
     **kwargs: Any,
 ) -> None:
-    dpg.set_item_label(tag, label=label, *args, **kwargs)
+    dpg.set_item_label(tag, *args, label=label, **kwargs)
 
 
 @dpg_wrapper(button_function=GUIButton.get_item_label)

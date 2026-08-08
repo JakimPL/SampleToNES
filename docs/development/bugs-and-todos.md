@@ -3,7 +3,6 @@
 ### Navigation
 
 * Interface scale
-* VSync/frame rate options
 * Tree navigation using keys
 * Waveform LOD for zooming
 * Keybindings options
@@ -17,7 +16,6 @@
 
 * Basic shapes as instruments
 * Selection operations on patterns and orders
-* Replace/swap sample
 
 ### Workflow
 
@@ -38,6 +36,7 @@
 * Respecting FamiTracker limitations
 * Carrying the project comment and tempo into a Bitphase document, once the format holds them
 * Per-tab undo routing
+* Delete duplicated HistoryAction enumeration
 
 ## Bugs
 
