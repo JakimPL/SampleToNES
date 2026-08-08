@@ -154,18 +154,20 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
 
     def create_panel(self, parent: str) -> None:
-        with card(
-            parent,
-            self.tag,
-            auto_resize_y=False,
-            height=-1,
-            no_scrollbar=True,
-        ):
-            with self._collapsible_section(
+        with (
+            card(
+                parent,
+                self.tag,
+                auto_resize_y=False,
+                height=-1,
+                no_scrollbar=True,
+            ),
+            self._collapsible_section(
                 self._language_manager["reconstructions.instruments.label.section"],
                 glyph=self._glyphs.headers.instruments,
-            ):
-                self._create_content()
+            ),
+        ):
+            self._create_content()
 
         self._setup_mouse_event_handler()
 

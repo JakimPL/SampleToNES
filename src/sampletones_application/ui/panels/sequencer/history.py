@@ -115,28 +115,30 @@ class GUISequencerHistoryPanel(GUIPanel):
         )
 
     def _create_actions(self) -> None:
-        with dpg.group(tag=TAG_SEQUENCER_HISTORY_GROUP_ACTIONS):
-            with dpg.table(
+        with (
+            dpg.group(tag=TAG_SEQUENCER_HISTORY_GROUP_ACTIONS),
+            dpg.table(
                 header_row=False,
                 policy=dpg.mvTable_SizingStretchSame,
                 resizable=False,
                 width=-1,
-            ):
-                dpg.add_table_column()
-                dpg.add_table_column()
-                with dpg.table_row():
-                    GUIButton(
-                        tag=TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
-                        label=self._language_manager["sequencer.history.label.undo"],
-                        callback=self._on_undo_clicked,
-                        width=-1,
-                    )
-                    GUIButton(
-                        tag=TAG_SEQUENCER_HISTORY_BUTTON_REDO,
-                        label=self._language_manager["sequencer.history.label.redo"],
-                        callback=self._on_redo_clicked,
-                        width=-1,
-                    )
+            ),
+        ):
+            dpg.add_table_column()
+            dpg.add_table_column()
+            with dpg.table_row():
+                GUIButton(
+                    tag=TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
+                    label=self._language_manager["sequencer.history.label.undo"],
+                    callback=self._on_undo_clicked,
+                    width=-1,
+                )
+                GUIButton(
+                    tag=TAG_SEQUENCER_HISTORY_BUTTON_REDO,
+                    label=self._language_manager["sequencer.history.label.redo"],
+                    callback=self._on_redo_clicked,
+                    width=-1,
+                )
         self._status_bar.bind_to_item(
             TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
             self._language_manager["sequencer.history.message.status_undo"],

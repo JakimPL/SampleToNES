@@ -286,12 +286,7 @@ class LibraryLogic(CallbackMixin):
                 self._library_manager.get_path(library_key),
                 self._language_manager["instructions.library.message.status_file_not_found"],
             )
-        except (
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ) as exception:
+        except (IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(
                 exception,
                 f"Error loading library file for key {library_key}",

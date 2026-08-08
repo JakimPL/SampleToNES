@@ -246,15 +246,17 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def create_panel(self, parent: str) -> None:
         self._create_entry_themes()
-        with self._collapsible_card(
-            parent,
-            self._lbl_order,
-            glyph=self._glyphs.headers.order,
+        with (
+            self._collapsible_card(
+                parent,
+                self._lbl_order,
+                glyph=self._glyphs.headers.order,
+            ),
+            dpg.group(tag=self.tag),
         ):
-            with dpg.group(tag=self.tag):
-                self._create_button_row()
-                self._create_order_window()
-                self._register_handlers()
+            self._create_button_row()
+            self._create_order_window()
+            self._register_handlers()
 
     def _create_entry_themes(self) -> None:
         """Colours every pattern entry, in the shade its channel sounds and the shade it is silenced.

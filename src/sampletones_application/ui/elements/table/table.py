@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import ClassVar, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -18,7 +18,7 @@ from sampletones_shared.types.data import SerializedData
 
 
 class GUITable:
-    _REGISTRY: Dict[str, GUITable] = {}
+    _REGISTRY: ClassVar[Dict[str, GUITable]] = {}
 
     def __init__(
         self,

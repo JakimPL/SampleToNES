@@ -4,7 +4,6 @@ import warnings
 from functools import cached_property, reduce
 from types import ModuleType
 from typing import (
-    Any,
     Dict,
     Iterator,
     List,
@@ -168,7 +167,7 @@ class Histogram(DataModel):
 
         return self
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """
         Check equality with another histogram.
 
@@ -355,9 +354,8 @@ class Histogram(DataModel):
         if cls.get_module(exponent) != module:
             raise TypeError("Base and exponent must be of the same array type")
 
-        if isinstance(base, NumericClasses) and isinstance(exponent, NumericClasses):
-            if base == 0 and exponent < 0:
-                raise ZeroDivisionError("Zero cannot be raised to a negative power")
+        if isinstance(base, NumericClasses) and isinstance(exponent, NumericClasses) and base == 0 and exponent < 0:
+            raise ZeroDivisionError("Zero cannot be raised to a negative power")
 
         if isinstance(base, cls):
             base = base.densities

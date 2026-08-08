@@ -154,13 +154,12 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if dpg.does_item_exist(theme_tag):
             return dpg_bind_item_theme(series_tag, theme_tag)
 
-        with dpg.theme(tag=theme_tag):
-            with dpg.theme_component(dpg.mvBarSeries):
-                dpg_add_palette_theme_color(
-                    dpg.mvPlotCol_Fill,
-                    layer.color,
-                    category=dpg.mvThemeCat_Plots,
-                )
+        with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvBarSeries):
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_Fill,
+                layer.color,
+                category=dpg.mvThemeCat_Plots,
+            )
 
         return dpg_bind_item_theme(series_tag, theme_tag)
 
@@ -176,13 +175,12 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             color=layer.color,
             fraction=self._hover_alpha / MAX_CHANNEL_VALUE,
         )
-        with dpg.theme(tag=self.hover_theme_tag):
-            with dpg.theme_component(dpg.mvBarSeries):
-                dpg_add_palette_theme_color(
-                    dpg.mvPlotCol_Fill,
-                    hover_color,
-                    category=dpg.mvThemeCat_Plots,
-                )
+        with dpg.theme(tag=self.hover_theme_tag), dpg.theme_component(dpg.mvBarSeries):
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_Fill,
+                hover_color,
+                category=dpg.mvThemeCat_Plots,
+            )
 
         return dpg_bind_item_theme(self.hover_bar_tag, self.hover_theme_tag)
 

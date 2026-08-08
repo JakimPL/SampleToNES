@@ -198,9 +198,8 @@ class IndexedCollection(Generic[T]):
         index = self.get_index(key)
         item_hash = self.hash(item)
 
-        if item_hash in self._items:
-            if self._order.forward(item_hash) != index:
-                raise ValueError(f"Item '{item!r}' already exists in IndexedCollection")
+        if item_hash in self._items and self._order.forward(item_hash) != index:
+            raise ValueError(f"Item '{item!r}' already exists in IndexedCollection")
 
         self._unset(index, reindex=False)
         self._set(index, item_hash, item, reindex=False)
@@ -214,7 +213,7 @@ class IndexedCollection(Generic[T]):
         """
         return len(self._order) > 0
 
-    def __eq__(self, value: Any) -> bool:
+    def __eq__(self, value: object) -> bool:
         """
         Checks equality between this collection and another object.
 

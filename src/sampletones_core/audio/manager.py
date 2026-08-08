@@ -227,7 +227,7 @@ class AudioDeviceManager(CallbackMixin):
                 device = self._devices[device_index]
                 self._device_index = device_index
                 self._sample_rate = device.default_sample_rate
-        except IOError:
+        except OSError:
             logger.warning("No default output device found")
 
     @property

@@ -3,7 +3,7 @@ from __future__ import annotations
 import heapq
 import threading
 from dataclasses import dataclass
-from typing import List
+from typing import ClassVar, List
 
 import dearpygui.dearpygui as dpg
 
@@ -21,8 +21,8 @@ class FrameCallback:
 
 
 class FrameCallbackManager(metaclass=NonInstantiableMeta):
-    _callbacks: List[FrameCallback] = []
-    _lock = threading.Lock()
+    _callbacks: ClassVar[List[FrameCallback]] = []
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @classmethod
     def set_frame_callback(

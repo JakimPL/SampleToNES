@@ -17,9 +17,9 @@ def reconstruct_file(arguments: Tuple[Reconstructor, Path, Path]) -> Path:
         if reconstruction is not None:
             reconstruction.save(output_path)
         del reconstruction
-    except KeyboardInterrupt as exception:
+    except KeyboardInterrupt:
         logger.info("Reconstruction interrupted by user.")
-        raise exception
+        raise
     except UnsupportedAudioFormatError:
         logger.warning(f"Skipping file due to unsupported audio format: {input_path}")
     finally:

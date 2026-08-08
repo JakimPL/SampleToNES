@@ -100,9 +100,10 @@ class PhaseTimer(Timer):
 
     def validate(self, initials: Initials) -> None:
         (initial_phase,) = initials if initials is not None else (None,)
-        if initial_phase is not None:
-            if not isinstance(initial_phase, float) or (initial_phase < 0.0 or initial_phase >= 1.0):
-                raise ValueError("Initial phase for PhaseTimer must be between 0.0 and 1.0")
+        if initial_phase is not None and (
+            not isinstance(initial_phase, float) or (initial_phase < 0.0 or initial_phase >= 1.0)
+        ):
+            raise ValueError("Initial phase for PhaseTimer must be between 0.0 and 1.0")
 
     def get(self) -> Tuple[float]:
         return (self.phase,)

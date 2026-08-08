@@ -432,13 +432,12 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         shade = self._series_shade(layer)
         theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME, shade)
         if not dpg.does_item_exist(theme_tag):
-            with dpg.theme(tag=theme_tag):
-                with dpg.theme_component(dpg.mvLineSeries):
-                    dpg_add_palette_theme_color(
-                        dpg.mvPlotCol_Line,
-                        self._series_color(layer, shade),
-                        category=dpg.mvThemeCat_Plots,
-                    )
+            with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvLineSeries):
+                dpg_add_palette_theme_color(
+                    dpg.mvPlotCol_Line,
+                    self._series_color(layer, shade),
+                    category=dpg.mvThemeCat_Plots,
+                )
 
         dpg_bind_item_theme(series_tag, theme_tag)
 

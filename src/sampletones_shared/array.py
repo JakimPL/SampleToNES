@@ -74,8 +74,8 @@ def to_numpy(array: Union[np.ndarray, "xp.ndarray"]) -> np.ndarray:
 
 
 __all__ = [
-    "xp",
-    "xp_typing",
     "CUPY_AVAILABLE",
     "to_numpy",
+    "xp",
+    "xp_typing",
 ]

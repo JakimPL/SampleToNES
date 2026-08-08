@@ -86,7 +86,7 @@ class GUIInstructionParametersPanel(GUIPanel):
             self.general_table = GUITable(
                 tag=TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                rows=tuple(),
+                rows=(),
                 label_column_width=self._table_layout.label_width,
                 label_color=self._table_colors.label,
                 value_color=self._table_colors.value,
@@ -102,7 +102,7 @@ class GUIInstructionParametersPanel(GUIPanel):
             self.parameters_table = GUITable(
                 tag=TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
-                rows=tuple(),
+                rows=(),
                 label_column_width=self._table_layout.label_width,
                 label_color=self._table_colors.label,
                 value_color=self._table_colors.value,

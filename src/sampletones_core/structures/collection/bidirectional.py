@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable, ItemsView, KeysView, ValuesView
-from typing import Any, Dict, Generic, Iterator, Optional, TypeVar, Union, cast
+from typing import Dict, Generic, Iterator, Optional, TypeVar, Union, cast
 
 ValueT = TypeVar("ValueT", bound=Hashable)
 BidirectionalMapping = Union[
@@ -129,7 +129,7 @@ class BidirectionalHashMap(Generic[ValueT]):
             string = self._backward.pop(key_or_value)
             del self._forward[string]
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """
         Checks equality between this BidirectionalHashMap and another object.
 

@@ -8,10 +8,10 @@ from sampletones_application.utils.gui.keyboard.router import (
 )
 
 __all__ = [
-    "KeyEvent",
-    "KeyRouter",
-    "ModalKeyHandler",
     "PRIORITY_MODAL",
     "PRIORITY_PANEL",
     "PRIORITY_SHORTCUT",
+    "KeyEvent",
+    "KeyRouter",
+    "ModalKeyHandler",
 ]

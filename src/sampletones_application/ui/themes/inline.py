@@ -65,13 +65,12 @@ def create_vertical_spacer_theme() -> int:
     below the group's top. The group stacks only vertically, so zeroing both axes leaves its
     layout unchanged apart from that gap.
     """
-    with dpg.theme() as theme:
-        with dpg.theme_component(dpg.mvAll):
-            dpg.add_theme_style(
-                dpg.mvStyleVar_ItemSpacing,
-                0,
-                0,
-                category=dpg.mvThemeCat_Core,
-            )
+    with dpg.theme() as theme, dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_style(
+            dpg.mvStyleVar_ItemSpacing,
+            0,
+            0,
+            category=dpg.mvThemeCat_Core,
+        )
 
     return cast(int, theme)

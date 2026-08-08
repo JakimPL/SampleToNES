@@ -350,7 +350,7 @@ class DialogsRenderer:
             group_tag = compose_tag(tag, SUF_GROUP)
             with dpg.group(tag=group_tag, parent=tag):
                 name_text = dpg.add_text(
-                    f"{str(type(exception).__name__)}: ",
+                    f"{type(exception).__name__!s}: ",
                     parent=group_tag,
                 )
                 dpg_set_palette_color(name_text, self._col_text_error)

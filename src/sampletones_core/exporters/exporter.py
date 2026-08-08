@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Final, Generic, List, Optional, Union, cast
+from typing import ClassVar, Dict, Final, Generic, List, Optional, Union, cast
 
 import numpy as np
 
@@ -32,7 +32,7 @@ class Exporter(ABC, Generic[InstructionT]):
     the reverse.
     """
 
-    _ATTRIBUTE_MAP: Dict[FeatureKey, InstructionFields]
+    _ATTRIBUTE_MAP: ClassVar[Dict[FeatureKey, InstructionFields]]
 
     def to_features(
         self,

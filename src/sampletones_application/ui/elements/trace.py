@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import traceback
-from typing import Dict, Optional
+from typing import ClassVar, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -23,7 +23,7 @@ from sampletones_application.utils.gui.clipboard import copy_to_clipboard
 
 
 class GUITraceback:
-    _REGISTRY: Dict[str, GUITraceback] = {}
+    _REGISTRY: ClassVar[Dict[str, GUITraceback]] = {}
 
     def __init__(
         self,

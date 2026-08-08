@@ -148,13 +148,12 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             return self.themes[color]
 
         theme_tag = compose_tag(self.tag, SUF_GRAPH_THEME, str(len(self.themes)))
-        with dpg.theme(tag=theme_tag):
-            with dpg.theme_component(dpg.mvBarSeries):
-                dpg_add_palette_theme_color(
-                    dpg.mvPlotCol_Fill,
-                    color,
-                    category=dpg.mvThemeCat_Plots,
-                )
+        with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvBarSeries):
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_Fill,
+                color,
+                category=dpg.mvThemeCat_Plots,
+            )
 
         self.themes[color] = theme_tag
         return theme_tag
