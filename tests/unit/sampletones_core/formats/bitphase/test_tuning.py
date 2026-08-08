@@ -1,5 +1,6 @@
+import itertools
 from dataclasses import dataclass
-from typing import Final, List, Tuple
+from typing import Final, Tuple
 
 import pytest
 
@@ -13,6 +14,7 @@ from sampletones_core.formats.bitphase.specification.chip import (
     ChipVariant,
 )
 from sampletones_core.formats.bitphase.tuning import generate_tuning_table
+from tests.suite.case import BaseRegularTestCase
 
 BITPHASE_NTSC_TABLE: Final[Tuple[int, ...]] = (
     2047, 2047, 2047, 2047, 2047, 2047, 2047, 2047, 2047, 2034, 1920, 1812,
@@ -32,18 +34,6 @@ class PeriodCase:
     index: int
     period: int
 
-
-VARIANT_CASES: List[PeriodCase] = [
-    PeriodCase(variant=ChipVariant.NTSC, index=9, period=2034),
-    PeriodCase(variant=ChipVariant.NTSC, index=45, period=254),
-    PeriodCase(variant=ChipVariant.NTSC, index=95, period=14),
-    PeriodCase(variant=ChipVariant.PAL, index=9, period=1889),
-    PeriodCase(variant=ChipVariant.PAL, index=45, period=236),
-    PeriodCase(variant=ChipVariant.PAL, index=95, period=13),
-    PeriodCase(variant=ChipVariant.DENDY, index=9, period=2015),
-    PeriodCase(variant=ChipVariant.DENDY, index=45, period=252),
-    PeriodCase(variant=ChipVariant.DENDY, index=95, period=14),
-]
 
 SLOW_CLOCK: Final[int] = 1000
 RAISED_A4_TUNING: Final[float] = 432.0
@@ -65,12 +55,84 @@ class TestTheTableMatchesBitphase:
     the reconstruction it came from. These numbers come from Bitphase's own generator.
     """
 
-    def test_the_ntsc_table_equals_the_one_bitphase_derives(self, ntsc_table: Tuple[int, ...]) -> None:
+    def test_the_ntsc_table_equals_the_one_bitphase_derives(
+        self,
+        ntsc_table: Tuple[int, ...],
+    ) -> None:
         assert ntsc_table == BITPHASE_NTSC_TABLE
 
-    @pytest.mark.parametrize("case", VARIANT_CASES, ids=lambda case: f"{case.variant}-{case.index}")
-    def test_each_system_clock_yields_bitphase_periods(self, case: PeriodCase) -> None:
-        table = generate_tuning_table(CPU_FREQUENCIES[case.variant], a4_tuning=DEFAULT_A4_TUNING)
+    @dataclass(frozen=True, kw_only=True)
+    class PeriodCase(BaseRegularTestCase):
+        variant: ChipVariant
+        index: int
+        period: int
+
+    test_cases = (
+        PeriodCase(
+            variant=ChipVariant.NTSC,
+            index=9,
+            period=2034,
+            label="NTSC-9",
+        ),
+        PeriodCase(
+            variant=ChipVariant.NTSC,
+            index=45,
+            period=254,
+            label="NTSC-45",
+        ),
+        PeriodCase(
+            variant=ChipVariant.NTSC,
+            index=95,
+            period=14,
+            label="NTSC-95",
+        ),
+        PeriodCase(
+            variant=ChipVariant.PAL,
+            index=9,
+            period=1889,
+            label="PAL-9",
+        ),
+        PeriodCase(
+            variant=ChipVariant.PAL,
+            index=45,
+            period=236,
+            label="PAL-45",
+        ),
+        PeriodCase(
+            variant=ChipVariant.PAL,
+            index=95,
+            period=13,
+            label="PAL-95",
+        ),
+        PeriodCase(
+            variant=ChipVariant.DENDY,
+            index=9,
+            period=2015,
+            label="DENDY-9",
+        ),
+        PeriodCase(
+            variant=ChipVariant.DENDY,
+            index=45,
+            period=252,
+            label="DENDY-45",
+        ),
+        PeriodCase(
+            variant=ChipVariant.DENDY,
+            index=95,
+            period=14,
+            label="DENDY-95",
+        ),
+    )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    def test_each_system_clock_yields_bitphase_periods(
+        self,
+        case: PeriodCase,
+    ) -> None:
+        table = generate_tuning_table(
+            CPU_FREQUENCIES[case.variant],
+            a4_tuning=DEFAULT_A4_TUNING,
+        )
         assert table[case.index] == case.period
 
     def test_a_shifted_concert_pitch_moves_the_whole_table(self) -> None:
@@ -82,15 +144,27 @@ class TestTheTableMatchesBitphase:
 
 
 class TestTableShape:
-    def test_the_table_covers_every_note_index(self, ntsc_table: Tuple[int, ...]) -> None:
+    def test_the_table_covers_every_note_index(
+        self,
+        ntsc_table: Tuple[int, ...],
+    ) -> None:
         assert len(ntsc_table) == TUNING_TABLE_LENGTH
 
-    def test_a_rising_note_index_shortens_the_period(self, ntsc_table: Tuple[int, ...]) -> None:
-        assert all(later <= earlier for earlier, later in zip(ntsc_table, ntsc_table[1:]))
+    def test_a_rising_note_index_shortens_the_period(
+        self,
+        ntsc_table: Tuple[int, ...],
+    ) -> None:
+        assert all(later <= earlier for earlier, later in itertools.pairwise(ntsc_table))
 
     @pytest.mark.parametrize("variant", list(ChipVariant))
-    def test_every_period_fits_the_channel_timer(self, variant: ChipVariant) -> None:
-        table = generate_tuning_table(CPU_FREQUENCIES[variant], a4_tuning=DEFAULT_A4_TUNING)
+    def test_every_period_fits_the_channel_timer(
+        self,
+        variant: ChipVariant,
+    ) -> None:
+        table = generate_tuning_table(
+            CPU_FREQUENCIES[variant],
+            a4_tuning=DEFAULT_A4_TUNING,
+        )
         assert all(MIN_TUNING_PERIOD <= period <= MAX_TUNING_PERIOD for period in table)
 
     def test_a_clock_too_slow_for_the_top_notes_holds_the_shortest_period(self) -> None:

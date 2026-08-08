@@ -45,7 +45,7 @@ class TestStem(BaseTestSuite):
         fields: InstructionsFilenameFields
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="standard_values",
             fields=_fields(),
@@ -76,7 +76,7 @@ class TestStem(BaseTestSuite):
             fields=_fields(sm="cqt"),
             expected=_stem(sm="cqt"),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.label)
     def test_stem(self, test_case: TestCase) -> None:
@@ -89,7 +89,7 @@ class TestFilename(BaseTestSuite):
         fields: InstructionsFilenameFields
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="appends_extension",
             fields=_fields(),
@@ -100,7 +100,7 @@ class TestFilename(BaseTestSuite):
             fields=_fields(sr=22050, nf=30),
             expected=_stem(sr=22050, nf=30) + EXT_FILE_LIBRARY,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.label)
     def test_filename(self, test_case: TestCase) -> None:
@@ -114,7 +114,7 @@ class TestCreate(BaseTestSuite):
         expected: Union[InstructionsFilenameFields, Type[Exception]]
         match: str = ""
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="valid_stem",
             pathlike=_stem(),
@@ -167,7 +167,7 @@ class TestCreate(BaseTestSuite):
             pathlike=f"sr_44100_nf_60_ws_2048_tg_0_sm_fft_ch_abc",
             expected=ValueError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.label)
     def test_create(self, test_case: TestCase) -> None:
@@ -193,7 +193,7 @@ class TestRoundTrip(BaseTestSuite):
         fields: InstructionsFilenameFields
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="standard",
             fields=_fields(),
@@ -209,7 +209,7 @@ class TestRoundTrip(BaseTestSuite):
             fields=_fields(sm="cqt"),
             expected=_stem(sm="cqt"),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.label)
     def test_round_trip(self, test_case: TestCase) -> None:

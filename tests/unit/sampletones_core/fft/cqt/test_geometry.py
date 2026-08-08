@@ -25,11 +25,11 @@ class TestQualityFactor(BaseTestSuite):
         def label(self) -> str:
             return f"bpo_{self.bins_per_octave}"
 
-    test_cases = [
+    test_cases = (
         TestCase(bins_per_octave=1, expected=1.0),
         TestCase(bins_per_octave=12, expected=16.817154),
         TestCase(bins_per_octave=24, expected=34.127088),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_quality_factor(self, test_case: TestCase) -> None:
@@ -50,7 +50,7 @@ class TestCalculateWaveletLengths(BaseTestSuite):
         def label(self) -> str:
             return f"rate_{self.sample_rate}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             sample_rate=11025,
             frequencies=[55.0, 110.0, 220.0, 440.0],
@@ -61,7 +61,7 @@ class TestCalculateWaveletLengths(BaseTestSuite):
             frequencies=[55.0, 110.0, 220.0, 440.0],
             expected=[6743.0, 3372.0, 1686.0, 843.0],
         ),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_calculate_wavelet_lengths(self, test_case: TestCase) -> None:
@@ -87,10 +87,10 @@ class TestResolvableBins(BaseTestSuite):
         def label(self) -> str:
             return f"rate_{self.sample_rate}_len_{self.signal_length}"
 
-    test_cases = [
+    test_cases = (
         TestCase(sample_rate=11025, signal_length=3395, expected=0),
         TestCase(sample_rate=11025, signal_length=848, expected=25),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_unresolvable_count(self, test_case: TestCase) -> None:

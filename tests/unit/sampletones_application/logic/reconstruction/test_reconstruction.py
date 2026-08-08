@@ -27,6 +27,7 @@ from sampletones_core.paths import (
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
+from tests.suite.case import BaseRegularTestCase
 
 NO_EXTENSION: Final[str] = ""
 
@@ -124,36 +125,6 @@ def data_with_original_audio(
     return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
 
-@dataclass(frozen=True)
-class AudioPathCase:
-    label: str
-    has_filepath: bool
-    has_content: bool
-    expected_state: ReconstructionPathState
-
-
-audio_path_cases = [
-    AudioPathCase(
-        "detached",
-        has_filepath=False,
-        has_content=False,
-        expected_state=ReconstructionPathState.NOT_APPLICABLE,
-    ),
-    AudioPathCase(
-        "recorded_but_unavailable",
-        has_filepath=True,
-        has_content=False,
-        expected_state=ReconstructionPathState.NOT_FOUND,
-    ),
-    AudioPathCase(
-        "available",
-        has_filepath=True,
-        has_content=True,
-        expected_state=ReconstructionPathState.AVAILABLE,
-    ),
-]
-
-
 class TestReconstructionPanelLogicDisplay:
     def test_display_with_no_data_is_no_op(
         self,
@@ -223,11 +194,34 @@ class TestReconstructionPanelLogicPathRows:
         assert view_model.reconstruction_file.state is ReconstructionPathState.NOT_APPLICABLE
         assert view_model.original_audio.state is ReconstructionPathState.NOT_APPLICABLE
 
-    @pytest.mark.parametrize(
-        "case",
-        audio_path_cases,
-        ids=lambda case: case.label,
+    @dataclass(frozen=True, kw_only=True)
+    class AudioPathCase(BaseRegularTestCase):
+        has_filepath: bool
+        has_content: bool
+        expected: ReconstructionPathState
+
+    test_cases = (
+        AudioPathCase(
+            label="detached",
+            has_filepath=False,
+            has_content=False,
+            expected=ReconstructionPathState.NOT_APPLICABLE,
+        ),
+        AudioPathCase(
+            label="recorded_but_unavailable",
+            has_filepath=True,
+            has_content=False,
+            expected=ReconstructionPathState.NOT_FOUND,
+        ),
+        AudioPathCase(
+            label="available",
+            has_filepath=True,
+            has_content=True,
+            expected=ReconstructionPathState.AVAILABLE,
+        ),
     )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
         audio_filepath = Path("/songs/source.wav") if case.has_filepath else None
         original_audio = np.zeros(4, dtype=np.float32) if case.has_content else None
@@ -237,7 +231,7 @@ class TestReconstructionPanelLogicPathRows:
             original_audio,
         )
 
-        assert view_model.state is case.expected_state
+        assert view_model.state is case.expected
 
 
 class TestReconstructionPanelLogicUpdate:

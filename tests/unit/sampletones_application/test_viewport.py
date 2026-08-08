@@ -56,10 +56,42 @@ class FitCase:
 
 class TestFitWindowToMonitor:
     test_cases = (
-        FitCase("oversized_from_larger_monitor", (_PRIMARY,), _PRIMARY, 200, 200, 2560, 1440),
-        FitCase("equal_to_monitor", (_PRIMARY,), _PRIMARY, 0, 0, 1920, 1080),
-        FitCase("off_screen_top_left", (_PRIMARY,), _PRIMARY, -500, -500, 1280, 800),
-        FitCase("off_screen_bottom_right", (_PRIMARY,), _PRIMARY, 5000, 5000, 1280, 800),
+        FitCase(
+            "oversized_from_larger_monitor",
+            (_PRIMARY,),
+            _PRIMARY,
+            200,
+            200,
+            2560,
+            1440,
+        ),
+        FitCase(
+            "equal_to_monitor",
+            (_PRIMARY,),
+            _PRIMARY,
+            0,
+            0,
+            1920,
+            1080,
+        ),
+        FitCase(
+            "off_screen_top_left",
+            (_PRIMARY,),
+            _PRIMARY,
+            -500,
+            -500,
+            1280,
+            800,
+        ),
+        FitCase(
+            "off_screen_bottom_right",
+            (_PRIMARY,),
+            _PRIMARY,
+            5000,
+            5000,
+            1280,
+            800,
+        ),
         FitCase(
             "on_secondary_monitor",
             (_PRIMARY, _SECONDARY),

@@ -59,7 +59,7 @@ class TestLoadFileAccess(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         make_path: Callable[[Path], Path]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="missing_file",
             make_path=lambda root: root / "fake.ins",
@@ -70,7 +70,7 @@ class TestLoadFileAccess(BaseTestSuite):
             make_path=lambda root: root,
             expected=DIRECTORY_READ_ERRORS,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -112,7 +112,7 @@ class TestLoadWrapping(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         side_effect: Exception
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="invalid_values_wrapped",
             side_effect=TypeError("bad field"),
@@ -128,7 +128,7 @@ class TestLoadWrapping(BaseTestSuite):
             side_effect=DeserializationError("missing getter"),
             expected=DeserializationError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

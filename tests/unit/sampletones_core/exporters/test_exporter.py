@@ -71,7 +71,7 @@ class TestArpeggioReferenceStability(BaseTestSuite):
         arpeggio: np.ndarray
         edited_pitches: List[int]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="pulse",
             exporter=PulseExporter,
@@ -99,7 +99,7 @@ class TestArpeggioReferenceStability(BaseTestSuite):
             edited_pitches=[REFERENCE_PERIOD + PERIOD_STEP] + [REFERENCE_PERIOD] * SOUNDING_FRAMES,
             expected=REFERENCE_PERIOD,
         ),
-    ]
+    )
 
     @staticmethod
     def _export(test_case: TestCase, instructions: Sequence[InstructionUnion]) -> Features:
@@ -197,7 +197,7 @@ class TestAbsentArpeggioEnvelope(BaseTestSuite):
         features: Features
         read_pitch: Callable[[Any], int]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="pulse",
             exporter=PulseExporter,
@@ -240,7 +240,7 @@ class TestAbsentArpeggioEnvelope(BaseTestSuite):
             read_pitch=_read_period,
             expected=REFERENCE_PERIOD,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

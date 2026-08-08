@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import pytest
@@ -16,7 +14,7 @@ class TestToUtf8(BaseTestSuite):
         input_string: str
         encoding: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_string="Device Name",
             encoding="utf-8",
@@ -83,7 +81,7 @@ class TestToUtf8(BaseTestSuite):
             expected="",
             label="empty_string",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

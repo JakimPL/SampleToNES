@@ -39,7 +39,7 @@ class TestCaptureModifiers(BaseTestSuite):
         held: List[int]
         expected: ModifierSet
 
-    test_cases = [
+    test_cases = (
         TestCase(label="no modifier held", held=[], expected=NO_MODIFIERS),
         TestCase(label="left control", held=[L_CONTROL], expected=CTRL),
         TestCase(label="right control", held=[R_CONTROL], expected=CTRL),
@@ -54,15 +54,26 @@ class TestCaptureModifiers(BaseTestSuite):
             held=[L_CONTROL, L_SHIFT, L_ALT],
             expected=CTRL_ALT_SHIFT,
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_capture_modifiers(self, test_case: TestCase, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_capture_modifiers(
+        self,
+        test_case: TestCase,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         _hold(monkeypatch, test_case.held)
 
         assert capture_modifiers() == test_case.expected
 
-    def test_both_keys_of_one_modifier_report_it_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_both_keys_of_one_modifier_report_it_once(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         _hold(monkeypatch, [L_CONTROL, R_CONTROL])
 
         assert capture_modifiers() == CTRL
@@ -74,7 +85,7 @@ class TestModifiersDisplay(BaseTestSuite):
         modifiers: ModifierSet
         expected: Tuple[str, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(label="no modifier", modifiers=NO_MODIFIERS, expected=()),
         TestCase(label="control", modifiers=CTRL, expected=("Ctrl",)),
         TestCase(label="shift", modifiers=SHIFT, expected=("Shift",)),
@@ -86,9 +97,13 @@ class TestModifiersDisplay(BaseTestSuite):
             modifiers=CTRL_ALT_SHIFT,
             expected=("Ctrl", "Alt", "Shift"),
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_modifiers_display(self, test_case: TestCase) -> None:
         assert modifiers_display(test_case.modifiers) == test_case.expected
 

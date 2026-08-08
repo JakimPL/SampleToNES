@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Dict, Final
 from unittest.mock import MagicMock
@@ -1191,7 +1191,7 @@ def _loop_entry(loop: bool) -> HistoryEntry:
     return HistoryEntry(
         project=MagicMock(),
         action=HistoryAction.SET_SAMPLE_LOOP,
-        created=datetime.now(),
+        created=datetime.now(tz=UTC),
         detail=(
             HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
             HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),

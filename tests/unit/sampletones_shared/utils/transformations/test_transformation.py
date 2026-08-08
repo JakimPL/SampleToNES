@@ -6,14 +6,13 @@ from typing import Any, Optional, Tuple
 import numpy as np
 import pytest
 
+from sampletones_shared.types.data import SerializedData
 from sampletones_shared.utils.transformations.functions import (
     exp,
     identity,
     power,
 )
-from sampletones_shared.utils.transformations.transformation import (
-    Transformation,
-)
+from sampletones_shared.utils.transformations.transformation import Transformation
 from tests.suite.arrays import assert_array_equal
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -35,7 +34,7 @@ class TestTransformationIdentity(BaseTestSuite):
 
     identity_transformation = Transformation(forward=identity, backward=identity)
 
-    apply_test_cases = [
+    apply_test_cases = (
         ApplyTestCase(
             transformation=identity_transformation,
             operation=np.add,
@@ -106,9 +105,9 @@ class TestTransformationIdentity(BaseTestSuite):
             expected=np.array([3.0, 7.5, 14.0]),
             label="identity_multiply_numpy_array",
         ),
-    ]
+    )
 
-    reduce_test_cases = [
+    reduce_test_cases = (
         ReduceTestCase(
             transformation=identity_transformation,
             operation=np.add,
@@ -158,7 +157,7 @@ class TestTransformationIdentity(BaseTestSuite):
             expected=np.array([8.0, 15.0]),
             label="identity_reduce_multiply_two_arrays",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -166,7 +165,10 @@ class TestTransformationIdentity(BaseTestSuite):
         ids=lambda tc: tc.label,
     )
     def test_apply(self, test_case: ApplyTestCase) -> None:
-        result = test_case.transformation.apply(test_case.operation, *test_case.inputs)
+        result = test_case.transformation.apply(
+            test_case.operation,
+            *test_case.inputs,
+        )
         assert_array_equal(result, test_case.expected)
 
     @pytest.mark.parametrize(
@@ -175,7 +177,10 @@ class TestTransformationIdentity(BaseTestSuite):
         ids=lambda tc: tc.label,
     )
     def test_reduce(self, test_case: ReduceTestCase) -> None:
-        result = test_case.transformation.reduce(test_case.operation, *test_case.inputs)
+        result = test_case.transformation.reduce(
+            test_case.operation,
+            *test_case.inputs,
+        )
         assert_array_equal(result, test_case.expected)
 
 
@@ -194,7 +199,7 @@ class TestTransformationExp(BaseTestSuite):
 
     exp_transformation = Transformation(forward=exp, backward=np.log)
 
-    apply_test_cases = [
+    apply_test_cases = (
         ApplyTestCase(
             transformation=exp_transformation,
             operation=np.add,
@@ -258,9 +263,9 @@ class TestTransformationExp(BaseTestSuite):
             expected=np.exp(np.log(np.array([2.0, 3.0])) * np.log(np.array([1.5, 2.5]))),
             label="exp_multiply_numpy_array",
         ),
-    ]
+    )
 
-    reduce_test_cases = [
+    reduce_test_cases = (
         ReduceTestCase(
             transformation=exp_transformation,
             operation=np.add,
@@ -307,7 +312,7 @@ class TestTransformationExp(BaseTestSuite):
             expected=np.array([48.0, 105.0]),
             label="exp_reduce_add_three_arrays",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -315,7 +320,10 @@ class TestTransformationExp(BaseTestSuite):
         ids=lambda tc: tc.label,
     )
     def test_apply(self, test_case: ApplyTestCase) -> None:
-        result = test_case.transformation.apply(test_case.operation, *test_case.inputs)
+        result = test_case.transformation.apply(
+            test_case.operation,
+            *test_case.inputs,
+        )
         assert_array_equal(result, test_case.expected)
 
     @pytest.mark.parametrize(
@@ -324,7 +332,10 @@ class TestTransformationExp(BaseTestSuite):
         ids=lambda tc: tc.label,
     )
     def test_reduce(self, test_case: ReduceTestCase) -> None:
-        result = test_case.transformation.reduce(test_case.operation, *test_case.inputs)
+        result = test_case.transformation.reduce(
+            test_case.operation,
+            *test_case.inputs,
+        )
         assert_array_equal(result, test_case.expected)
 
 
@@ -346,7 +357,7 @@ class TestTransformationPower(BaseTestSuite):
         backward=lambda x: power(x, 0.5),
     )
 
-    apply_test_cases = [
+    apply_test_cases = (
         ApplyTestCase(
             transformation=square_transformation,
             operation=np.add,
@@ -396,9 +407,9 @@ class TestTransformationPower(BaseTestSuite):
             expected=(np.sqrt(np.array([4.0, 9.0, 16.0])) + np.sqrt(np.array([1.0, 4.0, 9.0]))) ** 2,
             label="square_add_numpy_array",
         ),
-    ]
+    )
 
-    reduce_test_cases = [
+    reduce_test_cases = (
         ReduceTestCase(
             transformation=square_transformation,
             operation=np.add,
@@ -432,7 +443,7 @@ class TestTransformationPower(BaseTestSuite):
             ** 2,
             label="square_reduce_add_three_arrays",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -440,7 +451,10 @@ class TestTransformationPower(BaseTestSuite):
         ids=lambda tc: tc.label,
     )
     def test_apply(self, test_case: ApplyTestCase) -> None:
-        result = test_case.transformation.apply(test_case.operation, *test_case.inputs)
+        result = test_case.transformation.apply(
+            test_case.operation,
+            *test_case.inputs,
+        )
         assert_array_equal(result, test_case.expected)
 
     @pytest.mark.parametrize(
@@ -449,7 +463,10 @@ class TestTransformationPower(BaseTestSuite):
         ids=lambda tc: tc.label,
     )
     def test_reduce(self, test_case: ReduceTestCase) -> None:
-        result = test_case.transformation.reduce(test_case.operation, *test_case.inputs)
+        result = test_case.transformation.reduce(
+            test_case.operation,
+            *test_case.inputs,
+        )
         assert_array_equal(result, test_case.expected)
 
 
@@ -463,7 +480,7 @@ class TestTransformationReduce(BaseTestSuite):
     identity_transformation = Transformation(forward=identity, backward=identity)
     exp_transformation = Transformation(forward=exp, backward=np.log)
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformation=identity_transformation,
             operation=np.add,
@@ -530,7 +547,7 @@ class TestTransformationReduce(BaseTestSuite):
             expected=np.array([8.0, 15.0]),
             label="identity_reduce_multiply_two_arrays",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -538,7 +555,10 @@ class TestTransformationReduce(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_reduce(self, test_case: TestCase) -> None:
-        result = test_case.transformation.reduce(test_case.operation, *test_case.inputs)
+        result = test_case.transformation.reduce(
+            test_case.operation,
+            *test_case.inputs,
+        )
         assert_array_equal(result, test_case.expected)
 
 
@@ -552,7 +572,7 @@ class TestTransformationArithmeticMethods(BaseTestSuite):
     identity_transformation = Transformation(forward=identity, backward=identity)
     exp_transformation = Transformation(forward=exp, backward=np.log)
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformation=identity_transformation,
             method_name="add",
@@ -648,7 +668,7 @@ class TestTransformationArithmeticMethods(BaseTestSuite):
             expected=np.array([48.0, 105.0]),
             label="identity_multiply_three_arrays",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -678,7 +698,7 @@ class TestTransformationCompose(BaseTestSuite):
         backward=lambda x: power(x, 0.5),
     )
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="identity_compose_add",
             transformation=identity_transformation,
@@ -727,7 +747,7 @@ class TestTransformationCompose(BaseTestSuite):
             backward_inputs=(9.0,),
             expected_backward_result=np.float64(3.0),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -759,7 +779,7 @@ class TestTransformationErrors(BaseTestSuite):
 
     identity_transformation = Transformation(forward=identity, backward=identity)
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformation=identity_transformation,
             method_name="reduce",
@@ -784,7 +804,7 @@ class TestTransformationErrors(BaseTestSuite):
             expected=TypeError,
             label="compose_function_int",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

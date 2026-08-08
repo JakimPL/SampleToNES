@@ -27,7 +27,7 @@ class TestCalculateNBins(BaseTestSuite):
             error_suffix = "_error" if isinstance(self.expected, type) and issubclass(self.expected, Exception) else ""
             return f"rate_{self.sample_rate}_cutoff_{self.cutoff}_bpo_{self.bins_per_octave}{error_suffix}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             sample_rate=44100,
             cutoff=55.0,
@@ -79,7 +79,7 @@ class TestCalculateNBins(BaseTestSuite):
             expected=ValueError,
             match="number of bins is not positive",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -119,7 +119,7 @@ class TestToResolutionFlooredLogBands(BaseTestSuite):
             dtype_str = self.bands.dtype if hasattr(self.bands, "dtype") else type(self.bands).__name__
             return f"dtype_{dtype_str}_cutoff_{self.cutoff}_bpo_{self.bins_per_octave}{error_suffix}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             bands=np.linspace(0.0, 22050.0, 809, dtype=np.float32),
             cutoff=54.6,
@@ -194,7 +194,7 @@ class TestToResolutionFlooredLogBands(BaseTestSuite):
             expected=ValueError,
             match="must be less than the maximum band frequency",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

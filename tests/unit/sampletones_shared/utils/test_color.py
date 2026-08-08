@@ -15,7 +15,7 @@ class TestParseHexColor(BaseTestSuite):
         value: str
         expected: Union[Tuple[int, int, int, int], Type[Exception]]
 
-    test_cases = [
+    test_cases = (
         # --- valid 6-digit (opaque, alpha defaults to 255) ---
         TestCase(
             label="black",
@@ -142,7 +142,7 @@ class TestParseHexColor(BaseTestSuite):
             value="#ff ff ff",
             expected=ValueError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

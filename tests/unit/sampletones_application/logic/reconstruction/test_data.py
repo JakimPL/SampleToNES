@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable
 
 import numpy as np
-import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import write_wave

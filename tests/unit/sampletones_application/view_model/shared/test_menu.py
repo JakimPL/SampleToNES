@@ -2,63 +2,63 @@ from dataclasses import dataclass
 
 import pytest
 
-from sampletones_application.view_model.sequencer.channels import (
-    SequencerChannelsViewModel,
-)
+from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 EVERY_CHANNEL_AUDIBLE = SequencerChannelsViewModel(muted=frozenset())
 
 
-@dataclass(frozen=True, kw_only=True)
-class EnablementCase:
-    label: str
-    project_open: bool
-    can_undo: bool
-    can_redo: bool
-    undo_enabled: bool
-    redo_enabled: bool
+class TestUndoRedoEnablement(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class EnablementCase(BaseRegularTestCase):
+        project_open: bool
+        can_undo: bool
+        can_redo: bool
+        undo_enabled: bool
+        redo_enabled: bool
 
+    test_cases = (
+        EnablementCase(
+            label="closed_project_disables_both",
+            project_open=False,
+            can_undo=True,
+            can_redo=True,
+            undo_enabled=False,
+            redo_enabled=False,
+        ),
+        EnablementCase(
+            label="baseline_history_disables_both",
+            project_open=True,
+            can_undo=False,
+            can_redo=False,
+            undo_enabled=False,
+            redo_enabled=False,
+        ),
+        EnablementCase(
+            label="undoable_edit_enables_undo",
+            project_open=True,
+            can_undo=True,
+            can_redo=False,
+            undo_enabled=True,
+            redo_enabled=False,
+        ),
+        EnablementCase(
+            label="undone_edit_enables_redo",
+            project_open=True,
+            can_undo=False,
+            can_redo=True,
+            undo_enabled=False,
+            redo_enabled=True,
+        ),
+    )
 
-ENABLEMENT_CASES = [
-    EnablementCase(
-        label="closed_project_disables_both",
-        project_open=False,
-        can_undo=True,
-        can_redo=True,
-        undo_enabled=False,
-        redo_enabled=False,
-    ),
-    EnablementCase(
-        label="baseline_history_disables_both",
-        project_open=True,
-        can_undo=False,
-        can_redo=False,
-        undo_enabled=False,
-        redo_enabled=False,
-    ),
-    EnablementCase(
-        label="undoable_edit_enables_undo",
-        project_open=True,
-        can_undo=True,
-        can_redo=False,
-        undo_enabled=True,
-        redo_enabled=False,
-    ),
-    EnablementCase(
-        label="undone_edit_enables_redo",
-        project_open=True,
-        can_undo=False,
-        can_redo=True,
-        undo_enabled=False,
-        redo_enabled=True,
-    ),
-]
-
-
-class TestUndoRedoEnablement:
-    @pytest.mark.parametrize("case", ENABLEMENT_CASES, ids=lambda case: case.label)
-    def test_enablement_follows_project_and_history_state(self, case: EnablementCase) -> None:
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    def test_enablement_follows_project_and_history_state(
+        self,
+        case: EnablementCase,
+    ) -> None:
         view_model = MenuBarViewModel(
             project_open=case.project_open,
             reconstruction_loaded=False,

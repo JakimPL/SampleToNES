@@ -45,7 +45,7 @@ class TestCheckModule(BaseTestSuite):
         source: str
         expected: Tuple[str, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="well_named_tag",
             source=f"TAG_GLOBAL_WINDOW_MAIN = {WINDOW_TAG}",
@@ -130,9 +130,13 @@ class TestCheckModule(BaseTestSuite):
             source=f"def build() -> TagName:\n    tag = {WINDOW_TAG}\n    return tag",
             expected=(),
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_check_module(self, test_case: "TestCheckModule.TestCase") -> None:
         found = messages(test_case.source)
 

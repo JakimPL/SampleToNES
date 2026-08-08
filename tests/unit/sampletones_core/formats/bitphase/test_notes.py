@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Final, List
+from typing import Final
 
 import pytest
 
@@ -19,35 +19,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NOTE_RANGE,
     NoteName,
 )
-
-
-@dataclass
-class PitchCase:
-    pitch: int
-    index: int
-
-
-@dataclass
-class NoteCellCase:
-    index: int
-    name: int
-    octave: int
-
-
-PITCH_CASES: List[PitchCase] = [
-    PitchCase(pitch=24, index=0),
-    PitchCase(pitch=60, index=36),
-    PitchCase(pitch=119, index=95),
-    PitchCase(pitch=0, index=0),
-    PitchCase(pitch=200, index=95),
-]
-
-NOTE_CELL_CASES: List[NoteCellCase] = [
-    NoteCellCase(index=0, name=int(NoteName.C), octave=1),
-    NoteCellCase(index=36, name=int(NoteName.C), octave=4),
-    NoteCellCase(index=45, name=11, octave=4),
-    NoteCellCase(index=95, name=int(NoteName.B), octave=8),
-]
+from tests.suite.case import BaseRegularTestCase
 
 LOWEST_STEP: Final[int] = -NUM_PERIODS
 HIGHEST_STEP: Final[int] = NUM_PERIODS
@@ -64,7 +36,20 @@ def bitphase_noise_period(index: int) -> int:
 
 
 class TestPitchToNoteIndex:
-    @pytest.mark.parametrize("case", PITCH_CASES, ids=lambda case: str(case.pitch))
+    @dataclass(frozen=True, kw_only=True)
+    class PitchCase(BaseRegularTestCase):
+        pitch: int
+        index: int
+
+    test_cases = (
+        PitchCase(pitch=24, index=0, label="24"),
+        PitchCase(pitch=60, index=36, label="60"),
+        PitchCase(pitch=119, index=95, label="119"),
+        PitchCase(pitch=0, index=0, label="0"),
+        PitchCase(pitch=200, index=95, label="200"),
+    )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_a_pitch_lands_on_its_tuning_table_index(self, case: PitchCase) -> None:
         assert pitch_to_note_index(case.pitch) == case.index
 
@@ -78,7 +63,20 @@ class TestPitchToNoteIndex:
 
 
 class TestNoteIndexToNoteCell:
-    @pytest.mark.parametrize("case", NOTE_CELL_CASES, ids=lambda case: str(case.index))
+    @dataclass(frozen=True, kw_only=True)
+    class NoteCellCase(BaseRegularTestCase):
+        index: int
+        name: int
+        octave: int
+
+    test_cases = (
+        NoteCellCase(index=0, name=int(NoteName.C), octave=1, label="0"),
+        NoteCellCase(index=36, name=int(NoteName.C), octave=4, label="36"),
+        NoteCellCase(index=45, name=11, octave=4, label="45"),
+        NoteCellCase(index=95, name=int(NoteName.B), octave=8, label="95"),
+    )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_an_index_names_a_semitone_and_an_octave(self, case: NoteCellCase) -> None:
         cell = note_index_to_note_cell(case.index)
         assert (cell.name, cell.octave) == (case.name, case.octave)

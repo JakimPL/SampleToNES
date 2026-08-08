@@ -4,6 +4,8 @@ from typing import Final, List, Optional, Sequence
 import pytest
 
 from sampletones_application.coordinators.playback.router import PlaybackRouter
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 from tests.suite.language import FakeLanguageManager
 
 IDLE = "idle"
@@ -159,120 +161,115 @@ class TestTransportCommands:
         assert device.stop_calls == 1
 
 
-@dataclass(frozen=True)
-class StateCase:
-    label: str
-    active: Optional[str]
-    background: Optional[str]
-    preview: bool
-    play_enabled: bool
-    play_from_start_enabled: bool
-    pause_enabled: bool
-    paused: bool
-    stop_enabled: bool
-    play_label: str = field(default=PLAY_LABEL_KEY)
+class TestTransportState(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class StateCase(BaseRegularTestCase):
+        active: Optional[str]
+        background: Optional[str]
+        preview: bool
+        play_enabled: bool
+        play_from_start_enabled: bool
+        pause_enabled: bool
+        paused: bool
+        stop_enabled: bool
+        play_label: str = field(default=PLAY_LABEL_KEY)
 
+    test_cases = (
+        StateCase(
+            label="silent",
+            active=None,
+            background=None,
+            preview=False,
+            play_enabled=False,
+            play_from_start_enabled=False,
+            pause_enabled=False,
+            paused=False,
+            stop_enabled=False,
+        ),
+        StateCase(
+            label="preview_only",
+            active=None,
+            background=None,
+            preview=True,
+            play_enabled=False,
+            play_from_start_enabled=False,
+            pause_enabled=False,
+            paused=False,
+            stop_enabled=True,
+        ),
+        StateCase(
+            label="active_idle",
+            active=IDLE,
+            background=None,
+            preview=False,
+            play_enabled=True,
+            play_from_start_enabled=True,
+            pause_enabled=False,
+            paused=False,
+            stop_enabled=False,
+        ),
+        StateCase(
+            label="active_playing",
+            active=PLAYING,
+            background=None,
+            preview=False,
+            play_enabled=True,
+            play_from_start_enabled=True,
+            pause_enabled=True,
+            paused=False,
+            stop_enabled=True,
+            play_label=PAUSE_LABEL_KEY,
+        ),
+        StateCase(
+            label="active_paused",
+            active=PAUSED,
+            background=None,
+            preview=False,
+            play_enabled=True,
+            play_from_start_enabled=True,
+            pause_enabled=True,
+            paused=True,
+            stop_enabled=True,
+            play_label=RESUME_LABEL_KEY,
+        ),
+        StateCase(
+            label="background_playing_on_sourceless_tab",
+            active=None,
+            background=PLAYING,
+            preview=False,
+            play_enabled=True,
+            play_from_start_enabled=False,
+            pause_enabled=True,
+            paused=False,
+            stop_enabled=True,
+            play_label=PAUSE_LABEL_KEY,
+        ),
+        StateCase(
+            label="background_paused_on_sourceless_tab",
+            active=None,
+            background=PAUSED,
+            preview=False,
+            play_enabled=True,
+            play_from_start_enabled=False,
+            pause_enabled=True,
+            paused=True,
+            stop_enabled=True,
+            play_label=RESUME_LABEL_KEY,
+        ),
+        StateCase(
+            label="active_idle_over_background_playing",
+            active=IDLE,
+            background=PLAYING,
+            preview=False,
+            play_enabled=True,
+            play_from_start_enabled=True,
+            pause_enabled=False,
+            paused=False,
+            stop_enabled=True,
+        ),
+    )
 
-STATE_CASES = [
-    StateCase(
-        "silent",
-        active=None,
-        background=None,
-        preview=False,
-        play_enabled=False,
-        play_from_start_enabled=False,
-        pause_enabled=False,
-        paused=False,
-        stop_enabled=False,
-    ),
-    StateCase(
-        "preview_only",
-        active=None,
-        background=None,
-        preview=True,
-        play_enabled=False,
-        play_from_start_enabled=False,
-        pause_enabled=False,
-        paused=False,
-        stop_enabled=True,
-    ),
-    StateCase(
-        "active_idle",
-        active=IDLE,
-        background=None,
-        preview=False,
-        play_enabled=True,
-        play_from_start_enabled=True,
-        pause_enabled=False,
-        paused=False,
-        stop_enabled=False,
-    ),
-    StateCase(
-        "active_playing",
-        active=PLAYING,
-        background=None,
-        preview=False,
-        play_enabled=True,
-        play_from_start_enabled=True,
-        pause_enabled=True,
-        paused=False,
-        stop_enabled=True,
-        play_label=PAUSE_LABEL_KEY,
-    ),
-    StateCase(
-        "active_paused",
-        active=PAUSED,
-        background=None,
-        preview=False,
-        play_enabled=True,
-        play_from_start_enabled=True,
-        pause_enabled=True,
-        paused=True,
-        stop_enabled=True,
-        play_label=RESUME_LABEL_KEY,
-    ),
-    StateCase(
-        "background_playing_on_sourceless_tab",
-        active=None,
-        background=PLAYING,
-        preview=False,
-        play_enabled=True,
-        play_from_start_enabled=False,
-        pause_enabled=True,
-        paused=False,
-        stop_enabled=True,
-        play_label=PAUSE_LABEL_KEY,
-    ),
-    StateCase(
-        "background_paused_on_sourceless_tab",
-        active=None,
-        background=PAUSED,
-        preview=False,
-        play_enabled=True,
-        play_from_start_enabled=False,
-        pause_enabled=True,
-        paused=True,
-        stop_enabled=True,
-        play_label=RESUME_LABEL_KEY,
-    ),
-    StateCase(
-        "active_idle_over_background_playing",
-        active=IDLE,
-        background=PLAYING,
-        preview=False,
-        play_enabled=True,
-        play_from_start_enabled=True,
-        pause_enabled=False,
-        paused=False,
-        stop_enabled=True,
-    ),
-]
-
-
-class TestTransportState:
-    """The toolbar/menu state describes the target, and Stop follows any audible output."""
-
-    @pytest.mark.parametrize("case", STATE_CASES, ids=lambda case: case.label)
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_state(self, case: StateCase) -> None:
         active = FakeSource(loaded=True, state=case.active) if case.active is not None else None
         background = FakeSource(loaded=True, state=case.background) if case.background is not None else None

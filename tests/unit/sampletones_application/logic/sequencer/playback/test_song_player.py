@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from unittest.mock import MagicMock
 
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic

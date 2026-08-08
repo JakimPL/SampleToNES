@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -32,7 +30,7 @@ class TestToPath(BaseTestSuite):
         expected: Union[str, Type[Exception]]
         input_path: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_path="/home/user/file.txt",
             expected="/home/user/file.txt",
@@ -133,7 +131,7 @@ class TestToPath(BaseTestSuite):
             expected=TypeError,
             label="dict_raises_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -160,7 +158,7 @@ class TestGetFilename(BaseTestSuite):
         extension: str
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             name="song",
             extension=".stp",
@@ -185,7 +183,7 @@ class TestGetFilename(BaseTestSuite):
             expected="song.stp.stp",
             label="appends_to_a_name_already_ending_in_the_extension",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -203,7 +201,7 @@ class TestEnsureSuffix(BaseTestSuite):
         suffix: str
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_path="song",
             suffix=".stp",
@@ -252,7 +250,7 @@ class TestEnsureSuffix(BaseTestSuite):
             expected="/home/user/song.stp",
             label="full_path_keeps_matching_suffix",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -275,7 +273,7 @@ class TestShortenPath(BaseTestSuite):
         levels: Any
         os_sep: str = "/"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_path=PurePosixPath("/home/user/file.txt"),
             resolved_path=PurePosixPath("/home/user/file.txt"),
@@ -469,7 +467,7 @@ class TestShortenPath(BaseTestSuite):
             expected=ValueError,
             label="string_levels_raises_value_error",
         ),
-    ]
+    )
 
     def _create_resolved_mock(self, resolved_path: Any) -> MagicMock:
         """Stands in for the resolved path, keeping the path flavour each case declares.
@@ -634,7 +632,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         command_returncode: int
         should_fallback: bool
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="dolphin_kde",
             desktop_file="org.kde.dolphin.desktop",
@@ -725,7 +723,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
             command_returncode=1,
             should_fallback=True,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -778,7 +776,7 @@ class TestOpenPathInExplorer(BaseTestSuite):
         system: System
         is_file: bool
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="windows_file",
             system=System.WINDOWS,
@@ -803,7 +801,7 @@ class TestOpenPathInExplorer(BaseTestSuite):
             is_file=False,
             expected=["open", ""],
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

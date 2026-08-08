@@ -98,9 +98,11 @@ class TestApplicationConfigManagerSave:
             config_path,
         ):
             manager = ApplicationConfigManager()
-            with patch(
-                "sampletones_application.config.managers.application.save_yaml_atomic",
-                side_effect=RuntimeError("unexpected"),
+            with (
+                patch(
+                    "sampletones_application.config.managers.application.save_yaml_atomic",
+                    side_effect=RuntimeError("unexpected"),
+                ),
+                pytest.raises(RuntimeError),
             ):
-                with pytest.raises(RuntimeError):
-                    manager.save()
+                manager.save()

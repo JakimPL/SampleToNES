@@ -20,7 +20,7 @@ class TestNextPowerOfTwo(BaseTestSuite):
         expected: Union[int, type]
         input_value: int
 
-    test_cases = [
+    test_cases = (
         TestCase(input_value=0, expected=1, label="zero"),
         TestCase(input_value=1, expected=1, label="one"),
         TestCase(input_value=2, expected=2, label="already_power_of_two"),
@@ -45,7 +45,7 @@ class TestNextPowerOfTwo(BaseTestSuite):
             expected=OverflowError,
             label="too_large_overflow",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -53,7 +53,11 @@ class TestNextPowerOfTwo(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_next_power_of_two(self, test_case: TestCase) -> None:
-        if expect_error(next_power_of_two, test_case.expected, test_case.input_value):
+        if expect_error(
+            next_power_of_two,
+            test_case.expected,
+            test_case.input_value,
+        ):
             return
 
         result = next_power_of_two(test_case.input_value)
@@ -68,7 +72,7 @@ class TestFirstKeyForValue(BaseTestSuite):
         dictionary: Any
         target: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             dictionary={"a": 1, "b": 2, "c": 3},
             target=2,
@@ -135,7 +139,7 @@ class TestFirstKeyForValue(BaseTestSuite):
             expected=TypeError,
             label="not_a_dictionary",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List
 
 import pytest
 
@@ -13,7 +14,7 @@ def name_predicate(node: TreeNode, query: str) -> bool:
 
 
 @pytest.fixture
-def all_nodes() -> list:
+def all_nodes() -> List[TreeNode]:
     root = TreeNode("root", NodeType.ROOT)
     child_a = TreeNode("child_a", NodeType.DIRECTORY, parent=root)
     child_b = TreeNode("child_b", NodeType.DIRECTORY, parent=root)
@@ -24,7 +25,7 @@ def all_nodes() -> list:
 
 
 @pytest.fixture
-def tree(all_nodes: list) -> Tree:
+def tree(all_nodes: List[TreeNode]) -> Tree:
     return Tree(root=all_nodes[0])
 
 
@@ -32,15 +33,23 @@ class TestTreeRootManagement:
     def test_empty_tree_root_is_none(self) -> None:
         assert Tree().root is None
 
-    def test_set_root_stores_root(self, all_nodes: list) -> None:
+    def test_set_root_stores_root(self, all_nodes: List[TreeNode]) -> None:
         t = Tree()
         t.set_root(all_nodes[0])
         assert t.root is all_nodes[0]
 
-    def test_get_root_returns_root(self, all_nodes: list, tree: Tree) -> None:
+    def test_get_root_returns_root(
+        self,
+        all_nodes: List[TreeNode],
+        tree: Tree,
+    ) -> None:
         assert tree.get_root() is all_nodes[0]
 
-    def test_set_root_clears_existing_filter(self, all_nodes: list, tree: Tree) -> None:
+    def test_set_root_clears_existing_filter(
+        self,
+        all_nodes: List[TreeNode],
+        tree: Tree,
+    ) -> None:
         tree.apply_filter("child_a", name_predicate)
         assert tree.is_filtered()
         tree.set_root(all_nodes[0])
@@ -52,10 +61,10 @@ class TestTreeFilter:
     class TestCase(BaseTestCase):
         label: str
         query: str
-        expected_visible_names: frozenset
-        expected_hidden_names: frozenset
+        expected_visible_names: frozenset[str]
+        expected_hidden_names: frozenset[str]
 
-    FILTER_VISIBILITY_CASES = [
+    test_cases = (
         TestCase(
             label="match_leaf",
             query="leaf_ba",
@@ -65,18 +74,38 @@ class TestTreeFilter:
         TestCase(
             label="match_internal",
             query="child_a",
-            expected_visible_names=frozenset({"root", "child_a", "leaf_aa", "leaf_ab"}),
+            expected_visible_names=frozenset(
+                {
+                    "root",
+                    "child_a",
+                    "leaf_aa",
+                    "leaf_ab",
+                }
+            ),
             expected_hidden_names=frozenset({"child_b", "leaf_ba"}),
         ),
         TestCase(
             label="no_match",
             query="xyz",
             expected_visible_names=frozenset(),
-            expected_hidden_names=frozenset({"root", "child_a", "child_b", "leaf_aa", "leaf_ab", "leaf_ba"}),
+            expected_hidden_names=frozenset(
+                {
+                    "root",
+                    "child_a",
+                    "child_b",
+                    "leaf_aa",
+                    "leaf_ab",
+                    "leaf_ba",
+                }
+            ),
         ),
-    ]
+    )
 
-    def test_no_filter_all_nodes_visible(self, tree: Tree, all_nodes: list) -> None:
+    def test_no_filter_all_nodes_visible(
+        self,
+        tree: Tree,
+        all_nodes: List[TreeNode],
+    ) -> None:
         for node in all_nodes:
             assert tree.is_node_visible(node)
 
@@ -92,7 +121,11 @@ class TestTreeFilter:
         tree.apply_filter("", name_predicate)
         assert not tree.is_filtered()
 
-    def test_clear_filter_makes_all_nodes_visible(self, tree: Tree, all_nodes: list) -> None:
+    def test_clear_filter_makes_all_nodes_visible(
+        self,
+        tree: Tree,
+        all_nodes: List[TreeNode],
+    ) -> None:
         tree.apply_filter("leaf_ba", name_predicate)
         tree.clear_filter()
         for node in all_nodes:
@@ -103,8 +136,13 @@ class TestTreeFilter:
         t.apply_filter("x", name_predicate)
         assert t.is_filtered()
 
-    @pytest.mark.parametrize("case", FILTER_VISIBILITY_CASES, ids=lambda c: c.label)
-    def test_filter_visibility(self, tree: Tree, all_nodes: list, case: TestCase) -> None:
+    @pytest.mark.parametrize("case", test_cases, ids=lambda c: c.label)
+    def test_filter_visibility(
+        self,
+        tree: Tree,
+        all_nodes: List[TreeNode],
+        case: TestCase,
+    ) -> None:
         tree.apply_filter(case.query, name_predicate)
         for node in all_nodes:
             if node.name in case.expected_visible_names:

@@ -27,7 +27,7 @@ class TestFieldConsumesKey(BaseTestSuite):
         modifiers: ModifierSet = NO_MODIFIERS
         expected: bool
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="no field lets every key through",
             kind=FieldKind.NONE,
@@ -140,11 +140,19 @@ class TestFieldConsumesKey(BaseTestSuite):
             modifiers=CTRL,
             expected=False,
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_field_consumes_key(self, test_case: TestCase) -> None:
-        consumed = field_consumes_key(test_case.kind, test_case.key, test_case.modifiers)
+        consumed = field_consumes_key(
+            test_case.kind,
+            test_case.key,
+            test_case.modifiers,
+        )
 
         assert consumed is test_case.expected
 

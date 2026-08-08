@@ -5,9 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.coordinators.reconstruction import (
-    ReconstructionCoordinator,
-)
+from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.regeneration import RegeneratedInstrument
 from sampletones_application.services.result import ServiceSuccess
@@ -177,7 +175,7 @@ class TestSaveConfirmationGating(BaseTestSuite):
         embedded: bool
         expects_prompt: bool
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="standalone_unsaved_prompts",
             unsaved=True,
@@ -206,7 +204,7 @@ class TestSaveConfirmationGating(BaseTestSuite):
             expects_prompt=False,
             expected=False,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
