@@ -90,6 +90,14 @@ def stored_colors(module: SourceModule) -> Iterator[ColorFinding]:
                 )
 
 
+def dpg_module_helper() -> Tuple[Path, str]:
+    from sampletones_application.utils.gui.palette import dpg
+
+    bindings_module = Path(dpg.__file__).resolve()
+    theme_color_helper = dpg.dpg_add_palette_theme_color.__name__
+    return bindings_module, theme_color_helper
+
+
 def unregistered_theme_colors(
     module: SourceModule,
     *,
@@ -172,13 +180,11 @@ def main(argv: Sequence[str]) -> int:
 
     import sampletones_application
     import sampletones_config
-    from sampletones_application.utils.gui.palette import dpg
 
     config_package = Path(sampletones_config.__file__).resolve()
     palettes_directory = config_package / "palettes"
 
-    bindings_module = Path(dpg.__file__).resolve()
-    theme_color_helper = dpg.dpg_add_palette_theme_color.__name__
+    bindings_module, theme_color_helper = dpg_module_helper()
 
     parser = argparse.ArgumentParser(
         description="Check that a colour stays a palette token until it is drawn with.",

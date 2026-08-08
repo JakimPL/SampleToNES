@@ -1,11 +1,14 @@
 from pathlib import Path
-from typing import Final, List
+from typing import Final, List, Tuple
+
+from pytest import fixture
 
 from sampletones_shared.meta.source.modules import SourceModule
+from scripts.checks.palette_colors import dpg_module_helper
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source
 
-check_palette_colors = load_script("scripts/checks/palette_colors.py")
+check_palette_colors = load_script("checks/palette_colors.py")
 
 PANEL_MODULE: Final[Path] = Path("ui/panel.py")
 
@@ -26,6 +29,11 @@ PALETTE_FILE: Final[str] = 'colors:\n  accent: "#a97fe3"\n'
 LAYOUT_FILE: Final[str] = 'label_color: .accent\nclip_color: "#ff5555"\n'
 
 
+@fixture
+def module_helpers() -> Tuple[Path, str]:
+    return dpg_module_helper()
+
+
 def messages(source: str) -> List[str]:
     module = SourceModule(path=PANEL_MODULE, tree=parse_source(source))
     return [finding.message for finding in check_palette_colors.stored_colors(module)]
@@ -36,9 +44,21 @@ def locations(source: str) -> List[str]:
     return [finding.location for finding in check_palette_colors.stored_colors(module)]
 
 
-def theme_color_messages(source: str, path: Path = PANEL_MODULE) -> List[str]:
+def theme_color_messages(
+    source: str,
+    module_helpers: Tuple[Path, str],
+    path: Path = PANEL_MODULE,
+) -> List[str]:
+    bindings_module, theme_color_helper = module_helpers
     module = SourceModule(path=path, tree=parse_source(source))
-    return [finding.message for finding in check_palette_colors.unregistered_theme_colors(module)]
+    return [
+        finding.message
+        for finding in check_palette_colors.unregistered_theme_colors(
+            module,
+            bindings_module=bindings_module,
+            theme_color_helper=theme_color_helper,
+        )
+    ]
 
 
 class TestStoredColors:
@@ -64,26 +84,29 @@ class TestStoredColors:
 
 
 class TestUnregisteredThemeColors:
-    def test_a_theme_colour_filled_directly_is_reported(self) -> None:
+    def test_a_theme_colour_filled_directly_is_reported(
+        self,
+        module_helpers: Tuple[Path, str],
+    ) -> None:
         source = "def build() -> None:\n    dpg.add_theme_color(dpg.mvThemeCol_Text, color.rgba)\n"
 
-        assert len(theme_color_messages(source)) == 1
+        assert len(theme_color_messages(source, module_helpers)) == 1
 
-    def test_the_helper_that_records_it_passes(self) -> None:
+    def test_the_helper_that_records_it_passes(
+        self,
+        module_helpers: Tuple[Path, str],
+    ) -> None:
         source = "def build() -> None:\n    dpg_add_palette_theme_color(dpg.mvThemeCol_Text, color)\n"
 
-        assert not theme_color_messages(source)
+        assert not theme_color_messages(source, module_helpers)
 
-    def test_the_bindings_module_may_fill_it(self) -> None:
-        """The helper is where the call belongs, since it records the token in the same breath."""
-        source = "def build() -> None:\n    dpg.add_theme_color(dpg.mvThemeCol_Text, color.rgba)\n"
-
-        assert not theme_color_messages(source, check_palette_colors.BINDINGS_MODULE)
-
-    def test_a_theme_style_passes(self) -> None:
+    def test_a_theme_style_passes(
+        self,
+        module_helpers: Tuple[Path, str],
+    ) -> None:
         source = "def build() -> None:\n    dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 0, 0)\n"
 
-        assert not theme_color_messages(source)
+        assert not theme_color_messages(source, module_helpers)
 
 
 class TestLiteralColors:

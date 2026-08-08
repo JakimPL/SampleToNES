@@ -392,7 +392,11 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             if child_tag not in live_series_tags:
                 dpg_delete_item(child)
 
-    def _upsert_series(self, series_tag: str, layer: Union[ArrayLayer, InstructionLayer]) -> None:
+    def _upsert_series(
+        self,
+        series_tag: str,
+        layer: Union[ArrayLayer, InstructionLayer],
+    ) -> None:
         """Refreshes the points of an existing series, or creates it on the y-axis when new."""
         if dpg.does_item_exist(series_tag):
             dpg.configure_item(

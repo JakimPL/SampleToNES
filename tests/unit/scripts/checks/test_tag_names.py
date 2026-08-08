@@ -12,7 +12,7 @@ from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source
 
-check_tag_names = load_script("scripts/checks/tag_names.py")
+check_tag_names = load_script("checks/tag_names.py")
 
 MODULE_PATH: Final[Path] = Path("src/sampletones_application/tags/general.py")
 

@@ -7,7 +7,7 @@ from sampletones_shared.meta.source.modules import SourceModule
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source
 
-check_unused_tags = load_script("scripts/checks/unused_tags.py")
+check_unused_tags = load_script("checks/unused_tags.py")
 
 TAGS_MODULE: Final[Path] = Path("tags/general.py")
 PANEL_MODULE: Final[Path] = Path("ui/panel.py")

@@ -9,7 +9,7 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 
-check_bundle = load_script("scripts/ci/checks/bundle.py")
+check_bundle = load_script("ci/checks/bundle.py")
 
 NOTICES = ("LICENSE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES.txt")
 

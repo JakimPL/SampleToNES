@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 import pytest
 
@@ -11,7 +11,7 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 
-detect_cuda = load_script("scripts/detect_cuda.py")
+detect_cuda = load_script("detect_cuda.py")
 
 
 def _completed(
