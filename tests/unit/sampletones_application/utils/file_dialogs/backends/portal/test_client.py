@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import deque
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -82,7 +84,7 @@ class FakeConnection:
         self.rules: List[object] = []
         self.closed = False
 
-    def __enter__(self) -> "FakeConnection":
+    def __enter__(self) -> FakeConnection:
         return self
 
     def __exit__(self, *arguments: object) -> None:

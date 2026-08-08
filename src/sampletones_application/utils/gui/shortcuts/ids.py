@@ -44,6 +44,7 @@ class ShortcutId(Enum):
     TOGGLE_CHANNEL_NOISE = "ToggleChannelNoise"
     UNMUTE_ALL_CHANNELS = "UnmuteAllChannels"
     AUDIO_SETTINGS = "AudioSettings"
+    DISPLAY_SETTINGS = "DisplaySettings"
     TOGGLE_ADVANCED_SETTINGS = "ToggleAdvancedSettings"
     TOGGLE_FULLSCREEN = "ToggleFullscreen"
     ABOUT_DIALOG = "AboutDialog"

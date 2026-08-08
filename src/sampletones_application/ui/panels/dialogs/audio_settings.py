@@ -74,8 +74,8 @@ class GUIAudioSettingsWindow(GUIWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_AUDIO_WINDOW,
-            width=layout.window.width,
-            height=layout.window.height,
+            width=layout.audio.window.width,
+            height=layout.audio.window.height,
         )
 
     def open(self, view_model: AudioSettingsViewModel) -> None:
@@ -192,7 +192,7 @@ class GUIAudioSettingsWindow(GUIWindow):
                 min_value=MIN_MASTER_GAIN,
                 max_value=MAX_MASTER_GAIN,
                 default_value=self._master_gain,
-                width=self._layout.master_gain.slider_width,
+                width=self._layout.audio.master_gain.slider_width,
                 format="",
                 callback=self._on_master_gain_changed,
             )
@@ -230,7 +230,7 @@ class GUIAudioSettingsWindow(GUIWindow):
 
     def _clip_warning_color(self, clip_fraction: float) -> ColorRGBA:
         """Reddens the readout colour along the layout gradient by the projected boost fraction."""
-        colors = self._layout.master_gain
+        colors = self._layout.audio.master_gain
         return blend(colors.label_color.rgba, colors.clip_color.rgba, clip_fraction)
 
     @table_wrapper(columns=2)

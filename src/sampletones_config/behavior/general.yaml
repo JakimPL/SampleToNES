@@ -58,3 +58,4 @@ display:
     - 144
     - 165
     - 240
+  revert_countdown_seconds: 10.0

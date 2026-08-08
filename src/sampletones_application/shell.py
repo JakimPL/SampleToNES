@@ -115,6 +115,7 @@ class ShortcutBindings:
     toggle_channel: Callable[[GeneratorName], None]
     unmute_all_channels: Callback
     audio_settings: Callback
+    display_settings: Callback
     toggle_advanced_settings: Callback
     toggle_fullscreen: Callback
     about: Callback
@@ -317,6 +318,11 @@ class ApplicationShell:
             ShortcutId.TOGGLE_FULLSCREEN,
             Shortcut(dpg.mvKey_F11),
             bindings.toggle_fullscreen,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.DISPLAY_SETTINGS,
+            Shortcut(),
+            bindings.display_settings,
         )
         self._shortcut_manager.register(
             ShortcutId.TOGGLE_ADVANCED_SETTINGS,

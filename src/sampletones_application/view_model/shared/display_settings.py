@@ -1,4 +1,8 @@
-from typing import Tuple
+from __future__ import annotations
+
+from typing import Dict, Tuple
+
+from pydantic import BaseModel
 
 from sampletones_shared.display import UNLIMITED_FRAME_RATE, Resolution
 
@@ -92,3 +96,161 @@ def nearest_resolution(
             resolution.height,
         ),
     )
+
+
+class WindowMode(BaseModel, frozen=True):
+    """How the window presents itself on its monitor: the size it takes and the frame around it.
+
+    The three settings decide together whether the window stays usable, so they travel as one
+    value: a change to any of them is what a revert countdown guards, and restoring the mode
+    puts all three back at once. Each ``with_`` method answers with the mode carrying one
+    setting changed, leaving the mode it was asked of intact.
+    """
+
+    resolution: Resolution
+    borderless: bool
+    fullscreen: bool
+
+    def with_resolution(self, resolution: Resolution) -> WindowMode:
+        return self.model_copy(update={"resolution": resolution})
+
+    def with_borderless(self, borderless: bool) -> WindowMode:
+        return self.model_copy(update={"borderless": borderless})
+
+    def with_fullscreen(self, fullscreen: bool) -> WindowMode:
+        return self.model_copy(update={"fullscreen": fullscreen})
+
+
+class DisplaySettings(BaseModel, frozen=True):
+    """Everything the display settings offer, as one value to compare, snapshot and restore.
+
+    The dialog edits a copy and applies it live while the session keeps the values it opened
+    with, so a snapshot taken at that moment restores the appearance a user came in with. Each
+    ``with_`` method answers with the settings carrying one entry changed.
+    """
+
+    palette: str
+    window: WindowMode
+    vsync: bool
+    frame_rate: int
+
+    def with_palette(self, palette: str) -> DisplaySettings:
+        return self.model_copy(update={"palette": palette})
+
+    def with_window(self, window: WindowMode) -> DisplaySettings:
+        return self.model_copy(update={"window": window})
+
+    def with_vsync(self, vsync: bool) -> DisplaySettings:
+        return self.model_copy(update={"vsync": vsync})
+
+    def with_frame_rate(self, frame_rate: int) -> DisplaySettings:
+        return self.model_copy(update={"frame_rate": frame_rate})
+
+
+class DisplaySettingsViewModel(BaseModel, frozen=True):
+    """What the display settings dialog draws: the options offered, and the selection standing.
+
+    The sizes are those the window's monitor leaves room for, so the offer follows the screen the
+    window sits on. Each combo reads its labels here and reports a chosen label back, keeping the
+    projection between a label and the value it stands for in one place.
+    """
+
+    settings: DisplaySettings
+    resolutions: Tuple[Resolution, ...]
+    frame_rates: Tuple[int, ...]
+    palettes: Tuple[str, ...]
+
+    @classmethod
+    def build(
+        cls,
+        settings: DisplaySettings,
+        *,
+        resolutions: Tuple[Resolution, ...],
+        frame_rates: Tuple[int, ...],
+        palettes: Tuple[str, ...],
+        min_width: int,
+        min_height: int,
+        max_width: int,
+        max_height: int,
+    ) -> DisplaySettingsViewModel:
+        """Offers what the given bounds leave room for, with the standing selection snapped onto it.
+
+        A window sized between two offered entries — restored from a session, or dragged to a size
+        of its own — selects the nearest one, so the combos always show the state that is in force.
+
+        Args:
+            settings: The display state in force.
+            resolutions: The sizes the build offers.
+            frame_rates: The frame rates the build offers.
+            palettes: The palettes the build ships, in the order they are offered.
+            min_width: Narrowest width the window opens at.
+            min_height: Shortest height the window opens at.
+            max_width: Widest width the window's monitor leaves room for.
+            max_height: Tallest height the window's monitor leaves room for.
+        """
+        offered = available_resolutions(
+            resolutions,
+            min_width=min_width,
+            min_height=min_height,
+            max_width=max_width,
+            max_height=max_height,
+        )
+        selected = WindowMode(
+            resolution=nearest_resolution(
+                settings.window.resolution.width,
+                settings.window.resolution.height,
+                offered,
+            ),
+            borderless=settings.window.borderless,
+            fullscreen=settings.window.fullscreen,
+        )
+        return cls(
+            settings=DisplaySettings(
+                palette=settings.palette,
+                window=selected,
+                vsync=settings.vsync,
+                frame_rate=nearest_frame_rate(settings.frame_rate, frame_rates),
+            ),
+            resolutions=offered,
+            frame_rates=frame_rates,
+            palettes=palettes,
+        )
+
+    @property
+    def window_controls_enabled(self) -> bool:
+        """Whether the size and frame controls apply: a fullscreen window takes its whole monitor."""
+        return not self.settings.window.fullscreen
+
+    @property
+    def resolution_items(self) -> Tuple[str, ...]:
+        return resolution_labels(self.resolutions)
+
+    @property
+    def current_resolution_item(self) -> str:
+        return str(self.settings.window.resolution)
+
+    def frame_rate_items(self, unlimited_label: str) -> Tuple[str, ...]:
+        return frame_rate_labels(self.frame_rates, unlimited_label=unlimited_label)
+
+    def current_frame_rate_item(self, unlimited_label: str) -> str:
+        return frame_rate_label(self.settings.frame_rate, unlimited_label=unlimited_label)
+
+    def resolution_for_item(self, item: str) -> Resolution:
+        """The size the given label stands for.
+
+        Raises:
+            KeyError: when no offered size carries that label.
+        """
+        offered: Dict[str, Resolution] = {str(resolution): resolution for resolution in self.resolutions}
+        return offered[item]
+
+    def frame_rate_for_item(self, item: str, unlimited_label: str) -> int:
+        """The frame rate the given label stands for.
+
+        Raises:
+            KeyError: when no offered rate carries that label.
+        """
+        offered: Dict[str, int] = {
+            frame_rate_label(frame_rate, unlimited_label=unlimited_label): frame_rate for frame_rate in self.frame_rates
+        }
+        return offered[item]

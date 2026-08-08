@@ -50,6 +50,92 @@ TAG_SETTINGS_AUDIO_BUTTON_REFRESH = TagName(
     "refresh",
 )
 
+TAG_SETTINGS_DISPLAY_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.WINDOW,
+    "display",
+)
+TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.COMBO,
+    "resolution",
+)
+TAG_SETTINGS_DISPLAY_COMBO_FRAME_RATE = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.COMBO,
+    "frame_rate",
+)
+TAG_SETTINGS_DISPLAY_COMBO_PALETTE = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.COMBO,
+    "palette",
+)
+TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.CHECKBOX,
+    "borderless",
+)
+TAG_SETTINGS_DISPLAY_CHECKBOX_FULLSCREEN = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.CHECKBOX,
+    "fullscreen",
+)
+TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.CHECKBOX,
+    "vsync",
+)
+TAG_SETTINGS_DISPLAY_BUTTON_OK = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.BUTTON,
+    "ok",
+)
+TAG_SETTINGS_DISPLAY_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.BUTTON,
+    "cancel",
+)
+TAG_SETTINGS_DISPLAY_DIALOG_DISCARD = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.DIALOG,
+    "discard",
+)
+
+TAG_SETTINGS_DISPLAY_WINDOW_COUNTDOWN = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.WINDOW,
+    "countdown",
+)
+TAG_SETTINGS_DISPLAY_TEXT_COUNTDOWN = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.TEXT,
+    "countdown",
+)
+TAG_SETTINGS_DISPLAY_BUTTON_KEEP = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.BUTTON,
+    "keep",
+)
+TAG_SETTINGS_DISPLAY_BUTTON_REVERT = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.BUTTON,
+    "revert",
+)
+
 TAG_SETTINGS_PROPERTIES_WINDOW = TagName(
     Page.SETTINGS,
     Panel.PROPERTIES,

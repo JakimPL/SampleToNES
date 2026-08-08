@@ -92,4 +92,5 @@ class Panel(StrEnum):
 
     # Settings
     AUDIO = auto()
+    DISPLAY = auto()
     PROPERTIES = auto()

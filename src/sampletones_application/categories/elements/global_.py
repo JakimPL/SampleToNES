@@ -101,6 +101,7 @@ class MenuElements(AbstractElement):
     GROUP_VIEW = "group_view"
     ITEM_VIEW_SHOW_ADVANCED_SETTINGS = "item_view_show_advanced_settings"
     ITEM_VIEW_FULLSCREEN = "item_view_fullscreen"
+    ITEM_VIEW_DISPLAY_SETTINGS = "item_view_display_settings"
     GROUP_HELP = "group_help"
     ITEM_HELP_ABOUT = "item_help_about"
     TAB_MAIN = "tab_main"

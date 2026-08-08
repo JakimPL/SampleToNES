@@ -18,9 +18,18 @@ RESOLUTIONS: List[Dict[str, int]] = [
 
 FRAME_RATES: List[int] = [UNLIMITED_FRAME_RATE, 30, 60]
 
+COUNTDOWN_SECONDS: float = 10.0
+
 
 def behavior(**overrides: Any) -> DisplayBehavior:
-    return DisplayBehavior.model_validate({"resolutions": RESOLUTIONS, "frame_rates": FRAME_RATES, **overrides})
+    return DisplayBehavior.model_validate(
+        {
+            "resolutions": RESOLUTIONS,
+            "frame_rates": FRAME_RATES,
+            "revert_countdown_seconds": COUNTDOWN_SECONDS,
+            **overrides,
+        }
+    )
 
 
 class TestDisplayBehavior:
@@ -60,6 +69,12 @@ class TestDisplayBehavior:
         with pytest.raises(ValidationError):
             behavior(resolutions=[{"width": 0, "height": 768}])
 
+    @pytest.mark.parametrize("seconds", [0.0, -1.0])
+    def test_a_countdown_without_time_raises(self, seconds: float) -> None:
+        """A window mode nobody confirms is given time to be judged in."""
+        with pytest.raises(ValidationError):
+            behavior(revert_countdown_seconds=seconds)
+
 
 @pytest.fixture(scope="module")
 def display() -> DisplayBehavior:
@@ -75,3 +90,6 @@ class TestShippedDisplayBehavior:
 
     def test_the_default_frame_rate_is_one_of_the_offered_rates(self, display: DisplayBehavior) -> None:
         assert DEFAULT_MAX_FPS in display.frame_rates
+
+    def test_a_window_mode_is_given_time_to_be_judged_in(self, display: DisplayBehavior) -> None:
+        assert display.revert_countdown_seconds > 0.0

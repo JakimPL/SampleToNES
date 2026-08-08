@@ -18,10 +18,11 @@ import ast
 import logging
 import re
 import sys
+from collections.abc import Iterator, Sequence
 from importlib.resources import files
 from itertools import chain
 from pathlib import Path
-from typing import Final, Iterator, List, NamedTuple, Sequence, Tuple, Union
+from typing import Final, List, NamedTuple, Tuple, Union
 
 from sampletones_application.paths import PALETTES_DIRECTORY
 from sampletones_shared.logger import logger

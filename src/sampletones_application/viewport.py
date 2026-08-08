@@ -8,7 +8,7 @@ from sampletones_application.layout.general.window import WindowLayout
 from sampletones_application.ui.resources.items import IconResource
 from sampletones_application.ui.resources.resources import get_icon_path
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.monitors import monitor_area_for_window
+from sampletones_application.utils.monitors import MonitorArea, monitor_area_for_window
 from sampletones_shared.application import SAMPLETONES_NAME
 from sampletones_shared.types.callback import VoidCallback
 
@@ -77,6 +77,13 @@ class ViewportManager:
         """The size the window is showing at right now."""
         return dpg.get_viewport_width(), dpg.get_viewport_height()
 
+    @property
+    def monitor_area(self) -> MonitorArea:
+        """The area of the monitor the window currently sits on, and the room it leaves a window."""
+        viewport_x, viewport_y = dpg.get_viewport_pos()
+        width, height = self.resolution
+        return self._monitor_area(int(viewport_x), int(viewport_y), width, height)
+
     def refresh_clear_color(self) -> None:
         """Paints the area around the windows in the main theme's background colour.
 
@@ -141,14 +148,7 @@ class ViewportManager:
         even a small requested size opens usably wide. The position is nudged inside the resulting
         margins so every edge lands within the monitor.
         """
-        area = monitor_area_for_window(
-            x,
-            y,
-            width,
-            height,
-            usable_ratio=self._window.max_monitor_ratio,
-            fallback_monitor=self._window.fallback_monitor,
-        )
+        area = self._monitor_area(x, y, width, height)
         fitted_width = max(self._window.min_width, min(width, area.usable_width))
         fitted_height = max(self._window.min_height, min(height, area.usable_height))
 
@@ -164,3 +164,20 @@ class ViewportManager:
         )
 
         return fitted_x, fitted_y, fitted_width, fitted_height
+
+    def _monitor_area(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+    ) -> MonitorArea:
+        """The area of the monitor a window of the given geometry sits on, under the layout's policy."""
+        return monitor_area_for_window(
+            x,
+            y,
+            width,
+            height,
+            usable_ratio=self._window.max_monitor_ratio,
+            fallback_monitor=self._window.fallback_monitor,
+        )

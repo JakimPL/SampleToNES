@@ -38,7 +38,7 @@ class TestSelectExtra(BaseTestSuite):
         cuda_version: Optional[Tuple[int, int]]
         expected: Optional[str]
 
-    test_cases = [
+    test_cases = (
         TestCase(label="cuda_12_0_selects_gpu", cuda_version=(12, 0), expected="gpu"),
         TestCase(label="cuda_12_9_selects_gpu", cuda_version=(12, 9), expected="gpu"),
         TestCase(label="cuda_13_0_selects_gpu", cuda_version=(13, 0), expected="gpu"),
@@ -47,10 +47,10 @@ class TestSelectExtra(BaseTestSuite):
         TestCase(label="cuda_11_0_selects_legacy", cuda_version=(11, 0), expected="gpu-cuda11"),
         TestCase(label="cuda_10_2_keeps_cpu", cuda_version=(10, 2), expected=None),
         TestCase(label="absent_version_keeps_cpu", cuda_version=None, expected=None),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_select_extra(self, test_case: "TestSelectExtra.TestCase") -> None:
+    def test_select_extra(self, test_case: TestCase) -> None:
         assert detect_cuda.select_extra(test_case.cuda_version) == test_case.expected
 
 
@@ -60,15 +60,15 @@ class TestQueryDriverCudaVersion(BaseTestSuite):
         output: str
         expected: Optional[Tuple[int, int]]
 
-    test_cases = [
+    test_cases = (
         TestCase(label="table_header", output=TABLE_OUTPUT_CUDA12, expected=(12, 4)),
         TestCase(label="query_block", output=QUERY_OUTPUT_CUDA11, expected=(11, 8)),
         TestCase(label="cuda_13", output="CUDA Version: 13.0\n", expected=(13, 0)),
         TestCase(label="no_version_present", output=NO_VERSION_OUTPUT, expected=None),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_parse(self, test_case: "TestQueryDriverCudaVersion.TestCase", monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_parse(self, test_case: TestCase, monkeypatch: pytest.MonkeyPatch) -> None:
         def fake_run(command: Sequence[str], **_: Any) -> subprocess.CompletedProcess[str]:
             return _completed(test_case.output)
 

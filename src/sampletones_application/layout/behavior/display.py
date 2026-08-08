@@ -6,7 +6,8 @@ from sampletones_shared.display import Resolution
 
 
 class DisplayBehavior(BaseModel, extra="forbid", frozen=True):
-    """What the display settings offer: the window sizes and the frame rates a user picks from.
+    """What the display settings offer: the window sizes and the frame rates a user picks from,
+    and how long a window mode nobody confirms stays on screen.
 
     Each list is offered in the order it is written, so a combo shows the entries as the file
     declares them and a selection maps to its position. A list holds each entry once, in
@@ -15,6 +16,7 @@ class DisplayBehavior(BaseModel, extra="forbid", frozen=True):
 
     resolutions: Tuple[Resolution, ...] = Field(min_length=1)
     frame_rates: Tuple[int, ...] = Field(min_length=1)
+    revert_countdown_seconds: float = Field(gt=0.0)
 
     @field_validator("resolutions")
     @classmethod

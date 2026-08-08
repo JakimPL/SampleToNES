@@ -12,6 +12,7 @@ from sampletones_application.config.deployment.deployment import (
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.config import ConfigCoordinator
+from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.coordinators.playback.router import PlaybackRouter
@@ -84,6 +85,10 @@ from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.dialogs.audio_settings import (
     GUIAudioSettingsWindow,
+)
+from sampletones_application.ui.panels.dialogs.countdown import GUICountdownWindow
+from sampletones_application.ui.panels.dialogs.display_settings import (
+    GUIDisplaySettingsWindow,
 )
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
@@ -165,8 +170,11 @@ class Application:
         self.deployment: DeploymentConfig = DeploymentConfig.load(DEPLOYMENT_CONFIG_PATH)
         self._set_logging_level()
 
+        self.session_manager = SessionManager()
         self._palette_catalog: PaletteCatalog = PaletteCatalog.load(PALETTES_DIRECTORY)
-        self._palette_source: PaletteSource = PaletteSource(self._palette_catalog.default)
+        self._palette_source: PaletteSource = PaletteSource(
+            self._palette_catalog.select(self.session_manager.palette_name),
+        )
         self.layout: LayoutConfig = self._load_layout_config()
         self._setup_gui_elements()
 
@@ -185,7 +193,6 @@ class Application:
         )
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
-        self.session_manager = SessionManager()
 
         self.library_manager = InstructionsLibraryManager(
             self.config_manager,
@@ -231,6 +238,20 @@ class Application:
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
         self.audio_settings_window.on_master_gain_changed = self.session_manager.set_master_gain
+        self.display_settings_window: GUIDisplaySettingsWindow = GUIDisplaySettingsWindow(
+            layout=self.layout.settings,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+        )
+        self.display_countdown_window: GUICountdownWindow = GUICountdownWindow(
+            layout=self.layout.settings.display.countdown,
+            title=self.language_manager["settings.display.title.countdown"],
+            message=self.language_manager["settings.display.message.countdown"],
+            remaining_format=self.language_manager["settings.display.template.countdown_remaining"],
+            keep_label=self.language_manager["settings.display.label.keep_button"],
+            revert_label=self.language_manager["settings.display.label.revert_button"],
+            key_router=self.key_router,
+        )
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
@@ -260,6 +281,20 @@ class Application:
             self.theme,
             self.layout.general.window,
             on_fullscreen_state_changed=self._update_menu,
+        )
+
+        self._display_coordinator = DisplayCoordinator(
+            self.session_manager,
+            self._viewport_manager,
+            self.frame_limiter,
+            self._palette_source,
+            self._palette_catalog,
+            window=self.display_settings_window,
+            countdown=self.display_countdown_window,
+            behavior=self.layout.behavior.display,
+            window_layout=self.layout.general.window,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
         )
 
         self._project_coordinator = ProjectCoordinator(
@@ -501,6 +536,7 @@ class Application:
             toggle_channel=self._sequencer_tab.toggle_channel,
             unmute_all_channels=self._sequencer_tab.unmute_all_channels,
             audio_settings=self._open_audio_settings,
+            display_settings=self._display_coordinator.open,
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_fullscreen=self._shell.toggle_fullscreen,
             about=self._open_about_dialog,
@@ -1218,6 +1254,7 @@ class Application:
         delta_time = dpg.get_delta_time()
         self._shell.update_fps(delta_time)
         self._shell.update_status_bar(delta_time)
+        self._display_coordinator.tick(delta_time)
         self._refresh_playback_menu_state()
 
     def _refresh_playback_menu_state(self) -> None:
