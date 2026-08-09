@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -10,19 +10,18 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_WINDOW_COUNTDOWN,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.window import GUIWindow
+from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.utils.gui.align import table_wrapper
-from sampletones_application.utils.gui.dialog_navigation import (
-    DialogKeyboardNavigator,
-    FocusStop,
-)
+from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_shared.types.callback import VoidCallback
 
+KEEP_FOCUS_STOP: Final[int] = 1
 
-class GUICountdownWindow(GUIWindow):
+
+class GUICountdownWindow(GUIDialogWindow):
     """A modal asking to keep a change on screen, counting down while it waits.
 
     A change that can leave the window unreadable is confirmed here: whoever can still read the
@@ -52,9 +51,6 @@ class GUICountdownWindow(GUIWindow):
         self._remaining_format = remaining_format
         self._keep_label = keep_label
         self._revert_label = revert_label
-        self._router = key_router
-        self._shortcuts = shortcut_source
-        self._navigator: Optional[DialogKeyboardNavigator] = None
         self._remaining = 0
 
         self.on_keep: Optional[VoidCallback] = None
@@ -64,6 +60,8 @@ class GUICountdownWindow(GUIWindow):
             tag=TAG_SETTINGS_DISPLAY_WINDOW_COUNTDOWN,
             width=layout.width,
             height=layout.height,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
         )
 
     def open(self, remaining: int) -> None:
@@ -92,7 +90,14 @@ class GUICountdownWindow(GUIWindow):
             dpg.add_separator()
             self._create_action_buttons()
 
-        self._install_navigation()
+        self._install_navigation(
+            [
+                FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_REVERT, self._revert),
+                FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_KEEP, self._keep),
+            ],
+            on_escape=self._revert,
+            initial_index=KEEP_FOCUS_STOP,
+        )
 
     def _remaining_text(self) -> str:
         return self._remaining_format.format(seconds=self._remaining)
@@ -111,26 +116,6 @@ class GUICountdownWindow(GUIWindow):
             callback=self._keep,
             width=-1,
         )
-
-    def _install_navigation(self) -> None:
-        """Wires Tab/Enter/Escape over the two answers, with Escape reading as reverting."""
-        self._navigator = DialogKeyboardNavigator(
-            window_tag=self.tag,
-            stops=[
-                FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_REVERT, self._revert),
-                FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_KEEP, self._keep),
-            ],
-            on_escape=self._revert,
-            key_router=self._router,
-            shortcut_source=self._shortcuts,
-            initial_index=1,
-        )
-        self._navigator.install()
-
-    def _teardown(self) -> None:
-        if self._navigator is not None:
-            self._navigator.dispose()
-            self._navigator = None
 
     def _keep(self) -> None:
         self.call(self.on_keep)

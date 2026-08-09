@@ -4,7 +4,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.settings import SettingsLayout
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_BUTTON_CANCEL,
     TAG_SETTINGS_DISPLAY_BUTTON_OK,
@@ -17,14 +16,10 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field, subheader
-from sampletones_application.ui.elements.window import GUIWindow
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
-from sampletones_application.utils.gui.dialog_navigation import (
-    DialogKeyboardNavigator,
-    FocusStop,
-)
+from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
@@ -39,7 +34,7 @@ from sampletones_shared.types.callback import VoidCallback
 SettingsCallback = Callable[[DisplaySettings], None]
 
 
-class GUIDisplaySettingsWindow(GUIWindow):
+class GUIDisplaySettingsWindow(GUIDialogWindow):
     """Modal form over how the application presents itself: its window, its pacing and its theme.
 
     Every control reports the whole edited state through ``on_settings_changed`` the moment it
@@ -58,10 +53,6 @@ class GUIDisplaySettingsWindow(GUIWindow):
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
-        self._router = key_router
-        self._shortcuts = shortcut_source
-        self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
-        self._navigator: Optional[DialogKeyboardNavigator] = None
         self._view_model: Optional[DisplaySettingsViewModel] = None
 
         self.on_settings_changed: Optional[SettingsCallback] = None
@@ -74,6 +65,8 @@ class GUIDisplaySettingsWindow(GUIWindow):
             tag=TAG_SETTINGS_DISPLAY_WINDOW,
             width=layout.display.window.width,
             height=layout.display.window.height,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
         )
 
     def open(self, view_model: DisplaySettingsViewModel) -> None:
@@ -102,15 +95,26 @@ class GUIDisplaySettingsWindow(GUIWindow):
             dpg.add_separator()
             self._create_action_buttons()
 
-        for combo_tag in (
+        self._bind_dialog_theme(
             TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION,
             TAG_SETTINGS_DISPLAY_COMBO_FRAME_RATE,
             TAG_SETTINGS_DISPLAY_COMBO_PALETTE,
-        ):
-            self._dialog_theme.bind_to_item(combo_tag)
+        )
 
         self._render()
-        self._install_navigation()
+        self._install_navigation(
+            [
+                FocusStop.field(TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION),
+                FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS),
+                FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_FULLSCREEN),
+                FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC),
+                FocusStop.field(TAG_SETTINGS_DISPLAY_COMBO_FRAME_RATE),
+                FocusStop.field(TAG_SETTINGS_DISPLAY_COMBO_PALETTE),
+                FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_CANCEL, self._request_cancel),
+                FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_OK, self._request_commit),
+            ],
+            on_escape=self._request_cancel,
+        )
 
     def _create_window_section(self) -> None:
         view_model = self._require_view_model()
@@ -190,31 +194,6 @@ class GUIDisplaySettingsWindow(GUIWindow):
             callback=self._request_commit,
             width=-1,
         )
-
-    def _install_navigation(self) -> None:
-        """Wires Tab/Enter/Escape navigation over the controls and buttons."""
-        self._navigator = DialogKeyboardNavigator(
-            window_tag=self.tag,
-            stops=[
-                FocusStop.field(TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION),
-                FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS),
-                FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_FULLSCREEN),
-                FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC),
-                FocusStop.field(TAG_SETTINGS_DISPLAY_COMBO_FRAME_RATE),
-                FocusStop.field(TAG_SETTINGS_DISPLAY_COMBO_PALETTE),
-                FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_CANCEL, self._request_cancel),
-                FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_OK, self._request_commit),
-            ],
-            on_escape=self._request_cancel,
-            key_router=self._router,
-            shortcut_source=self._shortcuts,
-        )
-        self._navigator.install()
-
-    def _teardown(self) -> None:
-        if self._navigator is not None:
-            self._navigator.dispose()
-            self._navigator = None
 
     def _render(self) -> None:
         """Shows the standing selection, offering the size and frame controls while they apply."""

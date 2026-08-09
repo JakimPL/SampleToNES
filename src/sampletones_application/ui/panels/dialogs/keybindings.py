@@ -7,7 +7,6 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
 from sampletones_application.tags.settings import (
     PRE_SETTINGS_KEYBINDINGS_GROUP,
     PRE_SETTINGS_KEYBINDINGS_ROW,
@@ -26,16 +25,12 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_KEYBINDINGS_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.window import GUIWindow
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
-from sampletones_application.utils.gui.dialog_navigation import (
-    DialogKeyboardNavigator,
-    FocusStop,
-)
+from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyCombination, KeyRouter
 from sampletones_application.utils.gui.keyboard.capture import KeyCapture
@@ -52,7 +47,7 @@ from sampletones_shared.types.callback import StringCallback, VoidCallback
 CombinationCallback = Callable[[KeyCombination], None]
 
 
-class GUIKeybindingsWindow(GUIWindow):
+class GUIKeybindingsWindow(GUIDialogWindow):
     """Modal form over the keys each action answers to, one row per action grouped by its scope.
 
     A row is given keys either way round: clicking its shortcut cell listens for the press to
@@ -75,10 +70,6 @@ class GUIKeybindingsWindow(GUIWindow):
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
-        self._router = key_router
-        self._shortcuts = shortcut_source
-        self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
-        self._navigator: Optional[DialogKeyboardNavigator] = None
         self._capture: Optional[KeyCapture] = None
         self._view_model: Optional[KeybindingsViewModel] = None
         self._filter = ""
@@ -99,6 +90,8 @@ class GUIKeybindingsWindow(GUIWindow):
             tag=TAG_SETTINGS_KEYBINDINGS_WINDOW,
             width=layout.keybindings.window.width,
             height=layout.keybindings.window.height,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
         )
 
     def open(self, view_model: KeybindingsViewModel) -> None:
@@ -129,16 +122,26 @@ class GUIKeybindingsWindow(GUIWindow):
             dpg.add_separator()
             self._create_action_buttons()
 
-        for field_tag in (
+        self._bind_dialog_theme(
             TAG_SETTINGS_KEYBINDINGS_COMBO_SCHEME,
             TAG_SETTINGS_KEYBINDINGS_INPUT_FILTER,
             TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT,
-        ):
-            self._dialog_theme.bind_to_item(field_tag)
+        )
 
         self._install_capture()
         self._render()
-        self._install_navigation()
+        self._install_navigation(
+            [
+                FocusStop.field(TAG_SETTINGS_KEYBINDINGS_COMBO_SCHEME),
+                FocusStop.field(TAG_SETTINGS_KEYBINDINGS_INPUT_FILTER),
+                FocusStop.field(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT),
+                FocusStop.button(TAG_SETTINGS_KEYBINDINGS_BUTTON_CLEAR, self._request_clear),
+                FocusStop.button(TAG_SETTINGS_KEYBINDINGS_BUTTON_RESET, self._request_reset),
+                FocusStop.button(TAG_SETTINGS_KEYBINDINGS_BUTTON_CANCEL, self._request_cancel),
+                FocusStop.button(TAG_SETTINGS_KEYBINDINGS_BUTTON_OK, self._request_commit),
+            ],
+            on_escape=self._request_cancel,
+        )
 
     def _create_scheme_field(self) -> None:
         view_model = self._require_view_model()
@@ -261,33 +264,13 @@ class GUIKeybindingsWindow(GUIWindow):
         self._capture.on_captured = self._report_captured
         self._capture.on_cancelled = self._render
 
-    def _install_navigation(self) -> None:
-        """Wires Tab/Enter/Escape navigation over the controls and buttons."""
-        self._navigator = DialogKeyboardNavigator(
-            window_tag=self.tag,
-            stops=[
-                FocusStop.field(TAG_SETTINGS_KEYBINDINGS_COMBO_SCHEME),
-                FocusStop.field(TAG_SETTINGS_KEYBINDINGS_INPUT_FILTER),
-                FocusStop.field(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT),
-                FocusStop.button(TAG_SETTINGS_KEYBINDINGS_BUTTON_CLEAR, self._request_clear),
-                FocusStop.button(TAG_SETTINGS_KEYBINDINGS_BUTTON_RESET, self._request_reset),
-                FocusStop.button(TAG_SETTINGS_KEYBINDINGS_BUTTON_CANCEL, self._request_cancel),
-                FocusStop.button(TAG_SETTINGS_KEYBINDINGS_BUTTON_OK, self._request_commit),
-            ],
-            on_escape=self._request_cancel,
-            key_router=self._router,
-            shortcut_source=self._shortcuts,
-        )
-        self._navigator.install()
-
     def _teardown(self) -> None:
+        """Stops the capture this appearance armed before the keyboard claim is released."""
         if self._capture is not None:
             self._capture.stop()
             self._capture = None
 
-        if self._navigator is not None:
-            self._navigator.dispose()
-            self._navigator = None
+        super()._teardown()
 
     def _render(self) -> None:
         """Shows each action's keys, the standing selection, and what the filter leaves listed."""
