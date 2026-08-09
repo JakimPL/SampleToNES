@@ -72,7 +72,8 @@ wherever you see it.
 | Right-click any name | The same actions as a menu |
 
 The **Playback ▸ Channels** submenu carries the same mix: a check marks each channel
-that sounds, and **Unmute all channels** returns the whole set.
+that sounds, and **Unmute all channels** returns the whole set. `F1` to `F4` do the
+same from the keyboard, one key per channel.
 
 Muting is for listening only. The song keeps every channel, so saving, exporting a
 module, and undo all work on the full arrangement, and a mute survives undo and

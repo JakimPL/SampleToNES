@@ -5,7 +5,6 @@
 * Interface scale
 * Tree navigation using keys
 * Waveform LOD for zooming
-* Keybindings editor dialog
 * Drag and drop
 * Multiple Reconstruction views
 * Playing a fragment by clicking on a waveform

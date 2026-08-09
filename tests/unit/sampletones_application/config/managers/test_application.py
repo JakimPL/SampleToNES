@@ -1,3 +1,4 @@
+import platform
 from pathlib import Path
 from typing import Type
 from unittest.mock import patch
@@ -7,6 +8,10 @@ import yaml
 
 from sampletones_application.config.managers.application import ApplicationConfigManager
 from sampletones_application.config.session.application.config import ApplicationConfig
+from sampletones_application.constants.keybindings import (
+    DEFAULT_SCHEME_NAME,
+    MACOS_SCHEME_NAME,
+)
 
 
 class TestApplicationConfigManagerRecovery:
@@ -115,6 +120,76 @@ class TestApplicationConfigManagerShortcuts:
 
         assert reloaded.shortcut_scheme_name == "compact"
         assert reloaded.shortcut_overrides == {"Undo": "Ctrl+Alt+U"}
+
+
+class TestApplicationConfigManagerPlatformScheme:
+    """The keyboard a Mac opens on, decided when the configuration is created."""
+
+    @staticmethod
+    def _manager(path: Path) -> ApplicationConfigManager:
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            path,
+        ):
+            return ApplicationConfigManager()
+
+    def test_a_fresh_configuration_on_a_mac_names_the_mac_scheme(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(platform, "system", lambda: "Darwin")
+
+        manager = self._manager(tmp_path / "config.yaml")
+
+        assert manager.shortcut_scheme_name == MACOS_SCHEME_NAME
+
+    def test_a_configuration_carrying_no_scheme_yet_takes_the_platform_one(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A file written before the preference existed reaches the choice a fresh one makes."""
+        monkeypatch.setattr(platform, "system", lambda: "Darwin")
+        path = tmp_path / "config.yaml"
+        path.write_text(yaml.safe_dump({"favorites": {"paths": ["/x/y"]}}))
+
+        manager = self._manager(path)
+
+        assert manager.shortcut_scheme_name == MACOS_SCHEME_NAME
+        assert Path("/x/y") in manager.favorites
+
+    def test_a_stored_scheme_stands_on_a_mac(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A reader who chose the Control keys keeps them on a machine labelled Command."""
+        monkeypatch.setattr(platform, "system", lambda: "Darwin")
+        path = tmp_path / "config.yaml"
+        path.write_text(yaml.safe_dump({"shortcuts": {"scheme": DEFAULT_SCHEME_NAME}}))
+
+        assert self._manager(path).shortcut_scheme_name == DEFAULT_SCHEME_NAME
+
+    def test_the_platform_decides_once_and_the_file_decides_after(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The name a fresh configuration takes from its platform reaches the file, and the file
+        is what every run after reads, so the platform is asked one time."""
+        path = tmp_path / "config.yaml"
+        monkeypatch.setattr(platform, "system", lambda: "Darwin")
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            path,
+        ):
+            ApplicationConfigManager().save()
+            monkeypatch.setattr(platform, "system", lambda: "Linux")
+            reloaded = ApplicationConfigManager()
+
+        assert yaml.safe_load(path.read_text())["shortcuts"]["scheme"] == MACOS_SCHEME_NAME
+        assert reloaded.shortcut_scheme_name == MACOS_SCHEME_NAME
 
 
 class TestApplicationConfigManagerSave:

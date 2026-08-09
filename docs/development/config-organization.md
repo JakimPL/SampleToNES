@@ -150,6 +150,11 @@ action within a category, so a scheme in use resolves any press its category own
 own rebindings stay on the preference side (`ShortcutsConfig`) and are applied over the
 selected scheme at startup, which keeps the shipped file the statement of what a build offers.
 
+The domain holds one file per keyboard the build ships — `default.yaml` and `macos.yaml` —
+and the platform decides which one a profile starts on: `ShortcutsConfig.scheme` takes its
+default from `PLATFORM_SCHEME_NAMES`, so the choice is made when the configuration is created
+and the name stored there selects the scheme on every run after.
+
 Layout and theme schemas are `frozen=True, extra="forbid"`, and loading is eager at the
 composition root (`Application.__init__` → `load_layout_config`, wrapped as `SystemError`),
 so a mismatch between YAML and schema surfaces loudly at startup.
