@@ -5,7 +5,7 @@ import pytest
 
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
-from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN
+from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN, KEY_PLUS
 from sampletones_application.utils.gui.keyboard.modifiers import (
     ALT,
     CTRL,
@@ -27,9 +27,9 @@ WRITTEN_COMBINATIONS = (
     "Alt+Home",
     "Shift+Del",
     "Ctrl+Ins",
-    PLUS,
-    f"Ctrl{PLUS}{PLUS}",
-    f"Num{PLUS}",
+    "Plus",
+    "Ctrl+Plus",
+    "NumPlus",
     "Ctrl+Alt+Shift+Space",
 )
 
@@ -106,13 +106,13 @@ class TestDisplay(BaseTestSuite):
             expected="Ctrl+Shift+Z",
         ),
         TestCase(
-            label="every modifier",
+            label="control, alt and shift",
             key=dpg.mvKey_Spacebar,
             modifiers=CTRL_ALT_SHIFT,
             expected="Ctrl+Alt+Shift+Space",
         ),
         TestCase(label="a page key", key=KEY_PAGE_DOWN, modifiers=CTRL, expected="Ctrl+PgDn"),
-        TestCase(label="the separator as the key", key=dpg.mvKey_Plus, modifiers=CTRL, expected="Ctrl++"),
+        TestCase(label="the key the separator glyph sits on", key=KEY_PLUS, modifiers=CTRL, expected="Ctrl+Plus"),
         TestCase(label="a navigation key", key=dpg.mvKey_Home, modifiers=ALT, expected="Alt+Home"),
     )
 
@@ -150,13 +150,15 @@ class TestParse(BaseTestSuite):
             expected=KeyCombination(dpg.mvKey_Z, CTRL_SHIFT),
         ),
         TestCase(label="a page key", text="Ctrl+PgDn", expected=KeyCombination(KEY_PAGE_DOWN, CTRL)),
-        TestCase(label="the separator alone", text=PLUS, expected=KeyCombination(dpg.mvKey_Plus)),
+        TestCase(label="the separator alone", text=PLUS, expected=KeyCombination(KEY_PLUS)),
         TestCase(
             label="the separator as the key",
             text="Ctrl++",
-            expected=KeyCombination(dpg.mvKey_Plus, CTRL),
+            expected=KeyCombination(KEY_PLUS, CTRL),
         ),
+        TestCase(label="the key written out", text="Ctrl+Plus", expected=KeyCombination(KEY_PLUS, CTRL)),
         TestCase(label="a keypad key", text=f"Num{PLUS}", expected=KeyCombination(dpg.mvKey_Add)),
+        TestCase(label="a keypad key written out", text="NumPlus", expected=KeyCombination(dpg.mvKey_Add)),
     )
 
     @pytest.mark.parametrize(
@@ -167,7 +169,7 @@ class TestParse(BaseTestSuite):
     def test_parse(self, test_case: TestCase) -> None:
         assert KeyCombination.parse(test_case.text) == test_case.expected
 
-    @pytest.mark.parametrize("text", ["Meta+D", "Ctrl+Meta", "Ctrl", ""])
+    @pytest.mark.parametrize("text", ["Hyper+D", "Ctrl+Nonesuch", "Ctrl", ""])
     def test_a_text_naming_no_key_raises(self, text: str) -> None:
         with pytest.raises(KeyError):
             KeyCombination.parse(text)
@@ -176,3 +178,20 @@ class TestParse(BaseTestSuite):
     def test_a_written_combination_reads_back_as_itself(self, text: str) -> None:
         """A binding written in configuration and one declared in code are one value."""
         assert KeyCombination.parse(text).display() == text
+
+    @pytest.mark.parametrize(
+        ("written", "expected"),
+        [
+            (f"Ctrl{PLUS}{PLUS}", "Ctrl+Plus"),
+            ("Ctrl+=", "Ctrl+Plus"),
+            ("Shift+Ctrl+Z", "Ctrl+Shift+Z"),
+            ("ctrl+pgdn", "Ctrl+PgDn"),
+        ],
+    )
+    def test_a_spelling_reads_back_as_the_one_the_combination_displays_under(
+        self,
+        written: str,
+        expected: str,
+    ) -> None:
+        """A reader writes a combination however they know it and reads back one canonical form."""
+        assert KeyCombination.parse(written).display() == expected

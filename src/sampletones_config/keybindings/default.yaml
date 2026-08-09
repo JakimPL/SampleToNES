@@ -67,8 +67,8 @@ bindings:
   OrderMoveFrameToStart: {combination: "Alt+Home"}
   OrderMoveFrameToEnd: {combination: "Alt+End"}
   OrderAddFrame: {combination: "Ins"}
-  OrderInsertFrame: {combination: "+", aliases: ["Num+"]}
-  OrderRemoveFrame: {combination: "-", aliases: ["Num-"]}
+  OrderInsertFrame: {combination: "Plus", aliases: ["NumPlus", "Shift+Plus"]}
+  OrderRemoveFrame: {combination: "Minus", aliases: ["NumMinus"]}
   OrderDuplicateFrame: {combination: "Ctrl+Ins"}
   OrderClearFrame: {combination: "Shift+Del"}
   OrderClearCell: {combination: "Del"}
