@@ -73,6 +73,8 @@ Services execute long-running work on background threads. Their results are post
 
 `Application.__init__` constructs the application graph — managers, controllers, shared services, coordinators, the shell — and wires their callbacks. A tab coordinator in turn constructs the panels, logic objects, and tab-scoped services it owns. Beyond these two sites, no component constructs another major component: every dependency arrives as a constructor argument, and none is obtained through a global lookup.
 
+**Where a run keeps its settings arrives the same way.** The application is given a `UserProfile` — the pair of files its configuration and its session state live in — and hands each path to the manager that reads and writes it. The entry point names the user's own profile through `UserProfile.user()`, which leaves one place that knows the shipped locations and lets a run be pointed at a location of its own.
+
 ### 8. All display text comes from `LanguageManager`
 
 Every user-visible string is looked up on `LanguageManager` by the key the language file spells:

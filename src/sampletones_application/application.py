@@ -11,6 +11,7 @@ from sampletones_application.config.deployment.deployment import (
 )
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.profile import UserProfile
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
@@ -170,6 +171,7 @@ class Application:
 
     def __init__(
         self,
+        profile: UserProfile,
         config_path: Optional[Path] = None,
         library_path: Optional[Path] = None,
         reconstruction_path: Optional[Path] = None,
@@ -178,7 +180,7 @@ class Application:
         self.deployment: DeploymentConfig = DeploymentConfig.load(DEPLOYMENT_CONFIG_PATH)
         self._set_logging_level()
 
-        self.session_manager = SessionManager()
+        self.session_manager = SessionManager(profile)
         self._palette_catalog: PaletteCatalog = PaletteCatalog.load(PALETTES_DIRECTORY)
         self._palette_source: PaletteSource = PaletteSource(
             self._palette_catalog.select(self.session_manager.palette_name),

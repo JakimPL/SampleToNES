@@ -4,6 +4,7 @@ from typing import Dict, Optional, Set
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.application import ApplicationConfigManager
 from sampletones_application.config.managers.state import ApplicationStateManager
+from sampletones_application.config.profile import UserProfile
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
@@ -11,9 +12,9 @@ from sampletones_core.constants.audio import BufferSize
 
 
 class SessionManager:
-    def __init__(self) -> None:
-        self._config_manager = ApplicationConfigManager()
-        self._state_manager = ApplicationStateManager()
+    def __init__(self, profile: UserProfile) -> None:
+        self._config_manager = ApplicationConfigManager(profile.config)
+        self._state_manager = ApplicationStateManager(profile.state)
 
     @property
     def config(self) -> ApplicationConfig:

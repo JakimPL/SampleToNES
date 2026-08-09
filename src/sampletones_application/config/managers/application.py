@@ -5,7 +5,6 @@ from sampletones_application.config.session.application.config import Applicatio
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 from sampletones_core.data.metadata import Metadata
-from sampletones_core.paths import APPLICATION_CONFIG_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import to_path
@@ -13,22 +12,18 @@ from sampletones_shared.utils.validation import flatten_location, validate_with_
 
 
 class ApplicationConfigManager:
-    def __init__(self) -> None:
+    def __init__(self, path: Path) -> None:
+        self.path: Path = path
         self.config: ApplicationConfig = self._load()
 
     def _load(self) -> ApplicationConfig:
-        if not APPLICATION_CONFIG_PATH.exists():
-            logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' does not exist." " Loading default configuration."
-            )
+        if not self.path.exists():
+            logger.warning(f"Application config file '{self.path}' does not exist. Loading default configuration.")
             return ApplicationConfig()
 
-        raw = load_yaml(to_path(APPLICATION_CONFIG_PATH))
+        raw = load_yaml(to_path(self.path))
         if not raw or not isinstance(raw, dict):
-            logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' is empty or invalid."
-                " Loading default configuration."
-            )
+            logger.warning(f"Application config file '{self.path}' is empty or invalid. Loading default configuration.")
             return ApplicationConfig()
 
         raw.pop("state", None)
@@ -36,7 +31,7 @@ class ApplicationConfigManager:
         if recovered.dropped:
             properties = ", ".join(flatten_location(location) for location in recovered.dropped)
             logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' had incompatible settings"
+                f"Application config file '{self.path}' had incompatible settings"
                 f" that were reset to defaults: {properties}"
             )
 
@@ -50,12 +45,12 @@ class ApplicationConfigManager:
         """
         self.config.metadata = Metadata.default()
         try:
-            APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            save_yaml_atomic(APPLICATION_CONFIG_PATH, self.config.model_dump())
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            save_yaml_atomic(self.path, self.config.model_dump())
         except OSError as exception:
             logger.error_with_traceback(
                 exception,
-                f"File error while saving application config to {APPLICATION_CONFIG_PATH}",
+                f"File error while saving application config to {self.path}",
             )
 
     def toggle_favorite(self, path: Path) -> None:

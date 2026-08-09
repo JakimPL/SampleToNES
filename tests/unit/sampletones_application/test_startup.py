@@ -9,6 +9,7 @@ import pytest
 from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.profile import UserProfile
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
@@ -65,23 +66,17 @@ def _display_patches() -> List[Any]:
     return display_patches
 
 
-def _profile_patches(directory: Path) -> List[Any]:
+def _profile(directory: Path) -> UserProfile:
     """Starts the application on a profile of its own, in the state a first run finds.
 
-    The settings and the keys an application comes up on are read from the user's configuration,
-    so a suite that reads the machine's own profile answers for whatever that machine prefers.
-    Pointing both files at a directory per test is what holds a run to the shipped defaults.
+    The settings and the keys an application comes up on are read from its profile, so a suite
+    given the user's own answers for whatever that machine prefers. A directory per test is what
+    holds a run to the shipped defaults.
     """
-    return [
-        patch(
-            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
-            directory / "config.yaml",
-        ),
-        patch(
-            "sampletones_application.config.managers.state.APPLICATION_STATE_PATH",
-            directory / "state.yaml",
-        ),
-    ]
+    return UserProfile(
+        config=directory / "config.yaml",
+        state=directory / "state.yaml",
+    )
 
 
 class TestGUIStartup:
@@ -95,10 +90,10 @@ class TestGUIStartup:
 
     def test_initialises_without_error(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
-            for p in (*_display_patches(), *_profile_patches(tmp_path)):
-                stack.enter_context(p)
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
 
-            Application()
+            Application(profile=_profile(tmp_path))
 
 
 @pytest.fixture
@@ -106,9 +101,10 @@ def app(tmp_path: Path) -> Generator[Any, Application, Any]:
     dpg.create_context()
     try:
         with ExitStack() as stack:
-            for p in (*_display_patches(), *_profile_patches(tmp_path)):
-                stack.enter_context(p)
-            yield Application()
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
+
+            yield Application(profile=_profile(tmp_path))
     finally:
         stop_background_workers()
         SingleThreadExecutor.reset_shutdown()
@@ -123,8 +119,8 @@ class TestKeybindingPreferences:
         dpg.create_context()
         try:
             with ExitStack() as stack:
-                for patched in (*_display_patches(), *_profile_patches(tmp_path)):
-                    stack.enter_context(patched)
+                for display_patch in _display_patches():
+                    stack.enter_context(display_patch)
 
                 stack.enter_context(
                     patch.object(
@@ -134,7 +130,7 @@ class TestKeybindingPreferences:
                         return_value=REBOUND_UNDO,
                     )
                 )
-                yield Application()
+                yield Application(profile=_profile(tmp_path))
         finally:
             stop_background_workers()
             SingleThreadExecutor.reset_shutdown()
