@@ -432,6 +432,7 @@ class Application:
             project_controller=self.project_controller,
             history=self.history,
             original_audio_locator=self._original_audio_locator,
+            tab_active=self._is_sequencer_tab_current,
             layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -675,9 +676,18 @@ class Application:
             advanced_settings=self.session_manager.advanced_settings,
         )
 
+    def _is_sequencer_tab_current(self) -> bool:
+        """Whether the Sequencer is the tab in front, which is what puts its panels on the keyboard.
+
+        The tracker, order and samples panels keep their cursor and selection while another tab is
+        worked on, so this is what tells a press meant for the reconstruction in front from one
+        meant for the song.
+        """
+        return self._shell.get_current_tab() == Tab.SEQUENCER
+
     def _is_play_from_frame_enabled(self) -> bool:
         """Playing from the current frame applies to the Sequencer's song, so it needs that tab open."""
-        return self._shell.get_current_tab() == Tab.SEQUENCER and self.project_manager.is_open
+        return self._is_sequencer_tab_current() and self.project_manager.is_open
 
     def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
         return MenuBarViewModel(
@@ -1244,7 +1254,7 @@ class Application:
 
     def _play_from_frame(self) -> None:
         """Plays from the current order frame; available only in the Sequencer tab."""
-        if self._shell.get_current_tab() != Tab.SEQUENCER:
+        if not self._is_sequencer_tab_current():
             return
 
         self._sequencer_tab.play_from_current_frame()

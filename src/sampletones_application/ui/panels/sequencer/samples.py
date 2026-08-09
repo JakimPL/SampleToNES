@@ -25,6 +25,7 @@ from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
+    ActivePredicate,
     KeyEvent,
     KeyRouter,
 )
@@ -57,12 +58,14 @@ class GUISequencerSamplesPanel(GUIPanel):
         layout: SequencerLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        tab_active: ActivePredicate,
         shortcut_source: ShortcutSource,
         initial_collapsed: bool = False,
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
         self._router = key_router
+        self._tab_active = tab_active
         self._shortcuts = shortcut_source
         self._row_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_TABLE, SUF_HANDLER_REGISTRY)
         self._rename_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME, SUF_HANDLER_REGISTRY)
@@ -334,10 +337,14 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _keys_active(self) -> bool:
         """Whether the samples panel owns the next key.
 
-        While a name is being edited the panel keeps the keyboard so Escape can cancel the rename.
-        Otherwise it acts only when a sample is selected and no field holds the keyboard; a modal
+        The panel answers only while its tab is in front, since a selection outlives a move to
+        another tab. There, a name being edited keeps the keyboard so Escape can cancel the rename;
+        otherwise the panel acts when a sample is selected and no field holds the keyboard. A modal
         dialog claims keys at a higher priority in the router, so the panel needs no modal check.
         """
+        if not self._tab_active():
+            return False
+
         if self._editing_sample_id is not None:
             return True
 

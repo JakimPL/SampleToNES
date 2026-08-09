@@ -74,7 +74,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
@@ -121,6 +121,7 @@ class SequencerTabCoordinator:
         history: HistoryManager,
         original_audio_locator: OriginalAudioLocator,
         *,
+        tab_active: ActivePredicate,
         layout: SequencerTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
@@ -208,6 +209,7 @@ class SequencerTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_TRACKER_PANEL),
             language_manager=language_manager,
             key_router=key_router,
+            tab_active=tab_active,
             shortcut_source=shortcut_source,
         )
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
@@ -224,6 +226,7 @@ class SequencerTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD),
             language_manager=language_manager,
             key_router=key_router,
+            tab_active=tab_active,
             shortcut_source=shortcut_source,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
@@ -231,6 +234,7 @@ class SequencerTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_INSTRUMENTS_PANEL),
             language_manager=language_manager,
             key_router=key_router,
+            tab_active=tab_active,
             shortcut_source=shortcut_source,
         )
         self._sequencer_history_panel: GUISequencerHistoryPanel = GUISequencerHistoryPanel(

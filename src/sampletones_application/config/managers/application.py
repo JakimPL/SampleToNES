@@ -4,6 +4,7 @@ from typing import Dict, Optional, Set
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
+from sampletones_core.data.metadata import Metadata
 from sampletones_core.paths import APPLICATION_CONFIG_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
@@ -42,6 +43,12 @@ class ApplicationConfigManager:
         return recovered.model
 
     def save(self) -> None:
+        """Writes the configuration under the metadata of the build doing the writing.
+
+        The file records which build last wrote it, so a profile carried across an upgrade names
+        the version its settings were last saved by.
+        """
+        self.config.metadata = Metadata.default()
         try:
             APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             save_yaml_atomic(APPLICATION_CONFIG_PATH, self.config.model_dump())

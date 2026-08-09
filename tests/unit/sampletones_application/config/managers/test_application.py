@@ -12,6 +12,7 @@ from sampletones_application.constants.keybindings import (
     DEFAULT_SCHEME_NAME,
     MACOS_SCHEME_NAME,
 )
+from sampletones_core.data.metadata import Metadata
 
 
 class TestApplicationConfigManagerRecovery:
@@ -190,6 +191,37 @@ class TestApplicationConfigManagerPlatformScheme:
 
         assert yaml.safe_load(path.read_text())["shortcuts"]["scheme"] == MACOS_SCHEME_NAME
         assert reloaded.shortcut_scheme_name == MACOS_SCHEME_NAME
+
+
+class TestApplicationConfigManagerMetadata:
+    """The saved file names the build that wrote it."""
+
+    def test_a_file_written_by_an_earlier_build_is_stamped_on_save(self, tmp_path: Path) -> None:
+        path = tmp_path / "config.yaml"
+        path.write_text(yaml.safe_dump({"metadata": {"version": "0.0.1"}, "favorites": {"paths": ["/x/y"]}}))
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            path,
+        ):
+            manager = ApplicationConfigManager()
+            assert manager.config.metadata.version == "0.0.1"
+            manager.save()
+
+        assert yaml.safe_load(path.read_text())["metadata"] == Metadata.default().model_dump()
+
+    def test_the_settings_beside_the_metadata_stand(self, tmp_path: Path) -> None:
+        """Stamping the version rewrites the metadata alone, so a preference survives the save."""
+        path = tmp_path / "config.yaml"
+        path.write_text(yaml.safe_dump({"metadata": {"version": "0.0.1"}, "display": {"palette": "ink"}}))
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            path,
+        ):
+            ApplicationConfigManager().save()
+            reloaded = ApplicationConfigManager()
+
+        assert reloaded.palette_name == "ink"
+        assert reloaded.config.metadata == Metadata.default()
 
 
 class TestApplicationConfigManagerSave:

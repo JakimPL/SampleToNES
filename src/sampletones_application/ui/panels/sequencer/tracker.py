@@ -61,6 +61,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
+    ActivePredicate,
     KeyEvent,
     KeyRouter,
 )
@@ -113,12 +114,14 @@ class GUISequencerTrackerPanel(GUIPanel):
         layout: SequencerLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        tab_active: ActivePredicate,
         shortcut_source: ShortcutSource,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._language_manager = language_manager
         self._router = key_router
+        self._tab_active = tab_active
         self._shortcuts = shortcut_source
 
         widths = layout.tracker.subcolumn_widths
@@ -1171,13 +1174,15 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
 
     def _keys_active(self) -> bool:
-        """Whether the grid owns the next key: its cursor is set and no field holds the keyboard.
+        """Whether the grid owns the next key: its tab is in front, its cursor is set, and no
+        field holds the keyboard.
 
-        A focused field keeps the keyboard, so the grid stands down while the user types into an
-        input. A modal dialog claims keys at a higher priority in the router, so the grid carries no
-        modal check of its own.
+        The grid keeps its cursor while another tab is worked on, so the tab in front is what
+        decides whether a press reaches it. A focused field keeps the keyboard, so the grid stands
+        down while the user types into an input. A modal dialog claims keys at a higher priority in
+        the router, so the grid carries no modal check of its own.
         """
-        return self._input_state.cursor is not None and not self._router.is_field_focused
+        return self._tab_active() and self._input_state.cursor is not None and not self._router.is_field_focused
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies a tracker key to the active cell, reporting whether the grid consumed it.

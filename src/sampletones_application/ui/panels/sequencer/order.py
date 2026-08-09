@@ -55,6 +55,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
+    ActivePredicate,
     KeyEvent,
     KeyRouter,
 )
@@ -118,12 +119,14 @@ class GUISequencerOrderPanel(GUIPanel):
         plus_minus_layout: PlusMinusButtonsLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        tab_active: ActivePredicate,
         shortcut_source: ShortcutSource,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
         self._plus_minus_layout = plus_minus_layout
         self._router = key_router
+        self._tab_active = tab_active
         self._shortcuts = shortcut_source
         self._buttons: Optional[GUIPlusMinusButtons] = None
         self._position_count: int = 0
@@ -936,13 +939,15 @@ class GUISequencerOrderPanel(GUIPanel):
         )
 
     def _keys_active(self) -> bool:
-        """Whether the order table owns the next key: its cursor is set and no field holds the keyboard.
+        """Whether the order table owns the next key: its tab is in front, its cursor is set, and
+        no field holds the keyboard.
 
-        A focused field keeps the keyboard, so the table stands down while the user types into an
-        input. A modal dialog claims keys at a higher priority in the router, so the table carries no
-        modal check of its own.
+        The table keeps its cursor while another tab is worked on, so the tab in front is what
+        decides whether a press reaches it. A focused field keeps the keyboard, so the table stands
+        down while the user types into an input. A modal dialog claims keys at a higher priority in
+        the router, so the table carries no modal check of its own.
         """
-        return self._input_state.cursor is not None and not self._router.is_field_focused
+        return self._tab_active() and self._input_state.cursor is not None and not self._router.is_field_focused
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies an order key to the active cell, reporting whether the table consumed it.

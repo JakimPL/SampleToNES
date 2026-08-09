@@ -137,10 +137,12 @@ Each keyboard consumer registers one scope through `register(handle, *, priority
 | Priority | Scope | Active when | Behaviour |
 |----------|-------|-------------|-----------|
 | `MODAL` (100) | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
-| `PANEL` (60) | a sequencer sub-panel (grid / order / samples) | that sub-panel holds the cursor or selection | handles its tracker keys and yields the combinations it does not own so a higher-reaching shortcut still wins |
+| `PANEL` (60) | a sequencer sub-panel (grid / order / samples) | its tab is in front and that sub-panel holds the cursor or selection | handles its tracker keys and yields the combinations it does not own so a higher-reaching shortcut still wins |
 | `SHORTCUT` (40) | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
 Because the router offers a panel the key ahead of the shortcut scope, a panel returns `False` on any combination it does not own — the grid yields every `Ctrl`-modified press — so that field-transparent shortcuts such as `Ctrl+PgDn` / `Ctrl+PgUp` tab-switching reach the shortcut scope even while a grid cursor is set.
+
+**A panel scope answers on its own tab.** A cursor and a selection outlive a move to another tab, so a panel is given the predicate that reports whether its tab is the one in front and reads it at the moment of the press, the way focus is read. The composition root resolves the tab and the scope composes the answer into its `active`, which keeps the fact in one place and leaves the router's contract — the scope decides whether it wants the key — as it stands.
 
 **Focus is pulled, not pushed.** Whether a text or value field keeps a plain key for itself is one router query, `is_field_focused`, that reads the focused item from DearPyGui at the moment of the press and counts it only while that item is actively being edited. Every input is covered by construction, and the router alone holds the rule.
 

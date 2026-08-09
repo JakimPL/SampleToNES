@@ -65,6 +65,25 @@ def _display_patches() -> List[Any]:
     return display_patches
 
 
+def _profile_patches(directory: Path) -> List[Any]:
+    """Starts the application on a profile of its own, in the state a first run finds.
+
+    The settings and the keys an application comes up on are read from the user's configuration,
+    so a suite that reads the machine's own profile answers for whatever that machine prefers.
+    Pointing both files at a directory per test is what holds a run to the shipped defaults.
+    """
+    return [
+        patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            directory / "config.yaml",
+        ),
+        patch(
+            "sampletones_application.config.managers.state.APPLICATION_STATE_PATH",
+            directory / "state.yaml",
+        ),
+    ]
+
+
 class TestGUIStartup:
     @pytest.fixture(autouse=True)
     def dpg_context(self) -> Generator[Any, Application, Any]:
@@ -74,20 +93,20 @@ class TestGUIStartup:
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
 
-    def test_initialises_without_error(self) -> None:
+    def test_initialises_without_error(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
-            for p in _display_patches():
+            for p in (*_display_patches(), *_profile_patches(tmp_path)):
                 stack.enter_context(p)
 
             Application()
 
 
 @pytest.fixture
-def app() -> Generator[Any, Application, Any]:
+def app(tmp_path: Path) -> Generator[Any, Application, Any]:
     dpg.create_context()
     try:
         with ExitStack() as stack:
-            for p in _display_patches():
+            for p in (*_display_patches(), *_profile_patches(tmp_path)):
                 stack.enter_context(p)
             yield Application()
     finally:
@@ -100,12 +119,12 @@ class TestKeybindingPreferences:
     """The application runs on the keys the session stores, which is what makes a rebind stick."""
 
     @pytest.fixture
-    def application(self) -> Generator[Any, Application, Any]:
+    def application(self, tmp_path: Path) -> Generator[Any, Application, Any]:
         dpg.create_context()
         try:
             with ExitStack() as stack:
-                for display_patch in _display_patches():
-                    stack.enter_context(display_patch)
+                for patched in (*_display_patches(), *_profile_patches(tmp_path)):
+                    stack.enter_context(patched)
 
                 stack.enter_context(
                     patch.object(
