@@ -28,6 +28,7 @@ from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderP
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
 from sampletones_application.view_model.sequencer.samples import SampleSelection
+from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -231,6 +232,19 @@ class TestRequestNesFrequencyChange:
         nes_frequency_coordinator._sequencer_tracker_logic.push_settings.assert_called_once()
 
 
+def _player_view(*, follow_playback: bool) -> SongPlayerViewModel:
+    """A stopped transport view, which is what the coordinator reads the follow behaviour from."""
+    return SongPlayerViewModel(
+        is_loaded=True,
+        is_playing=False,
+        is_paused=False,
+        follow_playback=follow_playback,
+        order_position=0,
+        row_index=0,
+        error=None,
+    )
+
+
 @pytest.fixture
 def playback_coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the collaborators the follow-playback handlers touch."""
@@ -266,6 +280,39 @@ class TestFollowPlayback:
         playback_coordinator._sequencer_tracker_panel.set_playing_row.assert_called_once_with(5)
         playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(2)
         playback_coordinator._sequencer_tracker_logic.select_frame.assert_not_called()
+
+    def test_the_frame_is_selected_before_the_row_is_marked(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """The mark and the scroll that reveals it land on the pattern the playhead has reached."""
+        playback_coordinator._song_player_logic.follow_playback = True
+        recorder = MagicMock()
+        recorder.attach_mock(playback_coordinator._sequencer_tracker_logic, "logic")
+        recorder.attach_mock(playback_coordinator._sequencer_tracker_panel, "panel")
+
+        playback_coordinator._on_player_position_changed(2, 5)
+
+        names = [name for name, _, _ in recorder.mock_calls]
+        assert names.index("logic.select_frame") < names.index("panel.set_playing_row")
+
+    def test_the_view_states_whether_the_grid_follows_the_row(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        playback_coordinator._on_player_view_changed(_player_view(follow_playback=True))
+
+        playback_coordinator._sequencer_tracker_panel.set_row_following.assert_called_once_with(True)
+
+    def test_a_stopped_view_drops_the_marks(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        playback_coordinator._on_player_view_changed(_player_view(follow_playback=False))
+
+        playback_coordinator._sequencer_tracker_panel.set_row_following.assert_called_once_with(False)
+        playback_coordinator._sequencer_tracker_panel.set_playing_row.assert_called_once_with(None)
+        playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(None)
 
     def test_order_selection_seeks_playhead_when_following(
         self,

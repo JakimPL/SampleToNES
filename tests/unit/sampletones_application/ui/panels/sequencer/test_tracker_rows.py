@@ -89,6 +89,7 @@ def _panel() -> GUISequencerTrackerPanel:
     panel._current_row_count = PATTERN_ROWS
     panel._highlighted_row = None
     panel._playing_row = None
+    panel._follows_playing_row = False
     panel._input_state = TrackerInputState()
     return panel
 

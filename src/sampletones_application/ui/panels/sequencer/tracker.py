@@ -59,6 +59,7 @@ from sampletones_application.ui.themes.inline import (
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
     ActivePredicate,
@@ -141,6 +142,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
         self._playing_row: Optional[int] = None
+        self._follows_playing_row: bool = False
         self._input_state: TrackerInputState = TrackerInputState()
         self._subcolumn_themes: Dict[SubColumn, int] = {}
         self._muted_subcolumn_themes: Dict[SubColumn, int] = {}
@@ -415,10 +417,16 @@ class GUISequencerTrackerPanel(GUIPanel):
         view_model: SequencerTrackerViewModel,
         cell_values: CellValues,
     ) -> None:
+        """Replaces the table body, and re-reveals the sounding row once the new body has laid out.
+
+        A table repopulated this frame reports the scroll extent of the body it replaced, so the
+        reveal is repeated a frame later, when DearPyGui has measured the rows now in it.
+        """
         dpg_delete_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self.repaint()
+        FrameCallbackManager.set_frame_callback(self._reveal_playing_row)
 
     def repaint(self) -> None:
         """Issues every tint the table holds as its own state.
@@ -1290,14 +1298,20 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._apply_state(self._committed_state().navigate_column_by(delta))
 
     def _scroll_cursor_into_view(self) -> None:
-        """Scrolls the tracker so the cursor's row stays on screen after a page or Home/End jump.
-
-        The frame's rows all live in one scrolling table, so a jump wider than the visible band
-        moves the cursor past it. The scroll is set from the cursor's position within the frame,
-        which keeps the row it lands on in view.
-        """
+        """Scrolls the tracker so the cursor's row stays on screen after a page or Home/End jump."""
         cursor = self._input_state.cursor
-        if cursor is None or self._current_row_count <= 1:
+        if cursor is not None:
+            self._scroll_row_into_view(cursor.row)
+
+    def _scroll_row_into_view(self, row_index: int) -> None:
+        """Scrolls the tracker so the given row rests within the visible band.
+
+        The frame's rows all live in one scrolling table, so a row outside the band is reached by
+        setting the scroll from that row's position within the frame: the first row rests at the
+        top of the band, the last at the bottom, and the rows between drift across it. Both the
+        edit cursor and the playhead are placed by this one rule.
+        """
+        if self._current_row_count <= 1:
             return
 
         if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
@@ -1307,7 +1321,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if scroll_max <= 0:
             return
 
-        fraction = cursor.row / (self._current_row_count - 1)
+        fraction = row_index / (self._current_row_count - 1)
         dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, fraction * scroll_max)
 
     def _clear_row(self) -> None:
@@ -1390,8 +1404,15 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._highlighted_row = None
         self._paint_row(row_index)
 
+    def set_row_following(self, following: bool) -> None:
+        """Whether the grid keeps the sounding row within the visible band as playback advances."""
+        self._follows_playing_row = following
+
     def set_playing_row(self, row_index: Optional[int]) -> None:
-        """Moves the playhead mark, drawing both the row it left and the row it reached."""
+        """Moves the playhead mark, drawing both the row it left and the row it reached.
+
+        While the grid follows the playhead, the row it reached is also scrolled into view.
+        """
         previous = self._playing_row
         self._playing_row = row_index
         if previous is not None and previous != row_index:
@@ -1399,6 +1420,12 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         if row_index is not None:
             self._paint_row(row_index)
+            self._reveal_playing_row()
+
+    def _reveal_playing_row(self) -> None:
+        """Scrolls the sounding row into view while the grid follows the playhead."""
+        if self._follows_playing_row and self._playing_row is not None:
+            self._scroll_row_into_view(self._playing_row)
 
     def _live_row_count(self) -> int:
         """The table's current pattern-row count, read live from DearPyGui.

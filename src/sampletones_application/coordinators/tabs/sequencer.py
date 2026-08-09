@@ -735,6 +735,13 @@ class SequencerTabCoordinator:
         self._dialogs.show_error(error)
 
     def _on_player_view_changed(self, view_model: SongPlayerViewModel) -> None:
+        """Settles the marks the transport owns, and how far the grid chases the playhead.
+
+        The player emits a view on every position update and on every change to the setting, so
+        reading the follow behaviour here keeps the grid in step both while a song sounds and the
+        moment the reader picks another mode.
+        """
+        self._sequencer_tracker_panel.set_row_following(view_model.follow_playback)
         if not view_model.is_playing and not view_model.is_paused:
             self._playing_order = None
             self._sequencer_tracker_panel.set_playing_row(None)
@@ -745,11 +752,17 @@ class SequencerTabCoordinator:
         order_position: int,
         row_index: int,
     ) -> None:
+        """Moves the marks the playhead carries, showing the frame it sounds when following.
+
+        The frame is selected ahead of the row so the row's mark, and the scroll that reveals it,
+        land on the pattern the playhead has reached.
+        """
         self._playing_order = order_position
-        self._sequencer_tracker_panel.set_playing_row(row_index)
-        self._sequencer_order_panel.set_playing_position(order_position)
         if self._song_player_logic.follow_playback:
             self._sequencer_tracker_logic.select_frame(order_position)
+
+        self._sequencer_tracker_panel.set_playing_row(row_index)
+        self._sequencer_order_panel.set_playing_position(order_position)
 
     def _on_order_frame_selected(self, frame_index: int) -> None:
         """Selects an order frame in the tracker, and moves the playhead too when following.
