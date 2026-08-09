@@ -11,6 +11,9 @@ components:
         key: TextDisabled
         value: .text_muted
       - type: color
+        key: InputTextCursor
+        value: .text
+      - type: color
         key: WindowBg
         value: .ground
       - type: color

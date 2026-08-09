@@ -24,7 +24,6 @@
 
 ### Features
 
-* Theme selector and palette management
 * In-application guide/tutorial
 * Language selector
 

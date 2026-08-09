@@ -144,7 +144,6 @@ class InstructionLibraryData(DataModel):
             )
 
         library_version = metadata.library_data_version
-        print(compare_versions(library_version, SAMPLETONES_LIBRARY_DATA_VERSION))
         if compare_versions(library_version, SAMPLETONES_LIBRARY_DATA_VERSION) != 0:
             raise IncompatibleLibraryDataVersionError(
                 f"Library data version mismatch: expected "
