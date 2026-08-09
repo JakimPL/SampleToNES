@@ -2,30 +2,30 @@ name: light
 
 colors:
   # surfaces and neutrals
-  ground: "#e6e6ea"
-  tab_strip: "#dcdce2"
-  recess: "#dedee4"
-  surface: "#f5f5f8"
-  surface_alt: "#fdfdff"
-  surface_accent: "#ede6fa"
-  menu: "#e0e5f0"
-  status_bar: "#e0e5f0"
-  popup: "#fdfdff"
+  ground: "#dcdfe6"
+  tab_strip: "#d0d4dd"
+  recess: "#e6e9f0"
+  surface: "#f8f9fb"
+  surface_alt: "#ffffff"
+  surface_accent: "#eae4f7"
+  menu: "#d5dae5"
+  status_bar: "#d5dae5"
+  popup: "#ffffff"
   frame: "#ffffff"
-  frame_hovered: "#eff0f5"
-  frame_active: "#e5e6f0"
-  border: "#c2c2cc"
-  separator: "#b4b4c2"
-  plot_background: "#f7f7fa"
-  well: "#e6ecf6"
+  frame_hovered: "#eef1f6"
+  frame_active: "#e2e7f0"
+  border: "#b3bac7"
+  separator: "#a3abba"
+  plot_background: "#ffffff"
+  well: "#e3e8f2"
 
   # tables
-  table_header: "#dcd6ec"
-  table_row: "#f3f3f7"
-  table_row_alt: "#e9e9f0"
-  table_border: "#c6c2d4"
+  table_header: "#d3d7e5"
+  table_row: "#fbfbfd"
+  table_row_alt: "#edeff5"
+  table_border: "#bac0cd"
 
-  # cool secondary (functional chrome: input focus, secondary emphasis)
+  # cool secondary
   cool: "#2f6fd0"
   cool_hover: "#1f5cb8"
   cool_active: "#17488f"
@@ -50,13 +50,13 @@ colors:
   secondary_active: "#bcc5d4"
   secondary_disabled: "#ebebf0"
 
-  # danger (destructive actions: cancel, abort)
+  # danger
   danger: "#bf4646"
   danger_hover: "#d05a5a"
   danger_active: "#9b3737"
   on_danger: "#ffffff"
 
-  # dialog windows (elevated surface + accent border/title)
+  # dialog windows
   dialog_surface: "#f2f2f7"
   dialog_title: "#d7deee"
 
@@ -71,50 +71,58 @@ colors:
   channel_noise_soft: "#8a8890"
 
   # tabs
-  tab: "#dde0e9"
-  tab_hovered: "#cad3e5"
-  tab_active: "#b6c4df"
+  tab: "#cdd2dd"
+  tab_hovered: "#c0c8d8"
+  tab_active: "#e6e9f0"
 
   # selection (tree, list, menu highlight)
-  selection: "#dbd2ee"
-  selection_hovered: "#ccc0e5"
-  selection_active: "#bcaddc"
+  selection: "#d5cbec"
+  selection_hovered: "#c5b8e3"
+  selection_active: "#b3a4d8"
 
   # scrollbar
-  scrollbar_hovered: "#bebec9"
+  scrollbar_hovered: "#9aa2b0"
 
   # buttons
-  button: "#ccd4e5"
-  button_hovered: "#bcc7dd"
-  button_active: "#aabad5"
-  button_disabled: "#e2e2e8"
+  button: "#c5cddd"
+  button_hovered: "#b4bfd4"
+  button_active: "#a2b0cb"
+  button_disabled: "#dfe2e9"
 
   # player
-  player_surface: "#e2e8f4"
+  player_surface: "#dbe2f0"
   player_border: "#3d7fc4"
-  player_button: "#d2daed"
-  player_button_hovered: "#c0cde5"
-  player_button_active: "#adbedc"
-  player_button_disabled: "#e6eaf3"
+  player_button: "#cbd4e8"
+  player_button_hovered: "#b8c5df"
+  player_button_active: "#a5b6d6"
+  player_button_disabled: "#e2e6ee"
 
   # text
-  text: "#1e1e24"
-  text_muted: "#5c5c68"
-  text_disabled: "#92929c"
-  text_trace: "#4a4a4a"
+  text: "#1a1d23"
+  text_muted: "#535b68"
+  text_disabled: "#8b93a1"
+  text_trace: "#41464e"
 
-  # emphasis and overlays
-  # contrast: the strongest foreground the surfaces carry
-  # overlay: tinted at a fraction to lift a row or region off its background
-  contrast: "#16161c"
+  # overlay
+  contrast: "#14171c"
   overlay: "#000000"
   transparent: "#00000000"
-  border_strong: "#a6a6b2"
+  border_strong: "#8f97a6"
   input_invalid: "#c0504a48"
   input_warning: "#c0884a48"
 
-  # plot lines
-  plot_zero_line: "#909098"
+  # controls
+  control: "#ffffff"
+  control_hovered: "#eaeef6"
+  control_active: "#dbe2ee"
+  control_border: "#8f97a6"
+
+  # plots
+  plot_zero_line: "#8a92a0"
+  plot_grid: "#d7dce5"
+  plot_axis_text: "#535b68"
+  plot_border: "#b3bac7"
+  plot_legend_bg: "#f4f6fa"
 
   # file-tree nodes
   file_wave: "#0d6ea8"
@@ -133,31 +141,31 @@ colors:
   library_root: "#33333a"
 
   # layout: content text
-  text_default: "#26262c"
-  text_inactive: "#84848e"
+  text_default: "#22262d"
+  text_inactive: "#7b8391"
   text_error: "#c03030"
-  text_highlight: "#9a6a00"
+  text_highlight: "#8a5f00"
 
   # layout: flat control buttons
-  button_flat: "#dcdce4"
-  button_flat_active: "#b8b8c8"
-  button_flat_hovered: "#cbcbda"
-  button_flat_light: "#d2d2e0"
+  button_flat: "#d7dbe4"
+  button_flat_active: "#aeb6c4"
+  button_flat_hovered: "#c4cad7"
+  button_flat_light: "#cdd3de"
 
   # layout: background fills
-  background_default: "#f0f0f2"
-  background_dark: "#e2e2e6"
-  background_light: "#fafafc"
-  background_menu: "#e8e8ec"
+  background_default: "#eceff4"
+  background_dark: "#dcdfe6"
+  background_light: "#ffffff"
+  background_menu: "#e3e7ee"
   background_invalid: "#c0202038"
 
   # layout: properties table
-  properties_header: "#dbe0ec"
-  properties_row: "#f4f5f8"
-  properties_row_alt: "#eaebf1"
-  properties_border: "#c3c8d6"
-  properties_label: "#3f5480"
-  properties_value: "#2c3140"
+  properties_header: "#d3d7e5"
+  properties_row: "#fbfbfd"
+  properties_row_alt: "#edeff5"
+  properties_border: "#bac0cd"
+  properties_label: "#3a4f7c"
+  properties_value: "#272c39"
 
   # layout: path links
   path_link: "#1f5fd0"
@@ -184,6 +192,10 @@ colors:
   waveform_overlay: "#00000018"
   spectrum_dim: "#f7f7fa"
 
+  # layout: tracker row grouping
+  tracker_beat_row: "#0000000c"
+  tracker_bar_row: "#0000001c"
+
   # layout: tracker cursor and playback
   pattern_highlight: "#00000018"
   cell_cursor: "#2a7fd090"
@@ -191,7 +203,7 @@ colors:
   playback_row: "#1f903838"
 
   # layout: order table
-  order_label: "#dbe0ec"
+  order_label: "#d3d7e5"
   order_master: "#1c8cc018"
   order_master_divider: "#1c8cc028"
   order_column_current: "#00000014"

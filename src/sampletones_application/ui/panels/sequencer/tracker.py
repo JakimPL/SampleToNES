@@ -413,6 +413,18 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg_delete_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
+        self.repaint()
+
+    def repaint(self) -> None:
+        """Issues every tint the table holds as its own state.
+
+        DearPyGui keeps a row, column or cell highlight on the table rather than on an item,
+        so a colour reaches it only by being pushed again. Gathering the pushes here gives
+        the palette one call to make and keeps a rebuilt table and a recoloured one identical.
+        """
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
+            return
+
         self._highlight_sample_column()
         self._highlight_header_row()
         self._apply_channel_cues()

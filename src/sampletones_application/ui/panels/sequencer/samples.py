@@ -182,11 +182,25 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._build_loop_cell(row_id, entry)
         if entry.sample_id == self._selected_sample_id:
             self._selected_row = position
-            dpg.highlight_table_row(
-                TAG_SEQUENCER_INSTRUMENTS_TABLE,
-                position,
-                color=self._layout.colors.cell_cursor.rgba,
-            )
+            self._highlight_selected_row(position)
+
+    def _highlight_selected_row(self, position: int) -> None:
+        dpg.highlight_table_row(
+            TAG_SEQUENCER_INSTRUMENTS_TABLE,
+            position,
+            color=self._layout.colors.cell_cursor.rgba,
+        )
+
+    def repaint(self) -> None:
+        """Issues the selected row's tint again so it takes the palette now in place.
+
+        DearPyGui keeps a row highlight on the table rather than on an item, so the colour
+        reaches it only by being pushed again.
+        """
+        if self._selected_row is None or not dpg.does_item_exist(TAG_SEQUENCER_INSTRUMENTS_TABLE):
+            return
+
+        self._highlight_selected_row(self._selected_row)
 
     def _build_id_cell(
         self,
@@ -277,11 +291,7 @@ class GUISequencerSamplesPanel(GUIPanel):
 
         self._selected_row = position
         self._selected_sample_id = sample_id
-        dpg.highlight_table_row(
-            TAG_SEQUENCER_INSTRUMENTS_TABLE,
-            position,
-            color=self._layout.colors.cell_cursor.rgba,
-        )
+        self._highlight_selected_row(position)
         self.call(self.on_sample_selected, sample_id)
 
     @property

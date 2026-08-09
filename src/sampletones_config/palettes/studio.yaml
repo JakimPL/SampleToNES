@@ -111,8 +111,18 @@ colors:
   input_invalid: "#c0504a64"
   input_warning: "#c0884a64"
 
-  # plot lines
+  # controls (the box a checkbox or radio button draws its mark inside)
+  control: "#514c68"
+  control_hovered: "#5c5676"
+  control_active: "#665f83"
+  control_border: "#6f6a8a"
+
+  # plots
   plot_zero_line: "#c8c8c8"
+  plot_grid: "#39344a"
+  plot_axis_text: "#9497ab"
+  plot_border: "#464a5e"
+  plot_legend_bg: "#2a2636"
 
   # file-tree nodes
   file_wave: "#64c8ff"
@@ -181,6 +191,10 @@ colors:
   waveform_reconstruction: "#ffc864"
   waveform_overlay: "#ffffff20"
   spectrum_dim: "#1c1c1c"
+
+  # layout: tracker row grouping
+  tracker_beat_row: "#ffffff0e"
+  tracker_bar_row: "#ffffff1e"
 
   # layout: tracker cursor and playback
   pattern_highlight: "#ffffff40"

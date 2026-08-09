@@ -113,8 +113,18 @@ colors:
   input_invalid: "#c0504a64"
   input_warning: "#c0884a64"
 
-  # plot lines
+  # controls
+  control: "#4a4a52"
+  control_hovered: "#55555e"
+  control_active: "#60606a"
+  control_border: "#6c6c77"
+
+  # plots
   plot_zero_line: "#c8c8c8"
+  plot_grid: "#34343c"
+  plot_axis_text: "#9a9aa2"
+  plot_border: "#45454c"
+  plot_legend_bg: "#26262c"
 
   # file-tree nodes
   file_wave: "#64c8ff"
@@ -183,6 +193,10 @@ colors:
   waveform_reconstruction: "#ffc864"
   waveform_overlay: "#ffffff20"
   spectrum_dim: "#1b1b1f"
+
+  # layout: tracker row grouping
+  tracker_beat_row: "#ffffff0e"
+  tracker_bar_row: "#ffffff1e"
 
   # layout: tracker cursor and playback
   pattern_highlight: "#ffffff40"

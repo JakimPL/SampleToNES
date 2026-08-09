@@ -493,6 +493,30 @@ class GUISequencerOrderPanel(GUIPanel):
         self._highlight_master_row(position_count)
         self._apply_channel_cues()
 
+    def repaint(self) -> None:
+        """Issues every tint the table holds as its own state.
+
+        DearPyGui keeps a row, column or cell highlight on the table rather than on an item,
+        so a colour reaches it only by being pushed again. Gathering the pushes here gives
+        the palette one call to make and keeps a rebuilt table and a recoloured one identical.
+        """
+        if not dpg.does_item_exist(TAG_SEQUENCER_ORDER_TABLE):
+            return
+
+        self._apply_column_backgrounds()
+        self._highlight_master_row(self._position_count)
+        self._apply_channel_cues()
+        self._repaint_highlights()
+
+    def _repaint_highlights(self) -> None:
+        if self._highlighted_column is not None:
+            position = self._highlighted_column
+            focused = self._input_state.cursor is not None and self._input_state.cursor.position == position
+            self._apply_column_highlight(position, focused=focused)
+
+        if self._highlighted is not None:
+            self._apply_cursor_highlight(self._highlighted)
+
     def _apply_column_backgrounds(self) -> None:
         """Tints the label column like the header row.
 
