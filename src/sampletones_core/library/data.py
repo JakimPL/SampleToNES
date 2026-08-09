@@ -2,24 +2,19 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, KeysView, List, Self, Union, ValuesView
+from typing import Any, Dict, Final, KeysView, List, Self, Union, ValuesView
 
 from pydantic import ConfigDict, Field, ValidationError
 
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorClassName
-from sampletones_core.data import DataModel, Metadata
+from sampletones_core.data import DataModel, Metadata, MetadataContract
 from sampletones_core.generators import GeneratorClassNames
 from sampletones_core.instructions import InstructionUnion
-from sampletones_shared.application import (
-    SAMPLETONES_LIBRARY_DATA_VERSION,
-    SAMPLETONES_NAME,
-)
-from sampletones_shared.deployment.version import compare_versions
+from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataValuesError,
-    InvalidMetadataError,
     SampleToNESError,
     UnhandledLibraryError,
 )
@@ -28,6 +23,12 @@ from sampletones_shared.utils.serialization import load_binary
 
 from .fragment import InstructionLibraryFragment
 from .item import LibraryItem
+
+LIBRARY_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
+    label="Library data",
+    expected_version=SAMPLETONES_LIBRARY_DATA_VERSION,
+    error=IncompatibleLibraryDataVersionError,
+)
 
 
 class InstructionLibraryData(DataModel):
@@ -137,17 +138,4 @@ class InstructionLibraryData(DataModel):
         if not isinstance(metadata, Metadata):
             return
 
-        application_metadata = metadata.application_name
-        if application_metadata != SAMPLETONES_NAME:
-            raise InvalidMetadataError(
-                f"Metadata application name mismatch: expected " f"{SAMPLETONES_NAME}, got {application_metadata}."
-            )
-
-        library_version = metadata.library_data_version
-        if compare_versions(library_version, SAMPLETONES_LIBRARY_DATA_VERSION) != 0:
-            raise IncompatibleLibraryDataVersionError(
-                f"Library data version mismatch: expected "
-                f"{SAMPLETONES_LIBRARY_DATA_VERSION}, got {library_version}.",
-                expected_version=SAMPLETONES_LIBRARY_DATA_VERSION,
-                actual_version=library_version,
-            )
+        LIBRARY_DATA_CONTRACT.validate(metadata, metadata.library_data_version)

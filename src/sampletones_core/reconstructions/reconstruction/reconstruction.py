@@ -3,7 +3,7 @@ from __future__ import annotations
 import struct
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Self, Sequence
+from typing import Any, Dict, Final, List, Mapping, Optional, Self, Sequence
 from uuid import uuid4
 
 import numpy as np
@@ -11,7 +11,7 @@ from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.data import DataModel, Metadata
+from sampletones_core.data import DataModel, Metadata, MetadataContract
 from sampletones_core.exporters import (
     GENERATOR_NAME_TO_EXPORTER_MAP,
     INSTRUCTION_TO_EXPORTER_MAP,
@@ -21,14 +21,9 @@ from sampletones_core.exporters import (
 )
 from sampletones_core.generators.maps import GENERATOR_CLASSES
 from sampletones_core.instructions import InstructionUnion
-from sampletones_shared.application import (
-    SAMPLETONES_NAME,
-    SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
-)
-from sampletones_shared.deployment.version import compare_versions
+from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
 from sampletones_shared.exceptions import (
     IncompatibleReconstructionVersionError,
-    InvalidMetadataError,
     InvalidReconstructionValuesError,
     SampleToNESError,
     UnhandledReconstructionError,
@@ -43,6 +38,12 @@ from sampletones_shared.utils.serialization import load_binary, serialize_array
 from ..reconstructor.state import ReconstructionState
 from .approximations import ApproximationsItem
 from .instructions import InstructionsItem
+
+RECONSTRUCTION_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
+    label="Reconstruction data",
+    expected_version=SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
+    error=IncompatibleReconstructionVersionError,
+)
 
 
 class Reconstruction(DataModel):
@@ -356,20 +357,7 @@ class Reconstruction(DataModel):
         if not isinstance(metadata, Metadata):
             return
 
-        application_metadata = metadata.application_name
-        if application_metadata != SAMPLETONES_NAME:
-            raise InvalidMetadataError(
-                f"Metadata application name mismatch: expected {SAMPLETONES_NAME}, got {application_metadata}"
-            )
-
-        reconstruction_version = metadata.reconstruction_data_version
-        if compare_versions(reconstruction_version, SAMPLETONES_RECONSTRUCTION_DATA_VERSION) != 0:
-            raise IncompatibleReconstructionVersionError(
-                f"Reconstruction data version mismatch: expected "
-                f"{SAMPLETONES_RECONSTRUCTION_DATA_VERSION}, got {reconstruction_version}.",
-                expected_version=SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
-                actual_version=reconstruction_version,
-            )
+        RECONSTRUCTION_DATA_CONTRACT.validate(metadata, metadata.reconstruction_data_version)
 
     def _validate_instructions(
         self,

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple
 
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.slices import (
     InstrumentSlot,
     InstrumentTable,
@@ -62,6 +63,43 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
 
 
+def build_instrument(
+    index: int,
+    name: str,
+    features: Features,
+    *,
+    loop: bool,
+) -> Instrument2A03:
+    """Builds one FamiTracker instrument from the envelopes of a generator slice.
+
+    The slice's envelopes become the instrument's five 2A03 sequences, so an instrument reaching a
+    ``.fti`` file on its own and one taking a slot in a module are built the same way.
+
+    Args:
+        index: The slot the instrument is numbered under.
+        name: The name FamiTracker lists the instrument by.
+        features: The per-dimension envelopes the sequences are read from.
+        loop: Whether every populated sequence loops from its first item, sustaining a held note.
+
+    Returns:
+        The instrument the envelopes describe.
+    """
+    sequences = features_to_instrument_sequences(
+        volume=features.volume,
+        arpeggio=features.arpeggio,
+        pitch=features.pitch,
+        hi_pitch=features.hi_pitch,
+        duty_cycle=features.duty_cycle,
+        loop=loop,
+    )
+
+    return Instrument2A03(
+        index=index,
+        name=name,
+        sequences=sequences,
+    )
+
+
 def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], InstrumentTable]:
     """Builds one FamiTracker instrument per generator slice of every sample.
 
@@ -76,20 +114,12 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
         if sample_slice.index >= MAX_INSTRUMENTS:
             raise ValueError(f"Module exceeds the FamiTracker limit of {MAX_INSTRUMENTS} instruments")
 
-        features = sample_slice.features
-        sequences = features_to_instrument_sequences(
-            volume=features.volume,
-            arpeggio=features.arpeggio,
-            pitch=features.pitch,
-            hi_pitch=features.hi_pitch,
-            duty_cycle=features.duty_cycle,
-            loop=sample_slice.sample.loop,
-        )
         instruments.append(
-            Instrument2A03(
-                index=sample_slice.index,
-                name=sample_slice.instrument_name,
-                sequences=sequences,
+            build_instrument(
+                sample_slice.index,
+                sample_slice.instrument_name,
+                sample_slice.features,
+                loop=sample_slice.sample.loop,
             )
         )
         slots[sample_slice.key] = sample_slice.slot

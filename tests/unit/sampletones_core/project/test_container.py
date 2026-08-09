@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.data import Metadata
 from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
@@ -26,10 +27,6 @@ from sampletones_shared.exceptions import (
 )
 from tests.conftest import ReconstructionFactory
 from tests.suite.errors import DIRECTORY_READ_ERRORS
-
-_RECONSTRUCTION_VERSION_CONSTANT = (
-    "sampletones_core.reconstructions.reconstruction.reconstruction.SAMPLETONES_RECONSTRUCTION_DATA_VERSION"
-)
 
 
 def _rewrite_format_version(source: Path, target: Path, *, format_version: str) -> None:
@@ -99,7 +96,10 @@ class TestRoundTrip:
         loaded_song = loaded.song
         assert loaded_song.order == project.song.order
         pulse1_index_at_0 = loaded_song.order[0].get(GeneratorName.PULSE1)
-        first_pattern = loaded_song.pattern(GeneratorName.PULSE1, pulse1_index_at_0)
+        first_pattern = loaded_song.pattern(
+            GeneratorName.PULSE1,
+            pulse1_index_at_0,
+        )
         assert first_pattern.name == "intro"
         row = first_pattern.rows[0]
         assert row.transpose == 0
@@ -190,22 +190,34 @@ class TestEmptyProject:
 
 
 class TestLoadRejectsInvalidArchives:
-    def test_missing_file_raises_file_not_found(self, tmp_path: Path) -> None:
+    def test_missing_file_raises_file_not_found(
+        self,
+        tmp_path: Path,
+    ) -> None:
         with pytest.raises(FileNotFoundError):
             ProjectContainer.load(tmp_path / "nope.stp")
 
-    def test_directory_raises_directory_read_error(self, tmp_path: Path) -> None:
+    def test_directory_raises_directory_read_error(
+        self,
+        tmp_path: Path,
+    ) -> None:
         with pytest.raises(DIRECTORY_READ_ERRORS):
             ProjectContainer.load(tmp_path)
 
-    def test_non_zip_raises_not_a_valid_archive(self, tmp_path: Path) -> None:
+    def test_non_zip_raises_not_a_valid_archive(
+        self,
+        tmp_path: Path,
+    ) -> None:
         path = tmp_path / "broken.stp"
         path.write_bytes(b"this is not a zip archive")
 
         with pytest.raises(NotAValidArchiveError):
             ProjectContainer.load(path)
 
-    def test_missing_document_raises_missing_data_file(self, tmp_path: Path) -> None:
+    def test_missing_document_raises_missing_data_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
         path = tmp_path / "nodoc.stp"
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr("other.txt", "hello")
@@ -213,7 +225,10 @@ class TestLoadRejectsInvalidArchives:
         with pytest.raises(MissingProjectDataFileError):
             ProjectContainer.load(path)
 
-    def test_malformed_document_raises_invalid_values(self, tmp_path: Path) -> None:
+    def test_malformed_document_raises_invalid_values(
+        self,
+        tmp_path: Path,
+    ) -> None:
         path = tmp_path / "baddoc.stp"
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr(PROJECT_DOCUMENT_NAME, b"{ not valid json")
@@ -254,7 +269,10 @@ class TestLoadRejectsInvalidArchives:
         with pytest.raises(MissingProjectDataFileError):
             ProjectContainer.load(stripped)
 
-    def test_unexpected_error_wrapped_as_unhandled(self, tmp_path: Path) -> None:
+    def test_unexpected_error_wrapped_as_unhandled(
+        self,
+        tmp_path: Path,
+    ) -> None:
         path = tmp_path / "demo.stp"
         ProjectContainer.save(Project.create(title="Demo"), path)
 
@@ -290,10 +308,13 @@ class TestVersionCompatibility:
         tmp_path: Path,
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
+        """A project carrying a reconstruction from another build is refused as it opens."""
         project = _populated_project(reconstruction_factory)
+        project.samples[0].reconstruction = project.samples[0].reconstruction.model_copy(
+            update={"metadata": Metadata(reconstruction_data_version="0.0")},
+        )
         path = tmp_path / "demo.stp"
         ProjectContainer.save(project, path)
 
-        with patch(_RECONSTRUCTION_VERSION_CONSTANT, "9.0"):
-            with pytest.raises(IncorrectReconstructionDataError):
-                ProjectContainer.load(path)
+        with pytest.raises(IncorrectReconstructionDataError):
+            ProjectContainer.load(path)

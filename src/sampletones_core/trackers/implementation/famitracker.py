@@ -2,12 +2,15 @@ from pathlib import Path
 from typing import FrozenSet, List, Optional
 
 from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.formats.famitracker.builder import build_instrument
 from sampletones_core.formats.famitracker.export import write_ftm
 from sampletones_core.formats.famitracker.instrument import write_fti
-from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
-from sampletones_core.formats.famitracker.sequences.features import features_to_instrument_sequences
-from sampletones_core.formats.famitracker.specification.instruments import STANDALONE_INSTRUMENT_INDEX
-from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.formats.famitracker.specification.instruments import (
+    STANDALONE_INSTRUMENT_INDEX,
+)
+from sampletones_core.formats.famitracker.specification.sequences import (
+    MAX_SEQUENCE_ITEMS,
+)
 from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_core.trackers.artifact import ExportArtifact
 from sampletones_core.trackers.format import TrackerFormat
@@ -46,26 +49,18 @@ class FamiTrackerBackend:
         destination: Path,
         request: InstrumentExport,
     ) -> ExportArtifact:
-        features = request.features
-        sequences = features_to_instrument_sequences(
-            volume=features.volume,
-            arpeggio=features.arpeggio,
-            pitch=features.pitch,
-            hi_pitch=features.hi_pitch,
-            duty_cycle=features.duty_cycle,
+        instrument = build_instrument(
+            STANDALONE_INSTRUMENT_INDEX,
+            request.name,
+            request.features,
             loop=request.loop,
-        )
-        instrument = Instrument2A03(
-            index=STANDALONE_INSTRUMENT_INDEX,
-            name=request.name,
-            sequences=sequences,
         )
         write_fti(destination, instrument)
 
         return ExportArtifact(
             paths=(destination,),
             truncation=EnvelopeTruncation.measure(
-                features.frame_count,
+                request.features.frame_count,
                 MAX_SEQUENCE_ITEMS,
             ),
         )
@@ -80,7 +75,12 @@ class FamiTrackerBackend:
         paths: List[Path] = []
         truncations: List[Optional[EnvelopeTruncation]] = []
         for instrument in request.instruments:
-            filepath = destination.with_name(get_filename(instrument.name, EXT_FILE_INSTRUMENT))
+            filepath = destination.with_name(
+                get_filename(
+                    instrument.name,
+                    EXT_FILE_INSTRUMENT,
+                )
+            )
             artifact = self.write_instrument(filepath, instrument)
             paths.extend(artifact.paths)
             truncations.append(artifact.truncation)
