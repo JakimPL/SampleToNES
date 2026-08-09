@@ -7,6 +7,7 @@ import pytest
 from sampletones_shared.meta.source.modules import (
     discover_modules,
     is_visible,
+    module_name,
     parse_module,
     source_paths,
 )
@@ -57,6 +58,21 @@ class TestIsVisible:
 
     def test_a_hidden_file_is_hidden(self) -> None:
         assert not is_visible(Path("src/.generated.py"))
+
+
+class TestModuleName:
+    def test_a_module_is_named_by_the_path_reaching_it(self) -> None:
+        assert module_name(Path("/src/package/inner/module.py"), Path("/src")) == "package.inner.module"
+
+    def test_a_module_at_the_root_is_named_alone(self) -> None:
+        assert module_name(Path("/src/module.py"), Path("/src")) == "module"
+
+    def test_an_initializer_names_the_package_holding_it(self) -> None:
+        assert module_name(Path("/src/package/inner/__init__.py"), Path("/src")) == "package.inner"
+
+    def test_a_file_outside_the_root_raises(self) -> None:
+        with pytest.raises(ValueError):
+            module_name(Path("/elsewhere/module.py"), Path("/src"))
 
 
 class TestSourcePaths:

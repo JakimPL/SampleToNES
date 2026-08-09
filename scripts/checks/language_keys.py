@@ -6,7 +6,8 @@ Checks the language file and the lookups that read it against each other, in bot
 Every lookup on a `LanguageManager` states a key, so the check reads each one and holds it against
 `en.yaml`. A key spelled entirely from literals must name an entry, and every entry must be reachable
 from some lookup — a key part arriving in a variable stands for each member of the enum it is
-annotated with, which is why a dynamic part names a concrete element enum.
+annotated with, which is why a dynamic part names a concrete element enum. An element enum is found
+by what it derives from, so one lives wherever its domain lives and the check reads it there.
 
 Three things are reported:
     broken lookup      — a literal key the language file holds no entry for
@@ -20,24 +21,29 @@ Usage:
 import argparse
 import importlib
 import inspect
-import pkgutil
 import sys
-from enum import EnumMeta
+from enum import Enum, EnumMeta
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, Final, List, Mapping, NamedTuple, Optional, Sequence
+from typing import Callable, Dict, Final, List, Mapping, NamedTuple, Optional, Sequence, Type
 
 import yaml
 
-from sampletones_application.categories import elements, hierarchy
+from sampletones_application.categories import hierarchy
 from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.compose import TAG_SEPARATOR
+from sampletones_shared.meta.source.classes import declared_subclasses
 from sampletones_shared.meta.source.index import source_index
 from sampletones_shared.meta.source.lookups import LookupSite, tree_lookups
-from sampletones_shared.meta.source.modules import discover_modules
-from sampletones_shared.meta.source.values import EnumTable
+from sampletones_shared.meta.source.modules import discover_modules, module_name
+from sampletones_shared.meta.source.packages import package_directory
+from sampletones_shared.meta.source.values import EnumMembers, EnumTable
 from sampletones_shared.paths import SOURCE_ROOT
+
+EnumPredicate = Callable[[object], bool]
+
+APPLICATION_PACKAGE: Final[Path] = package_directory("sampletones_application")
 
 RECEIVER_TYPE: Final[str] = "LanguageManager"
 ELEMENT_BASE: Final[str] = AbstractElement.__name__
@@ -65,27 +71,69 @@ class Finding(NamedTuple):
     message: str
 
 
-def element_modules() -> List[ModuleType]:
-    """Every module of the elements package, which is where the element enums live."""
+def is_enum(member: object) -> bool:
+    """States whether a module member is an enum."""
+    return isinstance(member, EnumMeta)
+
+
+def is_element_enum(member: object) -> bool:
+    """States whether a module member is an enum of the elements a key part names."""
+    return isinstance(member, EnumMeta) and issubclass(member, AbstractElement)
+
+
+def enum_members(member_type: Type[Enum]) -> EnumMembers:
+    """The value each member of an enum spells, keyed by member name."""
+    return {member.name: str(member.value) for member in member_type}
+
+
+def declared_enums(module: ModuleType, matches: EnumPredicate) -> Dict[str, EnumMembers]:
+    """The enums a module declares itself, keyed by enum name.
+
+    An enum is read from the module declaring it, so a name a module merely imports states its
+    members once, under the module that owns it.
+
+    Args:
+        module: Imported module to read.
+        matches: What makes a member one of the enums to read.
+
+    Returns:
+        Dict[str, EnumMembers]: Enum name to its member names and the values they spell.
+    """
+    return {
+        name: enum_members(member_type)
+        for name, member_type in inspect.getmembers(module, matches)
+        if member_type.__module__ == module.__name__
+    }
+
+
+def element_enum_modules() -> List[ModuleType]:
+    """Every module of the application declaring an element enum, imported for its members.
+
+    A module is found by the classes it declares, so an enum naming a domain's own elements lives
+    beside that domain and the check reads it there.
+
+    Returns:
+        List[ModuleType]: The imported modules, in path order.
+    """
     return [
-        importlib.import_module(f"{elements.__name__}.{module.name}")
-        for module in pkgutil.iter_modules(elements.__path__)
+        importlib.import_module(module_name(module.path, SOURCE_ROOT))
+        for module in discover_modules([APPLICATION_PACKAGE])
+        if declared_subclasses(module.tree, ELEMENT_BASE)
     ]
 
 
 def enum_table() -> EnumTable:
     """The members of every enum a key part can name, keyed by enum name.
 
-    The hierarchy states the page, panel, and text type of a key, and the elements package states
-    its element, so together they cover every part a lookup writes.
+    The hierarchy states the page, panel, and text type of a key, and an element enum states its
+    element, so together they cover every part a lookup writes.
 
     Returns:
         EnumTable: Enum name to its member names and the values they spell.
     """
-    table: Dict[str, Dict[str, str]] = {}
-    for module in (hierarchy, *element_modules()):
-        for name, member_type in inspect.getmembers(module, lambda member: isinstance(member, EnumMeta)):
-            table[name] = {member.name: str(member.value) for member in member_type}
+    table: Dict[str, EnumMembers] = declared_enums(hierarchy, is_enum)
+    for module in element_enum_modules():
+        table.update(declared_enums(module, is_element_enum))
 
     return table
 

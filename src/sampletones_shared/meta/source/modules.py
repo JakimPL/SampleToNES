@@ -8,6 +8,8 @@ from sampletones_shared.meta.source.nodes import PositionedNode
 SOURCE_PATTERN: Final[str] = "*.py"
 SOURCE_ENCODING: Final[str] = "utf-8-sig"
 HIDDEN_PREFIX: Final[str] = "."
+PACKAGE_INITIALIZER: Final[str] = "__init__"
+MODULE_SEPARATOR: Final[str] = "."
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,27 @@ def parse_module(path: Path) -> SourceModule:
             filename=str(path),
         ),
     )
+
+
+def module_name(path: Path, root: Path) -> str:
+    """The dotted name an import statement reaches a source file by.
+
+    A check that finds a module by reading it can then reach the objects it declares, which is what
+    lets a static sweep and a runtime read describe the same module.
+
+    Args:
+        path: Source file under the root.
+        root: Directory imports resolve from, such as the source root.
+
+    Returns:
+        str: The dotted name, where a package's `__init__.py` names the package itself.
+
+    Raises:
+        ValueError: If the file sits outside the root.
+    """
+    relative = path.relative_to(root).with_suffix("")
+    parts = relative.parts[:-1] if relative.name == PACKAGE_INITIALIZER else relative.parts
+    return MODULE_SEPARATOR.join(parts)
 
 
 def is_visible(path: Path) -> bool:

@@ -4,6 +4,7 @@ from typing import Dict, Final, Tuple
 import pytest
 
 from sampletones_application.categories.elements.global_ import DialogElements
+from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.paths import LANG_EN
 from sampletones_shared.meta.source.lookups import LookupSite
 from sampletones_shared.meta.source.modules import source_paths
@@ -73,8 +74,14 @@ class TestEnumTable:
             "InstructionsLibraryElements",
         }.issubset(ENUMS)
 
-    def test_the_element_base_states_no_members(self) -> None:
-        assert ENUMS[check_language_keys.ELEMENT_BASE] == {}
+    def test_an_element_enum_declared_beside_its_domain_is_read(self) -> None:
+        assert ENUMS["HistoryAction"] == {member.name: member.value for member in HistoryAction}
+
+    def test_an_enum_a_module_imports_is_read_from_the_module_declaring_it(self) -> None:
+        assert "StrEnum" not in ENUMS
+
+    def test_the_element_base_is_no_concrete_enum(self) -> None:
+        assert check_language_keys.ELEMENT_BASE not in ENUMS
 
 
 class TestLanguageEntries:

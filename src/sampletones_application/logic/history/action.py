@@ -1,12 +1,11 @@
-from enum import StrEnum
+from sampletones_application.categories.abstract import AbstractElement
 
 
-class HistoryAction(StrEnum):
+class HistoryAction(AbstractElement):
     """Names a single user-facing gesture recorded as one history entry.
 
-    Each member's value doubles as the language-lookup element for the entry's
-    display label, so the history panel resolves a human-readable name from the
-    same enum the coordinators tag their transactions with.
+    Each member is the language-lookup element for the entry's display label, so the history panel
+    resolves a human-readable name from the same enum the coordinators tag their transactions with.
     """
 
     INITIAL = "initial"

@@ -3,10 +3,7 @@ from typing import Callable, Optional, ParamSpec, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import (
-    SequencerHistoryActionElements,
-    SequencerHistoryElements,
-)
+from sampletones_application.categories.elements.sequencer import SequencerHistoryElements
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -16,7 +13,6 @@ from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
-from sampletones_application.logic.history.snapshot import HistoryEntry
 from sampletones_application.logic.history.transaction import CoalesceKey
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
@@ -662,7 +658,7 @@ class SequencerTabCoordinator:
         entries = tuple(
             HistoryEntryViewModel(
                 index=index,
-                label=self._history_action_label(entry),
+                label=self._history_action_label(entry.action),
                 detail_segments=tuple(self._resolve_detail_segment(segment) for segment in entry.detail),
                 is_current=index == cursor,
                 is_future=index > cursor,
@@ -671,12 +667,12 @@ class SequencerTabCoordinator:
         )
         return HistoryViewModel(entries=entries, cursor=cursor)
 
-    def _history_action_label(self, entry: HistoryEntry) -> str:
+    def _history_action_label(self, action: HistoryAction) -> str:
         return self._language_manager[
             Page.SEQUENCER,
             Panel.HISTORY,
             TextType.LABEL,
-            SequencerHistoryActionElements(entry.action.value),
+            action,
         ]
 
     def _resolve_detail_segment(
