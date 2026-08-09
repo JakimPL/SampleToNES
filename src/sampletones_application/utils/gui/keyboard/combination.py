@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from typing import Final, Set
 
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
-from sampletones_application.utils.gui.keyboard.keys import key_code, key_display
+from sampletones_application.utils.gui.keyboard.keys import (
+    is_named_key,
+    key_code,
+    key_display,
+)
 from sampletones_application.utils.gui.keyboard.modifiers import (
     MODIFIER_NAMES,
     NO_MODIFIERS,
@@ -27,6 +31,15 @@ class KeyCombination:
 
     key: int
     modifiers: ModifierSet = NO_MODIFIERS
+
+    @property
+    def is_writable(self) -> bool:
+        """Whether the combination reads back as itself once written down.
+
+        A combination is built from whatever code a press reports, while a binding is kept as text,
+        so an entry a scheme can hold is one whose key the table names.
+        """
+        return is_named_key(self.key)
 
     def matches(self, event: KeyEvent) -> bool:
         """Whether ``event`` is a press of this combination.

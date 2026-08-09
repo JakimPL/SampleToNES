@@ -101,8 +101,15 @@ class ShortcutDraft:
         """The draft with an action answering ``combination``, taken from whichever action holds it.
 
         Leaving the holder unbound in the same step is what keeps every scheme a draft produces
-        valid, since one combination reaches one action within a category.
+        valid, since one combination reaches one action within a category. An edit is held to the
+        keys the table names, which is what lets every draft be written down and read back.
+
+        Raises:
+            KeyError: when the combination is built on a key the table names none of.
         """
+        if not combination.is_writable:
+            raise KeyError(f"The key {combination.key} carries no name a binding is written under")
+
         claimant = self.claimant(shortcut_id, combination)
         edits: Dict[ShortcutId, Optional[KeyCombination]] = {
             **self.edits,

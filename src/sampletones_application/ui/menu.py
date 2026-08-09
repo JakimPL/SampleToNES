@@ -428,6 +428,10 @@ class MenuBar:
                 ShortcutId.DISPLAY_SETTINGS,
                 label=self._label(MenuElements.ITEM_VIEW_DISPLAY_SETTINGS),
             )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.KEYBOARD_SETTINGS,
+                label=self._label(MenuElements.ITEM_VIEW_KEYBOARD_SETTINGS),
+            )
 
     def _create_help_menu(self) -> None:
         with dpg.menu(label=self._label(MenuElements.GROUP_HELP)):

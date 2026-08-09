@@ -1,9 +1,16 @@
 from dataclasses import dataclass
 from typing import Dict, Optional
 
+import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.keys import (
+    KEY_DISPLAY_NAMES,
+    KEY_MODIFIER_ALT,
+    KEY_MODIFIER_CTRL,
+)
+from sampletones_application.utils.gui.keyboard.modifiers import ALT, CTRL, NO_MODIFIERS
 from sampletones_application.utils.gui.shortcuts.draft import ShortcutDraft
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
@@ -11,6 +18,8 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 FREE_COMBINATION = "Ctrl+Alt+B"
+
+UNNAMED_KEY = -1
 
 
 @pytest.fixture
@@ -186,6 +195,68 @@ class TestAssign(BaseTestSuite):
         assert edited.combination(ShortcutId.UNDO) == KeyCombination.parse("Ctrl+Z")
 
 
+class TestUnwritableCombination(BaseTestSuite):
+    """An edit is held to the keys the table names, which is what a stored preference is written in.
+
+    A press reports whatever code the keyboard sends — a modifier arrives under a code of its own,
+    and a keyboard carries keys past the ones a binding is spelled with — so a combination reaches
+    the draft that no scheme could hold.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        combination: KeyCombination
+
+    test_cases = (
+        TestCase(
+            label="the code reserved for alt",
+            combination=KeyCombination(KEY_MODIFIER_ALT, ALT),
+        ),
+        TestCase(
+            label="the code reserved for control",
+            combination=KeyCombination(KEY_MODIFIER_CTRL, CTRL),
+        ),
+        TestCase(
+            label="a key the table names none of",
+            combination=KeyCombination(dpg.mvKey_Browser_Back, NO_MODIFIERS),
+        ),
+        TestCase(
+            label="a code no key carries",
+            combination=KeyCombination(UNNAMED_KEY, CTRL),
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_assigning_it_is_refused(self, test_case: TestCase, draft: ShortcutDraft) -> None:
+        with pytest.raises(KeyError):
+            draft.assign(ShortcutId.UNDO, test_case.combination)
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_action_keeps_the_keys_it_had(self, test_case: TestCase, draft: ShortcutDraft) -> None:
+        with pytest.raises(KeyError):
+            draft.assign(ShortcutId.UNDO, test_case.combination)
+
+        assert draft.combination(ShortcutId.UNDO) == KeyCombination.parse("Ctrl+Z")
+        assert draft.is_dirty is False
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_it_reaches_no_action_of_the_scope(self, test_case: TestCase, draft: ShortcutDraft) -> None:
+        """A combination no action can be given is one no action holds, so none is asked for it."""
+        assert draft.claimant(ShortcutId.UNDO, test_case.combination) is None
+
+
 class TestClear:
     def test_a_cleared_action_stores_as_unbound(self, draft: ShortcutDraft) -> None:
         edited = draft.clear(ShortcutId.UNDO)
@@ -252,6 +323,15 @@ class TestScheme:
 
     def test_a_draft_on_the_shipped_keys_produces_the_scheme_it_opened_on(self, draft: ShortcutDraft) -> None:
         assert draft.scheme().bindings == draft.base.bindings
+
+    def test_every_key_the_table_names_produces_a_scheme_that_resolves(self, draft: ShortcutDraft) -> None:
+        """What a reader may assign is what the application then runs on, key for key."""
+        assigned = {key: draft.assign(ShortcutId.UNDO, KeyCombination(key, CTRL)).scheme() for key in KEY_DISPLAY_NAMES}
+
+        assert all(
+            scheme.shortcut(ShortcutId.UNDO).combination == KeyCombination(key, CTRL)
+            for key, scheme in assigned.items()
+        )
 
 
 class TestOverrides:

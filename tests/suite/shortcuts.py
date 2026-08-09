@@ -7,9 +7,14 @@ from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 
 
 @lru_cache(maxsize=1)
+def shipped_catalog() -> ShortcutCatalog:
+    """Every keybinding scheme the build ships, read once for the whole run."""
+    return ShortcutCatalog.load(KEYBINDINGS_DIRECTORY)
+
+
 def shipped_scheme() -> ShortcutScheme:
-    """The keybinding scheme the build ships, read once for the whole run."""
-    return ShortcutCatalog.load(KEYBINDINGS_DIRECTORY).default
+    """The keybinding scheme the build ships as its default."""
+    return shipped_catalog().default
 
 
 def shipped_source() -> ShortcutSource:

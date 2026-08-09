@@ -12,6 +12,10 @@ from sampletones_application.utils.gui.keyboard.keys import (
     KEY_CODES,
     KEY_DISPLAY_NAMES,
     KEY_LEFT_SUPER,
+    KEY_MODIFIER_ALT,
+    KEY_MODIFIER_CTRL,
+    KEY_MODIFIER_SHIFT,
+    KEY_MODIFIER_SUPER,
     KEY_NAME_ALIASES,
     KEY_PAGE_DOWN,
     KEY_PAGE_UP,
@@ -23,6 +27,7 @@ from sampletones_application.utils.gui.keyboard.keys import (
     LETTER_COUNT,
     SIGN_KEYS,
     UNKNOWN_KEY,
+    is_named_key,
     key_code,
     key_display,
 )
@@ -77,6 +82,54 @@ class TestKeyDisplay(BaseTestSuite):
     def test_a_key_the_table_omits_reads_as_a_placeholder(self) -> None:
         """A combination stays displayable whatever key a press carries."""
         assert key_display(UNNAMED_KEY) == UNKNOWN_KEY
+
+
+class TestNamedKeys(BaseTestSuite):
+    """A press reports whatever code the keyboard sends, and a binding is written on the named ones."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        key: int
+        expected: bool
+
+    test_cases = (
+        TestCase(label="a letter", key=dpg.mvKey_A, expected=True),
+        TestCase(label="a function key", key=dpg.mvKey_F5, expected=True),
+        TestCase(label="a navigation key", key=dpg.mvKey_Home, expected=True),
+        TestCase(label="a written page key", key=KEY_PAGE_UP, expected=True),
+        TestCase(label="a keypad key", key=dpg.mvKey_Add, expected=True),
+        TestCase(label="the code reserved for control", key=KEY_MODIFIER_CTRL, expected=False),
+        TestCase(label="the code reserved for shift", key=KEY_MODIFIER_SHIFT, expected=False),
+        TestCase(label="the code reserved for alt", key=KEY_MODIFIER_ALT, expected=False),
+        TestCase(label="the code reserved for super", key=KEY_MODIFIER_SUPER, expected=False),
+        TestCase(label="a browser key", key=dpg.mvKey_Browser_Back, expected=False),
+        TestCase(label="a code no key carries", key=UNNAMED_KEY, expected=False),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_is_named_key(self, test_case: TestCase) -> None:
+        assert is_named_key(test_case.key) is test_case.expected
+
+    def test_a_named_key_is_one_a_written_name_reaches(self) -> None:
+        assert all(is_named_key(key) for key in KEY_CODES.values())
+
+
+class TestReservedModifierKeys:
+    """A modifier press reports a second code, the one ImGui keeps for the modifier itself."""
+
+    def test_the_reserved_codes_run_in_the_order_they_are_written_in(self) -> None:
+        assert (KEY_MODIFIER_SHIFT, KEY_MODIFIER_ALT, KEY_MODIFIER_SUPER) == (
+            KEY_MODIFIER_CTRL + 1,
+            KEY_MODIFIER_CTRL + 2,
+            KEY_MODIFIER_CTRL + 3,
+        )
+
+    def test_a_reserved_code_sits_past_every_key_the_table_names(self) -> None:
+        assert KEY_MODIFIER_CTRL > max(KEY_DISPLAY_NAMES)
 
 
 class TestKeyCode(BaseTestSuite):

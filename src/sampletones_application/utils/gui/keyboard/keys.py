@@ -12,6 +12,10 @@ KEY_QUOTE: Final[int] = 596
 KEY_SEMICOLON: Final[int] = 601
 KEY_PLUS: Final[int] = 602
 KEY_TILDE: Final[int] = 606
+KEY_MODIFIER_CTRL: Final[int] = 663
+KEY_MODIFIER_SHIFT: Final[int] = 664
+KEY_MODIFIER_ALT: Final[int] = 665
+KEY_MODIFIER_SUPER: Final[int] = 666
 
 UNKNOWN_KEY: Final[str] = "?"
 
@@ -126,6 +130,21 @@ SIGN_KEYS: Final[Dict[int, str]] = {
     KEY_PLUS: PLUS,
     dpg.mvKey_Add: PLUS,
 }
+
+
+def is_named_key(key: int) -> bool:
+    """Whether the table names the key, which is what lets a binding on it be written down.
+
+    A press reports whatever code the keyboard sends, while a binding is kept as the name its keys
+    read under, so an editor assigns the keys the table answers for.
+
+    Args:
+        key: The key code a press carries.
+
+    Returns:
+        bool: True while the key carries a name :func:`key_code` reads back into it.
+    """
+    return key in KEY_DISPLAY_NAMES
 
 
 def key_display(key: int) -> str:

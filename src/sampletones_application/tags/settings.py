@@ -1,5 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key.tag import TagName
+from sampletones_application.tags.compose import compose_tag
 
 TAG_SETTINGS_AUDIO_WINDOW = TagName(
     Page.SETTINGS,
@@ -135,6 +136,96 @@ TAG_SETTINGS_DISPLAY_BUTTON_REVERT = TagName(
     Widget.BUTTON,
     "revert",
 )
+
+TAG_SETTINGS_KEYBINDINGS_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.WINDOW,
+    "keybindings",
+)
+TAG_SETTINGS_KEYBINDINGS_COMBO_SCHEME = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.COMBO,
+    "scheme",
+)
+TAG_SETTINGS_KEYBINDINGS_INPUT_FILTER = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.INPUT,
+    "filter",
+)
+TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.INPUT,
+    "shortcut",
+)
+TAG_SETTINGS_KEYBINDINGS_PANEL_ACTIONS = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.PANEL,
+    "actions",
+)
+TAG_SETTINGS_KEYBINDINGS_TABLE_ACTIONS = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.TABLE,
+    "actions",
+)
+TAG_SETTINGS_KEYBINDINGS_TEXT_MESSAGE = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.TEXT,
+    "message",
+)
+TAG_SETTINGS_KEYBINDINGS_BUTTON_CLEAR = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.BUTTON,
+    "clear",
+)
+TAG_SETTINGS_KEYBINDINGS_BUTTON_RESET = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.BUTTON,
+    "reset",
+)
+TAG_SETTINGS_KEYBINDINGS_BUTTON_OK = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.BUTTON,
+    "ok",
+)
+TAG_SETTINGS_KEYBINDINGS_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.BUTTON,
+    "cancel",
+)
+TAG_SETTINGS_KEYBINDINGS_DIALOG_REASSIGN = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.DIALOG,
+    "reassign",
+)
+TAG_SETTINGS_KEYBINDINGS_DIALOG_RESET = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.DIALOG,
+    "reset",
+)
+TAG_SETTINGS_KEYBINDINGS_DIALOG_DISCARD = TagName(
+    Page.SETTINGS,
+    Panel.KEYBINDINGS,
+    Widget.DIALOG,
+    "discard",
+)
+
+PRE_SETTINGS_KEYBINDINGS_GROUP = compose_tag(TAG_SETTINGS_KEYBINDINGS_TABLE_ACTIONS, "group")
+PRE_SETTINGS_KEYBINDINGS_ROW = compose_tag(TAG_SETTINGS_KEYBINDINGS_TABLE_ACTIONS, "row")
+SUF_SETTINGS_KEYBINDINGS_ACTION = "action"
+SUF_SETTINGS_KEYBINDINGS_SHORTCUT = "shortcut"
 
 TAG_SETTINGS_PROPERTIES_WINDOW = TagName(
     Page.SETTINGS,

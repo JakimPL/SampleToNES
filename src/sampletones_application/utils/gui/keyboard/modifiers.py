@@ -5,6 +5,10 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.utils.gui.keyboard.keys import (
     KEY_LEFT_SUPER,
+    KEY_MODIFIER_ALT,
+    KEY_MODIFIER_CTRL,
+    KEY_MODIFIER_SHIFT,
+    KEY_MODIFIER_SUPER,
     KEY_RIGHT_SUPER,
 )
 from sampletones_shared.utils.system.system import System
@@ -57,7 +61,32 @@ MODIFIER_KEYS: Final[Dict[Modifier, Tuple[int, int]]] = {
     Modifier.SHIFT: (dpg.mvKey_LShift, dpg.mvKey_RShift),
 }
 
-MODIFIER_KEY_CODES: Final[FrozenSet[int]] = frozenset(key for keys in MODIFIER_KEYS.values() for key in keys)
+RESERVED_MODIFIER_KEYS: Final[Dict[Modifier, int]] = {
+    Modifier.SUPER: KEY_MODIFIER_SUPER,
+    Modifier.CTRL: KEY_MODIFIER_CTRL,
+    Modifier.ALT: KEY_MODIFIER_ALT,
+    Modifier.SHIFT: KEY_MODIFIER_SHIFT,
+}
+
+MODIFIER_KEY_CODES: Final[FrozenSet[int]] = frozenset(
+    key for keys in MODIFIER_KEYS.values() for key in keys
+) | frozenset(RESERVED_MODIFIER_KEYS.values())
+
+
+def is_modifier_key(key: int) -> bool:
+    """Whether a press carries a modifier rather than the key a combination is built around.
+
+    A modifier reaches a handler twice: under the key that carries it, and under the code ImGui
+    reserves for the modifier itself. Both answer here, so an editor waiting for a combination keeps
+    listening while either arrives.
+
+    Args:
+        key: The key code a press carries.
+
+    Returns:
+        bool: True while the press is a modifier being held.
+    """
+    return key in MODIFIER_KEY_CODES
 
 
 def capture_modifiers() -> ModifierSet:

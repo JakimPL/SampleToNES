@@ -7,6 +7,10 @@ import pytest
 
 from sampletones_application.utils.gui.keyboard.keys import (
     KEY_LEFT_SUPER,
+    KEY_MODIFIER_ALT,
+    KEY_MODIFIER_CTRL,
+    KEY_MODIFIER_SHIFT,
+    KEY_MODIFIER_SUPER,
     KEY_RIGHT_SUPER,
 )
 from sampletones_application.utils.gui.keyboard.modifiers import (
@@ -17,11 +21,13 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL_SHIFT,
     MODIFIER_NAMES,
     NO_MODIFIERS,
+    RESERVED_MODIFIER_KEYS,
     SHIFT,
     SUPER,
     Modifier,
     ModifierSet,
     capture_modifiers,
+    is_modifier_key,
     modifier_display,
     modifiers_display,
 )
@@ -94,6 +100,44 @@ class TestCaptureModifiers(BaseTestSuite):
         _hold(monkeypatch, [L_CONTROL, R_CONTROL])
 
         assert capture_modifiers() == CTRL
+
+
+class TestModifierKeys(BaseTestSuite):
+    """A modifier reaches a handler twice, under its own key and under the code reserved for it."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        key: int
+        expected: bool
+
+    test_cases = (
+        TestCase(label="left control", key=L_CONTROL, expected=True),
+        TestCase(label="right control", key=R_CONTROL, expected=True),
+        TestCase(label="left shift", key=L_SHIFT, expected=True),
+        TestCase(label="right shift", key=R_SHIFT, expected=True),
+        TestCase(label="left alt", key=L_ALT, expected=True),
+        TestCase(label="right alt", key=R_ALT, expected=True),
+        TestCase(label="left super", key=L_SUPER, expected=True),
+        TestCase(label="right super", key=R_SUPER, expected=True),
+        TestCase(label="the code reserved for control", key=KEY_MODIFIER_CTRL, expected=True),
+        TestCase(label="the code reserved for shift", key=KEY_MODIFIER_SHIFT, expected=True),
+        TestCase(label="the code reserved for alt", key=KEY_MODIFIER_ALT, expected=True),
+        TestCase(label="the code reserved for super", key=KEY_MODIFIER_SUPER, expected=True),
+        TestCase(label="a letter", key=dpg.mvKey_G, expected=False),
+        TestCase(label="a navigation key", key=dpg.mvKey_Home, expected=False),
+        TestCase(label="the menu key", key=dpg.mvKey_Menu, expected=False),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_is_modifier_key(self, test_case: TestCase) -> None:
+        assert is_modifier_key(test_case.key) is test_case.expected
+
+    def test_every_modifier_carries_a_code_of_its_own(self) -> None:
+        assert set(RESERVED_MODIFIER_KEYS) == set(Modifier)
 
 
 class TestModifiersDisplay(BaseTestSuite):

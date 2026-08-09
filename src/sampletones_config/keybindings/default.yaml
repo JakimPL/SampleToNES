@@ -49,6 +49,7 @@ bindings:
   # view
   AudioSettings: {combination: "Ctrl+A"}
   DisplaySettings: {combination: "Ctrl+D"}
+  KeyboardSettings: {combination: "Ctrl+K"}
   ToggleAdvancedSettings: {combination: "Ctrl+Shift+A"}
   ToggleFullscreen: {combination: "F11"}
   AboutDialog: {combination: ~}

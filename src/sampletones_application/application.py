@@ -13,6 +13,7 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
+from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.coordinators.playback.router import PlaybackRouter
@@ -93,6 +94,7 @@ from sampletones_application.ui.panels.dialogs.countdown import GUICountdownWind
 from sampletones_application.ui.panels.dialogs.display_settings import (
     GUIDisplaySettingsWindow,
 )
+from sampletones_application.ui.panels.dialogs.keybindings import GUIKeybindingsWindow
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
 )
@@ -257,6 +259,12 @@ class Application:
             key_router=self.key_router,
             shortcut_source=self._shortcut_source,
         )
+        self.keybindings_window: GUIKeybindingsWindow = GUIKeybindingsWindow(
+            layout=self.layout.settings,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
         self.display_countdown_window: GUICountdownWindow = GUICountdownWindow(
             layout=self.layout.settings.display.countdown,
             title=self.language_manager["settings.display.title.countdown"],
@@ -309,6 +317,15 @@ class Application:
             countdown=self.display_countdown_window,
             behavior=self.layout.behavior.display,
             window_layout=self.layout.general.window,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+        )
+
+        self._keybindings_coordinator = KeybindingsCoordinator(
+            self.session_manager,
+            self._shortcut_source,
+            self._shortcut_catalog,
+            window=self.keybindings_window,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
         )
@@ -559,6 +576,7 @@ class Application:
             unmute_all_channels=self._sequencer_tab.unmute_all_channels,
             audio_settings=self._open_audio_settings,
             display_settings=self._display_coordinator.open,
+            keyboard_settings=self._keybindings_coordinator.open,
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_fullscreen=self._shell.toggle_fullscreen,
             about=self._open_about_dialog,

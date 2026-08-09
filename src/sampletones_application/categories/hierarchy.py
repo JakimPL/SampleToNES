@@ -93,4 +93,5 @@ class Panel(StrEnum):
     # Settings
     AUDIO = auto()
     DISPLAY = auto()
+    KEYBINDINGS = auto()
     PROPERTIES = auto()

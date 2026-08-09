@@ -1,5 +1,5 @@
 from enum import Enum, StrEnum
-from typing import Dict, Final, Self
+from typing import Dict, Final, Self, Tuple
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.trackers.format import TrackerFormat
@@ -78,6 +78,7 @@ class ShortcutId(Enum):
     UNMUTE_ALL_CHANNELS = ("UnmuteAllChannels", ShortcutCategory.APPLICATION)
     AUDIO_SETTINGS = ("AudioSettings", ShortcutCategory.APPLICATION)
     DISPLAY_SETTINGS = ("DisplaySettings", ShortcutCategory.APPLICATION)
+    KEYBOARD_SETTINGS = ("KeyboardSettings", ShortcutCategory.APPLICATION)
     TOGGLE_ADVANCED_SETTINGS = ("ToggleAdvancedSettings", ShortcutCategory.APPLICATION)
     TOGGLE_FULLSCREEN = ("ToggleFullscreen", ShortcutCategory.APPLICATION)
     ABOUT_DIALOG = ("AboutDialog", ShortcutCategory.APPLICATION)
@@ -133,6 +134,10 @@ class ShortcutId(Enum):
 
 
 SHORTCUT_IDS_BY_NAME: Final[Dict[str, ShortcutId]] = {shortcut_id.value: shortcut_id for shortcut_id in ShortcutId}
+
+EDITABLE_SHORTCUT_CATEGORIES: Final[Tuple[ShortcutCategory, ...]] = tuple(
+    category for category in ShortcutCategory if category is not ShortcutCategory.DIALOG
+)
 
 CHANNEL_SHORTCUT_IDS: Final[Dict[GeneratorName, ShortcutId]] = {
     GeneratorName.PULSE1: ShortcutId.TOGGLE_CHANNEL_PULSE_1,

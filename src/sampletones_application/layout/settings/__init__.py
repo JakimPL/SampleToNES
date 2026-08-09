@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 from sampletones_application.layout.settings.audio import AudioSettingsLayout
 from sampletones_application.layout.settings.display import DisplaySettingsLayout
+from sampletones_application.layout.settings.keybindings import KeybindingsSettingsLayout
 
 
 class SettingsLayout(BaseModel, extra="forbid", frozen=True):
@@ -15,3 +16,4 @@ class SettingsLayout(BaseModel, extra="forbid", frozen=True):
     label_width: int
     audio: AudioSettingsLayout
     display: DisplaySettingsLayout
+    keybindings: KeybindingsSettingsLayout
