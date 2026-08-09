@@ -142,7 +142,10 @@ class SessionManager:
     def set_shortcut_scheme_name(self, name: str) -> None:
         self._config_manager.set_shortcut_scheme_name(name)
 
-    def set_shortcut_overrides(self, overrides: Dict[str, str]) -> None:
+    def set_shortcut_overrides(
+        self,
+        overrides: Dict[str, Optional[str]],
+    ) -> None:
         self._config_manager.set_shortcut_overrides(overrides)
 
     def save_config(self) -> None:
@@ -210,7 +213,7 @@ class SessionManager:
         return self._config_manager.shortcut_scheme_name
 
     @property
-    def shortcut_overrides(self) -> Dict[str, str]:
+    def shortcut_overrides(self) -> Dict[str, Optional[str]]:
         return self._config_manager.shortcut_overrides
 
     @property

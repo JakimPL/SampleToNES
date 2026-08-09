@@ -20,6 +20,8 @@ from tests.unit.sampletones_application.utils.gui.shortcuts.conftest import (
 
 SHIPPED_FILE = KEYBINDINGS_DIRECTORY / f"{DEFAULT_SCHEME_NAME}{EXT_FILE_YAML}"
 
+UNNAMED_KEY = -1
+
 _PARTIAL_SCHEME_FILE = """
 name: minimal
 bindings:
@@ -139,6 +141,77 @@ class TestAction:
         assert shipped.action(ShortcutCategory.ORDER, _press("Shift+Left")) is None
 
 
+class TestClaimant:
+    def test_a_combination_the_category_binds_reads_as_the_action_it_reaches(self, shipped: ShortcutScheme) -> None:
+        claimant = shipped.claimant(ShortcutCategory.APPLICATION, KeyCombination.parse("Ctrl+Z"))
+
+        assert claimant is ShortcutId.UNDO
+
+    def test_an_alias_reads_as_the_action_it_extends(self, shipped: ShortcutScheme) -> None:
+        claimant = shipped.claimant(ShortcutCategory.APPLICATION, KeyCombination.parse("Ctrl+Shift+Z"))
+
+        assert claimant is ShortcutId.REDO
+
+    def test_a_combination_the_category_leaves_unclaimed_reads_as_nothing(self, shipped: ShortcutScheme) -> None:
+        assert shipped.claimant(ShortcutCategory.SAMPLES, KeyCombination.parse("Ctrl+Z")) is None
+
+    def test_each_category_answers_a_shared_combination_with_its_own_action(self, shipped: ShortcutScheme) -> None:
+        escape = KeyCombination.parse("Esc")
+
+        assert shipped.claimant(ShortcutCategory.TRACKER, escape) is ShortcutId.TRACKER_CANCEL_ENTRY
+        assert shipped.claimant(ShortcutCategory.DIALOG, escape) is ShortcutId.DIALOG_CANCEL
+
+
+class TestWithBinding:
+    def test_an_action_answers_the_combination_it_is_given(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_binding(ShortcutId.UNDO, KeyCombination.parse("Ctrl+Alt+U"))
+
+        assert scheme.shortcut(ShortcutId.UNDO).display() == "Ctrl+Alt+U"
+
+    def test_an_action_answers_that_combination_alone(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_binding(ShortcutId.ORDER_INSERT_FRAME, KeyCombination.parse("Ctrl+Alt+I"))
+
+        assert scheme.shortcut(ShortcutId.ORDER_INSERT_FRAME).aliases == ()
+
+    def test_an_action_given_no_combination_is_left_unbound(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_binding(ShortcutId.UNDO, None)
+
+        assert scheme.shortcut(ShortcutId.UNDO).combinations() == ()
+
+    def test_a_combination_the_category_already_answers_raises(self, shipped: ShortcutScheme) -> None:
+        """An editor is told which action holds the keys, so the reader decides who keeps them."""
+        with pytest.raises(SystemError):
+            shipped.with_binding(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("Ctrl+S"))
+
+    def test_a_combination_another_category_holds_stands(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_binding(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("F2"))
+
+        assert scheme.claimant(ShortcutCategory.APPLICATION, KeyCombination.parse("F2")) is ShortcutId.ABOUT_DIALOG
+
+    def test_a_combination_naming_no_key_raises(self, shipped: ShortcutScheme) -> None:
+        with pytest.raises(KeyError):
+            shipped.with_binding(ShortcutId.UNDO, KeyCombination(UNNAMED_KEY))
+
+
+class TestWithBindings:
+    def test_two_actions_trade_the_combinations_they_held(self, shipped: ShortcutScheme) -> None:
+        """A whole set is read at once, so a swap arrives without either action holding both keys."""
+        scheme = shipped.with_bindings(
+            {
+                ShortcutId.UNDO: KeyCombination.parse("Ctrl+Y"),
+                ShortcutId.REDO: KeyCombination.parse("Ctrl+Z"),
+            },
+        )
+
+        assert scheme.claimant(ShortcutCategory.APPLICATION, KeyCombination.parse("Ctrl+Y")) is ShortcutId.UNDO
+        assert scheme.claimant(ShortcutCategory.APPLICATION, KeyCombination.parse("Ctrl+Z")) is ShortcutId.REDO
+
+    def test_the_actions_no_binding_names_keep_the_scheme_s_keys(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_bindings({ShortcutId.UNDO: KeyCombination.parse("Ctrl+Alt+U")})
+
+        assert scheme.shortcut(ShortcutId.REDO) == shipped.shortcut(ShortcutId.REDO)
+
+
 class TestWithOverrides:
     def test_an_override_gives_the_action_the_keys_it_names(self, shipped: ShortcutScheme) -> None:
         scheme = shipped.with_overrides({"Undo": "Ctrl+Alt+U"})
@@ -192,6 +265,21 @@ class TestWithOverrides:
 
         assert scheme.action(ShortcutCategory.APPLICATION, _press("F2")) is ShortcutId.ABOUT_DIALOG
         assert scheme.action(ShortcutCategory.SAMPLES, _press("F2")) is ShortcutId.SAMPLES_RENAME_SAMPLE
+
+    def test_an_override_stating_no_combination_leaves_the_action_unbound(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_overrides({"Undo": None})
+
+        assert scheme.shortcut(ShortcutId.UNDO).combinations() == ()
+
+    def test_overrides_passing_a_combination_between_two_actions_both_stand(
+        self,
+        shipped: ShortcutScheme,
+    ) -> None:
+        """An editor stores the action it displaced beside the one that took its keys."""
+        scheme = shipped.with_overrides({"AboutDialog": "Ctrl+S", "SaveProject": None})
+
+        assert scheme.action(ShortcutCategory.APPLICATION, _press("Ctrl+S")) is ShortcutId.ABOUT_DIALOG
+        assert scheme.shortcut(ShortcutId.SAVE_PROJECT).combinations() == ()
 
     def test_a_scheme_without_overrides_is_the_one_it_started_as(self, shipped: ShortcutScheme) -> None:
         assert shipped.with_overrides({}) is shipped

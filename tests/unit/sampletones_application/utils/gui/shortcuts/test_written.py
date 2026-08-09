@@ -47,6 +47,12 @@ class TestRebound:
 
         assert entry.aliases == ()
 
+    def test_an_entry_rebound_to_no_combination_is_left_unbound(self) -> None:
+        """A reader takes an action's keys away by giving it none."""
+        entry = WrittenShortcut(combination="Ctrl+Y").rebound(None)
+
+        assert entry.combination is None
+
     def test_a_rebound_entry_keeps_the_transparency_the_action_carries(self) -> None:
         entry = WrittenShortcut(combination="Ctrl+PgDn", field_transparent=True).rebound("Ctrl+Alt+N")
 

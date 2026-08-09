@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Final, Optional, Tuple
 
 from pydantic import BaseModel
@@ -21,11 +23,14 @@ class WrittenShortcut(BaseModel, frozen=True):
     aliases: Tuple[str, ...] = NO_WRITTEN_ALIASES
     field_transparent: bool = False
 
-    def rebound(self, combination: str) -> "WrittenShortcut":
+    def rebound(self, combination: Optional[str]) -> WrittenShortcut:
         """The entry as a reader rebound it, answering the combination they named and that alone.
 
         The reader states one combination, which is the whole of what reaches the action; the field
         transparency stays, since it follows from the action's role rather than from its keys.
+
+        Args:
+            combination: The keys the action answers to, ``None`` leaving it unbound.
         """
         return WrittenShortcut(
             combination=combination,

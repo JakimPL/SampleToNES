@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Set
+from typing import Dict, Optional, Set
 
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
@@ -108,10 +108,13 @@ class ApplicationConfigManager:
         self.config.shortcuts.scheme = name
 
     @property
-    def shortcut_overrides(self) -> Dict[str, str]:
+    def shortcut_overrides(self) -> Dict[str, Optional[str]]:
         return self.config.shortcuts.overrides
 
-    def set_shortcut_overrides(self, overrides: Dict[str, str]) -> None:
+    def set_shortcut_overrides(
+        self,
+        overrides: Dict[str, Optional[str]],
+    ) -> None:
         self.config.shortcuts.overrides = overrides
 
     @property

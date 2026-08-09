@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,10 @@ class ShortcutsConfig(BaseModel):
         default=DEFAULT_SCHEME_NAME,
         description="The name of the keybinding scheme the application resolves its keys against.",
     )
-    overrides: Dict[str, str] = Field(
+    overrides: Dict[str, Optional[str]] = Field(
         default_factory=dict,
-        description="The combination each rebound action answers to, keyed by the action's name.",
+        description=(
+            "The combination each rebound action answers to, keyed by the action's name, "
+            "stating null for an action the reader left unbound."
+        ),
     )
