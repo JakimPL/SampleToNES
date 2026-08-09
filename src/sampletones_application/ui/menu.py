@@ -1,4 +1,5 @@
-from typing import Dict, Final, Tuple
+from functools import partial
+from typing import Callable, Dict, Final, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -113,6 +114,7 @@ class MenuBar:
         on_play_from_start: VoidCallback,
         on_pause_or_resume: VoidCallback,
         on_stop: VoidCallback,
+        on_channel_muted: Callable[[GeneratorName], None],
     ) -> None:
         self._shortcut_manager = shortcut_manager
         self._fps_theme = fps_theme
@@ -124,6 +126,7 @@ class MenuBar:
         self._on_play_from_start = on_play_from_start
         self._on_pause_or_resume = on_pause_or_resume
         self._on_stop = on_stop
+        self._on_channel_muted = on_channel_muted
         self._tpl_fps = language_manager["global.dialog.template.fps"]
 
         self._play_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_PLAY)
@@ -388,6 +391,9 @@ class MenuBar:
         A channel carries a check while it sounds, so the submenu reads as the mix the tracker's
         columns and the order table's rows show, and choosing one silences it. The closing item
         brings the whole mix back in one gesture, and it is offered while a channel is silenced.
+
+        The check names the sequencer's mix, so choosing an item switches that mix wherever the
+        reader stands, while the key printed beside it reaches the channels of the tab in front.
         """
         with dpg.menu(
             tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS,
@@ -396,6 +402,7 @@ class MenuBar:
             for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
                 self._shortcut_manager.add_menu_item(
                     shortcut_id,
+                    callback=partial(self._on_channel_muted, generator),
                     tag=self._channel_menu_item_tag(generator),
                     label=self._context_label(CHANNEL_LABELS[generator]),
                     check=True,

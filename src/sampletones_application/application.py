@@ -298,6 +298,7 @@ class Application:
             on_play_from_start=self._play_from_start,
             on_pause_or_resume=self._play,
             on_stop=self._stop,
+            on_channel_muted=self._mute_channel,
         )
 
         self._viewport_manager = ViewportManager(
@@ -572,7 +573,7 @@ class Application:
             toggle_autoplay=self._toggle_autoplay,
             toggle_follow_playback=self._toggle_follow_playback,
             toggle_loop_song=self._toggle_loop_song,
-            toggle_channel=self._sequencer_tab.toggle_channel,
+            toggle_channel=self._toggle_channel,
             unmute_all_channels=self._sequencer_tab.unmute_all_channels,
             audio_settings=self._open_audio_settings,
             display_settings=self._display_coordinator.open,
@@ -1252,6 +1253,26 @@ class Application:
     def _stop(self) -> None:
         self._playback_router.stop()
         self._update_menu()
+
+    def _toggle_channel(self, generator: GeneratorName) -> None:
+        """Switches one NES channel in the tab in front of the reader.
+
+        A channel is switched by a control of its own on three tabs: the generators a
+        reconstruction is built from on the Main tab, the slices the waveform draws and plays on
+        the Reconstructions tab, and the sequencer's mix elsewhere. One key reaches whichever of
+        them is on screen, so a reader silences what they are listening to without leaving it.
+        """
+        match self._shell.get_current_tab():
+            case Tab.MAIN:
+                self._main_tab.toggle_generator(generator)
+            case Tab.RECONSTRUCTIONS:
+                self._reconstructions_tab.toggle_generator(generator)
+            case _:
+                self._mute_channel(generator)
+
+    def _mute_channel(self, generator: GeneratorName) -> None:
+        """Flips one channel of the sequencer's mix, the gesture the Channels submenu offers."""
+        self._sequencer_tab.toggle_channel(generator)
 
     def _show_confirmation_dialog(
         self,

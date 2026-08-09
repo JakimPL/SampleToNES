@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -40,15 +40,28 @@ class ShortcutManager:
         """Names the call an action makes when its combination is pressed or its menu item chosen."""
         self._callbacks[shortcut_id] = callback
 
-    def add_menu_item(self, shortcut_id: ShortcutId, **kwargs: Any) -> None:
+    def add_menu_item(
+        self,
+        shortcut_id: ShortcutId,
+        *,
+        callback: Optional[Callback] = None,
+        **kwargs: Any,
+    ) -> None:
         """Adds the menu item an action is chosen from, printing the combination that also fires it.
 
         The item is kept under the action it stands for, so a later rebind reaches the accelerator
-        already on screen.
+        already on screen. An item states a call of its own where it carries a state to show: the
+        check beside it reads one surface, and the call it makes is the one that switches that
+        surface.
+
+        Args:
+            shortcut_id: The action the item stands for, which decides the accelerator it prints.
+            callback: The call the item makes, defaulting to the one registered for the action.
+            kwargs: The DearPyGui properties of the item, its label and check state among them.
         """
-        callback = self._callbacks[shortcut_id]
+        chosen = self._callbacks[shortcut_id] if callback is None else callback
         item: Sender = dpg.add_menu_item(
-            callback=lambda s, a, u: callback(),
+            callback=lambda s, a, u: chosen(),
             shortcut=self._source.display(shortcut_id),
             **kwargs,
         )

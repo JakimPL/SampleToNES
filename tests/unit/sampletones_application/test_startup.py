@@ -7,13 +7,20 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.application import Application
+from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.keyboard.event import KeyEvent
+from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
+from sampletones_application.utils.gui.shortcuts.ids import (
+    CHANNEL_SHORTCUT_IDS,
+    ShortcutId,
+)
 from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.reconstructions import Reconstruction
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
@@ -267,3 +274,51 @@ class TestAddOpenReconstructionToSequencer:
         assert sample.reconstruction is not app.reconstruction_manager.reconstruction
         assert sample.reconstruction.audio_filepath is None
         assert not app._editing_project_sample()
+
+
+class TestChannelKeys:
+    """One key per channel, reaching the switch of the tab in front of the reader.
+
+    The whole application answers here, so a press travels the way it does at runtime: the router
+    hands it to the dispatcher, the scheme names the action, and the tab on screen decides which
+    of its controls the action reaches.
+    """
+
+    @staticmethod
+    def _press(app: Application, key: int, tab: Tab) -> None:
+        with patch.object(app._shell, "get_current_tab", return_value=tab):
+            app.key_router.route(KeyEvent(key=key, modifiers=NO_MODIFIERS))
+
+    def test_each_channel_reads_under_the_function_key_it_answers(self, app: Application) -> None:
+        displayed = [app._shortcut_source.display(shortcut_id) for shortcut_id in CHANNEL_SHORTCUT_IDS.values()]
+
+        assert displayed == ["F1", "F2", "F3", "F4"]
+
+    def test_the_main_tab_switches_the_generator_a_reconstruction_is_built_from(self, app: Application) -> None:
+        selected = frozenset(app.config_manager.config.generation.generators)
+
+        self._press(app, dpg.mvKey_F3, Tab.MAIN)
+
+        assert frozenset(app.config_manager.config.generation.generators) == selected ^ {GeneratorName.TRIANGLE}
+
+    def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
+        self._press(app, dpg.mvKey_F4, Tab.SEQUENCER)
+
+        assert app._sequencer_tab.channels.is_muted(GeneratorName.NOISE)
+
+    def test_a_second_press_returns_the_mix_it_started_from(self, app: Application) -> None:
+        self._press(app, dpg.mvKey_F1, Tab.SEQUENCER)
+        self._press(app, dpg.mvKey_F1, Tab.SEQUENCER)
+
+        assert not app._sequencer_tab.channels.any_muted
+
+    def test_the_reconstructions_tab_holding_nothing_leaves_the_mix_alone(self, app: Application) -> None:
+        """With no reconstruction loaded every slice reads as unavailable, so the key rests there."""
+        self._press(app, dpg.mvKey_F2, Tab.RECONSTRUCTIONS)
+
+        assert not app._sequencer_tab.channels.any_muted
+
+    def test_the_main_tab_leaves_the_sequencer_mix_alone(self, app: Application) -> None:
+        self._press(app, dpg.mvKey_F1, Tab.MAIN)
+
+        assert not app._sequencer_tab.channels.any_muted

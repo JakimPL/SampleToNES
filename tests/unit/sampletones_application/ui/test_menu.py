@@ -115,11 +115,21 @@ def shortcuts() -> _ShortcutManagerRecorder:
 
 
 @pytest.fixture
-def menu_bar(shortcuts: _ShortcutManagerRecorder) -> MenuBar:
+def switched() -> List[GeneratorName]:
+    """The channels the bar asks the sequencer to switch, in the order it asks."""
+    return []
+
+
+@pytest.fixture
+def menu_bar(
+    shortcuts: _ShortcutManagerRecorder,
+    switched: List[GeneratorName],
+) -> MenuBar:
     """A bar with the collaborators its Channels submenu reads, from the real language file."""
     instance = MenuBar.__new__(MenuBar)
     instance._shortcut_manager = shortcuts
     instance._language_manager = LanguageManager(LANG_EN)
+    instance._on_channel_muted = switched.append
     return instance
 
 
@@ -184,6 +194,22 @@ class TestChannelsMenuItems:
 
         actions = [item["shortcut_id"] for item in shortcuts.items[:-1]]
         assert actions == list(CHANNEL_SHORTCUT_IDS.values())
+
+    def test_choosing_a_channel_switches_the_sequencer_mix(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+        switched: List[GeneratorName],
+    ) -> None:
+        """The check beside an item names the sequencer's mix, so the item switches that mix
+        wherever the reader stands, while the key printed beside it reads the tab in front."""
+        menu_bar._create_channels_menu(_state(frozenset()))
+
+        for item in shortcuts.items[:-1]:
+            item["callback"]()
+
+        assert switched == list(CHANNEL_SHORTCUT_IDS)
 
     def test_each_channel_carries_its_own_tag(
         self,

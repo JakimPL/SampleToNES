@@ -615,6 +615,10 @@ class ReconstructionTabCoordinator:
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
 
+    def toggle_generator(self, generator: GeneratorName) -> None:
+        """Switches one generator's slice in and out of the waveform and of what plays."""
+        self._reconstruction_plot_panel.toggle_generator(generator)
+
     @property
     def player(self) -> AudioPlayerProtocol:
         return self._guarded_player

@@ -40,10 +40,10 @@ bindings:
   ToggleAutoplay: {combination: "Ctrl+P"}
   ToggleFollowPlayback: {combination: ~}
   ToggleLoopSong: {combination: ~}
-  ToggleChannelPulse1: {combination: ~}
-  ToggleChannelPulse2: {combination: ~}
-  ToggleChannelTriangle: {combination: ~}
-  ToggleChannelNoise: {combination: ~}
+  ToggleChannelPulse1: {combination: "F1"}
+  ToggleChannelPulse2: {combination: "F2"}
+  ToggleChannelTriangle: {combination: "F3"}
+  ToggleChannelNoise: {combination: "F4"}
   UnmuteAllChannels: {combination: ~}
 
   # view

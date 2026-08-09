@@ -18,6 +18,7 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 FREE_COMBINATION = "Ctrl+Alt+B"
+TABLE_COMBINATION = "Del"
 
 UNNAMED_KEY = -1
 
@@ -103,7 +104,7 @@ class TestClaimant:
         assert draft.claimant(ShortcutId.ABOUT_DIALOG, KeyCombination.parse(FREE_COMBINATION)) is None
 
     def test_a_combination_another_category_holds_is_free(self, draft: ShortcutDraft) -> None:
-        assert draft.claimant(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("F2")) is None
+        assert draft.claimant(ShortcutId.ABOUT_DIALOG, KeyCombination.parse(TABLE_COMBINATION)) is None
 
     def test_an_action_holds_its_own_keys_against_no_one(self, draft: ShortcutDraft) -> None:
         """Giving an action the keys it already answers is the reader confirming them."""

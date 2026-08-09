@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 
-from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
+from sampletones_application.constants.keybindings import platform_scheme_name
 
 
 class ShortcutsConfig(BaseModel):
@@ -12,10 +12,13 @@ class ShortcutsConfig(BaseModel):
     of it, so a reader who changes a single combination keeps every other key the scheme gives them.
     Both are stored by name — the same names a keybinding file writes — which lets a preference
     outlive the build that wrote it, since the names a build carries are what it reads back.
+
+    A fresh profile opens on the scheme its platform ships, so a Mac starts on Command where the
+    other platforms start on Control, and a stored preference is read ahead of that.
     """
 
     scheme: str = Field(
-        default=DEFAULT_SCHEME_NAME,
+        default_factory=platform_scheme_name,
         description="The name of the keybinding scheme the application resolves its keys against.",
     )
     overrides: Dict[str, Optional[str]] = Field(

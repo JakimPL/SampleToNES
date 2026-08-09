@@ -1,13 +1,13 @@
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.application.shortcuts import ShortcutsConfig
-from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
+from sampletones_application.constants.keybindings import platform_scheme_name
 
 REBOUND_UNDO = {"Undo": "Ctrl+Alt+U"}
 
 
 class TestDefaults:
-    def test_a_fresh_configuration_runs_the_default_scheme(self) -> None:
-        assert ShortcutsConfig().scheme == DEFAULT_SCHEME_NAME
+    def test_a_fresh_configuration_runs_the_scheme_the_platform_ships(self) -> None:
+        assert ShortcutsConfig().scheme == platform_scheme_name()
 
     def test_a_fresh_configuration_rebinds_nothing(self) -> None:
         assert ShortcutsConfig().overrides == {}

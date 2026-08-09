@@ -61,6 +61,7 @@ from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
@@ -489,6 +490,10 @@ class MainTabCoordinator:
 
     def refresh_browser(self) -> None:
         self._explorer_panel.refresh()
+
+    def toggle_generator(self, generator: GeneratorName) -> None:
+        """Switches one generator in or out of the set a reconstruction is built from."""
+        self._reconstructor_panel.toggle_generator(generator)
 
     def toggle_advanced_settings(self) -> None:
         advanced_settings = self._session_manager.toggle_show_advanced_settings()

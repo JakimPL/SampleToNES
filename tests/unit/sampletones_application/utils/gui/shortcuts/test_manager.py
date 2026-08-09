@@ -171,6 +171,55 @@ class TestMenuAccelerators:
 
         assert dpg.get_item_configuration(item)["shortcut"] == "Ctrl+Alt+K"
 
+    def test_an_item_stating_a_call_of_its_own_makes_that_call(
+        self,
+        dpg_context: None,
+        source: ShortcutSource,
+    ) -> None:
+        """An item carrying a state to show switches the surface its check reads."""
+        action = Mock()
+        chosen = Mock()
+        manager = ShortcutManager(key_router=KeyRouter(), shortcut_source=source)
+        manager.register(ShortcutId.SAVE_PROJECT, action)
+        with dpg.window(), dpg.menu_bar(), dpg.menu(label="File"):
+            manager.add_menu_item(ShortcutId.SAVE_PROJECT, callback=chosen, label="Save")
+
+        item = next(iter(manager._menu_items))
+        dpg.get_item_callback(item)(item, None, None)
+
+        chosen.assert_called_once_with()
+        action.assert_not_called()
+
+    def test_an_item_stating_no_call_makes_the_one_its_action_registered(
+        self,
+        dpg_context: None,
+        source: ShortcutSource,
+    ) -> None:
+        action = Mock()
+        manager = ShortcutManager(key_router=KeyRouter(), shortcut_source=source)
+        manager.register(ShortcutId.SAVE_PROJECT, action)
+        with dpg.window(), dpg.menu_bar(), dpg.menu(label="File"):
+            manager.add_menu_item(ShortcutId.SAVE_PROJECT, label="Save")
+
+        item = next(iter(manager._menu_items))
+        dpg.get_item_callback(item)(item, None, None)
+
+        action.assert_called_once_with()
+
+    def test_an_item_stating_a_call_of_its_own_still_prints_its_action_keys(
+        self,
+        dpg_context: None,
+        source: ShortcutSource,
+    ) -> None:
+        manager = ShortcutManager(key_router=KeyRouter(), shortcut_source=source)
+        manager.register(ShortcutId.SAVE_PROJECT, Mock())
+        with dpg.window(), dpg.menu_bar(), dpg.menu(label="File"):
+            manager.add_menu_item(ShortcutId.SAVE_PROJECT, callback=Mock(), label="Save")
+
+        item = next(iter(manager._menu_items))
+
+        assert dpg.get_item_configuration(item)["shortcut"] == "Ctrl+S"
+
 
 class TestFieldFocusGate:
     def test_text_field_keeps_a_plain_space(

@@ -20,6 +20,8 @@ from tests.unit.sampletones_application.utils.gui.shortcuts.conftest import (
 
 SHIPPED_FILE = KEYBINDINGS_DIRECTORY / f"{DEFAULT_SCHEME_NAME}{EXT_FILE_YAML}"
 
+TABLE_COMBINATION = "Del"
+
 UNNAMED_KEY = -1
 
 _PARTIAL_SCHEME_FILE = """
@@ -184,9 +186,10 @@ class TestWithBinding:
             shipped.with_binding(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("Ctrl+S"))
 
     def test_a_combination_another_category_holds_stands(self, shipped: ShortcutScheme) -> None:
-        scheme = shipped.with_binding(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("F2"))
+        scheme = shipped.with_binding(ShortcutId.ABOUT_DIALOG, KeyCombination.parse(TABLE_COMBINATION))
+        combination = KeyCombination.parse(TABLE_COMBINATION)
 
-        assert scheme.claimant(ShortcutCategory.APPLICATION, KeyCombination.parse("F2")) is ShortcutId.ABOUT_DIALOG
+        assert scheme.claimant(ShortcutCategory.APPLICATION, combination) is ShortcutId.ABOUT_DIALOG
 
     def test_a_combination_naming_no_key_raises(self, shipped: ShortcutScheme) -> None:
         with pytest.raises(KeyError):
@@ -261,10 +264,10 @@ class TestWithOverrides:
         assert scheme.shortcut(ShortcutId.ABOUT_DIALOG) == shipped.shortcut(ShortcutId.ABOUT_DIALOG)
 
     def test_an_override_taking_a_combination_another_category_holds_stands(self, shipped: ShortcutScheme) -> None:
-        scheme = shipped.with_overrides({"AboutDialog": "F2"})
+        scheme = shipped.with_overrides({"AboutDialog": TABLE_COMBINATION})
 
-        assert scheme.action(ShortcutCategory.APPLICATION, _press("F2")) is ShortcutId.ABOUT_DIALOG
-        assert scheme.action(ShortcutCategory.SAMPLES, _press("F2")) is ShortcutId.SAMPLES_RENAME_SAMPLE
+        assert scheme.action(ShortcutCategory.APPLICATION, _press(TABLE_COMBINATION)) is ShortcutId.ABOUT_DIALOG
+        assert scheme.action(ShortcutCategory.SAMPLES, _press(TABLE_COMBINATION)) is ShortcutId.SAMPLES_REMOVE_SAMPLE
 
     def test_an_override_stating_no_combination_leaves_the_action_unbound(self, shipped: ShortcutScheme) -> None:
         scheme = shipped.with_overrides({"Undo": None})

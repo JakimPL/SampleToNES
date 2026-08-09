@@ -145,7 +145,20 @@ class GUIReconstructorPanel(GUIPanel):
             self._language_manager["main.reconstructor.tooltip.tooltip_drive"],
         )
 
+    def toggle_generator(self, generator: GeneratorName) -> None:
+        """Switches one generator in or out of the set a reconstruction is built from.
+
+        This is the gesture a click on the generator's checkbox makes, reached by the key the
+        channel answers to, so the panel reports the settings either way.
+        """
+        checkbox_tag = self._get_generator_checkbox_tag(generator)
+        dpg_set_value(checkbox_tag, not dpg.get_value(checkbox_tag))
+        self._report_generation_settings()
+
     def _on_parameter_change(self, _sender: Sender, _app_data: Any) -> None:
+        self._report_generation_settings()
+
+    def _report_generation_settings(self) -> None:
         generators = [
             generator for generator in GeneratorName if dpg.get_value(self._get_generator_checkbox_tag(generator))
         ]
