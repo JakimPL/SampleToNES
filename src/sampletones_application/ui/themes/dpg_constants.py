@@ -32,6 +32,7 @@ CORE_COLOR_MAP: Final[Dict[str, int]] = {
     "Header": dpg.mvThemeCol_Header,
     "HeaderActive": dpg.mvThemeCol_HeaderActive,
     "HeaderHovered": dpg.mvThemeCol_HeaderHovered,
+    "InputTextCursor": dpg.mvThemeCol_InputTextCursor,
     "MenuBarBg": dpg.mvThemeCol_MenuBarBg,
     "PopupBg": dpg.mvThemeCol_PopupBg,
     "ScrollbarBg": dpg.mvThemeCol_ScrollbarBg,

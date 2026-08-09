@@ -112,18 +112,27 @@ class DisplayCoordinator:
         """Starts the countdown that brings ``restorable`` back unless the change is confirmed.
 
         A countdown already running keeps the mode it was going to restore and starts its count
-        again, so a run of unconfirmed changes still returns to the mode last seen as readable.
+        again on the prompt already on screen, so a run of unconfirmed changes still returns to
+        the mode last seen as readable. The first change is what hands the screen over, since the
+        dialog steps aside for as long as the prompt stands.
         """
-        if self._armed is None:
-            self._armed = restorable
-
         self._remaining = self._behavior.revert_countdown_seconds
-        self._countdown.open(self._displayed_seconds())
+        if self._armed is not None:
+            self._countdown.set_remaining(self._displayed_seconds())
+            return
+
+        self._armed = restorable
+        self._window.yield_to(lambda: self._countdown.open(self._displayed_seconds()))
 
     def _disarm(self) -> None:
+        """Stops a running countdown and gives the dialog the screen back."""
+        if self._armed is None:
+            return
+
         self._armed = None
         self._remaining = 0.0
         self._countdown.hide()
+        self._window.resume()
 
     def _keep(self) -> None:
         """Accepts the window mode on screen, which stays pending until OK commits it."""
@@ -156,17 +165,24 @@ class DisplayCoordinator:
         self._close()
 
     def _request_close(self) -> None:
-        """Answers Cancel, Escape and the title bar's close button, asking before losing an edit."""
+        """Answers Cancel, Escape and the title bar's close button, asking before losing an edit.
+
+        The dialog steps aside for the prompt and comes back to carry on editing when the
+        answer is to keep what is on screen.
+        """
         if self._require_settings() == self._snapshot:
             self._discard()
             return
 
-        self._window.reveal()
+        self._window.yield_to(self._ask_to_discard)
+
+    def _ask_to_discard(self) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_SETTINGS_DISPLAY_DIALOG_DISCARD,
             title=self._language_manager["settings.display.title.discard_confirmation"],
             message=self._language_manager["settings.display.message.discard_confirmation"],
             on_confirm=self._discard,
+            on_cancel=self._window.resume,
             ok_label=self._language_manager["settings.display.label.discard_button"],
             cancel_label=self._language_manager["settings.display.label.keep_editing_button"],
         )

@@ -14,6 +14,7 @@ from sampletones_application.view_model.shared.display_settings import (
     WindowMode,
 )
 from sampletones_shared.display import UNLIMITED_FRAME_RATE, Resolution
+from sampletones_shared.types.callback import VoidCallback
 
 STUDIO = "studio"
 DARK = "dark"
@@ -132,10 +133,15 @@ class _FrameLimiterRecorder:
 
 
 class _WindowRecorder:
+    """Stands in for the dialog window, with the modal hand-off collapsed to a direct call.
+
+    The real window defers the modal it yields to by a frame, which is what keeps the two from
+    competing for the one modal DearPyGui carries; here the frame is taken as having passed.
+    """
+
     def __init__(self) -> None:
         self.view_models: List[DisplaySettingsViewModel] = []
         self.visible = False
-        self.reveals = 0
         self.on_settings_changed: Any = None
         self.on_commit: Any = None
         self.on_cancel: Any = None
@@ -147,8 +153,12 @@ class _WindowRecorder:
     def update_view(self, view_model: DisplaySettingsViewModel) -> None:
         self.view_models.append(view_model)
 
-    def reveal(self) -> None:
-        self.reveals += 1
+    def yield_to(self, raise_modal: VoidCallback) -> None:
+        self.visible = False
+        raise_modal()
+
+    def resume(self) -> None:
+        self.visible = True
 
     def hide(self) -> None:
         self.visible = False
@@ -189,6 +199,9 @@ class _DialogsRecorder:
 
     def confirm(self) -> None:
         self.confirmations[-1]["on_confirm"]()
+
+    def decline(self) -> None:
+        self.confirmations[-1]["on_cancel"]()
 
 
 class Harness:
@@ -344,13 +357,26 @@ class TestCancel:
         assert harness.dialogs.confirmations == []
         assert not harness.window.visible
 
-    def test_cancelling_a_changed_dialog_asks_first_and_stays_open(self, harness: Harness) -> None:
+    def test_cancelling_a_changed_dialog_asks_first(self, harness: Harness) -> None:
         harness.change(harness.settings.with_palette(DARK))
         harness.cancel()
 
         assert len(harness.dialogs.confirmations) == 1
+
+    def test_the_dialog_steps_aside_so_the_prompt_can_open(self, harness: Harness) -> None:
+        """A prompt raised while the dialog still holds the screen opens where nobody can reach it."""
+        harness.change(harness.settings.with_palette(DARK))
+        harness.cancel()
+
+        assert not harness.window.visible
+
+    def test_keeping_the_edit_brings_the_dialog_back(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_palette(DARK))
+        harness.cancel()
+        harness.dialogs.decline()
+
         assert harness.window.visible
-        assert harness.window.reveals == 1
+        assert harness.settings.palette == DARK
 
     def test_discarding_puts_back_the_palette_the_dialog_opened_with(self, harness: Harness) -> None:
         harness.change(harness.settings.with_palette(DARK))
@@ -433,8 +459,9 @@ class TestCountdown:
         harness.elapse(4.0)
         harness.change(harness.settings.with_window(harness.settings.window.with_borderless(True)))
 
-        assert harness.countdown.opens == 2
+        assert harness.countdown.opens == 1
         assert harness.countdown.hides == 0
+        assert harness.countdown.remaining[-1] == int(COUNTDOWN_SECONDS)
 
     def test_a_run_of_changes_returns_to_the_mode_last_seen_as_readable(self, harness: Harness) -> None:
         harness.change(harness.settings.with_window(harness.settings.window.with_resolution(WIDESCREEN)))
@@ -446,6 +473,28 @@ class TestCountdown:
             borderless=False,
             fullscreen=False,
         )
+
+    def test_the_dialog_steps_aside_so_the_prompt_can_open(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_window(harness.settings.window.with_borderless(True)))
+
+        assert not harness.window.visible
+
+    @pytest.mark.parametrize(
+        "answer",
+        ["keep", "revert"],
+        ids=["keep", "revert"],
+    )
+    def test_answering_the_prompt_brings_the_dialog_back(self, harness: Harness, answer: str) -> None:
+        harness.change(harness.settings.with_window(harness.settings.window.with_borderless(True)))
+        {"keep": harness.keep, "revert": harness.revert}[answer]()
+
+        assert harness.window.visible
+
+    def test_the_clock_running_out_brings_the_dialog_back(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_window(harness.settings.window.with_borderless(True)))
+        harness.elapse(COUNTDOWN_SECONDS)
+
+        assert harness.window.visible
 
     def test_keeping_stops_the_clock_and_leaves_the_change_standing(self, harness: Harness) -> None:
         harness.change(harness.settings.with_window(harness.settings.window.with_borderless(True)))

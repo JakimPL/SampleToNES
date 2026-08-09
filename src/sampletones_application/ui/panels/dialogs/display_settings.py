@@ -89,10 +89,6 @@ class GUIDisplaySettingsWindow(GUIWindow):
         self._view_model = view_model
         self._render()
 
-    def reveal(self) -> None:
-        """Brings the window back after the title bar's close button hid it."""
-        dpg_configure_item(self.tag, show=True)
-
     def create_window(self) -> None:
         with self.dialog_window(
             label=self._language_manager["settings.display.title.window_title"],

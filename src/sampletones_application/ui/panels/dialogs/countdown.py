@@ -30,8 +30,9 @@ class GUICountdownWindow(GUIWindow):
     seconds its owner reports and reports both answers back; the owner runs the clock and decides
     what each answer means.
 
-    Stacking over the dialog that armed it keeps that dialog on screen, so the change is judged
-    against the window it was made in.
+    The dialog that armed it steps aside for as long as the prompt stands, so the change is
+    judged against the bare window it was made in and the dialog returns to its pending edits
+    once the prompt is answered.
     """
 
     def __init__(

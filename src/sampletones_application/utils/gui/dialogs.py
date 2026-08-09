@@ -460,6 +460,9 @@ class DialogsRenderer:
     ) -> None:
         """Modal confirmation. ``on_confirm``/``on_cancel`` run on the respective choice.
 
+        The title bar's close button reads as the negative choice, so every way out of the
+        prompt reaches the caller and a dialog waiting behind it hears the answer.
+
         ``cancel_label`` names the negative button; it falls back to the shared Cancel label.
         When ``opt_out_label`` is given, a checkbox is shown; if it is ticked when the user
         confirms, ``on_opt_out`` runs as well — letting the caller suppress future prompts.
@@ -541,7 +544,7 @@ class DialogsRenderer:
             modal=True,
             min_size=(self._default_width, self._confirmation_height),
             no_resize=True,
-            on_close=close,
+            on_close=_on_cancel,
         ):
             _bind_dialog_theme(tag)
             content(tag)

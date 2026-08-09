@@ -1,4 +1,5 @@
 from typing import Any, Final, Iterator, Optional
+from unittest.mock import MagicMock, patch
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_shared.types.callback import VoidCallback
 
+MODULE: Final[str] = "sampletones_application.ui.elements.window"
 TAG: Final[str] = "test.dialog.window.probe"
 STATED_WIDTH: Final[int] = 460
 CONTENT_HEIGHT: Final[int] = 0
@@ -65,3 +67,52 @@ class TestCloseAffordance:
         ProbeWindow(on_close=None).create_window()
 
         assert dpg.get_item_configuration(TAG)["no_close"] is True
+
+
+class TestModalHandOff:
+    """DearPyGui carries one modal at a time, so a dialog raising another has to step aside first."""
+
+    def test_yielding_takes_the_window_off_screen(self, dpg_context: None) -> None:
+        window = ProbeWindow(on_close=None)
+        window.create_window()
+
+        with patch(f"{MODULE}.FrameCallbackManager"):
+            window.yield_to(MagicMock())
+
+        assert dpg.get_item_configuration(TAG)["show"] is False
+
+    def test_the_modal_is_raised_a_frame_after_the_hand_off(self, dpg_context: None) -> None:
+        """A modal built while this window still holds the screen opens where nobody can reach it."""
+        window = ProbeWindow(on_close=None)
+        window.create_window()
+        raise_modal = MagicMock()
+
+        with patch(f"{MODULE}.FrameCallbackManager") as frame:
+            window.yield_to(raise_modal)
+
+        raise_modal.assert_not_called()
+        frame.set_frame_callback.assert_called_once_with(raise_modal)
+
+    def test_resuming_waits_a_frame_before_taking_the_screen_back(self, dpg_context: None) -> None:
+        window = ProbeWindow(on_close=None)
+        window.create_window()
+        with patch(f"{MODULE}.FrameCallbackManager"):
+            window.yield_to(MagicMock())
+
+        with patch(f"{MODULE}.FrameCallbackManager") as frame:
+            window.resume()
+
+        assert dpg.get_item_configuration(TAG)["show"] is False
+        frame.set_frame_callback.assert_called_once()
+        frame.set_frame_callback.call_args.args[0]()
+        assert dpg.get_item_configuration(TAG)["show"] is True
+
+    def test_the_widget_tree_survives_the_hand_off(self, dpg_context: None) -> None:
+        """Whatever is being edited has to still be there when the dialog comes back."""
+        window = ProbeWindow(on_close=None)
+        window.create_window()
+
+        with patch(f"{MODULE}.FrameCallbackManager"):
+            window.yield_to(MagicMock())
+
+        assert dpg.get_item_children(TAG, 1)
