@@ -1,18 +1,22 @@
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, Callable, Final, Generator, List
-from unittest.mock import patch
+from typing import Any, Callable, Dict, Final, Generator, List
+from unittest.mock import PropertyMock, patch
 
 import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.application import Application
+from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.reconstructions import Reconstruction
+
+REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -83,6 +87,48 @@ def app() -> Generator[Any, Application, Any]:
         stop_background_workers()
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
+
+
+class TestKeybindingPreferences:
+    """The application runs on the keys the session stores, which is what makes a rebind stick."""
+
+    @pytest.fixture
+    def application(self) -> Generator[Any, Application, Any]:
+        dpg.create_context()
+        try:
+            with ExitStack() as stack:
+                for display_patch in _display_patches():
+                    stack.enter_context(display_patch)
+
+                stack.enter_context(
+                    patch.object(
+                        SessionManager,
+                        "shortcut_overrides",
+                        new_callable=PropertyMock,
+                        return_value=REBOUND_UNDO,
+                    )
+                )
+                yield Application()
+        finally:
+            stop_background_workers()
+            SingleThreadExecutor.reset_shutdown()
+            dpg.destroy_context()
+
+    def test_a_stored_override_reaches_the_keys_in_place(self, application: Application) -> None:
+        assert application._shortcut_source.display(ShortcutId.UNDO) == REBOUND_UNDO["Undo"]
+
+    def test_the_actions_the_override_leaves_alone_keep_the_scheme_s_keys(
+        self,
+        application: Application,
+    ) -> None:
+        assert application._shortcut_source.display(ShortcutId.SAVE_PROJECT) == "Ctrl+S"
+
+    def test_another_scheme_hands_its_keys_to_the_dispatcher(self, application: Application) -> None:
+        """A rebind reaches what has already read a combination, which is how it takes effect live."""
+        with patch.object(application.shortcut_manager, "rebind") as rebind:
+            application._shortcut_source.activate(application._shortcut_catalog.default)
+
+        rebind.assert_called_once()
 
 
 class TestStartupRestoreDelegation:

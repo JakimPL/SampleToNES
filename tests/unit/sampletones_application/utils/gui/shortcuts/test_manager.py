@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Iterator
 from unittest.mock import Mock
 
 import dearpygui.dearpygui as dpg
@@ -10,6 +10,7 @@ from sampletones_application.utils.gui.keyboard.focus import FieldKind
 from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN
 from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL,
+    CTRL_ALT,
     CTRL_SHIFT,
     NO_MODIFIERS,
     SHIFT,
@@ -18,6 +19,8 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.gui.shortcuts.written import WrittenShortcut
+from tests.unit.sampletones_application.utils.gui.shortcuts.conftest import RebindScheme
 
 
 @pytest.fixture(autouse=True)
@@ -35,8 +38,27 @@ def _manager(source: ShortcutSource, shortcut_id: ShortcutId, callback: Mock) ->
     return manager
 
 
+def _menu_manager(source: ShortcutSource) -> ShortcutManager:
+    """A manager holding one action, its menu item created the way the menu bar creates it."""
+    manager = ShortcutManager(key_router=KeyRouter(), shortcut_source=source)
+    manager.register(ShortcutId.SAVE_PROJECT, Mock())
+    with dpg.window(), dpg.menu_bar(), dpg.menu(label="File"):
+        manager.add_menu_item(ShortcutId.SAVE_PROJECT, label="Save")
+
+    return manager
+
+
 def _event(key: int, *, modifiers: ModifierSet = NO_MODIFIERS) -> KeyEvent:
     return KeyEvent(key=key, modifiers=modifiers)
+
+
+@pytest.fixture(name="dpg_context")
+def dpg_context_fixture() -> Iterator[None]:
+    dpg.create_context()
+    try:
+        yield
+    finally:
+        dpg.destroy_context()
 
 
 class TestShortcutDispatch:
@@ -71,6 +93,83 @@ class TestShortcutDispatch:
 
         assert not manager._dispatch(_event(dpg.mvKey_S, modifiers=CTRL))
         callback.assert_not_called()
+
+
+class TestRebind:
+    """A registration names the action, so activating another scheme changes the keys that fire it."""
+
+    def test_the_combination_the_new_scheme_gives_an_action_fires_it(
+        self,
+        source: ShortcutSource,
+        rebound: RebindScheme,
+    ) -> None:
+        callback = Mock()
+        manager = _manager(source, ShortcutId.SAVE_PROJECT, callback)
+
+        source.activate(rebound({ShortcutId.SAVE_PROJECT: WrittenShortcut(combination="Ctrl+Alt+K")}))
+        manager.rebind()
+
+        assert manager._dispatch(_event(dpg.mvKey_K, modifiers=CTRL_ALT))
+        callback.assert_called_once()
+
+    def test_the_combination_the_new_scheme_took_away_stops_firing_it(
+        self,
+        source: ShortcutSource,
+        rebound: RebindScheme,
+    ) -> None:
+        callback = Mock()
+        manager = _manager(source, ShortcutId.SAVE_PROJECT, callback)
+
+        source.activate(rebound({ShortcutId.SAVE_PROJECT: WrittenShortcut(combination="Ctrl+Alt+K")}))
+        manager.rebind()
+
+        assert not manager._dispatch(_event(dpg.mvKey_S, modifiers=CTRL))
+        callback.assert_not_called()
+
+    def test_a_rebind_leaves_the_router_the_one_scope_it_was_given(
+        self,
+        source: ShortcutSource,
+        rebound: RebindScheme,
+    ) -> None:
+        """The scope is claimed at bind time, so repeated rebinds keep one handler on the router."""
+        router = KeyRouter()
+        manager = ShortcutManager(key_router=router, shortcut_source=source)
+        manager.register(ShortcutId.SAVE_PROJECT, Mock())
+        manager.bind_all()
+        scopes = len(router._scopes)
+
+        source.activate(rebound({ShortcutId.SAVE_PROJECT: WrittenShortcut(combination="Ctrl+Alt+K")}))
+        manager.rebind()
+
+        assert len(router._scopes) == scopes
+
+
+class TestMenuAccelerators:
+    """A menu item prints the keys that also fire it, which a rebind keeps true."""
+
+    def test_a_menu_item_prints_the_combination_the_scheme_gives_its_action(
+        self,
+        dpg_context: None,
+        source: ShortcutSource,
+    ) -> None:
+        manager = _menu_manager(source)
+        item = next(iter(manager._menu_items))
+
+        assert dpg.get_item_configuration(item)["shortcut"] == "Ctrl+S"
+
+    def test_a_rebind_prints_the_keys_now_in_place(
+        self,
+        dpg_context: None,
+        source: ShortcutSource,
+        rebound: RebindScheme,
+    ) -> None:
+        manager = _menu_manager(source)
+        item = next(iter(manager._menu_items))
+
+        source.activate(rebound({ShortcutId.SAVE_PROJECT: WrittenShortcut(combination="Ctrl+Alt+K")}))
+        manager.rebind()
+
+        assert dpg.get_item_configuration(item)["shortcut"] == "Ctrl+Alt+K"
 
 
 class TestFieldFocusGate:

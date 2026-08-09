@@ -4,11 +4,11 @@ import dearpygui.dearpygui as dpg
 import pytest
 from pydantic import ValidationError
 
+from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.paths import KEYBINDINGS_DIRECTORY
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT
-from sampletones_application.utils.gui.shortcuts.catalog import DEFAULT_SCHEME_NAME
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_application.utils.gui.shortcuts.written import WrittenShortcut
@@ -137,6 +137,64 @@ class TestAction:
     def test_a_modifier_the_combination_omits_leaves_the_press_unnamed(self, shipped: ShortcutScheme) -> None:
         """A binding names the modifiers held with it, so Shift+Left is not the plain Left move."""
         assert shipped.action(ShortcutCategory.ORDER, _press("Shift+Left")) is None
+
+
+class TestWithOverrides:
+    def test_an_override_gives_the_action_the_keys_it_names(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_overrides({"Undo": "Ctrl+Alt+U"})
+
+        assert scheme.shortcut(ShortcutId.UNDO).display() == "Ctrl+Alt+U"
+        assert scheme.action(ShortcutCategory.APPLICATION, _press("Ctrl+Alt+U")) is ShortcutId.UNDO
+
+    def test_the_keys_the_override_replaces_stop_reaching_the_action(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_overrides({"Undo": "Ctrl+Alt+U"})
+
+        assert scheme.action(ShortcutCategory.APPLICATION, _press("Ctrl+Z")) is None
+
+    def test_an_override_states_the_whole_of_what_reaches_the_action(self, shipped: ShortcutScheme) -> None:
+        """A reader names one combination, so the keypad alias the scheme shipped goes with it."""
+        scheme = shipped.with_overrides({"OrderInsertFrame": "Ctrl+Alt+I"})
+
+        assert scheme.shortcut(ShortcutId.ORDER_INSERT_FRAME).aliases == ()
+        assert scheme.action(ShortcutCategory.ORDER, _press("Num+")) is None
+
+    def test_a_rebound_action_keeps_the_transparency_its_role_carries(self, shipped: ShortcutScheme) -> None:
+        """Switching tabs outranks text entry whichever keys it answers to."""
+        scheme = shipped.with_overrides({"NextTab": "Ctrl+Alt+N"})
+
+        assert scheme.shortcut(ShortcutId.NEXT_TAB).field_transparent
+
+    def test_the_actions_no_override_names_keep_the_scheme_s_keys(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_overrides({"Undo": "Ctrl+Alt+U"})
+
+        assert scheme.shortcut(ShortcutId.REDO) == shipped.shortcut(ShortcutId.REDO)
+
+    def test_an_override_naming_an_action_the_build_has_none_of_is_left_out(self, shipped: ShortcutScheme) -> None:
+        """A preference outlives the build that stored it, so a stale entry costs only itself."""
+        scheme = shipped.with_overrides({"PlayLouder": "Ctrl+K", "Undo": "Ctrl+Alt+U"})
+
+        assert scheme.shortcut(ShortcutId.UNDO).display() == "Ctrl+Alt+U"
+
+    def test_an_override_naming_no_key_is_left_out(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_overrides({"Undo": "Ctrl+Gibberish"})
+
+        assert scheme.shortcut(ShortcutId.UNDO) == shipped.shortcut(ShortcutId.UNDO)
+
+    def test_an_override_its_category_already_answers_is_left_out(self, shipped: ShortcutScheme) -> None:
+        """One press reaches one action, so an override claiming a taken combination stands aside."""
+        scheme = shipped.with_overrides({"AboutDialog": "Ctrl+S"})
+
+        assert scheme.action(ShortcutCategory.APPLICATION, _press("Ctrl+S")) is ShortcutId.SAVE_PROJECT
+        assert scheme.shortcut(ShortcutId.ABOUT_DIALOG) == shipped.shortcut(ShortcutId.ABOUT_DIALOG)
+
+    def test_an_override_taking_a_combination_another_category_holds_stands(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_overrides({"AboutDialog": "F2"})
+
+        assert scheme.action(ShortcutCategory.APPLICATION, _press("F2")) is ShortcutId.ABOUT_DIALOG
+        assert scheme.action(ShortcutCategory.SAMPLES, _press("F2")) is ShortcutId.SAMPLES_RENAME_SAMPLE
+
+    def test_a_scheme_without_overrides_is_the_one_it_started_as(self, shipped: ShortcutScheme) -> None:
+        assert shipped.with_overrides({}) is shipped
 
 
 class TestLoad:

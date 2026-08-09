@@ -2,11 +2,9 @@ from pathlib import Path
 
 import pytest
 
+from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.paths import KEYBINDINGS_DIRECTORY
-from sampletones_application.utils.gui.shortcuts.catalog import (
-    DEFAULT_SCHEME_NAME,
-    ShortcutCatalog,
-)
+from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.paths import EXT_FILE_YAML
 

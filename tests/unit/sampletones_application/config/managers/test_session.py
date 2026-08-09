@@ -36,6 +36,18 @@ class TestSessionManagerWindowProperties:
         assert session.window_height == 600
 
 
+class TestSessionManagerKeybindings:
+    def test_shortcut_scheme_name_reflects_what_was_set(self) -> None:
+        session = SessionManager()
+        session.set_shortcut_scheme_name("compact")
+        assert session.shortcut_scheme_name == "compact"
+
+    def test_shortcut_overrides_reflect_what_was_set(self) -> None:
+        session = SessionManager()
+        session.set_shortcut_overrides({"Undo": "Ctrl+Alt+U"})
+        assert session.shortcut_overrides == {"Undo": "Ctrl+Alt+U"}
+
+
 class TestSessionManagerTabAndSettings:
     def test_current_tab_property_returns_string(self) -> None:
         session = SessionManager()

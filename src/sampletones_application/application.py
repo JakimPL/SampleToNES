@@ -112,6 +112,7 @@ from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
@@ -189,9 +190,8 @@ class Application:
             display_time=self.layout.behavior.ui.status_bar_display_time,
         )
         self.key_router: KeyRouter = KeyRouter()
-        self._shortcut_source: ShortcutSource = ShortcutSource(
-            ShortcutCatalog.load(KEYBINDINGS_DIRECTORY).default,
-        )
+        self._shortcut_catalog: ShortcutCatalog = ShortcutCatalog.load(KEYBINDINGS_DIRECTORY)
+        self._shortcut_source: ShortcutSource = ShortcutSource(self._preferred_scheme())
         self.shortcut_manager: ShortcutManager = ShortcutManager(
             key_router=self.key_router,
             shortcut_source=self._shortcut_source,
@@ -493,6 +493,11 @@ class Application:
         except ValidationError as exception:
             raise SystemError(f"Invalid layout configuration: {exception}") from exception
 
+    def _preferred_scheme(self) -> ShortcutScheme:
+        """The keys the session runs under: the scheme it names, as its own overrides rebind it."""
+        scheme = self._shortcut_catalog.select(self.session_manager.shortcut_scheme_name)
+        return scheme.with_overrides(self.session_manager.shortcut_overrides)
+
     def _setup_gui_elements(self) -> None:
         FontRegistry.setup(self.layout.fonts)
         GUIPanel.configure_section_header(
@@ -596,6 +601,15 @@ class Application:
         self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
         self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
         self._palette_source.on_palette_changed = self._on_palette_changed
+        self._shortcut_source.on_bindings_changed = self._on_bindings_changed
+
+    def _on_bindings_changed(self, _scheme: ShortcutScheme) -> None:
+        """Hands the keys of the scheme now in place to what has already read a combination.
+
+        Every registration names the action it fires, so the work left is the copies of the keys:
+        the index a press resolves through and the accelerators the menus print.
+        """
+        self.shortcut_manager.rebind()
 
     def _on_palette_changed(self, _palette: Palette) -> None:
         """Repaints what holds a colour DearPyGui has copied, once another palette is in place.

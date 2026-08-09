@@ -132,6 +132,8 @@ class ShortcutId(Enum):
     DIALOG_CANCEL = ("DialogCancel", ShortcutCategory.DIALOG)
 
 
+SHORTCUT_IDS_BY_NAME: Final[Dict[str, ShortcutId]] = {shortcut_id.value: shortcut_id for shortcut_id in ShortcutId}
+
 CHANNEL_SHORTCUT_IDS: Final[Dict[GeneratorName, ShortcutId]] = {
     GeneratorName.PULSE1: ShortcutId.TOGGLE_CHANNEL_PULSE_1,
     GeneratorName.PULSE2: ShortcutId.TOGGLE_CHANNEL_PULSE_2,

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Set
+from typing import Dict, Set
 
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
@@ -99,6 +99,20 @@ class ApplicationConfigManager:
 
     def set_borderless(self, borderless: bool) -> None:
         self.config.display.borderless = borderless
+
+    @property
+    def shortcut_scheme_name(self) -> str:
+        return self.config.shortcuts.scheme
+
+    def set_shortcut_scheme_name(self, name: str) -> None:
+        self.config.shortcuts.scheme = name
+
+    @property
+    def shortcut_overrides(self) -> Dict[str, str]:
+        return self.config.shortcuts.overrides
+
+    def set_shortcut_overrides(self, overrides: Dict[str, str]) -> None:
+        self.config.shortcuts.overrides = overrides
 
     @property
     def favorites(self) -> Set[Path]:

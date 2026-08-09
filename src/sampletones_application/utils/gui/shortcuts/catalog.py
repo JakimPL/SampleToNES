@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, Tuple
+from typing import Dict, Tuple
 
+from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_core.paths import EXT_FILE_YAML
 from sampletones_shared.logger import logger
-
-DEFAULT_SCHEME_NAME: Final[str] = "default"
 
 
 @dataclass(frozen=True)

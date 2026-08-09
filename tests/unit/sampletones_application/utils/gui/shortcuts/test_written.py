@@ -34,3 +34,20 @@ class TestResolve:
     def test_an_entry_naming_no_key_raises(self) -> None:
         with pytest.raises(KeyError):
             WrittenShortcut(combination="Ctrl+Meta").resolve()
+
+
+class TestRebound:
+    def test_a_rebound_entry_answers_the_combination_the_reader_named(self) -> None:
+        entry = WrittenShortcut(combination="Ctrl+Y").rebound("Ctrl+Alt+R")
+
+        assert entry.combination == "Ctrl+Alt+R"
+
+    def test_a_rebound_entry_answers_that_combination_alone(self) -> None:
+        entry = WrittenShortcut(combination="Ctrl+Y", aliases=("Ctrl+Shift+Z",)).rebound("Ctrl+Alt+R")
+
+        assert entry.aliases == ()
+
+    def test_a_rebound_entry_keeps_the_transparency_the_action_carries(self) -> None:
+        entry = WrittenShortcut(combination="Ctrl+PgDn", field_transparent=True).rebound("Ctrl+Alt+N")
+
+        assert entry.field_transparent is True

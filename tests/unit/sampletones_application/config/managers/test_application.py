@@ -73,6 +73,50 @@ class TestApplicationConfigManagerPlayback:
         assert manager.master_gain == 0.0
 
 
+class TestApplicationConfigManagerShortcuts:
+    def _manager(self, tmp_path: Path) -> ApplicationConfigManager:
+        path = tmp_path / "config.yaml"
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            path,
+        ):
+            return ApplicationConfigManager()
+
+    def test_a_fresh_configuration_names_the_shipped_scheme(self, tmp_path: Path) -> None:
+        manager = self._manager(tmp_path)
+
+        assert manager.shortcut_scheme_name == ApplicationConfig().shortcuts.scheme
+        assert manager.shortcut_overrides == {}
+
+    def test_set_shortcut_scheme_name_round_trips(self, tmp_path: Path) -> None:
+        manager = self._manager(tmp_path)
+        manager.set_shortcut_scheme_name("compact")
+
+        assert manager.shortcut_scheme_name == "compact"
+
+    def test_set_shortcut_overrides_round_trips(self, tmp_path: Path) -> None:
+        manager = self._manager(tmp_path)
+        manager.set_shortcut_overrides({"Undo": "Ctrl+Alt+U"})
+
+        assert manager.shortcut_overrides == {"Undo": "Ctrl+Alt+U"}
+
+    def test_the_preferences_reach_the_file_the_session_is_saved_to(self, tmp_path: Path) -> None:
+        """A rebind is read back on the next run, which is what makes it a preference."""
+        path = tmp_path / "config.yaml"
+        with patch(
+            "sampletones_application.config.managers.application.APPLICATION_CONFIG_PATH",
+            path,
+        ):
+            manager = ApplicationConfigManager()
+            manager.set_shortcut_scheme_name("compact")
+            manager.set_shortcut_overrides({"Undo": "Ctrl+Alt+U"})
+            manager.save()
+            reloaded = ApplicationConfigManager()
+
+        assert reloaded.shortcut_scheme_name == "compact"
+        assert reloaded.shortcut_overrides == {"Undo": "Ctrl+Alt+U"}
+
+
 class TestApplicationConfigManagerSave:
     @pytest.mark.parametrize("exception_type", [PermissionError, IsADirectoryError, OSError])
     def test_save_recovers_from_file_error(self, tmp_path: Path, exception_type: Type[OSError]) -> None:

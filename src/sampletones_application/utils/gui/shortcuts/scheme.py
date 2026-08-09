@@ -8,9 +8,14 @@ from pydantic import BaseModel, model_validator
 
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.ids import (
+    SHORTCUT_IDS_BY_NAME,
+    ShortcutCategory,
+    ShortcutId,
+)
 from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_application.utils.gui.shortcuts.written import WrittenShortcut
+from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml
 
 
@@ -42,7 +47,10 @@ class ShortcutScheme(BaseModel, frozen=True):
         }
         for shortcut_id, shortcut in self.shortcuts.items():
             for combination in shortcut.combinations():
-                claims[shortcut_id.category].setdefault(combination, shortcut_id)
+                claims[shortcut_id.category].setdefault(
+                    combination,
+                    shortcut_id,
+                )
 
         return claims
 
@@ -64,7 +72,11 @@ class ShortcutScheme(BaseModel, frozen=True):
         """The binding that answers an action, the combinations it names ready to match a press."""
         return self.shortcuts[shortcut_id]
 
-    def action(self, category: ShortcutCategory, event: KeyEvent) -> Optional[ShortcutId]:
+    def action(
+        self,
+        category: ShortcutCategory,
+        event: KeyEvent,
+    ) -> Optional[ShortcutId]:
         """The action of a category a press reaches.
 
         Args:
@@ -75,7 +87,51 @@ class ShortcutScheme(BaseModel, frozen=True):
             Optional[ShortcutId]: The action the category binds the press to, ``None`` while the
                 category leaves it unnamed.
         """
-        return self.claims[category].get(KeyCombination(event.key, event.modifiers))
+        return self.claims[category].get(
+            KeyCombination(
+                event.key,
+                event.modifiers,
+            )
+        )
+
+    def with_overrides(self, overrides: Dict[str, str]) -> ShortcutScheme:
+        """The scheme as a reader rebound it, each entry giving one action the keys it names.
+
+        An override names its action the way a keybinding file writes it, which lets a preference
+        outlive the build that stored it: an override stands where this build carries the action,
+        the key and a category with room for the combination, and the rest are reported while their
+        actions keep the keys the scheme gives them.
+
+        Args:
+            overrides: The combination each rebound action answers to, keyed by the action's name.
+
+        Returns:
+            ShortcutScheme: The scheme every action resolves against once the overrides are read.
+        """
+        scheme = self
+        for name, combination in overrides.items():
+            scheme = scheme.rebound(name, combination)
+
+        return scheme
+
+    def rebound(self, name: str, combination: str) -> ShortcutScheme:
+        """The scheme with one action answering ``combination``, as it stands for every other entry.
+
+        An entry takes effect while it names an action this build carries, a key the table holds and
+        a combination its category has room for; anything else is reported and the scheme is
+        returned as it stands, so one unreadable preference costs only itself.
+        """
+        shortcut_id = SHORTCUT_IDS_BY_NAME.get(name)
+        if shortcut_id is None:
+            logger.warning(f"Keybinding override names unknown action {name!r}, keeping the scheme's own keys")
+            return self
+
+        bindings = {**self.bindings, shortcut_id: self.bindings[shortcut_id].rebound(combination)}
+        try:
+            return ShortcutScheme(name=self.name, bindings=bindings)
+        except (KeyError, SystemError) as exception:
+            logger.warning(f"Keybinding override giving {name!r} the combination {combination!r} left out: {exception}")
+            return self
 
     @classmethod
     def load(cls, path: Path) -> ShortcutScheme:

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Set
+from typing import Dict, Optional, Set
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.application import ApplicationConfigManager
@@ -139,6 +139,12 @@ class SessionManager:
     def set_borderless(self, borderless: bool) -> None:
         self._config_manager.set_borderless(borderless)
 
+    def set_shortcut_scheme_name(self, name: str) -> None:
+        self._config_manager.set_shortcut_scheme_name(name)
+
+    def set_shortcut_overrides(self, overrides: Dict[str, str]) -> None:
+        self._config_manager.set_shortcut_overrides(overrides)
+
     def save_config(self) -> None:
         self._config_manager.save()
         self._state_manager.save()
@@ -198,6 +204,14 @@ class SessionManager:
     @property
     def borderless(self) -> bool:
         return self._config_manager.borderless
+
+    @property
+    def shortcut_scheme_name(self) -> str:
+        return self._config_manager.shortcut_scheme_name
+
+    @property
+    def shortcut_overrides(self) -> Dict[str, str]:
+        return self._config_manager.shortcut_overrides
 
     @property
     def advanced_settings(self) -> bool:
