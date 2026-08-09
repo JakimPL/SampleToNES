@@ -175,6 +175,9 @@ disable = [
     "too-many-statements",
 ]
 
+[tool.pylint.basic]
+bad-names = ["foo", "baz"]
+
 [tool.pylint.format]
 max-line-length = 120
 

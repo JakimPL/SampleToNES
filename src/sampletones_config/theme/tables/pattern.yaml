@@ -16,7 +16,7 @@ components:
         value: .transparent
       - type: color
         key: TableRowBg
-        value: .table_row_alt
+        value: .table_row
       - type: color
         key: TableRowBgAlt
         value: .table_row

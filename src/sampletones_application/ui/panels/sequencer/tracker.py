@@ -52,6 +52,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
     EditAction,
 )
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.rows import RowCues, row_background
 from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
     create_selectable_text_theme,
@@ -68,7 +69,9 @@ from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
+from sampletones_application.utils.palette.colors.layered import LayeredColor
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
@@ -329,11 +332,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         muting. ``no_clip`` lets a label wider than its column draw across the boundary the way
         a table header does, so the header keeps the size and position it has always had.
 
-        That header row is an ordinary table row, and DearPyGui advances the zebra-stripe
-        counter on every ordinary row, so the tracker's own theme
-        (``sequencer.theme.table_pattern``) carries ``TableRowBg`` and ``TableRowBgAlt``
-        swapped. The swap lands pattern row 0 on the same stripe it takes in every other
-        table, and the header row's own stripe sits under an opaque header shade.
+        The pattern stands on one even ground: the tracker's own theme
+        (``sequencer.theme.table_pattern``) gives ``TableRowBg`` and ``TableRowBgAlt`` the same
+        shade, leaving the row background free to carry the beat and bar grouping that tells a
+        tracker's rows apart (see :meth:`_row_background`).
         """
         with self._collapsible_card(
             parent,
@@ -428,8 +430,66 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._highlight_sample_column()
         self._highlight_header_row()
         self._apply_channel_cues()
+        self._apply_row_backgrounds()
         self._update_cursor()
-        self._apply_playing_row_highlight()
+
+    def _row_background(self, row_index: int) -> Optional[BaseColor]:
+        """The colour a pattern row's background carries under the marks standing on it now."""
+        cursor = self._input_state.cursor
+        return row_background(
+            row_index,
+            self._layout.tracker,
+            self._layout.colors,
+            RowCues(
+                cursor=cursor.row if cursor is not None else None,
+                playing=self._playing_row,
+            ),
+        )
+
+    def _draw_row(
+        self,
+        row_index: int,
+        color: Optional[BaseColor],
+    ) -> None:
+        """Gives one pattern row the background colour it resolved to.
+
+        Position updates arrive on the callback-queue worker thread, so the table may be shorter
+        than the row asked for if the main thread shrank it (a rows-per-pattern change) in between;
+        checking the live row count keeps a stale index from reaching DearPyGui.
+        """
+        if not 0 <= row_index < self._live_row_count():
+            return
+
+        table_row = tracker_table_row(row_index)
+        if color is None:
+            dpg.unhighlight_table_row(
+                TAG_SEQUENCER_TRACKER_TABLE,
+                table_row,
+            )
+        else:
+            dpg.highlight_table_row(
+                TAG_SEQUENCER_TRACKER_TABLE,
+                table_row,
+                color=color.rgba,
+            )
+
+    def _paint_row(self, row_index: int) -> None:
+        """Draws a row in the colour its group and the marks on it resolve to."""
+        self._draw_row(row_index, self._row_background(row_index))
+
+    def _paint_hovered_row(self, row_index: int) -> None:
+        """Draws a row with the hover shade over the background it already carries."""
+        background = self._row_background(row_index)
+        highlight = self._layout.colors.pattern_highlight
+        self._draw_row(
+            row_index,
+            highlight if background is None else LayeredColor(base=background, overlay=highlight),
+        )
+
+    def _apply_row_backgrounds(self) -> None:
+        """Draws every live pattern row, which is how the beat and bar grouping reaches the table."""
+        for row_index in range(self._live_row_count()):
+            self._paint_row(row_index)
 
     def _render_cell(self, key: CellKey) -> str:
         row, generator, subcolumn = key
@@ -670,8 +730,8 @@ class GUISequencerTrackerPanel(GUIPanel):
     def deselect_cell(self) -> None:
         cursor = self._input_state.cursor
         if cursor is not None:
-            self._remove_cell_highlight(cursor.row, cursor.generator)
             self._input_state = TrackerInputState()
+            self._remove_cell_highlight(cursor.row, cursor.generator)
 
         self._update_caret()
 
@@ -682,10 +742,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         old_pos = (old_cursor.row, old_cursor.generator) if old_cursor is not None else None
         new_pos = (new_cursor.row, new_cursor.generator) if new_cursor is not None else None
 
+        self._input_state = new_state
+
         if old_pos != new_pos and old_cursor is not None:
             self._remove_cell_highlight(old_cursor.row, old_cursor.generator)
-
-        self._input_state = new_state
 
         if old_cursor is not None:
             self._update_cell_display(old_cursor.row, old_cursor.generator)
@@ -859,17 +919,12 @@ class GUISequencerTrackerPanel(GUIPanel):
         row_index: int,
         generator: Optional[GeneratorName],
     ) -> None:
-        table_row = tracker_table_row(row_index)
-        dpg.highlight_table_row(
-            TAG_SEQUENCER_TRACKER_TABLE,
-            table_row,
-            color=self._layout.colors.cursor_row.rgba,
-        )
-        column_index = tracker_table_column(generator)
+        """Marks the cursor: its cell on the cell layer, its row through the row background."""
+        self._paint_row(row_index)
         dpg.highlight_table_cell(
             TAG_SEQUENCER_TRACKER_TABLE,
-            table_row,
-            column_index,
+            tracker_table_row(row_index),
+            tracker_table_column(generator),
             color=self._layout.colors.cell_cursor.rgba,
         )
 
@@ -878,17 +933,17 @@ class GUISequencerTrackerPanel(GUIPanel):
         row_index: int,
         generator: Optional[GeneratorName],
     ) -> None:
-        table_row = tracker_table_row(row_index)
-        dpg.unhighlight_table_row(
-            TAG_SEQUENCER_TRACKER_TABLE,
-            table_row,
-        )
-        col_idx = tracker_table_column(generator)
+        """Clears the cursor cell and returns its row to the background the row itself carries.
+
+        The input state names the row the cursor stands on, so it is updated before this runs
+        and the row resolves to what it looks like once the cursor has left.
+        """
         dpg.unhighlight_table_cell(
             TAG_SEQUENCER_TRACKER_TABLE,
-            table_row,
-            col_idx,
+            tracker_table_row(row_index),
+            tracker_table_column(generator),
         )
+        self._paint_row(row_index)
 
     def _on_cell_clicked(
         self,
@@ -945,7 +1000,7 @@ class GUISequencerTrackerPanel(GUIPanel):
 
     def _on_cell_right_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
     ) -> None:
         """Opens the cell-operations menu for the right-clicked subcolumn.
@@ -1314,50 +1369,31 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._highlighted_row = row_index
 
     def highlight_row(self, row_index: Optional[int] = None) -> None:
+        """Marks the row the pointer rests on, over the background that row already carries."""
         self.unhighlight_row(self._highlighted_row)
         self._highlighted_row = row_index
         if row_index is None:
             return
 
-        dpg.highlight_table_row(
-            TAG_SEQUENCER_TRACKER_TABLE,
-            tracker_table_row(row_index),
-            color=self._layout.colors.pattern_highlight.rgba,
-        )
+        self._paint_hovered_row(row_index)
 
     def unhighlight_row(self, row_index: Optional[int] = None) -> None:
+        """Returns a hovered row to the background its group and the marks on it give it."""
         if row_index is None:
             return
 
-        dpg.unhighlight_table_row(
-            TAG_SEQUENCER_TRACKER_TABLE,
-            tracker_table_row(row_index),
-        )
         self._highlighted_row = None
+        self._paint_row(row_index)
 
     def set_playing_row(self, row_index: Optional[int]) -> None:
-        if self._playing_row is not None and self._playing_row < self._live_row_count():
-            dpg.unhighlight_table_row(
-                TAG_SEQUENCER_TRACKER_TABLE,
-                tracker_table_row(self._playing_row),
-            )
-
+        """Moves the playhead mark, drawing both the row it left and the row it reached."""
+        previous = self._playing_row
         self._playing_row = row_index
-        self._apply_playing_row_highlight()
+        if previous is not None and previous != row_index:
+            self._paint_row(previous)
 
-    def _apply_playing_row_highlight(self) -> None:
-        """Highlights the playing row when its index lies within the live table.
-
-        Position updates arrive on the callback-queue worker thread, so the table may be shorter
-        than ``_playing_row`` if the main thread shrank it (a rows-per-pattern change) in between;
-        checking the live row count keeps a stale index from reaching DearPyGui.
-        """
-        if self._playing_row is not None and self._playing_row < self._live_row_count():
-            dpg.highlight_table_row(
-                TAG_SEQUENCER_TRACKER_TABLE,
-                tracker_table_row(self._playing_row),
-                color=self._layout.colors.playback_row.rgba,
-            )
+        if row_index is not None:
+            self._paint_row(row_index)
 
     def _live_row_count(self) -> int:
         """The table's current pattern-row count, read live from DearPyGui.

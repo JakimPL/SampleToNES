@@ -108,10 +108,9 @@ class TestLoadedInheritance:
         finally:
             dpg.destroy_context()
 
-    def test_the_tracker_theme_swaps_the_base_row_stripes(self, themes: Dict[str, Theme]) -> None:
-        """The tracker's clickable header is an ordinary row, which advances DearPyGui's
-        zebra counter, so the tracker theme swaps the two stripes to land pattern row 0 on
-        the shade every other table gives its first row.
+    def test_the_tracker_theme_stands_the_pattern_on_one_even_ground(self, themes: Dict[str, Theme]) -> None:
+        """The tracker gives both stripes the same shade, leaving the row background free to
+        carry the beat and bar grouping that tells the pattern's rows apart.
         """
         dpg.create_context()
         try:
@@ -120,14 +119,9 @@ class TestLoadedInheritance:
             base.create()
             pattern.create()
 
-            assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg) == base.get_color(
-                dpg.mvTable,
-                dpg.mvThemeCol_TableRowBgAlt,
-            )
-            assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBgAlt) == base.get_color(
-                dpg.mvTable,
-                dpg.mvThemeCol_TableRowBg,
-            )
+            row = pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg)
+            assert row == pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBgAlt)
+            assert row == base.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg)
         finally:
             dpg.destroy_context()
 

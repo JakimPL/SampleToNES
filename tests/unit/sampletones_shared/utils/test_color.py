@@ -3,7 +3,7 @@ from typing import Tuple, Type, Union
 
 import pytest
 
-from sampletones_shared.utils.color import blend, parse_hex_color, to_grayscale
+from sampletones_shared.utils.color import blend, composite, parse_hex_color, to_grayscale
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
@@ -165,6 +165,30 @@ class TestToGrayscale:
 
     def test_gray_stays_gray(self) -> None:
         assert to_grayscale((128, 128, 128, 255)) == (128, 128, 128, 255)
+
+
+class TestComposite:
+    TRANSPARENT = (0, 0, 0, 0)
+    FAINT_WHITE = (255, 255, 255, 16)
+    GREEN = (100, 220, 100, 64)
+
+    def test_an_opaque_overlay_covers_what_is_under_it(self) -> None:
+        assert composite(self.GREEN, (10, 20, 30, 255)) == (10, 20, 30, 255)
+
+    def test_a_transparent_overlay_leaves_the_base(self) -> None:
+        assert composite(self.GREEN, self.TRANSPARENT) == self.GREEN
+
+    def test_a_transparent_base_leaves_the_overlay(self) -> None:
+        assert composite(self.TRANSPARENT, self.GREEN) == self.GREEN
+
+    def test_two_transparent_colours_stay_transparent(self) -> None:
+        assert composite(self.TRANSPARENT, self.TRANSPARENT) == self.TRANSPARENT
+
+    def test_stacked_washes_cover_more_than_either_alone(self) -> None:
+        red, green, blue, alpha = composite(self.FAINT_WHITE, self.GREEN)
+
+        assert alpha == 76
+        assert (red, green, blue) == (124, 226, 124)
 
 
 class TestBlend:

@@ -5,6 +5,7 @@ from sampletones_application.layout.tabs.sequencer.colors.header import HeaderCo
 from sampletones_application.layout.tabs.sequencer.colors.history import HistoryColors
 from sampletones_application.layout.tabs.sequencer.colors.muted import MutedColors
 from sampletones_application.layout.tabs.sequencer.colors.order import OrderColors
+from sampletones_application.layout.tabs.sequencer.colors.row import RowColors
 from sampletones_application.layout.tabs.sequencer.colors.sample import SampleColors
 from sampletones_application.layout.tabs.sequencer.colors.tracker import TrackerColors
 from sampletones_application.utils.palette.colors.written import WrittenColor
@@ -16,6 +17,7 @@ class SequencerColors(BaseModel, extra="forbid", frozen=True):
     cursor_row: WrittenColor
     playback_row: WrittenColor
     label: WrittenColor
+    rows: RowColors
     order: OrderColors
     sample: SampleColors
     header: HeaderColors

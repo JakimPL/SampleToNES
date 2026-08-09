@@ -1,7 +1,6 @@
 name: light
 
 colors:
-  # surfaces and neutrals
   ground: "#dcdfe6"
   tab_strip: "#d0d4dd"
   recess: "#e6e9f0"
@@ -19,26 +18,22 @@ colors:
   plot_background: "#ffffff"
   well: "#e3e8f2"
 
-  # tables
   table_header: "#d3d7e5"
   table_row: "#fbfbfd"
   table_row_alt: "#edeff5"
   table_border: "#bac0cd"
 
-  # cool secondary
   cool: "#2f6fd0"
   cool_hover: "#1f5cb8"
   cool_active: "#17488f"
   cool_muted: "#b7cae9"
 
-  # accent
   accent: "#6b3fb0"
   accent_hover: "#7f52c4"
   accent_active: "#55308c"
   accent_muted: "#d5c4ee"
   on_accent: "#ffffff"
 
-  # buttons
   primary: "#7a55b8"
   primary_hover: "#8a67c6"
   primary_active: "#644497"
@@ -50,17 +45,14 @@ colors:
   secondary_active: "#bcc5d4"
   secondary_disabled: "#ebebf0"
 
-  # danger
   danger: "#bf4646"
   danger_hover: "#d05a5a"
   danger_active: "#9b3737"
   on_danger: "#ffffff"
 
-  # dialog windows
   dialog_surface: "#f2f2f7"
   dialog_title: "#d7deee"
 
-  # channels: pulses orange, triangle blue, noise grey
   channel_pulse1: "#c25a12"
   channel_pulse2: "#96790a"
   channel_triangle: "#2a6ba4"
@@ -70,26 +62,21 @@ colors:
   channel_triangle_soft: "#557c9a"
   channel_noise_soft: "#8a8890"
 
-  # tabs
   tab: "#cdd2dd"
   tab_hovered: "#c0c8d8"
   tab_active: "#e6e9f0"
 
-  # selection (tree, list, menu highlight)
   selection: "#d5cbec"
   selection_hovered: "#c5b8e3"
   selection_active: "#b3a4d8"
 
-  # scrollbar
   scrollbar_hovered: "#9aa2b0"
 
-  # buttons
   button: "#c5cddd"
   button_hovered: "#b4bfd4"
   button_active: "#a2b0cb"
   button_disabled: "#dfe2e9"
 
-  # player
   player_surface: "#dbe2f0"
   player_border: "#3d7fc4"
   player_button: "#cbd4e8"
@@ -97,13 +84,11 @@ colors:
   player_button_active: "#a5b6d6"
   player_button_disabled: "#e2e6ee"
 
-  # text
   text: "#1a1d23"
   text_muted: "#535b68"
   text_disabled: "#8b93a1"
   text_trace: "#41464e"
 
-  # overlay
   contrast: "#14171c"
   overlay: "#000000"
   transparent: "#00000000"
@@ -111,55 +96,46 @@ colors:
   input_invalid: "#c0504a48"
   input_warning: "#c0884a48"
 
-  # controls
   control: "#ffffff"
   control_hovered: "#eaeef6"
   control_active: "#dbe2ee"
   control_border: "#8f97a6"
 
-  # plots
   plot_zero_line: "#8a92a0"
   plot_grid: "#d7dce5"
   plot_axis_text: "#535b68"
   plot_border: "#b3bac7"
   plot_legend_bg: "#f4f6fa"
 
-  # file-tree nodes
   file_wave: "#0d6ea8"
   file_library: "#1c7a34"
   file_reconstruction: "#4a4ab4"
   file_muted: "#7c7c86"
 
-  # favourites
   favorite: "#b07d0a"
   favorite_child: "#8d7a45"
 
-  # instruction-library nodes
   library_generator: "#2c6e3c"
   library_group: "#1c6a70"
   library_instruction: "#4c4c54"
   library_root: "#33333a"
 
-  # layout: content text
   text_default: "#22262d"
   text_inactive: "#7b8391"
   text_error: "#c03030"
   text_highlight: "#8a5f00"
 
-  # layout: flat control buttons
   button_flat: "#d7dbe4"
   button_flat_active: "#aeb6c4"
   button_flat_hovered: "#c4cad7"
   button_flat_light: "#cdd3de"
 
-  # layout: background fills
   background_default: "#eceff4"
   background_dark: "#dcdfe6"
   background_light: "#ffffff"
   background_menu: "#e3e7ee"
   background_invalid: "#c0202038"
 
-  # layout: properties table
   properties_header: "#d3d7e5"
   properties_row: "#fbfbfd"
   properties_row_alt: "#edeff5"
@@ -167,62 +143,50 @@ colors:
   properties_label: "#3a4f7c"
   properties_value: "#272c39"
 
-  # layout: path links
   path_link: "#1f5fd0"
   path_link_hover: "#0d3f9c"
 
-  # layout: section headers
   header_library: "#2c7a44"
   header_reconstruction: "#6b3fb0"
 
-  # layout: instruction features
   feature_volume: "#1f8038"
   feature_arpeggio: "#c05a18"
   feature_pitch: "#0d6ea8"
   feature_duty_cycle: "#96700a"
 
-  # layout: caret overlay
   caret_fill: "#3a3ac060"
   caret_border: "#2a5fb0ff"
 
-  # layout: graphs and waveforms
   graph_bar: "#1c72ac"
   waveform_sample: "#1c72ac"
   waveform_reconstruction: "#b07d0a"
   waveform_overlay: "#00000018"
   spectrum_dim: "#f7f7fa"
 
-  # layout: tracker row grouping
-  tracker_beat_row: "#0000000c"
-  tracker_bar_row: "#0000001c"
+  tracker_beat_row: "#00000012"
+  tracker_bar_row: "#00000022"
 
-  # layout: tracker cursor and playback
   pattern_highlight: "#00000018"
   cell_cursor: "#2a7fd090"
-  cursor_row: "#0000000f"
+  cursor_row: "#00000020"
   playback_row: "#1f903838"
 
-  # layout: order table
   order_label: "#d3d7e5"
   order_master: "#1c8cc018"
   order_master_divider: "#1c8cc028"
   order_column_current: "#00000014"
   order_column_playing: "#1f903828"
 
-  # layout: sample column
   sample_column: "#1c8cc022"
   sample_divider: "#1c8cc028"
 
-  # layout: muted channel column
   channel_muted: "#9a9aa614"
 
-  # layout: history detail
   history_future: "#8c8c94ff"
   history_channel: "#1f5fb0ff"
   history_value: "#33333aff"
   history_separator: "#9a9aa2ff"
 
-  # layout: tracker text (instrument and sample share the reference yellow)
   tracker_reference: "#8a6a00ff"
   tracker_transpose: "#4c4c54ff"
   tracker_volume: "#1f8038ff"

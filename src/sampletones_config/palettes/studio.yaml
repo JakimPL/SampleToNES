@@ -1,7 +1,6 @@
 name: studio
 
 colors:
-  # surfaces and neutrals
   ground: "#1c1b26"
   tab_strip: "#24232f"
   recess: "#2f2e3c"
@@ -19,26 +18,22 @@ colors:
   plot_background: "#201d2a"
   well: "#1f2636"
 
-  # tables
   table_header: "#46415c"
   table_row: "#323042"
   table_row_alt: "#3c394e"
   table_border: "#585472"
 
-  # cool secondary (functional chrome: input focus, secondary emphasis)
   cool: "#7fa8ea"
   cool_hover: "#94b8f0"
   cool_active: "#6690d4"
   cool_muted: "#40506e"
 
-  # accent
   accent: "#b98af3"
   accent_hover: "#a180ce"
   accent_active: "#7b629e"
   accent_muted: "#685386"
   on_accent: "#17131f"
 
-  # buttons
   primary: "#8f6fc0"
   primary_hover: "#a689d4"
   primary_active: "#7d64ac"
@@ -50,17 +45,14 @@ colors:
   secondary_active: "#46516a"
   secondary_disabled: "#2b303d"
 
-  # danger (destructive actions: cancel, abort)
   danger: "#a85555"
   danger_hover: "#bd6a6a"
   danger_active: "#8e4747"
   on_danger: "#f1f1f5"
 
-  # dialog windows (elevated surface + accent border/title)
   dialog_surface: "#313547"
   dialog_title: "#34405e"
 
-  # channels: pulses orange, triangle blue, noise grey
   channel_pulse1: "#f09256"
   channel_pulse2: "#f2d15f"
   channel_triangle: "#8cc1ed"
@@ -70,26 +62,21 @@ colors:
   channel_triangle_soft: "#b9cedf"
   channel_noise_soft: "#cbcace"
 
-  # tabs
   tab: "#24283a"
   tab_hovered: "#2f3a56"
   tab_active: "#3c4a72"
 
-  # selection (tree, list, menu highlight)
   selection: "#423d58"
   selection_hovered: "#4d4669"
   selection_active: "#574f7c"
 
-  # scrollbar
   scrollbar_hovered: "#4a4759"
 
-  # buttons
   button: "#576793"
   button_hovered: "#687aac"
   button_active: "#778abe"
   button_disabled: "#363a48"
 
-  # player
   player_surface: "#242a44"
   player_border: "#4a90d9"
   player_button: "#313b61"
@@ -97,13 +84,11 @@ colors:
   player_button_active: "#4a5896"
   player_button_disabled: "#252e4d"
 
-  # text
   text: "#e7e7f0"
   text_muted: "#9497ab"
   text_disabled: "#767a8e"
   text_trace: "#c0c0c0"
 
-  # emphasis and overlays
   contrast: "#ffffff"
   overlay: "#ffffff"
   transparent: "#00000000"
@@ -111,55 +96,46 @@ colors:
   input_invalid: "#c0504a64"
   input_warning: "#c0884a64"
 
-  # controls (the box a checkbox or radio button draws its mark inside)
   control: "#514c68"
   control_hovered: "#5c5676"
   control_active: "#665f83"
   control_border: "#6f6a8a"
 
-  # plots
   plot_zero_line: "#c8c8c8"
   plot_grid: "#39344a"
   plot_axis_text: "#9497ab"
   plot_border: "#464a5e"
   plot_legend_bg: "#2a2636"
 
-  # file-tree nodes
   file_wave: "#64c8ff"
   file_library: "#96ff96"
   file_reconstruction: "#b4b4ff"
   file_muted: "#b4b4b4"
 
-  # favourites
   favorite: "#ffd76e"
   favorite_child: "#e7dbb7"
 
-  # instruction-library nodes
   library_generator: "#d2e8d2"
   library_group: "#d2e8e8"
   library_instruction: "#d2d2d2"
   library_root: "#dcdcdc"
 
-  # layout: content text
   text_default: "#dcdcdc"
   text_inactive: "#828282"
   text_error: "#ff6464"
   text_highlight: "#ffcf6e"
 
-  # layout: flat control buttons
   button_flat: "#363648"
   button_flat_active: "#5a5a78"
   button_flat_hovered: "#48486c"
   button_flat_light: "#404060"
 
-  # layout: background fills
   background_default: "#242424"
   background_dark: "#1c1c1c"
   background_light: "#2c2c2c"
   background_menu: "#323232"
   background_invalid: "#c0202064"
 
-  # layout: properties table
   properties_header: "#2d3241"
   properties_row: "#1e2028"
   properties_row_alt: "#262834"
@@ -167,62 +143,50 @@ colors:
   properties_label: "#8ca0c8"
   properties_value: "#c8cddc"
 
-  # layout: path links
   path_link: "#6496ff"
   path_link_hover: "#96c8ff"
 
-  # layout: section headers
   header_library: "#96d2a0"
   header_reconstruction: "#c8a0ff"
 
-  # layout: instruction features
   feature_volume: "#64ff64"
   feature_arpeggio: "#ff9664"
   feature_pitch: "#64c8ff"
   feature_duty_cycle: "#ffc864"
 
-  # layout: caret overlay
   caret_fill: "#8888ff80"
   caret_border: "#88bbffff"
 
-  # layout: graphs and waveforms
   graph_bar: "#64c8ff"
   waveform_sample: "#64c8ff"
   waveform_reconstruction: "#ffc864"
   waveform_overlay: "#ffffff20"
   spectrum_dim: "#1c1c1c"
 
-  # layout: tracker row grouping
-  tracker_beat_row: "#ffffff0e"
-  tracker_bar_row: "#ffffff1e"
+  tracker_beat_row: "#ffffff14"
+  tracker_bar_row: "#ffffff26"
 
-  # layout: tracker cursor and playback
   pattern_highlight: "#ffffff40"
   cell_cursor: "#66bbffa0"
   cursor_row: "#ffffff18"
   playback_row: "#64dc6440"
 
-  # layout: order table
   order_label: "#2d3241"
   order_master: "#22ccff18"
   order_master_divider: "#22ccff24"
   order_column_current: "#ffffff20"
   order_column_playing: "#64dc6430"
 
-  # layout: sample column
   sample_column: "#22ccff2c"
   sample_divider: "#22ccff24"
 
-  # layout: muted channel column
   channel_muted: "#0a081210"
 
-  # layout: history detail
   history_future: "#808080ff"
   history_channel: "#88bbffff"
   history_value: "#d0d0d0ff"
   history_separator: "#707070ff"
 
-  # layout: tracker text (instrument and sample share the reference yellow)
   tracker_reference: "#e0c860ff"
   tracker_transpose: "#c0c0c0ff"
   tracker_volume: "#64dc64ff"

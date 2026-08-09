@@ -3,6 +3,9 @@ cell_cursor: .cell_cursor
 cursor_row: .cursor_row
 playback_row: .playback_row
 label: .contrast
+rows:
+  beat: .tracker_beat_row
+  bar: .tracker_bar_row
 order:
   label: .order_label
   master: .order_master

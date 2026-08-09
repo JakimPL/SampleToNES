@@ -33,6 +33,25 @@ def blend(start: ColorRGBA, end: ColorRGBA, fraction: float) -> ColorRGBA:
     return (int(channels[0]), int(channels[1]), int(channels[2]), int(channels[3]))
 
 
+def composite(base: ColorRGBA, overlay: ColorRGBA) -> ColorRGBA:
+    """Return the colour ``overlay`` makes when it is drawn over ``base``.
+
+    Each colour carries its own alpha, and the result carries the coverage the two reach
+    together, so a pair of translucent washes bound for a single layer reads as it would if
+    the layer held both. A fully transparent pair returns ``base``.
+    """
+    base_channels = np.array(base, dtype=np.float64) / MAX_CHANNEL_VALUE
+    overlay_channels = np.array(overlay, dtype=np.float64) / MAX_CHANNEL_VALUE
+    base_alpha = base_channels[3] * (1.0 - overlay_channels[3])
+    alpha = overlay_channels[3] + base_alpha
+    if alpha == 0.0:
+        return base
+
+    colors = (overlay_channels[:3] * overlay_channels[3] + base_channels[:3] * base_alpha) / alpha
+    channels = np.rint(np.append(colors, alpha) * MAX_CHANNEL_VALUE).astype(int)
+    return (int(channels[0]), int(channels[1]), int(channels[2]), int(channels[3]))
+
+
 def to_grayscale(color: ColorRGBA) -> ColorRGBA:
     """Return ``color`` desaturated to its luminance-preserving gray, keeping its alpha.
 
