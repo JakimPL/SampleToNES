@@ -127,7 +127,8 @@ click to silence, modified click to solo, the master name for the whole mix — 
 the gesture and its right-click menu to one object, so both offer the same wording and the same
 behaviour. The Playback menu's **Channels** submenu carries the same set as a check per channel, plus
 one item that returns the whole mix. Each of those items is registered as an action whether or not a
-key is bound to it, so the keybindings options can assign one and the menu lists it.
+key is bound to it, so the keybinding scheme can give it one and the menu prints what the scheme
+says (architecture principle 12).
 
 The mask is pulled per rendered row, which is principle 6 for this control: a channel drops in or
 out as the render-ahead buffer drains, with the immediacy every other live edit has. A silenced

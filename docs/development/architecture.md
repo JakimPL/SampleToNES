@@ -148,7 +148,21 @@ The query resolves the focused item to the field behind it. A `dpg.group` report
 
 **Modal suppression lives in one place.** The router holds a LIFO stack of modal handlers; `push_modal` / `pop_modal` bracket a dialog's lifetime, and the built-in `MODAL` scope routes each press to the top of the stack. Since `MODAL` outranks the panel and shortcut scopes, the scopes beneath it carry no "a dialog is open" check of their own.
 
+**One vocabulary, one declaration.** The keyboard has one key table (`utils/gui/keyboard/keys.py`), which reads a key both ways — the name a file writes and the code a press carries — and one combination type, `KeyCombination`, which parses that spelling, displays it, and answers whether a press matches it. Above them a binding is declared exactly once: `ShortcutId` names every action a key reaches together with the category that answers it, and the scheme under `sampletones_config/keybindings/` is where the combination is decided. The menu printing an accelerator, the panel acting on a press, and the dispatcher firing the callback all read that one entry, so a printed key and the handler behind it stay in step by construction.
+
+The split is that **the combination is data and the category is code**: which keys reach an action is the reader's to choose, while which scope answers them follows from where the action is handled. A scheme is validated as it loads — every `ShortcutId` is answered, every key name resolves, and one combination reaches one action within a category — and a collision is a `SystemError` at startup, beside the layout and palette failures.
+
+A preference layers over the shipped scheme. `ShortcutsConfig` holds the scheme name and the per-action overrides, both written the way a keybinding file writes them, so a preference outlives the build that stored it: `ShortcutCatalog.select` answers with the default for a scheme a build stopped shipping, and an override naming an action this build has none of, a key the table has none of, or a combination its category already gives away is reported and left out, so one stale entry costs only itself. A change reaches the running application through `ShortcutSource.on_bindings_changed` — the keyboard's analogue of the palette switch (principle 13) — and the dispatcher re-reads the keys while the menus re-print their accelerators. Each registration names the action it fires, which is what leaves a rebind that little to catch up.
+
 The router is constructed at the composition root and injected into every consumer (principle 7); its one global handler is bound in `shell.py` once the DPG context exists.
+
+### 13. A colour is a token, resolved where it is drawn
+
+A colour is written as a palette token and stays one until it reaches DearPyGui. `BaseColor` (`utils/palette/colors/`) carries what was written, and its `rgba` property answers with the palette active at the moment of the read, so whoever holds the colour follows a palette swap. Every annotation names `BaseColor` — a dataclass field, a signature, a dictionary key — and `WrittenColor` appears only on the Pydantic field that validates a YAML entry. The read happens where the value is handed to a widget, and what a consumer keeps is the token.
+
+A shade is composed by naming its form. `utils/palette/colors/` is a flat star: `base.py` declares the abstract `rgba`, and each form is a peer module beside it (`literal`, `named`, `faded`, `grayscale`, `blended`, `layered`), answering with a `BaseColor` of its own — `FadedColor(color=GrayscaleColor(color=token), fraction=0.3)`. Every form is a module-level frozen dataclass, so two identical compositions are one value and a theme cache keyed on a shade hits.
+
+What DearPyGui has already taken a copy of is registered rather than remembered by whoever set it. `PaletteBindings` (`utils/gui/palette/`) records each `(item, argument)` a palette colour reached, and `dpg_set_palette_color` / `dpg_add_palette_theme_color` are how a colour gets there. A palette change is then one switch: `PaletteSource.activate` fires the composition root's listener, which re-applies the bindings, refreshes the viewport clear colour, and repaints the sequencer for the row and cell highlights DearPyGui holds as table state. The `palette-colors` hook holds all three rules (see Enforcement).
 
 ---
 
@@ -158,15 +172,16 @@ Two mechanisms keep the codebase aligned with this document.
 
 **Import-expressible contracts are enforced by script.** `scripts/checks/import_boundary.py` (a pre-commit hook, also run via `make check-import-boundary`) encodes one rule per layer, mirroring the **Must not import** lists in the Layer Reference; the Layer Reference is the source of truth, and a divergence between it and the script is itself a defect. Where a layer may consume another layer's data contract while its implementation stays out of reach (logic and the service result types), the rule carries an explicit contract exemption. The hook audits the entire source tree on every commit (`--all`), so strengthening a rule surfaces violations in files a commit never touched. That property sets the working idiom for structural refactors: turn the stricter rule on first, and let the failing hook enumerate the remaining work.
 
-**The identifier vocabularies are enforced the same way.** Three more scripts under `scripts/checks/` run whole-tree as pre-commit hooks, each also available as a `make check-*` target:
+**The identifier vocabularies are enforced the same way.** Further scripts under `scripts/checks/` run whole-tree as pre-commit hooks, each also available as a `make check-*` target:
 
 | Hook | Script | What it holds |
 |------|--------|---------------|
 | `language-keys` | `language_keys.py` | Code and `en.yaml` against each other, in both directions: a literal key names an entry, every entry is reached by some lookup, and a lookup states values the check can read (principle 8) |
 | `tag-names` | `tag_names.py` | A tag constant's name against the tag it composes (principle 9) |
 | `unused-tags` | `unused_tags.py` | Every `TAG_*`/`SUF_*`/`PRE_*` the `tags/` package declares against the reads of it across `src/`, `tests/`, and `scripts/`, where an import alone stands at no reads |
+| `palette-colors` | `palette_colors.py` | A colour as a token up to the moment it is drawn with: an attribute assigned a resolved `rgba`, a theme colour filled outside the palette bindings, and a hex literal in the shipped configuration outside `palettes/` (principle 13) |
 
-All three read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
+They read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members; the palette check reads the shipped YAML beside it. That layer derives each package directory from its own location and reports a root it finds nothing at, so a check that sweeps nothing fails loudly where it would otherwise pass clean. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
 
 **Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. Deviations that survive review are recorded in `docs/development/bugs-and-todos.md § Architecture` until they are paid off; the ledger, not the codebase, is the memory of what is currently out of line.
 
@@ -315,6 +330,7 @@ There are two coordinator kinds:
 |---------|---------|
 | `config/` | `ConfigManager` (domain generation config), `SessionManager` (runtime session: last paths, audio device, window geometry). Presentation-free: it records load outcomes (`ConfigLoadOutcome`) as domain data for `ConfigCoordinator` to present. Must not import the visual packages, `coordinators/`, or `application.py` |
 | `categories/` | `LanguageManager`, the `Page / Panel / TextType / Widget` enum hierarchy and the element enums that name lookup keys, and the key grammar under `categories/key/` |
+| `constants/` | Application-scope facts that carry no behaviour, one module per subject — `keybindings.py` names the scheme a build ships, which both the shortcut catalog and the session config read. A fact shared beyond the application belongs to `sampletones_shared/constants/` |
 | `layout/` | Pydantic models loaded from YAML at startup; injected into coordinators and panels as `LayoutConfig` |
 | `tags/` | DPG widget tags (`TAG_*`), the fragments composing into them (`SUF_*`, `PRE_*`), and `compose_tag` |
 | `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/`, colour, threading, and `utils/file_dialogs/` — OS-native file dialogs behind a `FileDialogBackend` Protocol, with the D-Bus desktop-portal client under `utils/file_dialogs/backends/portal/`). DPG-bound helpers live in `utils/gui/` and are off-limits to the non-visual layers |
@@ -445,6 +461,7 @@ sampletones_application/
 ├── services/               ← ServiceBase + one module or subpackage per background worker
 ├── config/                 ← ConfigManager + SessionManager
 ├── categories/             ← LanguageManager + lookup enums, with the key grammar under key/
+├── constants/              ← application-scope constants, one module per subject
 ├── layout/                 ← LayoutConfig (Pydantic) + YAML loaders
 ├── tags/                   ← TAG_*, SUF_*, PRE_* identifiers and compose_tag only
 └── utils/                  ← dpg-free helpers; dpg-bound helpers under utils/gui/

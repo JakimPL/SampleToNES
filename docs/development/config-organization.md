@@ -10,10 +10,10 @@ is read; use it as the reference when adding or moving a value. It sits alongsid
 first:
 
 - **Shipped configuration** — the `sampletones_config` YAML package: layout, theme,
-  palettes, language, behavior, deployment, and calibration. *(This document.)*
+  palettes, keybindings, language, behavior, deployment, and calibration. *(This document.)*
 - **Runtime user preferences** — mutable state persisted to the user profile
-  (`sampletones_application/config`, e.g. `PlaybackConfig`, `ApplicationState`), governed
-  by that package.
+  (`sampletones_application/config`, e.g. `PlaybackConfig`, `ShortcutsConfig`,
+  `ApplicationState`), governed by that package.
 - **Project generation settings** — JSON stored beside a project
   (`sampletones_core/configs`, `config.json`), documented in
   `docs/formats/configuration.md`.
@@ -29,8 +29,8 @@ that reads them. The dependency runs one way — a consumer imports the data pac
 resolve its directory (`CONFIG_DIRECTORY`), and the package itself is pure YAML with an
 empty `__init__.py`. Each schema lives with its reader:
 
-- `sampletones_application` owns the layout, theme, palettes, language, behavior, and
-  deployment schemas.
+- `sampletones_application` owns the layout, theme, palettes, keybindings, language,
+  behavior, and deployment schemas.
 - `sampletones_core` owns the calibration schemas.
 - `sampletones_shared` owns the loader primitives (`load_yaml_model`,
   `load_yaml_model_dir`).
@@ -41,15 +41,22 @@ on their own terms.
 ### 2. The top level is organized by domain
 
 `sampletones_config` has one top-level directory per schema family and its loader:
-`application`, `behavior`, `calibration`, `lang`, `layout`, `palettes`, `theme`. Each domain
-owns its schema and its load path (see [Domains](#domains)). A new domain is a new top-level
-directory with its own schema owner and loader.
+`application`, `behavior`, `calibration`, `keybindings`, `lang`, `layout`, `palettes`,
+`theme`. Each domain owns its schema and its load path (see [Domains](#domains)). A new domain
+is a new top-level directory with its own schema owner and loader.
 
 Palettes are a domain of their own because two other domains resolve against them: a colour
 field in `layout/` and a colour entry in `theme/` both name a palette token, and the palette
 is what turns that name into a value. A directory holds one file per palette, named after the
 palette it declares, and every palette answers the same token set — an entry names one token
 and each palette must have an answer for it.
+
+Keybindings are a domain on the same shape: a scheme is a named set a preference selects by
+name, so the directory holds one file per scheme, named after the scheme it declares, and
+every scheme answers the same action set — an entry names one `ShortcutId` and each scheme
+must have a combination for it. What the directory carries is the combinations, which are a
+reader's to choose; the actions and the category each belongs to are code, since they follow
+from the scope that handles the press.
 
 ### 3. The config tree mirrors the code
 
@@ -124,6 +131,7 @@ each value sits in the tree stays in the factory.
 | Application | `application/` | `DeploymentConfig` (`sampletones_application/config/deployment/`) | `DeploymentConfig.load()`, with `SAMPLETONES_*` env overrides |
 | Behavior | `behavior/` | `BehaviorConfig` (`sampletones_application/layout/behavior.py`) | folded into `LayoutConfig.behavior` by `load_layout_config` |
 | Calibration | `calibration/` | `CorpusConfig`, `RefereeConfig` (`sampletones_core/calibration/config/`) | each model's own `.load()` |
+| Keybindings | `keybindings/` | `ShortcutScheme` (`sampletones_application/utils/gui/shortcuts/`) | `ShortcutCatalog.load()`, indexed by scheme name |
 | Language | `lang/` | `LanguageManager` (`sampletones_application/categories/`) | flat string map keyed `page.panel.text_type.element`, each key validated at load |
 | Layout | `layout/` | `LayoutConfig` (`sampletones_application/layout/config.py`) | `load_layout_config` (`layout/loader.py`) |
 | Palettes | `palettes/` | `Palette` (`sampletones_application/utils/palette/`) | `PaletteCatalog.load()`, indexed by palette name |
@@ -134,6 +142,13 @@ The palettes load first, and the source holding the active one is injected as va
 reads its value from the palette in place when it is drawn with. `PaletteCatalog` names the
 palette a preference selects and answers with the default (`studio`) for a name the build
 does not ship, so a preference outlives the build that wrote it.
+
+`ShortcutCatalog` answers the same way for a keybinding scheme, with the shipped `default` as
+its fallback. A scheme is validated as it is read: every action the application names is
+answered, every key name resolves against the key table, and one combination reaches one
+action within a category, so a scheme in use resolves any press its category owns. The user's
+own rebindings stay on the preference side (`ShortcutsConfig`) and are applied over the
+selected scheme at startup, which keeps the shipped file the statement of what a build offers.
 
 Layout and theme schemas are `frozen=True, extra="forbid"`, and loading is eager at the
 composition root (`Application.__init__` → `load_layout_config`, wrapped as `SystemError`),
@@ -163,9 +178,11 @@ Three load mechanisms serve the three grouping schemes:
   graph, and registers the results in the `ThemeRegistry` singleton keyed by `tag`. Here
   the directory grouping serves people and the `tag` and `extends` fields carry the load
   meaning; every theme extends the base `default` unless it names another parent.
-- **Name-keyed discovery** (palettes). `PaletteCatalog.load()` reads every `*.yaml` under
-  `palettes/` and indexes it by `Palette.name`, holding each file's stem against the name it
-  declares so one name traces a palette from a stored preference to the file on disk.
+- **Name-keyed discovery** (palettes, keybindings). `PaletteCatalog.load()` reads every
+  `*.yaml` under `palettes/` and indexes it by `Palette.name`, holding each file's stem
+  against the name it declares so one name traces a palette from a stored preference to the
+  file on disk. `ShortcutCatalog.load()` reads `keybindings/` the same way, keyed by
+  `ShortcutScheme.name`.
 
 Deployment and calibration each load through a bespoke `.load()` classmethod over
 the same low-level primitives in `sampletones_shared/utils/serialization.py` — the one
