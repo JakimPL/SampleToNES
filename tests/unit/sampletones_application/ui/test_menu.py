@@ -4,6 +4,7 @@ from typing import Any, Dict, FrozenSet, Iterator, List
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
@@ -91,7 +92,7 @@ def _state(
         player_paused=False,
         stop_enabled=False,
         autoplay=False,
-        follow_playback=False,
+        follow_mode=FollowMode.OFF,
         loop_song=False,
         channels=SequencerChannelsViewModel(muted=muted),
         fullscreen=False,

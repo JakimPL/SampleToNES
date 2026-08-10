@@ -12,6 +12,7 @@ from sampletones_application.config.deployment.deployment import (
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
+from sampletones_application.constants.playback import DEFAULT_FOLLOW_MODE, FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
@@ -671,7 +672,7 @@ class Application:
             player_paused=False,
             stop_enabled=False,
             autoplay=self.session_manager.autoplay,
-            follow_playback=self.session_manager.follow_playback,
+            follow_mode=self.session_manager.follow_mode,
             loop_song=self.session_manager.loop_song,
             channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
@@ -709,7 +710,7 @@ class Application:
             player_paused=self._playback_router.is_paused,
             stop_enabled=self._playback_router.is_stop_enabled,
             autoplay=self.session_manager.autoplay,
-            follow_playback=self.session_manager.follow_playback,
+            follow_mode=self.session_manager.follow_mode,
             loop_song=self.session_manager.loop_song,
             channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
@@ -739,14 +740,24 @@ class Application:
         self.session_manager.toggle_autoplay()
         self._update_menu()
 
+    def _set_follow_mode(self, mode: FollowMode) -> None:
+        """Chooses how far the sequencer view chases the playhead, and marks the choice in the menu.
+
+        The tab coordinator carries this to the player, which holds the setting and emits a view as
+        it changes, so the grid's following settles in the same step as the menu's mark.
+        """
+        self._sequencer_tab.set_follow_mode(mode)
+        self._update_menu()
+
     def _toggle_follow_playback(
         self,
         _sender: Optional[Sender] = None,
         _app_data: Optional[Any] = None,
         _user_data: Optional[Any] = None,
     ) -> None:
-        self.session_manager.set_follow_playback(not self.session_manager.follow_playback)
-        self._update_menu()
+        """Turns following on at its fullest reach, or off, the one gesture the menu carries."""
+        following = self.session_manager.follow_mode.follows_pattern
+        self._set_follow_mode(FollowMode.OFF if following else DEFAULT_FOLLOW_MODE)
 
     def _toggle_loop_song(
         self,

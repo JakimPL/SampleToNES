@@ -7,6 +7,7 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
@@ -232,13 +233,13 @@ class TestRequestNesFrequencyChange:
         nes_frequency_coordinator._sequencer_tracker_logic.push_settings.assert_called_once()
 
 
-def _player_view(*, follow_playback: bool) -> SongPlayerViewModel:
+def _player_view(*, follow_mode: FollowMode) -> SongPlayerViewModel:
     """A stopped transport view, which is what the coordinator reads the follow behaviour from."""
     return SongPlayerViewModel(
         is_loaded=True,
         is_playing=False,
         is_paused=False,
-        follow_playback=follow_playback,
+        follow_mode=follow_mode,
         order_position=0,
         row_index=0,
         error=None,
@@ -256,37 +257,28 @@ def playback_coordinator() -> SequencerTabCoordinator:
     return instance
 
 
-class TestFollowPlayback:
-    def test_position_change_follows_playhead_when_enabled(
+class TestFollowMode:
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_sounding_frame_is_shown_while_the_mode_follows_patterns(
         self,
         playback_coordinator: SequencerTabCoordinator,
+        mode: FollowMode,
     ) -> None:
-        playback_coordinator._song_player_logic.follow_playback = True
+        """The marks move on every mode; only a following mode moves the frame that is edited."""
+        playback_coordinator._song_player_logic.follow_mode = mode
 
         playback_coordinator._on_player_position_changed(2, 5)
 
         playback_coordinator._sequencer_tracker_panel.set_playing_row.assert_called_once_with(5)
         playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(2)
-        playback_coordinator._sequencer_tracker_logic.select_frame.assert_called_once_with(2)
-
-    def test_position_change_does_not_move_edited_frame_when_disabled(
-        self,
-        playback_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        playback_coordinator._song_player_logic.follow_playback = False
-
-        playback_coordinator._on_player_position_changed(2, 5)
-
-        playback_coordinator._sequencer_tracker_panel.set_playing_row.assert_called_once_with(5)
-        playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(2)
-        playback_coordinator._sequencer_tracker_logic.select_frame.assert_not_called()
+        assert playback_coordinator._sequencer_tracker_logic.select_frame.called is mode.follows_pattern
 
     def test_the_frame_is_selected_before_the_row_is_marked(
         self,
         playback_coordinator: SequencerTabCoordinator,
     ) -> None:
         """The mark and the scroll that reveals it land on the pattern the playhead has reached."""
-        playback_coordinator._song_player_logic.follow_playback = True
+        playback_coordinator._song_player_logic.follow_mode = FollowMode.ROWS
         recorder = MagicMock()
         recorder.attach_mock(playback_coordinator._sequencer_tracker_logic, "logic")
         recorder.attach_mock(playback_coordinator._sequencer_tracker_panel, "panel")
@@ -296,45 +288,49 @@ class TestFollowPlayback:
         names = [name for name, _, _ in recorder.mock_calls]
         assert names.index("logic.select_frame") < names.index("panel.set_playing_row")
 
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
     def test_the_view_states_whether_the_grid_follows_the_row(
         self,
         playback_coordinator: SequencerTabCoordinator,
+        mode: FollowMode,
     ) -> None:
-        playback_coordinator._on_player_view_changed(_player_view(follow_playback=True))
+        playback_coordinator._on_player_view_changed(_player_view(follow_mode=mode))
 
-        playback_coordinator._sequencer_tracker_panel.set_row_following.assert_called_once_with(True)
+        panel = playback_coordinator._sequencer_tracker_panel
+        panel.set_row_following.assert_called_once_with(mode.follows_row)
 
     def test_a_stopped_view_drops_the_marks(
         self,
         playback_coordinator: SequencerTabCoordinator,
     ) -> None:
-        playback_coordinator._on_player_view_changed(_player_view(follow_playback=False))
+        playback_coordinator._on_player_view_changed(_player_view(follow_mode=FollowMode.ROWS))
 
-        playback_coordinator._sequencer_tracker_panel.set_row_following.assert_called_once_with(False)
         playback_coordinator._sequencer_tracker_panel.set_playing_row.assert_called_once_with(None)
         playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(None)
 
-    def test_order_selection_seeks_playhead_when_following(
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_order_selection_seeks_the_playhead_while_following(
         self,
         playback_coordinator: SequencerTabCoordinator,
+        mode: FollowMode,
     ) -> None:
-        playback_coordinator._song_player_logic.follow_playback = True
+        """Choosing a frame always picks what is edited, and moves the playhead when following."""
+        playback_coordinator._song_player_logic.follow_mode = mode
 
         playback_coordinator._on_order_frame_selected(3)
 
         playback_coordinator._sequencer_tracker_logic.select_frame.assert_called_once_with(3)
-        playback_coordinator._song_player_logic.seek.assert_called_once_with(3)
+        assert playback_coordinator._song_player_logic.seek.called is mode.follows_pattern
 
-    def test_order_selection_only_edits_when_not_following(
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_a_chosen_mode_reaches_the_player(
         self,
         playback_coordinator: SequencerTabCoordinator,
+        mode: FollowMode,
     ) -> None:
-        playback_coordinator._song_player_logic.follow_playback = False
+        playback_coordinator.set_follow_mode(mode)
 
-        playback_coordinator._on_order_frame_selected(3)
-
-        playback_coordinator._sequencer_tracker_logic.select_frame.assert_called_once_with(3)
-        playback_coordinator._song_player_logic.seek.assert_not_called()
+        playback_coordinator._song_player_logic.set_follow_mode.assert_called_once_with(mode)
 
 
 class TestNoteOffDispatch:

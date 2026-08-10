@@ -7,6 +7,7 @@ from sampletones_application.config.managers.state import ApplicationStateManage
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.state.state import ApplicationState
+from sampletones_application.constants.playback import FollowMode
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 
@@ -55,8 +56,8 @@ class SessionManager:
     def toggle_autoplay(self) -> bool:
         return self._config_manager.toggle_autoplay()
 
-    def set_follow_playback(self, value: bool) -> None:
-        self._config_manager.set_follow_playback(value)
+    def set_follow_mode(self, value: FollowMode) -> None:
+        self._config_manager.set_follow_mode(value)
 
     def set_loop_song(self, value: bool) -> None:
         self._config_manager.set_loop_song(value)
@@ -226,8 +227,8 @@ class SessionManager:
         return self._config_manager.autoplay
 
     @property
-    def follow_playback(self) -> bool:
-        return self._config_manager.follow_playback
+    def follow_mode(self) -> FollowMode:
+        return self._config_manager.follow_mode
 
     @property
     def loop_song(self) -> bool:

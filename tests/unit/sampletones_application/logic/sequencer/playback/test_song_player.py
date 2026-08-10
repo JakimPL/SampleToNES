@@ -1,6 +1,9 @@
 from typing import List, Tuple
 from unittest.mock import MagicMock
 
+import pytest
+
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.services.song_player.result import (
     SongPlaybackError,
@@ -22,7 +25,7 @@ def _make_logic(*, is_open: bool = True) -> SongPlayerLogic:
     return SongPlayerLogic(
         MagicMock(),
         controller,
-        MagicMock(follow_playback=True),
+        MagicMock(follow_mode=FollowMode.ROWS),
         service=MagicMock(is_playing=False, is_paused=False),
     )
 
@@ -424,34 +427,37 @@ class TestSeekSuppression:
         assert received == [(2, 7)]
 
 
-class TestFollowPlayback:
-    def test_follow_playback_reads_session(self) -> None:
+class TestFollowMode:
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_mode_is_read_from_the_session(self, mode: FollowMode) -> None:
         logic = _make_logic(is_open=True)
-        logic._session_manager.follow_playback = False
+        logic._session_manager.follow_mode = mode
 
-        assert logic.follow_playback is False
+        assert logic.follow_mode is mode
 
-    def test_set_follow_playback_writes_session(self) -> None:
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_choosing_a_mode_writes_the_session(self, mode: FollowMode) -> None:
         logic = _make_logic(is_open=True)
         _capture_views(logic)
 
-        logic.set_follow_playback(False)
+        logic.set_follow_mode(mode)
 
-        logic._session_manager.set_follow_playback.assert_called_once_with(False)
+        logic._session_manager.set_follow_mode.assert_called_once_with(mode)
 
-    def test_set_follow_playback_emits_view(self) -> None:
+    def test_choosing_a_mode_emits_a_view(self) -> None:
         logic = _make_logic(is_open=True)
         views = _capture_views(logic)
 
-        logic.set_follow_playback(True)
+        logic.set_follow_mode(FollowMode.PATTERNS)
 
         assert len(views) == 1
 
-    def test_emitted_view_carries_follow_playback(self) -> None:
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_emitted_view_carries_the_mode(self, mode: FollowMode) -> None:
         logic = _make_logic(is_open=True)
-        logic._session_manager.follow_playback = True
+        logic._session_manager.follow_mode = mode
         views = _capture_views(logic)
 
         logic.play()
 
-        assert views[-1].follow_playback is True
+        assert views[-1].follow_mode is mode

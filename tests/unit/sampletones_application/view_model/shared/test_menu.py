@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from tests.suite.base import BaseTestSuite
@@ -76,7 +77,7 @@ class TestUndoRedoEnablement(BaseTestSuite):
             player_paused=False,
             stop_enabled=False,
             autoplay=False,
-            follow_playback=False,
+            follow_mode=FollowMode.OFF,
             loop_song=False,
             channels=EVERY_CHANNEL_AUDIBLE,
             fullscreen=False,
@@ -112,7 +113,7 @@ class TestSaveEnablementIndependentOfLoaded:
             player_paused=False,
             stop_enabled=False,
             autoplay=False,
-            follow_playback=False,
+            follow_mode=FollowMode.OFF,
             loop_song=False,
             channels=EVERY_CHANNEL_AUDIBLE,
             fullscreen=False,

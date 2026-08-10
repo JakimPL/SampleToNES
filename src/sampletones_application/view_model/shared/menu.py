@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
 
 
@@ -21,7 +22,7 @@ class MenuBarViewModel(BaseModel, frozen=True):
     player_paused: bool
     stop_enabled: bool
     autoplay: bool
-    follow_playback: bool
+    follow_mode: FollowMode
     loop_song: bool
     fullscreen: bool
     advanced_settings: bool

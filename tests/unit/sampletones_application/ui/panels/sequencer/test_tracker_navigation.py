@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import List
+from typing import List, Tuple
 
 import pytest
 
@@ -13,6 +13,7 @@ from sampletones_application.utils.gui.keyboard.combination import KeyCombinatio
 from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_shared.types.callback import VoidCallback
 from tests.suite.shortcuts import shipped_source
 
 PAGE_SIZE = 16
@@ -182,6 +183,68 @@ class TestPlayheadFollowing:
         panel._scroll_row_to_band_top(4)
 
         assert scrolls == []
+
+
+class TestPlayheadPainting:
+    """The mark is drawn on the frame the grid's scroll lands on, so the two arrive as one."""
+
+    def test_the_mark_waits_for_the_frame_its_scroll_lands_on(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _panel()
+        painted, paint = _deferred_painting(monkeypatch, panel)
+
+        panel.set_playing_row(12)
+
+        assert panel._painted_row is None
+        assert painted == []
+
+        paint()
+
+        assert panel._painted_row == 12
+        assert painted == [12]
+
+    def test_the_row_the_playhead_left_is_cleared(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _panel()
+        painted, paint = _deferred_painting(monkeypatch, panel)
+
+        panel.set_playing_row(12)
+        paint()
+        panel.set_playing_row(13)
+        paint()
+
+        assert painted == [12, 12, 13]
+
+    def test_a_stopped_playhead_clears_the_row_it_stood_on(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _panel()
+        painted, paint = _deferred_painting(monkeypatch, panel)
+
+        panel.set_playing_row(12)
+        paint()
+        panel.set_playing_row(None)
+        paint()
+
+        assert panel._painted_row is None
+        assert painted == [12, 12]
+
+
+def _deferred_painting(
+    monkeypatch: pytest.MonkeyPatch,
+    panel: GUISequencerTrackerPanel,
+) -> Tuple[List[int], VoidCallback]:
+    """The rows a panel paints, and the call that runs the frame's painting on demand."""
+    painted: List[int] = []
+    held: List[VoidCallback] = []
+
+    def hold(callback: VoidCallback, frame_count: int = 1) -> None:
+        assert frame_count == tracker.PLAYHEAD_PAINT_FRAMES
+        held.append(callback)
+
+    monkeypatch.setattr(tracker.FrameCallbackManager, "set_frame_callback", hold)
+    monkeypatch.setattr(panel, "_paint_row", painted.append)
+
+    def paint() -> None:
+        held.pop()()
+
+    return painted, paint
 
 
 class TestCursorPlacement:

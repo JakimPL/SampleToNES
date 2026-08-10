@@ -545,7 +545,7 @@ class MenuBar:
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
         dpg_set_value(
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
-            state.follow_playback,
+            state.follow_mode.follows_pattern,
         )
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG, state.loop_song)
         self._update_channels(state)

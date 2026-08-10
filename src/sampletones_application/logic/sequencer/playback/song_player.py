@@ -1,6 +1,7 @@
 from typing import Callable, Optional, Protocol
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.services.song_player.result import (
@@ -159,11 +160,11 @@ class SongPlayerLogic(CallbackMixin):
         return self._project_controller.is_open
 
     @property
-    def follow_playback(self) -> bool:
-        return self._session_manager.follow_playback
+    def follow_mode(self) -> FollowMode:
+        return self._session_manager.follow_mode
 
-    def set_follow_playback(self, value: bool) -> None:
-        self._session_manager.set_follow_playback(value)
+    def set_follow_mode(self, value: FollowMode) -> None:
+        self._session_manager.set_follow_mode(value)
         self._emit_view()
 
     def refresh_view(self) -> None:
@@ -226,7 +227,7 @@ class SongPlayerLogic(CallbackMixin):
             is_loaded=self.is_loaded(),
             is_playing=is_playing,
             is_paused=is_paused,
-            follow_playback=self.follow_playback,
+            follow_mode=self.follow_mode,
             order_position=self._position.order_position,
             row_index=self._position.row_index,
             error=self._last_error,

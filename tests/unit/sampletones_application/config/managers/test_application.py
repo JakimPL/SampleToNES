@@ -12,6 +12,7 @@ from sampletones_application.constants.keybindings import (
     DEFAULT_SCHEME_NAME,
     MACOS_SCHEME_NAME,
 )
+from sampletones_application.constants.playback import FollowMode
 from sampletones_core.data.metadata import Metadata
 
 
@@ -43,12 +44,11 @@ class TestApplicationConfigManagerPlayback:
         assert result == (not initial)
         assert manager.autoplay == (not initial)
 
-    def test_set_follow_playback_round_trips(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_set_follow_mode_round_trips(self, tmp_path: Path, mode: FollowMode) -> None:
         manager = ApplicationConfigManager(tmp_path / "config.yaml")
-        manager.set_follow_playback(False)
-        assert manager.follow_playback is False
-        manager.set_follow_playback(True)
-        assert manager.follow_playback is True
+        manager.set_follow_mode(mode)
+        assert manager.follow_mode is mode
 
     def test_set_loop_song_round_trips(self, tmp_path: Path) -> None:
         manager = ApplicationConfigManager(tmp_path / "config.yaml")

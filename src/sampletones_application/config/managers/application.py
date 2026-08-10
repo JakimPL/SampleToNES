@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, Optional, Set
 
 from sampletones_application.config.session.application.config import ApplicationConfig
+from sampletones_application.constants.playback import FollowMode
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 from sampletones_core.data.metadata import Metadata
@@ -132,11 +133,11 @@ class ApplicationConfigManager:
         return self.config.playback.autoplay
 
     @property
-    def follow_playback(self) -> bool:
-        return self.config.playback.follow_playback
+    def follow_mode(self) -> FollowMode:
+        return self.config.playback.follow_mode
 
-    def set_follow_playback(self, value: bool) -> None:
-        self.config.playback.follow_playback = value
+    def set_follow_mode(self, value: FollowMode) -> None:
+        self.config.playback.follow_mode = value
 
     @property
     def loop_song(self) -> bool:

@@ -8,6 +8,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextT
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -372,6 +373,14 @@ class SequencerTabCoordinator:
     def unmute_all_channels(self) -> None:
         """Returns every channel to audible, the menu's whole-mix gesture."""
         self._sequencer_channels_logic.unmute_all()
+
+    def set_follow_mode(self, mode: FollowMode) -> None:
+        """Chooses how far the view chases the playhead, the menu's and keyboard's gesture.
+
+        The player holds the setting and emits a view as it changes, which is what settles the
+        grid's following and the menu's mark together.
+        """
+        self._song_player_logic.set_follow_mode(mode)
 
     def _wire_order_callbacks(self) -> None:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
@@ -741,7 +750,7 @@ class SequencerTabCoordinator:
         reading the follow behaviour here keeps the grid in step both while a song sounds and the
         moment the reader picks another mode.
         """
-        self._sequencer_tracker_panel.set_row_following(view_model.follow_playback)
+        self._sequencer_tracker_panel.set_row_following(view_model.follow_mode.follows_row)
         if not view_model.is_playing and not view_model.is_paused:
             self._playing_order = None
             self._sequencer_tracker_panel.set_playing_row(None)
@@ -758,7 +767,7 @@ class SequencerTabCoordinator:
         land on the pattern the playhead has reached.
         """
         self._playing_order = order_position
-        if self._song_player_logic.follow_playback:
+        if self._song_player_logic.follow_mode.follows_pattern:
             self._sequencer_tracker_logic.select_frame(order_position)
 
         self._sequencer_tracker_panel.set_playing_row(row_index)
@@ -767,12 +776,12 @@ class SequencerTabCoordinator:
     def _on_order_frame_selected(self, frame_index: int) -> None:
         """Selects an order frame in the tracker, and moves the playhead too when following.
 
-        With follow-playback on, choosing another order during playback relocates the playhead to
-        it (the seek no-ops when stopped); with it off, the selection only changes which pattern is
-        edited, leaving playback where it is.
+        While the view follows the playhead, choosing another order during playback relocates the
+        playhead to it (the seek no-ops when stopped); otherwise the selection only changes which
+        pattern is edited, leaving playback where it is.
         """
         self._sequencer_tracker_logic.select_frame(frame_index)
-        if self._song_player_logic.follow_playback:
+        if self._song_player_logic.follow_mode.follows_pattern:
             self._song_player_logic.seek(frame_index)
 
     def _on_preview_error(self, exception: Exception) -> None:
