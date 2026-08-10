@@ -1,5 +1,7 @@
 from typing import Final
 
+from sampletones_shared.constants.nes import NTSC_FREQUENCY
+
 # Project archive layout
 PROJECT_DOCUMENT_NAME: Final[str] = "project.json"
 RECONSTRUCTIONS_DIRECTORY: Final[str] = "reconstructions"
@@ -19,12 +21,12 @@ MAX_PROJECT_COMMENT_LENGTH: Final[int] = 65536
 # Tick formula calibration
 # speed == ticks_per_row at these reference values
 REFERENCE_TEMPO: Final[int] = 150
-REFERENCE_NES_FREQUENCY: Final[int] = 60
+REFERENCE_NES_FREQUENCY: Final[int] = NTSC_FREQUENCY
 
 # Song timing
 DEFAULT_TEMPO: Final[int] = 150
-MIN_TEMPO: Final[int] = 1
-MAX_TEMPO: Final[int] = 300
+MIN_TEMPO: Final[int] = 32
+MAX_TEMPO: Final[int] = 255
 
 DEFAULT_SPEED: Final[int] = 6
 MIN_SPEED: Final[int] = 1

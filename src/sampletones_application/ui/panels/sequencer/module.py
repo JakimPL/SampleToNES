@@ -26,10 +26,14 @@ from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
-from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
+from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.constants.project import (
     MAX_ROWS_PER_PATTERN,
+    MAX_SPEED,
+    MAX_TEMPO,
     MIN_ROWS_PER_PATTERN,
+    MIN_SPEED,
+    MIN_TEMPO,
 )
 from sampletones_shared.types.application import Sender
 
@@ -113,8 +117,8 @@ class GUISequencerModulePanel(GUIPanel):
                 dpg.add_input_int(
                     default_value=settings.tempo,
                     tag=TAG_SEQUENCER_MODULE_INPUT_TEMPO,
-                    min_value=self._layout.tempo.min,
-                    max_value=self._layout.tempo.max,
+                    min_value=MIN_TEMPO,
+                    max_value=MAX_TEMPO,
                     min_clamped=True,
                     max_clamped=True,
                     width=self._input_width,
@@ -127,8 +131,8 @@ class GUISequencerModulePanel(GUIPanel):
                 dpg.add_input_int(
                     default_value=settings.speed,
                     tag=TAG_SEQUENCER_MODULE_INPUT_SPEED,
-                    min_value=self._layout.speed.min,
-                    max_value=self._layout.speed.max,
+                    min_value=MIN_SPEED,
+                    max_value=MAX_SPEED,
                     min_clamped=True,
                     max_clamped=True,
                     width=self._input_width,

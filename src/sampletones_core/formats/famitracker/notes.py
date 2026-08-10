@@ -4,8 +4,6 @@ from sampletones_core.constants.general import NUM_PERIODS
 from sampletones_core.formats.famitracker.model.pattern import NoteCell
 from sampletones_core.formats.famitracker.specification.parameters import (
     ENGINE_SPEED_MACHINE_DEFAULT,
-    NTSC_FREQUENCY,
-    PAL_FREQUENCY,
     Machine,
 )
 from sampletones_core.formats.famitracker.specification.patterns import (
@@ -14,6 +12,7 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     NOTE_RANGE,
     PITCH_OCTAVE_OFFSET,
 )
+from sampletones_shared.constants.nes import NTSC_FREQUENCY, PAL_FREQUENCY
 
 
 def pitch_to_note_cell(pitch: int) -> NoteCell:

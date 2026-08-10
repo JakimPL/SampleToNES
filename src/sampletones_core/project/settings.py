@@ -5,7 +5,7 @@ from sampletones_core.constants.audio import (
     MAX_SAMPLE_RATE,
     MIN_SAMPLE_RATE,
 )
-from sampletones_core.constants.general import (
+from sampletones_shared.constants.nes import (
     DEFAULT_NES_FREQUENCY,
     MAX_NES_FREQUENCY,
     MIN_NES_FREQUENCY,

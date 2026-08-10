@@ -14,6 +14,7 @@ from sampletones_core.formats.famitracker.specification.instruments import (
     MAX_INSTRUMENTS,
 )
 from sampletones_core.formats.famitracker.specification.parameters import (
+    ENGINE_SPEED_MACHINE_DEFAULT,
     EXPANSION_NONE,
     Machine,
 )
@@ -34,6 +35,7 @@ from .conftest import RECONSTRUCTION_LENGTH, ProjectFixture, build_reconstructio
 
 LEAD_PITCH = 60
 OCTAVE = 12
+CUSTOM_NES_FREQUENCY = 30
 
 
 class TestBuildInstrumentTable:
@@ -103,10 +105,17 @@ class TestProjectToModuleParameters:
         assert module.parameters.channel_count == CHANNEL_COUNT_2A03
 
     def test_machine_and_engine_speed_from_default_frequency(self, project_fixture: ProjectFixture) -> None:
-        # default nes_frequency is 30 -> NTSC with an explicit engine-speed override
         module = project_to_module(project_fixture.project)
         assert module.parameters.machine == Machine.NTSC
-        assert module.parameters.engine_speed == project_fixture.project.settings.nes_frequency
+        assert module.parameters.engine_speed == ENGINE_SPEED_MACHINE_DEFAULT
+
+    def test_machine_and_engine_speed_from_a_custom_frequency(self, project_fixture: ProjectFixture) -> None:
+        project_fixture.project.settings.nes_frequency = CUSTOM_NES_FREQUENCY
+
+        module = project_to_module(project_fixture.project)
+
+        assert module.parameters.machine == Machine.NTSC
+        assert module.parameters.engine_speed == CUSTOM_NES_FREQUENCY
 
     def test_information_and_comment_carry_through(self, project_fixture: ProjectFixture) -> None:
         module = project_to_module(project_fixture.project)

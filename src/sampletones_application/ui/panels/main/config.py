@@ -27,7 +27,7 @@ from sampletones_application.view_model.main.updates import (
     LibrarySettingsUpdate,
 )
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
-from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
+from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.types.application import Sender
 
 

@@ -21,6 +21,7 @@ from sampletones_core.formats.famitracker.specification.file import (
 )
 from sampletones_core.formats.famitracker.specification.parameters import (
     DEFAULT_SPEED_SPLIT_POINT,
+    ENGINE_SPEED_MACHINE_DEFAULT,
     EXPANSION_NONE,
     Machine,
 )
@@ -85,7 +86,7 @@ class TestParamsBlock:
     def test_machine_and_engine_speed(self, project_fixture: ProjectFixture) -> None:
         params = _parsed(project_fixture).params
         assert params.machine == int(Machine.NTSC)
-        assert params.engine_speed == project_fixture.project.settings.nes_frequency
+        assert params.engine_speed == ENGINE_SPEED_MACHINE_DEFAULT
 
     def test_speed_split_point(self, project_fixture: ProjectFixture) -> None:
         assert _parsed(project_fixture).params.speed_split_point == DEFAULT_SPEED_SPLIT_POINT

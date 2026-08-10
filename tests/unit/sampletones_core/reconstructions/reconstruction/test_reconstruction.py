@@ -14,6 +14,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.application import (
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
+from sampletones_shared.constants.nes import DEFAULT_NES_FREQUENCY
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -28,8 +29,8 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import DIRECTORY_READ_ERRORS
 
-_RETUNED_FREQUENCY: Final[int] = 60
-_FASTER_FREQUENCY: Final[int] = 120
+_RETUNED_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY // 2
+_FASTER_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY * 2
 
 _AUDIO_LENGTH: Final[int] = 64
 _BASE_PITCH: Final[int] = 60

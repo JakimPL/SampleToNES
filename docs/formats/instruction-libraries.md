@@ -45,13 +45,13 @@ Libraries are stored as `.ins` files in the documents folder, with the
 configuration embedded in the file name:
 
 ```
-sr_44100_nf_30_ws_13579_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
+sr_44100_nf_60_ws_13579_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
 ```
 
 | Fragment | Meaning |
 | --- | --- |
 | `sr_44100` | sample rate 44100 Hz |
-| `nf_30` | NES frequency 30 Hz |
+| `nf_60` | NES frequency 60 Hz |
 | `ws_13579` | FFT window size (samples) |
 | `tg_0` | transformation gamma 0 |
 | `sm_cqt` | spectrum method (`fft` / `logfft` / `cqt`) |

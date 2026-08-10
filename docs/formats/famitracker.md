@@ -194,7 +194,7 @@ checklist.
 | Note range | C-0..B-7 (pitch 24–119) | `initial_pitch` 33–119 + `transpose` −24..+36 can exceed it | clamps to the nearest playable note (fidelity loss at the extremes) |
 | Title / author | 32 bytes each | 64 characters | truncates to 32 bytes |
 | Comment | free text (COMMENTS block) | 65536 characters | carried in full |
-| Tempo / speed | engine-dependent (split at row `speed_split_point`) | tempo 1–300, speed 1–31 | written verbatim from settings |
+| Tempo / speed | engine-dependent (split at row `speed_split_point`) | tempo 32–255, speed 1–31 | written verbatim from settings |
 | DPCM samples | 64 | not modelled | always empty by design |
 
 The exporter also reserves a per-channel empty pattern index (`max used index + 1`)

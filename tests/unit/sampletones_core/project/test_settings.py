@@ -3,11 +3,11 @@ from dataclasses import dataclass
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.constants.general import (
+from sampletones_core.project.settings import ProjectSettings
+from sampletones_shared.constants.nes import (
     MAX_NES_FREQUENCY,
     MIN_NES_FREQUENCY,
 )
-from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.constants.project import (
     DEFAULT_FIRST_HIGHLIGHT,
     DEFAULT_SECOND_HIGHLIGHT,

@@ -1,11 +1,5 @@
 from typing import Final, Tuple
 
-# NES limits
-
-DEFAULT_NES_FREQUENCY: Final[int] = 30
-MIN_NES_FREQUENCY: Final[int] = 15
-MAX_NES_FREQUENCY: Final[int] = 300
-
 # Pitches and frequencies
 
 APU_CLOCK: Final[float] = 1789773.0
