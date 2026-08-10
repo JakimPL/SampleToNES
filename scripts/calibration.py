@@ -81,7 +81,10 @@ def main() -> None:
     output = arguments.output or DEFAULT_OUTPUT_ROOT / datetime.now(UTC).strftime("run-%Y%m%d-%H%M%S")
     output.mkdir(parents=True, exist_ok=True)
 
-    methods = [method.strip() for method in arguments.methods.split(",") if method.strip()]
+    methods = [SpectrumMethod(name.strip()) for name in arguments.methods.split(",") if name.strip()]
+    if not methods:
+        parser.error("--methods requires at least one spectrum method")
+
     exponents = [float(value) for value in arguments.perceptual_exponents.split(",") if value.strip()]
     temporal_weights = [float(value) for value in arguments.temporal_weights.split(",") if value.strip()]
 

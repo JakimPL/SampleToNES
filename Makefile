@@ -70,6 +70,7 @@ help:
 	@echo $(Q)  make release     - Compile standalone executable with the release deployment config$(Q)
 	@echo $(Q)  make test        - Run unit tests with coverage$(Q)
 	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
+	@echo $(Q)  make calibration - Score the reconstruction corpus; the report lands in Documents/SampleToNES/calibration$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run linting (pylint, mypy)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -124,7 +125,7 @@ check-palette-colors:
 	uv run scripts/checks/palette_colors.py
 
 calibration:
-	uv run scripts/calibration.py --all
+	uv run scripts/calibration.py
 
 lint:
 	$(call script,dev/lint)
