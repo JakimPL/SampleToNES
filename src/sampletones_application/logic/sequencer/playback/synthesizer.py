@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+from itertools import accumulate
 from typing import Callable, Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
@@ -27,7 +28,7 @@ from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
-from sampletones_core.timing import Groove, Metre, RowRate, calculate_groove
+from sampletones_core.timing import Groove, Metre, RowRate, TickClock, calculate_groove
 
 from .protocol import ChannelGeneratorProtocol
 
@@ -79,6 +80,48 @@ class _SongTiming:
         )
 
 
+@dataclass(frozen=True)
+class _RowFrames:
+    """Where each of a row's ticks starts and ends within the row's audio.
+
+    A tick clock gives consecutive ticks whole sample counts that sum to their exact span, so the
+    lengths within one row vary where the sample rate does not divide the tick rate. Resolving the
+    boundaries once per row is what lets every channel write into the same offsets.
+
+    Attributes:
+        lengths: The samples each of the row's ticks spans, in order.
+        bounds: Each tick's start offset, ending with the row's total length.
+    """
+
+    lengths: Tuple[int, ...]
+    bounds: Tuple[int, ...]
+
+    @classmethod
+    def from_clock(
+        cls,
+        clock: TickClock,
+        *,
+        elapsed_ticks: int,
+        ticks: int,
+    ) -> _RowFrames:
+        """Resolves the row starting at ``elapsed_ticks`` and spanning ``ticks`` ticks."""
+        lengths = tuple(clock.frame_length(elapsed_ticks + tick) for tick in range(ticks))
+        return cls(
+            lengths=lengths,
+            bounds=tuple(accumulate(lengths, initial=0)),
+        )
+
+    @property
+    def total(self) -> int:
+        """The samples the whole row spans."""
+        return self.bounds[-1]
+
+    @property
+    def longest(self) -> int:
+        """The samples the row's longest tick spans."""
+        return max(self.lengths, default=0)
+
+
 def _silence(samples: int) -> np.ndarray:
     return np.zeros(samples, dtype=np.float32)
 
@@ -114,6 +157,10 @@ class RowSynthesizer:
     row a pattern's tenth row plays for is the row an exported module plays it for: both index
     the same groove from the pattern's first row.
 
+    Each of those ticks spans the samples the :class:`~sampletones_core.timing.clock.TickClock`
+    gives its position in the run, so a tick lasts ``1 / nes_frequency`` seconds at every sample
+    rate and the groove's tempo is the tempo heard.
+
     Generators are constructed once from ``config`` and carry timer state across
     rows for phase continuity within a sustained note. Triggering a new note
     calls ``generator.reset()`` for a clean phase start.
@@ -138,6 +185,8 @@ class RowSynthesizer:
         self._position = SongPosition()
         self._timing: _SongTiming = _SongTiming.from_project(project_controller.project)
         self._groove: Groove = self._timing.groove()
+        self._tick_clock: TickClock = self._clock_for(config.library.nes_frequency)
+        self._elapsed_ticks: int = 0
         self._channel_states: Dict[GeneratorName, _ChannelState] = {
             generator_name: _ChannelState(
                 generator=GENERATOR_CLASSES[generator_name](
@@ -166,6 +215,7 @@ class RowSynthesizer:
         self._position.row_index = row_index
 
     def reset(self) -> None:
+        self._elapsed_ticks = 0
         for state in self._channel_states.values():
             state.sample_id = None
             state.tick_index = 0
@@ -182,17 +232,26 @@ class RowSynthesizer:
         to the frequency). Pitch is derived from the APU clock, not this rate, so only
         the per-tick frame length changes; the generators' phase continuity resets,
         which is acceptable for an occasional settings edit.
+
+        The tick clock follows the same value, since it states how long one of those ticks lasts.
         """
         if nes_frequency == self._nes_frequency:
             return
 
         self._nes_frequency = nes_frequency
+        self._tick_clock = self._clock_for(nes_frequency)
         config = self._playback_config(nes_frequency)
         for generator_name, state in self._channel_states.items():
             state.generator = GENERATOR_CLASSES[generator_name](
                 config,
                 generator_name.value,
             )
+
+    def _clock_for(self, nes_frequency: int) -> TickClock:
+        return TickClock.from_parameters(
+            sample_rate=self._config.library.sample_rate,
+            nes_frequency=nes_frequency,
+        )
 
     def _playback_config(self, nes_frequency: int) -> Config:
         library = self._config.library.model_copy(update={"nes_frequency": nes_frequency})
@@ -206,22 +265,27 @@ class RowSynthesizer:
         self._ensure_generators(settings.nes_frequency)
         self._ensure_groove(project)
 
-        frame_length = round(self._config.library.sample_rate / settings.nes_frequency)
-        ticks_per_row = self._groove.ticks[self._position.row_index]
-        chunk_length = frame_length * ticks_per_row
+        frames = _RowFrames.from_clock(
+            self._tick_clock,
+            elapsed_ticks=self._elapsed_ticks,
+            ticks=self._groove.ticks[self._position.row_index],
+        )
 
         position_before = replace(self._position)
-        if self.is_finished:
-            return np.zeros(chunk_length, dtype=np.float32), position_before
-
-        mixed = self._mix_channels(
-            project,
-            song,
-            frame_length,
-            ticks_per_row,
-            chunk_length,
+        finished = self.is_finished
+        mixed = (
+            _silence(frames.total)
+            if finished
+            else self._mix_channels(
+                project,
+                song,
+                frames,
+            )
         )
-        self._advance_position(song)
+
+        self._elapsed_ticks += len(frames.lengths)
+        if not finished:
+            self._advance_position(song)
 
         return mixed, position_before
 
@@ -244,19 +308,15 @@ class RowSynthesizer:
         self,
         project: Project,
         song: Song,
-        frame_length: int,
-        ticks_per_row: int,
-        chunk_length: int,
+        frames: _RowFrames,
     ) -> np.ndarray:
-        mixed = _silence(chunk_length)
+        mixed = _silence(frames.total)
         for generator_name in GeneratorName.items():
             channel_audio = self._render_channel(
                 generator_name,
                 project,
                 song,
-                frame_length,
-                ticks_per_row,
-                chunk_length,
+                frames,
             )
             mixed += channel_audio
 
@@ -267,9 +327,7 @@ class RowSynthesizer:
         generator_name: GeneratorName,
         project: Project,
         song: Song,
-        frame_length: int,
-        ticks_per_row: int,
-        chunk_length: int,
+        frames: _RowFrames,
     ) -> np.ndarray:
         state = self._channel_states[generator_name]
 
@@ -279,16 +337,14 @@ class RowSynthesizer:
 
         sample_id = state.sample_id
         if sample_id is None or generator_name not in self._active_channels():
-            return _silence(chunk_length)
+            return _silence(frames.total)
 
         return self._synthesize_ticks(
             state,
             sample_id,
             project,
             generator_name,
-            frame_length,
-            ticks_per_row,
-            chunk_length,
+            frames,
         )
 
     def _resolve_row(self, generator_name: GeneratorName, song: Song) -> Optional[Row]:
@@ -329,29 +385,28 @@ class RowSynthesizer:
         sample_id: str,
         project: Project,
         generator_name: GeneratorName,
-        frame_length: int,
-        ticks_per_row: int,
-        chunk_length: int,
+        frames: _RowFrames,
     ) -> np.ndarray:
         sample = project.sample(sample_id)
         if sample is None:
-            return _silence(chunk_length)
+            return _silence(frames.total)
 
         instructions = sample.reconstruction.instructions.get(generator_name)
         if not instructions:
-            return _silence(chunk_length)
+            return _silence(frames.total)
 
-        output = _silence(chunk_length)
-        silence_frame = _silence(frame_length)
+        output = _silence(frames.total)
+        silence_frame = _silence(frames.longest)
 
-        for tick in range(ticks_per_row):
+        for tick, frame_length in enumerate(frames.lengths):
             frame = self._synthesize_tick(
                 state,
                 instructions,
-                silence_frame,
+                silence_frame[:frame_length],
                 sample.loop,
+                frame_length,
             )
-            output[tick * frame_length : (tick + 1) * frame_length] = frame
+            output[frames.bounds[tick] : frames.bounds[tick + 1]] = frame
             state.tick_index += 1
 
         return output
@@ -362,6 +417,7 @@ class RowSynthesizer:
         instructions: List[InstructionUnion],
         silence_frame: np.ndarray,
         loop: bool,
+        frame_length: int,
     ) -> np.ndarray:
         if loop:
             instruction = instructions[state.tick_index % len(instructions)]
@@ -370,6 +426,7 @@ class RowSynthesizer:
         else:
             return silence_frame
 
+        state.generator.frame_length = frame_length
         return state.generator(
             _apply_modifiers(
                 instruction,
