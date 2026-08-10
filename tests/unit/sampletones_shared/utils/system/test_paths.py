@@ -14,6 +14,7 @@ from sampletones_shared.utils.system.paths import (
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
     open_path_in_explorer,
+    replace_suffix,
     shorten_filename,
     shorten_path,
     to_path,
@@ -261,6 +262,67 @@ class TestEnsureSuffix(BaseTestSuite):
         result = ensure_suffix(Path(test_case.input_path), test_case.suffix)
 
         assert isinstance(result, Path)
+        assert result == Path(test_case.expected)
+
+
+class TestReplaceSuffix(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        input_path: str
+        previous: str
+        suffix: str
+        expected: str
+
+    test_cases = (
+        TestCase(
+            input_path="song.wav",
+            previous=".wav",
+            suffix=".mp3",
+            expected="song.mp3",
+            label="replaces_the_previous_extension",
+        ),
+        TestCase(
+            input_path="song.WAV",
+            previous=".wav",
+            suffix=".mp3",
+            expected="song.mp3",
+            label="replaces_case_insensitively",
+        ),
+        TestCase(
+            input_path="/home/user/my song v1.2.wav",
+            previous=".wav",
+            suffix=".mp3",
+            expected="/home/user/my song v1.2.mp3",
+            label="keeps_incidental_dots_and_directory",
+        ),
+        TestCase(
+            input_path="my.mix",
+            previous=".wav",
+            suffix=".mp3",
+            expected="my.mix.mp3",
+            label="appends_where_the_name_ends_otherwise",
+        ),
+        TestCase(
+            input_path="song",
+            previous=".wav",
+            suffix=".wav",
+            expected="song.wav",
+            label="appends_where_the_name_carries_no_extension",
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_replace_suffix(self, test_case: TestCase) -> None:
+        result = replace_suffix(
+            Path(test_case.input_path),
+            test_case.previous,
+            test_case.suffix,
+        )
+
         assert result == Path(test_case.expected)
 
 

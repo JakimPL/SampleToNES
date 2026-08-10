@@ -95,3 +95,4 @@ class Panel(StrEnum):
     DISPLAY = auto()
     KEYBINDINGS = auto()
     PROPERTIES = auto()
+    RENDER = auto()

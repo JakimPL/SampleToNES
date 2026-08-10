@@ -1,5 +1,6 @@
 from .bank import ChannelBank
 from .frames import RowFrames
+from .length import SongLength
 from .modifiers import apply_modifiers
 from .rates import EngineRates
 from .state import ChannelState
@@ -12,6 +13,7 @@ __all__ = [
     "EngineRates",
     "RowFrames",
     "RowSynthesizer",
+    "SongLength",
     "SongTiming",
     "apply_modifiers",
 ]

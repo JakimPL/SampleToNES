@@ -4,6 +4,7 @@ from typing import Dict, Tuple
 
 from pydantic import BaseModel
 
+from sampletones_application.view_model.shared.nearest import nearest_offered
 from sampletones_shared.display import UNLIMITED_FRAME_RATE, Resolution
 
 
@@ -60,19 +61,10 @@ def frame_rate_labels(frame_rates: Tuple[int, ...], *, unlimited_label: str) -> 
 def nearest_frame_rate(max_fps: int, frame_rates: Tuple[int, ...]) -> int:
     """The offered frame rate a stored preference selects, the closest one it lies between.
 
-    A preference outlives the list that was offered when it was written, so a stored value the
-    build has since dropped still selects an entry the combo shows.
-
     Raises:
         ValueError: when no frame rate is offered.
     """
-    if not frame_rates:
-        raise ValueError("Selecting a frame rate requires at least one offered rate")
-
-    if max_fps in frame_rates:
-        return max_fps
-
-    return min(frame_rates, key=lambda frame_rate: (abs(frame_rate - max_fps), frame_rate))
+    return nearest_offered(max_fps, frame_rates)
 
 
 def nearest_resolution(
