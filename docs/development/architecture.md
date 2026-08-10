@@ -222,7 +222,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 | `ui/resources/` | Icons and image resources loaded at startup |
 | `ui/menu.py` | `MenuBar` — the application's top menu bar |
 
-**May import:** `view_model/`, `utils/`, `categories/`, `tags/`, `layout/`, `sampletones_core` types, `sampletones_shared`.
+**May import:** `view_model/`, `utils/`, `categories/`, `tags/`, `layout/`, `constants/`, `sampletones_core` types, `sampletones_shared`.
 **Must not import:** `coordinators/`, `logic/`, `services/`, `config/`, `application.py`, `shell.py`, `utils/gui/dialogs` (`DialogsRenderer` is coordinator territory).
 
 ---
@@ -240,7 +240,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 
 **Naming convention:** `<Feature><Component>ViewModel`, e.g. `ConverterViewModel`, `SequencerTrackerViewModel`.
 
-**May import:** `sampletones_core` types, `sampletones_shared`, Python standard library.
+**May import:** `constants/`, `sampletones_core` types, `sampletones_shared`, Python standard library.
 **Must not import:** `ui/`, `coordinators/`, `logic/`, `services/`, `config/`.
 
 ---
@@ -338,7 +338,7 @@ There are two coordinator kinds:
 |---------|---------|
 | `config/` | `ConfigManager` (domain generation config), `SessionManager` (runtime session: last paths, audio device, window geometry). Presentation-free: it records load outcomes (`ConfigLoadOutcome`) as domain data for `ConfigCoordinator` to present. Must not import the visual packages, `coordinators/`, or `application.py` |
 | `categories/` | `LanguageManager`, the `Page / Panel / TextType / Widget` enum hierarchy, the `AbstractElement` base and the panel element enums under `categories/elements/`, and the key grammar under `categories/key/` |
-| `constants/` | Application-scope facts that carry no behaviour, one module per subject — `keybindings.py` names the scheme a build ships, which both the shortcut catalog and the session config read. A fact shared beyond the application belongs to `sampletones_shared/constants/` |
+| `constants/` | Application-scope facts that carry no behaviour, one module per subject — `keybindings.py` names the scheme a build ships, which both the shortcut catalog and the session config read, and `playback.py` names the follow mode, which the session config, the song player, the view models and the menu all state. A fact shared beyond the application belongs to `sampletones_shared/constants/` |
 | `layout/` | Pydantic models loaded from YAML at startup; injected into coordinators and panels as `LayoutConfig` |
 | `tags/` | DPG widget tags (`TAG_*`), the fragments composing into them (`SUF_*`, `PRE_*`), and `compose_tag` |
 | `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/`, colour, threading, and `utils/file_dialogs/` — OS-native file dialogs behind a `FileDialogBackend` Protocol, with the D-Bus desktop-portal client under `utils/file_dialogs/backends/portal/`). DPG-bound helpers live in `utils/gui/` and are off-limits to the non-visual layers |

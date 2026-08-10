@@ -95,6 +95,15 @@ showing the source sounding elsewhere, and shows the local source on tabs that h
 tied to one screen — playing from the shown frame — is offered on that screen with its document
 open.
 
+The sequencer view reports the playhead too, at the reach the **follow mode** chooses: the sounding
+row, the frame that holds it, or the view the user placed. The mode is one setting with two derived
+answers — whether the tracker shows the frame being played, and whether it scrolls to keep the
+sounding row in sight — and those two are its whole contract, which every surface that follows the
+playhead reads. The song player holds the mode and emits it with every position, which is what lets
+the menu's check and the grid's scrolling settle in one step when the mode changes mid-playback.
+Marking the sounding row and the playing frame is independent of the choice: every mode paints both,
+and the mode governs where the view sits.
+
 ## Keyboard delivery under field focus
 
 Playback keys arrive through the application's single key handler (architecture §12). These rules
@@ -154,6 +163,8 @@ audible.
 | Keyboard delivery, priority, and field focus | `utils/gui/keyboard/` (architecture §12) |
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | A channel name's gestures and menu, in either table | `ChannelSwitch` (`ui/panels/sequencer/channels.py`) |
+| The reach the sequencer view follows the playhead at | `FollowMode` (`constants/playback.py`), held by `SongPlayerLogic` (`logic/sequencer/playback/song_player.py`) |
+| Revealing the sounding row in the tracker | `GUISequencerTrackerPanel` (`ui/panels/sequencer/tracker.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer.py`) |
 | The song's render-ahead buffer | `services/song_player/` |
 
