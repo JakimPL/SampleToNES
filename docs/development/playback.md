@@ -191,8 +191,10 @@ terminating would reclaim.
 | The reach the sequencer view follows the playhead at | `FollowMode` (`constants/playback.py`), held by `SongPlayerLogic` (`logic/sequencer/playback/song_player.py`) |
 | Where the playhead stands, and both grids' marks for it | `SequencerTabCoordinator` (`coordinators/tabs/sequencer.py`) |
 | Marking and revealing the sounding row in the tracker | `GUISequencerTrackerPanel` (`ui/panels/sequencer/tracker.py`) |
-| Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer.py`) |
+| Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
+| The channel generators and the rates they are built at | `ChannelBank` (`logic/sequencer/playback/synthesizer/bank.py`) |
 | How long each row of a pattern lasts | `Groove` (`sampletones_core/timing/`), indexed by row while rendering |
+| How many samples one of that row's ticks spans | `TickClock` (`sampletones_core/timing/`), followed by `EngineRates` |
 | The song's render-ahead buffer | `services/song_player/` |
 
 The sequencer song is an ordinary intentional source alongside the reconstruction and instruction

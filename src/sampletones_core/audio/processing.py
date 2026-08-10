@@ -14,6 +14,19 @@ from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from .validation import validate_audio_array
 
 
+def silence(samples: int) -> np.ndarray:
+    """
+    Build a buffer of the given length holding no sound.
+
+    Args:
+        samples: How many samples the buffer spans.
+
+    Returns:
+        A float32 array of zeros, ready to be mixed into or written over.
+    """
+    return np.zeros(samples, dtype=np.float32)
+
+
 def clip_audio(audio: np.ndarray) -> np.ndarray:
     """
     Clip audio samples to the valid range [-1.0, 1.0].

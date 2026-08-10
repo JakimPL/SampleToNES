@@ -35,12 +35,16 @@ are not used in any SampleToNES component name.
 
 Every dependency is installed separately by `pip`/`uv` from PyPI and imported at runtime.
 
-Most dependencies are permissively licensed (MIT, BSD, Apache-2.0, ISC). Two are under the
-GNU Lesser General Public License — [Pebble](https://pypi.org/project/Pebble/) (LGPL-3.0,
-a direct dependency) and [soxr](https://pypi.org/project/soxr/) (LGPL-2.1-or-later, a
-transitive dependency of `librosa`) — and two, `certifi` and `tqdm`, are under MPL-2.0.
+Most dependencies are permissively licensed (MIT, BSD, Apache-2.0, ISC). Three carry code
+under the GNU Lesser General Public License — [Pebble](https://pypi.org/project/Pebble/)
+(LGPL-3.0, a direct dependency), [soxr](https://pypi.org/project/soxr/)
+(LGPL-2.1-or-later, a transitive dependency of `librosa`), and
+[soundfile](https://pypi.org/project/soundfile/) (BSD-3-Clause itself, a direct
+dependency, whose wheel carries the libsndfile shared library under LGPL-2.1-or-later with
+LAME and mpg123 statically linked into it) — and two, `certifi` and `tqdm`, are under
+MPL-2.0.
 
-All four are used as unmodified, separately installed libraries loaded dynamically at
+All of them are used as unmodified, separately installed libraries loaded dynamically at
 import time. No LGPL- or MPL-licensed code is copied into the wheel or the sdist, so the
 MIT License applies to the PyPI package without further obligation.
 

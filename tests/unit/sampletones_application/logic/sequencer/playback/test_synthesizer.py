@@ -70,7 +70,7 @@ def _state(
     context: SynthesizerContext,
     generator: GeneratorName = GeneratorName.PULSE1,
 ):
-    return context.synthesizer._channel_states[generator]
+    return context.synthesizer._channels.state(generator)
 
 
 def _render(context: SynthesizerContext) -> np.ndarray:
@@ -835,7 +835,7 @@ class TestNesFrequencyTempo:
         sample = add_sample(controller, recon)
         place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=SAMPLE_RATE)
-        pulse_state = synthesizer._channel_states[GeneratorName.PULSE1]
+        pulse_state = synthesizer._channels.state(GeneratorName.PULSE1)
 
         controller.set_nes_frequency(60)
         synthesizer.render_row()
