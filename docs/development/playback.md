@@ -29,6 +29,10 @@ a control over what is heard. The contracts here bind every tab and every player
 6. **Live state is pulled while sound is produced.** A player reads the settings that shape its
    sound as it renders, so a change is heard as the render-ahead buffer drains. This is what lets a
    listening control take effect inside the sound already playing.
+7. **A row's duration belongs to the song, not to the player.** How long a row lasts follows from
+   the project's tempo and metre together with the row's place in the pattern, so it is a function
+   of position: the same row lasts the same time however playback reached it, and a module exported
+   from the song can state the same figures.
 
 ## Two kinds of sound
 
@@ -188,6 +192,7 @@ terminating would reclaim.
 | Where the playhead stands, and both grids' marks for it | `SequencerTabCoordinator` (`coordinators/tabs/sequencer.py`) |
 | Marking and revealing the sounding row in the tracker | `GUISequencerTrackerPanel` (`ui/panels/sequencer/tracker.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer.py`) |
+| How long each row of a pattern lasts | `Groove` (`sampletones_core/timing/`), indexed by row while rendering |
 | The song's render-ahead buffer | `services/song_player/` |
 
 The sequencer song is an ordinary intentional source alongside the reconstruction and instruction

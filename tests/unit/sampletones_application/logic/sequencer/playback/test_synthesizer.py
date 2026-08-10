@@ -1,17 +1,19 @@
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
+from sampletones_application.constants.playback import (
+    MAX_TICKS_PER_ROW,
+    MIN_TICKS_PER_ROW,
+)
+from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_shared.constants.project import (
-    REFERENCE_NES_FREQUENCY,
-    REFERENCE_TEMPO,
-)
+from sampletones_core.timing import Metre, RowRate, calculate_groove
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     add_sample,
@@ -72,6 +74,27 @@ def _render(context: SynthesizerContext) -> np.ndarray:
     audio, _ = context.synthesizer.render_row()
     context.chunks.append(audio)
     return audio
+
+
+def _groove_ticks(controller: ProjectController) -> Tuple[int, ...]:
+    """The ticks each row of a pattern owes the project's timing, from the timing package itself."""
+    settings = controller.project.settings
+    return calculate_groove(
+        RowRate.from_settings(settings),
+        Metre.from_settings(settings, rows=controller.project.song.rows_per_pattern),
+        minimum_ticks=MIN_TICKS_PER_ROW,
+        maximum_ticks=MAX_TICKS_PER_ROW,
+    ).ticks
+
+
+def _row_ticks(
+    synthesizer: RowSynthesizer,
+    rows: int,
+) -> Tuple[int, ...]:
+    """The ticks ``rows`` consecutive rendered rows last, read back from the audio they produced."""
+    settings = synthesizer._project_controller.project.settings
+    frame_length = round(settings.sample_rate / settings.nes_frequency)
+    return tuple(len(synthesizer.render_row()[0]) // frame_length for _ in range(rows))
 
 
 class TestTriggerSetsDefaults:
@@ -662,18 +685,16 @@ class TestSilenceCases:
 
 
 class TestFrameCount:
-    def test_chunk_length_matches_speed_sample_rate_and_nes_frequency(self) -> None:
+    def test_chunk_length_matches_the_groove_row_and_the_frame_length(self) -> None:
         def render_and_assert_chunk_length(context: SynthesizerContext) -> None:
-            settings = _controller(context).project.settings
+            controller = _controller(context)
+            settings = controller.project.settings
             frame_length = settings.sample_rate // settings.nes_frequency
-            ticks_per_row = (settings.speed * settings.nes_frequency * REFERENCE_TEMPO) // (
-                settings.tempo * REFERENCE_NES_FREQUENCY
-            )
             audio = _render(context)
-            assert len(audio) == frame_length * ticks_per_row
+            assert len(audio) == frame_length * _groove_ticks(controller)[0]
 
         BaseTestScenario(
-            label="chunk length matches timing formula",
+            label="chunk length matches the groove's first row",
             build=_make_context,
             steps=[
                 ScenarioStep(
@@ -682,6 +703,79 @@ class TestFrameCount:
                 ),
             ],
         ).run()
+
+
+class TestGroove:
+    def test_a_pattern_plays_the_groove_the_metre_yields(
+        self,
+        controller: ProjectController,
+        synthesizer: RowSynthesizer,
+    ) -> None:
+        """Speed 6 at 60 Hz against tempo 210 asks for 30/7 ticks a row, which no single speed
+        value states. Spread over a 16-row bar of four-row beats it comes out as the bar, its
+        half, and each beat carrying the longer row.
+        """
+        controller.set_rows_per_pattern(16)
+        controller.set_tempo(210)
+
+        rendered = _row_ticks(synthesizer, controller.project.song.rows_per_pattern)
+
+        assert rendered == (5, 4, 5, 4, 5, 4, 4, 4, 5, 4, 4, 4, 5, 4, 4, 4)
+        assert rendered == _groove_ticks(controller)
+
+    def test_the_groove_restarts_with_the_pattern(
+        self,
+        controller: ProjectController,
+        synthesizer: RowSynthesizer,
+    ) -> None:
+        """Every row reads the groove entry its position in the pattern names, so returning to
+        row 0 plays row 0's duration again — the phase an exported module also restarts on.
+        """
+        controller.set_rows_per_pattern(16)
+        controller.set_tempo(210)
+
+        opening = _row_ticks(synthesizer, 3)
+        synthesizer.set_position(0, 0)
+        again = _row_ticks(synthesizer, 1)
+
+        assert opening == (5, 4, 5)
+        assert again == (opening[0],)
+
+    def test_tempo_change_between_rows_rebuilds_the_groove(
+        self,
+        controller: ProjectController,
+        synthesizer: RowSynthesizer,
+    ) -> None:
+        """A tempo edit is heard on the next row, at that row's place in the new groove."""
+        controller.set_rows_per_pattern(16)
+        speed = controller.project.settings.speed
+
+        at_reference_tempo = _row_ticks(synthesizer, 1)
+        controller.set_tempo(210)
+        after_change = _row_ticks(synthesizer, 1)
+
+        assert at_reference_tempo == (speed,)
+        assert after_change == (_groove_ticks(controller)[1],)
+
+    def test_highlight_change_regroups_the_same_row_rate(
+        self,
+        controller: ProjectController,
+        synthesizer: RowSynthesizer,
+    ) -> None:
+        """The beat decides where the longer rows land, so narrowing it moves them without
+        changing how long the pattern lasts.
+        """
+        controller.set_rows_per_pattern(16)
+        controller.set_tempo(210)
+        rows = controller.project.song.rows_per_pattern
+
+        on_four_row_beats = _row_ticks(synthesizer, rows)
+        controller.set_first_highlight(3)
+        synthesizer.set_position(0, 0)
+        on_three_row_beats = _row_ticks(synthesizer, rows)
+
+        assert on_three_row_beats == (5, 4, 4, 5, 4, 4, 5, 4, 4, 5, 4, 4, 5, 4, 4, 4)
+        assert sum(on_three_row_beats) == sum(on_four_row_beats)
 
 
 class TestNesFrequencyTempo:
@@ -696,13 +790,11 @@ class TestNesFrequencyTempo:
         def render_and_assert_chunk_uses_project_frequency(
             context: SynthesizerContext,
         ) -> None:
-            settings = _controller(context).project.settings
+            controller = _controller(context)
+            settings = controller.project.settings
             frame_length = round(settings.sample_rate / settings.nes_frequency)
-            ticks_per_row = (settings.speed * settings.nes_frequency * REFERENCE_TEMPO) // (
-                settings.tempo * REFERENCE_NES_FREQUENCY
-            )
             audio = _render(context)
-            assert len(audio) == frame_length * ticks_per_row
+            assert len(audio) == frame_length * _groove_ticks(controller)[0]
 
         BaseTestScenario(
             label="frame length tracks the project NES frequency",

@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field, replace
 from typing import Callable, Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
+from sampletones_application.constants.playback import (
+    MAX_TICKS_PER_ROW,
+    MIN_TICKS_PER_ROW,
+)
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_core.audio import clip_audio_inplace
 from sampletones_core.configs import Config
@@ -19,10 +25,9 @@ from sampletones_core.project import Project
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
-from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
-from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERENCE_TEMPO
+from sampletones_core.timing import Groove, Metre, RowRate, calculate_groove
 
 from .protocol import ChannelGeneratorProtocol
 
@@ -34,6 +39,44 @@ class _ChannelState:
     tick_index: int = field(default=0)
     transpose: int = field(default=0)
     volume: int = field(default=MAX_VOLUME)
+
+
+@dataclass(frozen=True)
+class _SongTiming:
+    """Everything a project's groove is built from, held together so a change is one comparison.
+
+    Attributes:
+        rate: The exact ticks one row lasts under the project's tempo, speed and tick rate.
+        metre: The pattern length and the beat and bar grouping the ticks are spread over.
+    """
+
+    rate: RowRate
+    metre: Metre
+
+    @classmethod
+    def from_project(cls, project: Project) -> _SongTiming:
+        """Reads the timing a project plays at, taking the pattern length from its song."""
+        return cls(
+            rate=RowRate.from_settings(project.settings),
+            metre=Metre.from_settings(
+                project.settings,
+                rows=project.song.rows_per_pattern,
+            ),
+        )
+
+    def groove(self) -> Groove:
+        """Spreads the row rate across a pattern's rows.
+
+        Playback follows whatever tempo the project states, so the one bound it sets is that
+        every row lasts at least a tick and keeps sounding; the ceiling is the fastest row the
+        settings can ask for, which leaves the groove free to realize the rate exactly.
+        """
+        return calculate_groove(
+            self.rate,
+            self.metre,
+            minimum_ticks=MIN_TICKS_PER_ROW,
+            maximum_ticks=MAX_TICKS_PER_ROW,
+        )
 
 
 def _silence(samples: int) -> np.ndarray:
@@ -67,6 +110,10 @@ class RowSynthesizer:
     call so that pattern edits, tempo changes, and sample swaps take effect
     immediately while playback keeps running.
 
+    A row lasts the ticks the project's groove gives its position within the pattern, so the
+    row a pattern's tenth row plays for is the row an exported module plays it for: both index
+    the same groove from the pattern's first row.
+
     Generators are constructed once from ``config`` and carry timer state across
     rows for phase continuity within a sustained note. Triggering a new note
     calls ``generator.reset()`` for a clean phase start.
@@ -89,7 +136,8 @@ class RowSynthesizer:
         self._active_channels = active_channels
         self._nes_frequency: int = config.library.nes_frequency
         self._position = SongPosition()
-        self._tick_debt: int = 0
+        self._timing: _SongTiming = _SongTiming.from_project(project_controller.project)
+        self._groove: Groove = self._timing.groove()
         self._channel_states: Dict[GeneratorName, _ChannelState] = {
             generator_name: _ChannelState(
                 generator=GENERATOR_CLASSES[generator_name](
@@ -118,7 +166,6 @@ class RowSynthesizer:
         self._position.row_index = row_index
 
     def reset(self) -> None:
-        self._tick_debt = 0
         for state in self._channel_states.values():
             state.sample_id = None
             state.tick_index = 0
@@ -157,9 +204,10 @@ class RowSynthesizer:
         song = project.song
         self._position.wrap_overflow(song.rows_per_pattern)
         self._ensure_generators(settings.nes_frequency)
+        self._ensure_groove(project)
 
         frame_length = round(self._config.library.sample_rate / settings.nes_frequency)
-        ticks_per_row = self._ticks_for_row(settings)
+        ticks_per_row = self._groove.ticks[self._position.row_index]
         chunk_length = frame_length * ticks_per_row
 
         position_before = replace(self._position)
@@ -177,16 +225,20 @@ class RowSynthesizer:
 
         return mixed, position_before
 
-    def _ticks_for_row(self, settings: ProjectSettings) -> int:
-        """ticks_per_row == speed at REFERENCE_TEMPO and REFERENCE_NES_FREQUENCY."""
-        self._tick_debt += settings.speed * settings.nes_frequency * REFERENCE_TEMPO
-        return self._drain_tick_debt(settings.tempo)
+    def _ensure_groove(self, project: Project) -> None:
+        """Rebuilds the groove when the row rate or the metre it is spread over changes.
 
-    def _drain_tick_debt(self, tempo: int) -> int:
-        divisor = tempo * REFERENCE_NES_FREQUENCY
-        ticks = self._tick_debt // divisor
-        self._tick_debt -= ticks * divisor
-        return ticks
+        An engine that holds a row for a whole number of ticks reaches a fractional row rate by
+        varying that number from row to row, and the groove is where those counts are decided.
+        Rebuilding only on a timing edit keeps a tempo change immediate while the distribution
+        itself, which spans a whole pattern, is computed once.
+        """
+        timing = _SongTiming.from_project(project)
+        if timing == self._timing:
+            return
+
+        self._timing = timing
+        self._groove = timing.groove()
 
     def _mix_channels(
         self,

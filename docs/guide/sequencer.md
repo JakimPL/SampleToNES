@@ -119,6 +119,11 @@ bar divided by the beat is how many beats you hear in a bar, so the default 4 an
 and shortens the bar to 12, for three beats. The beat is what the tempo counts, so
 the two together say how fast the song is felt as well as how it looks.
 
+The metre also places the song's timing. Most tempos ask for a row length the engine
+can only reach on average, so the rows of a bar differ a little: the metre gives the
+extra time to the row that opens the bar, then to the row that opens each beat, which
+keeps the beat audible where you expect it.
+
 ## Undo and export
 
 Every change is undoable. The **History** panel on the right shows the stack, with
