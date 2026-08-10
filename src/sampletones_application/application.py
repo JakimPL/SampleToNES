@@ -1140,8 +1140,17 @@ class Application:
         sample_rate: SampleRate,
         buffer_size: BufferSize,
     ) -> None:
-        """Applies the dialog's committed device, sample rate, and buffer size."""
-        self.audio_device_manager.configure_device(device_index, sample_rate)
+        """Applies the dialog's committed device, sample rate, and buffer size.
+
+        Switching devices needs the output free; a source that keeps hold of it leaves the
+        settings as they stand and reports the failure.
+        """
+        try:
+            self.audio_device_manager.configure_device(device_index, sample_rate)
+        except PlaybackError as exception:
+            self._on_playback_error(exception)
+            return
+
         self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _owning_project_sample(self) -> Optional[Sample]:

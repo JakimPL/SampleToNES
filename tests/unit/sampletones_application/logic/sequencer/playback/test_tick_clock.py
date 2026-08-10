@@ -16,17 +16,13 @@ from tests.unit.sampletones_application.logic.sequencer.playback.conftest import
     all_channels,
     make_controller,
     make_pulse_reconstruction,
+    make_synthesizer,
     place_row,
 )
 
 UNEVEN_SAMPLE_RATE: Final[int] = 22050
 EVEN_SAMPLE_RATE: Final[int] = 44100
 UNEVEN_RATES: Final[Tuple[int, ...]] = (8000, 16000, 22050)
-
-
-def _config(sample_rate: int) -> Config:
-    config = Config()
-    return config.model_copy(update={"library": config.library.model_copy(update={"sample_rate": sample_rate})})
 
 
 def _expected_ticks(controller: ProjectController) -> Tuple[int, ...]:
@@ -45,7 +41,7 @@ class TestRowsFollowTheTickClock(BaseTestSuite):
     @pytest.mark.parametrize("sample_rate", UNEVEN_RATES + (EVEN_SAMPLE_RATE, 48000))
     def test_a_pattern_spans_its_exact_duration(self, sample_rate: int) -> None:
         controller = make_controller()
-        synthesizer = RowSynthesizer(controller, _config(sample_rate), active_channels=all_channels)
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=sample_rate)
         ticks = _expected_ticks(controller)
 
         rendered = sum(len(synthesizer.render_row()[0]) for _ in range(len(ticks)))
@@ -60,7 +56,7 @@ class TestRowsFollowTheTickClock(BaseTestSuite):
     def test_a_long_run_does_not_drift(self, sample_rate: int) -> None:
         """The property a fixed rounded frame length loses: the error stays below one sample."""
         controller = make_controller()
-        synthesizer = RowSynthesizer(controller, _config(sample_rate), active_channels=all_channels)
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=sample_rate)
         ticks = _expected_ticks(controller)
         patterns = 40
 
@@ -74,11 +70,7 @@ class TestRowsFollowTheTickClock(BaseTestSuite):
 
     def test_a_row_spans_the_sum_of_its_ticks(self) -> None:
         controller = make_controller()
-        synthesizer = RowSynthesizer(
-            controller,
-            _config(UNEVEN_SAMPLE_RATE),
-            active_channels=all_channels,
-        )
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
         clock = TickClock.from_parameters(
             sample_rate=UNEVEN_SAMPLE_RATE,
             nes_frequency=controller.project.settings.nes_frequency,
@@ -100,21 +92,13 @@ class TestRowsFollowTheTickClock(BaseTestSuite):
         """
         controller = make_controller()
         controller.set_speed(5)
-        synthesizer = RowSynthesizer(
-            controller,
-            _config(UNEVEN_SAMPLE_RATE),
-            active_channels=all_channels,
-        )
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
         lengths = {len(synthesizer.render_row()[0]) for _ in range(len(_expected_ticks(controller)))}
         assert lengths == {1837, 1838}
 
     def test_reset_returns_the_clock_to_the_first_tick(self) -> None:
         controller = make_controller()
-        synthesizer = RowSynthesizer(
-            controller,
-            _config(UNEVEN_SAMPLE_RATE),
-            active_channels=all_channels,
-        )
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
         first = len(synthesizer.render_row()[0])
 
         synthesizer.set_position(0, 0)
@@ -124,7 +108,7 @@ class TestRowsFollowTheTickClock(BaseTestSuite):
 
     def test_a_frequency_change_rebuilds_the_clock(self) -> None:
         controller = make_controller()
-        synthesizer = RowSynthesizer(controller, _config(EVEN_SAMPLE_RATE), active_channels=all_channels)
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=EVEN_SAMPLE_RATE)
 
         controller.set_nes_frequency(60)
         synthesizer.render_row()
@@ -138,6 +122,45 @@ class TestRowsFollowTheTickClock(BaseTestSuite):
         assert rendered == clock.samples_at(sum(ticks))
 
 
+class TestTheOutputRateIsFollowed(BaseTestSuite):
+    """The audio is rendered at the rate its consumer reports, so a rendered second lasts a second.
+
+    Live playback opens its device stream at that rate and a render writes its file at it, so a
+    synthesiser fixed to some other rate plays the song at the ratio between the two.
+    """
+
+    @pytest.mark.parametrize("sample_rate", UNEVEN_RATES + (EVEN_SAMPLE_RATE, 48000))
+    def test_a_pattern_lasts_the_seconds_its_ticks_last(self, sample_rate: int) -> None:
+        controller = make_controller()
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=sample_rate)
+        ticks = _expected_ticks(controller)
+
+        rendered = sum(len(synthesizer.render_row()[0]) for _ in range(len(ticks)))
+        expected = Fraction(sum(ticks), controller.project.settings.nes_frequency)
+
+        assert abs(Fraction(rendered, sample_rate) - expected) < Fraction(1, sample_rate)
+
+    def test_a_rate_change_is_picked_up_on_the_next_row(self) -> None:
+        """Selecting another output device rate re-times the audio rather than the song."""
+        controller = make_controller()
+        rates = [EVEN_SAMPLE_RATE]
+        synthesizer = RowSynthesizer(
+            controller,
+            Config(),
+            active_channels=all_channels,
+            sample_rate=lambda: rates[0],
+        )
+        at_even = len(synthesizer.render_row()[0])
+
+        rates[0] = UNEVEN_SAMPLE_RATE
+        synthesizer.set_position(0, 0)
+        synthesizer.reset()
+        at_uneven = len(synthesizer.render_row()[0])
+
+        difference = abs(Fraction(at_even, EVEN_SAMPLE_RATE) - Fraction(at_uneven, UNEVEN_SAMPLE_RATE))
+        assert difference < Fraction(1, UNEVEN_SAMPLE_RATE)
+
+
 class TestChannelsFillTheRow(BaseTestSuite):
     """Every channel writes into the same tick boundaries, so a mix never leaves a gap."""
 
@@ -146,11 +169,7 @@ class TestChannelsFillTheRow(BaseTestSuite):
         reconstruction = make_pulse_reconstruction(count=1)
         sample = add_sample(controller, reconstruction, loop=True)
         place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
-        synthesizer = RowSynthesizer(
-            controller,
-            _config(UNEVEN_SAMPLE_RATE),
-            active_channels=all_channels,
-        )
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
         chunk, _ = synthesizer.render_row()
 
@@ -163,11 +182,7 @@ class TestChannelsFillTheRow(BaseTestSuite):
         reconstruction = make_pulse_reconstruction(count=1)
         sample = add_sample(controller, reconstruction, loop=True)
         place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
-        synthesizer = RowSynthesizer(
-            controller,
-            _config(UNEVEN_SAMPLE_RATE),
-            active_channels=all_channels,
-        )
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
         chunk, _ = synthesizer.render_row()
         steps = np.abs(np.diff(chunk))

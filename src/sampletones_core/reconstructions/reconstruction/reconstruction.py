@@ -247,9 +247,7 @@ class Reconstruction(DataModel):
         if self.config.nes_frequency == nes_frequency:
             return self
 
-        library = self.config.library.model_copy(update={"nes_frequency": nes_frequency})
-        config = self.config.model_copy(update={"library": library})
-        return self._resynthesized(config)
+        return self._resynthesized(self.config.with_library(nes_frequency=nes_frequency))
 
     def _resynthesized(self, config: Config) -> Reconstruction:
         """Re-renders every generator's approximation from its instructions at ``config``.

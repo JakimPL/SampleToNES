@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional, Tuple
+from typing import Dict, Final, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
@@ -11,19 +11,22 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.timing import Metre, RowRate, calculate_groove
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     add_sample,
-    all_channels,
     make_controller,
     make_pulse_reconstruction,
+    make_synthesizer,
     place_modifier_row,
     place_note_off,
     place_row,
 )
+
+SAMPLE_RATE: Final[int] = DEFAULT_SAMPLE_RATE
 
 
 class MaskProvider:
@@ -54,7 +57,7 @@ def _make_context() -> SynthesizerContext:
     controller = make_controller()
     mask = MaskProvider()
     return SynthesizerContext(
-        synthesizer=RowSynthesizer(controller, Config(), active_channels=mask),
+        synthesizer=make_synthesizer(controller, Config(), active_channels=mask),
         mask=mask,
     )
 
@@ -327,7 +330,7 @@ class TestChannelMask:
         def render_and_compare_against_unmasked(context: SynthesizerContext) -> None:
             audio_masked = _render(context)
 
-            audible_synthesizer = RowSynthesizer(_controller(context), Config(), active_channels=all_channels)
+            audible_synthesizer = make_synthesizer(_controller(context), Config())
             audio_with_pulse1, _ = audible_synthesizer.render_row()
 
             assert np.allclose(audio_masked, 0.0)
@@ -816,10 +819,10 @@ class TestNesFrequencyTempo:
         def pattern_duration_seconds(nes_frequency: int) -> float:
             controller = make_controller()
             controller.set_nes_frequency(nes_frequency)
-            synthesizer = RowSynthesizer(controller, Config(), active_channels=all_channels)
+            synthesizer = make_synthesizer(controller, Config(), sample_rate=SAMPLE_RATE)
             rows = controller.project.song.rows_per_pattern
             total_samples = sum(len(synthesizer.render_row()[0]) for _ in range(rows))
-            return total_samples / controller.project.settings.sample_rate
+            return total_samples / SAMPLE_RATE
 
         assert abs(pattern_duration_seconds(60) - pattern_duration_seconds(30)) < 0.1
 
@@ -831,16 +834,15 @@ class TestNesFrequencyTempo:
         recon = make_pulse_reconstruction(count=12)
         sample = add_sample(controller, recon)
         place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
-        synthesizer = RowSynthesizer(controller, Config(), active_channels=all_channels)
-        sample_rate = controller.project.settings.sample_rate
+        synthesizer = make_synthesizer(controller, Config(), sample_rate=SAMPLE_RATE)
         pulse_state = synthesizer._channel_states[GeneratorName.PULSE1]
 
         controller.set_nes_frequency(60)
         synthesizer.render_row()
-        assert pulse_state.generator.frame_length == round(sample_rate / 60)
+        assert pulse_state.generator.frame_length == round(SAMPLE_RATE / 60)
 
         controller.set_nes_frequency(30)
         synthesizer.render_row()
 
-        assert pulse_state.generator.frame_length == round(sample_rate / 30)
+        assert pulse_state.generator.frame_length == round(SAMPLE_RATE / 30)
         assert pulse_state.sample_id is not None

@@ -81,6 +81,31 @@ class _SongTiming:
 
 
 @dataclass(frozen=True)
+class _EngineRates:
+    """The pair of rates a tick is sized from, held together so a change is one comparison.
+
+    Each rate is owned elsewhere: the project states how many instructions the engine consumes
+    each second, and whoever takes the audio states the rate it is rendered at — the output
+    device for playback, the chosen format for a file. Together they fix how many samples one
+    tick spans, so the synthesiser follows both.
+
+    Attributes:
+        nes_frequency: The engine ticks consumed each second.
+        sample_rate: The samples the rendered audio holds each second.
+    """
+
+    nes_frequency: int
+    sample_rate: int
+
+    def clock(self) -> TickClock:
+        """The samples each tick spans under this pair of rates."""
+        return TickClock.from_parameters(
+            sample_rate=self.sample_rate,
+            nes_frequency=self.nes_frequency,
+        )
+
+
+@dataclass(frozen=True)
 class _RowFrames:
     """Where each of a row's ticks starts and ends within the row's audio.
 
@@ -161,9 +186,13 @@ class RowSynthesizer:
     gives its position in the run, so a tick lasts ``1 / nes_frequency`` seconds at every sample
     rate and the groove's tempo is the tempo heard.
 
-    Generators are constructed once from ``config`` and carry timer state across
-    rows for phase continuity within a sustained note. Triggering a new note
-    calls ``generator.reset()`` for a clean phase start.
+    ``sample_rate`` reports the rate the audio is rendered at, and is what the caller taking that
+    audio runs at: the output device for live playback, the chosen format for a file. Reading it
+    per row keeps the two in step, so a rendered second is a second wherever the audio goes.
+
+    Generators are constructed from ``config`` at the rates in force and carry timer
+    state across rows for phase continuity within a sustained note. Triggering a new
+    note calls ``generator.reset()`` for a clean phase start.
 
     ``active_channels`` reports which channels sound and is consulted once per channel per
     row, so muting or unmuting during playback is heard as the render-ahead buffer drains. A
@@ -177,24 +206,21 @@ class RowSynthesizer:
         config: Config,
         *,
         active_channels: Callable[[], FrozenSet[GeneratorName]],
+        sample_rate: Callable[[], int],
     ) -> None:
         self._project_controller = project_controller
         self._config = config
         self._active_channels = active_channels
-        self._nes_frequency: int = config.library.nes_frequency
+        self._sample_rate = sample_rate
         self._position = SongPosition()
         self._timing: _SongTiming = _SongTiming.from_project(project_controller.project)
         self._groove: Groove = self._timing.groove()
-        self._tick_clock: TickClock = self._clock_for(config.library.nes_frequency)
+        self._rates: _EngineRates = self._current_rates()
+        self._tick_clock: TickClock = self._rates.clock()
         self._elapsed_ticks: int = 0
         self._channel_states: Dict[GeneratorName, _ChannelState] = {
-            generator_name: _ChannelState(
-                generator=GENERATOR_CLASSES[generator_name](
-                    config,
-                    generator_name.value,
-                ),
-            )
-            for generator_name in GeneratorName.items()
+            generator_name: _ChannelState(generator=generator)
+            for generator_name, generator in self._build_generators(self._rates).items()
         }
 
     @property
@@ -222,47 +248,55 @@ class RowSynthesizer:
             state.transpose = 0
             state.volume = MAX_VOLUME
 
-    def _ensure_generators(self, nes_frequency: int) -> None:
-        """Rebuilds the channel generators when the engine refresh rate changes.
+    def _ensure_generators(self) -> None:
+        """Rebuilds the channel generators when either rate a tick is sized from changes.
 
-        ``nes_frequency`` is the rate at which instructions (engine ticks) are
-        consumed, so each tick spans ``sample_rate / nes_frequency`` audio samples.
-        The generators must follow the project's current value so a row keeps a
-        constant real-time duration as the rate changes (the tempo is otherwise tied
-        to the frequency). Pitch is derived from the APU clock, not this rate, so only
-        the per-tick frame length changes; the generators' phase continuity resets,
-        which is acceptable for an occasional settings edit.
+        The engine consumes ``nes_frequency`` instructions a second and the audio holds
+        ``sample_rate`` samples a second, so a tick spans the quotient of the two. Following the
+        project's frequency keeps a row a constant real-time duration as that frequency changes,
+        and following the output's rate keeps a rendered second a second wherever the audio goes.
+        Pitch derives from the APU clock rather than either rate, so a change moves only the
+        per-tick frame length; the generators' phase continuity resets, which is acceptable for an
+        occasional settings edit.
 
-        The tick clock follows the same value, since it states how long one of those ticks lasts.
+        The tick clock follows the same pair, since it states how long one of those ticks lasts.
         """
-        if nes_frequency == self._nes_frequency:
+        rates = self._current_rates()
+        if rates == self._rates:
             return
 
-        self._nes_frequency = nes_frequency
-        self._tick_clock = self._clock_for(nes_frequency)
-        config = self._playback_config(nes_frequency)
-        for generator_name, state in self._channel_states.items():
-            state.generator = GENERATOR_CLASSES[generator_name](
+        self._rates = rates
+        self._tick_clock = rates.clock()
+        for generator_name, generator in self._build_generators(rates).items():
+            self._channel_states[generator_name].generator = generator
+
+    def _current_rates(self) -> _EngineRates:
+        return _EngineRates(
+            nes_frequency=self._project_controller.project.settings.nes_frequency,
+            sample_rate=self._sample_rate(),
+        )
+
+    def _build_generators(self, rates: _EngineRates) -> Dict[GeneratorName, ChannelGeneratorProtocol]:
+        config = self._engine_config(rates)
+        return {
+            generator_name: GENERATOR_CLASSES[generator_name](
                 config,
                 generator_name.value,
             )
+            for generator_name in GeneratorName.items()
+        }
 
-    def _clock_for(self, nes_frequency: int) -> TickClock:
-        return TickClock.from_parameters(
-            sample_rate=self._config.library.sample_rate,
-            nes_frequency=nes_frequency,
+    def _engine_config(self, rates: _EngineRates) -> Config:
+        return self._config.with_library(
+            nes_frequency=rates.nes_frequency,
+            sample_rate=rates.sample_rate,
         )
-
-    def _playback_config(self, nes_frequency: int) -> Config:
-        library = self._config.library.model_copy(update={"nes_frequency": nes_frequency})
-        return self._config.model_copy(update={"library": library})
 
     def render_row(self) -> Tuple[np.ndarray, SongPosition]:
         project = self._project_controller.project
-        settings = project.settings
         song = project.song
         self._position.wrap_overflow(song.rows_per_pattern)
-        self._ensure_generators(settings.nes_frequency)
+        self._ensure_generators()
         self._ensure_groove(project)
 
         frames = _RowFrames.from_clock(

@@ -429,12 +429,18 @@ class AudioDeviceManager(CallbackMixin):
         Stops any active playback and switches to the specified device and sample rate.
         If the sample rate is not supported, falls back to the first supported rate for that device.
 
+        A stream handed out to a streaming source was opened on the device and rate in force at
+        the time, so the new settings reach it only once it is wound down; the source is asked to
+        hand the output back before the switch, and playback resumes under the new settings.
+
         Args:
             device_index: Index of the device to configure.
             sample_rate: Desired sample rate in Hz.
 
         Raises:
             ValueError: If the device index is not found.
+            PlaybackError: If a handed-out stream survives its release, which leaves the device
+                and rate as they stand.
         """
         if device_index not in self._devices:
             raise ValueError(f"Device with index {device_index} not found")
@@ -448,6 +454,10 @@ class AudioDeviceManager(CallbackMixin):
             sample_rate = fallback_rate
 
         self.stop()
+        self.call(self.on_acquire_output)
+        if not self._release_output_streams():
+            raise PlaybackError("An output stream is still held; the audio device stays as it is")
+
         self.device_index = device_index
         self.sample_rate = sample_rate
         logger.info(f"Audio device configured: '{self.device_name}' (index={device_index}, sample_rate={sample_rate})")

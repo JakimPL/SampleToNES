@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Self
+from typing import Dict, List, Optional, Self
 
 from pydantic import ConfigDict, Field
 
@@ -62,6 +62,37 @@ class Config(DataModel):
         path = to_path(path)
         config_dict = self.model_dump()
         save_json(path, config_dict)
+
+    def with_library(
+        self,
+        *,
+        nes_frequency: Optional[int] = None,
+        sample_rate: Optional[int] = None,
+    ) -> Self:
+        """A copy running at the given engine and audio rates, keeping every other setting.
+
+        The rates a generator is built with decide how many samples one engine tick spans, so a
+        caller driving the engine at rates of its own — a render at a chosen output rate, a
+        reconstruction retuned to a project's frequency — asks for a configuration here rather
+        than editing the one it was handed.
+
+        Args:
+            nes_frequency: The engine ticks consumed each second, or ``None`` to keep the current
+                value.
+            sample_rate: The samples the audio holds each second, or ``None`` to keep the current
+                value.
+
+        Returns:
+            Self: The configuration at those rates.
+        """
+        updates: Dict[str, int] = {}
+        if nes_frequency is not None:
+            updates["nes_frequency"] = nes_frequency
+
+        if sample_rate is not None:
+            updates["sample_rate"] = sample_rate
+
+        return self.model_copy(update={"library": self.library.model_copy(update=updates)})
 
     @property
     def max_workers(self) -> int:
