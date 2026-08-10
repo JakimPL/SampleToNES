@@ -151,6 +151,22 @@ sequencer distinguishes a history restore from a document transition. And the mu
 listening session, so opening, creating, or closing a document starts a fresh one with every channel
 audible.
 
+## Teardown
+
+The device is torn down once every source holding a stream has released it. A source that streams to
+the device writes from a thread of its own, so that source alone can bring the writing to a stop and
+hand the stream back — and the hand-back is what leaves the backend safe to terminate.
+
+`PlaybackRouter.shutdown()` is the seam the application calls as it quits. It reaches every registered
+source rather than the engaged one alone, so a source holding a stream is wound down whatever the
+transport reports at that moment.
+
+The device holds a release per stream it handed out and invokes it whenever it needs the output free:
+as the backend is torn down, and on a device change, where the release stops the song so the new
+device opens cleanly. A stream that outlives its release leaves the running backend in place — the
+manager reports the failure and keeps the instance, since the source still writes to memory that
+terminating would reclaim.
+
 ## Who governs what
 
 | Concern | Owner |
@@ -158,6 +174,7 @@ audible.
 | The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/router.py` |
+| Winding every source down ahead of backend teardown | `PlaybackRouter.shutdown()` (`coordinators/playback/router.py`) |
 | A source's engagement reporting | the transport's player protocol, implemented per source |
 | Error presentation for a source's failures | `GuardedPlayer` (`coordinators/playback/guard.py`) |
 | Keyboard delivery, priority, and field focus | `utils/gui/keyboard/` (architecture §12) |
