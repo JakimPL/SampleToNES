@@ -13,6 +13,9 @@ from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCurs
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.palette.colors.written import LiteralColor
+from sampletones_application.view_model.sequencer.settings import (
+    SequencerSettingsViewModel,
+)
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.song_position import SongPosition
@@ -71,14 +74,27 @@ class _TableRecorder:
         self.unhighlighted_cells.append((row, column))
 
 
+def _settings(
+    *,
+    first_highlight: int = ROWS_PER_BEAT,
+    second_highlight: int = ROWS_PER_BAR,
+) -> SequencerSettingsViewModel:
+    """The module settings the panel reads its metre out of."""
+    return SequencerSettingsViewModel(
+        nes_frequency=60,
+        tempo=150,
+        speed=6,
+        rows_per_pattern=PATTERN_ROWS,
+        first_highlight=first_highlight,
+        second_highlight=second_highlight,
+    )
+
+
 def _panel() -> GUISequencerTrackerPanel:
     """Builds a panel around the state the row backgrounds read, with no DearPyGui context."""
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+    panel._settings = _settings()
     panel._layout = SimpleNamespace(
-        tracker=SimpleNamespace(
-            rows_per_beat=ROWS_PER_BEAT,
-            rows_per_bar=ROWS_PER_BAR,
-        ),
         colors=SimpleNamespace(
             cursor_row=LiteralColor(CURSOR_ROW),
             cell_cursor=LiteralColor(CELL_CURSOR),
@@ -174,6 +190,20 @@ class TestRowGrouping:
 
         assert HEADER_TABLE_ROW not in recorder.highlighted_rows
         assert HEADER_TABLE_ROW not in recorder.unhighlighted_rows
+
+    def test_an_edited_metre_retints_the_rows_at_once(self, recorder: _TableRecorder) -> None:
+        """The highlights are the project's, so a change to them reaches the grid as a repaint."""
+        panel = _panel()
+        panel._apply_row_backgrounds()
+
+        panel.update_settings(_settings(first_highlight=1, second_highlight=PATTERN_ROWS))
+
+        assert recorder.highlighted_rows == {
+            tracker_table_row(0): BAR_ROW,
+            tracker_table_row(1): BEAT_ROW,
+            tracker_table_row(2): BEAT_ROW,
+            tracker_table_row(3): BEAT_ROW,
+        }
 
     def test_a_row_past_the_live_table_never_reaches_dearpygui(self, recorder: _TableRecorder) -> None:
         panel = _panel()

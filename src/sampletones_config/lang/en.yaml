@@ -434,6 +434,10 @@ sequencer.module.label.rows: "Rows"
 sequencer.module.tooltip.rows: "Press Enter to apply the new row count."
 sequencer.module.label.tempo: "Tempo"
 sequencer.module.label.speed: "Speed"
+sequencer.module.label.first_highlight: "First highlight"
+sequencer.module.label.second_highlight: "Second highlight"
+sequencer.module.tooltip.first_highlight: "Rows per beat. The tempo counts these."
+sequencer.module.tooltip.second_highlight: "Rows per bar. These group the beats."
 
 # =============================================================================
 # Sequencer tab — Tracker

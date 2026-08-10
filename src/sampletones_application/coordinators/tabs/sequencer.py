@@ -3,7 +3,9 @@ from typing import Callable, Optional, ParamSpec, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import SequencerHistoryElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerHistoryElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -82,6 +84,9 @@ from sampletones_application.view_model.sequencer.history import (
 )
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
+)
+from sampletones_application.view_model.sequencer.settings import (
+    SequencerSettingsViewModel,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
@@ -203,6 +208,7 @@ class SequencerTabCoordinator:
             error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._sequencer_tracker_panel: GUISequencerTrackerPanel = GUISequencerTrackerPanel(
+            self._sequencer_tracker_logic.settings,
             layout=layout.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_TRACKER_PANEL),
             language_manager=language_manager,
@@ -292,6 +298,18 @@ class SequencerTabCoordinator:
             detail=self._history_detail.value,
             coalesce=self._module_setting_key,
         )
+        self._sequencer_module_panel.on_first_highlight = self._undoable(
+            HistoryAction.SET_FIRST_HIGHLIGHT,
+            self._sequencer_tracker_logic.set_first_highlight,
+            detail=self._history_detail.value,
+            coalesce=self._module_setting_key,
+        )
+        self._sequencer_module_panel.on_second_highlight = self._undoable(
+            HistoryAction.SET_SECOND_HIGHLIGHT,
+            self._sequencer_tracker_logic.set_second_highlight,
+            detail=self._history_detail.value,
+            coalesce=self._module_setting_key,
+        )
 
     def _wire_tracker_callbacks(self) -> None:
         self._sequencer_tracker_panel.on_clear_row = self._undoable(
@@ -331,7 +349,7 @@ class SequencerTabCoordinator:
             detail=self._history_detail.adjust_volume,
             coalesce=self._adjustment_key,
         )
-        self._sequencer_tracker_logic.on_settings_changed = self._sequencer_module_panel.update_settings
+        self._sequencer_tracker_logic.on_settings_changed = self._on_settings_changed
         self._sequencer_tracker_logic.on_tracker_changed = self._sequencer_tracker_panel.update_tracker
         self._sequencer_tracker_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
@@ -613,6 +631,18 @@ class SequencerTabCoordinator:
     def _module_setting_key(self, _value: int) -> CoalesceKey:
         """Marks a module-wide setting as one target, shared by its whole streak."""
         return ()
+
+    def _on_settings_changed(
+        self,
+        view_model: SequencerSettingsViewModel,
+    ) -> None:
+        """Hands the module settings to the two panels that show them.
+
+        The module panel shows the values themselves; the tracker reads the metre out of them,
+        so an edited highlight retints the grid in the same round-trip that refreshes the field.
+        """
+        self._sequencer_module_panel.update_settings(view_model)
+        self._sequencer_tracker_panel.update_settings(view_model)
 
     def _on_project_replaced(self) -> None:
         """Realigns the tab with a replaced project, keeping the mute set across history navigation.

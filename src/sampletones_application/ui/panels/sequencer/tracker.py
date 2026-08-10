@@ -80,6 +80,9 @@ from sampletones_application.view_model.sequencer.channels import (
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
+from sampletones_application.view_model.sequencer.settings import (
+    SequencerSettingsViewModel,
+)
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import (
     SequencerRowViewModel,
@@ -113,6 +116,7 @@ PLAYHEAD_PAINT_FRAMES: Final[int] = 1
 class GUISequencerTrackerPanel(GUIPanel):
     def __init__(
         self,
+        initial_settings: SequencerSettingsViewModel,
         *,
         layout: SequencerLayout,
         language_manager: LanguageManager,
@@ -122,6 +126,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
+        self._settings = initial_settings
         self._language_manager = language_manager
         self._router = key_router
         self._tab_active = tab_active
@@ -463,12 +468,17 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._apply_row_backgrounds()
         self._update_cursor()
 
+    def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
+        """Takes the metre the project states, retinting the rows its highlights now open."""
+        self._settings = view_model
+        self._apply_row_backgrounds()
+
     def _row_background(self, row_index: int) -> Optional[BaseColor]:
         """The colour a pattern row's background carries under the marks standing on it now."""
         cursor = self._input_state.cursor
         return row_background(
             row_index,
-            self._layout.tracker,
+            self._settings,
             self._layout.colors,
             RowCues(
                 cursor=cursor.row if cursor is not None else None,

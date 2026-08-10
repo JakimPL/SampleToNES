@@ -2,9 +2,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 from sampletones_application.layout.tabs.sequencer.colors.colors import SequencerColors
-from sampletones_application.layout.tabs.sequencer.tracker.tracker import TrackerLayout
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.layered import LayeredColor
+from sampletones_application.view_model.sequencer.settings import (
+    SequencerSettingsViewModel,
+)
 
 
 @dataclass(frozen=True)
@@ -17,18 +19,19 @@ class RowCues:
 
 def group_color(
     row_index: int,
-    tracker: TrackerLayout,
+    settings: SequencerSettingsViewModel,
     colors: SequencerColors,
 ) -> Optional[BaseColor]:
-    """The emphasis a row takes from the group it opens.
+    """The emphasis a row takes from the group the project's metre opens on it.
 
-    A row opening a bar takes the stronger of the two shades, since a bar boundary is also a
-    beat boundary. A row inside a beat keeps the zebra stripe it already has.
+    The second highlight marks the bar and the first the beat, so a row opening a bar takes
+    the stronger of the two shades even where a beat opens there as well. A row inside a beat
+    keeps the zebra stripe it already has, and a highlight of one marks every row.
     """
-    if tracker.rows_per_bar > 0 and row_index % tracker.rows_per_bar == 0:
+    if row_index % settings.second_highlight == 0:
         return colors.rows.bar
 
-    if tracker.rows_per_beat > 0 and row_index % tracker.rows_per_beat == 0:
+    if row_index % settings.first_highlight == 0:
         return colors.rows.beat
 
     return None
@@ -55,7 +58,7 @@ def cue_color(
 
 def row_background(
     row_index: int,
-    tracker: TrackerLayout,
+    settings: SequencerSettingsViewModel,
     colors: SequencerColors,
     cues: RowCues,
 ) -> Optional[BaseColor]:
@@ -66,7 +69,7 @@ def row_background(
     composed over the group the row belongs to. A plain row with no mark on it returns
     ``None``, leaving the stripe as it is.
     """
-    group = group_color(row_index, tracker, colors)
+    group = group_color(row_index, settings, colors)
     cue = cue_color(row_index, cues, colors)
     if group is None:
         return cue

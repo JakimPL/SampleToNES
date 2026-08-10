@@ -182,6 +182,13 @@ arpeggio, pitch, hi-pitch, or duty/noise mode.
 A block of tracker rows spanning the channels. A song plays its patterns in an
 order.
 
+### Metric highlight
+
+The row grouping a song is counted in. The **first highlight** is the beat — the
+rows one beat spans — and the **second highlight** is the bar that gathers beats.
+The tracker tints the row that opens each, and the beat is what a tempo counts:
+`beats_per_minute = 60 × nes_frequency / (ticks_per_row × first_highlight)`.
+
 ### Order
 
 The list that arranges patterns into the song's timeline.
