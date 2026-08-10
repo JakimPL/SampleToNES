@@ -9,10 +9,8 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
-    TAG_SEQUENCER_MODULE_INPUT_FIRST_HIGHLIGHT,
     TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
     TAG_SEQUENCER_MODULE_INPUT_ROWS,
-    TAG_SEQUENCER_MODULE_INPUT_SECOND_HIGHLIGHT,
     TAG_SEQUENCER_MODULE_INPUT_SPEED,
     TAG_SEQUENCER_MODULE_INPUT_TEMPO,
     TAG_SEQUENCER_MODULE_PANEL,
@@ -30,9 +28,7 @@ from sampletones_application.view_model.sequencer.settings import (
 )
 from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.constants.project import (
-    MAX_HIGHLIGHT,
     MAX_ROWS_PER_PATTERN,
-    MIN_HIGHLIGHT,
     MIN_ROWS_PER_PATTERN,
 )
 from sampletones_shared.types.application import Sender
@@ -62,8 +58,6 @@ class GUISequencerModulePanel(GUIPanel):
         self.on_rows_per_pattern: Optional[Callable[[int], None]] = None
         self.on_tempo: Optional[Callable[[int], None]] = None
         self.on_speed: Optional[Callable[[int], None]] = None
-        self.on_first_highlight: Optional[Callable[[int], None]] = None
-        self.on_second_highlight: Optional[Callable[[int], None]] = None
 
         self._msg_status_input = language_manager["global.status.message.input"]
 
@@ -140,42 +134,12 @@ class GUISequencerModulePanel(GUIPanel):
                     width=self._input_width,
                     callback=self._on_speed_input,
                 )
-            with labeled_field(
-                self._language_manager["sequencer.module.label.first_highlight"],
-                self._label_width,
-            ):
-                dpg.add_input_int(
-                    default_value=settings.first_highlight,
-                    tag=TAG_SEQUENCER_MODULE_INPUT_FIRST_HIGHLIGHT,
-                    min_value=MIN_HIGHLIGHT,
-                    max_value=MAX_HIGHLIGHT,
-                    min_clamped=True,
-                    max_clamped=True,
-                    width=self._input_width,
-                    callback=self._on_first_highlight_input,
-                )
-            with labeled_field(
-                self._language_manager["sequencer.module.label.second_highlight"],
-                self._label_width,
-            ):
-                dpg.add_input_int(
-                    default_value=settings.second_highlight,
-                    tag=TAG_SEQUENCER_MODULE_INPUT_SECOND_HIGHLIGHT,
-                    min_value=MIN_HIGHLIGHT,
-                    max_value=MAX_HIGHLIGHT,
-                    min_clamped=True,
-                    max_clamped=True,
-                    width=self._input_width,
-                    callback=self._on_second_highlight_input,
-                )
 
         for tag in (
             TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
             TAG_SEQUENCER_MODULE_INPUT_ROWS,
             TAG_SEQUENCER_MODULE_INPUT_TEMPO,
             TAG_SEQUENCER_MODULE_INPUT_SPEED,
-            TAG_SEQUENCER_MODULE_INPUT_FIRST_HIGHLIGHT,
-            TAG_SEQUENCER_MODULE_INPUT_SECOND_HIGHLIGHT,
         ):
             FontRegistry.bind_to_item(tag, Font.MONO)
 
@@ -190,14 +154,6 @@ class GUISequencerModulePanel(GUIPanel):
             self._on_rows_per_pattern_input,
         )
         show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._language_manager["sequencer.module.tooltip.rows"])
-        show_tooltip(
-            TAG_SEQUENCER_MODULE_INPUT_FIRST_HIGHLIGHT,
-            self._language_manager["sequencer.module.tooltip.first_highlight"],
-        )
-        show_tooltip(
-            TAG_SEQUENCER_MODULE_INPUT_SECOND_HIGHLIGHT,
-            self._language_manager["sequencer.module.tooltip.second_highlight"],
-        )
         self._status_bar.bind_to_item(
             TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
             self._msg_status_input,
@@ -214,14 +170,6 @@ class GUISequencerModulePanel(GUIPanel):
             TAG_SEQUENCER_MODULE_INPUT_SPEED,
             self._msg_status_input,
         )
-        self._status_bar.bind_to_item(
-            TAG_SEQUENCER_MODULE_INPUT_FIRST_HIGHLIGHT,
-            self._msg_status_input,
-        )
-        self._status_bar.bind_to_item(
-            TAG_SEQUENCER_MODULE_INPUT_SECOND_HIGHLIGHT,
-            self._msg_status_input,
-        )
 
     def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
         dpg.set_value(
@@ -234,14 +182,6 @@ class GUISequencerModulePanel(GUIPanel):
         )
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_TEMPO, view_model.tempo)
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_SPEED, view_model.speed)
-        dpg.set_value(
-            TAG_SEQUENCER_MODULE_INPUT_FIRST_HIGHLIGHT,
-            view_model.first_highlight,
-        )
-        dpg.set_value(
-            TAG_SEQUENCER_MODULE_INPUT_SECOND_HIGHLIGHT,
-            view_model.second_highlight,
-        )
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_MODULE_GROUP_OPTIONS, enabled=enabled)
@@ -286,16 +226,4 @@ class GUISequencerModulePanel(GUIPanel):
         self.call(
             self.on_speed,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_SPEED)),
-        )
-
-    def _on_first_highlight_input(self, _sender: Sender, _app_data: int) -> None:
-        self.call(
-            self.on_first_highlight,
-            int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_FIRST_HIGHLIGHT)),
-        )
-
-    def _on_second_highlight_input(self, _sender: Sender, _app_data: int) -> None:
-        self.call(
-            self.on_second_highlight,
-            int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_SECOND_HIGHLIGHT)),
         )

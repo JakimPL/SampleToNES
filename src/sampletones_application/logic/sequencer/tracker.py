@@ -123,12 +123,6 @@ class SequencerTrackerLogic(CallbackMixin):
     def set_speed(self, speed: int) -> None:
         self._controller.set_speed(speed)
 
-    def set_first_highlight(self, first_highlight: int) -> None:
-        self._controller.set_first_highlight(first_highlight)
-
-    def set_second_highlight(self, second_highlight: int) -> None:
-        self._controller.set_second_highlight(second_highlight)
-
     def set_row(
         self,
         generator: GeneratorName,

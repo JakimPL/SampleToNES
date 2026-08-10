@@ -251,6 +251,18 @@ TAG_SETTINGS_PROPERTIES_INPUT_COMMENT = TagName(
     Widget.INPUT,
     "comment",
 )
+TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT = TagName(
+    Page.SETTINGS,
+    Panel.PROPERTIES,
+    Widget.INPUT,
+    "first_highlight",
+)
+TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT = TagName(
+    Page.SETTINGS,
+    Panel.PROPERTIES,
+    Widget.INPUT,
+    "second_highlight",
+)
 TAG_SETTINGS_PROPERTIES_BUTTON_OK = TagName(
     Page.SETTINGS,
     Panel.PROPERTIES,

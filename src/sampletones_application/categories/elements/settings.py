@@ -20,6 +20,8 @@ class ProjectPropertiesElements(AbstractElement):
     TITLE = "title"
     AUTHOR = "author"
     COMMENT = "comment"
+    FIRST_HIGHLIGHT = "first_highlight"
+    SECOND_HIGHLIGHT = "second_highlight"
     CREATED = "created"
     MODIFIED = "modified"
 

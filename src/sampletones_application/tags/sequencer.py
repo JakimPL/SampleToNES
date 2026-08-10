@@ -98,18 +98,6 @@ TAG_SEQUENCER_MODULE_INPUT_SPEED = TagName(
     Widget.INPUT,
     "speed",
 )
-TAG_SEQUENCER_MODULE_INPUT_FIRST_HIGHLIGHT = TagName(
-    Page.SEQUENCER,
-    Panel.MODULE,
-    Widget.INPUT,
-    "first_highlight",
-)
-TAG_SEQUENCER_MODULE_INPUT_SECOND_HIGHLIGHT = TagName(
-    Page.SEQUENCER,
-    Panel.MODULE,
-    Widget.INPUT,
-    "second_highlight",
-)
 TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY = TagName(
     Page.SEQUENCER,
     Panel.MODULE,

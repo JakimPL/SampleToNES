@@ -298,18 +298,6 @@ class SequencerTabCoordinator:
             detail=self._history_detail.value,
             coalesce=self._module_setting_key,
         )
-        self._sequencer_module_panel.on_first_highlight = self._undoable(
-            HistoryAction.SET_FIRST_HIGHLIGHT,
-            self._sequencer_tracker_logic.set_first_highlight,
-            detail=self._history_detail.value,
-            coalesce=self._module_setting_key,
-        )
-        self._sequencer_module_panel.on_second_highlight = self._undoable(
-            HistoryAction.SET_SECOND_HIGHLIGHT,
-            self._sequencer_tracker_logic.set_second_highlight,
-            detail=self._history_detail.value,
-            coalesce=self._module_setting_key,
-        )
 
     def _wire_tracker_callbacks(self) -> None:
         self._sequencer_tracker_panel.on_clear_row = self._undoable(
@@ -636,10 +624,11 @@ class SequencerTabCoordinator:
         self,
         view_model: SequencerSettingsViewModel,
     ) -> None:
-        """Hands the module settings to the two panels that show them.
+        """Hands the project's song settings to the two panels that read them.
 
-        The module panel shows the values themselves; the tracker reads the metre out of them,
-        so an edited highlight retints the grid in the same round-trip that refreshes the field.
+        The module panel shows the timing fields themselves; the tracker reads the metre out of
+        the same view model, so a highlight edited in the project properties retints the grid as
+        soon as the dialog commits.
         """
         self._sequencer_module_panel.update_settings(view_model)
         self._sequencer_tracker_panel.update_settings(view_model)

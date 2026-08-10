@@ -108,17 +108,16 @@ Set the song's timing in **Module options** on the right: **Rows** per pattern,
 after samples exist re-times how they all play back, so it asks **Change NES
 frequency** first (with a **Don't ask again** option).
 
-**First highlight** and **Second highlight** state the metre the song is counted
-in: how many rows make a beat, and how many make a bar. The tracker tints the row
-that opens each one. The bar divided by the beat is how many beats you hear in a
-bar, so the default 4 and 16 give four beats of four rows — common time. Waltz time
-keeps the four-row beat and shortens the bar to 12, for three beats. The beat is
-what the tempo counts, so the two together say how fast the song is felt as well as
-how it looks.
-
 The project's title, author, and comment — which carry into the exported module —
 are set in **Project properties**, from the button or **File ▸ Project
-properties...**.
+properties...**, along with the metre the song is counted in.
+
+**First highlight** and **Second highlight** are that metre: how many rows make a
+beat, and how many make a bar. The tracker tints the row that opens each one. The
+bar divided by the beat is how many beats you hear in a bar, so the default 4 and
+16 give four beats of four rows — common time. Waltz time keeps the four-row beat
+and shortens the bar to 12, for three beats. The beat is what the tempo counts, so
+the two together say how fast the song is felt as well as how it looks.
 
 ## Undo and export
 

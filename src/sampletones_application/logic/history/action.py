@@ -30,8 +30,6 @@ class HistoryAction(AbstractElement):
     SET_SAMPLE_LOOP = "set_sample_loop"
     SET_TEMPO = "set_tempo"
     SET_SPEED = "set_speed"
-    SET_FIRST_HIGHLIGHT = "set_first_highlight"
-    SET_SECOND_HIGHLIGHT = "set_second_highlight"
     SET_NES_FREQUENCY = "set_nes_frequency"
     SET_ROWS_PER_PATTERN = "set_rows_per_pattern"
     EDIT_RECONSTRUCTION = "edit_reconstruction"

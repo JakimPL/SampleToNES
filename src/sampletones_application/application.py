@@ -1040,11 +1040,14 @@ class Application:
             return
 
         info = self.project_controller.project.info
+        settings = self.project_controller.project.settings
         self.project_properties_window.open(
             ProjectPropertiesViewModel(
                 title=info.title,
                 author=info.author,
                 comment=info.comment,
+                first_highlight=settings.first_highlight,
+                second_highlight=settings.second_highlight,
                 created=info.created,
                 modified=info.modified,
             )
@@ -1055,13 +1058,16 @@ class Application:
         title: str,
         author: str,
         comment: str,
+        first_highlight: int,
+        second_highlight: int,
     ) -> None:
         """Applies the properties dialog's values as one undoable gesture.
 
-        Only fields that differ from the current project info reach the controller,
-        so confirming the dialog with no edits is a no-op.
+        Only fields that differ from the current project reach the controller, so
+        confirming the dialog with no edits is a no-op.
         """
         info = self.project_controller.project.info
+        settings = self.project_controller.project.settings
         with self.history.transaction(HistoryAction.EDIT_PROJECT_PROPERTIES):
             if title != info.title:
                 self.project_controller.set_title(title)
@@ -1069,6 +1075,10 @@ class Application:
                 self.project_controller.set_author(author)
             if comment != info.comment:
                 self.project_controller.set_comment(comment)
+            if first_highlight != settings.first_highlight:
+                self.project_controller.set_first_highlight(first_highlight)
+            if second_highlight != settings.second_highlight:
+                self.project_controller.set_second_highlight(second_highlight)
 
     def _open_audio_settings(self) -> None:
         """Opens the audio settings dialog seeded with the device manager's state."""
