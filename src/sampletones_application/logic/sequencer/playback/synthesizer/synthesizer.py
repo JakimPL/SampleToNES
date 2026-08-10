@@ -3,7 +3,7 @@ from typing import Callable, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
-from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.shared.project_source import ProjectSource
 from sampletones_core.audio import clip_audio_inplace, silence
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
@@ -26,11 +26,13 @@ from .timing import SongTiming
 
 
 class RowSynthesizer:
-    """Real-time synthesis engine for tracker song playback.
+    """Synthesis engine for tracker song audio, one row at a time.
 
-    Reads the live ``Project`` from ``project_controller`` on every ``render_row``
-    call so that pattern edits, tempo changes, and sample swaps take effect
-    immediately while playback keeps running.
+    Reads the ``Project`` from ``project_source`` on every ``render_row`` call. Over the live
+    controller that makes pattern edits, tempo changes, and sample swaps take effect immediately
+    while playback keeps running; over a
+    :class:`~sampletones_application.logic.shared.project_source.ProjectSnapshot` it makes a whole
+    render describe one state of the document.
 
     A row lasts the ticks the project's groove gives its position within the pattern, so the
     row a pattern's tenth row plays for is the row an exported module plays it for: both index
@@ -56,17 +58,17 @@ class RowSynthesizer:
 
     def __init__(
         self,
-        project_controller: ProjectController,
+        project_source: ProjectSource,
         config: Config,
         *,
         active_channels: Callable[[], FrozenSet[GeneratorName]],
         sample_rate: Callable[[], int],
     ) -> None:
-        self._project_controller = project_controller
+        self._project_source = project_source
         self._active_channels = active_channels
         self._sample_rate = sample_rate
         self._position = SongPosition()
-        self._timing: SongTiming = SongTiming.from_project(project_controller.project)
+        self._timing: SongTiming = SongTiming.from_project(project_source.project)
         self._groove: Groove = self._timing.groove()
         self._channels = ChannelBank(config, self._current_rates())
         self._elapsed_ticks: int = 0
@@ -81,7 +83,7 @@ class RowSynthesizer:
 
     @property
     def is_finished(self) -> bool:
-        project = self._project_controller.project
+        project = self._project_source.project
         return self._position.order_position >= project.song.order_length()
 
     def set_position(self, order_position: int, row_index: int) -> None:
@@ -93,7 +95,7 @@ class RowSynthesizer:
         self._channels.reset()
 
     def render_row(self) -> Tuple[np.ndarray, SongPosition]:
-        project = self._project_controller.project
+        project = self._project_source.project
         song = project.song
         self._position.wrap_overflow(song.rows_per_pattern)
         self._channels.follow(self._current_rates())
@@ -125,7 +127,7 @@ class RowSynthesizer:
 
     def _current_rates(self) -> EngineRates:
         return EngineRates.from_project(
-            self._project_controller.project,
+            self._project_source.project,
             self._sample_rate(),
         )
 

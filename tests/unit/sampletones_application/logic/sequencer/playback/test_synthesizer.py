@@ -47,6 +47,7 @@ class MaskProvider:
 @dataclass
 class SynthesizerContext:
     synthesizer: RowSynthesizer
+    controller: ProjectController
     mask: MaskProvider
     chunks: List[np.ndarray] = field(default_factory=list)
     tick_snapshots: Dict[str, int] = field(default_factory=dict)
@@ -58,12 +59,13 @@ def _make_context() -> SynthesizerContext:
     mask = MaskProvider()
     return SynthesizerContext(
         synthesizer=make_synthesizer(controller, Config(), active_channels=mask),
+        controller=controller,
         mask=mask,
     )
 
 
-def _controller(context: SynthesizerContext):
-    return context.synthesizer._project_controller
+def _controller(context: SynthesizerContext) -> ProjectController:
+    return context.controller
 
 
 def _state(
@@ -95,7 +97,7 @@ def _row_ticks(
     rows: int,
 ) -> Tuple[int, ...]:
     """The ticks ``rows`` consecutive rendered rows last, read back from the audio they produced."""
-    settings = synthesizer._project_controller.project.settings
+    settings = synthesizer._project_source.project.settings
     frame_length = round(settings.sample_rate / settings.nes_frequency)
     return tuple(len(synthesizer.render_row()[0]) // frame_length for _ in range(rows))
 
