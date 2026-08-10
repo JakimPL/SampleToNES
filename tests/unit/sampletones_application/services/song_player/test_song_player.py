@@ -1,4 +1,6 @@
-from unittest.mock import MagicMock
+import threading
+from typing import Callable, Final, List, Optional, Tuple
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 
@@ -7,10 +9,19 @@ from sampletones_application.services.song_player.player import (
     _RenderedRow,
 )
 from sampletones_application.services.song_player.result import (
+    SongPlaybackError,
     SongPlaybackStopped,
+    SongPlayerResult,
     SongPositionUpdate,
 )
 from sampletones_core.project.song_position import SongPosition
+
+SAMPLE_RATE: Final[int] = 44100
+WRITE_BLOCK: Final[int] = 64
+WAIT_TIMEOUT: Final[float] = 5.0
+SHORT_JOIN_TIMEOUT: Final[float] = 0.05
+WRITE_RELEASE_DELAY: Final[float] = 0.05
+JOIN_TIMEOUT_TARGET: Final[str] = "sampletones_application.services.song_player.player.STOP_JOIN_TIMEOUT"
 
 
 def _make_service(
@@ -28,6 +39,103 @@ def _make_service(
         should_loop=lambda: should_loop,
         master_gain=lambda: master_gain,
     )
+
+
+class _FakeStream:
+    """A stand-in for the device stream that records the frame count of every block handed to it."""
+
+    def __init__(
+        self,
+        *,
+        gate: Optional[threading.Event] = None,
+        error: Optional[Exception] = None,
+        after_write: Optional[Callable[[], None]] = None,
+    ) -> None:
+        self._gate = gate
+        self._error = error
+        self._after_write = after_write
+        self.writes: List[int] = []
+        self.entered_write = threading.Event()
+        self.stopped = threading.Event()
+        self.closed = threading.Event()
+
+    def write(self, data: bytes) -> None:
+        self.writes.append(len(data) // np.dtype(np.float32).itemsize)
+        self.entered_write.set()
+        if self._gate is not None:
+            self._gate.wait(timeout=WAIT_TIMEOUT)
+
+        if self._after_write is not None:
+            self._after_write()
+
+        if self._error is not None:
+            raise self._error
+
+    def stop_stream(self) -> None:
+        self.stopped.set()
+
+    def close(self) -> None:
+        self.closed.set()
+
+
+class _FakeSynthesizer:
+    """Renders a fixed number of equal-length rows and then reports itself finished."""
+
+    def __init__(self, *, rows: int, frames: int) -> None:
+        self._rows = rows
+        self._frames = frames
+        self._rendered = 0
+        self.order_position = 0
+        self.row_index = 0
+
+    @property
+    def is_finished(self) -> bool:
+        return self._rendered >= self._rows
+
+    def set_position(self, order_position: int, row_index: int) -> None:
+        self.order_position = order_position
+        self.row_index = row_index
+
+    def reset(self) -> None:
+        self._rendered = 0
+
+    def render_row(self) -> Tuple[np.ndarray, SongPosition]:
+        position = SongPosition(order_position=0, row_index=self._rendered)
+        self._rendered += 1
+        return np.ones(self._frames, dtype=np.float32), position
+
+
+def _make_device_manager(stream: Optional[_FakeStream] = None) -> MagicMock:
+    audio_device_manager = MagicMock()
+    audio_device_manager.sample_rate = SAMPLE_RATE
+    audio_device_manager.buffer_size = WRITE_BLOCK
+    audio_device_manager.open_output_stream.return_value = stream
+    return audio_device_manager
+
+
+def _make_streaming_service(
+    audio_device_manager: MagicMock,
+    *,
+    rows: int = 1,
+    frames: int = 4 * WRITE_BLOCK,
+) -> SongPlayerService:
+    return SongPlayerService(
+        audio_device_manager,
+        _FakeSynthesizer(rows=rows, frames=frames),
+        should_loop=lambda: False,
+        master_gain=lambda: 1.0,
+    )
+
+
+def _wedged_thread(gate: threading.Event) -> threading.Thread:
+    """A started worker that stays alive until ``gate`` is set."""
+    thread = threading.Thread(
+        target=lambda: gate.wait(timeout=WAIT_TIMEOUT),
+        daemon=True,
+        name="WedgedWorker",
+    )
+    thread.start()
+    return thread
 
 
 class TestSongPlayerServiceInitialState:
@@ -334,3 +442,114 @@ class TestSongPlayerServicePrefetch:
         service._stop_event.set()
 
         assert service._dequeue() == (False, None)
+
+
+class TestSongPlayerServiceBoundedWrites:
+    def test_start_takes_the_write_block_from_the_device(self) -> None:
+        service = _make_streaming_service(_make_device_manager(_FakeStream()))
+
+        service.start()
+        service.stop()
+
+        assert service._write_block_frames == WRITE_BLOCK
+
+    def test_row_reaches_the_device_in_buffer_sized_blocks(self) -> None:
+        service = _make_service()
+        service.subscribe(lambda result: None)
+        service._write_block_frames = WRITE_BLOCK
+
+        stream = _FakeStream()
+        row = _RenderedRow(chunk=np.ones(3 * WRITE_BLOCK + 8, dtype=np.float32), position=SongPosition())
+        service._play_row(stream, row)
+
+        assert stream.writes == [WRITE_BLOCK, WRITE_BLOCK, WRITE_BLOCK, 8]
+
+    def test_stop_mid_row_leaves_the_remaining_blocks_unwritten(self) -> None:
+        service = _make_service()
+        received: List[SongPlayerResult] = []
+        service.subscribe(received.append)
+        service._write_block_frames = WRITE_BLOCK
+
+        stream = _FakeStream(after_write=service._stop_event.set)
+        row = _RenderedRow(chunk=np.ones(4 * WRITE_BLOCK, dtype=np.float32), position=SongPosition())
+        service._play_row(stream, row)
+
+        assert stream.writes == [WRITE_BLOCK]
+        assert received == []
+
+
+class TestSongPlayerServiceStopQuiescence:
+    def test_stop_returns_after_the_writer_closed_its_stream(self) -> None:
+        gate = threading.Event()
+        stream = _FakeStream(gate=gate)
+        service = _make_streaming_service(_make_device_manager(stream), rows=8)
+        service.subscribe(lambda result: None)
+
+        service.start()
+        assert stream.entered_write.wait(timeout=WAIT_TIMEOUT)
+
+        releaser = threading.Timer(WRITE_RELEASE_DELAY, gate.set)
+        releaser.start()
+        try:
+            service.stop()
+        finally:
+            releaser.cancel()
+            gate.set()
+
+        assert service.alive is False
+        assert stream.stopped.is_set()
+        assert stream.closed.is_set()
+
+    def test_stop_keeps_a_worker_that_outlives_the_deadline(self) -> None:
+        gate = threading.Event()
+        service = _make_service()
+        service._write_thread = _wedged_thread(gate)
+
+        try:
+            with patch(JOIN_TIMEOUT_TARGET, SHORT_JOIN_TIMEOUT):
+                service.stop()
+
+            assert service._write_thread is not None
+            assert service.alive is True
+        finally:
+            gate.set()
+
+    def test_start_is_refused_while_a_worker_still_holds_the_output(self) -> None:
+        gate = threading.Event()
+        audio_device_manager = _make_device_manager(_FakeStream())
+        service = _make_streaming_service(audio_device_manager)
+        service._write_thread = _wedged_thread(gate)
+
+        try:
+            with patch(JOIN_TIMEOUT_TARGET, SHORT_JOIN_TIMEOUT):
+                service.start()
+
+            audio_device_manager.open_output_stream.assert_not_called()
+        finally:
+            gate.set()
+
+
+class TestSongPlayerServiceWriteFailure:
+    def test_a_failing_write_reports_a_playback_error(self) -> None:
+        error = OSError("device disappeared")
+        service = _make_streaming_service(_make_device_manager(_FakeStream(error=error)))
+        received: List[SongPlayerResult] = []
+        service.subscribe(received.append)
+        service._resume_event.set()
+        service._buffer.append(_RenderedRow(chunk=np.ones(WRITE_BLOCK, dtype=np.float32), position=SongPosition()))
+
+        service._write_loop()
+
+        assert received == [SongPlaybackError(error=error)]
+
+    def test_a_failing_write_still_closes_the_stream(self) -> None:
+        stream = _FakeStream(error=OSError("device disappeared"))
+        service = _make_streaming_service(_make_device_manager(stream))
+        service.subscribe(lambda result: None)
+        service._resume_event.set()
+        service._buffer.append(_RenderedRow(chunk=np.ones(WRITE_BLOCK, dtype=np.float32), position=SongPosition()))
+
+        service._write_loop()
+
+        assert stream.stopped.is_set()
+        assert stream.closed.is_set()

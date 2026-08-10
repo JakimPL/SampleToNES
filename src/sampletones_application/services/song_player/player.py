@@ -9,6 +9,7 @@ import pyaudio
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.song_player.constants import (
     PREFETCH_SECONDS,
+    STOP_JOIN_TIMEOUT,
     STOP_POLL_TIMEOUT,
 )
 from sampletones_application.services.song_player.protocol import RowSynthesizerProtocol
@@ -19,6 +20,7 @@ from sampletones_application.services.song_player.result import (
     SongPositionUpdate,
 )
 from sampletones_core.audio import AudioDeviceManager, clip_audio_inplace
+from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.constants.audio import UNITY_GAIN
 from sampletones_shared.logger import logger
@@ -67,6 +69,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._buffer_condition = threading.Condition()
         self._queued_samples: int = 0
         self._prefetch_samples: int = 0
+        self._write_block_frames: int = DEFAULT_BUFFER_SIZE
         self._playback_error: Optional[Exception] = None
 
     @property
@@ -88,6 +91,10 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         row_index: int = 0,
     ) -> None:
         self.stop()
+        if self.alive:
+            logger.error(f"{self.class_name}: the previous writer still holds the output; start ignored")
+            return
+
         self._synthesizer.set_position(order_position, row_index)
         self._synthesizer.reset()
         self._playback_error = None
@@ -97,6 +104,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
                 PREFETCH_SECONDS * self._audio_device_manager.sample_rate,
             ),
         )
+        self._write_block_frames = self._audio_device_manager.buffer_size
         self._stop_event.clear()
         self._resume_event.set()
         self._render_thread = threading.Thread(
@@ -116,12 +124,8 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._stop_event.set()
         self._resume_event.set()
         self._wake_buffer()
-        for thread in (self._render_thread, self._write_thread):
-            if thread is not None:
-                thread.join(timeout=2.0)
-
-        self._render_thread = None
-        self._write_thread = None
+        self._render_thread = self._join_worker(self._render_thread)
+        self._write_thread = self._join_worker(self._write_thread)
         self._clear_buffer()
 
     def pause(self) -> None:
@@ -154,6 +158,23 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         self._synthesizer.set_position(order_position, self._synthesizer.row_index)
 
+    def _join_worker(self, thread: Optional[threading.Thread]) -> Optional[threading.Thread]:
+        """Joins one worker; keeps the thread when it outlives the stop deadline.
+
+        Keeping a surviving writer is what makes ``alive`` report the truth: the thread still
+        holds the output stream, so callers waiting on quiescence — the audio device before it
+        tears the backend down — can see that the stream is still outstanding.
+        """
+        if thread is None:
+            return None
+
+        thread.join(timeout=STOP_JOIN_TIMEOUT)
+        if thread.is_alive():
+            logger.error(f"{self.class_name}: {thread.name} outlived the stop deadline")
+            return thread
+
+        return None
+
     def _render_loop(self) -> None:
         """Renders rows into the prefetch buffer until the song ends or a stop is requested.
 
@@ -181,6 +202,10 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         try:
             self._drain_to_stream(stream)
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            logger.error_with_traceback(exception, f"{self.class_name}: playback error")
+            self._playback_error = exception
+            self._emit_terminal()
         finally:
             stream.stop_stream()
             stream.close()
@@ -218,10 +243,31 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             self._play_row(stream, row)
 
     def _play_row(self, stream: pyaudio.Stream, row: _RenderedRow) -> None:
-        if len(row.chunk):
-            stream.write(self._scale_to_gain(row.chunk).tobytes())
+        """Hands one row to the device, reporting its position once the whole row is written.
+
+        A row cut short by a stop reports no position, so the playhead reflects the audio the
+        device actually received.
+        """
+        if len(row.chunk) and not self._write_chunk(stream, self._scale_to_gain(row.chunk)):
+            return
 
         self._emit(SongPositionUpdate(position=row.position))
+
+    def _write_chunk(self, stream: pyaudio.Stream, chunk: np.ndarray) -> bool:
+        """Writes one row to the device in buffer-sized blocks; reports whether it completed.
+
+        Each block is a separate blocking write, so a stop reached mid-row is honoured within
+        roughly one buffer period rather than at the next row boundary. That bounds how long the
+        writer holds its stream open after a stop, which is what keeps the audio backend safe to
+        tear down on demand.
+        """
+        for offset in range(0, len(chunk), self._write_block_frames):
+            if self._stop_event.is_set():
+                return False
+
+            stream.write(chunk[offset : offset + self._write_block_frames].tobytes())
+
+        return True
 
     def _scale_to_gain(self, chunk: np.ndarray) -> np.ndarray:
         """Scales one row by the live master gain, clipped to the output stream's range.
