@@ -63,12 +63,12 @@ class TestRowSerialization(BaseTestSuite):
         def label(self) -> str:
             return f"transpose={self.expected.transpose}_command={self.expected.command is not None}"
 
-    test_cases = [
+    test_cases = (
         TestCase(expected=Row()),
         TestCase(expected=Row(transpose=0, volume=15)),
         TestCase(expected=Row(transpose=12, command=_instrument(), volume=8)),
         TestCase(expected=Row(command=NoteOff())),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

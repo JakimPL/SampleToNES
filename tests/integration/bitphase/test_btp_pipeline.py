@@ -5,7 +5,11 @@ import pytest
 
 from sampletones_core.formats.bitphase.btp import write_btp
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
-from sampletones_core.formats.bitphase.specification.channels import CHANNEL_COUNT, CHANNEL_LABELS, ChannelIndex
+from sampletones_core.formats.bitphase.specification.channels import (
+    CHANNEL_COUNT,
+    CHANNEL_LABELS,
+    ChannelIndex,
+)
 from sampletones_core.formats.bitphase.specification.chip import (
     CHIP_TYPE_NES,
     CPU_FREQUENCIES,

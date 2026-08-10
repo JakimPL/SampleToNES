@@ -23,7 +23,10 @@ from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper, PitchStepperStyle
+from sampletones_application.ui.elements.pitch_stepper import (
+    GUIPitchStepper,
+    PitchStepperStyle,
+)
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -180,7 +183,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         )
         self._pitch_stepper.on_value_changed = self._on_pitch_value_changed
 
-    def _on_pitch_value_changed(self, value: int) -> None:
+    def _on_pitch_value_changed(self, _value: int) -> None:
         self._on_instruction_changed()
 
     def _create_pulse_instruction_choice_panel(self, instruction: PulseInstruction) -> None:

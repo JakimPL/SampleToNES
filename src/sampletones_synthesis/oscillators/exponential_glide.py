@@ -30,7 +30,7 @@ class ExponentialGlideOscillator(BaseModel):
         self,
         time: np.ndarray,
         *,
-        generator: np.random.Generator,
+        generator: np.random.Generator,  # pylint: disable=unused-argument
     ) -> np.ndarray:
         """
         Render the glide over the time axis.

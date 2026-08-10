@@ -1,6 +1,6 @@
 .PHONY: help setup install build release system-deps run clean pre-commit test \
 	ftm-samples check-import-boundary check-tag-names check-unused-tags \
-	check-language-keys calibration lint pylint mypy format
+	check-language-keys check-palette-colors calibration lint pylint mypy format
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -43,12 +43,14 @@ endif
 BUILD_COMMAND := $(RUN_SCRIPT) $(BUILD_SCRIPT)
 RELEASE_COMMAND := $(RUN_SCRIPT) $(BUILD_SCRIPT) --release
 SYSTEM_DEPS_COMMAND := bash scripts/linux/build/dependencies.sh
+SETUP_ENV :=
 
 ifeq ($(UNAME_S),Darwin)
-	MACOS_SOURCE_ONLY := bash scripts/macos/source_only.sh
-	BUILD_COMMAND := $(MACOS_SOURCE_ONLY) 'make build'
-	RELEASE_COMMAND := $(MACOS_SOURCE_ONLY) 'make release'
-	SYSTEM_DEPS_COMMAND := $(MACOS_SOURCE_ONLY) 'make system-deps'
+	MACOS_NO_BUNDLE := bash scripts/macos/build/no_bundle.sh
+	BUILD_COMMAND := $(MACOS_NO_BUNDLE) 'make build'
+	RELEASE_COMMAND := $(MACOS_NO_BUNDLE) 'make release'
+	SYSTEM_DEPS_COMMAND := bash scripts/macos/build/dependencies.sh
+	SETUP_ENV := ARCHFLAGS="-arch $(shell uname -m)"
 endif
 
 GPU ?= auto
@@ -63,7 +65,7 @@ help:
 	@echo $(Q)Available targets:$(Q)
 	@echo $(Q)  make setup       - Set up development environment (uv); GPU auto-detected, GPU=0 forces CPU$(Q)
 	@echo $(Q)  make pre-commit  - Install pre-commit hooks$(Q)
-	@echo $(Q)  make system-deps - Install system packages required to build and run (Debian-based)$(Q)
+	@echo $(Q)  make system-deps - Install system packages required to build and run (Debian-based, or Homebrew on macOS)$(Q)
 	@echo $(Q)  make build       - Compile standalone executable (respects current deployment config)$(Q)
 	@echo $(Q)  make release     - Compile standalone executable with the release deployment config$(Q)
 	@echo $(Q)  make test        - Run unit tests with coverage$(Q)
@@ -74,8 +76,8 @@ help:
 	@echo $(Q)  make run         - Run SampleToNES application$(Q)
 
 setup:
-	uv sync --group dev $(if $(GPU_EXTRA),--extra $(GPU_EXTRA),)
-	uv tool install --force $(if $(GPU_EXTRA),".[$(GPU_EXTRA)]",.)
+	$(SETUP_ENV) uv sync --group dev $(if $(GPU_EXTRA),--extra $(GPU_EXTRA),)
+	$(SETUP_ENV) uv tool install --force $(if $(GPU_EXTRA),".[$(GPU_EXTRA)]",.)
 
 install:
 	$(MAKE) setup
@@ -117,6 +119,9 @@ check-unused-tags:
 
 check-language-keys:
 	uv run scripts/checks/language_keys.py
+
+check-palette-colors:
+	uv run scripts/checks/palette_colors.py
 
 calibration:
 	uv run scripts/calibration.py --all

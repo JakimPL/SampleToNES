@@ -2,18 +2,19 @@ from typing import Dict, cast
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_shared.types.application import ColorRGBA
+from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
+from sampletones_application.utils.palette.colors.base import BaseColor
 
 
-def create_selectable_text_theme(color: ColorRGBA) -> int:
+def create_selectable_text_theme(color: BaseColor) -> int:
     """Builds a theme colouring selectable text, leaving its other colours to the global theme."""
     return _create_selectable_theme({dpg.mvThemeCol_Text: color})
 
 
 def create_header_selectable_theme(
-    text_color: ColorRGBA,
-    hovered_color: ColorRGBA,
-    active_color: ColorRGBA,
+    text_color: BaseColor,
+    hovered_color: BaseColor,
+    active_color: BaseColor,
 ) -> int:
     """Builds a theme for a selectable that carries a table column's label.
 
@@ -30,7 +31,7 @@ def create_header_selectable_theme(
     )
 
 
-def _create_selectable_theme(colors: Dict[int, ColorRGBA]) -> int:
+def _create_selectable_theme(colors: Dict[int, BaseColor]) -> int:
     """Builds a theme carrying ``colors`` for a selectable in both enabled states.
 
     DearPyGui resolves an item against the theme component that matches the
@@ -46,7 +47,7 @@ def _create_selectable_theme(colors: Dict[int, ColorRGBA]) -> int:
                 enabled_state=enabled_state,
             ):
                 for key, color in colors.items():
-                    dpg.add_theme_color(
+                    dpg_add_palette_theme_color(
                         key,
                         color,
                         category=dpg.mvThemeCat_Core,
@@ -64,13 +65,12 @@ def create_vertical_spacer_theme() -> int:
     below the group's top. The group stacks only vertically, so zeroing both axes leaves its
     layout unchanged apart from that gap.
     """
-    with dpg.theme() as theme:
-        with dpg.theme_component(dpg.mvAll):
-            dpg.add_theme_style(
-                dpg.mvStyleVar_ItemSpacing,
-                0,
-                0,
-                category=dpg.mvThemeCat_Core,
-            )
+    with dpg.theme() as theme, dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_style(
+            dpg.mvStyleVar_ItemSpacing,
+            0,
+            0,
+            category=dpg.mvThemeCat_Core,
+        )
 
     return cast(int, theme)

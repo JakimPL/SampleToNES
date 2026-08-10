@@ -21,7 +21,7 @@ class TestValidateAudioArray(BaseTestSuite):
         audio: Any
         allowed_dims: Tuple[int, ...] = (1,)
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="valid_float64_array",
             audio=np.array([1.0, 2.0, 3.0]),
@@ -95,7 +95,7 @@ class TestValidateAudioArray(BaseTestSuite):
             expected=ValueError,
             allowed_dims=(),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -111,7 +111,10 @@ class TestValidateAudioArray(BaseTestSuite):
         ):
             return
 
-        validate_audio_array(test_case.audio, allowed_dims=test_case.allowed_dims)
+        validate_audio_array(
+            test_case.audio,
+            allowed_dims=test_case.allowed_dims,
+        )
 
 
 class TestValidateSampleRate(BaseTestSuite):
@@ -120,7 +123,7 @@ class TestValidateSampleRate(BaseTestSuite):
         expected: Union[None, Type[Exception]]
         sample_rate: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="valid_8000",
             sample_rate=8000,
@@ -191,7 +194,7 @@ class TestValidateSampleRate(BaseTestSuite):
             sample_rate=[44100],
             expected=TypeError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -199,7 +202,11 @@ class TestValidateSampleRate(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_validate_sample_rate(self, test_case: TestCase) -> None:
-        if expect_error(validate_sample_rate, test_case.expected, test_case.sample_rate):
+        if expect_error(
+            validate_sample_rate,
+            test_case.expected,
+            test_case.sample_rate,
+        ):
             return
 
         validate_sample_rate(test_case.sample_rate)
@@ -211,7 +218,7 @@ class TestValidateBufferSize(BaseTestSuite):
         expected: Union[None, Type[Exception]]
         buffer_size: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="valid_256",
             buffer_size=256,
@@ -267,7 +274,7 @@ class TestValidateBufferSize(BaseTestSuite):
             buffer_size=[1024],
             expected=TypeError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -275,7 +282,11 @@ class TestValidateBufferSize(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_validate_buffer_size(self, test_case: TestCase) -> None:
-        if expect_error(validate_buffer_size, test_case.expected, test_case.buffer_size):
+        if expect_error(
+            validate_buffer_size,
+            test_case.expected,
+            test_case.buffer_size,
+        ):
             return
 
         validate_buffer_size(test_case.buffer_size)

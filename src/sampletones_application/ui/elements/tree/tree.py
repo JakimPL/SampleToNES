@@ -6,7 +6,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_SEARCH,
@@ -49,10 +51,12 @@ from sampletones_application.utils.gui.dpg import (
     dpg_get_value,
     dpg_is_item_hovered,
 )
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import (
     create_detail_tooltip,
     populate_detail_tooltip,
 )
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.parallelization.thread import (
     BackgroundWorkCancelled,
     SingleThreadExecutor,
@@ -73,7 +77,7 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
-from sampletones_shared.types.application import ColorRGBA, Sender
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import (
     Callback,
     MessageCallback,
@@ -297,7 +301,7 @@ class GUITreePanel(GUIPanel, ABC):
         status_bar_callback: Optional[MessageCallback],
     ) -> Callback:
         def hover_callback(
-            sender: Sender,
+            _sender: Sender,
             app_data: int,
         ) -> None:
             user_data = dpg.get_item_user_data(app_data)
@@ -347,7 +351,11 @@ class GUITreePanel(GUIPanel, ABC):
         self._detail_tooltip_owner_tag = None
         dpg_configure_item(self._detail_tooltip_tag, show=False)
 
-    def _on_detail_tooltip_mouse_move(self, sender: Sender, app_data: Any) -> None:
+    def _on_detail_tooltip_mouse_move(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+    ) -> None:
         owner_tag = self._detail_tooltip_owner_tag
         if owner_tag is None:
             return
@@ -444,7 +452,7 @@ class GUITreePanel(GUIPanel, ABC):
     def _create_status_bar_message_function_for_reconstruction_node(
         self,
     ) -> MessageCallback:
-        def message_function(*args: Any, **kwargs: Any) -> str:
+        def message_function(*_args: Any, **_kwargs: Any) -> str:
             if self._logic.autoplay_enabled:
                 return self._language_manager["global.status.message.node_reconstruction"]
 
@@ -460,7 +468,11 @@ class GUITreePanel(GUIPanel, ABC):
     def _create_status_bar_message_function_for_directory_node(
         self,
     ) -> MessageCallback:
-        def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
+        def message_function(
+            *_args: Any,
+            user_data: Tuple[FileSystemNode, str],
+            **_kwargs: Any,
+        ) -> str:
             _, node_tag = user_data
             expand_or_collapse = (
                 self._language_manager["global.dialog.template.collapse"]
@@ -487,7 +499,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         return str(node.name)
 
-    def _node_header_color(self, node: TreeNode) -> ColorRGBA:
+    def _node_header_color(self, node: TreeNode) -> BaseColor:
         if self._logic.is_node_favorite(node):
             return self._colors.favorite
 
@@ -514,10 +526,12 @@ class GUITreePanel(GUIPanel, ABC):
 
         with dpg.group(horizontal=True):
             if is_favorite:
-                star_text = dpg.add_text(self._glyphs.common.favorite, color=color)
+                star_text = dpg.add_text(self._glyphs.common.favorite)
+                dpg_set_palette_color(star_text, color)
                 FontRegistry.bind_to_item(star_text, Font.ICON)
 
-            text = dpg.add_text(self._context_menu_header_name(node), color=color)
+            text = dpg.add_text(self._context_menu_header_name(node))
+            dpg_set_palette_color(text, color)
             FontRegistry.bind_to_item(text, Font.BOLD)
 
     def _node_detail_items(self, node: TreeNode) -> List[Tuple[str, str]]:
@@ -562,7 +576,8 @@ class GUITreePanel(GUIPanel, ABC):
 
         dpg.add_separator()
         for label, value in detail_items:
-            detail_text = dpg.add_text(f"{label}: {value}", color=self._colors.muted)
+            detail_text = dpg.add_text(f"{label}: {value}")
+            dpg_set_palette_color(detail_text, self._colors.muted)
             FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:
@@ -622,7 +637,12 @@ class GUITreePanel(GUIPanel, ABC):
             user_data=node,
         )
 
-    def _on_locate_original_audio(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_locate_original_audio(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
@@ -640,19 +660,29 @@ class GUITreePanel(GUIPanel, ABC):
             callback=lambda: self._context_mark_as_favorite(node),
         )
 
-    def _on_add_to_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_add_to_sequencer(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
         self.call(self.on_add_to_sequencer, user_data.filepath)
 
-    def _on_replace_in_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_replace_in_sequencer(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
         self.call(self.on_replace_in_sequencer, user_data.filepath)
 
-    def _on_search_changed(self, sender: Sender, query: str) -> None:
+    def _on_search_changed(self, _sender: Sender, query: str) -> None:
         if query:
             self.apply_filter(query, self._default_search_predicate)
         else:

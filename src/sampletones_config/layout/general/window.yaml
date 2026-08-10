@@ -4,3 +4,7 @@ min_width: 1280
 min_height: 800
 position_x: 200
 fullscreen: false
+max_monitor_ratio: 0.9
+fallback_monitor:
+  width: 1920
+  height: 1080

@@ -105,7 +105,7 @@ class GUIStatusBar:
     ) -> MessageCallback:
         if isinstance(message_or_function, str):
 
-            def message_function(*args: Any, **kwargs: Any) -> str:
+            def message_function(*_args: Any, **_kwargs: Any) -> str:
                 return message_or_function
 
         elif callable(message_or_function):

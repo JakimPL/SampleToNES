@@ -57,11 +57,12 @@ To install with GPU support, request the `gpu` extra (see [GPU acceleration](#gp
 uv tool install "sampletones[gpu]"
 ```
 
-On Linux, audio playback and file dialogs rely on system libraries that cannot come from
-PyPI. Install them first:
+On Linux and macOS, audio playback and file dialogs rely on system libraries that come from
+the platform's package manager. Install them first:
 
 ```sh
 sudo apt-get install libportaudio2 libasound2 python3-tk    # Debian/Ubuntu
+brew install portaudio                                      # macOS
 ```
 ### Building the executable yourself
 

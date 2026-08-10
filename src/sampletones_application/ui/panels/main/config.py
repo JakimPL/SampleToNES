@@ -76,7 +76,7 @@ class GUIConfigPanel(GUIPanel):
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
-    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
+    def _on_parameter_change(self, _sender: Sender, _app_data: Any) -> None:
         audio_update = AudioSettingsUpdate(
             normalize=bool(dpg.get_value(TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE)),
             quantize=bool(dpg.get_value(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE)),

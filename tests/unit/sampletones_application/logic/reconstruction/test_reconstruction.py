@@ -1,6 +1,4 @@
-﻿from __future__ import annotations
-
-from dataclasses import dataclass
+﻿from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, Final, List
 from unittest.mock import MagicMock
@@ -10,7 +8,9 @@ import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
+from sampletones_application.logic.reconstruction.reconstruction import (
+    ReconstructionPanelLogic,
+)
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
     ReconstructionViewModel,
@@ -27,6 +27,7 @@ from sampletones_core.paths import (
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
+from tests.suite.case import BaseRegularTestCase
 
 NO_EXTENSION: Final[str] = ""
 
@@ -100,8 +101,13 @@ def mock_tracker_backends() -> Dict[TrackerFormat, MagicMock]:
 
 
 @pytest.fixture
-def loaded_data(reconstruction_factory: Callable[[], Reconstruction]) -> ReconstructionData:
-    return ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+def loaded_data(
+    reconstruction_factory: Callable[[], Reconstruction],
+) -> ReconstructionData:
+    return ReconstructionData.from_reconstruction(
+        reconstruction_factory(),
+        name="Sample",
+    )
 
 
 @pytest.fixture
@@ -110,39 +116,13 @@ def data_with_original_audio(
     tmp_path: Path,
 ) -> ReconstructionData:
     source_audio = tmp_path / "source.wav"
-    write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+    write_wave(
+        source_audio,
+        Config().library.sample_rate,
+        np.ones(64, dtype=np.float32) * 0.5,
+    )
     reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
     return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
-
-
-@dataclass(frozen=True)
-class AudioPathCase:
-    label: str
-    has_filepath: bool
-    has_content: bool
-    expected_state: ReconstructionPathState
-
-
-audio_path_cases = [
-    AudioPathCase(
-        "detached",
-        has_filepath=False,
-        has_content=False,
-        expected_state=ReconstructionPathState.NOT_APPLICABLE,
-    ),
-    AudioPathCase(
-        "recorded_but_unavailable",
-        has_filepath=True,
-        has_content=False,
-        expected_state=ReconstructionPathState.NOT_FOUND,
-    ),
-    AudioPathCase(
-        "available",
-        has_filepath=True,
-        has_content=True,
-        expected_state=ReconstructionPathState.AVAILABLE,
-    ),
-]
 
 
 class TestReconstructionPanelLogicDisplay:
@@ -202,7 +182,8 @@ class TestReconstructionPanelLogicPathRows:
         reconstruction = reconstruction_factory()
         reconstruction.detach_source()
         mock_reconstruction_manager.current_reconstruction = ReconstructionData.from_reconstruction(
-            reconstruction, name="Sample"
+            reconstruction,
+            name="Sample",
         )
         captured: List[ReconstructionViewModel] = []
         panel_logic.on_view_changed = captured.append
@@ -213,14 +194,44 @@ class TestReconstructionPanelLogicPathRows:
         assert view_model.reconstruction_file.state is ReconstructionPathState.NOT_APPLICABLE
         assert view_model.original_audio.state is ReconstructionPathState.NOT_APPLICABLE
 
-    @pytest.mark.parametrize("case", audio_path_cases, ids=lambda case: case.label)
+    @dataclass(frozen=True, kw_only=True)
+    class AudioPathCase(BaseRegularTestCase):
+        has_filepath: bool
+        has_content: bool
+        expected: ReconstructionPathState
+
+    test_cases = (
+        AudioPathCase(
+            label="detached",
+            has_filepath=False,
+            has_content=False,
+            expected=ReconstructionPathState.NOT_APPLICABLE,
+        ),
+        AudioPathCase(
+            label="recorded_but_unavailable",
+            has_filepath=True,
+            has_content=False,
+            expected=ReconstructionPathState.NOT_FOUND,
+        ),
+        AudioPathCase(
+            label="available",
+            has_filepath=True,
+            has_content=True,
+            expected=ReconstructionPathState.AVAILABLE,
+        ),
+    )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
         audio_filepath = Path("/songs/source.wav") if case.has_filepath else None
         original_audio = np.zeros(4, dtype=np.float32) if case.has_content else None
 
-        view_model = ReconstructionPanelLogic._build_audio_path_view_model(audio_filepath, original_audio)
+        view_model = ReconstructionPanelLogic._build_audio_path_view_model(
+            audio_filepath,
+            original_audio,
+        )
 
-        assert view_model.state is case.expected_state
+        assert view_model.state is case.expected
 
 
 class TestReconstructionPanelLogicUpdate:
@@ -469,7 +480,10 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_export_service: MagicMock,
         tmp_path: Path,
     ) -> None:
-        panel_logic.handle_export_instrument_confirmed(tmp_path / "instrument.fti", GeneratorName.PULSE1)
+        panel_logic.handle_export_instrument_confirmed(
+            tmp_path / "instrument.fti",
+            GeneratorName.PULSE1,
+        )
         mock_export_service.export_instrument.assert_not_called()
 
     def test_handle_export_instrument_confirmed_calls_export_service(
@@ -481,7 +495,10 @@ class TestReconstructionPanelLogicExportInstrument:
         tmp_path: Path,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(tmp_path / "instrument.fti", GeneratorName.PULSE1)
+        panel_logic.handle_export_instrument_confirmed(
+            tmp_path / "instrument.fti",
+            GeneratorName.PULSE1,
+        )
         mock_export_service.export_instrument.assert_called_once()
 
     def test_handle_export_instrument_confirmed_names_the_instrument_after_the_destination(
@@ -493,7 +510,10 @@ class TestReconstructionPanelLogicExportInstrument:
         tmp_path: Path,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(tmp_path / "Clap (pulse1).fti", GeneratorName.PULSE1)
+        panel_logic.handle_export_instrument_confirmed(
+            tmp_path / "Clap (pulse1).fti",
+            GeneratorName.PULSE1,
+        )
         request = mock_export_service.export_instrument.call_args.args[2]
         assert request.name == "Clap (pulse1)"
 
@@ -628,7 +648,11 @@ class TestReconstructionPanelLogicExportInstruments:
         assert request.name == "Clap"
         assert [instrument.name for instrument in request.instruments] == ["Clap (pulse1)"]
 
-    @pytest.mark.parametrize("case", INSTRUMENT_FORMAT_CASES, ids=lambda case: case.extension)
+    @pytest.mark.parametrize(
+        "case",
+        INSTRUMENT_FORMAT_CASES,
+        ids=lambda case: case.extension,
+    )
     def test_handle_export_instruments_confirmed_writes_through_the_chosen_tracker(
         self,
         panel_logic: ReconstructionPanelLogic,

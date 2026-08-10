@@ -13,16 +13,31 @@ from sampletones_application.categories.key.text import (
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-CANCEL_KEY: Final[TextKey] = TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.CANCEL)
+CANCEL_KEY: Final[TextKey] = TextKey(
+    Page.GLOBAL,
+    Panel.DIALOG,
+    TextType.LABEL,
+    DialogElements.CANCEL,
+)
 
 
 class TestTextKeyComposition:
     def test_compose_joins_all_four_parts(self) -> None:
-        key = TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.OK)
+        key = TextKey(
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.OK,
+        )
         assert key.compose() == "global.dialog.label.ok"
 
     def test_str_matches_compose(self) -> None:
-        key = TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, DialogElements.CANCEL)
+        key = TextKey(
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            DialogElements.CANCEL,
+        )
         assert str(key) == key.compose()
 
 
@@ -32,7 +47,7 @@ class TestComposeTextKey(BaseTestSuite):
         key: Union[str, TextKey, TextKeyTuple]
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="string_passes_through",
             key="global.dialog.label.cancel",
@@ -45,11 +60,20 @@ class TestComposeTextKey(BaseTestSuite):
         ),
         TestCase(
             label="tuple_composes",
-            key=(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.CANCEL),
+            key=(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.LABEL,
+                DialogElements.CANCEL,
+            ),
             expected="global.dialog.label.cancel",
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_compose_text_key(self, test_case: TestCase) -> None:
         assert compose_text_key(test_case.key) == test_case.expected

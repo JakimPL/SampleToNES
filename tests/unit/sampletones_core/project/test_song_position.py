@@ -42,7 +42,7 @@ class TestAdvanceSingleStep(BaseTestSuite):
         def label(self) -> str:
             return str(self.expected)
 
-    test_cases = [
+    test_cases = (
         TestCase(
             expected="mid_pattern_increments_row",
             start_order=0,
@@ -79,7 +79,7 @@ class TestAdvanceSingleStep(BaseTestSuite):
             expected_order=1,
             expected_row=0,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
     def test_advance(self, test_case: TestCase) -> None:
@@ -130,7 +130,7 @@ class TestWrapOverflow(BaseTestSuite):
         def label(self) -> str:
             return str(self.expected)
 
-    test_cases = [
+    test_cases = (
         TestCase(
             expected="row_within_pattern_is_unchanged",
             start_order=0,
@@ -163,7 +163,7 @@ class TestWrapOverflow(BaseTestSuite):
             expected_order=1,
             expected_row=0,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
     def test_wrap_overflow(self, test_case: TestCase) -> None:

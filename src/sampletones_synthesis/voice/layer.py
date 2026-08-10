@@ -18,8 +18,14 @@ class Layer(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     oscillator: OscillatorUnion
-    envelopes: Tuple[EnvelopeUnion, ...] = Field(description="Multiplicative amplitude shapes applied in order.")
-    gain: float = Field(gt=0.0, description="Scale of the unit-level oscillator-envelope product.")
+    envelopes: Tuple[EnvelopeUnion, ...] = Field(
+        ...,
+        description="Multiplicative amplitude shapes applied in order.",
+    )
+    gain: float = Field(
+        gt=0.0,
+        description="Scale of the unit-level oscillator-envelope product.",
+    )
 
     def render(
         self,

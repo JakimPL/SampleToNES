@@ -10,13 +10,13 @@ components:
         y: 4
       - type: color
         key: HeaderHovered
-        value: .white/0.25
+        value: .overlay/0.25
       - type: color
         key: HeaderActive
         value: .transparent
       - type: color
         key: TableRowBg
-        value: .table_row_alt
+        value: .table_row
       - type: color
         key: TableRowBgAlt
         value: .table_row
@@ -24,4 +24,4 @@ components:
     entries:
       - type: color
         key: Text
-        value: .white
+        value: .contrast

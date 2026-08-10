@@ -23,7 +23,7 @@ def _require_hertz(value: Any) -> Any:
     return value
 
 
-def resolve_frequency(frequency: Union[int, float]) -> float:
+def resolve_frequency(frequency: float) -> float:
     """
     Resolve a frequency specification to Hz.
 

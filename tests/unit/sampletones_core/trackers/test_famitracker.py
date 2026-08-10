@@ -7,7 +7,9 @@ import pytest
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.formats.famitracker.specification.sequences import (
+    MAX_SEQUENCE_ITEMS,
+)
 from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.implementation.famitracker import FamiTrackerBackend
@@ -116,7 +118,11 @@ class TestWriteSample:
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / f"Kick{EXT_FILE_INSTRUMENT}"
-        request = build_sample("Kick", build_instrument("Kick (pulse1)", 16), build_instrument("Kick (noise)", 16))
+        request = build_sample(
+            "Kick",
+            build_instrument("Kick (pulse1)", 16),
+            build_instrument("Kick (noise)", 16),
+        )
 
         artifact = backend.write_sample(destination, request)
 

@@ -79,7 +79,12 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
     @abstractmethod
     def _create_content(self) -> None: ...
 
-    def _on_hover(self, sender: Sender, app_data: int, user_data: Any) -> None:
+    def _on_hover(
+        self,
+        _sender: Sender,
+        _app_data: int,
+        _user_data: Any,
+    ) -> None:
         shift = dpg.is_key_down(dpg.mvKey_LShift)
         dpg.configure_item(self.x_axis_tag, lock_min=shift, lock_max=shift)
         dpg.configure_item(self.y_axis_tag, lock_min=not shift, lock_max=not shift)

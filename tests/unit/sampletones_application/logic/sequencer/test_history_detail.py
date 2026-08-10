@@ -7,9 +7,11 @@ import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.sequencer.grid import SequencerGridLogic
-from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
+from sampletones_application.logic.sequencer.history_detail import (
+    SequencerHistoryDetail,
+)
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
+from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
@@ -47,21 +49,21 @@ def _reconstruction(generators: List[GeneratorName]) -> Reconstruction:
 
 
 def _formatter(controller: ProjectController) -> SequencerHistoryDetail:
-    grid_logic = SequencerGridLogic(controller)
+    tracker_logic = SequencerTrackerLogic(controller)
     samples_logic = SequencerSamplesLogic(
         controller,
         MagicMock(),
         MagicMock(),
         scheduling=MagicMock(),
     )
-    return SequencerHistoryDetail(grid_logic, samples_logic)
+    return SequencerHistoryDetail(tracker_logic, samples_logic)
 
 
 def _pairs(segments: Tuple[HistoryDetailSegment, ...]) -> List[Pair]:
     return [(segment.text, segment.role) for segment in segments]
 
 
-class TestGridDetails:
+class TestTrackerDetails:
     def test_edit_row_single_channel_places_sample(self) -> None:
         controller = _controller()
         controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")

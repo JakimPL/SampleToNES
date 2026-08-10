@@ -23,7 +23,10 @@ def _coordinator(config_manager: MagicMock) -> ConfigCoordinator:
     )
 
 
-def _manager_with(*outcomes: Any, config_path: Path = Path("config.json")) -> MagicMock:
+def _manager_with(
+    *outcomes: Any,
+    config_path: Path = Path("config.json"),
+) -> MagicMock:
     config_manager = MagicMock()
     config_manager.config_path = config_path
     config_manager.pending_load_outcomes = list(outcomes)
@@ -38,17 +41,35 @@ class ReasonCase:
 
 
 reason_cases = [
-    ReasonCase("load", ConfigLoadFailureReason.LOAD_ERROR, "global.dialog.message.configuration_load_error"),
-    ReasonCase("parse", ConfigLoadFailureReason.PARSE_ERROR, "global.dialog.message.configuration_parse_error"),
-    ReasonCase("invalid", ConfigLoadFailureReason.INVALID, "global.dialog.message.configuration_invalid_error"),
+    ReasonCase(
+        "load",
+        ConfigLoadFailureReason.LOAD_ERROR,
+        "global.dialog.message.configuration_load_error",
+    ),
+    ReasonCase(
+        "parse",
+        ConfigLoadFailureReason.PARSE_ERROR,
+        "global.dialog.message.configuration_parse_error",
+    ),
+    ReasonCase(
+        "invalid",
+        ConfigLoadFailureReason.INVALID,
+        "global.dialog.message.configuration_invalid_error",
+    ),
 ]
 
 
 class TestPresentPendingLoadOutcomes:
-    def test_recovered_outcome_shows_recovery_dialog(self, tmp_path: Path) -> None:
+    def test_recovered_outcome_shows_recovery_dialog(
+        self,
+        tmp_path: Path,
+    ) -> None:
         config_path = tmp_path / "config.json"
         config_manager = _manager_with(
-            ConfigRecovered(source_version="1.0.0", dropped=(("generation", "drive"), ("obsolete_field",))),
+            ConfigRecovered(
+                source_version="1.0.0",
+                dropped=(("generation", "drive"), ("obsolete_field",)),
+            ),
             config_path=config_path,
         )
         coordinator = _coordinator(config_manager)
@@ -63,7 +84,10 @@ class TestPresentPendingLoadOutcomes:
         coordinator._dialogs.show_error.assert_not_called()
 
     @pytest.mark.parametrize("case", reason_cases, ids=lambda case: case.label)
-    def test_failure_outcome_shows_error_with_mapped_message(self, case: ReasonCase) -> None:
+    def test_failure_outcome_shows_error_with_mapped_message(
+        self,
+        case: ReasonCase,
+    ) -> None:
         config_manager = _manager_with(ConfigLoadFailure(RuntimeError("boom"), case.reason))
         coordinator = _coordinator(config_manager)
 
@@ -75,7 +99,12 @@ class TestPresentPendingLoadOutcomes:
         coordinator._dialogs.show_config_recovery.assert_not_called()
 
     def test_outcomes_are_cleared_after_presenting(self) -> None:
-        config_manager = _manager_with(ConfigLoadFailure(RuntimeError("boom"), ConfigLoadFailureReason.LOAD_ERROR))
+        config_manager = _manager_with(
+            ConfigLoadFailure(
+                RuntimeError("boom"),
+                ConfigLoadFailureReason.LOAD_ERROR,
+            )
+        )
         coordinator = _coordinator(config_manager)
 
         coordinator.present_pending_load_outcomes()
@@ -101,7 +130,11 @@ class TestHandleSave:
         [PermissionError("denied"), ValueError("No configuration to save")],
         ids=["io", "empty"],
     )
-    def test_save_failure_shows_the_error_dialog(self, error: Exception, tmp_path: Path) -> None:
+    def test_save_failure_shows_the_error_dialog(
+        self,
+        error: Exception,
+        tmp_path: Path,
+    ) -> None:
         config_manager = _manager_with()
         config_manager.save_config_to_file.side_effect = error
         coordinator = _coordinator(config_manager)

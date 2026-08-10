@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.layout.config import LayoutConfig
-from sampletones_application.layout.general.colors import FeatureColors
+from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout

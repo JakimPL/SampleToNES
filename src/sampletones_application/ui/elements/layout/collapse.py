@@ -3,7 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.glyphs import Glyphs
+from sampletones_application.layout.glyphs.glyphs import Glyphs
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_COLLAPSE_BODY,

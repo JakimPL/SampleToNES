@@ -2,7 +2,7 @@ from typing import Callable, Dict, FrozenSet, Optional
 
 import numpy as np
 
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.instruments import (

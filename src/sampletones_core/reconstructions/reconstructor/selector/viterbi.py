@@ -1,3 +1,4 @@
+import itertools
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -107,7 +108,7 @@ class ViterbiSelector(Selector):
         costs = [state.cost for state in frames[0]]
         backpointers: List[List[int]] = []
 
-        for previous_states, current_states in zip(frames, frames[1:]):
+        for previous_states, current_states in itertools.pairwise(frames):
             layer_costs: List[float] = []
             layer_backpointers: List[int] = []
             for state in current_states:

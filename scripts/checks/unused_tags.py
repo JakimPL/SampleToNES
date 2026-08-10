@@ -20,11 +20,11 @@ from typing import Dict, Final, List, NamedTuple, Sequence, Tuple
 
 from sampletones_shared.meta.source.constants import module_constants
 from sampletones_shared.meta.source.modules import SourceModule, discover_modules
+from sampletones_shared.meta.source.packages import package_directory
 from sampletones_shared.meta.source.references import count_identifier_loads
-from sampletones_shared.paths import REPOSITORY_ROOT
+from sampletones_shared.paths import REPOSITORY_ROOT, SOURCE_ROOT
 
-SOURCE_ROOT: Final[Path] = REPOSITORY_ROOT / "src"
-TAGS_PACKAGE: Final[Path] = SOURCE_ROOT / "sampletones_application" / "tags"
+TAGS_PACKAGE: Final[Path] = package_directory("sampletones_application", "tags")
 REFERENCE_ROOTS: Final[Tuple[Path, ...]] = (
     SOURCE_ROOT,
     REPOSITORY_ROOT / "tests",

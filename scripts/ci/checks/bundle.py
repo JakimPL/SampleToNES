@@ -30,8 +30,14 @@ def missing_notices(bundle: Path) -> List[str]:
 
 def main(argv: Sequence[str]) -> int:
     """Confirm a built bundle ships its notices and that its launcher starts."""
-    parser = argparse.ArgumentParser(description="Verify a built bundle before it is archived.")
-    parser.add_argument("bundle", type=Path, help="the built bundle directory, such as bin/sampletones")
+    parser = argparse.ArgumentParser(
+        description="Verify a built bundle before it is archived.",
+    )
+    parser.add_argument(
+        "bundle",
+        type=Path,
+        help="the built bundle directory, such as bin/sampletones",
+    )
     arguments = parser.parse_args(list(argv))
 
     bundle: Path = arguments.bundle

@@ -4,7 +4,9 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
@@ -88,20 +90,22 @@ class GUIBrowserPanel(GUITreePanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            width=self.width,
-            height=self.height,
-            parent=parent,
-            border=False,
-        ):
-            with self._collapsible_section(
+        with (
+            dpg.child_window(
+                tag=self.tag,
+                width=self.width,
+                height=self.height,
+                parent=parent,
+                border=False,
+            ),
+            self._collapsible_section(
                 self._lbl_reconstructions,
                 glyph=self._glyphs.headers.reconstruction,
-            ):
-                self._create_buttons()
-                dpg.add_separator()
-                self._create_tree_window()
+            ),
+        ):
+            self._create_buttons()
+            dpg.add_separator()
+            self._create_tree_window()
 
         self._create_detail_tooltip(TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE)
         self.rebuild_tree()
@@ -141,17 +145,19 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
-        with dpg.child_window(
-            tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
-            horizontal_scrollbar=True,
+        with (
+            dpg.child_window(
+                tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
+                horizontal_scrollbar=True,
+            ),
+            dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE),
+            dpg.tree_node(
+                label=self._lbl_reconstructions,
+                tag=self.tree_tag,
+                default_open=True,
+            ),
         ):
-            with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE):
-                with dpg.tree_node(
-                    label=self._lbl_reconstructions,
-                    tag=self.tree_tag,
-                    default_open=True,
-                ):
-                    pass
+            pass
 
     def refresh(self) -> None:
         self.rebuild_tree()
@@ -224,7 +230,7 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _on_directory_node_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
         user_data: Tuple[FileSystemNode, str],
     ) -> None:
@@ -237,7 +243,7 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _on_reconstruction_node_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
         user_data: Tuple[FileSystemNode, str],
     ) -> None:
@@ -251,7 +257,7 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _on_reconstruction_node_double_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
         user_data: Tuple[FileSystemNode, str],
     ) -> None:
@@ -275,7 +281,7 @@ class GUIBrowserPanel(GUITreePanel):
     def _show_reconstruction_context_menu(
         self,
         node: FileSystemNode,
-        node_tag: str,
+        _node_tag: str,
     ) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
@@ -328,8 +334,8 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _on_load_reconstruction(
         self,
-        sender: Sender,
-        app_data: Path,
+        _sender: Sender,
+        _app_data: Path,
         user_data: FileSystemNode,
     ) -> None:
         self._load_reconstruction(user_data)

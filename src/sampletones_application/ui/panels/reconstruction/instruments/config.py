@@ -2,17 +2,17 @@ from dataclasses import dataclass
 from typing import Dict, Final, Optional, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.colors import FeatureColors
+from sampletones_application.layout.general.colors.feature import FeatureColors
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_core.constants.enums import FeatureKey, LibraryGeneratorName
 from sampletones_core.features import feature_range, supported_features
-from sampletones_shared.types.application import Color
 
 
 @dataclass(frozen=True)
 class FeaturePlotConfig:
     feature_key: FeatureKey
     label: str
-    color: Color
+    color: BaseColor
     y_min: float
     y_max: float
     y_ticks: Optional[Tuple[int, ...]]
@@ -53,7 +53,7 @@ def _feature_labels(language_manager: LanguageManager) -> Dict[FeatureKey, str]:
     }
 
 
-def _feature_colors(feature_colors: FeatureColors) -> Dict[FeatureKey, Color]:
+def _feature_colors(feature_colors: FeatureColors) -> Dict[FeatureKey, BaseColor]:
     return {
         FeatureKey.VOLUME: feature_colors.volume,
         FeatureKey.ARPEGGIO: feature_colors.arpeggio,
@@ -65,7 +65,7 @@ def _feature_colors(feature_colors: FeatureColors) -> Dict[FeatureKey, Color]:
 
 def _build_plot_configs(
     labels: Dict[FeatureKey, str],
-    colors: Dict[FeatureKey, Color],
+    colors: Dict[FeatureKey, BaseColor],
 ) -> Dict[LibraryGeneratorName, Dict[FeatureKey, FeaturePlotConfig]]:
     configs: Dict[LibraryGeneratorName, Dict[FeatureKey, FeaturePlotConfig]] = {}
     for kind in LibraryGeneratorName:
@@ -77,11 +77,17 @@ def _build_plot_configs(
 def _build_kind_plot_configs(
     kind: LibraryGeneratorName,
     labels: Dict[FeatureKey, str],
-    colors: Dict[FeatureKey, Color],
+    colors: Dict[FeatureKey, BaseColor],
 ) -> Dict[FeatureKey, FeaturePlotConfig]:
     kind_configs: Dict[FeatureKey, FeaturePlotConfig] = {}
     for feature_key in supported_features(kind):
-        kind_configs[feature_key] = _build_plot_config(kind, feature_key, labels, colors)
+        kind_configs[feature_key] = _build_plot_config(
+            kind,
+            feature_key,
+            labels,
+            colors,
+        )
+
     return kind_configs
 
 
@@ -89,7 +95,7 @@ def _build_plot_config(
     kind: LibraryGeneratorName,
     feature_key: FeatureKey,
     labels: Dict[FeatureKey, str],
-    colors: Dict[FeatureKey, Color],
+    colors: Dict[FeatureKey, BaseColor],
 ) -> FeaturePlotConfig:
     data = feature_range(kind, feature_key)
     return FeaturePlotConfig(

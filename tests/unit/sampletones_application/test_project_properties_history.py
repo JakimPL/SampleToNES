@@ -11,7 +11,8 @@ HISTORY_BUDGET: Final[int] = 10
 
 def _application() -> Application:
     """An application with only the attributes the properties commit touches, bypassing the full
-    composition root constructor. History runs strict so an untracked mutation fails the test."""
+    composition root constructor. History runs strict so an untracked mutation fails the test.
+    """
     application = Application.__new__(Application)
     controller = ProjectController(ProjectManager())
     history = HistoryManager(controller, budget=HISTORY_BUDGET, strict=True)
@@ -25,7 +26,8 @@ def _application() -> Application:
 
 class TestPropertiesCommitHistory:
     """The properties dialog's commit lands as one undoable gesture: every changed field joins a
-    single ``EDIT_PROJECT_PROPERTIES`` entry, and an unchanged confirmation records nothing."""
+    single ``EDIT_PROJECT_PROPERTIES`` entry, and an unchanged confirmation records nothing.
+    """
 
     def test_changed_fields_group_into_one_entry(self) -> None:
         application = _application()
@@ -41,7 +43,11 @@ class TestPropertiesCommitHistory:
         application = _application()
         info = application.project_controller.project.info
 
-        application._commit_project_properties(info.title, info.author, info.comment)
+        application._commit_project_properties(
+            info.title,
+            info.author,
+            info.comment,
+        )
 
         assert len(application.history.entries) == 1
 

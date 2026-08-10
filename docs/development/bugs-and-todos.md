@@ -3,11 +3,8 @@
 ### Navigation
 
 * Interface scale
-* VSync/frame rate options
 * Tree navigation using keys
 * Waveform LOD for zooming
-* Keybindings options
-* Tracker cell shortcuts
 * Drag and drop
 * Multiple Reconstruction views
 * Playing a fragment by clicking on a waveform
@@ -17,7 +14,6 @@
 
 * Basic shapes as instruments
 * Selection operations on patterns and orders
-* Replace/swap sample
 
 ### Workflow
 
@@ -26,7 +22,6 @@
 
 ### Features
 
-* Theme selector and palette management
 * In-application guide/tutorial
 * Language selector
 
@@ -38,6 +33,7 @@
 * Respecting FamiTracker limitations
 * Carrying the project comment and tempo into a Bitphase document, once the format holds them
 * Per-tab undo routing
+* Delete duplicated HistoryAction enumeration
 
 ## Bugs
 

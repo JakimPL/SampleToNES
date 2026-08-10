@@ -95,6 +95,15 @@ showing the source sounding elsewhere, and shows the local source on tabs that h
 tied to one screen — playing from the shown frame — is offered on that screen with its document
 open.
 
+The sequencer view reports the playhead too, at the reach the **follow mode** chooses: the sounding
+row, the frame that holds it, or the view the user placed. The mode is one setting with two derived
+answers — whether the tracker shows the frame being played, and whether it scrolls to keep the
+sounding row in sight — and those two are its whole contract, which every surface that follows the
+playhead reads. The song player holds the mode and emits it with every position, which is what lets
+the menu's check and the grid's scrolling settle in one step when the mode changes mid-playback.
+Marking the sounding row and the playing frame is independent of the choice: every mode paints both,
+and the mode governs where the view sits.
+
 ## Keyboard delivery under field focus
 
 Playback keys arrive through the application's single key handler (architecture §12). These rules
@@ -127,7 +136,8 @@ click to silence, modified click to solo, the master name for the whole mix — 
 the gesture and its right-click menu to one object, so both offer the same wording and the same
 behaviour. The Playback menu's **Channels** submenu carries the same set as a check per channel, plus
 one item that returns the whole mix. Each of those items is registered as an action whether or not a
-key is bound to it, so the keybindings options can assign one and the menu lists it.
+key is bound to it, so the keybinding scheme can give it one and the menu prints what the scheme
+says (architecture principle 12).
 
 The mask is pulled per rendered row, which is principle 6 for this control: a channel drops in or
 out as the render-ahead buffer drains, with the immediacy every other live edit has. A silenced
@@ -141,6 +151,22 @@ sequencer distinguishes a history restore from a document transition. And the mu
 listening session, so opening, creating, or closing a document starts a fresh one with every channel
 audible.
 
+## Teardown
+
+The device is torn down once every source holding a stream has released it. A source that streams to
+the device writes from a thread of its own, so that source alone can bring the writing to a stop and
+hand the stream back — and the hand-back is what leaves the backend safe to terminate.
+
+`PlaybackRouter.shutdown()` is the seam the application calls as it quits. It reaches every registered
+source rather than the engaged one alone, so a source holding a stream is wound down whatever the
+transport reports at that moment.
+
+The device holds a release per stream it handed out and invokes it whenever it needs the output free:
+as the backend is torn down, and on a device change, where the release stops the song so the new
+device opens cleanly. A stream that outlives its release leaves the running backend in place — the
+manager reports the failure and keeps the instance, since the source still writes to memory that
+terminating would reclaim.
+
 ## Who governs what
 
 | Concern | Owner |
@@ -148,11 +174,14 @@ audible.
 | The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/router.py` |
+| Winding every source down ahead of backend teardown | `PlaybackRouter.shutdown()` (`coordinators/playback/router.py`) |
 | A source's engagement reporting | the transport's player protocol, implemented per source |
 | Error presentation for a source's failures | `GuardedPlayer` (`coordinators/playback/guard.py`) |
 | Keyboard delivery, priority, and field focus | `utils/gui/keyboard/` (architecture §12) |
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | A channel name's gestures and menu, in either table | `ChannelSwitch` (`ui/panels/sequencer/channels.py`) |
+| The reach the sequencer view follows the playhead at | `FollowMode` (`constants/playback.py`), held by `SongPlayerLogic` (`logic/sequencer/playback/song_player.py`) |
+| Revealing the sounding row in the tracker | `GUISequencerTrackerPanel` (`ui/panels/sequencer/tracker.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer.py`) |
 | The song's render-ahead buffer | `services/song_player/` |
 

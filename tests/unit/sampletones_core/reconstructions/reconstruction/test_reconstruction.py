@@ -119,7 +119,7 @@ class TestLoadFileAccess(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         make_path: Callable[[Path], Path]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="missing_file",
             make_path=lambda root: root / "nope.stn",
@@ -130,7 +130,7 @@ class TestLoadFileAccess(BaseTestSuite):
             make_path=lambda root: root,
             expected=DIRECTORY_READ_ERRORS,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -188,7 +188,7 @@ class TestDeserializeDataWrapping(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         side_effect: Exception
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="unexpected_wrapped_as_unhandled",
             side_effect=RuntimeError("runtime_error"),
@@ -199,7 +199,7 @@ class TestDeserializeDataWrapping(BaseTestSuite):
             side_effect=DeserializationError("missing getter"),
             expected=DeserializationError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -236,7 +236,11 @@ class TestInitialPitchReference:
         the stored reference and reads the octave straight back.
         """
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
-        arpeggiated = [_pulse(_BASE_PITCH + _OCTAVE), _pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]
+        arpeggiated = [
+            _pulse(_BASE_PITCH + _OCTAVE),
+            _pulse(_BASE_PITCH),
+            _pulse(_BASE_PITCH),
+        ]
         reconstruction.update_generator_data(
             GeneratorName.PULSE1,
             arpeggiated,

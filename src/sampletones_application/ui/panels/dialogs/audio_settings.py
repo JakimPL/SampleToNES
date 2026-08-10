@@ -4,7 +4,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.settings import SettingsLayout
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_AUDIO_BUTTON_APPLY,
     TAG_SETTINGS_AUDIO_BUTTON_REFRESH,
@@ -16,16 +15,13 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_AUDIO_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field
-from sampletones_application.ui.elements.window import GUIWindow
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
-from sampletones_application.utils.gui.dialog_navigation import (
-    DialogKeyboardNavigator,
-    FocusStop,
-)
+from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.shared.audio_settings import (
     BUFFER_SIZE_ITEMS,
     AudioDeviceItem,
@@ -43,19 +39,17 @@ from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.color import blend
 
 
-class GUIAudioSettingsWindow(GUIWindow):
+class GUIAudioSettingsWindow(GUIDialogWindow):
     def __init__(
         self,
         *,
         layout: SettingsLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
-        self._router = key_router
-        self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
-        self._navigator: Optional[DialogKeyboardNavigator] = None
 
         self.on_commit: Optional[Callable[[int, SampleRate, BufferSize], None]] = None
         self.on_refresh_devices: Optional[VoidCallback] = None
@@ -74,8 +68,10 @@ class GUIAudioSettingsWindow(GUIWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_AUDIO_WINDOW,
-            width=layout.window.width,
-            height=layout.window.height,
+            width=layout.audio.window.width,
+            height=layout.audio.window.height,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
         )
 
     def open(self, view_model: AudioSettingsViewModel) -> None:
@@ -102,15 +98,9 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._master_gain = view_model.master_gain
 
     def create_window(self) -> None:
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._language_manager["settings.audio.title.window_title"],
-            width=self.width,
-            height=self.height,
-            no_resize=True,
-            no_collapse=True,
             on_close=self.hide,
-            modal=True,
         ):
             self._create_device_selection()
             self._create_sample_rate_selection()
@@ -119,21 +109,15 @@ class GUIAudioSettingsWindow(GUIWindow):
             dpg.add_separator()
             self._create_action_buttons()
 
-        for combo_tag in (
+        self._bind_dialog_theme(
             TAG_SETTINGS_AUDIO_COMBO_DEVICE,
             TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
             TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE,
-        ):
-            self._dialog_theme.bind_to_item(combo_tag)
+        )
 
         self._update_combos()
-        self._install_navigation()
-
-    def _install_navigation(self) -> None:
-        """Wires Tab/Enter/Escape keyboard navigation over the combos and buttons."""
-        self._navigator = DialogKeyboardNavigator(
-            window_tag=self.tag,
-            stops=[
+        self._install_navigation(
+            [
                 FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_DEVICE),
                 FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE),
                 FocusStop.field(TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE),
@@ -142,14 +126,7 @@ class GUIAudioSettingsWindow(GUIWindow):
                 FocusStop.button(TAG_SETTINGS_AUDIO_BUTTON_APPLY, self._commit),
             ],
             on_escape=self.hide,
-            key_router=self._router,
         )
-        self._navigator.install()
-
-    def _teardown(self) -> None:
-        if self._navigator is not None:
-            self._navigator.dispose()
-            self._navigator = None
 
     def _create_device_selection(self) -> None:
         with labeled_field(self._language_manager["settings.audio.label.output_device"], self._layout.label_width):
@@ -192,7 +169,7 @@ class GUIAudioSettingsWindow(GUIWindow):
                 min_value=MIN_MASTER_GAIN,
                 max_value=MAX_MASTER_GAIN,
                 default_value=self._master_gain,
-                width=self._layout.master_gain.slider_width,
+                width=self._layout.audio.master_gain.slider_width,
                 format="",
                 callback=self._on_master_gain_changed,
             )
@@ -230,8 +207,8 @@ class GUIAudioSettingsWindow(GUIWindow):
 
     def _clip_warning_color(self, clip_fraction: float) -> ColorRGBA:
         """Reddens the readout colour along the layout gradient by the projected boost fraction."""
-        colors = self._layout.master_gain
-        return blend(colors.label_color, colors.clip_color, clip_fraction)
+        colors = self._layout.audio.master_gain
+        return blend(colors.label_color.rgba, colors.clip_color.rgba, clip_fraction)
 
     @table_wrapper(columns=2)
     def _create_action_buttons(self) -> None:
@@ -248,7 +225,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             width=-1,
         )
 
-    def _on_device_changed(self, sender: Sender, app_data: str) -> None:
+    def _on_device_changed(self, _sender: Sender, app_data: str) -> None:
         self._current_device_label = app_data
         self._update_combos()
 

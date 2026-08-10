@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import ClassVar, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -27,8 +27,8 @@ from sampletones_shared.types.application import Sender
 
 
 class FontRegistry:
-    _REGISTRY: Dict[Font, FontData] = {}
-    _SPECS: Dict[Font, Tuple[str, FontResource, Typeface, Step]] = {
+    _REGISTRY: ClassVar[Dict[Font, FontData]] = {}
+    _SPECS: ClassVar[Dict[Font, Tuple[str, FontResource, Typeface, Step]]] = {
         Font.REGULAR: (TAG_GLOBAL_FONT_REGULAR, FontResource.REGULAR, Typeface.SANS, Step.MEDIUM),
         Font.REGULAR_SMALL: (TAG_GLOBAL_FONT_REGULAR_SMALL, FontResource.REGULAR, Typeface.SANS, Step.SMALL),
         Font.REGULAR_LARGE: (TAG_GLOBAL_FONT_REGULAR_LARGE, FontResource.REGULAR, Typeface.SANS, Step.LARGE),

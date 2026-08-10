@@ -32,7 +32,7 @@ class TestDocumentTitle(BaseTestSuite):
         reconstruction_included: bool
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="project_is_primary",
             project_name="Song",
@@ -123,9 +123,13 @@ class TestDocumentTitle(BaseTestSuite):
             reconstruction_included=False,
             expected="Recon.stn*",
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_document_title(self, test_case: TestCase) -> None:
         project = State(test_case.project_name, test_case.project_unsaved)
         reconstruction = (

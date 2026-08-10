@@ -4,7 +4,9 @@ from typing import Any, Callable, Dict, Optional, Protocol, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PRIMARY_BUTTON,
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
@@ -146,20 +148,22 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def create_panel(self, parent: str) -> None:
         self._setup_handlers()
-        with dpg.child_window(
-            tag=self.tag,
-            width=self.width,
-            height=self.height,
-            parent=parent,
-            border=False,
-        ):
-            with self._collapsible_section(
+        with (
+            dpg.child_window(
+                tag=self.tag,
+                width=self.width,
+                height=self.height,
+                parent=parent,
+                border=False,
+            ),
+            self._collapsible_section(
                 self._language_manager["instructions.library.label.libraries_text"],
                 glyph=self._glyphs.headers.instruction_data,
-            ):
-                self._create_library_status()
-                self._create_library_controls()
-                self._create_library_tree()
+            ),
+        ):
+            self._create_library_status()
+            self._create_library_controls()
+            self._create_library_tree()
 
         self._create_detail_tooltip(TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE)
 
@@ -226,19 +230,21 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _create_library_tree(self) -> None:
         dpg.add_separator()
         self.create_search(self._body_container)
-        with dpg.child_window(
-            tag=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
-            width=-1,
-            height=-1,
-            horizontal_scrollbar=True,
+        with (
+            dpg.child_window(
+                tag=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
+                width=-1,
+                height=-1,
+                horizontal_scrollbar=True,
+            ),
+            dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE),
+            dpg.tree_node(
+                label=self._language_manager["instructions.library.label.available_libraries_text"],
+                tag=self.tree_tag,
+                default_open=True,
+            ),
         ):
-            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE):
-                with dpg.tree_node(
-                    label=self._language_manager["instructions.library.label.available_libraries_text"],
-                    tag=self.tree_tag,
-                    default_open=True,
-                ):
-                    pass
+            pass
 
     def _on_refresh_clicked(self) -> None:
         self.call(self.on_refresh_requested)
@@ -350,9 +356,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
     ) -> MessageCallback:
         def message_function(
-            *args: Any,
+            *_args: Any,
             user_data: Tuple[TreeNode, str],
-            **kwargs: Any,
+            **_kwargs: Any,
         ) -> str:
             node, _ = user_data
             match node.node_type:
@@ -375,7 +381,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _on_generator_node_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
         user_data: Tuple[GeneratorNode, str],
     ) -> None:
@@ -390,7 +396,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _on_library_node_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
         user_data: Tuple[LibraryNode, str],
     ) -> None:
@@ -458,8 +464,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _on_load_generator(
         self,
-        sender: Sender,
-        app_data: bool,
+        _sender: Sender,
+        _app_data: bool,
         user_data: GeneratorNode,
     ) -> None:
         assert isinstance(user_data.parent, LibraryNode), "Generator node parent is not a LibraryNode"

@@ -24,8 +24,12 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
     dpg_is_item_hovered,
 )
-from sampletones_shared.types.application import Color, Sender
+from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
+from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.faded import FadedColor
+from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.arrays import interpolate_segment
+from sampletones_shared.utils.color import MAX_CHANNEL_VALUE
 
 OnBarPointClickedCallback = Callable[[np.ndarray], None]
 OnBarPointHoveredCallback = Callable[[Optional[str], Optional[int]], None]
@@ -150,13 +154,12 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if dpg.does_item_exist(theme_tag):
             return dpg_bind_item_theme(series_tag, theme_tag)
 
-        with dpg.theme(tag=theme_tag):
-            with dpg.theme_component(dpg.mvBarSeries):
-                dpg.add_theme_color(
-                    dpg.mvPlotCol_Fill,
-                    layer.color,
-                    category=dpg.mvThemeCat_Plots,
-                )
+        with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvBarSeries):
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_Fill,
+                layer.color,
+                category=dpg.mvThemeCat_Plots,
+            )
 
         return dpg_bind_item_theme(series_tag, theme_tag)
 
@@ -168,19 +171,16 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if layer is None:
             raise RuntimeError("No layers available to bind hover theme")
 
-        hover_color = (
-            layer.color[0],
-            layer.color[1],
-            layer.color[2],
-            self._hover_alpha,
+        hover_color = FadedColor(
+            color=layer.color,
+            fraction=self._hover_alpha / MAX_CHANNEL_VALUE,
         )
-        with dpg.theme(tag=self.hover_theme_tag):
-            with dpg.theme_component(dpg.mvBarSeries):
-                dpg.add_theme_color(
-                    dpg.mvPlotCol_Fill,
-                    hover_color,
-                    category=dpg.mvThemeCat_Plots,
-                )
+        with dpg.theme(tag=self.hover_theme_tag), dpg.theme_component(dpg.mvBarSeries):
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_Fill,
+                hover_color,
+                category=dpg.mvThemeCat_Plots,
+            )
 
         return dpg_bind_item_theme(self.hover_bar_tag, self.hover_theme_tag)
 
@@ -188,7 +188,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self,
         data: np.ndarray,
         name: str,
-        color: Color,
+        color: BaseColor,
         y_ticks: Optional[Tuple[int, ...]] = None,
     ) -> None:
         self._delete_hover_bar()
@@ -300,7 +300,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             tick_labels = [str(val) for val in self.y_ticks]
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
 
-    def _on_mouse_action(self, sender: Sender) -> None:
+    def _on_mouse_action(self, _sender: Sender) -> None:
         previous_stroke = self._draw_stroke
         self._draw_stroke = None
 

@@ -4,11 +4,14 @@ from typing import Dict, Final, Tuple
 import pytest
 
 from sampletones_application.categories.elements.global_ import DialogElements
+from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.paths import LANG_EN
 from sampletones_shared.meta.source.lookups import LookupSite
+from sampletones_shared.meta.source.modules import source_paths
 from sampletones_shared.meta.source.values import EnumTable
 from tests.suite.scripts import load_script
 
-check_language_keys = load_script("scripts/checks/language_keys.py")
+check_language_keys = load_script("checks/language_keys.py")
 
 ENUMS: Final[EnumTable] = check_language_keys.enum_table()
 
@@ -65,19 +68,39 @@ class TestEnumTable:
         assert ENUMS["DialogElements"]["OK"] == DialogElements.OK.value
 
     def test_every_element_enum_of_the_package_is_read(self) -> None:
-        assert {"MenuElements", "SequencerGridElements", "InstructionsLibraryElements"}.issubset(ENUMS)
+        assert {
+            "MenuElements",
+            "SequencerTrackerElements",
+            "InstructionsLibraryElements",
+        }.issubset(ENUMS)
 
-    def test_the_element_base_states_no_members(self) -> None:
-        assert ENUMS[check_language_keys.ELEMENT_BASE] == {}
+    def test_an_element_enum_declared_beside_its_domain_is_read(self) -> None:
+        assert ENUMS["HistoryAction"] == {member.name: member.value for member in HistoryAction}
+
+    def test_an_enum_a_module_imports_is_read_from_the_module_declaring_it(self) -> None:
+        assert "StrEnum" not in ENUMS
+
+    def test_the_element_base_is_no_concrete_enum(self) -> None:
+        assert check_language_keys.ELEMENT_BASE not in ENUMS
 
 
 class TestLanguageEntries:
     def test_every_entry_is_read_with_its_line(self, tmp_path: Path) -> None:
-        entries: Dict[str, int] = check_language_keys.language_entries(language_file(tmp_path, LANGUAGE_FILE))
+        entries: Dict[str, int] = check_language_keys.language_entries(
+            language_file(
+                tmp_path,
+                LANGUAGE_FILE,
+            )
+        )
         assert entries == {OK_KEY: 4, EXIT_KEY: 5}
 
     def test_a_comment_states_no_entry(self, tmp_path: Path) -> None:
-        entries: Dict[str, int] = check_language_keys.language_entries(language_file(tmp_path, LANGUAGE_FILE))
+        entries: Dict[str, int] = check_language_keys.language_entries(
+            language_file(
+                tmp_path,
+                LANGUAGE_FILE,
+            )
+        )
         assert all(not key.startswith("#") for key in entries)
 
     def test_a_file_holding_no_mapping_is_refused(self, tmp_path: Path) -> None:
@@ -140,21 +163,39 @@ class TestUnreachedEntries:
 
 
 class TestCheckLanguageKeys:
-    def test_a_tree_asking_for_every_entry_reports_nothing(self, tmp_path: Path) -> None:
+    def test_a_tree_asking_for_every_entry_reports_nothing(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(tmp_path, LOOKUP_SOURCE.format(key=OK_KEY))
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n')
 
         assert check_language_keys.check_language_keys(source, entries) == []
 
-    def test_a_key_the_file_omits_is_a_broken_lookup(self, tmp_path: Path) -> None:
+    def test_a_key_the_file_omits_is_a_broken_lookup(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(tmp_path, LOOKUP_SOURCE.format(key=ABSENT_KEY))
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n')
 
-        kinds = [finding.kind for finding in check_language_keys.check_language_keys(source, entries)]
+        kinds = [
+            finding.kind
+            for finding in check_language_keys.check_language_keys(
+                source,
+                entries,
+            )
+        ]
 
-        assert kinds == [check_language_keys.BROKEN_LOOKUP, check_language_keys.UNREACHED_ENTRY]
+        assert kinds == [
+            check_language_keys.BROKEN_LOOKUP,
+            check_language_keys.UNREACHED_ENTRY,
+        ]
 
-    def test_an_entry_nobody_asks_for_is_unreached(self, tmp_path: Path) -> None:
+    def test_an_entry_nobody_asks_for_is_unreached(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(tmp_path, LOOKUP_SOURCE.format(key=OK_KEY))
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n{EXIT_KEY}: "Exit"\n')
 
@@ -163,7 +204,10 @@ class TestCheckLanguageKeys:
         assert [finding.kind for finding in findings] == [check_language_keys.UNREACHED_ENTRY]
         assert findings[0].location.endswith("en.yaml:2")
 
-    def test_a_dynamic_part_reaching_no_enum_is_unresolved(self, tmp_path: Path) -> None:
+    def test_a_dynamic_part_reaching_no_enum_is_unresolved(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(
             tmp_path,
             "def label(language_manager: LanguageManager, element: AbstractElement) -> str:\n"
@@ -171,11 +215,20 @@ class TestCheckLanguageKeys:
         )
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n')
 
-        kinds = [finding.kind for finding in check_language_keys.check_language_keys(source, entries)]
+        kinds = [
+            finding.kind
+            for finding in check_language_keys.check_language_keys(
+                source,
+                entries,
+            )
+        ]
 
         assert check_language_keys.UNRESOLVED_PART in kinds
 
-    def test_a_dynamic_part_of_a_concrete_enum_reaches_its_entries(self, tmp_path: Path) -> None:
+    def test_a_dynamic_part_of_a_concrete_enum_reaches_its_entries(
+        self,
+        tmp_path: Path,
+    ) -> None:
         source = source_tree(
             tmp_path,
             "def label(language_manager: LanguageManager, element: DialogElements) -> str:\n"
@@ -184,6 +237,16 @@ class TestCheckLanguageKeys:
         entries = language_file(tmp_path, f'{OK_KEY}: "OK"\n{EXIT_KEY}: "Exit"\n')
 
         assert check_language_keys.check_language_keys(source, entries) == []
+
+
+class TestSweptRoots:
+    """A root the sweep reads nothing under reports nothing, which reads as a clean tree."""
+
+    def test_the_source_root_holds_modules(self) -> None:
+        assert source_paths([check_language_keys.SOURCE_ROOT])
+
+    def test_the_language_file_is_there_to_read(self) -> None:
+        assert LANG_EN.is_file()
 
 
 class TestMain:

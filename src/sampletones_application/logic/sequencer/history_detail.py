@@ -1,7 +1,7 @@
 from typing import Dict, Final, List, Optional
 
-from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
+from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
@@ -10,7 +10,11 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWord,
     HistoryDetailWordSegment,
 )
-from sampletones_core.constants.enums import FeatureKey, GeneratorName, abbreviate_generator_names
+from sampletones_core.constants.enums import (
+    FeatureKey,
+    GeneratorName,
+    abbreviate_generator_names,
+)
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
 
 Segments = HistoryDetail
@@ -60,10 +64,10 @@ class SequencerHistoryDetail:
 
     def __init__(
         self,
-        grid_logic: SequencerGridLogic,
+        tracker_logic: SequencerTrackerLogic,
         samples_logic: SequencerSamplesLogic,
     ) -> None:
-        self._grid_logic = grid_logic
+        self._tracker_logic = tracker_logic
         self._samples_logic = samples_logic
 
     def edit_row(
@@ -120,7 +124,7 @@ class SequencerHistoryDetail:
         affected = (
             GeneratorName.items()
             if subcolumn is SubColumn.INSTRUMENT
-            else self._grid_logic.relevant_generators(row_index)
+            else self._tracker_logic.relevant_generators(row_index)
         )
         segments = list(self._location(row_index, generator, affected))
         segments.append(self._subcolumn(subcolumn))
@@ -132,7 +136,7 @@ class SequencerHistoryDetail:
         generator: Optional[GeneratorName],
         delta: int,
     ) -> Segments:
-        affected = self._grid_logic.relevant_generators(row_index)
+        affected = self._tracker_logic.relevant_generators(row_index)
         segments = list(self._location(row_index, generator, affected))
         segments.append(
             self._segment(display_transpose(delta), HistoryDetailRole.TRANSPOSE),
@@ -145,7 +149,7 @@ class SequencerHistoryDetail:
         generator: Optional[GeneratorName],
         delta: int,
     ) -> Segments:
-        affected = self._grid_logic.relevant_generators(row_index)
+        affected = self._tracker_logic.relevant_generators(row_index)
         segments = list(self._location(row_index, generator, affected))
         segments.append(self._segment(f"{delta:+d}", HistoryDetailRole.VOLUME))
         return tuple(segments)
@@ -270,9 +274,9 @@ class SequencerHistoryDetail:
             return [generator]
 
         if sample_id is not None:
-            return self._grid_logic.used_generators(sample_id)
+            return self._tracker_logic.used_generators(sample_id)
 
-        return self._grid_logic.relevant_generators(row_index)
+        return self._tracker_logic.relevant_generators(row_index)
 
     def _location(
         self,
@@ -282,7 +286,7 @@ class SequencerHistoryDetail:
     ) -> Segments:
         channels = [generator] if generator is not None else affected
         return (
-            self._frame(self._grid_logic.frame_index),
+            self._frame(self._tracker_logic.frame_index),
             self._channel(channels),
             self._row(row_index),
         )

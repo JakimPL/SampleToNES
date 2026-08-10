@@ -8,7 +8,9 @@ from sampletones_core.fft import Window
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions.reconstructor.selector.base import ScoredCandidate
-from sampletones_core.reconstructions.reconstructor.selector.viterbi import ViterbiSelector
+from sampletones_core.reconstructions.reconstructor.selector.viterbi import (
+    ViterbiSelector,
+)
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 

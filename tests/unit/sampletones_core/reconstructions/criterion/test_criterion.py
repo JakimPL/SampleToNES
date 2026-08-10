@@ -176,7 +176,13 @@ class TestCriterionSpectralLoss:
         for distance in SpectralDistance:
             criterion = _criterion_with_distance(config, window, distance)
             reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
-            candidates = np.stack([reference, np.full(bins, 0.3, dtype=np.float32), np.zeros(bins, dtype=np.float32)])
+            candidates = np.stack(
+                [
+                    reference,
+                    np.full(bins, 0.3, dtype=np.float32),
+                    np.zeros(bins, dtype=np.float32),
+                ]
+            )
             loss = criterion.spectral_loss(reference, candidates)
             assert to_numpy(loss).shape == (3,)
 

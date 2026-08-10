@@ -10,7 +10,7 @@ from sampletones_application.paths import (
     BEHAVIOR_DIRECTORY,
     LANG_EN,
     LAYOUT_DIRECTORY,
-    PALETTE_PATH,
+    PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
 from sampletones_application.tags.general import (
@@ -24,22 +24,26 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 )
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.palette import Palette
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.formats.famitracker.specification.sequences import (
+    MAX_SEQUENCE_ITEMS,
+)
 
 SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_sequence"
 
 
 @pytest.fixture
 def layout_config() -> LayoutConfig:
-    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, Palette.load(PALETTE_PATH))
+    source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source)
 
 
 @pytest.fixture(autouse=True)
 def registered_themes(layout_config: LayoutConfig) -> None:
     """Registers the themes the panel resolves on construction, as startup does."""
-    setup_themes(THEME_DIRECTORY, Palette.load(PALETTE_PATH))
+    setup_themes(THEME_DIRECTORY, PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default))
     GUIPanel.configure_section_header(
         layout_config.glyphs,
         layout_config.general.section_header,
@@ -97,7 +101,10 @@ class TestSequenceLengthWarning:
     ) -> None:
         panel._apply_input_theme(GeneratorName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 40)
         panel._apply_input_theme(GeneratorName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS)
-        assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING, TAG_GLOBAL_THEME_DEFAULT]
+        assert bound_themes == [
+            TAG_GLOBAL_THEME_INPUT_WARNING,
+            TAG_GLOBAL_THEME_DEFAULT,
+        ]
 
     def test_each_dimension_carries_its_own_length(
         self,
@@ -106,7 +113,10 @@ class TestSequenceLengthWarning:
     ) -> None:
         panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
         panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.ARPEGGIO, 8)
-        assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING, TAG_GLOBAL_THEME_DEFAULT]
+        assert bound_themes == [
+            TAG_GLOBAL_THEME_INPUT_WARNING,
+            TAG_GLOBAL_THEME_DEFAULT,
+        ]
 
 
 class TestInstrumentExport:

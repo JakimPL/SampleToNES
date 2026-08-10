@@ -15,7 +15,10 @@ from sampletones_core.formats.famitracker.specification.blocks import (
     BLOCK_SEQUENCES,
 )
 from sampletones_core.formats.famitracker.specification.channels import ChannelId
-from sampletones_core.formats.famitracker.specification.file import FTM_END_MARKER, FTM_VERSION
+from sampletones_core.formats.famitracker.specification.file import (
+    FTM_END_MARKER,
+    FTM_VERSION,
+)
 from sampletones_core.formats.famitracker.specification.parameters import (
     DEFAULT_SPEED_SPLIT_POINT,
     EXPANSION_NONE,

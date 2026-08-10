@@ -6,13 +6,14 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key.tag import TagName
-from sampletones_shared.meta.source.modules import SourceModule
+from sampletones_shared.meta.source.modules import SourceModule, source_paths
+from sampletones_shared.paths import SOURCE_ROOT
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source
 
-check_tag_names = load_script("scripts/checks/tag_names.py")
+check_tag_names = load_script("checks/tag_names.py")
 
 MODULE_PATH: Final[Path] = Path("src/sampletones_application/tags/general.py")
 
@@ -44,7 +45,7 @@ class TestCheckModule(BaseTestSuite):
         source: str
         expected: Tuple[str, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="well_named_tag",
             source=f"TAG_GLOBAL_WINDOW_MAIN = {WINDOW_TAG}",
@@ -129,15 +130,29 @@ class TestCheckModule(BaseTestSuite):
             source=f"def build() -> TagName:\n    tag = {WINDOW_TAG}\n    return tag",
             expected=(),
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_check_module(self, test_case: "TestCheckModule.TestCase") -> None:
         found = messages(test_case.source)
 
         assert len(found) == len(test_case.expected)
         for message, fragment in zip(found, test_case.expected, strict=True):
             assert fragment in message
+
+
+class TestSweptRoots:
+    """A root the sweep reads nothing under reports nothing, which reads as a clean tree."""
+
+    def test_the_tags_package_holds_modules(self) -> None:
+        assert source_paths([check_tag_names.TAGS_PACKAGE])
+
+    def test_the_tags_package_sits_under_the_source_root(self) -> None:
+        assert SOURCE_ROOT in check_tag_names.TAGS_PACKAGE.parents
 
 
 class TestMain:

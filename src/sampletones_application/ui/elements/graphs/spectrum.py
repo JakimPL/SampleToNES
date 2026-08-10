@@ -14,10 +14,14 @@ from sampletones_application.utils.gui.dpg import (
     dpg_bind_item_theme,
     dpg_delete_children,
 )
+from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
+from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.blended import BlendedColor
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.general import MIN_FREQUENCY
 from sampletones_core.library import InstructionLibraryFragment
-from sampletones_shared.types.application import Color, Sender
+from sampletones_shared.types.application import Sender
+from sampletones_shared.utils.color import MAX_CHANNEL_VALUE
 
 
 class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
@@ -43,7 +47,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
 
-        self.themes: Dict[Color, str] = {}
+        self.themes: Dict[BaseColor, str] = {}
 
         super().__init__(
             tag,
@@ -91,8 +95,8 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
     def load_library_fragment(
         self,
         fragment: InstructionLibraryFragment[Any],
-        sample_rate: int,
-        frame_length: int,
+        _sample_rate: int,
+        _frame_length: int,
     ) -> None:
         self.clear_layers()
 
@@ -101,14 +105,19 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 data=fragment,
                 name=self._language_manager["global.graph.label.spectrum_name"],
                 max_display_bins=self._layout.spectrum.max_display_bins,
-                color_dim=self._layout.spectrum.color_dim[:3],
-                color_bright=self._layout.spectrum.color_bright[:3],
+                color_dim=self._layout.spectrum.color_dim,
+                color_bright=self._layout.spectrum.color_bright,
             )
         )
 
         self._update_ranges()
 
-    def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+    def _on_hover(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        _user_data: Any,
+    ) -> None:
         self._status_bar.set(self._language_manager["global.graph.message.spectrum_navigation"])
 
     def _update_ranges(self) -> None:
@@ -118,29 +127,33 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             frequencies = [frequency for layer in self.layers.values() for frequency, _, _ in layer]
             self.y_range = (frequencies[0], frequencies[-1])
 
-    def _get_color_theme_tag(self, color: Color) -> str:
-        color_part = "_".join(str(c) for c in color)
-        return compose_tag(self.tag, SUF_GRAPH_THEME, color_part)
+    def _create_brightness_theme(
+        self,
+        color_dim: BaseColor,
+        color_bright: BaseColor,
+        brightness: float,
+    ) -> str:
+        """The theme filling a band at ``brightness``, built once per shade the spectrum shows.
 
-    def _create_brightness_theme(self, color_dim: Color, color_bright: Color, brightness: float) -> str:
-        t = brightness / 255.0
-        color = (
-            round(color_dim[0] + (color_bright[0] - color_dim[0]) * t),
-            round(color_dim[1] + (color_bright[1] - color_dim[1]) * t),
-            round(color_dim[2] + (color_bright[2] - color_dim[2]) * t),
-            255,
+        A band's shade sits on the gradient between the dim and bright ends, and is held as the
+        blend of the two tokens rather than as the value it currently reads, so every band the
+        spectrum has drawn takes the new gradient when another palette is activated.
+        """
+        color = BlendedColor(
+            start=color_dim,
+            end=color_bright,
+            fraction=brightness / MAX_CHANNEL_VALUE,
         )
         if color in self.themes:
             return self.themes[color]
 
-        theme_tag = self._get_color_theme_tag(color)
-        with dpg.theme(tag=theme_tag):
-            with dpg.theme_component(dpg.mvBarSeries):
-                dpg.add_theme_color(
-                    dpg.mvPlotCol_Fill,
-                    color,
-                    category=dpg.mvThemeCat_Plots,
-                )
+        theme_tag = compose_tag(self.tag, SUF_GRAPH_THEME, str(len(self.themes)))
+        with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvBarSeries):
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_Fill,
+                color,
+                category=dpg.mvThemeCat_Plots,
+            )
 
         self.themes[color] = theme_tag
         return theme_tag

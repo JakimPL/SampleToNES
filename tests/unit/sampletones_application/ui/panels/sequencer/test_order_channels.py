@@ -5,14 +5,21 @@ from typing import Any, Dict, FrozenSet, Iterator, List, Optional, Tuple
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.tabs.sequencer.colors import ChannelColors
+from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer import order as order_module
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
-from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS, ModifierSet
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    CTRL,
+    NO_MODIFIERS,
+    ModifierSet,
+)
+from sampletones_application.utils.palette.colors.written import LiteralColor
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
@@ -29,10 +36,10 @@ MUTED_TEXT_FRACTION = 0.25
 
 MUTED_BACKGROUND: ColorRGBA = (10, 8, 18, 96)
 CHANNEL_COLORS = ChannelColors(
-    pulse1=(240, 146, 86, 255),
-    pulse2=(242, 209, 95, 255),
-    triangle=(140, 193, 237, 255),
-    noise=(187, 184, 194, 255),
+    pulse1=LiteralColor((240, 146, 86, 255)),
+    pulse2=LiteralColor((242, 209, 95, 255)),
+    triangle=LiteralColor((140, 193, 237, 255)),
+    noise=LiteralColor((187, 184, 194, 255)),
 )
 
 LABEL_THEME = 1
@@ -136,7 +143,7 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerOrderPanel:
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
             channels=CHANNEL_COLORS,
-            muted=SimpleNamespace(background=MUTED_BACKGROUND),
+            muted=SimpleNamespace(background=LiteralColor(MUTED_BACKGROUND)),
         ),
         tracker=SimpleNamespace(
             channel_column_tint=TINT_FRACTION,
@@ -269,7 +276,12 @@ class TestRowWash:
 
         panel._apply_channel_cues()
 
-        assert recorder.row_tints[CHANNEL_TABLE_ROWS[GeneratorName.PULSE1]] == (240, 146, 86, 128)
+        assert recorder.row_tints[CHANNEL_TABLE_ROWS[GeneratorName.PULSE1]] == (
+            240,
+            146,
+            86,
+            128,
+        )
 
     def test_muted_channel_takes_the_neutral_wash(self, recorder: _DearPyGuiRecorder) -> None:
         panel = _panel(frozenset({GeneratorName.PULSE1}))
@@ -438,7 +450,12 @@ class TestRowLabelMenuItems:
 
         _right_click(panel, GeneratorName.PULSE1)
 
-        assert menu.labels == [LABEL_MUTE, LABEL_UNSOLO, LABEL_MUTE_ALL, LABEL_UNMUTE_ALL]
+        assert menu.labels == [
+            LABEL_MUTE,
+            LABEL_UNSOLO,
+            LABEL_MUTE_ALL,
+            LABEL_UNMUTE_ALL,
+        ]
 
     def test_muting_everything_is_withheld_in_full_silence(self, menu: _MenuRecorder) -> None:
         panel = _panel(frozenset(GeneratorName.items()))

@@ -3,6 +3,7 @@ from typing import Optional
 import pytest
 from pydantic import ValidationError
 
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 
 
@@ -11,7 +12,7 @@ def _view_model(
     is_loaded: bool = True,
     is_playing: bool = False,
     is_paused: bool = False,
-    follow_playback: bool = True,
+    follow_mode: FollowMode = FollowMode.ROWS,
     order_position: int = 0,
     row_index: int = 0,
     error: Optional[str] = None,
@@ -20,7 +21,7 @@ def _view_model(
         is_loaded=is_loaded,
         is_playing=is_playing,
         is_paused=is_paused,
-        follow_playback=follow_playback,
+        follow_mode=follow_mode,
         order_position=order_position,
         row_index=row_index,
         error=error,

@@ -7,7 +7,8 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.layout.general.collapse import CollapseLayout
 from sampletones_application.layout.general.section_header import SectionHeaderLayout
-from sampletones_application.layout.glyphs import GlyphLayout, Glyphs
+from sampletones_application.layout.glyphs.glyph import GlyphLayout
+from sampletones_application.layout.glyphs.glyphs import Glyphs
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_PANEL_SURFACE,
     TAG_GLOBAL_THEME_SECTION_HEADER,
@@ -152,7 +153,10 @@ class GUIPanel(CallbackMixin, ABC):
             initial_collapsed=initial_collapsed,
         )
 
-    def set_collapse_handler(self, callback: Callable[[str, bool], None]) -> None:
+    def set_collapse_handler(
+        self,
+        callback: Callable[[str, bool], None],
+    ) -> None:
         """Route this card's collapse toggles to ``callback`` so the coordinator can persist and react to them."""
         if self._collapse is not None:
             self._collapse.on_toggle = callback
@@ -195,48 +199,49 @@ class GUIPanel(CallbackMixin, ABC):
         marker_glyph = glyph if glyph is not None else self._glyphs.common.tick
         collapsible = affordance is not None
         policy = dpg.mvTable_SizingStretchProp if collapsible else dpg.mvTable_SizingFixedFit
-        with dpg.group(
-            parent=parent,
-            tag=tag,
-        ) as header:
-            with dpg.table(
+        with (
+            dpg.group(
+                parent=parent,
+                tag=tag,
+            ) as header,
+            dpg.table(
                 header_row=False,
                 policy=policy,
                 resizable=False,
-            ):
+            ),
+        ):
+            dpg.add_table_column(
+                width_fixed=True,
+                init_width_or_weight=self._glyph_layout.width,
+            )
+            dpg.add_table_column(width_fixed=not collapsible)
+            if collapsible:
+                dpg.add_table_column(width_fixed=True)
                 dpg.add_table_column(
                     width_fixed=True,
-                    init_width_or_weight=self._glyph_layout.width,
+                    init_width_or_weight=self._section_header_layout.chevron_offset,
                 )
-                dpg.add_table_column(width_fixed=not collapsible)
-                if collapsible:
-                    dpg.add_table_column(width_fixed=True)
-                    dpg.add_table_column(
-                        width_fixed=True,
-                        init_width_or_weight=self._section_header_layout.chevron_offset,
+
+            with dpg.table_row():
+                with dpg.table_cell(), dpg.group() as marker_group:
+                    dpg.add_spacer(height=self._glyph_layout.top_offset)
+                    marker = dpg.add_text(
+                        marker_glyph,
+                        indent=self._glyph_layout.indent,
                     )
+                    FontRegistry.bind_to_item(marker, Font.ICON)
+                    dpg.bind_item_theme(marker_group, self._get_marker_group_theme())
 
-                with dpg.table_row():
+                with dpg.table_cell():
+                    label_text = dpg.add_text(label.upper())
+                    FontRegistry.bind_to_item(label_text, Font.BOLD_LARGE)
+
+                if collapsible:
                     with dpg.table_cell():
-                        with dpg.group() as marker_group:
-                            dpg.add_spacer(height=self._glyph_layout.top_offset)
-                            marker = dpg.add_text(
-                                marker_glyph,
-                                indent=self._glyph_layout.indent,
-                            )
-                            FontRegistry.bind_to_item(marker, Font.ICON)
-                            dpg.bind_item_theme(marker_group, self._get_marker_group_theme())
-
+                        chevron = dpg.add_text(affordance, tag=affordance_tag)
+                        FontRegistry.bind_to_item(chevron, Font.ICON)
                     with dpg.table_cell():
-                        label_text = dpg.add_text(label.upper())
-                        FontRegistry.bind_to_item(label_text, Font.BOLD_LARGE)
-
-                    if collapsible:
-                        with dpg.table_cell():
-                            chevron = dpg.add_text(affordance, tag=affordance_tag)
-                            FontRegistry.bind_to_item(chevron, Font.ICON)
-                        with dpg.table_cell():
-                            dpg.add_spacer()
+                        dpg.add_spacer()
 
         if not collapsible:
             dpg.add_separator()
@@ -267,18 +272,20 @@ class GUIPanel(CallbackMixin, ABC):
         if controller is None:
             raise RuntimeError(f"Card {self.tag} opened a collapsible card without a collapse controller.")
 
-        with card(
-            parent,
-            controller.card_tag,
-            theme=card_theme,
-            width=width,
-            height=controller.expanded_height,
-            auto_resize_y=controller.auto_height,
-            no_scrollbar=no_scrollbar,
-            show=show,
+        with (
+            card(
+                parent,
+                controller.card_tag,
+                theme=card_theme,
+                width=width,
+                height=controller.expanded_height,
+                auto_resize_y=controller.auto_height,
+                no_scrollbar=no_scrollbar,
+                show=show,
+            ),
+            self._collapsible_section(label, glyph=glyph),
         ):
-            with self._collapsible_section(label, glyph=glyph):
-                yield
+            yield
 
     @contextmanager
     def _collapsible_section(
@@ -332,6 +339,7 @@ class GUIPanel(CallbackMixin, ABC):
                     dpg.add_spacer(height=self._collapse_layout.rail_title_gap)
                     rail_title = dpg.add_text("\n".join(label.upper()))
                     FontRegistry.bind_to_item(rail_title, Font.MONO_BOLD_SMALL)
+
                 ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(rail_content)
                 self._center_rail_items(
                     controller.rail_width,
@@ -349,7 +357,11 @@ class GUIPanel(CallbackMixin, ABC):
 
         controller.set_collapsed(controller.collapsed, notify=False)
 
-    def _center_rail_items(self, rail_width: int, items: List[Tuple[Sender, Font]]) -> None:
+    def _center_rail_items(
+        self,
+        rail_width: int,
+        items: List[Tuple[Sender, Font]],
+    ) -> None:
         """Indent each rail item so its glyph sits centered in the rail's content region.
 
         Text is left-aligned, so an item is nudged right by half the slack between the content width
@@ -362,8 +374,15 @@ class GUIPanel(CallbackMixin, ABC):
         for item, font in items:
             size = dpg.get_text_size(dpg.get_value(item), font=FontRegistry.get_tag(font))
             if size is None:
-                FrameCallbackManager.set_frame_callback(partial(self._center_rail_items, rail_width, items))
+                FrameCallbackManager.set_frame_callback(
+                    partial(
+                        self._center_rail_items,
+                        rail_width,
+                        items,
+                    )
+                )
                 return
+
             indents.append((item, max(0, round((content_width - size[0]) / 2))))
 
         for item, indent in indents:

@@ -6,9 +6,9 @@ logger = Logger()
 null_logger = NullLogger()
 
 __all__ = [
+    "Logger",
+    "LoggerProtocol",
+    "NullLogger",
     "logger",
     "null_logger",
-    "Logger",
-    "NullLogger",
-    "LoggerProtocol",
 ]

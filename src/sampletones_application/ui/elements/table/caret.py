@@ -7,7 +7,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.utils.gui.dpg import dpg_get_item_parent
 from sampletones_shared.meta import NonInstantiableMeta
-from sampletones_shared.types.application import ColorRGBA, Sender
+from sampletones_shared.types.application import Sender
 
 Box = Tuple[float, float, float, float]
 
@@ -35,14 +35,11 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
     character's position and redrawn every frame (from the application loop) so it
     follows the table as it scrolls. Because at
     most one cell across both tracker tables holds the cursor at a time, one
-    shared rectangle is enough; the ``owner`` token keeps the order and grid
+    shared rectangle is enough; the ``owner`` token keeps the order and tracker
     panels' arm/clear calls from clobbering each other during focus hand-off.
     """
 
-    _fill: ColorRGBA = (0, 0, 0, 0)
-    _border: ColorRGBA = (0, 0, 0, 0)
-    _offset: float = 0.0
-    _width_padding: float = 0.0
+    _layout: Optional[CaretLayout] = None
     _rectangle: Optional[Sender] = None
 
     _owner: Optional[Any] = None
@@ -61,18 +58,15 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
         other top-level window that takes focus keeps the front-drawn caret from painting
         over it.
         """
-        cls._fill = layout.fill
-        cls._border = layout.border
-        cls._offset = layout.offset
-        cls._width_padding = layout.width_padding
+        cls._layout = layout
         cls._root_window = root_window_tag
         drawlist = dpg.add_viewport_drawlist(front=True)
         cls._rectangle = dpg.draw_rectangle(
             (0.0, 0.0),
             (0.0, 0.0),
             parent=drawlist,
-            fill=cls._fill,
-            color=cls._border,
+            fill=layout.fill.rgba,
+            color=layout.border.rgba,
             show=False,
         )
 
@@ -119,7 +113,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
         dialog or another window holds focus), keeping the armed state so the caret returns
         to the same cell once focus comes back.
         """
-        if cls._rectangle is None:
+        if cls._rectangle is None or cls._layout is None:
             return
 
         if not cls._active_within_root():
@@ -136,15 +130,15 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
             cls._rectangle,
             pmin=pmin,
             pmax=pmax,
-            fill=cls._fill,
-            color=cls._border,
+            fill=cls._layout.fill.rgba,
+            color=cls._layout.border.rgba,
             show=True,
         )
 
     @classmethod
     def _compute_box(cls) -> Optional[Box]:
         widget = cls._widget
-        if widget is None or cls._font is None:
+        if widget is None or cls._font is None or cls._layout is None:
             return None
 
         if not dpg.does_item_exist(widget):
@@ -167,8 +161,8 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
 
         x0, y0, _, y1 = cell
         char_width = size[0] / len(text)
-        caret_x0 = x0 + cls._offset + cls._caret_index * char_width
-        caret_x1 = caret_x0 + char_width + cls._width_padding
+        caret_x0 = x0 + cls._layout.offset + cls._caret_index * char_width
+        caret_x1 = caret_x0 + char_width + cls._layout.width_padding
 
         return cls._clip((caret_x0, y0, caret_x1, y1))
 

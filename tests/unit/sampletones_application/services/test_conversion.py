@@ -1,6 +1,6 @@
 from pathlib import Path
 from time import sleep
-from typing import Any, List
+from typing import Any, Callable, Dict, Iterator, List, Tuple, TypeAlias
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,18 +15,20 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_core.parallelization import TaskProgress, TaskStatus
-from sampletones_shared.types.data import SerializedData
+
+MockConverterClass: TypeAlias = Tuple[MagicMock, MagicMock, Dict[str, Callable[..., Any]]]
+Service: TypeAlias = Tuple[ConversionService, MagicMock, Dict[str, Callable[..., Any]], List[Any]]
 
 
 @pytest.fixture
-def mock_converter_class():
+def mock_converter_class() -> Iterator[MockConverterClass]:
     with patch("sampletones_application.services.conversion.ReconstructionConverter") as cls:
         instance = MagicMock()
         instance.is_running.return_value = False
         instance.status = TaskStatus.COMPLETED
         instance.total_tasks = 5
 
-        captured: SerializedData = {}
+        captured: Dict[str, Callable[..., Any]] = {}
         instance.set_callbacks.side_effect = lambda **kwargs: captured.update(kwargs)
 
         cls.return_value = instance
@@ -34,8 +36,10 @@ def mock_converter_class():
 
 
 @pytest.fixture
-def service(mock_converter_class):
-    cls, instance, callbacks = mock_converter_class
+def service(
+    mock_converter_class: MockConverterClass,
+) -> Service:
+    _, instance, callbacks = mock_converter_class
     conversion_service = ConversionService()
     results: List[Any] = []
     conversion_service.subscribe(results.append)
@@ -48,7 +52,10 @@ def service(mock_converter_class):
 
 
 class TestConversionServiceStart:
-    def test_start_creates_and_starts_converter(self, mock_converter_class) -> None:
+    def test_start_creates_and_starts_converter(
+        self,
+        mock_converter_class: MockConverterClass,
+    ) -> None:
         cls, instance, _ = mock_converter_class
         conversion_service = ConversionService()
         conversion_service.start(MagicMock(), MagicMock())
@@ -56,14 +63,25 @@ class TestConversionServiceStart:
         cls.assert_called_once()
         instance.start.assert_called_once()
 
-    def test_start_wires_five_lifecycle_callbacks(self, mock_converter_class) -> None:
+    def test_start_wires_five_lifecycle_callbacks(
+        self,
+        mock_converter_class: MockConverterClass,
+    ) -> None:
         _, _, callbacks = mock_converter_class
         conversion_service = ConversionService()
         conversion_service.start(MagicMock(), MagicMock())
 
-        assert set(callbacks.keys()) == {"on_start", "on_progress", "on_completed", "on_error", "on_cancelled"}
+        assert set(callbacks.keys()) == {
+            "on_start",
+            "on_progress",
+            "on_completed",
+            "on_error",
+            "on_cancelled",
+        }
 
-    def test_start_while_running_does_not_create_second_converter(self, mock_converter_class) -> None:
+    def test_start_while_running_does_not_create_second_converter(
+        self, mock_converter_class: MockConverterClass
+    ) -> None:
         cls, instance, _ = mock_converter_class
         instance.is_running.return_value = True
         instance.status = TaskStatus.RUNNING
@@ -76,7 +94,10 @@ class TestConversionServiceStart:
 
 
 class TestConversionServiceEmissions:
-    def test_on_start_emits_service_started_with_total(self, service) -> None:
+    def test_on_start_emits_service_started_with_total(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_start"]()
 
@@ -85,7 +106,10 @@ class TestConversionServiceEmissions:
         assert isinstance(result, ServiceStarted)
         assert result.total == 5
 
-    def test_on_progress_running_emits_service_progress(self, service) -> None:
+    def test_on_progress_running_emits_service_progress(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_start"]()
         results.clear()
@@ -100,7 +124,10 @@ class TestConversionServiceEmissions:
         assert result.total == 5
         assert result.current_item == Path("/some/file.wav")
 
-    def test_on_progress_cancelling_emits_service_progress(self, service) -> None:
+    def test_on_progress_cancelling_emits_service_progress(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_start"]()
         results.clear()
@@ -111,7 +138,10 @@ class TestConversionServiceEmissions:
         assert len(results) == 1
         assert isinstance(results[0], ServiceProgress)
 
-    def test_on_progress_pending_does_not_emit(self, service) -> None:
+    def test_on_progress_pending_does_not_emit(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_start"]()
         results.clear()
@@ -121,7 +151,10 @@ class TestConversionServiceEmissions:
 
         assert results == []
 
-    def test_on_progress_completed_does_not_emit(self, service) -> None:
+    def test_on_progress_completed_does_not_emit(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_start"]()
         results.clear()
@@ -131,7 +164,10 @@ class TestConversionServiceEmissions:
 
         assert results == []
 
-    def test_on_progress_current_item_none_when_absent(self, service) -> None:
+    def test_on_progress_current_item_none_when_absent(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_start"]()
         results.clear()
@@ -141,7 +177,10 @@ class TestConversionServiceEmissions:
 
         assert results[0].current_item is None
 
-    def test_on_completed_emits_service_success(self, service) -> None:
+    def test_on_completed_emits_service_success(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         output_path = Path("/output/result.nes")
         callbacks["on_completed"](output_path)
@@ -150,7 +189,10 @@ class TestConversionServiceEmissions:
         assert isinstance(results[0], ServiceSuccess)
         assert results[0].value == output_path
 
-    def test_on_error_emits_service_error(self, service) -> None:
+    def test_on_error_emits_service_error(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         exception = RuntimeError("converter failed")
         callbacks["on_error"](exception)
@@ -160,17 +202,26 @@ class TestConversionServiceEmissions:
         assert isinstance(result, ServiceError)
         assert result.exception is exception
 
-    def test_on_cancelled_emits_service_cancelled(self, service) -> None:
+    def test_on_cancelled_emits_service_cancelled(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_cancelled"]()
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceCancelled)
 
-    def test_forward_library_progress_emits_service_intermediate(self, service) -> None:
+    def test_forward_library_progress_emits_service_intermediate(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, _, _, results = service
         task_progress = TaskProgress(total=10, completed=4)
-        conversion_service.forward_library_progress(TaskStatus.RUNNING, task_progress)
+        conversion_service.forward_library_progress(
+            TaskStatus.RUNNING,
+            task_progress,
+        )
 
         assert len(results) == 1
         result = results[0]
@@ -179,16 +230,25 @@ class TestConversionServiceEmissions:
 
 
 class TestConversionServiceETA:
-    def test_eta_estimator_none_before_on_start_fires(self, service) -> None:
+    def test_eta_estimator_none_before_on_start_fires(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, _, _, _ = service
         assert conversion_service._eta_estimator is None
 
-    def test_eta_estimator_created_after_on_start(self, service) -> None:
+    def test_eta_estimator_created_after_on_start(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, _, callbacks, _ = service
         callbacks["on_start"]()
         assert conversion_service._eta_estimator is not None
 
-    def test_eta_seconds_none_with_single_sample(self, service) -> None:
+    def test_eta_seconds_none_with_single_sample(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_start"]()
         results.clear()
@@ -198,7 +258,10 @@ class TestConversionServiceETA:
 
         assert results[0].eta_seconds is None
 
-    def test_eta_seconds_populated_after_two_samples(self, service) -> None:
+    def test_eta_seconds_populated_after_two_samples(
+        self,
+        service: Service,
+    ) -> None:
         _, _, callbacks, results = service
         callbacks["on_start"]()
         results.clear()
@@ -222,7 +285,10 @@ class TestConversionServiceETA:
         assert results[-1].eta_seconds is not None
         assert results[-1].eta_seconds > 0
 
-    def test_eta_estimator_reset_on_cleanup(self, service) -> None:
+    def test_eta_estimator_reset_on_cleanup(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, _, callbacks, _ = service
         callbacks["on_start"]()
         assert conversion_service._eta_estimator is not None
@@ -233,46 +299,61 @@ class TestConversionServiceETA:
 
 
 class TestConversionServiceLifecycle:
-    def test_cleanup_resets_converter(self, service) -> None:
+    def test_cleanup_resets_converter(self, service: Service) -> None:
         conversion_service, _, _, _ = service
         conversion_service.cleanup()
         assert conversion_service._converter is None
 
-    def test_cleanup_disposes_running_converter(self, service) -> None:
+    def test_cleanup_disposes_running_converter(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, converter, _, _ = service
         converter.is_running.return_value = True
         conversion_service.cleanup()
         converter.cleanup.assert_called_once()
         assert conversion_service._converter is None
 
-    def test_shutdown_tears_down_converter_synchronously(self, service) -> None:
+    def test_shutdown_tears_down_converter_synchronously(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, converter, _, _ = service
         conversion_service.shutdown()
         converter.shutdown.assert_called_once()
         assert conversion_service._converter is None
 
-    def test_is_running_true_when_converter_running(self, service) -> None:
+    def test_is_running_true_when_converter_running(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, converter, _, _ = service
         converter.is_running.return_value = True
         assert conversion_service.is_running()
 
-    def test_is_running_true_when_converter_pending(self, service) -> None:
+    def test_is_running_true_when_converter_pending(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, converter, _, _ = service
         converter.is_running.return_value = False
         converter.status = TaskStatus.PENDING
         assert conversion_service.is_running()
 
-    def test_is_running_false_when_converter_none(self) -> None:
+    def test_is_running_false_when_converter_none(self: Any) -> None:
         conversion_service = ConversionService()
         assert not conversion_service.is_running()
 
-    def test_cancel_delegates_to_converter(self, service) -> None:
+    def test_cancel_delegates_to_converter(self, service: Service) -> None:
         conversion_service, converter, _, _ = service
         converter.is_running.return_value = True
         conversion_service.cancel()
         converter.cancel.assert_called_once()
 
-    def test_cancel_when_not_running_does_not_call_converter_cancel(self, service) -> None:
+    def test_cancel_when_not_running_does_not_call_converter_cancel(
+        self,
+        service: Service,
+    ) -> None:
         conversion_service, converter, _, _ = service
         converter.is_running.return_value = False
         conversion_service.cancel()

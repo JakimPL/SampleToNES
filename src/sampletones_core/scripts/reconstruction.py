@@ -12,12 +12,15 @@ from sampletones_core.reconstructions.converter import (
     get_output_path,
 )
 from sampletones_core.reconstructions.converter import reconstruct_file as _reconstruct_file
+from sampletones_core.scripts.library import generate_library
 from sampletones_shared.logger import logger, null_logger
 
-from .library import generate_library
 
-
-def reconstruct_file(input_path: Path, config: Config, output_path: Optional[Path] = None) -> None:
+def reconstruct_file(
+    input_path: Path,
+    config: Config,
+    output_path: Optional[Path] = None,
+) -> None:
     if output_path is None:
         output_path = get_output_path(config, input_path)
 
@@ -34,7 +37,11 @@ def reconstruct_file(input_path: Path, config: Config, output_path: Optional[Pat
     logger.info(f"Reconstruction file saved to {output_path}")
 
 
-def reconstruct_directory(input_path: Path, config: Config, output_path: Optional[Path] = None) -> None:
+def reconstruct_directory(
+    input_path: Path,
+    config: Config,
+    output_path: Optional[Path] = None,
+) -> None:
     if output_path is None:
         output_path = get_output_path(config, input_path)
 
@@ -52,11 +59,14 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
         progress_bar.disable = False
         logger.info(f"Starting reconstruction for directory {input_path}")
 
-    def on_completed(path: Path) -> None:
+    def on_completed(_path: Path) -> None:
         logger.info(f"Reconstruction directory saved to {output_path}")
         progress_bar.close()
 
-    def on_progress(task_status: TaskStatus, task_progress: TaskProgress) -> None:
+    def on_progress(
+        task_status: TaskStatus,
+        task_progress: TaskProgress,
+    ) -> None:
         progress_bar.disable = False
         total = task_progress.total
         if total and total != progress_bar.total:
@@ -81,7 +91,7 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
         logger.info("Reconstruction cancelled by user")
         progress_bar.close()
 
-    def on_error(exception: Exception) -> None:
+    def on_error(_exception: Exception) -> None:
         progress_bar.close()
 
     converter = ReconstructionConverter(

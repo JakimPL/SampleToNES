@@ -1,4 +1,5 @@
 import ast
+import re
 from pathlib import Path
 from typing import Final
 
@@ -7,6 +8,7 @@ import pytest
 from sampletones_shared.meta.source.modules import (
     discover_modules,
     is_visible,
+    module_name,
     parse_module,
     source_paths,
 )
@@ -59,6 +61,21 @@ class TestIsVisible:
         assert not is_visible(Path("src/.generated.py"))
 
 
+class TestModuleName:
+    def test_a_module_is_named_by_the_path_reaching_it(self) -> None:
+        assert module_name(Path("/src/package/inner/module.py"), Path("/src")) == "package.inner.module"
+
+    def test_a_module_at_the_root_is_named_alone(self) -> None:
+        assert module_name(Path("/src/module.py"), Path("/src")) == "module"
+
+    def test_an_initializer_names_the_package_holding_it(self) -> None:
+        assert module_name(Path("/src/package/inner/__init__.py"), Path("/src")) == "package.inner"
+
+    def test_a_file_outside_the_root_raises(self) -> None:
+        with pytest.raises(ValueError):
+            module_name(Path("/elsewhere/module.py"), Path("/src"))
+
+
 class TestSourcePaths:
     def test_every_module_under_a_root_is_found(self, tmp_path: Path) -> None:
         first = write_module(tmp_path / "package", "first.py", MODULE_BODY)
@@ -80,9 +97,42 @@ class TestSourcePaths:
         assert source_paths([tmp_path]) == [visible]
 
 
+class TestSweptRoots:
+    """A sweep reading nothing leaves a check reporting nothing, which reads as a clean tree."""
+
+    def test_an_absent_root_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(NotADirectoryError):
+            source_paths([tmp_path / "absent"])
+
+    def test_a_root_naming_a_module_raises(self, tmp_path: Path) -> None:
+        """A package resource resolves to `__init__.py`, which a sweep reads nothing under."""
+        path = write_module(tmp_path, "first.py", MODULE_BODY)
+        with pytest.raises(NotADirectoryError):
+            source_paths([path])
+
+    def test_a_root_beside_a_readable_one_is_held_to_the_same_rule(self, tmp_path: Path) -> None:
+        write_module(tmp_path / "package", "first.py", MODULE_BODY)
+        with pytest.raises(NotADirectoryError):
+            source_paths([tmp_path / "package", tmp_path / "absent"])
+
+    def test_roots_holding_no_source_raise(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            source_paths([tmp_path])
+
+    def test_the_report_names_the_root_it_read_nothing_under(self, tmp_path: Path) -> None:
+        """A Windows root spells separators and drive letters a regex reads as escapes, so the path
+        is quoted before it is matched."""
+        with pytest.raises(FileNotFoundError, match=re.escape(str(tmp_path))):
+            source_paths([tmp_path])
+
+
 class TestDiscoverModules:
     def test_every_module_found_is_parsed(self, tmp_path: Path) -> None:
         write_module(tmp_path, "first.py", MODULE_BODY)
         write_module(tmp_path / "inner", "second.py", MODULE_BODY)
         modules = discover_modules([tmp_path])
         assert [module.path.name for module in modules] == ["first.py", "second.py"]
+
+    def test_a_root_holding_no_module_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            discover_modules([tmp_path])

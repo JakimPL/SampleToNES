@@ -3,7 +3,7 @@ from typing import Callable, Optional
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.sequencer.order import (
     OrderEntryViewModel,
-    SequencerOrderGridViewModel,
+    SequencerOrderTrackerViewModel,
     SequencerOrderViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
@@ -14,7 +14,7 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 class SequencerOrderLogic(CallbackMixin):
     """Builds the order arrangement view model and exposes order mutations.
 
-    Navigation (the current frame) is owned by :class:`SequencerGridLogic`; this
+    Navigation (the current frame) is owned by :class:`SequencerTrackerLogic`; this
     class is only responsible for which pattern index each channel plays at every
     order position, and how to change that arrangement.
     """
@@ -22,12 +22,12 @@ class SequencerOrderLogic(CallbackMixin):
     def __init__(self, project_controller: ProjectController) -> None:
         self._controller = project_controller
 
-        self.on_order_changed: Optional[Callable[[SequencerOrderGridViewModel], None]] = None
+        self.on_order_changed: Optional[Callable[[SequencerOrderTrackerViewModel], None]] = None
 
-    def build_order(self) -> SequencerOrderGridViewModel:
+    def build_order(self) -> SequencerOrderTrackerViewModel:
         song = self._controller.project.song
         channels = {generator: self._build_channel_view(generator, song) for generator in GeneratorName.items()}
-        return SequencerOrderGridViewModel(
+        return SequencerOrderTrackerViewModel(
             position_count=song.order_length(),
             channels=channels,
         )

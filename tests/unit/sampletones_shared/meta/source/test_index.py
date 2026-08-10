@@ -31,7 +31,10 @@ def index_of(*sources: str) -> SourceIndex:
 
 class TestSourceIndex:
     def test_a_container_states_its_item_types(self) -> None:
-        assert index_of(TAGS_SOURCE).item_types["FILTERS"] == ("TrackerFormat", "FileFilterElements")
+        assert index_of(TAGS_SOURCE).item_types["FILTERS"] == (
+            "TrackerFormat",
+            "FileFilterElements",
+        )
 
     def test_a_constant_states_its_value(self) -> None:
         value = index_of(TAGS_SOURCE).constants["TAG_MAIN_WINDOW"]

@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
@@ -10,12 +10,16 @@ from sampletones_core.calibration.referee.factory import build_referees
 from sampletones_core.calibration.report import write_csv, write_markdown
 from sampletones_core.calibration.runner import build_variants, evaluate_variants
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import DEFAULT_GENERATORS, GeneratorName
+from sampletones_core.constants.enums import (
+    DEFAULT_GENERATORS,
+    GeneratorName,
+    SpectrumMethod,
+)
 from sampletones_core.paths import USER_PATH_DOCUMENTS
 from sampletones_shared.logger import logger
 
 DEFAULT_OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "calibration"
-DEFAULT_METHODS: Final[str] = "fft,cqt"
+DEFAULT_METHODS: Final[str] = f"{SpectrumMethod.FFT.value},{SpectrumMethod.CQT.value}"
 DEFAULT_PERCEPTUAL_EXPONENTS: Final[str] = "1.0"
 DEFAULT_GENERATOR_NAMES: Final[str] = ",".join(generator.value for generator in DEFAULT_GENERATORS)
 
@@ -68,9 +72,13 @@ def main() -> None:
 
     base = Config.load(arguments.config) if arguments.config else Config.default()
     base = base.model_copy(
-        update={"generation": base.generation.model_copy(update={"generators": generators})},
+        update={
+            "generation": base.generation.model_copy(
+                update={"generators": generators},
+            )
+        },
     )
-    output = arguments.output or DEFAULT_OUTPUT_ROOT / datetime.now().strftime("run-%Y%m%d-%H%M%S")
+    output = arguments.output or DEFAULT_OUTPUT_ROOT / datetime.now(UTC).strftime("run-%Y%m%d-%H%M%S")
     output.mkdir(parents=True, exist_ok=True)
 
     methods = [method.strip() for method in arguments.methods.split(",") if method.strip()]

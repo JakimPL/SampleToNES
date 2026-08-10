@@ -6,7 +6,7 @@ components:
     entries:
       - type: color
         key: HeaderHovered
-        value: .white/0.25
+        value: .overlay/0.25
       - type: color
         key: HeaderActive
         value: .transparent

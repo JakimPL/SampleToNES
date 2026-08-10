@@ -9,13 +9,13 @@ from .settings import ProjectSettings
 from .song import Song
 
 __all__ = [
+    "Channel",
+    "Instrument",
+    "Pattern",
     "Project",
     "ProjectContainer",
     "ProjectInfo",
     "ProjectSettings",
-    "Song",
-    "Channel",
-    "Pattern",
     "Row",
-    "Instrument",
+    "Song",
 ]

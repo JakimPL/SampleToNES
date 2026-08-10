@@ -1,6 +1,6 @@
 import pytest
 
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from tests.suite.application import scheduling, synchronous_queue
 

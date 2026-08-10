@@ -13,7 +13,7 @@ class BaseTestCase(metaclass=NonInstantiableMeta):
 @dataclass(frozen=True, kw_only=True)
 class BaseRegularTestCase(BaseTestCase, metaclass=NonInstantiableMeta):
     label: str
-    expected: Any
+    expected: Any = None
 
 
 @dataclass(frozen=True, kw_only=True)

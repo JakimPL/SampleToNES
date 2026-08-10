@@ -8,7 +8,10 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERENCE_TEMPO
+from sampletones_shared.constants.project import (
+    REFERENCE_NES_FREQUENCY,
+    REFERENCE_TEMPO,
+)
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     add_sample,
@@ -58,7 +61,10 @@ def _controller(context: SynthesizerContext):
     return context.synthesizer._project_controller
 
 
-def _state(context: SynthesizerContext, generator: GeneratorName = GeneratorName.PULSE1):
+def _state(
+    context: SynthesizerContext,
+    generator: GeneratorName = GeneratorName.PULSE1,
+):
     return context.synthesizer._channel_states[generator]
 
 
@@ -73,7 +79,12 @@ class TestTriggerSetsDefaults:
         def place_pulse_sample_on_row_0(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(pitch=60, volume=15, count=4)
             sample = add_sample(_controller(context), recon)
-            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_row(
+                _controller(context),
+                generator=GeneratorName.PULSE1,
+                row_index=0,
+                sample_id=sample.id,
+            )
 
         def render_row_0_and_assert_defaults(context: SynthesizerContext) -> None:
             _render(context)
@@ -84,8 +95,14 @@ class TestTriggerSetsDefaults:
             label="trigger sets default transpose and volume",
             build=_make_context,
             steps=[
-                ScenarioStep(label="place pulse sample on row 0", action=place_pulse_sample_on_row_0),
-                ScenarioStep(label="render row 0 — assert defaults", action=render_row_0_and_assert_defaults),
+                ScenarioStep(
+                    label="place pulse sample on row 0",
+                    action=place_pulse_sample_on_row_0,
+                ),
+                ScenarioStep(
+                    label="render row 0 — assert defaults",
+                    action=render_row_0_and_assert_defaults,
+                ),
             ],
         ).run()
 
@@ -102,7 +119,9 @@ class TestTriggerSetsDefaults:
                 volume=8,
             )
 
-        def render_row_0_and_assert_explicit_values(context: SynthesizerContext) -> None:
+        def render_row_0_and_assert_explicit_values(
+            context: SynthesizerContext,
+        ) -> None:
             _render(context)
             assert _state(context).transpose == 5
             assert _state(context).volume == 8
@@ -112,10 +131,12 @@ class TestTriggerSetsDefaults:
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="place pulse sample with transpose=5 volume=8", action=place_pulse_sample_with_modifiers
+                    label="place pulse sample with transpose=5 volume=8",
+                    action=place_pulse_sample_with_modifiers,
                 ),
                 ScenarioStep(
-                    label="render row 0 — assert explicit values", action=render_row_0_and_assert_explicit_values
+                    label="render row 0 — assert explicit values",
+                    action=render_row_0_and_assert_explicit_values,
                 ),
             ],
         ).run()
@@ -126,7 +147,12 @@ class TestSustain:
         def place_pulse_sample_on_row_0(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(count=12)
             sample = add_sample(_controller(context), recon)
-            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_row(
+                _controller(context),
+                generator=GeneratorName.PULSE1,
+                row_index=0,
+                sample_id=sample.id,
+            )
 
         def render_row_0_and_record_state(context: SynthesizerContext) -> None:
             _render(context)
@@ -134,7 +160,9 @@ class TestSustain:
             context.sample_id_snapshots["triggered"] = _state(context).sample_id
             assert _state(context).sample_id is not None
 
-        def render_empty_row_1_and_assert_tick_advanced(context: SynthesizerContext) -> None:
+        def render_empty_row_1_and_assert_tick_advanced(
+            context: SynthesizerContext,
+        ) -> None:
             _render(context)
             assert _state(context).tick_index > context.tick_snapshots["after_row_0"]
             assert _state(context).sample_id == context.sample_id_snapshots["triggered"]
@@ -143,10 +171,17 @@ class TestSustain:
             label="sustain — empty row continues previous note",
             build=_make_context,
             steps=[
-                ScenarioStep(label="place pulse sample on row 0", action=place_pulse_sample_on_row_0),
-                ScenarioStep(label="render row 0 — note triggers", action=render_row_0_and_record_state),
                 ScenarioStep(
-                    label="render row 1 (empty) — note sustains", action=render_empty_row_1_and_assert_tick_advanced
+                    label="place pulse sample on row 0",
+                    action=place_pulse_sample_on_row_0,
+                ),
+                ScenarioStep(
+                    label="render row 0 — note triggers",
+                    action=render_row_0_and_record_state,
+                ),
+                ScenarioStep(
+                    label="render row 1 (empty) — note sustains",
+                    action=render_empty_row_1_and_assert_tick_advanced,
                 ),
             ],
         ).run()
@@ -177,7 +212,9 @@ class TestModifierOnlyRow:
             context.sample_id_snapshots["after_row_0"] = _state(context).sample_id
             assert _state(context).volume == 15
 
-        def render_modifier_row_and_assert_volume_changed(context: SynthesizerContext) -> None:
+        def render_modifier_row_and_assert_volume_changed(
+            context: SynthesizerContext,
+        ) -> None:
             _render(context)
             assert _state(context).volume == 0
             assert _state(context).sample_id == context.sample_id_snapshots["after_row_0"]
@@ -188,7 +225,10 @@ class TestModifierOnlyRow:
             build=_make_context,
             steps=[
                 ScenarioStep(label="place sample on row 0, modifier on row 1", action=setup),
-                ScenarioStep(label="render row 0 — volume=15", action=render_row_0_and_record_state),
+                ScenarioStep(
+                    label="render row 0 — volume=15",
+                    action=render_row_0_and_record_state,
+                ),
                 ScenarioStep(
                     label="render row 1 — volume drops to 0, no retrigger",
                     action=render_modifier_row_and_assert_volume_changed,
@@ -219,7 +259,9 @@ class TestModifierOnlyRow:
             context.sample_id_snapshots["triggered"] = _state(context).sample_id
             assert _state(context).transpose == 0
 
-        def render_modifier_row_and_assert_transpose_changed(context: SynthesizerContext) -> None:
+        def render_modifier_row_and_assert_transpose_changed(
+            context: SynthesizerContext,
+        ) -> None:
             _render(context)
             assert _state(context).transpose == 7
             assert _state(context).sample_id == context.sample_id_snapshots["triggered"]
@@ -228,8 +270,14 @@ class TestModifierOnlyRow:
             label="modifier-only row changes transpose without retriggering",
             build=_make_context,
             steps=[
-                ScenarioStep(label="place sample on row 0, transpose modifier on row 1", action=setup),
-                ScenarioStep(label="render row 0 — transpose=0", action=render_row_0_and_record_sample),
+                ScenarioStep(
+                    label="place sample on row 0, transpose modifier on row 1",
+                    action=setup,
+                ),
+                ScenarioStep(
+                    label="render row 0 — transpose=0",
+                    action=render_row_0_and_record_sample,
+                ),
                 ScenarioStep(
                     label="render row 1 — transpose=7, no retrigger",
                     action=render_modifier_row_and_assert_transpose_changed,
@@ -243,7 +291,12 @@ class TestChannelMask:
         def place_pulse_sample(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(count=4)
             sample = add_sample(_controller(context), recon)
-            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_row(
+                _controller(context),
+                generator=GeneratorName.PULSE1,
+                row_index=0,
+                sample_id=sample.id,
+            )
 
         def mute_pulse1(context: SynthesizerContext) -> None:
             context.mask.mute(GeneratorName.PULSE1)
@@ -280,7 +333,12 @@ class TestChannelMask:
         def place_looping_pulse_sample(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(count=4)
             sample = add_sample(_controller(context), recon, loop=True)
-            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_row(
+                _controller(context),
+                generator=GeneratorName.PULSE1,
+                row_index=0,
+                sample_id=sample.id,
+            )
 
         def mute_pulse1_and_render_row_0(context: SynthesizerContext) -> None:
             context.mask.mute(GeneratorName.PULSE1)
@@ -295,9 +353,18 @@ class TestChannelMask:
             label="mask change heard on the next row",
             build=_make_context,
             steps=[
-                ScenarioStep(label="place looping pulse sample on row 0", action=place_looping_pulse_sample),
-                ScenarioStep(label="mute PULSE1, render row 0 — silence", action=mute_pulse1_and_render_row_0),
-                ScenarioStep(label="unmute PULSE1, render row 1 — sounds", action=unmute_pulse1_and_render_row_1),
+                ScenarioStep(
+                    label="place looping pulse sample on row 0",
+                    action=place_looping_pulse_sample,
+                ),
+                ScenarioStep(
+                    label="mute PULSE1, render row 0 — silence",
+                    action=mute_pulse1_and_render_row_0,
+                ),
+                ScenarioStep(
+                    label="unmute PULSE1, render row 1 — sounds",
+                    action=unmute_pulse1_and_render_row_1,
+                ),
             ],
         ).run()
 
@@ -322,8 +389,14 @@ class TestPositionAdvance:
             label="row index wraps and order position increments",
             build=_make_context,
             steps=[
-                ScenarioStep(label="assert starts at order=0 row=0", action=assert_at_row_0_order_0),
-                ScenarioStep(label="render all rows in pattern", action=render_all_rows_in_pattern),
+                ScenarioStep(
+                    label="assert starts at order=0 row=0",
+                    action=assert_at_row_0_order_0,
+                ),
+                ScenarioStep(
+                    label="render all rows in pattern",
+                    action=render_all_rows_in_pattern,
+                ),
                 ScenarioStep(label="assert order=1 row=0", action=assert_wrapped_to_order_1),
             ],
         ).run()
@@ -336,7 +409,9 @@ class TestPositionAdvance:
             context.synthesizer.set_position(0, 50)
             _controller(context).set_rows_per_pattern(16)
 
-        def render_and_assert_advanced_without_finishing(context: SynthesizerContext) -> None:
+        def render_and_assert_advanced_without_finishing(
+            context: SynthesizerContext,
+        ) -> None:
             _, (order_position, row_index) = context.synthesizer.render_row()
             assert (order_position, row_index) == (1, 0)
             assert not context.synthesizer.is_finished
@@ -347,7 +422,8 @@ class TestPositionAdvance:
             steps=[
                 ScenarioStep(label="append a second order frame", action=append_second_frame),
                 ScenarioStep(
-                    label="seek to row 50, then shrink pattern to 16 rows", action=seek_past_then_shrink_pattern
+                    label="seek to row 50, then shrink pattern to 16 rows",
+                    action=seek_past_then_shrink_pattern,
                 ),
                 ScenarioStep(
                     label="render — playhead lands on order 1 row 0, still playing",
@@ -368,7 +444,8 @@ class TestPositionAdvance:
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="render row 0 — returned position is 0,0", action=render_and_check_returned_position
+                    label="render row 0 — returned position is 0,0",
+                    action=render_and_check_returned_position,
                 ),
             ],
         ).run()
@@ -379,7 +456,12 @@ class TestNoteOff:
         def place_looped_sample_then_note_off(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(count=2)
             sample = add_sample(_controller(context), recon, loop=True)
-            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_row(
+                _controller(context),
+                generator=GeneratorName.PULSE1,
+                row_index=0,
+                sample_id=sample.id,
+            )
             place_note_off(_controller(context), generator=GeneratorName.PULSE1, row_index=1)
 
         def render_row_0_and_assert_audible(context: SynthesizerContext) -> None:
@@ -398,8 +480,14 @@ class TestNoteOff:
                     label="place looped sample on row 0, note-off on row 1",
                     action=place_looped_sample_then_note_off,
                 ),
-                ScenarioStep(label="render row 0 — audible", action=render_row_0_and_assert_audible),
-                ScenarioStep(label="render row 1 — note-off cuts the voice", action=render_row_1_and_assert_silenced),
+                ScenarioStep(
+                    label="render row 0 — audible",
+                    action=render_row_0_and_assert_audible,
+                ),
+                ScenarioStep(
+                    label="render row 1 — note-off cuts the voice",
+                    action=render_row_1_and_assert_silenced,
+                ),
             ],
         ).run()
 
@@ -409,13 +497,20 @@ class TestLoopBehavior:
         def place_two_instruction_loop_sample(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(count=2)
             sample = add_sample(_controller(context), recon, loop=True)
-            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_row(
+                _controller(context),
+                generator=GeneratorName.PULSE1,
+                row_index=0,
+                sample_id=sample.id,
+            )
 
         def render_row_0_and_assert_non_silence(context: SynthesizerContext) -> None:
             audio = _render(context)
             assert not np.all(audio == 0.0)
 
-        def render_rows_1_to_3_and_assert_tick_advanced(context: SynthesizerContext) -> None:
+        def render_rows_1_to_3_and_assert_tick_advanced(
+            context: SynthesizerContext,
+        ) -> None:
             for _ in range(3):
                 _render(context)
             assert _state(context).tick_index > 2
@@ -425,9 +520,13 @@ class TestLoopBehavior:
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="place 2-instruction looping sample on row 0", action=place_two_instruction_loop_sample
+                    label="place 2-instruction looping sample on row 0",
+                    action=place_two_instruction_loop_sample,
                 ),
-                ScenarioStep(label="render row 0 — has audio", action=render_row_0_and_assert_non_silence),
+                ScenarioStep(
+                    label="render row 0 — has audio",
+                    action=render_row_0_and_assert_non_silence,
+                ),
                 ScenarioStep(
                     label="render rows 1-3 — tick keeps advancing past 2",
                     action=render_rows_1_to_3_and_assert_tick_advanced,
@@ -442,9 +541,16 @@ class TestLoopBehavior:
         def place_one_instruction_non_loop_sample(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(count=1)
             sample = add_sample(_controller(context), recon, loop=False)
-            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_row(
+                _controller(context),
+                generator=GeneratorName.PULSE1,
+                row_index=0,
+                sample_id=sample.id,
+            )
 
-        def render_row_0_and_assert_first_tick_audible_rest_silent(context: SynthesizerContext) -> None:
+        def render_row_0_and_assert_first_tick_audible_rest_silent(
+            context: SynthesizerContext,
+        ) -> None:
             audio = _render(context)
             first_tick = audio[:frame_length]
             remaining = audio[frame_length:]
@@ -456,7 +562,8 @@ class TestLoopBehavior:
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="place 1-instruction non-looping sample", action=place_one_instruction_non_loop_sample
+                    label="place 1-instruction non-looping sample",
+                    action=place_one_instruction_non_loop_sample,
                 ),
                 ScenarioStep(
                     label="render row 0 — first tick audible, rest silent",
@@ -470,10 +577,17 @@ class TestLoopBehavior:
             controller = _controller(context)
             recon = make_pulse_reconstruction(count=2)
             sample = add_sample(controller, recon, loop=True)
-            place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_row(
+                controller,
+                generator=GeneratorName.PULSE1,
+                row_index=0,
+                sample_id=sample.id,
+            )
             controller.append_frame()
 
-        def render_into_empty_second_frame_and_assert_sustained(context: SynthesizerContext) -> None:
+        def render_into_empty_second_frame_and_assert_sustained(
+            context: SynthesizerContext,
+        ) -> None:
             rows_in_first_frame = _controller(context).project.song.rows_per_pattern
             for _ in range(rows_in_first_frame):
                 _render(context)
@@ -539,7 +653,10 @@ class TestSilenceCases:
             steps=[
                 ScenarioStep(label="exhaust all rows", action=exhaust_song),
                 ScenarioStep(label="assert is_finished", action=assert_finished),
-                ScenarioStep(label="render past end — silence", action=render_beyond_end_and_assert_silence),
+                ScenarioStep(
+                    label="render past end — silence",
+                    action=render_beyond_end_and_assert_silence,
+                ),
             ],
         ).run()
 
@@ -559,7 +676,10 @@ class TestFrameCount:
             label="chunk length matches timing formula",
             build=_make_context,
             steps=[
-                ScenarioStep(label="render one row and check length", action=render_and_assert_chunk_length),
+                ScenarioStep(
+                    label="render one row and check length",
+                    action=render_and_assert_chunk_length,
+                ),
             ],
         ).run()
 
@@ -567,12 +687,15 @@ class TestFrameCount:
 class TestNesFrequencyTempo:
     def test_frame_length_follows_project_nes_frequency(self) -> None:
         """Each tick spans ``sample_rate / nes_frequency`` samples taken from the project's
-        live frequency, not the fixed library config — otherwise the row duration drifts."""
+        live frequency, not the fixed library config — otherwise the row duration drifts.
+        """
 
         def lower_nes_frequency(context: SynthesizerContext) -> None:
             _controller(context).set_nes_frequency(30)
 
-        def render_and_assert_chunk_uses_project_frequency(context: SynthesizerContext) -> None:
+        def render_and_assert_chunk_uses_project_frequency(
+            context: SynthesizerContext,
+        ) -> None:
             settings = _controller(context).project.settings
             frame_length = round(settings.sample_rate / settings.nes_frequency)
             ticks_per_row = (settings.speed * settings.nes_frequency * REFERENCE_TEMPO) // (
@@ -595,7 +718,8 @@ class TestNesFrequencyTempo:
 
     def test_tempo_is_independent_of_nes_frequency(self) -> None:
         """A whole pattern spans the same real time at 60 Hz and 30 Hz; only the instruction
-        rate differs. Before the fix, halving the frequency roughly doubled the tempo."""
+        rate differs. Before the fix, halving the frequency roughly doubled the tempo.
+        """
 
         def pattern_duration_seconds(nes_frequency: int) -> float:
             controller = make_controller()
@@ -609,7 +733,8 @@ class TestNesFrequencyTempo:
 
     def test_frequency_change_between_rows_takes_effect_without_restart(self) -> None:
         """A frequency change mid-playback is picked up on the next row: render_row reads the
-        live setting and rebuilds the generators in place, keeping the sounding note going."""
+        live setting and rebuilds the generators in place, keeping the sounding note going.
+        """
         controller = make_controller()
         recon = make_pulse_reconstruction(count=12)
         sample = add_sample(controller, recon)

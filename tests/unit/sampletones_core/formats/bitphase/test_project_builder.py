@@ -8,7 +8,10 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
-from sampletones_core.formats.bitphase.notes import note_index_to_note_cell, pitch_to_note_index
+from sampletones_core.formats.bitphase.notes import (
+    note_index_to_note_cell,
+    pitch_to_note_index,
+)
 from sampletones_core.formats.bitphase.specification.channels import ChannelIndex
 from sampletones_core.formats.bitphase.specification.patterns import (
     NO_INSTRUMENT_CHANGE,
@@ -45,7 +48,9 @@ TRANSPOSED_ROW: Final[int] = 4
 EMPTY_ROW: Final[int] = 6
 
 
-def build_reconstruction(instructions: Mapping[GeneratorName, Sequence[Instruction]]) -> Reconstruction:
+def build_reconstruction(
+    instructions: Mapping[GeneratorName, Sequence[Instruction]],
+) -> Reconstruction:
     approximations = {generator: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for generator in instructions}
     return Reconstruction.create(
         approximation=np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32),
@@ -59,12 +64,18 @@ def build_reconstruction(instructions: Mapping[GeneratorName, Sequence[Instructi
 
 def pulse_sample(name: str, pitch: int) -> Sample:
     instructions = [PulseInstruction(on=True, pitch=pitch, volume=15, duty_cycle=0)]
-    return Sample(name=name, reconstruction=build_reconstruction({GeneratorName.PULSE1: instructions}))
+    return Sample(
+        name=name,
+        reconstruction=build_reconstruction({GeneratorName.PULSE1: instructions}),
+    )
 
 
 def triangle_sample(name: str, pitch: int) -> Sample:
     instructions = [TriangleInstruction(on=True, pitch=pitch)]
-    return Sample(name=name, reconstruction=build_reconstruction({GeneratorName.TRIANGLE: instructions}))
+    return Sample(
+        name=name,
+        reconstruction=build_reconstruction({GeneratorName.TRIANGLE: instructions}),
+    )
 
 
 @pytest.fixture(name="lead")
@@ -125,7 +136,10 @@ def document_fixture(source: Project) -> BitphaseProject:
 
 class TestTheDocumentCarriesTheProject:
     def test_the_title_and_author_cross_over(self, document: BitphaseProject, source: Project) -> None:
-        assert (document.name, document.author) == (source.info.title, source.info.author)
+        assert (document.name, document.author) == (
+            source.info.title,
+            source.info.author,
+        )
 
     def test_the_speed_and_tick_rate_cross_over(self, document: BitphaseProject, source: Project) -> None:
         song = document.songs[0]
@@ -133,7 +147,10 @@ class TestTheDocumentCarriesTheProject:
         assert song.interrupt_frequency == source.settings.nes_frequency
 
     def test_every_sample_slice_becomes_an_instrument(self, document: BitphaseProject) -> None:
-        assert [instrument.name for instrument in document.instruments] == ["Lead (pulse1)", "Bass (triangle)"]
+        assert [instrument.name for instrument in document.instruments] == [
+            "Lead (pulse1)",
+            "Bass (triangle)",
+        ]
 
 
 class TestTheOrderFlattens:

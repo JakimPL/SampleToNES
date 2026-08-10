@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.glyphs import GlyphLayout
+from sampletones_application.layout.glyphs.glyph import GlyphLayout
 
 
 class SectionHeaderLayout(BaseModel, extra="forbid", frozen=True):

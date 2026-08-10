@@ -6,7 +6,7 @@ import pytest
 
 from tests.suite.scripts import load_script
 
-zip_bundle = load_script("scripts/ci/zip_bundle.py")
+zip_bundle = load_script("ci/zip_bundle.py")
 
 ROOT = "sampletones-v0.3.0-windows-x86_64"
 

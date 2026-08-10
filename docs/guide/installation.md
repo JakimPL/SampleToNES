@@ -15,8 +15,11 @@ Some setups need a little more — each is covered in the relevant section below
 
 - **On Linux**, a few system packages are required to build or run: the Tk
   file-dialog and PortAudio audio libraries. Install them with `make system-deps`.
-  On Windows and macOS they come with the official Python installer and the
-  packaged dependencies, so nothing extra is needed.
+- **On macOS**, audio playback is compiled against PortAudio on install, so the
+  library comes from [Homebrew](https://brew.sh): `make system-deps` installs it.
+  Tk and the graphics libraries arrive with the official Python installer.
+- **On Windows**, the official Python installer and the packaged dependencies
+  cover everything.
 - **Running from source** also needs [uv](https://docs.astral.sh/uv/).
 - **GPU acceleration** needs an NVIDIA GPU with a current driver. The matching CuPy
   build is installed for you, so the driver is all you need — on Linux and Windows alike.
@@ -42,11 +45,12 @@ A ready-to-run executable built on your machine. You only need Python 3.12.
 ## Run from source
 
 For development, and the way to run on macOS. Requires [uv](https://docs.astral.sh/uv/)
-— and, on Linux, the system packages from the Linux steps above:
+— and, on Linux and macOS, the system packages from the requirements above:
 
 ```sh
-make setup      # create the environment and install the sampletones command
-make run        # run the app
+make system-deps    # Linux and macOS: install the system libraries
+make setup          # create the environment and install the sampletones command
+make run            # run the app
 ```
 
 To update the global command after pulling new changes, re-run `make setup`.

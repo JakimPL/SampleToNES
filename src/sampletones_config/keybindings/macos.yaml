@@ -1,0 +1,110 @@
+name: macos
+
+bindings:
+  # project
+  NewProject: {combination: "Cmd+N"}
+  OpenProject: {combination: "Cmd+O"}
+  SaveProject: {combination: "Cmd+S"}
+  SaveProjectAs: {combination: "Cmd+Shift+S"}
+  ProjectProperties: {combination: "Cmd+Alt+P"}
+  ExportProjectFamiTracker: {combination: "Cmd+M"}
+  ExportProjectBitphase: {combination: "Cmd+B"}
+  CloseProject: {combination: "Cmd+W"}
+  Exit: {combination: "Cmd+Q"}
+
+  # editing
+  Undo: {combination: "Cmd+Z"}
+  Redo: {combination: "Cmd+Shift+Z", aliases: ["Cmd+Y"]}
+
+  # reconstruction
+  ReconstructFile: {combination: "Cmd+R"}
+  ReconstructDirectory: {combination: "Cmd+Shift+R"}
+  LoadGenerationSettings: {combination: ~}
+  SaveGenerationSettings: {combination: ~}
+  OpenReconstruction: {combination: "Cmd+Alt+O"}
+  SaveReconstruction: {combination: "Cmd+Alt+S"}
+  SaveReconstructionAs: {combination: "Cmd+Alt+Shift+S"}
+  CloseReconstruction: {combination: "Cmd+Alt+W"}
+  ExportReconstructionWav: {combination: "Cmd+E"}
+  ExportInstrumentsFamiTracker: {combination: "Cmd+I"}
+  ExportInstrumentsBitphasePreset: {combination: ~}
+  AddReconstructionToSequencer: {combination: ~}
+  OpenReconstructionInExplorer: {combination: ~}
+  LocateOriginalAudio: {combination: ~}
+
+  # playback
+  Play: {combination: "Space"}
+  PlayFromStart: {combination: "Shift+Space"}
+  PlayFromFrame: {combination: "Ctrl+Space"}
+  Stop: {combination: "Esc"}
+  ToggleAutoplay: {combination: "Cmd+P"}
+  FollowRows: {combination: "Cmd+F"}
+  FollowPatterns: {combination: "Cmd+Shift+F"}
+  FollowOff: {combination: "Cmd+Alt+F"}
+  ToggleLoopSong: {combination: "Cmd+L"}
+  ToggleChannelPulse1: {combination: "F1"}
+  ToggleChannelPulse2: {combination: "F2"}
+  ToggleChannelTriangle: {combination: "F3"}
+  ToggleChannelNoise: {combination: "F4"}
+  UnmuteAllChannels: {combination: ~}
+
+  # view
+  AudioSettings: {combination: "Cmd+A"}
+  DisplaySettings: {combination: "Cmd+D"}
+  KeyboardSettings: {combination: "Cmd+K"}
+  ToggleAdvancedSettings: {combination: "Cmd+Shift+A"}
+  ToggleFullscreen: {combination: "Cmd+Ctrl+F"}
+  AboutDialog: {combination: ~}
+  NextTab: {combination: "Cmd+Alt+Right", aliases: ["Cmd+PgDn"], field_transparent: true}
+  PreviousTab: {combination: "Cmd+Alt+Left", aliases: ["Cmd+PgUp"], field_transparent: true}
+
+  # order table
+  OrderPreviousPosition: {combination: "Left"}
+  OrderNextPosition: {combination: "Right", aliases: ["Enter"]}
+  OrderPreviousChannel: {combination: "Up"}
+  OrderNextChannel: {combination: "Down"}
+  OrderFirstPosition: {combination: "Home", aliases: ["Cmd+Left"]}
+  OrderLastPosition: {combination: "End", aliases: ["Cmd+Right"]}
+  OrderMoveFrameLeft: {combination: "Alt+Left"}
+  OrderMoveFrameRight: {combination: "Alt+Right"}
+  OrderMoveFrameToStart: {combination: "Alt+Home", aliases: ["Cmd+Alt+Left"]}
+  OrderMoveFrameToEnd: {combination: "Alt+End", aliases: ["Cmd+Alt+Right"]}
+  OrderAddFrame: {combination: "Ins", aliases: ["Cmd+Enter"]}
+  OrderInsertFrame: {combination: "Plus", aliases: ["NumPlus", "Shift+Plus"]}
+  OrderRemoveFrame: {combination: "Minus", aliases: ["NumMinus"]}
+  OrderDuplicateFrame: {combination: "Ctrl+Ins", aliases: ["Cmd+Alt+Enter"]}
+  OrderClearFrame: {combination: "Shift+Del", aliases: ["Cmd+Shift+Backspace"]}
+  OrderClearCell: {combination: "Del", aliases: ["Cmd+Backspace"]}
+  OrderClearPreviousCell: {combination: "Backspace"}
+  OrderCancelEntry: {combination: "Esc"}
+
+  # tracker
+  TrackerPreviousRow: {combination: "Up"}
+  TrackerNextRow: {combination: "Down", aliases: ["Enter"]}
+  TrackerPreviousSubcolumn: {combination: "Left"}
+  TrackerNextSubcolumn: {combination: "Right"}
+  TrackerPreviousColumn: {combination: "Shift+Tab"}
+  TrackerNextColumn: {combination: "Tab"}
+  TrackerFirstRow: {combination: "Home", aliases: ["Cmd+Up"]}
+  TrackerLastRow: {combination: "End", aliases: ["Cmd+Down"]}
+  TrackerPageUp: {combination: "PgUp", aliases: ["Alt+Up"]}
+  TrackerPageDown: {combination: "PgDn", aliases: ["Alt+Down"]}
+  TrackerClearRow: {combination: "Del", aliases: ["Cmd+Backspace"]}
+  TrackerClearPreviousRow: {combination: "Backspace"}
+  TrackerCancelEntry: {combination: "Esc"}
+  TrackerPlayFromRow: {combination: "Ctrl+Shift+Space"}
+
+  # samples
+  SamplesRenameSample: {combination: "F2"}
+  SamplesRemoveSample: {combination: "Del", aliases: ["Cmd+Backspace"]}
+  SamplesMoveSampleUp: {combination: "Alt+Up"}
+  SamplesMoveSampleDown: {combination: "Alt+Down"}
+  SamplesMoveSampleToTop: {combination: "Alt+Home", aliases: ["Cmd+Alt+Up"]}
+  SamplesMoveSampleToBottom: {combination: "Alt+End", aliases: ["Cmd+Alt+Down"]}
+  SamplesCancelRename: {combination: "Esc"}
+
+  # dialogs
+  DialogNextControl: {combination: "Tab"}
+  DialogPreviousControl: {combination: "Shift+Tab"}
+  DialogActivate: {combination: "Enter"}
+  DialogCancel: {combination: "Esc"}

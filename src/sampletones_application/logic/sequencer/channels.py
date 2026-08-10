@@ -1,6 +1,8 @@
 from typing import Callable, Final, FrozenSet, Optional
 
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -11,7 +13,7 @@ _NO_CHANNELS: Final[FrozenSet[GeneratorName]] = frozenset()
 class SequencerChannelsLogic(CallbackMixin):
     """Owns which tracker channels the song player silences.
 
-    Holds monitoring state for the open document alone, the way :class:`SequencerGridLogic`
+    Holds monitoring state for the open document alone, the way :class:`SequencerTrackerLogic`
     holds the visible frame: the project keeps every channel, so saving, export, and the
     history stack read the full song. A document transition calls :meth:`reset`, which returns
     the whole set to audible.

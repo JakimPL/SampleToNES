@@ -7,7 +7,7 @@ components:
       - type: color
         key: Line
         category: Plots
-        value: .white
+        value: .contrast
       - type: style
         key: LineWeight
         category: Plots

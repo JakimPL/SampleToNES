@@ -73,6 +73,8 @@ Services execute long-running work on background threads. Their results are post
 
 `Application.__init__` constructs the application graph — managers, controllers, shared services, coordinators, the shell — and wires their callbacks. A tab coordinator in turn constructs the panels, logic objects, and tab-scoped services it owns. Beyond these two sites, no component constructs another major component: every dependency arrives as a constructor argument, and none is obtained through a global lookup.
 
+**Where a run keeps its settings arrives the same way.** The application is given a `UserProfile` — the pair of files its configuration and its session state live in — and hands each path to the manager that reads and writes it. The entry point names the user's own profile through `UserProfile.user()`, which leaves one place that knows the shipped locations and lets a run be pointed at a location of its own.
+
 ### 8. All display text comes from `LanguageManager`
 
 Every user-visible string is looked up on `LanguageManager` by the key the language file spells:
@@ -81,14 +83,16 @@ Every user-visible string is looked up on `LanguageManager` by the key the langu
 page.panel.text_type.element
 ```
 
-The first three segments name members of `Page`, `Panel`, and `TextType` (`categories/hierarchy.py`); the element segment names a member of one of the element enums under `categories/elements/`. `en.yaml` is a flat map keyed exactly this way, so the dotted string is the lookup form — `language_manager["global.dialog.label.ok"]` — and a reader holds a key against the language file by eye. `categories/key/` owns the grammar: `validate_text_key` checks every key the file holds at load time, and a lookup that misses raises `MissingTextError` naming the key and the file. This makes the text system the single source of truth and enables future localisation. Log messages are developer-facing and exempt.
+The first three segments name members of `Page`, `Panel`, and `TextType` (`categories/hierarchy.py`); the element segment names a member of an element enum, which is any enum deriving from `AbstractElement`. An element enum is found by what it derives from, so one naming a panel's own widgets lives with the other panel vocabularies under `categories/elements/`, while one naming a domain's gestures — `HistoryAction` — lives beside that domain and serves as both the value the domain records and the element its label is looked up by. `en.yaml` is a flat map keyed exactly this way, so the dotted string is the lookup form — `language_manager["global.dialog.label.ok"]` — and a reader holds a key against the language file by eye. `categories/key/` owns the grammar: `validate_text_key` checks every key the file holds at load time, and a lookup that misses raises `MissingTextError` naming the key and the file. This makes the text system the single source of truth and enables future localisation. Log messages are developer-facing and exempt.
 
 Text resolves where it is displayed. A class that reads text holds the manager as `self._language_manager`, assigned in its own `__init__`, and looks each string up at the point of use, so a language change takes effect on the next read. Where the same text is read at more than one site in a class, one named binding serves them all and the reads stay in step.
 
 A key assembled at runtime passes its four members instead — `language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, element]` — with the variable part annotated as the concrete element enum it carries (`SequencerOrderElements`, `DialogElements`). That annotation is what keeps the key checkable: the `language-keys` hook expands it to the enum's members and holds every key it reaches against the language file. A lookup therefore states its key as literals, as annotated members, or as a conditional between two literal keys — the three forms the hook reads values from:
 
 ```python
-language_manager["global.pitch.label.period_name" if is_period else "global.pitch.label.pitch_name"]
+language_manager[
+    "global.pitch.label.period_name" if is_period else "global.pitch.label.pitch_name"
+]
 ```
 
 ### 9. `tags/` holds only DPG identifiers
@@ -100,7 +104,9 @@ The `tags/` package contains only DPG widget string identifiers: `TAG_*` whole t
 **A whole tag is a `TagName`**, the `str` subclass in `categories/key/tag.py` that names its four parts and composes them:
 
 ```python
-TAG_MAIN_EXPLORER_TREE = TagName(Page.MAIN, Panel.EXPLORER, Widget.TREE, "explorer")   # main.explorer.tree
+TAG_MAIN_EXPLORER_TREE = TagName(
+    Page.MAIN, Panel.EXPLORER, Widget.TREE, "explorer"
+)  # main.explorer.tree
 ```
 
 The spelling is `page[.panel].widget[.element]` — `Panel.IMPLICIT` names a widget belonging to no panel, and an element repeating its panel's name is carried by the panel segment alone. A constant's name is its composed tag upper-cased with each separator turned into an underscore, behind the `TAG_` prefix, so reading either one states the other; the `tag-names` hook holds the two together.
@@ -133,10 +139,12 @@ Each keyboard consumer registers one scope through `register(handle, *, priority
 | Priority | Scope | Active when | Behaviour |
 |----------|-------|-------------|-----------|
 | `MODAL` (100) | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
-| `PANEL` (60) | a sequencer sub-panel (grid / order / samples) | that sub-panel holds the cursor or selection | handles its tracker keys and yields the combinations it does not own so a higher-reaching shortcut still wins |
+| `PANEL` (60) | a sequencer sub-panel (grid / order / samples) | its tab is in front and that sub-panel holds the cursor or selection | handles its tracker keys and yields the combinations it does not own so a higher-reaching shortcut still wins |
 | `SHORTCUT` (40) | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
 Because the router offers a panel the key ahead of the shortcut scope, a panel returns `False` on any combination it does not own — the grid yields every `Ctrl`-modified press — so that field-transparent shortcuts such as `Ctrl+PgDn` / `Ctrl+PgUp` tab-switching reach the shortcut scope even while a grid cursor is set.
+
+**A panel scope answers on its own tab.** A cursor and a selection outlive a move to another tab, so a panel is given the predicate that reports whether its tab is the one in front and reads it at the moment of the press, the way focus is read. The composition root resolves the tab and the scope composes the answer into its `active`, which keeps the fact in one place and leaves the router's contract — the scope decides whether it wants the key — as it stands.
 
 **Focus is pulled, not pushed.** Whether a text or value field keeps a plain key for itself is one router query, `is_field_focused`, that reads the focused item from DearPyGui at the moment of the press and counts it only while that item is actively being edited. Every input is covered by construction, and the router alone holds the rule.
 
@@ -144,7 +152,25 @@ The query resolves the focused item to the field behind it. A `dpg.group` report
 
 **Modal suppression lives in one place.** The router holds a LIFO stack of modal handlers; `push_modal` / `pop_modal` bracket a dialog's lifetime, and the built-in `MODAL` scope routes each press to the top of the stack. Since `MODAL` outranks the panel and shortcut scopes, the scopes beneath it carry no "a dialog is open" check of their own.
 
+**One vocabulary, one declaration.** The keyboard has one key table (`utils/gui/keyboard/keys.py`), which reads a key both ways — the name a file writes and the code a press carries — and one combination type, `KeyCombination`, which parses that spelling, displays it, and answers whether a press matches it. Above them a binding is declared exactly once: `ShortcutId` names every action a key reaches together with the category that answers it, and the scheme under `sampletones_config/keybindings/` is where the combination is decided. The menu printing an accelerator, the panel acting on a press, and the dispatcher firing the callback all read that one entry, so a printed key and the handler behind it stay in step by construction.
+
+The split is that **the combination is data and the category is code**: which keys reach an action is the reader's to choose, while which scope answers them follows from where the action is handled. A scheme is validated as it loads — every `ShortcutId` is answered, every key name resolves, and one combination reaches one action within a category — and a collision is a `SystemError` at startup, beside the layout and palette failures.
+
+A preference layers over the shipped scheme. `ShortcutsConfig` holds the scheme name and the per-action overrides, both written the way a keybinding file writes them, so a preference outlives the build that stored it: `ShortcutCatalog.select` answers with the default for a scheme a build stopped shipping, and an override naming an action this build has none of, a key the table has none of, or a combination its category already gives away is reported and left out, so one stale entry costs only itself. A change reaches the running application through `ShortcutSource.on_bindings_changed` — the keyboard's analogue of the palette switch (principle 13) — and the dispatcher re-reads the keys while the menus re-print their accelerators. Each registration names the action it fires, which is what leaves a rebind that little to catch up.
+
+**A scheme is edited through a draft.** `ShortcutDraft` (`utils/gui/shortcuts/draft.py`) holds the scheme being edited together with the actions the reader has touched — the combination each was given, or nothing where it was left unbound — so what reaches the preference is those actions alone while every other key follows the scheme beneath. An assignment displaces: giving an action a combination its category already answers takes the key from the holder in the same step, which is what makes every scheme a draft produces a valid one, and the dialog names the holder and asks before that step is taken. The draft is what the dialog edits, and a commit is what activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
+
+**A scheme belongs to a platform; an action does not.** `ShortcutId` and `ShortcutCategory` are the same on every platform, and `PLATFORM_SCHEME_NAMES` (`constants/keybindings.py`) states which scheme each one ships — the choice a profile makes once, at creation, after which the stored name selects. The modifier table reads every spelling on every platform while `Modifier.SUPER` displays as the name the machine is labelled with, so a scheme written for one keyboard loads, validates and reads on another, and the completeness validation holds every shipped scheme to the same action set.
+
 The router is constructed at the composition root and injected into every consumer (principle 7); its one global handler is bound in `shell.py` once the DPG context exists.
+
+### 13. A colour is a token, resolved where it is drawn
+
+A colour is written as a palette token and stays one until it reaches DearPyGui. `BaseColor` (`utils/palette/colors/`) carries what was written, and its `rgba` property answers with the palette active at the moment of the read, so whoever holds the colour follows a palette swap. Every annotation names `BaseColor` — a dataclass field, a signature, a dictionary key — and `WrittenColor` appears only on the Pydantic field that validates a YAML entry. The read happens where the value is handed to a widget, and what a consumer keeps is the token.
+
+A shade is composed by naming its form. `utils/palette/colors/` is a flat star: `base.py` declares the abstract `rgba`, and each form is a peer module beside it (`literal`, `named`, `faded`, `grayscale`, `blended`, `layered`), answering with a `BaseColor` of its own — `FadedColor(color=GrayscaleColor(color=token), fraction=0.3)`. Every form is a module-level frozen dataclass, so two identical compositions are one value and a theme cache keyed on a shade hits.
+
+What DearPyGui has already taken a copy of is registered rather than remembered by whoever set it. `PaletteBindings` (`utils/gui/palette/`) records each `(item, argument)` a palette colour reached, and `dpg_set_palette_color` / `dpg_add_palette_theme_color` are how a colour gets there. A palette change is then one switch: `PaletteSource.activate` fires the composition root's listener, which re-applies the bindings, refreshes the viewport clear colour, and repaints the sequencer for the row and cell highlights DearPyGui holds as table state. The `palette-colors` hook holds all three rules (see Enforcement).
 
 ---
 
@@ -154,15 +180,16 @@ Two mechanisms keep the codebase aligned with this document.
 
 **Import-expressible contracts are enforced by script.** `scripts/checks/import_boundary.py` (a pre-commit hook, also run via `make check-import-boundary`) encodes one rule per layer, mirroring the **Must not import** lists in the Layer Reference; the Layer Reference is the source of truth, and a divergence between it and the script is itself a defect. Where a layer may consume another layer's data contract while its implementation stays out of reach (logic and the service result types), the rule carries an explicit contract exemption. The hook audits the entire source tree on every commit (`--all`), so strengthening a rule surfaces violations in files a commit never touched. That property sets the working idiom for structural refactors: turn the stricter rule on first, and let the failing hook enumerate the remaining work.
 
-**The identifier vocabularies are enforced the same way.** Three more scripts under `scripts/checks/` run whole-tree as pre-commit hooks, each also available as a `make check-*` target:
+**The identifier vocabularies are enforced the same way.** Further scripts under `scripts/checks/` run whole-tree as pre-commit hooks, each also available as a `make check-*` target:
 
 | Hook | Script | What it holds |
 |------|--------|---------------|
 | `language-keys` | `language_keys.py` | Code and `en.yaml` against each other, in both directions: a literal key names an entry, every entry is reached by some lookup, and a lookup states values the check can read (principle 8) |
 | `tag-names` | `tag_names.py` | A tag constant's name against the tag it composes (principle 9) |
 | `unused-tags` | `unused_tags.py` | Every `TAG_*`/`SUF_*`/`PRE_*` the `tags/` package declares against the reads of it across `src/`, `tests/`, and `scripts/`, where an import alone stands at no reads |
+| `palette-colors` | `palette_colors.py` | A colour as a token up to the moment it is drawn with: an attribute assigned a resolved `rgba`, a theme colour filled outside the palette bindings, and a hex literal in the shipped configuration outside `palettes/` (principle 13) |
 
-All three read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
+They read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members; the palette check reads the shipped YAML beside it. That layer derives each package directory from its own location and reports a root it finds nothing at, so a check that sweeps nothing fails loudly where it would otherwise pass clean. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
 
 **Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. Deviations that survive review are recorded in `docs/development/bugs-and-todos.md § Architecture` until they are paid off; the ledger, not the codebase, is the memory of what is currently out of line.
 
@@ -195,7 +222,7 @@ All three read the source as an AST through the shared layer in `sampletones_sha
 | `ui/resources/` | Icons and image resources loaded at startup |
 | `ui/menu.py` | `MenuBar` — the application's top menu bar |
 
-**May import:** `view_model/`, `utils/`, `categories/`, `tags/`, `layout/`, `sampletones_core` types, `sampletones_shared`.
+**May import:** `view_model/`, `utils/`, `categories/`, `tags/`, `layout/`, `constants/`, `sampletones_core` types, `sampletones_shared`.
 **Must not import:** `coordinators/`, `logic/`, `services/`, `config/`, `application.py`, `shell.py`, `utils/gui/dialogs` (`DialogsRenderer` is coordinator territory).
 
 ---
@@ -211,9 +238,9 @@ All three read the source as an AST through the shared layer in `sampletones_sha
 - Edit payloads — frozen `*Update` models a panel emits through its `on_*_changed` hooks — also live here: they are the UI's outbound contract, the mirror of view models.
 - Domain data containers (frozen dataclasses that wrap core types and are used across logic and services) belong in `logic/`. A type belongs in `view_model/` only if its purpose is to carry data across the UI boundary — a panel-feeding snapshot, an edit payload, or a projection a display renders (`WaveformData`).
 
-**Naming convention:** `<Feature><Component>ViewModel`, e.g. `ConverterViewModel`, `SequencerGridViewModel`.
+**Naming convention:** `<Feature><Component>ViewModel`, e.g. `ConverterViewModel`, `SequencerTrackerViewModel`.
 
-**May import:** `sampletones_core` types, `sampletones_shared`, Python standard library.
+**May import:** `constants/`, `sampletones_core` types, `sampletones_shared`, Python standard library.
 **Must not import:** `ui/`, `coordinators/`, `logic/`, `services/`, `config/`.
 
 ---
@@ -310,7 +337,8 @@ There are two coordinator kinds:
 | Package | Purpose |
 |---------|---------|
 | `config/` | `ConfigManager` (domain generation config), `SessionManager` (runtime session: last paths, audio device, window geometry). Presentation-free: it records load outcomes (`ConfigLoadOutcome`) as domain data for `ConfigCoordinator` to present. Must not import the visual packages, `coordinators/`, or `application.py` |
-| `categories/` | `LanguageManager`, the `Page / Panel / TextType / Widget` enum hierarchy and the element enums that name lookup keys, and the key grammar under `categories/key/` |
+| `categories/` | `LanguageManager`, the `Page / Panel / TextType / Widget` enum hierarchy, the `AbstractElement` base and the panel element enums under `categories/elements/`, and the key grammar under `categories/key/` |
+| `constants/` | Application-scope facts that carry no behaviour, one module per subject — `keybindings.py` names the scheme a build ships, which both the shortcut catalog and the session config read, and `playback.py` names the follow mode, which the session config, the song player, the view models and the menu all state. A fact shared beyond the application belongs to `sampletones_shared/constants/` |
 | `layout/` | Pydantic models loaded from YAML at startup; injected into coordinators and panels as `LayoutConfig` |
 | `tags/` | DPG widget tags (`TAG_*`), the fragments composing into them (`SUF_*`, `PRE_*`), and `compose_tag` |
 | `utils/` | dpg-free helpers usable by any layer (`utils/callbacks/`, colour, threading, and `utils/file_dialogs/` — OS-native file dialogs behind a `FileDialogBackend` Protocol, with the D-Bus desktop-portal client under `utils/file_dialogs/backends/portal/`). DPG-bound helpers live in `utils/gui/` and are off-limits to the non-visual layers |
@@ -441,6 +469,7 @@ sampletones_application/
 ├── services/               ← ServiceBase + one module or subpackage per background worker
 ├── config/                 ← ConfigManager + SessionManager
 ├── categories/             ← LanguageManager + lookup enums, with the key grammar under key/
+├── constants/              ← application-scope constants, one module per subject
 ├── layout/                 ← LayoutConfig (Pydantic) + YAML loaders
 ├── tags/                   ← TAG_*, SUF_*, PRE_* identifiers and compose_tag only
 └── utils/                  ← dpg-free helpers; dpg-bound helpers under utils/gui/

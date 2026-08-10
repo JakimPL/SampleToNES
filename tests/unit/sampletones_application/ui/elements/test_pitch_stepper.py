@@ -7,7 +7,11 @@ from sampletones_application.ui.elements import pitch_stepper as pitch_stepper_m
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PITCH
-from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
+from sampletones_core.utils.pitch_kind import (
+    PERIOD_VALUE_KIND,
+    PITCH_VALUE_KIND,
+    PitchValueKind,
+)
 
 LAYOUT = PitchStepperLayout(
     label_width=160,

@@ -41,8 +41,8 @@ to place a pattern, or right-click a frame to **Insert frame**, **Duplicate**,
 
 ## Playing the song
 
-The transport below the grid plays the song, and **Follow playback** scrolls the
-grid to keep pace. The keyboard drives playback throughout the tab:
+The transport below the grid plays the song, and the keyboard drives playback
+throughout the tab:
 
 | Key | Action |
 |-----|--------|
@@ -51,9 +51,27 @@ grid to keep pace. The keyboard drives playback throughout the tab:
 | `Ctrl+Space` | Play from the frame currently shown |
 | `Ctrl+Shift+Space` | Play from the cursor's row in the pattern grid |
 | `Escape` | Stop |
+| `Ctrl+L` | **Loop song** — start the song over each time it reaches the end |
 
 `Escape` silences everything, including a sample preview. The same commands sit on
 the **Playback** menu and the transport buttons.
+
+## Following the playhead
+
+**Playback ▸ Follow playback** chooses how far the view travels with the sounding
+row. Each mode carries a key of its own, so you can change your mind while the song
+plays, and the choice is remembered for the next time you launch:
+
+| Mode | Key | Where the view goes |
+|------|-----|---------------------|
+| **Follow rows** | `Ctrl+F` | Scrolls the pattern grid to keep the sounding row on screen, and shows the frame being played |
+| **Follow patterns** | `Ctrl+Shift+F` | Shows the frame being played, and leaves the scroll where you put it |
+| **Don't follow** | `Ctrl+Alt+F` | Holds the view where you put it |
+
+All three mark the sounding row and the playing frame, so you can read the playhead
+in any of them. **Follow rows** is the one that moves the grid while you play, which
+is what makes the other two the modes to type in: they hold the view still under
+your cursor while the song runs.
 
 ## Listening to one channel at a time
 
@@ -72,7 +90,8 @@ wherever you see it.
 | Right-click any name | The same actions as a menu |
 
 The **Playback ▸ Channels** submenu carries the same mix: a check marks each channel
-that sounds, and **Unmute all channels** returns the whole set.
+that sounds, and **Unmute all channels** returns the whole set. `F1` to `F4` do the
+same from the keyboard, one key per channel.
 
 Muting is for listening only. The song keeps every channel, so saving, exporting a
 module, and undo all work on the full arrangement, and a mute survives undo and

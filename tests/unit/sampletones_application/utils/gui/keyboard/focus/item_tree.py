@@ -72,7 +72,10 @@ class FakeItemTree:
     def _info(self, item: int) -> Dict[str, Any]:
         self.read_items.append(item)
         fake = self._items[item]
-        return {"type": fake.item_type, "children": {0: [], WIDGET_SLOT: list(fake.children)}}
+        return {
+            "type": fake.item_type,
+            "children": {0: [], WIDGET_SLOT: list(fake.children)},
+        }
 
     def _state(self, item: int) -> Dict[str, bool]:
         return dict(self._items[item].state)

@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.ui.elements.graphs import waveform as waveform_module
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
+from sampletones_application.utils.palette.colors.written import LiteralColor
 
 
 class _FakeDPG:
@@ -57,7 +58,9 @@ def fake_dpg(monkeypatch: pytest.MonkeyPatch) -> _FakeDPG:
     monkeypatch.setattr(waveform_module.dpg, "get_item_alias", instance.get_item_alias)
     monkeypatch.setattr(waveform_module, "dpg_delete_item", instance.delete_item)
     monkeypatch.setattr(
-        waveform_module.dpg, "configure_item", lambda *args, **kwargs: instance.configured.append(args[0])
+        waveform_module.dpg,
+        "configure_item",
+        lambda *args, **kwargs: instance.configured.append(args[0]),
     )
     monkeypatch.setattr(waveform_module.dpg, "add_line_series", lambda *args, **kwargs: None)
     monkeypatch.setattr(waveform_module, "dpg_bind_item_theme", lambda *args, **kwargs: None)
@@ -80,7 +83,7 @@ class _Layer:
         self.name = name
         self.x_data = _Array()
         self.y_data = _Array()
-        self.color = (255, 255, 255, 255)
+        self.color = LiteralColor((255, 255, 255, 255))
 
 
 class _Array:
@@ -105,7 +108,7 @@ def _graph() -> GUIWaveformGraph:
 
 def _with_layout(graph: GUIWaveformGraph, opacity: float = 0.4) -> None:
     graph._layout = SimpleNamespace(  # type: ignore[assignment]
-        colors=SimpleNamespace(waveform_reconstruction=(255, 200, 100, 255)),
+        colors=SimpleNamespace(waveform_reconstruction=LiteralColor((255, 200, 100, 255))),
         waveform=SimpleNamespace(reconstruction_dim_opacity=opacity),
     )
 
@@ -144,17 +147,18 @@ class TestWaveformReconstructionDim:
         graph = _graph()
         layer = _Layer("Reconstruction")
 
-        assert graph._series_color(layer) == layer.color
+        assert graph._series_color(layer, graph._series_shade(layer)) == layer.color
 
     def test_series_color_greys_the_reconstruction_when_dimmed(self) -> None:
         graph = _graph()
         _with_layout(graph, opacity=0.4)
         graph._reconstruction_dimmed = True
 
-        faded = graph._series_color(_Layer("Reconstruction"))
+        layer = _Layer("Reconstruction")
+        faded = graph._series_color(layer, graph._series_shade(layer))
 
         gray = round(0.299 * 255 + 0.587 * 200 + 0.114 * 100)
-        assert faded == (gray, gray, gray, round(0.4 * 255))
+        assert faded.rgba == (gray, gray, gray, round(0.4 * 255))
 
     def test_series_color_leaves_other_layers_opaque_when_dimmed(self) -> None:
         graph = _graph()
@@ -162,7 +166,7 @@ class TestWaveformReconstructionDim:
         graph._reconstruction_dimmed = True
         layer = _Layer("Sample Name")
 
-        assert graph._series_color(layer) == layer.color
+        assert graph._series_color(layer, graph._series_shade(layer)) == layer.color
 
     def test_set_dimmed_rebinds_the_reconstruction_series_once(
         self,
@@ -175,7 +179,11 @@ class TestWaveformReconstructionDim:
         series_tag = graph._series_tag("Reconstruction")
         fake_dpg.set_children("axis", [series_tag])
         binds: List[str] = []
-        monkeypatch.setattr(waveform_module, "dpg_bind_item_theme", lambda tag, theme: binds.append(theme))
+        monkeypatch.setattr(
+            waveform_module,
+            "dpg_bind_item_theme",
+            lambda tag, theme: binds.append(theme),
+        )
 
         graph.set_reconstruction_dimmed(True)
         assert graph._reconstruction_dimmed is True

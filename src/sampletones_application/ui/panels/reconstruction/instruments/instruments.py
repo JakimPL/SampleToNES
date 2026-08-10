@@ -6,7 +6,7 @@ import numpy as np
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import build_pitch_tooltip
-from sampletones_application.layout.general.colors import FeatureColors
+from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -39,7 +39,10 @@ from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper, PitchStepperStyle
+from sampletones_application.ui.elements.pitch_stepper import (
+    GUIPitchStepper,
+    PitchStepperStyle,
+)
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.reconstruction.instruments.config import (
     FeaturePlotConfig,
@@ -62,7 +65,9 @@ from sampletones_core.constants.enums import (
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
 from sampletones_core.features import GENERATOR_KIND, supported_features
-from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.formats.famitracker.specification.sequences import (
+    MAX_SEQUENCE_ITEMS,
+)
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
     PITCH_VALUE_KIND,
@@ -149,18 +154,20 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
 
     def create_panel(self, parent: str) -> None:
-        with card(
-            parent,
-            self.tag,
-            auto_resize_y=False,
-            height=-1,
-            no_scrollbar=True,
-        ):
-            with self._collapsible_section(
+        with (
+            card(
+                parent,
+                self.tag,
+                auto_resize_y=False,
+                height=-1,
+                no_scrollbar=True,
+            ),
+            self._collapsible_section(
                 self._language_manager["reconstructions.instruments.label.section"],
                 glyph=self._glyphs.headers.instruments,
-            ):
-                self._create_content()
+            ),
+        ):
+            self._create_content()
 
         self._setup_mouse_event_handler()
 
@@ -480,7 +487,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> None:
         self.call(self.on_pitch_value_changed, generator_name, value)
 
-    def _on_mouse_move(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+    def _on_mouse_move(self, _sender: Sender, _app_data: Tuple[int, int]) -> None:
         tab = dpg.get_value(self.tab_bar_tag)
         if not tab:
             self.call(self.on_reconstruction_instrument_hovered, None)
@@ -671,8 +678,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
-        *args: Any,
-        **kwargs: Any,
+        *_args: Any,
+        **_kwargs: Any,
     ) -> str:
         """Describes the sequence input, naming the export limit once a sequence passes it."""
         item_count = self._sequence_lengths.get((generator_name, feature_key), 0)

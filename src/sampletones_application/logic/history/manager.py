@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Iterator, List, Optional, Tuple
 
 from sampletones_application.logic.project.controller import ProjectController
@@ -283,7 +283,7 @@ class HistoryManager(CallbackMixin):
         return HistoryEntry(
             project=snapshot_project(project),
             action=action,
-            created=datetime.now(),
+            created=datetime.now(UTC),
             detail=detail,
             fingerprint=fingerprint,
         )

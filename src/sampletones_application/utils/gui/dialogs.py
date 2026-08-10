@@ -42,6 +42,8 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
 )
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_shared.types.callback import Callback, StringCallback, VoidCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
@@ -62,6 +64,7 @@ def _install_navigation(
     stops: List[FocusStop],
     on_escape: VoidCallback,
     key_router: KeyRouter,
+    shortcut_source: ShortcutSource,
     initial_index: int = 0,
 ) -> DialogKeyboardNavigator:
     """Builds and installs the keyboard navigator that claims the keyboard for ``window_tag``."""
@@ -70,6 +73,7 @@ def _install_navigation(
         stops=stops,
         on_escape=on_escape,
         key_router=key_router,
+        shortcut_source=shortcut_source,
         initial_index=initial_index,
     )
     navigator.install()
@@ -85,6 +89,7 @@ def _show_modal_dialog(
     width: int,
     height: int,
     key_router: KeyRouter,
+    shortcut_source: ShortcutSource,
     modal: bool = True,
 ) -> None:
     ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
@@ -124,6 +129,7 @@ def _show_modal_dialog(
             stops=[FocusStop.button(ok_button_tag, close)],
             on_escape=close,
             key_router=key_router,
+            shortcut_source=shortcut_source,
         )
 
 
@@ -135,10 +141,12 @@ class DialogsRenderer:
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
     ) -> None:
         self._language_manager = language_manager
         self._status_bar = status_bar
         self._router = key_router
+        self._shortcuts = shortcut_source
         self._default_width = layout.dialogs.default.width
         self._default_height = layout.dialogs.default.height
         self._error_width = layout.dialogs.error.width
@@ -180,6 +188,7 @@ class DialogsRenderer:
             content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=width if width is not None else self._default_width,
             height=height if height is not None else self._default_height,
             modal=modal,
@@ -204,6 +213,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._default_width,
             height=self._default_height,
             modal=modal,
@@ -244,12 +254,12 @@ class DialogsRenderer:
                 wrap=self._recovery_wrap,
             )
             for property_name in properties:
-                dpg.add_text(
+                property_text = dpg.add_text(
                     f"- {property_name}",
                     parent=parent,
                     wrap=self._recovery_wrap,
-                    color=self._col_text_highlight,
                 )
+                dpg_set_palette_color(property_text, self._col_text_highlight)
 
             dpg.add_text(
                 self._language_manager["global.dialog.message.configuration_recovery_path_prefix"],
@@ -273,6 +283,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._recovery_width,
             height=self._recovery_height,
             modal=False,
@@ -348,17 +359,17 @@ class DialogsRenderer:
 
             group_tag = compose_tag(tag, SUF_GROUP)
             with dpg.group(tag=group_tag, parent=tag):
-                dpg.add_text(
-                    f"{str(type(exception).__name__)}: ",
+                name_text = dpg.add_text(
+                    f"{type(exception).__name__!s}: ",
                     parent=group_tag,
-                    color=self._col_text_error,
                 )
-                dpg.add_text(
+                dpg_set_palette_color(name_text, self._col_text_error)
+                message_text = dpg.add_text(
                     str(exception),
                     parent=group_tag,
                     wrap=self._error_wrap,
-                    color=self._col_text_error,
                 )
+                dpg_set_palette_color(message_text, self._col_text_error)
 
             traceback = GUITraceback(
                 parent=tag,
@@ -404,6 +415,7 @@ class DialogsRenderer:
             ],
             on_escape=close,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             initial_index=1,
         )
         center_when_settled(tag)
@@ -413,12 +425,12 @@ class DialogsRenderer:
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._error_wrap)
-            dpg.add_text(
+            path_text = dpg.add_text(
                 str(filepath),
                 parent=parent,
-                color=self._col_path,
                 wrap=self._error_wrap,
             )
+            dpg_set_palette_color(path_text, self._col_path)
 
         _show_modal_dialog(
             tag=tag,
@@ -426,6 +438,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._error_width,
             height=self._default_height,
         )
@@ -446,6 +459,9 @@ class DialogsRenderer:
         on_cancel: Optional[Callback] = None,
     ) -> None:
         """Modal confirmation. ``on_confirm``/``on_cancel`` run on the respective choice.
+
+        The title bar's close button reads as the negative choice, so every way out of the
+        prompt reaches the caller and a dialog waiting behind it hears the answer.
 
         ``cancel_label`` names the negative button; it falls back to the shared Cancel label.
         When ``opt_out_label`` is given, a checkbox is shown; if it is ticked when the user
@@ -528,7 +544,7 @@ class DialogsRenderer:
             modal=True,
             min_size=(self._default_width, self._confirmation_height),
             no_resize=True,
-            on_close=close,
+            on_close=_on_cancel,
         ):
             _bind_dialog_theme(tag)
             content(tag)
@@ -541,6 +557,7 @@ class DialogsRenderer:
             ],
             on_escape=_on_cancel,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             initial_index=1,
         )
         center_when_settled(tag)
@@ -643,6 +660,7 @@ class DialogsRenderer:
             ],
             on_escape=_on_cancel,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             initial_index=2,
         )
         center_when_settled(tag)
@@ -663,6 +681,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._error_width,
             height=self._default_height,
             modal=False,
@@ -696,6 +715,7 @@ class DialogsRenderer:
             content=content,
             ok_label=self._lbl_ok,
             key_router=self._router,
+            shortcut_source=self._shortcuts,
             width=self._error_width,
             height=self._default_height,
             modal=False,

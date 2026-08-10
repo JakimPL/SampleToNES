@@ -71,4 +71,10 @@ class TestModuleConstants:
         assert by_name(CONSTANTS_SOURCE)["TAG_MAIN_WINDOW"].line == 4
 
     def test_constants_are_read_in_source_order(self) -> None:
-        assert names(CONSTANTS_SOURCE) == ["TAG_MAIN_WINDOW", "SUF_BUTTON", "FIRST", "SECOND", "FILTERS"]
+        assert names(CONSTANTS_SOURCE) == [
+            "TAG_MAIN_WINDOW",
+            "SUF_BUTTON",
+            "FIRST",
+            "SECOND",
+            "FILTERS",
+        ]

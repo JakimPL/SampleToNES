@@ -36,7 +36,11 @@ def reconstruction_coordinator() -> ReconstructionCoordinator:
     )
 
 
-def _gating_coordinator(*, unsaved: bool, embedded: bool) -> ReconstructionCoordinator:
+def _gating_coordinator(
+    *,
+    unsaved: bool,
+    embedded: bool,
+) -> ReconstructionCoordinator:
     coordinator = ReconstructionCoordinator(
         MagicMock(),
         MagicMock(),
@@ -55,7 +59,10 @@ def _gating_coordinator(*, unsaved: bool, embedded: bool) -> ReconstructionCoord
 
 
 class TestReconstructionRestoreSuccess:
-    def test_loads_and_keeps_session_pointer(self, reconstruction_coordinator: ReconstructionCoordinator) -> None:
+    def test_loads_and_keeps_session_pointer(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+    ) -> None:
         path = Path("lead.stn")
 
         reconstruction_coordinator.load_reconstruction_safely(path)
@@ -69,7 +76,7 @@ class TestReconstructionRestoreAbsorbsFailures(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         failure: Exception
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="invalid_values",
             failure=InvalidReconstructionValuesError("bad", ValueError("inner")),
@@ -85,9 +92,13 @@ class TestReconstructionRestoreAbsorbsFailures(BaseTestSuite):
             failure=FileNotFoundError("gone"),
             expected=None,
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_restore_clears_session_pointer(
         self,
         test_case: TestCase,
@@ -145,7 +156,10 @@ class TestRegenerationApplyOrdering:
 
 
 class TestReconstructionRestorePropagatesUnexpected:
-    def test_runtime_error_propagates(self, reconstruction_coordinator: ReconstructionCoordinator) -> None:
+    def test_runtime_error_propagates(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+    ) -> None:
         reconstruction_coordinator._reconstruction_manager.load_reconstruction.side_effect = RuntimeError("boom")
 
         with pytest.raises(RuntimeError):
@@ -161,22 +175,50 @@ class TestSaveConfirmationGating(BaseTestSuite):
         embedded: bool
         expects_prompt: bool
 
-    test_cases = [
-        TestCase(label="standalone_unsaved_prompts", unsaved=True, embedded=False, expects_prompt=True, expected=True),
+    test_cases = (
         TestCase(
-            label="embedded_unsaved_skips_prompt", unsaved=True, embedded=True, expects_prompt=False, expected=False
+            label="standalone_unsaved_prompts",
+            unsaved=True,
+            embedded=False,
+            expects_prompt=True,
+            expected=True,
         ),
         TestCase(
-            label="standalone_saved_skips_prompt", unsaved=False, embedded=False, expects_prompt=False, expected=False
+            label="embedded_unsaved_skips_prompt",
+            unsaved=True,
+            embedded=True,
+            expects_prompt=False,
+            expected=False,
         ),
         TestCase(
-            label="embedded_saved_skips_prompt", unsaved=False, embedded=True, expects_prompt=False, expected=False
+            label="standalone_saved_skips_prompt",
+            unsaved=False,
+            embedded=False,
+            expects_prompt=False,
+            expected=False,
         ),
-    ]
+        TestCase(
+            label="embedded_saved_skips_prompt",
+            unsaved=False,
+            embedded=True,
+            expects_prompt=False,
+            expected=False,
+        ),
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_close_prompts_only_for_standalone_unsaved(self, test_case: TestCase) -> None:
-        coordinator = _gating_coordinator(unsaved=test_case.unsaved, embedded=test_case.embedded)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_close_prompts_only_for_standalone_unsaved(
+        self,
+        test_case: TestCase,
+    ) -> None:
+        coordinator = _gating_coordinator(
+            unsaved=test_case.unsaved,
+            embedded=test_case.embedded,
+        )
 
         coordinator.close_with_confirmation()
 
@@ -187,9 +229,19 @@ class TestSaveConfirmationGating(BaseTestSuite):
             coordinator._dialogs.show_save_confirmation.assert_not_called()
             coordinator._reconstruction_manager.close_reconstruction.assert_called_once()
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_load_prompts_only_for_standalone_unsaved(self, test_case: TestCase) -> None:
-        coordinator = _gating_coordinator(unsaved=test_case.unsaved, embedded=test_case.embedded)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_load_prompts_only_for_standalone_unsaved(
+        self,
+        test_case: TestCase,
+    ) -> None:
+        coordinator = _gating_coordinator(
+            unsaved=test_case.unsaved,
+            embedded=test_case.embedded,
+        )
         path = Path("lead.stn")
 
         coordinator.load_with_confirmation(path)

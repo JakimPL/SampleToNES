@@ -4,12 +4,14 @@ from typing import Dict, Generator, Optional
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.paths import PALETTE_PATH, THEME_DIRECTORY
+from sampletones_application.paths import PALETTES_DIRECTORY, THEME_DIRECTORY
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.ui.themes.loader import ThemeLoader
 from sampletones_application.ui.themes.spec import ThemeSpec
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.palette import Palette
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.palette import Palette
+from sampletones_application.utils.palette.source import PaletteSource
 
 _BASE_NAME = "default"
 
@@ -68,7 +70,8 @@ class TestLoadedInheritance:
 
     @pytest.fixture
     def themes(self) -> Dict[str, Theme]:
-        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, Palette.load(PALETTE_PATH)).load_all()}
+        source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, source).load_all()}
 
     def test_every_theme_carries_the_base_table_border(self, themes: Dict[str, Theme]) -> None:
         dpg.create_context()
@@ -105,10 +108,9 @@ class TestLoadedInheritance:
         finally:
             dpg.destroy_context()
 
-    def test_the_tracker_theme_swaps_the_base_row_stripes(self, themes: Dict[str, Theme]) -> None:
-        """The tracker's clickable header is an ordinary row, which advances DearPyGui's
-        zebra counter, so the tracker theme swaps the two stripes to land pattern row 0 on
-        the shade every other table gives its first row.
+    def test_the_tracker_theme_stands_the_pattern_on_one_even_ground(self, themes: Dict[str, Theme]) -> None:
+        """The tracker gives both stripes the same shade, leaving the row background free to
+        carry the beat and bar grouping that tells the pattern's rows apart.
         """
         dpg.create_context()
         try:
@@ -117,14 +119,9 @@ class TestLoadedInheritance:
             base.create()
             pattern.create()
 
-            assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg) == base.get_color(
-                dpg.mvTable,
-                dpg.mvThemeCol_TableRowBgAlt,
-            )
-            assert pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBgAlt) == base.get_color(
-                dpg.mvTable,
-                dpg.mvThemeCol_TableRowBg,
-            )
+            row = pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg)
+            assert row == pattern.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBgAlt)
+            assert row == base.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg)
         finally:
             dpg.destroy_context()
 
@@ -148,7 +145,7 @@ class TestDisabledStateMirroring:
         palette_path.write_text(_SYNTHETIC_PALETTE)
         dpg.create_context()
         try:
-            theme = ThemeLoader(themes_path, Palette.load(palette_path)).load_all()[0]
+            theme = ThemeLoader(themes_path, PaletteSource(Palette.load(palette_path))).load_all()[0]
             theme.create()
             yield theme
         finally:

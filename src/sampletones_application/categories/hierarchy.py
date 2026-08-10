@@ -80,7 +80,7 @@ class Panel(StrEnum):
     RECONSTRUCTION = auto()
 
     # Sequencer tab
-    GRID = auto()
+    TRACKER = auto()
     ORDER = auto()
     MODULE = auto()
     INSTRUMENTS = auto()
@@ -92,4 +92,6 @@ class Panel(StrEnum):
 
     # Settings
     AUDIO = auto()
+    DISPLAY = auto()
+    KEYBINDINGS = auto()
     PROPERTIES = auto()

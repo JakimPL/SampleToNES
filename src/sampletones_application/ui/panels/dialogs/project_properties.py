@@ -8,7 +8,6 @@ from sampletones_application.categories.elements.settings import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.project_properties import ProjectPropertiesLayout
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL,
     TAG_SETTINGS_PROPERTIES_BUTTON_OK,
@@ -18,17 +17,14 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_PROPERTIES_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.window import GUIWindow
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
-from sampletones_application.utils.gui.dialog_navigation import (
-    DialogKeyboardNavigator,
-    FocusStop,
-)
+from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.shared.project_properties import (
     ProjectPropertiesViewModel,
 )
@@ -39,7 +35,7 @@ from sampletones_shared.constants.project import (
 )
 
 
-class GUIProjectPropertiesWindow(GUIWindow):
+class GUIProjectPropertiesWindow(GUIDialogWindow):
     """Modal form to view and edit the project's title, author, and comment.
 
     Each appearance renders the view model handed to :meth:`open`, and the edited
@@ -54,12 +50,10 @@ class GUIProjectPropertiesWindow(GUIWindow):
         layout: ProjectPropertiesLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
-        self._router = key_router
-        self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
-        self._navigator: Optional[DialogKeyboardNavigator] = None
 
         self.on_commit: Optional[Callable[[str, str, str], None]] = None
 
@@ -94,6 +88,8 @@ class GUIProjectPropertiesWindow(GUIWindow):
             tag=TAG_SETTINGS_PROPERTIES_WINDOW,
             width=layout.window.width,
             height=layout.window.height,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
         )
 
     def open(self, view_model: ProjectPropertiesViewModel) -> None:
@@ -109,15 +105,9 @@ class GUIProjectPropertiesWindow(GUIWindow):
         """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
 
     def create_window(self) -> None:
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._language_manager["settings.properties.title.window_title"],
-            width=self.width,
-            height=self.height,
-            no_resize=True,
-            no_collapse=True,
             on_close=self.hide,
-            modal=True,
         ):
             self._create_text_field(
                 TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
@@ -135,20 +125,14 @@ class GUIProjectPropertiesWindow(GUIWindow):
             dpg.add_separator()
             self._create_action_buttons()
 
-        for input_tag in (
+        self._bind_dialog_theme(
             TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
             TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR,
             TAG_SETTINGS_PROPERTIES_INPUT_COMMENT,
-        ):
-            self._dialog_theme.bind_to_item(input_tag)
+        )
 
-        self._install_navigation()
-
-    def _install_navigation(self) -> None:
-        """Wires Tab/Enter/Escape keyboard navigation over the form's fields and buttons."""
-        self._navigator = DialogKeyboardNavigator(
-            window_tag=self.tag,
-            stops=[
+        self._install_navigation(
+            [
                 FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_TITLE),
                 FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR),
                 FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT),
@@ -156,14 +140,7 @@ class GUIProjectPropertiesWindow(GUIWindow):
                 FocusStop.button(TAG_SETTINGS_PROPERTIES_BUTTON_OK, self._commit),
             ],
             on_escape=self.hide,
-            key_router=self._router,
         )
-        self._navigator.install()
-
-    def _teardown(self) -> None:
-        if self._navigator is not None:
-            self._navigator.dispose()
-            self._navigator = None
 
     def _create_text_field(self, tag: str, label: str, value: str) -> None:
         with labeled_field(label, self._layout.label_width):

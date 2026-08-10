@@ -200,7 +200,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         tag = self._get_generator_checkbox_tag(generator_name)
         name = generator_name.capitalized
 
-        def message_function(*args: Any, **kwargs: Any) -> str:
+        def message_function(*_args: Any, **_kwargs: Any) -> str:
             if not dpg.is_item_enabled(tag):
                 return self._language_manager[
                     "reconstructions.instruments.message.status_generator_not_available"
@@ -229,9 +229,23 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
         return selected_generators
 
+    def toggle_generator(self, generator_name: GeneratorName) -> None:
+        """Switches one generator's slice in and out of the waveform and of what plays.
+
+        This is the gesture a click on the generator's checkbox makes, reached by the key the
+        channel answers to. A generator the loaded reconstruction holds none of keeps the
+        checkbox its disabled state already shows.
+        """
+        tag = self._get_generator_checkbox_tag(generator_name)
+        if not dpg.is_item_enabled(tag):
+            return
+
+        dpg_set_value(tag, not dpg.get_value(tag))
+        self._on_generator_checkbox_changed()
+
     def _on_generator_checkbox_changed(self) -> None:
         selected_generators = self._read_selected_generators()
         self.call(self.on_generators_changed, selected_generators)
 
-    def _on_autoscale_changed(self, sender: Sender, app_data: bool) -> None:
+    def _on_autoscale_changed(self, _sender: Sender, app_data: bool) -> None:
         self.waveform_display.set_autoscale(app_data)

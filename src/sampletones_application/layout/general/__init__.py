@@ -3,9 +3,9 @@ from pydantic import BaseModel
 from sampletones_application.layout.general.buttons import ButtonsLayout
 from sampletones_application.layout.general.caret import CaretLayout
 from sampletones_application.layout.general.collapse import CollapseLayout
-from sampletones_application.layout.general.colors import GeneralColors
+from sampletones_application.layout.general.colors.colors import GeneralColors
 from sampletones_application.layout.general.columns import ColumnsLayout
-from sampletones_application.layout.general.dialogs import DialogsLayout
+from sampletones_application.layout.general.dialogs.dialogs import DialogsLayout
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout

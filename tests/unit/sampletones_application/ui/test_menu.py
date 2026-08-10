@@ -4,6 +4,7 @@ from typing import Any, Dict, FrozenSet, Iterator, List
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
@@ -13,15 +14,23 @@ from sampletones_application.ui import menu as menu_module
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
+    FOLLOW_MODE_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
     ShortcutId,
 )
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_core.constants.enums import GeneratorName
 
 CHANNEL_NAMES = ["Pulse 1", "Pulse 2", "Triangle", "Noise"]
 UNMUTE_ALL = "Unmute all channels"
+FOLLOW_MODE_NAMES = {
+    FollowMode.ROWS: "Follow rows",
+    FollowMode.PATTERNS: "Follow patterns",
+    FollowMode.OFF: "Don't follow",
+}
 
 
 class _ShortcutManagerRecorder:
@@ -71,6 +80,7 @@ def _state(
     muted: FrozenSet[GeneratorName],
     *,
     reconstruction_loaded: bool = False,
+    follow_mode: FollowMode = FollowMode.OFF,
 ) -> MenuBarViewModel:
     return MenuBarViewModel(
         project_open=True,
@@ -89,7 +99,7 @@ def _state(
         player_paused=False,
         stop_enabled=False,
         autoplay=False,
-        follow_playback=False,
+        follow_mode=follow_mode,
         loop_song=False,
         channels=SequencerChannelsViewModel(muted=muted),
         fullscreen=False,
@@ -113,11 +123,21 @@ def shortcuts() -> _ShortcutManagerRecorder:
 
 
 @pytest.fixture
-def menu_bar(shortcuts: _ShortcutManagerRecorder) -> MenuBar:
+def switched() -> List[GeneratorName]:
+    """The channels the bar asks the sequencer to switch, in the order it asks."""
+    return []
+
+
+@pytest.fixture
+def menu_bar(
+    shortcuts: _ShortcutManagerRecorder,
+    switched: List[GeneratorName],
+) -> MenuBar:
     """A bar with the collaborators its Channels submenu reads, from the real language file."""
     instance = MenuBar.__new__(MenuBar)
     instance._shortcut_manager = shortcuts
     instance._language_manager = LanguageManager(LANG_EN)
+    instance._on_channel_muted = switched.append
     return instance
 
 
@@ -161,6 +181,70 @@ class TestInstrumentsExportMenu:
         assert framework.submenu(TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS)["enabled"] is True
 
 
+class TestFollowMenuItems:
+    """The three reaches stand as one choice, so the check names the reach in place."""
+
+    def test_every_reach_is_offered(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_follow_menu(_state(frozenset()))
+
+        assert shortcuts.labels == list(FOLLOW_MODE_NAMES.values())
+
+    def test_each_reach_carries_its_own_action(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_follow_menu(_state(frozenset()))
+
+        actions = [item["shortcut_id"] for item in shortcuts.items]
+        assert actions == list(FOLLOW_MODE_SHORTCUT_IDS.values())
+
+    def test_each_reach_carries_its_own_tag(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_follow_menu(_state(frozenset()))
+
+        tags = [item["tag"] for item in shortcuts.items]
+        assert tags == [MenuBar._follow_menu_item_tag(mode) for mode in FOLLOW_MODE_SHORTCUT_IDS]
+
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_reach_in_place_is_the_one_checked(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+        mode: FollowMode,
+    ) -> None:
+        menu_bar._create_follow_menu(_state(frozenset(), follow_mode=mode))
+
+        checked = [item["label"] for item in shortcuts.items if item["default_value"]]
+        assert checked == [FOLLOW_MODE_NAMES[mode]]
+
+
+class TestFollowMenuUpdate:
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_check_moves_to_the_reach_in_place(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+        mode: FollowMode,
+    ) -> None:
+        menu_bar._update_follow_mode(_state(frozenset(), follow_mode=mode))
+
+        assert framework.values == {
+            MenuBar._follow_menu_item_tag(candidate): candidate is mode for candidate in FollowMode
+        }
+
+
 class TestChannelsMenuItems:
     def test_every_channel_is_named_in_the_tracker_order(
         self,
@@ -182,6 +266,22 @@ class TestChannelsMenuItems:
 
         actions = [item["shortcut_id"] for item in shortcuts.items[:-1]]
         assert actions == list(CHANNEL_SHORTCUT_IDS.values())
+
+    def test_choosing_a_channel_switches_the_sequencer_mix(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+        switched: List[GeneratorName],
+    ) -> None:
+        """The check beside an item names the sequencer's mix, so the item switches that mix
+        wherever the reader stands, while the key printed beside it reads the tab in front."""
+        menu_bar._create_channels_menu(_state(frozenset()))
+
+        for item in shortcuts.items[:-1]:
+            item["callback"]()
+
+        assert switched == list(CHANNEL_SHORTCUT_IDS)
 
     def test_each_channel_carries_its_own_tag(
         self,

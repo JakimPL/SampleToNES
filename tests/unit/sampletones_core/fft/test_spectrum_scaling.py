@@ -34,80 +34,58 @@ OCTAVE_BANDS: Final[Tuple[Tuple[float, float], ...]] = (
 )
 
 
-def probe(method: SpectrumMethod, nes_frequency: int = NES_FREQUENCY) -> SpectrumProbe:
-    return SpectrumProbe(sample_rate=SAMPLE_RATE, nes_frequency=nes_frequency, method=method)
-
-
-@dataclass(frozen=True, kw_only=True)
-class FlatnessCase(BaseTestCase):
-    label: str
-    method: SpectrumMethod
-    frequencies: Tuple[float, ...]
-    tolerance_ratio: float
-
-
-FLATNESS_CASES: Final[Tuple[FlatnessCase, ...]] = (
-    FlatnessCase(
-        label="fft",
-        method=SpectrumMethod.FFT,
-        frequencies=(110.0, 440.0, 1760.0, 7040.0),
-        tolerance_ratio=1.35,
-    ),
-    FlatnessCase(
-        label="logfft",
-        method=SpectrumMethod.LOG_SPACED_FFT,
-        frequencies=(110.0, 440.0, 1760.0, 7040.0),
-        tolerance_ratio=1.35,
-    ),
-    FlatnessCase(
-        label="cqt",
-        method=SpectrumMethod.CQT,
-        frequencies=(110.0, 440.0, 1760.0, 7040.0),
-        tolerance_ratio=1.2,
-    ),
-)
-
-
-@dataclass(frozen=True, kw_only=True)
-class NoiseScalingCase(BaseTestCase):
-    label: str
-    method: SpectrumMethod
-    lower_frequency: float
-    upper_frequency: float
-    expected_ratio_range: Tuple[float, float]
-
-
-NOISE_SCALING_CASES: Final[Tuple[NoiseScalingCase, ...]] = (
-    NoiseScalingCase(
-        label="fft-flat-per-bin",
-        method=SpectrumMethod.FFT,
-        lower_frequency=440.0,
-        upper_frequency=7040.0,
-        expected_ratio_range=(0.25, 4.0),
-    ),
-    NoiseScalingCase(
-        label="logfft-proportional-to-bandwidth",
-        method=SpectrumMethod.LOG_SPACED_FFT,
-        lower_frequency=440.0,
-        upper_frequency=7040.0,
-        expected_ratio_range=(8.0, 32.0),
-    ),
-    NoiseScalingCase(
-        label="cqt-proportional-to-bandwidth",
-        method=SpectrumMethod.CQT,
-        lower_frequency=440.0,
-        upper_frequency=7040.0,
-        expected_ratio_range=(8.0, 32.0),
-    ),
-)
+def probe(
+    method: SpectrumMethod,
+    nes_frequency: int = NES_FREQUENCY,
+) -> SpectrumProbe:
+    return SpectrumProbe(
+        sample_rate=SAMPLE_RATE,
+        nes_frequency=nes_frequency,
+        method=method,
+    )
 
 
 class TestToneResponseFlatness:
-    @pytest.mark.parametrize("case", FLATNESS_CASES, ids=lambda case: case.label)
-    def test_tone_band_energy_is_flat_across_frequency(self, case: FlatnessCase) -> None:
+    @dataclass(frozen=True, kw_only=True)
+    class FlatnessCase(BaseTestCase):
+        label: str
+        method: SpectrumMethod
+        frequencies: Tuple[float, ...]
+        tolerance_ratio: float
+
+    test_cases = (
+        FlatnessCase(
+            label="fft",
+            method=SpectrumMethod.FFT,
+            frequencies=(110.0, 440.0, 1760.0, 7040.0),
+            tolerance_ratio=1.35,
+        ),
+        FlatnessCase(
+            label="logfft",
+            method=SpectrumMethod.LOG_SPACED_FFT,
+            frequencies=(110.0, 440.0, 1760.0, 7040.0),
+            tolerance_ratio=1.35,
+        ),
+        FlatnessCase(
+            label="cqt",
+            method=SpectrumMethod.CQT,
+            frequencies=(110.0, 440.0, 1760.0, 7040.0),
+            tolerance_ratio=1.2,
+        ),
+    )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    def test_tone_band_energy_is_flat_across_frequency(
+        self,
+        case: FlatnessCase,
+    ) -> None:
         spectrum_probe = probe(case.method)
         responses = [
-            band_energy(spectrum_probe.tone_spectrum(frequency), frequency, radius=BAND_RADIUS)
+            band_energy(
+                spectrum_probe.tone_spectrum(frequency),
+                frequency,
+                radius=BAND_RADIUS,
+            )
             for frequency in case.frequencies
         ]
         assert max(responses) / min(responses) < case.tolerance_ratio
@@ -119,14 +97,57 @@ class TestToneResponseFlatness:
         energy the same tone produces higher up the axis.
         """
         spectrum_probe = probe(SpectrumMethod.LOG_SPACED_FFT)
-        low = band_energy(spectrum_probe.tone_spectrum(110.0), 110.0, radius=BAND_RADIUS)
-        reference = band_energy(spectrum_probe.tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
+        low = band_energy(
+            spectrum_probe.tone_spectrum(110.0),
+            110.0,
+            radius=BAND_RADIUS,
+        )
+        reference = band_energy(
+            spectrum_probe.tone_spectrum(440.0),
+            440.0,
+            radius=BAND_RADIUS,
+        )
         assert 0.75 < low / reference < 1.35
 
 
 class TestNoiseScaling:
-    @pytest.mark.parametrize("case", NOISE_SCALING_CASES, ids=lambda case: case.label)
-    def test_noise_bin_values_scale_with_the_bin_bandwidth(self, case: NoiseScalingCase) -> None:
+    @dataclass(frozen=True, kw_only=True)
+    class NoiseScalingCase(BaseTestCase):
+        label: str
+        method: SpectrumMethod
+        lower_frequency: float
+        upper_frequency: float
+        expected_ratio_range: Tuple[float, float]
+
+    test_cases = (
+        NoiseScalingCase(
+            label="fft-flat-per-bin",
+            method=SpectrumMethod.FFT,
+            lower_frequency=440.0,
+            upper_frequency=7040.0,
+            expected_ratio_range=(0.25, 4.0),
+        ),
+        NoiseScalingCase(
+            label="logfft-proportional-to-bandwidth",
+            method=SpectrumMethod.LOG_SPACED_FFT,
+            lower_frequency=440.0,
+            upper_frequency=7040.0,
+            expected_ratio_range=(8.0, 32.0),
+        ),
+        NoiseScalingCase(
+            label="cqt-proportional-to-bandwidth",
+            method=SpectrumMethod.CQT,
+            lower_frequency=440.0,
+            upper_frequency=7040.0,
+            expected_ratio_range=(8.0, 32.0),
+        ),
+    )
+
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    def test_noise_bin_values_scale_with_the_bin_bandwidth(
+        self,
+        case: NoiseScalingCase,
+    ) -> None:
         """
         White noise reads flat per bin on the linear axis and proportionally to the
         bin bandwidth on the logarithmic axes, where each bin integrates the noise
@@ -149,10 +170,18 @@ class TestOctaveWeightAllocation:
         fastest (the K-weighting shelf knee around 2 kHz).
         """
         shares_per_method = []
-        for method in (SpectrumMethod.FFT, SpectrumMethod.LOG_SPACED_FFT, SpectrumMethod.CQT):
+        for method in (
+            SpectrumMethod.FFT,
+            SpectrumMethod.LOG_SPACED_FFT,
+            SpectrumMethod.CQT,
+        ):
             edges = np.asarray(probe(method).tone_spectrum(440.0).edges)
             shares = np.asarray(
-                octave_weight_shares(edges, perceptual_exponent=PERCEPTUAL_EXPONENT, bands=OCTAVE_BANDS)
+                octave_weight_shares(
+                    edges,
+                    perceptual_exponent=PERCEPTUAL_EXPONENT,
+                    bands=OCTAVE_BANDS,
+                )
             )
             shares_per_method.append(shares / shares.sum())
 
@@ -164,7 +193,11 @@ class TestOctaveWeightAllocation:
         for nes_frequency in (15, 30):
             edges = np.asarray(probe(SpectrumMethod.FFT, nes_frequency).tone_spectrum(440.0).edges)
             shares = np.asarray(
-                octave_weight_shares(edges, perceptual_exponent=PERCEPTUAL_EXPONENT, bands=OCTAVE_BANDS)
+                octave_weight_shares(
+                    edges,
+                    perceptual_exponent=PERCEPTUAL_EXPONENT,
+                    bands=OCTAVE_BANDS,
+                )
             )
             shares_per_window.append(shares / shares.sum())
 
@@ -179,7 +212,11 @@ class TestWindowScaling:
         across NES frequencies.
         """
         responses = [
-            band_energy(probe(SpectrumMethod.CQT, nes_frequency).tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
+            band_energy(
+                probe(SpectrumMethod.CQT, nes_frequency).tone_spectrum(440.0),
+                440.0,
+                radius=BAND_RADIUS,
+            )
             for nes_frequency in (30, 60, 300)
         ]
         assert max(responses) / min(responses) < 1.2
@@ -190,7 +227,11 @@ class TestWindowScaling:
         same tone energy at every NES frequency, matching the constant-Q behavior.
         """
         responses = [
-            band_energy(probe(SpectrumMethod.FFT, nes_frequency).tone_spectrum(440.0), 440.0, radius=BAND_RADIUS)
+            band_energy(
+                probe(SpectrumMethod.FFT, nes_frequency).tone_spectrum(440.0),
+                440.0,
+                radius=BAND_RADIUS,
+            )
             for nes_frequency in (30, 60, 300)
         ]
         assert max(responses) / min(responses) < 1.2
@@ -215,7 +256,10 @@ class TestScaleConventions:
         frequency = 30 * bin_width
         spectrum = spectrum_probe.tone_spectrum(frequency)
         expected = PROBE_TONE_AMPLITUDE**2 / 2.0
-        assert bin_value_at(spectrum, frequency) == pytest.approx(expected, rel=0.05)
+        assert bin_value_at(spectrum, frequency) == pytest.approx(
+            expected,
+            rel=0.05,
+        )
 
     def test_cqt_bin_centered_tone_reports_half_of_the_squared_amplitude(self) -> None:
         """
@@ -223,9 +267,20 @@ class TestScaleConventions:
         as ``A ** 2 / 2`` — the tone's mean-square power — matching the linear-FFT
         convention.
         """
-        n_bins = calculate_n_bins(SAMPLE_RATE, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
-        frequencies = calculate_cqt_frequencies(n_bins, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
+        n_bins = calculate_n_bins(
+            SAMPLE_RATE,
+            CQT_CUTOFF_FREQUENCY,
+            BINS_PER_OCTAVE,
+        )
+        frequencies = calculate_cqt_frequencies(
+            n_bins,
+            CQT_CUTOFF_FREQUENCY,
+            BINS_PER_OCTAVE,
+        )
         frequency = float(frequencies[int(np.argmin(np.abs(frequencies - 440.0)))])
         spectrum = probe(SpectrumMethod.CQT).tone_spectrum(frequency)
         expected = PROBE_TONE_AMPLITUDE**2 / 2.0
-        assert bin_value_at(spectrum, frequency) == pytest.approx(expected, rel=0.15)
+        assert bin_value_at(spectrum, frequency) == pytest.approx(
+            expected,
+            rel=0.15,
+        )

@@ -60,8 +60,15 @@ class TestReconstructionViewModelEnablement:
     and its explanatory hint; the hint accompanies exactly the disabled button of
     a loaded reconstruction that keeps no original audio path."""
 
-    @pytest.mark.parametrize("case", enablement_cases, ids=lambda case: case.label)
-    def test_enablement_follows_original_audio_state(self, case: EnablementCase) -> None:
+    @pytest.mark.parametrize(
+        "case",
+        enablement_cases,
+        ids=lambda case: case.label,
+    )
+    def test_enablement_follows_original_audio_state(
+        self,
+        case: EnablementCase,
+    ) -> None:
         view_model = ReconstructionViewModel(
             reconstruction_loaded=case.reconstruction_loaded,
             available_generators=frozenset(),

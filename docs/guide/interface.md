@@ -22,13 +22,13 @@ built automatically the first time it is needed, so you can convert straight awa
 When a single file finishes, **Load** opens the result on the **Reconstructions**
 tab; **Cancel** stops a run, and only one runs at a time.
 
-The settings worth knowing before you convert: under **Reconstructor settings**,
-the **Generators** toggles choose which channels take part (at least one must be
-on) and **Drive** sets how hard they are pushed; the analysis options — sample
-rate, NES frequency, generation method, and feature scaling — live in **General
-settings**. Less-common options, including the worker count and the output and
-library folders, sit under **Advanced settings**, which **View ▸ Show advanced
-settings** reveals. [Configuration](configuration.md) explains what each one does.
+A few settings are worth knowing before you convert. Under **Reconstructor
+settings**, the **Generators** toggles choose which channels take part — at least
+one must be on — and **Drive** sets how hard they are pushed. **General settings**
+holds the analysis options: sample rate, NES frequency, generation method, and
+feature scaling. The rest, including the worker count and the output and library
+folders, sit under **Advanced settings**, which **View ▸ Show advanced settings**
+reveals. [Configuration](configuration.md) explains each one.
 
 ## Reconstructions
 
@@ -41,12 +41,11 @@ switch **Play audio source:** between **Reconstruction** and **Original audio** 
 compare the two, and **Locate original audio** re-links the source file if it has
 moved.
 
-To get your results out, **Reconstruction ▸ Export instruments** writes the
-whole reconstruction as one file per channel — `.fti` under **FamiTracker
-instruments...**, `.json` under **Bitphase presets...** — and **Reconstruction ▸
-Export to WAV...** renders the audio. **Add to Sequencer**, on a reconstruction's
-right-click menu, sends it into a song as a sample (see the
-[sequencer guide](sequencer.md)).
+To get your results out, use the **Reconstruction** menu. **Export instruments ▸
+FamiTracker instruments...** writes one `.fti` per channel, **Bitphase
+presets...** writes the same as `.json`, and **Export to WAV...** renders the
+audio. To use the reconstruction in a song, right-click it and choose **Add to
+Sequencer** (see the [sequencer guide](sequencer.md)).
 
 For finer control, the **Instruments** panel on the right shows each channel's
 instrument — its pitch, volume, arpeggio, and duty sequences — which you can edit
@@ -74,17 +73,32 @@ instructions data** to re-read the catalogue; selecting an entry in the
 
 The menu bar and status bar sit outside the tabs.
 
-The **File** menu manages projects — new, open, save, properties, close, and
-**Export FamiTracker module...**. **Edit** holds **Undo** and **Redo**.
-**Reconstruction** gathers everything for the current reconstruction: reconstruct,
-open, save, and the export actions. **Playback** controls play, pause, and stop, mutes the
-sequencer's channels under **Channels**, and opens **Audio settings...**. **View** toggles **Show advanced settings** and
-**Fullscreen**, and **Help** has **About**.
+Each menu covers one kind of work: **File** for projects, **Edit** for undo and
+redo, **Reconstruction** for the current reconstruction and its exports,
+**Playback** for playing and for muting the sequencer's channels, **View** for
+settings and the window, and **Help** for **About**.
 
-**Audio settings** (**Playback ▸ Audio settings...**) choose the playback device,
-sample rate, and buffer size. These affect playback only — they are separate from
-the **Sample rate** and **NES frequency** on the **Main** tab, which govern how
-audio is reconstructed.
+Two of them are easy to miss. **View ▸ Show advanced settings** reveals the extra
+options on the **Main** tab. **Playback ▸ Audio settings...** picks the playback
+device, sample rate, and buffer size; these change what you hear, while the
+**Sample rate** and **NES frequency** on the **Main** tab change how audio is
+reconstructed.
+
+`F1` to `F4` toggle the four NES channels on the tab in front of you: the
+generators on **Main**, the channels drawn on **Reconstructions**, and the song's
+mix on the **Sequencer**.
+
+### Keyboard shortcuts
+
+**View ▸ Keyboard shortcuts...** (`Ctrl+K`) lists everything you can do from the
+keyboard and lets you change any of it. Click an action's shortcut and press the
+keys you want, or type them into the box below the list. If another action already
+uses those keys, the app names it and asks whether to hand them over. **Reset to
+defaults** puts everything back, and your changes take effect when you press
+**OK**.
+
+On macOS the shortcuts use Command where other platforms use Control. What you
+change is saved with your settings and is there the next time you start.
 
 Project properties belong to a project and are covered in the
 [sequencer guide](sequencer.md).

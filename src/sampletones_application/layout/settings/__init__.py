@@ -1,11 +1,19 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.primitives import Dimensions
-from sampletones_application.layout.settings.master_gain import MasterGainLayout
+from sampletones_application.layout.settings.audio import AudioSettingsLayout
+from sampletones_application.layout.settings.display import DisplaySettingsLayout
+from sampletones_application.layout.settings.keybindings import KeybindingsSettingsLayout
 
 
 class SettingsLayout(BaseModel, extra="forbid", frozen=True):
-    window: Dimensions
+    """The geometry every settings dialog draws with.
+
+    The label and combo columns are shared, so a field reads the same width in whichever dialog
+    it appears; each dialog then states the size of its own windows.
+    """
+
     combo_width: int
     label_width: int
-    master_gain: MasterGainLayout
+    audio: AudioSettingsLayout
+    display: DisplaySettingsLayout
+    keybindings: KeybindingsSettingsLayout

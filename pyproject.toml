@@ -92,12 +92,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv]
-conflicts = [
-    [
-        { extra = "gpu" },
-        { extra = "gpu-cuda11" },
-    ],
-]
+conflicts = [[{ extra = "gpu" }, { extra = "gpu-cuda11" }]]
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -155,3 +150,39 @@ exclude = ["tests"]
 disallow_subclassing_any = true
 ignore_missing_imports = true
 strict = true
+
+[tool.pylint.main]
+fail-under = 9.9
+ignore-paths = "^tests/.*$"
+load-plugins = ["pylint_pydantic"]
+
+[tool.pylint.messages_control]
+disable = [
+    "import-outside-toplevel",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-statements",
+]
+
+[tool.pylint.basic]
+bad-names = ["foo", "baz"]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.similarities]
+min-similarity-lines = 5
+
+[tool.pylint.typecheck]
+ignored-modules = ["pydantic"]

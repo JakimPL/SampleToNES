@@ -286,12 +286,7 @@ class LibraryLogic(CallbackMixin):
                 self._library_manager.get_path(library_key),
                 self._language_manager["instructions.library.message.status_file_not_found"],
             )
-        except (
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ) as exception:
+        except (IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(
                 exception,
                 f"Error loading library file for key {library_key}",
@@ -367,7 +362,11 @@ class LibraryLogic(CallbackMixin):
         self._eta_estimator = ETAEstimator(self._library_manager.creator.total_instructions)
         self.call(self.on_generation_state_changed)
 
-    def _on_generation_progress(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
+    def _on_generation_progress(
+        self,
+        task_status: TaskStatus,
+        task_progress: TaskProgress,
+    ) -> None:
         with self._status_lock:
             match task_status:
                 case TaskStatus.COMPLETED:

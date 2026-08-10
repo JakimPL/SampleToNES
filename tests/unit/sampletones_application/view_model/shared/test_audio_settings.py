@@ -79,7 +79,8 @@ MAPPING_CASES = [
 
 class TestFromDeviceManager:
     """The projection carries display labels alongside the typed values a selection commits, so
-    the window renders and resolves selections without formatting or parsing of its own."""
+    the window renders and resolves selections without formatting or parsing of its own.
+    """
 
     @pytest.mark.parametrize("case", MAPPING_CASES, ids=lambda case: case.label)
     def test_projects_the_manager_state(self, case: MappingCase) -> None:
@@ -91,7 +92,12 @@ class TestFromDeviceManager:
         assert view_model.buffer_size == case.buffer_size
 
     def test_carries_the_master_gain(self) -> None:
-        view_model = _view_model({0: _device(0, "Speakers")}, MAPPING_CASES[0].current_device, 512, master_gain=1.5)
+        view_model = _view_model(
+            {0: _device(0, "Speakers")},
+            MAPPING_CASES[0].current_device,
+            512,
+            master_gain=1.5,
+        )
 
         assert view_model.master_gain == 1.5
 
@@ -121,7 +127,11 @@ class TestAudioDeviceItem:
         item = AudioDeviceItem.from_device(_device(3, "Headphones"))
 
         assert item.label(DEVICE_LABEL_FORMAT) == "3: Headphones"
-        assert item.sample_rate_labels(SAMPLE_RATE_FORMAT) == ("22050 Hz", "44100 Hz", "48000 Hz")
+        assert item.sample_rate_labels(SAMPLE_RATE_FORMAT) == (
+            "22050 Hz",
+            "44100 Hz",
+            "48000 Hz",
+        )
         assert item.default_sample_rate_label(SAMPLE_RATE_FORMAT) == "44100 Hz"
 
 
@@ -189,7 +199,8 @@ READOUT_CASES = [
 
 class TestMasterGainReadout:
     """The readout projects a linear gain to the decibel label a slider shows and the boost
-    fraction a warning gradient follows: ``0`` at unity or quieter, ramping to ``1`` at maximum."""
+    fraction a warning gradient follows: ``0`` at unity or quieter, ramping to ``1`` at maximum.
+    """
 
     @pytest.mark.parametrize("case", READOUT_CASES, ids=lambda case: case.label)
     def test_projects_the_gain(self, case: ReadoutCase) -> None:

@@ -7,4 +7,4 @@ components:
       - type: color
         key: Fill
         category: Plots
-        value: .white/0.125
+        value: .overlay/0.125

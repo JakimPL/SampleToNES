@@ -13,7 +13,11 @@ from sampletones_core.generators.utils import (
     get_generators_map,
     get_remaining_generator_classes,
 )
-from sampletones_core.instructions import NoiseInstruction, PulseInstruction, TriangleInstruction
+from sampletones_core.instructions import (
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
 
 
 @pytest.fixture

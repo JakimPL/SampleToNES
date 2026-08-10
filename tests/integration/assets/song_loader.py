@@ -14,7 +14,9 @@ from sampletones_shared.utils.serialization import load_yaml
 RowSpec = Dict[str, Any]
 
 
-def _order(order_specs: List[Dict[str, int]]) -> List[Dict[GeneratorName, Optional[int]]]:
+def _order(
+    order_specs: List[Dict[str, int]],
+) -> List[Dict[GeneratorName, Optional[int]]]:
     frames: List[Dict[GeneratorName, Optional[int]]] = []
     for spec in order_specs:
         frames.append({generator: spec.get(generator.value) for generator in GeneratorName.items()})

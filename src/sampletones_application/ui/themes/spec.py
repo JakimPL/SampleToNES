@@ -4,13 +4,13 @@ from typing import Annotated, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from sampletones_application.utils.palette import ColorSource
+from sampletones_application.utils.palette.colors.written import WrittenColor
 
 
 class ThemeColorEntrySpec(BaseModel, frozen=True):
     type: Literal["color"]
     key: str
-    value: ColorSource
+    value: WrittenColor
     category: str = "Core"
 
 

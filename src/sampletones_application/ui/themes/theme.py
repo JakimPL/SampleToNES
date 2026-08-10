@@ -11,7 +11,8 @@ from sampletones_application.ui.themes.style import (
     ThemeStyle,
     ThemeValue,
 )
-from sampletones_shared.types.application import Color
+from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
+from sampletones_shared.types.application import ColorRGBA
 
 
 class Theme:
@@ -39,12 +40,15 @@ class Theme:
 
         return dictionary
 
-    def create(self, *, override: bool = False) -> None:
-        if not override and dpg.does_item_exist(self.tag):
-            return
+    def create(self) -> None:
+        """Builds the DearPyGui theme once, registering each colour item it fills.
 
-        if override and dpg.does_item_exist(self.tag):
-            dpg.delete_item(self.tag)
+        DearPyGui copies a colour into the item at the call that fills it, so each one is
+        handed over through the palette bindings, which repaint the theme in place when
+        another palette is activated.
+        """
+        if dpg.does_item_exist(self.tag):
+            return
 
         with dpg.theme(tag=self.tag):
             for parameter, values in self._items.items.items():
@@ -54,7 +58,7 @@ class Theme:
                 ):
                     for item in values:
                         if isinstance(item, ThemeColor):
-                            dpg.add_theme_color(
+                            dpg_add_palette_theme_color(
                                 item.key,
                                 item.color,
                                 category=item.category,
@@ -97,7 +101,8 @@ class Theme:
         *,
         enabled_state: bool = True,
         category: int = dpg.mvThemeCat_Core,
-    ) -> Optional[Color]:
+    ) -> Optional[ColorRGBA]:
+        """The value a theme colour carries under the active palette."""
         theme_item = self.get(
             item_type,
             key,
@@ -106,7 +111,7 @@ class Theme:
             is_style=False,
         )
         if isinstance(theme_item, ThemeColor):
-            return theme_item.color
+            return theme_item.color.rgba
 
         return None
 

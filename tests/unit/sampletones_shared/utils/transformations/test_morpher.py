@@ -8,9 +8,7 @@ from pydantic import ValidationError
 
 from sampletones_shared.utils.transformations.functions import identity
 from sampletones_shared.utils.transformations.morpher import PowerMorpher
-from sampletones_shared.utils.transformations.transformation import (
-    Transformation,
-)
+from sampletones_shared.utils.transformations.transformation import Transformation
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
@@ -23,7 +21,7 @@ class TestPowerMorpherValidGamma(BaseTestSuite):
         gamma: float
         should_be_identity: bool
 
-    test_cases = [
+    test_cases = (
         TestCase(
             gamma=0.0,
             expected=0.25,
@@ -54,7 +52,7 @@ class TestPowerMorpherValidGamma(BaseTestSuite):
             should_be_identity=False,
             label="gamma_1_sharp",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -80,7 +78,7 @@ class TestPowerMorpherInvalidGamma(BaseTestSuite):
         gamma: float
         expected: None = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             gamma=np.nan,
             label="gamma_nan",
@@ -105,7 +103,7 @@ class TestPowerMorpherInvalidGamma(BaseTestSuite):
             gamma=2.0,
             label="gamma_two",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -132,5 +130,8 @@ class TestPowerMorpherEdgeCases:
 
     def test_frozen_model(self) -> None:
         morpher = PowerMorpher(gamma=0.5)
-        if expect_error(lambda: setattr(morpher, "gamma", 0.75), ValidationError):
+        if expect_error(
+            lambda: setattr(morpher, "gamma", 0.75),
+            ValidationError,
+        ):
             return

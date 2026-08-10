@@ -3,7 +3,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.colors import PathColors
+from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
@@ -17,6 +17,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionPathState,
     ReconstructionPathViewModel,
@@ -24,7 +25,6 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_core.constants.enums import AudioSourceType
 from sampletones_shared.types.application import Sender
-from sampletones_shared.utils.color import RGBA
 
 
 class GUIReconstructionAudioPanel(GUIPanel):
@@ -32,7 +32,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
         self,
         *,
         path_colors: PathColors,
-        path_status_color: RGBA,
+        path_status_color: BaseColor,
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -164,7 +164,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
             enabled=False,
         )
 
-    def _on_audio_source_changed(self, sender: Sender, app_data: str) -> None:
+    def _on_audio_source_changed(self, _sender: Sender, app_data: str) -> None:
         if app_data == self._lbl_original_audio_radio:
             audio_source = AudioSourceType.ORIGINAL
         else:

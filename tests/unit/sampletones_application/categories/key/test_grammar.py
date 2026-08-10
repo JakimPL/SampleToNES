@@ -24,32 +24,116 @@ class TestValidateTextKey(BaseTestSuite):
         key: str
         expected: Optional[Type[MalformedTextKeyError]]
 
-    test_cases = [
+    test_cases = (
         TestCase(label="well_formed_key", key="global.dialog.label.ok", expected=None),
-        TestCase(label="element_holding_digits", key="global.context.label.pulse_1", expected=None),
-        TestCase(label="element_holding_many_words", key="main.config.tooltip.window_size_input", expected=None),
-        TestCase(label="another_page_and_panel", key="sequencer.grid.title.pattern", expected=None),
-        TestCase(label="too_few_segments", key="global.dialog.label", expected=MalformedTextKeyError),
-        TestCase(label="too_many_segments", key="global.dialog.label.ok.extra", expected=MalformedTextKeyError),
+        TestCase(
+            label="element_holding_digits",
+            key="global.context.label.pulse_1",
+            expected=None,
+        ),
+        TestCase(
+            label="element_holding_many_words",
+            key="main.config.tooltip.window_size_input",
+            expected=None,
+        ),
+        TestCase(
+            label="another_page_and_panel",
+            key="sequencer.tracker.title.pattern",
+            expected=None,
+        ),
+        TestCase(
+            label="too_few_segments",
+            key="global.dialog.label",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="too_many_segments",
+            key="global.dialog.label.ok.extra",
+            expected=MalformedTextKeyError,
+        ),
         TestCase(label="single_segment", key="ok", expected=MalformedTextKeyError),
         TestCase(label="empty_key", key="", expected=MalformedTextKeyError),
-        TestCase(label="empty_segment", key="global..label.ok", expected=MalformedTextKeyError),
-        TestCase(label="leading_separator", key=".global.dialog.label", expected=MalformedTextKeyError),
-        TestCase(label="trailing_separator", key="global.dialog.label.", expected=MalformedTextKeyError),
-        TestCase(label="unknown_page", key="globl.dialog.label.ok", expected=MalformedTextKeyError),
-        TestCase(label="unknown_panel", key="global.dialogue.label.ok", expected=MalformedTextKeyError),
-        TestCase(label="unknown_text_type", key="global.dialog.lable.ok", expected=MalformedTextKeyError),
-        TestCase(label="widget_in_place_of_text_type", key="global.dialog.button.ok", expected=MalformedTextKeyError),
-        TestCase(label="uppercase_key", key="GLOBAL.DIALOG.LABEL.OK", expected=MalformedTextKeyError),
-        TestCase(label="uppercase_element", key="global.dialog.label.OK", expected=MalformedTextKeyError),
-        TestCase(label="whitespace_in_element", key="global.dialog.label.o k", expected=MalformedTextKeyError),
-        TestCase(label="surrounding_whitespace", key=" global.dialog.label.ok ", expected=MalformedTextKeyError),
-        TestCase(label="template_in_element", key="global.dialog.label.{name}", expected=MalformedTextKeyError),
-        TestCase(label="hyphen_in_element", key="global.dialog.label.not-ok", expected=MalformedTextKeyError),
-        TestCase(label="doubled_underscore", key="global.dialog.label.not__ok", expected=MalformedTextKeyError),
-        TestCase(label="leading_underscore", key="global.dialog.label._ok", expected=MalformedTextKeyError),
-        TestCase(label="trailing_underscore", key="global.dialog.label.ok_", expected=MalformedTextKeyError),
-    ]
+        TestCase(
+            label="empty_segment",
+            key="global..label.ok",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="leading_separator",
+            key=".global.dialog.label",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="trailing_separator",
+            key="global.dialog.label.",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="unknown_page",
+            key="globl.dialog.label.ok",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="unknown_panel",
+            key="global.dialogue.label.ok",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="unknown_text_type",
+            key="global.dialog.lable.ok",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="widget_in_place_of_text_type",
+            key="global.dialog.button.ok",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="uppercase_key",
+            key="GLOBAL.DIALOG.LABEL.OK",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="uppercase_element",
+            key="global.dialog.label.OK",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="whitespace_in_element",
+            key="global.dialog.label.o k",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="surrounding_whitespace",
+            key=" global.dialog.label.ok ",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="template_in_element",
+            key="global.dialog.label.{name}",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="hyphen_in_element",
+            key="global.dialog.label.not-ok",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="doubled_underscore",
+            key="global.dialog.label.not__ok",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="leading_underscore",
+            key="global.dialog.label._ok",
+            expected=MalformedTextKeyError,
+        ),
+        TestCase(
+            label="trailing_underscore",
+            key="global.dialog.label.ok_",
+            expected=MalformedTextKeyError,
+        ),
+    )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_validate_text_key(self, test_case: TestCase) -> None:
@@ -73,7 +157,10 @@ class TestMalformedTextKeyMessage:
     """A rejection has to say which segment failed and what would satisfy it."""
 
     def test_segment_count_message_counts_the_segments(self) -> None:
-        with pytest.raises(MalformedTextKeyError, match=rf"segment count is 3.*exactly {TEXT_KEY_SEGMENT_COUNT}"):
+        with pytest.raises(
+            MalformedTextKeyError,
+            match=rf"segment count is 3.*exactly {TEXT_KEY_SEGMENT_COUNT}",
+        ):
             validate_text_key("global.dialog.label")
 
     def test_segment_count_message_spells_the_grammar_out(self) -> None:
@@ -85,15 +172,24 @@ class TestMalformedTextKeyMessage:
             validate_text_key("global.dialog.label.Ok")
 
     def test_unknown_page_message_lists_the_accepted_pages(self) -> None:
-        with pytest.raises(MalformedTextKeyError, match=r"segment 1 'globl' must name a page.*global.*settings"):
+        with pytest.raises(
+            MalformedTextKeyError,
+            match=r"segment 1 'globl' must name a page.*global.*settings",
+        ):
             validate_text_key("globl.dialog.label.ok")
 
     def test_unknown_panel_message_lists_the_accepted_panels(self) -> None:
-        with pytest.raises(MalformedTextKeyError, match=r"segment 2 'dialogue' must name a panel.*dialog"):
+        with pytest.raises(
+            MalformedTextKeyError,
+            match=r"segment 2 'dialogue' must name a panel.*dialog",
+        ):
             validate_text_key("global.dialogue.label.ok")
 
     def test_unknown_text_type_message_lists_the_accepted_text_types(self) -> None:
-        with pytest.raises(MalformedTextKeyError, match=r"segment 3 'lable' must name a text type.*label.*filter"):
+        with pytest.raises(
+            MalformedTextKeyError,
+            match=r"segment 3 'lable' must name a text type.*label.*filter",
+        ):
             validate_text_key("global.dialog.lable.ok")
 
 

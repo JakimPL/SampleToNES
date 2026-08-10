@@ -30,27 +30,75 @@ class TestBounds(BaseTestSuite):
             verdict = "valid" if self.expected else "invalid"
             return f"{self.field}={self.value}_{verdict}"
 
-    test_cases = [
-        TestCase(field="nes_frequency", value=MIN_NES_FREQUENCY, expected=True),
-        TestCase(field="nes_frequency", value=MAX_NES_FREQUENCY, expected=True),
-        TestCase(field="nes_frequency", value=MIN_NES_FREQUENCY - 1, expected=False),
-        TestCase(field="nes_frequency", value=MAX_NES_FREQUENCY + 1, expected=False),
-        TestCase(field="tempo", value=MIN_TEMPO, expected=True),
-        TestCase(field="tempo", value=MAX_TEMPO, expected=True),
-        TestCase(field="tempo", value=MIN_TEMPO - 1, expected=False),
-        TestCase(field="tempo", value=MAX_TEMPO + 1, expected=False),
-        TestCase(field="speed", value=MIN_SPEED, expected=True),
-        TestCase(field="speed", value=MAX_SPEED, expected=True),
-        TestCase(field="speed", value=MIN_SPEED - 1, expected=False),
-        TestCase(field="speed", value=MAX_SPEED + 1, expected=False),
-    ]
+    test_cases = (
+        TestCase(
+            field="nes_frequency",
+            value=MIN_NES_FREQUENCY,
+            expected=True,
+        ),
+        TestCase(
+            field="nes_frequency",
+            value=MAX_NES_FREQUENCY,
+            expected=True,
+        ),
+        TestCase(
+            field="nes_frequency",
+            value=MIN_NES_FREQUENCY - 1,
+            expected=False,
+        ),
+        TestCase(
+            field="nes_frequency",
+            value=MAX_NES_FREQUENCY + 1,
+            expected=False,
+        ),
+        TestCase(
+            field="tempo",
+            value=MIN_TEMPO,
+            expected=True,
+        ),
+        TestCase(
+            field="tempo",
+            value=MAX_TEMPO,
+            expected=True,
+        ),
+        TestCase(
+            field="tempo",
+            value=MIN_TEMPO - 1,
+            expected=False,
+        ),
+        TestCase(
+            field="tempo",
+            value=MAX_TEMPO + 1,
+            expected=False,
+        ),
+        TestCase(
+            field="speed",
+            value=MIN_SPEED,
+            expected=True,
+        ),
+        TestCase(
+            field="speed",
+            value=MAX_SPEED,
+            expected=True,
+        ),
+        TestCase(
+            field="speed",
+            value=MIN_SPEED - 1,
+            expected=False,
+        ),
+        TestCase(
+            field="speed",
+            value=MAX_SPEED + 1,
+            expected=False,
+        ),
+    )
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_bounds(self, test_case: "TestBounds.TestCase") -> None:
+    def test_bounds(self, test_case: TestCase) -> None:
         kwargs = {test_case.field: test_case.value}
         if test_case.expected:
             settings = ProjectSettings(**kwargs)

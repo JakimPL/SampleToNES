@@ -27,7 +27,12 @@ class TestRemapAfterRemove:
         [
             (3, 0, 4, 2),  # removed before the playhead → one earlier
             (3, 5, 4, 3),  # removed after the playhead → unchanged
-            (3, 3, 4, 3),  # removed the playing frame, more remain → same index (the next frame)
+            (
+                3,
+                3,
+                4,
+                3,
+            ),  # removed the playing frame, more remain → same index (the next frame)
             (3, 3, 3, 2),  # removed the playing last frame → clamps to the new last
             (0, 0, 0, 0),  # removed the only frame → pinned at 0
         ],

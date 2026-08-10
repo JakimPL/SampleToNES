@@ -5,10 +5,10 @@ from .histogram.histogram import Histogram
 from .histogram.interval import Interval
 
 __all__ = [
-    "Interval",
-    "Histogram",
     "BidirectionalHashMap",
-    "IndexedCollection",
-    "IdentifiedCollection",
+    "Histogram",
     "Identifiable",
+    "IdentifiedCollection",
+    "IndexedCollection",
+    "Interval",
 ]

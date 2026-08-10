@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Final
+from typing import Dict, Final, Self
 
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.tags.compose import compose_tag
@@ -26,7 +26,7 @@ class TagName(str):
         panel: Panel,
         widget: Widget,
         element: str,
-    ) -> TagName:
+    ) -> Self:
         panel_str = _PANEL_SHORT_NAMES.get(panel, str(panel))
         parts = [str(page)]
         if panel != Panel.IMPLICIT:
@@ -36,7 +36,7 @@ class TagName(str):
         if element and element != panel_str:
             parts.append(element)
 
-        instance: TagName = super().__new__(cls, compose_tag(*parts))
+        instance: Self = super().__new__(cls, compose_tag(*parts))
         instance.page = page
         instance.panel = panel
         instance.widget = widget

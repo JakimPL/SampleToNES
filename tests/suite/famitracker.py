@@ -3,12 +3,17 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 from sampletones_core.formats.famitracker.specification.blocks import BLOCK_NAME_LENGTH
-from sampletones_core.formats.famitracker.specification.file import FTM_END_MARKER, FTM_MAGIC
+from sampletones_core.formats.famitracker.specification.file import (
+    FTM_END_MARKER,
+    FTM_MAGIC,
+)
 from sampletones_core.formats.famitracker.specification.instruments import (
     DPCM_KEY_ASSIGNMENTS,
     DPCM_KEY_BYTES,
 )
-from sampletones_core.formats.famitracker.specification.sequences import SEQUENCE_COUNT_2A03
+from sampletones_core.formats.famitracker.specification.sequences import (
+    SEQUENCE_COUNT_2A03,
+)
 
 
 class _Cursor:
@@ -28,16 +33,20 @@ class _Cursor:
         self._offset += count
 
     def read_uint8(self) -> int:
-        return struct.unpack("<B", self.read(1))[0]
+        value: int = struct.unpack("<B", self.read(1))[0]
+        return value
 
     def read_int8(self) -> int:
-        return struct.unpack("<b", self.read(1))[0]
+        value: int = struct.unpack("<b", self.read(1))[0]
+        return value
 
     def read_uint32(self) -> int:
-        return struct.unpack("<I", self.read(4))[0]
+        value: int = struct.unpack("<I", self.read(4))[0]
+        return value
 
     def read_int32(self) -> int:
-        return struct.unpack("<i", self.read(4))[0]
+        value: int = struct.unpack("<i", self.read(4))[0]
+        return value
 
     def fixed_string(self, length: int) -> str:
         return self.read(length).rstrip(b"\x00").decode("utf-8")
@@ -50,6 +59,7 @@ class _Cursor:
         start = self._offset
         while self._data[self._offset] != 0:
             self._offset += 1
+
         text = self._data[start : self._offset].decode("utf-8")
         self._offset += 1
         return text
@@ -212,7 +222,12 @@ def _parse_instruments(payload: bytes) -> List[ParsedInstrument]:
         cursor.skip(DPCM_KEY_ASSIGNMENTS * DPCM_KEY_BYTES)
         name = cursor.counted_string()
         instruments.append(
-            ParsedInstrument(index=index, instrument_type=instrument_type, sequence_refs=refs, name=name)
+            ParsedInstrument(
+                index=index,
+                instrument_type=instrument_type,
+                sequence_refs=refs,
+                name=name,
+            )
         )
 
     return instruments
@@ -261,7 +276,10 @@ def _parse_frames(payload: bytes, channel_count: int) -> ParsedFrames:
     )
 
 
-def _parse_patterns(payload: bytes, effect_columns_by_channel: Dict[int, int]) -> List[ParsedPattern]:
+def _parse_patterns(
+    payload: bytes,
+    effect_columns_by_channel: Dict[int, int],
+) -> List[ParsedPattern]:
     cursor = _Cursor(payload)
     patterns: List[ParsedPattern] = []
     while cursor.peek(1):
@@ -287,7 +305,15 @@ def _parse_patterns(payload: bytes, effect_columns_by_channel: Dict[int, int]) -
                     effects=effects,
                 )
             )
-        patterns.append(ParsedPattern(track=track, channel=channel, index=index, rows=rows))
+        patterns.append(
+            ParsedPattern(
+                track=track,
+                channel=channel,
+                index=index,
+                rows=rows,
+            )
+        )
+
     return patterns
 
 
@@ -331,6 +357,4 @@ def parse_ftm(data: bytes) -> ParsedModule:
     )
 
 
-# The FTI parser lives in test_fti.py; SEQUENCE_COUNT_2A03 is re-exported for tests
-# that assert the instrument body shape.
 EXPECTED_SEQUENCE_COUNT = SEQUENCE_COUNT_2A03

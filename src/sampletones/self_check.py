@@ -1,11 +1,12 @@
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Final, Tuple, Type
+from typing import TYPE_CHECKING, Callable, Final, List, Tuple, Type
 
 from sampletones_shared.exceptions import SampleToNESError
 
 if TYPE_CHECKING:
-    from sampletones_application.utils.palette import Palette
+    from sampletones_application.utils.palette.catalog import PaletteCatalog
+    from sampletones_application.utils.palette.source import PaletteSource
 
 CHECK_FAILURES: Final[Tuple[Type[Exception], ...]] = (
     ImportError,
@@ -13,6 +14,7 @@ CHECK_FAILURES: Final[Tuple[Type[Exception], ...]] = (
     KeyError,
     TypeError,
     ValueError,
+    SystemError,
     SampleToNESError,
 )
 
@@ -36,11 +38,11 @@ class SelfCheck:
     run: Callable[[], str]
 
 
-def _load_palette() -> "Palette":
-    from sampletones_application.paths import PALETTE_PATH
-    from sampletones_application.utils.palette import Palette
+def _load_palette_catalog() -> "PaletteCatalog":
+    from sampletones_application.paths import PALETTES_DIRECTORY
+    from sampletones_application.utils.palette.catalog import PaletteCatalog
 
-    return Palette.load(PALETTE_PATH)
+    return PaletteCatalog.load(PALETTES_DIRECTORY)
 
 
 def _check_application_import() -> str:
@@ -63,25 +65,44 @@ def _check_deployment_config() -> str:
     return f"log_level={deployment.log_level}, strict_history={deployment.strict_history}"
 
 
-def _check_palette() -> str:
-    palette = _load_palette()
-    return f"{palette.name}, {len(palette.colors)} colors"
+def _check_palettes() -> str:
+    catalog = _load_palette_catalog()
+    return f"{', '.join(catalog.names)}, {len(catalog.default.colors)} colors each"
+
+
+def _palette_sources() -> "List[PaletteSource]":
+    from sampletones_application.utils.palette.source import PaletteSource
+
+    return [PaletteSource(palette) for palette in _load_palette_catalog().palettes.values()]
+
+
+def _check_keybindings() -> str:
+    """Loads every shipped scheme, which is where an unanswered action or a clashing key surfaces."""
+    from sampletones_application.paths import KEYBINDINGS_DIRECTORY
+    from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
+
+    catalog = ShortcutCatalog.load(KEYBINDINGS_DIRECTORY)
+    return f"{', '.join(catalog.names)}, {len(catalog.default.bindings)} actions each"
 
 
 def _check_layout_config() -> str:
+    """Resolves the layout against every shipped palette, since each answers the colour tokens itself."""
     from sampletones_application.layout import LayoutConfig, load_layout_config
     from sampletones_application.paths import BEHAVIOR_DIRECTORY, LAYOUT_DIRECTORY
 
-    load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, _load_palette())
+    for source in _palette_sources():
+        load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source)
+
     return f"{len(LayoutConfig.model_fields)} sections"
 
 
 def _check_themes() -> str:
+    """Resolves the theme set against every shipped palette, since each answers the colour tokens itself."""
     from sampletones_application.paths import THEME_DIRECTORY
     from sampletones_application.ui.themes.loader import ThemeLoader
 
-    themes = ThemeLoader(THEME_DIRECTORY, _load_palette()).load_all()
-    return f"{len(themes)} themes"
+    themes = [ThemeLoader(THEME_DIRECTORY, source).load_all() for source in _palette_sources()]
+    return f"{len(themes[0])} themes"
 
 
 def _check_language() -> str:
@@ -114,7 +135,8 @@ def _check_file_dialog_backend() -> str:
 CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="application import", run=_check_application_import),
     SelfCheck(name="deployment config", run=_check_deployment_config),
-    SelfCheck(name="palette", run=_check_palette),
+    SelfCheck(name="palettes", run=_check_palettes),
+    SelfCheck(name="keybindings", run=_check_keybindings),
     SelfCheck(name="layout config", run=_check_layout_config),
     SelfCheck(name="themes", run=_check_themes),
     SelfCheck(name="language", run=_check_language),

@@ -5,7 +5,9 @@ import pytest
 
 from sampletones_application.layout.general.collapse import CollapseLayout
 from sampletones_application.layout.general.section_header import SectionHeaderLayout
-from sampletones_application.layout.glyphs import CommonGlyphs, GlyphLayout, Glyphs
+from sampletones_application.layout.glyphs.common import CommonGlyphs
+from sampletones_application.layout.glyphs.glyph import GlyphLayout
+from sampletones_application.layout.glyphs.glyphs import Glyphs
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_COLLAPSE_HEADER,
     TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED,
@@ -88,16 +90,21 @@ def _controller(
 
 def _build_card(controller: CollapseController) -> None:
     """Mirrors the item subtree ``_collapsible_section`` builds, without fonts or the header theme."""
-    with dpg.window():
-        with dpg.child_window(tag=controller.card_tag, height=_EXPANDED_HEIGHT):
-            with dpg.child_window(tag=controller.strip_tag, height=_HEADER_BAR_HEIGHT, border=False):
-                dpg.add_text(controller.chevron_glyph, tag=controller.chevron_tag)
-            if controller.is_horizontal:
-                with dpg.child_window(tag=controller.rail_tag, width=_RAIL_WIDTH, show=False):
-                    dpg.add_text(".")
-            controller.attach()
-            with dpg.group(tag=controller.body_tag):
-                dpg.add_text("body")
+    with (
+        dpg.window(),
+        dpg.child_window(tag=controller.card_tag, height=_EXPANDED_HEIGHT),
+    ):
+        with dpg.child_window(tag=controller.strip_tag, height=_HEADER_BAR_HEIGHT, border=False):
+            dpg.add_text(controller.chevron_glyph, tag=controller.chevron_tag)
+
+        if controller.is_horizontal:
+            with dpg.child_window(tag=controller.rail_tag, width=_RAIL_WIDTH, show=False):
+                dpg.add_text(".")
+
+        controller.attach()
+        with dpg.group(tag=controller.body_tag):
+            dpg.add_text("body")
+
     controller.set_collapsed(controller.collapsed, notify=False)
 
 
@@ -184,7 +191,8 @@ class TestFillVerticalCollapse:
     """A fill card fills its owner's reserved footprint while expanded and pins to its header bar while
     collapsed: collapsing hides the body and shrinks the card to the strip plus its padding, and expanding
     restores the fill sentinel height (0) so the card fills the reservation again. Pinning makes the
-    collapsed size intrinsic, so the bar holds even when the owner is no longer reserving its footprint."""
+    collapsed size intrinsic, so the bar holds even when the owner is no longer reserving its footprint.
+    """
 
     def test_collapsing_hides_the_body_and_pins_the_card_to_the_strip(
         self, dpg_context: None, rendered_strip_padding: None
@@ -215,7 +223,8 @@ class TestFillVerticalCollapse:
 
 class TestHorizontalCollapse:
     """A horizontal card leaves its own width to the coordinator: collapsing hides the body and the
-    strip and reveals the rail, and the toggle is announced so the coordinator can reclaim the column."""
+    strip and reveals the rail, and the toggle is announced so the coordinator can reclaim the column.
+    """
 
     def test_collapsing_swaps_the_strip_for_the_rail(self, dpg_context: None) -> None:
         controller = _controller(CollapseAxis.HORIZONTAL_LEFT)
@@ -252,7 +261,9 @@ class TestHorizontalCollapse:
 
         assert announced == [(_CARD_TAG, True), (_CARD_TAG, False)]
 
-    def test_strip_chevron_points_at_the_dock_edge_and_the_rail_chevron_points_away(self) -> None:
+    def test_strip_chevron_points_at_the_dock_edge_and_the_rail_chevron_points_away(
+        self,
+    ) -> None:
         """The strip (shown while expanded) points at the dock edge; the rail (shown while collapsed) the other way.
 
         Each affordance shows in only one state, so neither flips: clicking the strip collapses the card toward
@@ -293,8 +304,15 @@ def section_panel(dpg_context: None, monkeypatch: pytest.MonkeyPatch) -> _RailPa
     monkeypatch.setattr(dpg, "get_text_size", lambda text, font=0: None)
     GUIPanel.configure_section_header(
         _glyphs(),
-        SectionHeaderLayout(glyph=GlyphLayout(indent=0, width=_RAIL_WIDTH, top_offset=0), chevron_offset=8),
-        CollapseLayout(header_bar_height=_HEADER_BAR_HEIGHT, rail_width=_RAIL_WIDTH, rail_title_gap=6),
+        SectionHeaderLayout(
+            glyph=GlyphLayout(indent=0, width=_RAIL_WIDTH, top_offset=0),
+            chevron_offset=8,
+        ),
+        CollapseLayout(
+            header_bar_height=_HEADER_BAR_HEIGHT,
+            rail_width=_RAIL_WIDTH,
+            rail_title_gap=6,
+        ),
     )
     panel = _RailPanel(tag=_CARD_TAG)
     panel._enable_horizontal_collapse(initial_collapsed=True, side=CollapseAxis.HORIZONTAL_LEFT)
@@ -303,7 +321,8 @@ def section_panel(dpg_context: None, monkeypatch: pytest.MonkeyPatch) -> _RailPa
 
 class TestHorizontalRailTitle:
     """A docked card's rail names itself: it stacks the card title one uppercased character per line,
-    matching the header's treatment, so a collapsed column still reads as what it holds."""
+    matching the header's treatment, so a collapsed column still reads as what it holds.
+    """
 
     def test_rail_stacks_the_uppercased_title_one_character_per_line(self, section_panel: _RailPanel) -> None:
         with dpg.window():

@@ -51,10 +51,18 @@ repos:
 
       - id: tag-names
         name: tag names
-        entry: uv run scripts/checks/tag_names.py
+        entry: uv run scripts/checks/tag_names.py --all
         language: system
         types: [python]
-        files: ^src/sampletones_application/tags/
+        pass_filenames: false
+        verbose: true
+
+      - id: palette-colors
+        name: palette colors
+        entry: uv run scripts/checks/palette_colors.py
+        language: system
+        files: (^src/sampletones_application/.*\.py|^src/sampletones_config/.*\.yaml)$
+        pass_filenames: false
         verbose: true
 
       - id: language-keys

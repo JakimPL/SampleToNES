@@ -31,7 +31,7 @@ class CurrentDevice(BaseModel):
 
 class AudioDevice(BaseModel):
     """
-    Model representing a sounddevice audio device.
+    Model representing an audio device available for output selection.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)

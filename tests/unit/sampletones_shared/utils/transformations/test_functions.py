@@ -23,10 +23,9 @@ from tests.suite.errors import expect_error, expect_warning
 class TestIdentity(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        expected: Any
         value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=True,
             expected=True,
@@ -122,7 +121,7 @@ class TestIdentity(BaseTestSuite):
             expected=xp.array([4, 5, 6]),
             label="xp_array_int",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -137,10 +136,9 @@ class TestIdentity(BaseTestSuite):
 class TestEnergy(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        expected: Any
         value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=True,
             expected=np.int8(1),
@@ -241,7 +239,7 @@ class TestEnergy(BaseTestSuite):
             expected=xp.array([6.25, 9.0, 17.64]),
             label="xp_array_float",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -256,10 +254,9 @@ class TestEnergy(BaseTestSuite):
 class TestExp(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        expected: Any
         value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=True,
             expected=np.float16(np.e),
@@ -365,7 +362,7 @@ class TestExp(BaseTestSuite):
             expected=xp.array([np.e**1.5, np.e**2.7, np.e**3.1]),
             label="xp_array_float",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -380,12 +377,11 @@ class TestExp(BaseTestSuite):
 class TestPower(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        expected: Any
         value: Any
         a: float
         expected_warning: Any = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=True,
             a=2.0,
@@ -609,7 +605,7 @@ class TestPower(BaseTestSuite):
             expected=xp.array([2.2**0.7, 4.5**0.7, 8.1**0.7]),
             label="xp_array_float",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -617,19 +613,23 @@ class TestPower(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_power(self, test_case: TestCase) -> None:
-        result = expect_warning(power, test_case.expected_warning, test_case.value, test_case.a)
+        result = expect_warning(
+            power,
+            test_case.expected_warning,
+            test_case.value,
+            test_case.a,
+        )
         assert_array_equal(result, test_case.expected)
 
 
 class TestPowerInverse(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        expected: Any
         value: Any
         a: float
         expected_warning: Optional[Any] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=True,
             a=2.0,
@@ -826,7 +826,7 @@ class TestPowerInverse(BaseTestSuite):
             expected=xp.array([16.5 ** (1 / 1.9), 81.2 ** (1 / 1.9), 256.8 ** (1 / 1.9)]),
             label="xp_array_float",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -834,7 +834,12 @@ class TestPowerInverse(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_power_inverse(self, test_case: TestCase) -> None:
-        if expect_error(power_inverse, test_case.expected, test_case.value, test_case.a):
+        if expect_error(
+            power_inverse,
+            test_case.expected,
+            test_case.value,
+            test_case.a,
+        ):
             return
 
         result = expect_warning(

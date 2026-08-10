@@ -44,7 +44,7 @@ ARPEGGIO_MAX: Final[int] = 127
 
 MIN_VOLUME: Final[int] = 1
 MAX_VOLUME: Final[int] = 15
-VOLUME_RANGE: Final[range] = range(0, MAX_VOLUME + 1)
+VOLUME_RANGE: Final[range] = range(MAX_VOLUME + 1)
 MAX_DUTY_CYCLE: Final[int] = 3
 
 # Channel-specific constants

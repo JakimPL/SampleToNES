@@ -1,4 +1,7 @@
-from sampletones_application.logic.project.title.compose import join_segments, window_title
+from sampletones_application.logic.project.title.compose import (
+    join_segments,
+    window_title,
+)
 from sampletones_shared.constants.symbols import TITLE_SEPARATOR
 
 

@@ -6,11 +6,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from sampletones_application.utils.file_dialogs.backends.kdialog import KDialogBackend
-from sampletones_application.utils.file_dialogs.backends.portal.backend import PortalBackend
-from sampletones_application.utils.file_dialogs.backends.portal.client import FileChooserClient
+from sampletones_application.utils.file_dialogs.backends.portal.backend import (
+    PortalBackend,
+)
+from sampletones_application.utils.file_dialogs.backends.portal.client import (
+    FileChooserClient,
+)
 from sampletones_application.utils.file_dialogs.backends.tkinter import TkinterBackend
 from sampletones_application.utils.file_dialogs.backends.zenity import ZenityBackend
-from sampletones_application.utils.file_dialogs.selection import select_file_dialog_backend
+from sampletones_application.utils.file_dialogs.selection import (
+    select_file_dialog_backend,
+)
 from sampletones_shared.exceptions import FileDialogUnavailableError
 from sampletones_shared.utils.system.system import System
 
@@ -89,7 +95,10 @@ class TestSelectFileDialogBackend:
     def test_no_linux_tools_uses_tkinter(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
-            patch(f"{MODULE}.shutil.which", side_effect=_which(kdialog=False, zenity=False)),
+            patch(
+                f"{MODULE}.shutil.which",
+                side_effect=_which(kdialog=False, zenity=False),
+            ),
             _portal(None),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=False),
         ):
@@ -99,7 +108,10 @@ class TestSelectFileDialogBackend:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
             patch(f"{MODULE}.shutil.which", side_effect=_which(kdialog=True, zenity=True)),
-            patch(f"{MODULE}.importlib.util.find_spec", side_effect=_find_spec(available=False)),
+            patch(
+                f"{MODULE}.importlib.util.find_spec",
+                side_effect=_find_spec(available=False),
+            ),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE"}, clear=False),
         ):
             assert isinstance(select_file_dialog_backend(), KDialogBackend)
@@ -107,8 +119,14 @@ class TestSelectFileDialogBackend:
     def test_no_linux_tools_without_tkinter_raises(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
-            patch(f"{MODULE}.shutil.which", side_effect=_which(kdialog=False, zenity=False)),
-            patch(f"{MODULE}.importlib.util.find_spec", side_effect=_find_spec(available=False)),
+            patch(
+                f"{MODULE}.shutil.which",
+                side_effect=_which(kdialog=False, zenity=False),
+            ),
+            patch(
+                f"{MODULE}.importlib.util.find_spec",
+                side_effect=_find_spec(available=False),
+            ),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=False),
             pytest.raises(FileDialogUnavailableError),
         ):
@@ -117,7 +135,10 @@ class TestSelectFileDialogBackend:
     def test_windows_without_tkinter_raises(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.WINDOWS),
-            patch(f"{MODULE}.importlib.util.find_spec", side_effect=_find_spec(available=False)),
+            patch(
+                f"{MODULE}.importlib.util.find_spec",
+                side_effect=_find_spec(available=False),
+            ),
             pytest.raises(FileDialogUnavailableError),
         ):
             select_file_dialog_backend()

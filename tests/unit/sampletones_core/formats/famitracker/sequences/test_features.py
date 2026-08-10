@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 
-from sampletones_core.formats.famitracker.sequences.features import features_to_instrument_sequences
+from sampletones_core.formats.famitracker.sequences.features import (
+    features_to_instrument_sequences,
+)
 from sampletones_core.formats.famitracker.specification.sequences import (
     LOOP_FROM_START,
     MAX_SEQUENCE_ITEMS,

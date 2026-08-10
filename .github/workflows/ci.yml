@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
@@ -61,6 +61,12 @@ jobs:
       - name: Install system libraries (Linux)
         if: runner.os == 'Linux'
         run: bash scripts/linux/build/dependencies.sh
+
+      - name: Install system libraries (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          bash scripts/macos/build/dependencies.sh
+          bash scripts/macos/build/build_env.sh >> "$GITHUB_ENV"
 
       - name: Install the development environment
         run: uv sync --group dev
