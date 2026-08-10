@@ -10,6 +10,7 @@ from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
+from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
@@ -112,7 +113,11 @@ def app(tmp_path: Path) -> Generator[Any, Application, Any]:
 
 
 class TestKeybindingPreferences:
-    """The application runs on the keys the session stores, which is what makes a rebind stick."""
+    """The application runs on the keys the session stores, which is what makes a rebind stick.
+
+    The session names the scheme it runs under, so a case reads the same keys on whichever platform
+    the suite runs; a Mac opens a fresh profile on Command.
+    """
 
     @pytest.fixture
     def application(self, tmp_path: Path) -> Generator[Any, Application, Any]:
@@ -122,6 +127,14 @@ class TestKeybindingPreferences:
                 for display_patch in _display_patches():
                     stack.enter_context(display_patch)
 
+                stack.enter_context(
+                    patch.object(
+                        SessionManager,
+                        "shortcut_scheme_name",
+                        new_callable=PropertyMock,
+                        return_value=DEFAULT_SCHEME_NAME,
+                    )
+                )
                 stack.enter_context(
                     patch.object(
                         SessionManager,

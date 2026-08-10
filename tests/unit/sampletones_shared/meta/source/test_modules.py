@@ -1,4 +1,5 @@
 import ast
+import re
 from pathlib import Path
 from typing import Final
 
@@ -119,7 +120,9 @@ class TestSweptRoots:
             source_paths([tmp_path])
 
     def test_the_report_names_the_root_it_read_nothing_under(self, tmp_path: Path) -> None:
-        with pytest.raises(FileNotFoundError, match=str(tmp_path)):
+        """A Windows root spells separators and drive letters a regex reads as escapes, so the path
+        is quoted before it is matched."""
+        with pytest.raises(FileNotFoundError, match=re.escape(str(tmp_path))):
             source_paths([tmp_path])
 
 
