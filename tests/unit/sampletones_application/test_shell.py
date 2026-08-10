@@ -1,8 +1,15 @@
 from dataclasses import fields
 from unittest.mock import Mock
 
+import pytest
+
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.ids import (
+    FOLLOW_MODE_SHORTCUT_IDS,
+    ShortcutCategory,
+    ShortcutId,
+)
 
 APPLICATION_ACTIONS = frozenset(
     shortcut_id for shortcut_id in ShortcutId if shortcut_id.category is ShortcutCategory.APPLICATION
@@ -32,3 +39,11 @@ class TestShortcutCallbacks:
         ApplicationShell._shortcut_callbacks(bindings)[ShortcutId.TOGGLE_CHANNEL_NOISE]()
 
         bindings.toggle_channel.assert_called_once()
+
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_a_follow_action_carries_the_reach_it_chooses(self, mode: FollowMode) -> None:
+        bindings = _bindings()
+
+        ApplicationShell._shortcut_callbacks(bindings)[FOLLOW_MODE_SHORTCUT_IDS[mode]]()
+
+        bindings.set_follow_mode.assert_called_once_with(mode)

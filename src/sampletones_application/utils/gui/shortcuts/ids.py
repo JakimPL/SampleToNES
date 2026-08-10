@@ -1,6 +1,7 @@
 from enum import Enum, StrEnum
 from typing import Dict, Final, Self, Tuple
 
+from sampletones_application.constants.playback import FollowMode
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.trackers.format import TrackerFormat
 
@@ -69,7 +70,9 @@ class ShortcutId(Enum):
     PLAY_FROM_FRAME = ("PlayFromFrame", ShortcutCategory.APPLICATION)
     STOP = ("Stop", ShortcutCategory.APPLICATION)
     TOGGLE_AUTOPLAY = ("ToggleAutoplay", ShortcutCategory.APPLICATION)
-    TOGGLE_FOLLOW_PLAYBACK = ("ToggleFollowPlayback", ShortcutCategory.APPLICATION)
+    FOLLOW_ROWS = ("FollowRows", ShortcutCategory.APPLICATION)
+    FOLLOW_PATTERNS = ("FollowPatterns", ShortcutCategory.APPLICATION)
+    FOLLOW_OFF = ("FollowOff", ShortcutCategory.APPLICATION)
     TOGGLE_LOOP_SONG = ("ToggleLoopSong", ShortcutCategory.APPLICATION)
     TOGGLE_CHANNEL_PULSE_1 = ("ToggleChannelPulse1", ShortcutCategory.APPLICATION)
     TOGGLE_CHANNEL_PULSE_2 = ("ToggleChannelPulse2", ShortcutCategory.APPLICATION)
@@ -138,6 +141,12 @@ SHORTCUT_IDS_BY_NAME: Final[Dict[str, ShortcutId]] = {shortcut_id.value: shortcu
 EDITABLE_SHORTCUT_CATEGORIES: Final[Tuple[ShortcutCategory, ...]] = tuple(
     category for category in ShortcutCategory if category is not ShortcutCategory.DIALOG
 )
+
+FOLLOW_MODE_SHORTCUT_IDS: Final[Dict[FollowMode, ShortcutId]] = {
+    FollowMode.ROWS: ShortcutId.FOLLOW_ROWS,
+    FollowMode.PATTERNS: ShortcutId.FOLLOW_PATTERNS,
+    FollowMode.OFF: ShortcutId.FOLLOW_OFF,
+}
 
 CHANNEL_SHORTCUT_IDS: Final[Dict[GeneratorName, ShortcutId]] = {
     GeneratorName.PULSE1: ShortcutId.TOGGLE_CHANNEL_PULSE_1,

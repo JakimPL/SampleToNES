@@ -38,8 +38,10 @@ bindings:
   PlayFromFrame: {combination: "Ctrl+Space"}
   Stop: {combination: "Esc"}
   ToggleAutoplay: {combination: "Ctrl+P"}
-  ToggleFollowPlayback: {combination: ~}
-  ToggleLoopSong: {combination: ~}
+  FollowRows: {combination: "Ctrl+F"}
+  FollowPatterns: {combination: "Ctrl+Shift+F"}
+  FollowOff: {combination: "Ctrl+Alt+F"}
+  ToggleLoopSong: {combination: "Ctrl+L"}
   ToggleChannelPulse1: {combination: "F1"}
   ToggleChannelPulse2: {combination: "F2"}
   ToggleChannelTriangle: {combination: "F3"}

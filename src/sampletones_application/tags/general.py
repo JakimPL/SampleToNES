@@ -572,11 +572,11 @@ TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY = TagName(
     Widget.MENU,
     "item_playback_autoplay",
 )
-TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK = TagName(
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.MENU,
-    "item_playback_follow_playback",
+    "item_playback_follow",
 )
 TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG = TagName(
     Page.GLOBAL,

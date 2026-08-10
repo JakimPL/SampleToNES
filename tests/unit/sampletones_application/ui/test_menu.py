@@ -14,6 +14,7 @@ from sampletones_application.ui import menu as menu_module
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
+    FOLLOW_MODE_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
     ShortcutId,
 )
@@ -25,6 +26,11 @@ from sampletones_core.constants.enums import GeneratorName
 
 CHANNEL_NAMES = ["Pulse 1", "Pulse 2", "Triangle", "Noise"]
 UNMUTE_ALL = "Unmute all channels"
+FOLLOW_MODE_NAMES = {
+    FollowMode.ROWS: "Follow rows",
+    FollowMode.PATTERNS: "Follow patterns",
+    FollowMode.OFF: "Don't follow",
+}
 
 
 class _ShortcutManagerRecorder:
@@ -74,6 +80,7 @@ def _state(
     muted: FrozenSet[GeneratorName],
     *,
     reconstruction_loaded: bool = False,
+    follow_mode: FollowMode = FollowMode.OFF,
 ) -> MenuBarViewModel:
     return MenuBarViewModel(
         project_open=True,
@@ -92,7 +99,7 @@ def _state(
         player_paused=False,
         stop_enabled=False,
         autoplay=False,
-        follow_mode=FollowMode.OFF,
+        follow_mode=follow_mode,
         loop_song=False,
         channels=SequencerChannelsViewModel(muted=muted),
         fullscreen=False,
@@ -172,6 +179,70 @@ class TestInstrumentsExportMenu:
         menu_bar._create_reconstruction_menu(_state(frozenset(), reconstruction_loaded=True))
 
         assert framework.submenu(TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS)["enabled"] is True
+
+
+class TestFollowMenuItems:
+    """The three reaches stand as one choice, so the check names the reach in place."""
+
+    def test_every_reach_is_offered(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_follow_menu(_state(frozenset()))
+
+        assert shortcuts.labels == list(FOLLOW_MODE_NAMES.values())
+
+    def test_each_reach_carries_its_own_action(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_follow_menu(_state(frozenset()))
+
+        actions = [item["shortcut_id"] for item in shortcuts.items]
+        assert actions == list(FOLLOW_MODE_SHORTCUT_IDS.values())
+
+    def test_each_reach_carries_its_own_tag(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_follow_menu(_state(frozenset()))
+
+        tags = [item["tag"] for item in shortcuts.items]
+        assert tags == [MenuBar._follow_menu_item_tag(mode) for mode in FOLLOW_MODE_SHORTCUT_IDS]
+
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_reach_in_place_is_the_one_checked(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+        mode: FollowMode,
+    ) -> None:
+        menu_bar._create_follow_menu(_state(frozenset(), follow_mode=mode))
+
+        checked = [item["label"] for item in shortcuts.items if item["default_value"]]
+        assert checked == [FOLLOW_MODE_NAMES[mode]]
+
+
+class TestFollowMenuUpdate:
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_check_moves_to_the_reach_in_place(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+        mode: FollowMode,
+    ) -> None:
+        menu_bar._update_follow_mode(_state(frozenset(), follow_mode=mode))
+
+        assert framework.values == {
+            MenuBar._follow_menu_item_tag(candidate): candidate is mode for candidate in FollowMode
+        }
 
 
 class TestChannelsMenuItems:

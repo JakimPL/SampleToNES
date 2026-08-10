@@ -8,8 +8,11 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.tabs.instructions import (
+    InstructionsTabCoordinator,
+)
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
@@ -37,6 +40,7 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
+    FOLLOW_MODE_SHORTCUT_IDS,
     PROJECT_EXPORT_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
     ShortcutId,
@@ -89,7 +93,7 @@ class ShortcutBindings:
     play_from_frame: Callback
     stop: Callback
     toggle_autoplay: Callback
-    toggle_follow_playback: Callback
+    set_follow_mode: Callable[[FollowMode], None]
     toggle_loop_song: Callback
     toggle_channel: Callable[[GeneratorName], None]
     unmute_all_channels: Callback
@@ -233,7 +237,6 @@ class ApplicationShell:
             ShortcutId.PLAY_FROM_FRAME: bindings.play_from_frame,
             ShortcutId.STOP: bindings.stop,
             ShortcutId.TOGGLE_AUTOPLAY: bindings.toggle_autoplay,
-            ShortcutId.TOGGLE_FOLLOW_PLAYBACK: bindings.toggle_follow_playback,
             ShortcutId.TOGGLE_LOOP_SONG: bindings.toggle_loop_song,
             ShortcutId.AUDIO_SETTINGS: bindings.audio_settings,
             ShortcutId.DISPLAY_SETTINGS: bindings.display_settings,
@@ -244,11 +247,14 @@ class ApplicationShell:
             ShortcutId.NEXT_TAB: bindings.next_tab,
             ShortcutId.PREVIOUS_TAB: bindings.previous_tab,
             **ApplicationShell._export_callbacks(bindings),
+            **ApplicationShell._follow_mode_callbacks(bindings),
             **ApplicationShell._channel_callbacks(bindings),
         }
 
     @staticmethod
-    def _export_callbacks(bindings: ShortcutBindings) -> Dict[ShortcutId, Callback]:
+    def _export_callbacks(
+        bindings: ShortcutBindings,
+    ) -> Dict[ShortcutId, Callback]:
         """One export action per tracker format, the entries the Export submenus list.
 
         Each action carries the format it writes, so a menu entry and its key combination reach
@@ -263,6 +269,20 @@ class ApplicationShell:
             for tracker_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items()
         }
         return {**project, **instruments}
+
+    @staticmethod
+    def _follow_mode_callbacks(
+        bindings: ShortcutBindings,
+    ) -> Dict[ShortcutId, Callback]:
+        """One action per reach the sequencer view follows the playhead at.
+
+        Each action carries the mode it chooses, so a key press and the Follow playback submenu
+        item beside it settle on the same reach.
+        """
+        return {
+            shortcut_id: partial(bindings.set_follow_mode, mode)
+            for mode, shortcut_id in FOLLOW_MODE_SHORTCUT_IDS.items()
+        }
 
     @staticmethod
     def _channel_callbacks(bindings: ShortcutBindings) -> Dict[ShortcutId, Callback]:
