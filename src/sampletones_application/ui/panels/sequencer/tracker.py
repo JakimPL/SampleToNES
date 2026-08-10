@@ -106,6 +106,7 @@ OnChannelSoloedCallback = Callable[[GeneratorName], None]
 
 VOLUME_FINE_STEP: Final[int] = 1
 VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
+PLAYHEAD_PAINT_FRAMES: Final[int] = 1
 
 
 class GUISequencerTrackerPanel(GUIPanel):
@@ -142,6 +143,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
         self._playing_row: Optional[int] = None
+        self._painted_row: Optional[int] = None
         self._follows_playing_row: bool = False
         self._input_state: TrackerInputState = TrackerInputState()
         self._subcolumn_themes: Dict[SubColumn, int] = {}
@@ -453,7 +455,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._layout.colors,
             RowCues(
                 cursor=cursor.row if cursor is not None else None,
-                playing=self._playing_row,
+                playing=self._painted_row,
             ),
         )
 
@@ -1308,21 +1310,68 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         The frame's rows all live in one scrolling table, so a row outside the band is reached by
         setting the scroll from that row's position within the frame: the first row rests at the
-        top of the band, the last at the bottom, and the rows between drift across it. Both the
-        edit cursor and the playhead are placed by this one rule.
+        top of the band, the last at the bottom, and the rows between drift across it. This is how
+        a jump of the edit cursor lands.
         """
-        if self._current_row_count <= 1:
-            return
-
-        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
-            return
-
-        scroll_max = dpg.get_y_scroll_max(TAG_SEQUENCER_TRACKER_TABLE)
-        if scroll_max <= 0:
+        scroll_max = self._scroll_extent()
+        if scroll_max is None:
             return
 
         fraction = row_index / (self._current_row_count - 1)
         dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, fraction * scroll_max)
+
+    def _scroll_row_to_band_top(self, row_index: int) -> None:
+        """Scrolls the tracker so the given row heads the visible band.
+
+        A playhead read from one place is a playhead that stays easy to read, so the sounding row
+        is carried to the top of the band by the height of the rows above it, and the rows it is
+        about to reach fill the band beneath it. The rows closing a frame have nothing behind them
+        left to scroll into place: there the grid rests at its end and the playhead walks down the
+        band to meet it.
+        """
+        scroll_max = self._scroll_extent()
+        offset = self._row_offset(row_index)
+        if scroll_max is None or offset is None:
+            return
+
+        dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, min(offset, scroll_max))
+
+    def _scroll_extent(self) -> Optional[float]:
+        """How far the grid scrolls, once there is a built table with a frame too tall to fit it."""
+        if self._current_row_count <= 1:
+            return None
+
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
+            return None
+
+        scroll_max = dpg.get_y_scroll_max(TAG_SEQUENCER_TRACKER_TABLE)
+        return scroll_max if scroll_max > 0 else None
+
+    def _row_offset(self, row_index: int) -> Optional[float]:
+        """How far down the frame a row stands, measured from the first row to it.
+
+        The rows report where they were last drawn, so the distance between two of them is the
+        scroll that brings the lower one to where the upper one stands, and the distance from the
+        first row is the scroll that carries a row to the head of the band. Reading it off the rows
+        holds whatever height they take and however tall the header above them stands. A grid
+        awaiting its first layout measures nothing, and its rows are placed by the report that
+        follows.
+        """
+        first = self._row_top(0)
+        row = self._row_top(row_index)
+        if first is None or row is None:
+            return None
+
+        return row - first
+
+    def _row_top(self, row_index: int) -> Optional[float]:
+        """Where a pattern row's top edge stands, in the coordinates the viewport is drawn in."""
+        row = self._rows.get(row_index)
+        if row is None or not dpg.does_item_exist(row):
+            return None
+
+        _, top = dpg.get_item_rect_min(row)
+        return float(top)
 
     def _clear_row(self) -> None:
         state, clear_action = self._input_state.clear()
@@ -1409,23 +1458,31 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._follows_playing_row = following
 
     def set_playing_row(self, row_index: Optional[int]) -> None:
-        """Moves the playhead mark, drawing both the row it left and the row it reached.
+        """Moves the playhead to the row playback reached, mark and grid arriving together.
 
-        While the grid follows the playhead, the row it reached is also scrolled into view.
+        A row's mark is drawn on the very next frame while the grid answers a scroll on the frame
+        after that, so a mark drawn as the row is reported stands a row clear of the band's head
+        until the grid catches up — a step down and back on every row. Holding the mark until the
+        frame its scroll lands on carries the two as one.
         """
-        previous = self._playing_row
         self._playing_row = row_index
-        if previous is not None and previous != row_index:
+        self._reveal_playing_row()
+        FrameCallbackManager.set_frame_callback(self._paint_playhead, PLAYHEAD_PAINT_FRAMES)
+
+    def _paint_playhead(self) -> None:
+        """Draws the mark on the row the playhead has reached, clearing the row it came from."""
+        previous = self._painted_row
+        self._painted_row = self._playing_row
+        if previous is not None and previous != self._painted_row:
             self._paint_row(previous)
 
-        if row_index is not None:
-            self._paint_row(row_index)
-            self._reveal_playing_row()
+        if self._painted_row is not None:
+            self._paint_row(self._painted_row)
 
     def _reveal_playing_row(self) -> None:
-        """Scrolls the sounding row into view while the grid follows the playhead."""
+        """Carries the sounding row to the head of the band while the grid follows the playhead."""
         if self._follows_playing_row and self._playing_row is not None:
-            self._scroll_row_into_view(self._playing_row)
+            self._scroll_row_to_band_top(self._playing_row)
 
     def _live_row_count(self) -> int:
         """The table's current pattern-row count, read live from DearPyGui.
