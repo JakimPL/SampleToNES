@@ -37,6 +37,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.exceptions import InvalidReconstructionValuesError
 from tests.suite.language import FakeLanguageManager
 
@@ -233,6 +234,14 @@ class TestRequestNesFrequencyChange:
         nes_frequency_coordinator._sequencer_tracker_logic.push_settings.assert_called_once()
 
 
+SOUNDING_ROW: Final[int] = 7
+
+
+def _playhead(frame_index: int, row_index: int) -> SongPosition:
+    """The playhead standing on a row of an order frame."""
+    return SongPosition(order_position=frame_index, row_index=row_index)
+
+
 def _player_view(*, follow_mode: FollowMode) -> SongPlayerViewModel:
     """A stopped transport view, which is what the coordinator reads the follow behaviour from."""
     return SongPlayerViewModel(
@@ -254,6 +263,7 @@ def playback_coordinator() -> SequencerTabCoordinator:
     instance._sequencer_tracker_logic = MagicMock()
     instance._sequencer_tracker_panel = MagicMock()
     instance._sequencer_order_panel = MagicMock()
+    instance._playing_position = None
     return instance
 
 
@@ -269,7 +279,8 @@ class TestFollowMode:
 
         playback_coordinator._on_player_position_changed(2, 5)
 
-        playback_coordinator._sequencer_tracker_panel.set_playing_row.assert_called_once_with(5)
+        panel = playback_coordinator._sequencer_tracker_panel
+        panel.set_playing_position.assert_called_once_with(_playhead(2, 5))
         playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(2)
         assert playback_coordinator._sequencer_tracker_logic.select_frame.called is mode.follows_pattern
 
@@ -286,7 +297,7 @@ class TestFollowMode:
         playback_coordinator._on_player_position_changed(2, 5)
 
         names = [name for name, _, _ in recorder.mock_calls]
-        assert names.index("logic.select_frame") < names.index("panel.set_playing_row")
+        assert names.index("logic.select_frame") < names.index("panel.set_playing_position")
 
     @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
     def test_the_view_states_whether_the_grid_follows_the_row(
@@ -305,7 +316,7 @@ class TestFollowMode:
     ) -> None:
         playback_coordinator._on_player_view_changed(_player_view(follow_mode=FollowMode.ROWS))
 
-        playback_coordinator._sequencer_tracker_panel.set_playing_row.assert_called_once_with(None)
+        playback_coordinator._sequencer_tracker_panel.set_playing_position.assert_called_once_with(None)
         playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(None)
 
     @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
@@ -360,9 +371,10 @@ def order_ops_coordinator() -> SequencerTabCoordinator:
     instance._sequencer_order_logic = MagicMock()
     instance._sequencer_tracker_logic = MagicMock()
     instance._sequencer_order_panel = MagicMock()
+    instance._sequencer_tracker_panel = MagicMock()
     instance._song_player_logic = MagicMock()
     instance._project_controller = MagicMock()
-    instance._playing_order = None
+    instance._playing_position = None
     return instance
 
 
@@ -383,7 +395,7 @@ class TestOrderFrameOperations:
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 3
+        coordinator._playing_position = _playhead(3, SOUNDING_ROW)
         coordinator._project_controller.order_length = 5
 
         coordinator._on_order_remove(1)
@@ -396,7 +408,7 @@ class TestOrderFrameOperations:
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = None
+        coordinator._playing_position = None
         coordinator._project_controller.order_length = 5
 
         coordinator._on_order_remove(1)
@@ -408,7 +420,7 @@ class TestOrderFrameOperations:
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 2
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
         coordinator._song_player_logic.is_playing.return_value = True
 
         coordinator._on_order_duplicate(0)
@@ -421,7 +433,7 @@ class TestOrderFrameOperations:
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 2
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
         coordinator._song_player_logic.is_playing.return_value = True
 
         coordinator._on_order_move(2, 5)
@@ -436,7 +448,7 @@ class TestOrderFrameOperations:
         # The cursor and playing highlight must advance on the keypress, not on the next row
         # update, so a rapid second Alt+arrow acts on the moved frame rather than snapping back.
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 2
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
         coordinator._song_player_logic.is_playing.return_value = True
 
         coordinator._on_order_move(2, 3)
@@ -444,12 +456,26 @@ class TestOrderFrameOperations:
         coordinator._sequencer_tracker_logic.select_frame.assert_called_once_with(3)
         coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(3)
 
+    def test_move_carries_the_sounding_row_to_the_frame_it_lands_on(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """The tracker's mark belongs to a frame, so an edit that moves the frame moves the mark."""
+        coordinator = order_ops_coordinator
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
+        coordinator._song_player_logic.is_playing.return_value = True
+
+        coordinator._on_order_move(2, 5)
+
+        panel = coordinator._sequencer_tracker_panel
+        panel.set_playing_position.assert_called_once_with(_playhead(5, SOUNDING_ROW))
+
     def test_clear_leaves_the_playhead_in_place(
         self,
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 2
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
 
         coordinator._on_order_clear(2)
 

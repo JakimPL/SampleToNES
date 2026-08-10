@@ -87,6 +87,7 @@ from sampletones_application.view_model.sequencer.tracker import (
 )
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.project.song_position import SongPosition
 from sampletones_core.utils.display import NOTE_OFF, display_id
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from sampletones_shared.types.application import ColorRGBA, Sender
@@ -142,6 +143,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._editable_cells: EditableCells[CellKey] = EditableCells()
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
+        self._displayed_frame: Optional[int] = None
+        self._playing_frame: Optional[int] = None
         self._playing_row: Optional[int] = None
         self._painted_row: Optional[int] = None
         self._follows_playing_row: bool = False
@@ -409,10 +412,24 @@ class GUISequencerTrackerPanel(GUIPanel):
         the edit cursor that a full rebuild would otherwise discard.
         """
         cell_values = self._compute_cell_values(view_model)
+        self._show_frame(view_model.frame_index)
         if len(view_model.rows) != self._current_row_count:
             self._rebuild_table(view_model, cell_values)
         else:
             self._editable_cells.reconcile(cell_values, self._render_cell)
+
+    def _show_frame(self, frame_index: int) -> None:
+        """Records the order frame the grid stands on, and settles the playhead's mark for it.
+
+        The mark reads as the sounding row of the pattern on screen, so it belongs to the frame the
+        playhead sounds: a frame arriving at the grid takes the mark while playback stands on it,
+        and hands it back as the reader moves on to another frame.
+        """
+        if frame_index == self._displayed_frame:
+            return
+
+        self._displayed_frame = frame_index
+        self._paint_playhead()
 
     def _rebuild_table(
         self,
@@ -1457,22 +1474,33 @@ class GUISequencerTrackerPanel(GUIPanel):
         """Whether the grid keeps the sounding row within the visible band as playback advances."""
         self._follows_playing_row = following
 
-    def set_playing_row(self, row_index: Optional[int]) -> None:
-        """Moves the playhead to the row playback reached, mark and grid arriving together.
+    def set_playing_position(self, position: Optional[SongPosition]) -> None:
+        """Moves the playhead to the position playback reached, mark and grid arriving together.
 
-        A row's mark is drawn on the very next frame while the grid answers a scroll on the frame
-        after that, so a mark drawn as the row is reported stands a row clear of the band's head
-        until the grid catches up — a step down and back on every row. Holding the mark until the
-        frame its scroll lands on carries the two as one.
+        The position carries the order frame with the row, which is what tells the grid whether the
+        row it would mark belongs to the pattern it shows. A row's mark is drawn on the very next
+        frame while the grid answers a scroll on the frame after that, so a mark drawn as the row is
+        reported stands a row clear of the band's head until the grid catches up — a step down and
+        back on every row. Holding the mark until the frame its scroll lands on carries the two as
+        one.
         """
-        self._playing_row = row_index
+        self._playing_frame = position.order_position if position is not None else None
+        self._playing_row = position.row_index if position is not None else None
         self._reveal_playing_row()
         FrameCallbackManager.set_frame_callback(self._paint_playhead, PLAYHEAD_PAINT_FRAMES)
+
+    @property
+    def _playhead_row(self) -> Optional[int]:
+        """The row the mark stands on: the sounding row, while the grid shows the frame it sounds."""
+        if self._playing_frame == self._displayed_frame:
+            return self._playing_row
+
+        return None
 
     def _paint_playhead(self) -> None:
         """Draws the mark on the row the playhead has reached, clearing the row it came from."""
         previous = self._painted_row
-        self._painted_row = self._playing_row
+        self._painted_row = self._playhead_row
         if previous is not None and previous != self._painted_row:
             self._paint_row(previous)
 
@@ -1481,8 +1509,9 @@ class GUISequencerTrackerPanel(GUIPanel):
 
     def _reveal_playing_row(self) -> None:
         """Carries the sounding row to the head of the band while the grid follows the playhead."""
-        if self._follows_playing_row and self._playing_row is not None:
-            self._scroll_row_to_band_top(self._playing_row)
+        row_index = self._playhead_row
+        if self._follows_playing_row and row_index is not None:
+            self._scroll_row_to_band_top(row_index)
 
     def _live_row_count(self) -> int:
         """The table's current pattern-row count, read live from DearPyGui.

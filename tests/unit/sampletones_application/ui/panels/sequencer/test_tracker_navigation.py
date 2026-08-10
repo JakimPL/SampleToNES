@@ -13,6 +13,7 @@ from sampletones_application.utils.gui.keyboard.combination import KeyCombinatio
 from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.shortcuts import shipped_source
 
@@ -24,6 +25,9 @@ ROW_PITCH = 20.0
 BAND_TOP = 100.0
 LAST_HEADING_ROW = 32
 
+SHOWN_FRAME = 3
+OTHER_FRAME = 4
+
 
 def _panel() -> GUISequencerTrackerPanel:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
@@ -33,12 +37,19 @@ def _panel() -> GUISequencerTrackerPanel:
         pending="",
     )
     panel._layout = SimpleNamespace(tracker=SimpleNamespace(page_size=PAGE_SIZE))
+    panel._displayed_frame = SHOWN_FRAME
+    panel._playing_frame = None
     panel._playing_row = None
     panel._painted_row = None
     panel._follows_playing_row = False
     panel._current_row_count = ROW_COUNT
     panel._rows = {row_index: f"row_{row_index}" for row_index in range(ROW_COUNT)}
     return panel
+
+
+def _playhead(frame_index: int, row_index: int) -> SongPosition:
+    """The playhead standing on a row of an order frame."""
+    return SongPosition(order_position=frame_index, row_index=row_index)
 
 
 def _press(text: str) -> KeyEvent:
@@ -123,7 +134,7 @@ class TestPlayheadFollowing:
         monkeypatch.setattr(panel, "_scroll_row_to_band_top", revealed.append)
 
         panel.set_row_following(True)
-        panel.set_playing_row(12)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
 
         assert revealed == [12]
 
@@ -134,7 +145,19 @@ class TestPlayheadFollowing:
         monkeypatch.setattr(panel, "_scroll_row_to_band_top", revealed.append)
 
         panel.set_row_following(False)
-        panel.set_playing_row(12)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
+
+        assert revealed == []
+
+    def test_a_row_of_another_frame_holds_the_grid_where_it_is(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A row belongs to its own pattern, so the grid travels to it once that frame is shown."""
+        panel = _panel()
+        revealed: List[int] = []
+        monkeypatch.setattr(panel, "_paint_row", lambda row_index: None)
+        monkeypatch.setattr(panel, "_scroll_row_to_band_top", revealed.append)
+
+        panel.set_row_following(True)
+        panel.set_playing_position(_playhead(OTHER_FRAME, 12))
 
         assert revealed == []
 
@@ -146,8 +169,8 @@ class TestPlayheadFollowing:
         monkeypatch.setattr(panel, "_scroll_row_to_band_top", revealed.append)
 
         panel.set_row_following(True)
-        panel.set_playing_row(12)
-        panel.set_playing_row(None)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
+        panel.set_playing_position(None)
 
         assert revealed == [12]
 
@@ -192,7 +215,7 @@ class TestPlayheadPainting:
         panel = _panel()
         painted, paint = _deferred_painting(monkeypatch, panel)
 
-        panel.set_playing_row(12)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
 
         assert panel._painted_row is None
         assert painted == []
@@ -206,9 +229,9 @@ class TestPlayheadPainting:
         panel = _panel()
         painted, paint = _deferred_painting(monkeypatch, panel)
 
-        panel.set_playing_row(12)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
         paint()
-        panel.set_playing_row(13)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 13))
         paint()
 
         assert painted == [12, 12, 13]
@@ -217,13 +240,27 @@ class TestPlayheadPainting:
         panel = _panel()
         painted, paint = _deferred_painting(monkeypatch, panel)
 
-        panel.set_playing_row(12)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
         paint()
-        panel.set_playing_row(None)
+        panel.set_playing_position(None)
         paint()
 
         assert panel._painted_row is None
         assert painted == [12, 12]
+
+    def test_the_mark_arrives_with_the_frame_the_playhead_moved_to(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A followed playhead crossing a frame boundary shows the next frame, then marks its row."""
+        panel = _panel()
+        painted, paint = _deferred_painting(monkeypatch, panel)
+
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
+        paint()
+        panel._show_frame(OTHER_FRAME)
+        panel.set_playing_position(_playhead(OTHER_FRAME, 0))
+        paint()
+
+        assert panel._painted_row == 0
+        assert painted == [12, 12, 0]
 
 
 def _deferred_painting(

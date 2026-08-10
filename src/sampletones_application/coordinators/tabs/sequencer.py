@@ -93,6 +93,7 @@ from sampletones_application.view_model.shared.history import (
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
@@ -144,7 +145,7 @@ class SequencerTabCoordinator:
         self._msg_no_project = language_manager["global.dialog.message.no_project_open"]
         self._ttl_no_project = language_manager["global.dialog.title.no_project_open"]
         self._nes_frequency_change_acknowledged: bool = False
-        self._playing_order: Optional[int] = None
+        self._playing_position: Optional[SongPosition] = None
         self._geometry = layout.geometry
         self._side_panel_count: int
         self._instruments_width = layout.right_column_width
@@ -752,9 +753,8 @@ class SequencerTabCoordinator:
         """
         self._sequencer_tracker_panel.set_row_following(view_model.follow_mode.follows_row)
         if not view_model.is_playing and not view_model.is_paused:
-            self._playing_order = None
-            self._sequencer_tracker_panel.set_playing_row(None)
-            self._sequencer_order_panel.set_playing_position(None)
+            self._playing_position = None
+            self._mark_playhead()
 
     def _on_player_position_changed(
         self,
@@ -763,15 +763,29 @@ class SequencerTabCoordinator:
     ) -> None:
         """Moves the marks the playhead carries, showing the frame it sounds when following.
 
-        The frame is selected ahead of the row so the row's mark, and the scroll that reveals it,
+        The frame is selected ahead of the marks so the row's mark, and the scroll that reveals it,
         land on the pattern the playhead has reached.
         """
-        self._playing_order = order_position
+        self._playing_position = SongPosition(
+            order_position=order_position,
+            row_index=row_index,
+        )
         if self._song_player_logic.follow_mode.follows_pattern:
             self._sequencer_tracker_logic.select_frame(order_position)
 
-        self._sequencer_tracker_panel.set_playing_row(row_index)
-        self._sequencer_order_panel.set_playing_position(order_position)
+        self._mark_playhead()
+
+    def _mark_playhead(self) -> None:
+        """Puts the playhead's marks where it stands, on both grids.
+
+        The order grid marks the frame the playhead sounds; the tracker takes the whole position,
+        since the row it marks belongs to the pattern of that frame.
+        """
+        position = self._playing_position
+        self._sequencer_tracker_panel.set_playing_position(position)
+        self._sequencer_order_panel.set_playing_position(
+            position.order_position if position is not None else None,
+        )
 
     def _on_order_frame_selected(self, frame_index: int) -> None:
         """Selects an order frame in the tracker, and moves the playhead too when following.
@@ -1276,19 +1290,23 @@ class SequencerTabCoordinator:
     def _relocate_playhead(self, remap: Callable[[int], int]) -> None:
         """Keeps the live playhead on the frame it was sounding after a structural order edit.
 
-        The new position is reflected in the playing highlight straight away, ahead of the worker's
-        next row update, so rapid edits (e.g. a held Alt+arrow) stay in step.
+        Both grids take the new position straight away, ahead of the worker's next row update, so
+        rapid edits (e.g. a held Alt+arrow) stay in step, and a paused playhead — which reports no
+        further rows — is marked on the frame the edit moved it to.
         """
-        if self._playing_order is None:
+        if self._playing_position is None:
             return
 
-        new_order = remap(self._playing_order)
-        if new_order == self._playing_order:
+        order_position = remap(self._playing_position.order_position)
+        if order_position == self._playing_position.order_position:
             return
 
-        self._playing_order = new_order
-        self._song_player_logic.relocate(new_order)
-        self._sequencer_order_panel.set_playing_position(new_order)
+        self._playing_position = SongPosition(
+            order_position=order_position,
+            row_index=self._playing_position.row_index,
+        )
+        self._song_player_logic.relocate(order_position)
+        self._mark_playhead()
 
     def _select_frame_when_idle(self, frame_index: int) -> None:
         """Moves the editor selection to a frame, unless playback is actively driving it."""

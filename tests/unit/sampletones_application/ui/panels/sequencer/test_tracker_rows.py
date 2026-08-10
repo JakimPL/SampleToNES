@@ -15,10 +15,14 @@ from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrac
 from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.types.application import ColorRGBA
 
 PATTERN_ROWS = 4
 HEADER_AND_PATTERN_ROWS = PATTERN_ROWS + 1
+
+SHOWN_FRAME = 3
+OTHER_FRAME = 4
 
 ROWS_PER_BEAT = 2
 ROWS_PER_BAR = 4
@@ -88,11 +92,18 @@ def _panel() -> GUISequencerTrackerPanel:
     )
     panel._current_row_count = PATTERN_ROWS
     panel._highlighted_row = None
+    panel._displayed_frame = SHOWN_FRAME
+    panel._playing_frame = None
     panel._playing_row = None
     panel._painted_row = None
     panel._follows_playing_row = False
     panel._input_state = TrackerInputState()
     return panel
+
+
+def _playhead(frame_index: int, row_index: int) -> SongPosition:
+    """The playhead standing on a row of an order frame."""
+    return SongPosition(order_position=frame_index, row_index=row_index)
 
 
 def _place_cursor(
@@ -286,7 +297,7 @@ class TestPlayingRowHighlight:
     ) -> None:
         panel = _panel()
 
-        panel.set_playing_row(row_index)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, row_index))
 
         assert recorder.highlighted_rows == {tracker_table_row(row_index): PLAYBACK_ROW}
 
@@ -298,7 +309,7 @@ class TestPlayingRowHighlight:
     ) -> None:
         panel = _panel()
 
-        panel.set_playing_row(row_index)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, row_index))
 
         painted = recorder.highlighted_rows[tracker_table_row(row_index)]
         assert painted[3] > PLAYBACK_ROW[3]
@@ -307,47 +318,86 @@ class TestPlayingRowHighlight:
         panel = _panel()
         _place_cursor(panel, 1, GeneratorName.PULSE1)
 
-        panel.set_playing_row(1)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 1))
 
         assert recorder.highlighted_rows == {tracker_table_row(1): PLAYBACK_ROW}
 
     def test_the_last_pattern_row_is_still_within_the_table(self, recorder: _TableRecorder) -> None:
         panel = _panel()
 
-        panel.set_playing_row(PATTERN_ROWS - 1)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, PATTERN_ROWS - 1))
 
         assert recorder.highlighted_rows
 
     def test_a_row_beyond_the_pattern_is_left_to_the_next_rebuild(self, recorder: _TableRecorder) -> None:
         panel = _panel()
 
-        panel.set_playing_row(PATTERN_ROWS)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, PATTERN_ROWS))
 
         assert not recorder.highlighted_rows
 
     def test_advancing_the_playhead_returns_the_row_it_left(self, recorder: _TableRecorder) -> None:
         panel = _panel()
 
-        panel.set_playing_row(1)
-        panel.set_playing_row(3)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 1))
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 3))
 
         assert recorder.unhighlighted_rows == [tracker_table_row(1)]
 
     def test_advancing_past_a_group_row_gives_it_its_shade_back(self, recorder: _TableRecorder) -> None:
         panel = _panel()
 
-        panel.set_playing_row(0)
-        panel.set_playing_row(1)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 0))
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 1))
 
         assert recorder.highlighted_rows[tracker_table_row(0)] == BAR_ROW
 
     def test_stopping_clears_the_mapped_row(self, recorder: _TableRecorder) -> None:
         panel = _panel()
-        panel.set_playing_row(3)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 3))
 
-        panel.set_playing_row(None)
+        panel.set_playing_position(None)
 
         assert recorder.unhighlighted_rows == [tracker_table_row(3)]
+
+
+class TestPlayheadFrame:
+    """The mark reads as the sounding row of the pattern on screen, so it stands on the grid while
+    the frame it shows is the frame the playhead sounds."""
+
+    def test_a_row_of_another_frame_leaves_the_grid_alone(self, recorder: _TableRecorder) -> None:
+        panel = _panel()
+
+        panel.set_playing_position(_playhead(OTHER_FRAME, 1))
+
+        assert not recorder.highlighted_rows
+
+    def test_showing_another_frame_returns_the_marked_row(self, recorder: _TableRecorder) -> None:
+        panel = _panel()
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 3))
+
+        panel._show_frame(OTHER_FRAME)
+
+        assert recorder.unhighlighted_rows == [tracker_table_row(3)]
+
+    def test_returning_to_the_sounding_frame_marks_its_row_again(self, recorder: _TableRecorder) -> None:
+        panel = _panel()
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 3))
+        panel._show_frame(OTHER_FRAME)
+
+        panel._show_frame(SHOWN_FRAME)
+
+        assert recorder.highlighted_rows == {tracker_table_row(3): PLAYBACK_ROW}
+
+    def test_the_cursor_keeps_its_row_on_a_frame_the_playhead_left(self, recorder: _TableRecorder) -> None:
+        """A frame the playhead is away from shows the reader's own cursor on the row it sits on."""
+        panel = _panel()
+        _place_cursor(panel, 3, GeneratorName.PULSE1)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, 3))
+
+        panel._show_frame(OTHER_FRAME)
+
+        assert recorder.highlighted_rows[tracker_table_row(3)] == CURSOR_ROW
 
 
 class TestHeaderRowBackground:

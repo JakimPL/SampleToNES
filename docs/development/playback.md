@@ -101,8 +101,12 @@ answers — whether the tracker shows the frame being played, and whether it scr
 sounding row in sight — and those two are its whole contract, which every surface that follows the
 playhead reads. The song player holds the mode and emits it with every position, which is what lets
 the menu's check and the grid's scrolling settle in one step when the mode changes mid-playback.
-Marking the sounding row and the playing frame is independent of the choice: every mode paints both,
-and the mode governs where the view sits.
+
+A mark belongs to what it names. The playhead's position is a frame and a row within it, so the
+order grid marks the frame under every mode, while the row's mark reads as the sounding row of the
+pattern on screen: the tracker carries it while the frame it shows is the frame that sounds, and the
+mark travels with the frame across a structural order edit. Every mode paints on this rule, and the
+mode governs where the view sits.
 
 ## Keyboard delivery under field focus
 
@@ -181,7 +185,8 @@ terminating would reclaim.
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | A channel name's gestures and menu, in either table | `ChannelSwitch` (`ui/panels/sequencer/channels.py`) |
 | The reach the sequencer view follows the playhead at | `FollowMode` (`constants/playback.py`), held by `SongPlayerLogic` (`logic/sequencer/playback/song_player.py`) |
-| Revealing the sounding row in the tracker | `GUISequencerTrackerPanel` (`ui/panels/sequencer/tracker.py`) |
+| Where the playhead stands, and both grids' marks for it | `SequencerTabCoordinator` (`coordinators/tabs/sequencer.py`) |
+| Marking and revealing the sounding row in the tracker | `GUISequencerTrackerPanel` (`ui/panels/sequencer/tracker.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer.py`) |
 | The song's render-ahead buffer | `services/song_player/` |
 

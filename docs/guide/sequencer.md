@@ -68,10 +68,12 @@ plays, and the choice is remembered for the next time you launch:
 | **Follow patterns** | `Ctrl+Shift+F` | Shows the frame being played, and leaves the scroll where you put it |
 | **Don't follow** | `Ctrl+Alt+F` | Holds the view where you put it |
 
-All three mark the sounding row and the playing frame, so you can read the playhead
-in any of them. **Follow rows** is the one that moves the grid while you play, which
-is what makes the other two the modes to type in: they hold the view still under
-your cursor while the song runs.
+The **Order** grid marks the frame being played under every mode, and the tracker
+marks the sounding row of the frame it shows — so a held view still shows the
+playhead each time the song passes through the frame you are editing.
+**Follow rows** is the one that moves the grid while you play, which is what makes
+the other two the modes to type in: they hold the view still under your cursor while
+the song runs.
 
 ## Listening to one channel at a time
 
