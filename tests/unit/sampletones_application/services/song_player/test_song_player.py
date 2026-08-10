@@ -105,11 +105,18 @@ class _FakeSynthesizer:
         return np.ones(self._frames, dtype=np.float32), position
 
 
+def _close_stream(stream: _FakeStream) -> None:
+    stream.stop_stream()
+    stream.close()
+
+
 def _make_device_manager(stream: Optional[_FakeStream] = None) -> MagicMock:
+    """A device manager that winds a handed-back stream down as the real one does."""
     audio_device_manager = MagicMock()
     audio_device_manager.sample_rate = SAMPLE_RATE
     audio_device_manager.buffer_size = WRITE_BLOCK
     audio_device_manager.open_output_stream.return_value = stream
+    audio_device_manager.close_output_stream.side_effect = _close_stream
     return audio_device_manager
 
 
@@ -527,6 +534,32 @@ class TestSongPlayerServiceStopQuiescence:
             audio_device_manager.open_output_stream.assert_not_called()
         finally:
             gate.set()
+
+
+class TestSongPlayerServiceStreamOwnership:
+    """The device hands out a stream against a release, and gets it back when the writer finishes."""
+
+    def test_the_stream_is_opened_against_a_release_that_stops_playback(self) -> None:
+        audio_device_manager = _make_device_manager(_FakeStream())
+        service = _make_streaming_service(audio_device_manager)
+        service.subscribe(lambda result: None)
+
+        service.start()
+        service.stop()
+
+        _, keywords = audio_device_manager.open_output_stream.call_args
+        assert keywords["release"] == service.stop
+
+    def test_the_writer_hands_the_stream_back(self) -> None:
+        stream = _FakeStream()
+        audio_device_manager = _make_device_manager(stream)
+        service = _make_streaming_service(audio_device_manager)
+        service.subscribe(lambda result: None)
+
+        service.start()
+        service.stop()
+
+        audio_device_manager.close_output_stream.assert_called_once_with(stream)
 
 
 class TestSongPlayerServiceWriteFailure:

@@ -148,6 +148,7 @@ from sampletones_shared.application import (
     SAMPLETONES_GROUP,
     SAMPLETONES_NAME_VERSION,
 )
+from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -1105,8 +1106,17 @@ class Application:
         )
 
     def _refresh_audio_devices(self) -> None:
-        """Re-enumerates the output devices and repaints the open dialog in place."""
-        self.audio_device_manager.refresh_devices()
+        """Re-enumerates the output devices and repaints the open dialog in place.
+
+        Re-enumeration restarts the audio backend, which needs the output free; a source that
+        keeps hold of it leaves the device list as it stands and reports the failure.
+        """
+        try:
+            self.audio_device_manager.refresh_devices()
+        except PlaybackError as exception:
+            self._on_playback_error(exception)
+            return
+
         self.audio_settings_window.update_view(
             AudioSettingsViewModel.from_device_manager(
                 self.audio_device_manager,

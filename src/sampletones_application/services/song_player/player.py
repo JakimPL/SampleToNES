@@ -207,8 +207,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             self._playback_error = exception
             self._emit_terminal()
         finally:
-            stream.stop_stream()
-            stream.close()
+            self._audio_device_manager.close_output_stream(stream)
 
     def _open_stream(self) -> Optional[pyaudio.Stream]:
         try:
@@ -216,6 +215,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             stream = self._audio_device_manager.open_output_stream(
                 sample_rate=sample_rate,
                 buffer_size=self._audio_device_manager.buffer_size,
+                release=self.stop,
             )
             logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
             return stream
