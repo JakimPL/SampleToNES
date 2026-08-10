@@ -57,6 +57,8 @@ class SequencerTrackerLogic(CallbackMixin):
             tempo=project_settings.tempo,
             speed=project_settings.speed,
             rows_per_pattern=project.song.rows_per_pattern,
+            first_highlight=project_settings.first_highlight,
+            second_highlight=project_settings.second_highlight,
         )
 
     def build_grid(self) -> SequencerTrackerViewModel:
@@ -120,6 +122,12 @@ class SequencerTrackerLogic(CallbackMixin):
 
     def set_speed(self, speed: int) -> None:
         self._controller.set_speed(speed)
+
+    def set_first_highlight(self, first_highlight: int) -> None:
+        self._controller.set_first_highlight(first_highlight)
+
+    def set_second_highlight(self, second_highlight: int) -> None:
+        self._controller.set_second_highlight(second_highlight)
 
     def set_row(
         self,
@@ -506,7 +514,5 @@ class SequencerTrackerLogic(CallbackMixin):
         if frame_count == 0:
             return 0
 
-        self._frame_index = max(0, min(self._frame_index, frame_count - 1))
-        return self._frame_index
         self._frame_index = max(0, min(self._frame_index, frame_count - 1))
         return self._frame_index

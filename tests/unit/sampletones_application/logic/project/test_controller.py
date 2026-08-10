@@ -30,6 +30,13 @@ class TestInfoAndSettings:
         assert controller.project.settings.tempo == 128
         assert controller.project.settings.speed == 4
 
+    def test_highlight_edits_apply(self) -> None:
+        controller = _controller()
+        controller.set_first_highlight(3)
+        controller.set_second_highlight(12)
+        assert controller.project.settings.first_highlight == 3
+        assert controller.project.settings.second_highlight == 12
+
     def test_rows_per_pattern_resizes_all_patterns(self) -> None:
         controller = _controller()
         song = controller.project.song
@@ -462,6 +469,20 @@ class TestInfoAndSettingsCallbacks:
         fired: List[str] = []
         controller.on_settings_changed = lambda: fired.append("settings")
         controller.set_speed(6)
+        assert fired == ["settings"]
+
+    def test_set_first_highlight_fires_settings_callback(self) -> None:
+        controller = _controller()
+        fired: List[str] = []
+        controller.on_settings_changed = lambda: fired.append("settings")
+        controller.set_first_highlight(3)
+        assert fired == ["settings"]
+
+    def test_set_second_highlight_fires_settings_callback(self) -> None:
+        controller = _controller()
+        fired: List[str] = []
+        controller.on_settings_changed = lambda: fired.append("settings")
+        controller.set_second_highlight(12)
         assert fired == ["settings"]
 
     def test_set_nes_frequency_updates_settings(self) -> None:

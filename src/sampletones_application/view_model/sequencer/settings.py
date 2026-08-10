@@ -6,3 +6,5 @@ class SequencerSettingsViewModel(BaseModel, frozen=True):
     tempo: int
     speed: int
     rows_per_pattern: int
+    first_highlight: int
+    second_highlight: int

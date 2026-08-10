@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Tuple
+
+from sampletones_core.project.settings import ProjectSettings
 
 
 @dataclass(frozen=True)
@@ -35,6 +39,19 @@ class Metre:
 
         if self.second_highlight < 1:
             raise ValueError(f"second_highlight must be at least 1, got {self.second_highlight}")
+
+    @classmethod
+    def from_settings(cls, settings: ProjectSettings, *, rows: int) -> Metre:
+        """Reads the metre a project states, over a pattern of ``rows`` rows.
+
+        The project holds the two highlights while the song holds the pattern length, so
+        the row count arrives beside the settings.
+        """
+        return cls(
+            rows=rows,
+            first_highlight=settings.first_highlight,
+            second_highlight=settings.second_highlight,
+        )
 
     @property
     def spans(self) -> Tuple[Tuple[int, ...], ...]:

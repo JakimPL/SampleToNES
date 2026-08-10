@@ -3,6 +3,7 @@ from typing import Tuple
 
 import pytest
 
+from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.timing.metre import Metre
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
@@ -144,3 +145,17 @@ class TestBounds(BaseTestSuite):
         fields = {"rows": 16, "first_highlight": 4, "second_highlight": 16, test_case.field: 0}
         with pytest.raises(ValueError, match=test_case.expected):
             Metre(**fields)
+
+
+class TestProjectSettings:
+    def test_settings_state_the_highlights(self) -> None:
+        settings = ProjectSettings(first_highlight=3, second_highlight=12)
+        assert Metre.from_settings(settings, rows=24) == Metre(
+            rows=24,
+            first_highlight=3,
+            second_highlight=12,
+        )
+
+    def test_the_default_settings_state_common_time(self) -> None:
+        metre = Metre.from_settings(ProjectSettings(), rows=16)
+        assert metre.spans == ((4, 4, 4, 4),)

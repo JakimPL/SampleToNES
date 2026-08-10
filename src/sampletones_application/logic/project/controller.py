@@ -128,6 +128,16 @@ class ProjectController(CallbackMixin):
         self._touch()
         self.call(self.on_settings_changed)
 
+    def set_first_highlight(self, first_highlight: int) -> None:
+        self.project.settings.first_highlight = first_highlight
+        self._touch()
+        self.call(self.on_settings_changed)
+
+    def set_second_highlight(self, second_highlight: int) -> None:
+        self.project.settings.second_highlight = second_highlight
+        self._touch()
+        self.call(self.on_settings_changed)
+
     def set_nes_frequency(self, nes_frequency: int) -> None:
         self.project.settings.nes_frequency = nes_frequency
         self._touch()

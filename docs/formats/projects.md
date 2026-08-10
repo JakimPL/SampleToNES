@@ -25,7 +25,7 @@ while the larger audio data travels alongside it in the same archive.
 | `format_version` | the project format version, checked for compatibility on load (see [Versioning](#versioning)) |
 | `metadata` | the application name and version (managed automatically) |
 | `info` | `title`, `author`, and `comment`, plus `created` and `modified` timestamps |
-| `settings` | the engine settings: `nes_frequency`, `sample_rate`, `tempo`, and `speed` |
+| `settings` | the engine settings: `nes_frequency`, `sample_rate`, `tempo`, `speed`, and the metric highlights `first_highlight` and `second_highlight` |
 | `samples` | the song's samples — each an `id`, a `name`, and the `reconstruction_id` of its audio member |
 | `song` | the arrangement (below) |
 

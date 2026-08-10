@@ -9,8 +9,12 @@ from sampletones_core.constants.general import (
 )
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.constants.project import (
+    DEFAULT_FIRST_HIGHLIGHT,
+    DEFAULT_SECOND_HIGHLIGHT,
+    MAX_HIGHLIGHT,
     MAX_SPEED,
     MAX_TEMPO,
+    MIN_HIGHLIGHT,
     MIN_SPEED,
     MIN_TEMPO,
 )
@@ -91,6 +95,46 @@ class TestBounds(BaseTestSuite):
             value=MAX_SPEED + 1,
             expected=False,
         ),
+        TestCase(
+            field="first_highlight",
+            value=MIN_HIGHLIGHT,
+            expected=True,
+        ),
+        TestCase(
+            field="first_highlight",
+            value=MAX_HIGHLIGHT,
+            expected=True,
+        ),
+        TestCase(
+            field="first_highlight",
+            value=MIN_HIGHLIGHT - 1,
+            expected=False,
+        ),
+        TestCase(
+            field="first_highlight",
+            value=MAX_HIGHLIGHT + 1,
+            expected=False,
+        ),
+        TestCase(
+            field="second_highlight",
+            value=MIN_HIGHLIGHT,
+            expected=True,
+        ),
+        TestCase(
+            field="second_highlight",
+            value=MAX_HIGHLIGHT,
+            expected=True,
+        ),
+        TestCase(
+            field="second_highlight",
+            value=MIN_HIGHLIGHT - 1,
+            expected=False,
+        ),
+        TestCase(
+            field="second_highlight",
+            value=MAX_HIGHLIGHT + 1,
+            expected=False,
+        ),
     )
 
     @pytest.mark.parametrize(
@@ -123,6 +167,24 @@ class TestSerialization:
         settings = ProjectSettings(tempo=120, speed=4)
         restored = ProjectSettings.model_validate(settings.model_dump())
         assert restored == settings
+
+    def test_highlights_round_trip(self) -> None:
+        settings = ProjectSettings(first_highlight=3, second_highlight=12)
+        restored = ProjectSettings.model_validate(settings.model_dump())
+        assert (restored.first_highlight, restored.second_highlight) == (3, 12)
+
+    def test_settings_without_highlights_load_on_common_time(self) -> None:
+        """A project saved before the highlights existed reads as the 4/16 grouping it was played in."""
+        document = ProjectSettings(tempo=120).model_dump()
+        del document["first_highlight"]
+        del document["second_highlight"]
+
+        restored = ProjectSettings.model_validate(document)
+
+        assert (restored.first_highlight, restored.second_highlight) == (
+            DEFAULT_FIRST_HIGHLIGHT,
+            DEFAULT_SECOND_HIGHLIGHT,
+        )
 
     def test_json_round_trip(self) -> None:
         settings = ProjectSettings(nes_frequency=50)

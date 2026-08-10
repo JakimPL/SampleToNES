@@ -34,3 +34,9 @@ MAX_SPEED: Final[int] = 31
 DEFAULT_ROWS_PER_PATTERN: Final[int] = 64
 MIN_ROWS_PER_PATTERN: Final[int] = 1
 MAX_ROWS_PER_PATTERN: Final[int] = 256
+
+# Metric highlights
+DEFAULT_FIRST_HIGHLIGHT: Final[int] = 4
+DEFAULT_SECOND_HIGHLIGHT: Final[int] = 16
+MIN_HIGHLIGHT: Final[int] = 1
+MAX_HIGHLIGHT: Final[int] = MAX_ROWS_PER_PATTERN
