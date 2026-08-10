@@ -35,6 +35,7 @@ TABLE_OFF: Final[int] = -1
 TABLE_COLUMN_OFFSET: Final[int] = 1
 
 NO_VOLUME_CHANGE: Final[int] = 0
+VOLUME_OFF: Final[int] = -1
 FULL_VOLUME: Final[int] = 15
 
 MIN_PATTERN_LENGTH: Final[int] = 1

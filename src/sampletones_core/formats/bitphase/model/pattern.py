@@ -11,6 +11,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NO_INSTRUMENT_CHANGE,
     NO_TABLE_CHANGE,
     NO_VOLUME_CHANGE,
+    VOLUME_OFF,
     NoteName,
 )
 
@@ -69,9 +70,9 @@ class BitphaseRow(BaseModel):
     table: int = Field(default=NO_TABLE_CHANGE, description="Table to attach from this line on.")
     volume: int = Field(
         default=NO_VOLUME_CHANGE,
-        ge=NO_VOLUME_CHANGE,
+        ge=VOLUME_OFF,
         le=FULL_VOLUME,
-        description="Channel volume from this line on.",
+        description="Channel volume from this line on, where VOLUME_OFF silences the channel.",
     )
 
 

@@ -6,6 +6,7 @@ from sampletones_core.constants.general import (
     MAX_TRANSPOSE,
     MAX_VOLUME,
     MIN_TRANSPOSE,
+    SILENT_VOLUME,
 )
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
@@ -35,9 +36,9 @@ class Row(BaseModel):
     )
     volume: Optional[int] = Field(
         default=None,
-        ge=0,
+        ge=SILENT_VOLUME,
         le=MAX_VOLUME,
-        description="Volume column, or None for an empty cell.",
+        description="Volume column, where SILENT_VOLUME silences the channel, or None for an empty cell.",
     )
 
     def is_empty(self) -> bool:

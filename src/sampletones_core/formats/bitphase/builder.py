@@ -1,8 +1,9 @@
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.slices import iterate_sample_slices
 from sampletones_core.formats.bitphase.envelopes import ChannelEnvelopes, features_to_envelopes
 from sampletones_core.formats.bitphase.identifiers import format_instrument_id
@@ -40,6 +41,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     MIN_PATTERN_LENGTH,
     NO_VOLUME_CHANGE,
     TABLE_COLUMN_OFFSET,
+    VOLUME_OFF,
     NoteName,
 )
 from sampletones_core.formats.bitphase.tuning import generate_tuning_table
@@ -322,6 +324,23 @@ def _resolve_voice(reference: Instrument, voices: VoiceTable) -> Voice:
     return voice
 
 
+def _volume_column(volume: Optional[int]) -> int:
+    """Writes a tracker line's volume column as the value Bitphase reads it as.
+
+    Bitphase spends ``0`` on carrying the channel's level forward, so silence holds a value
+    of its own: a line asking for volume ``0`` writes ``VOLUME_OFF`` and the channel falls
+    silent from that line on, while a line naming a level writes it verbatim. Bitphase's own
+    editor prints ``VOLUME_OFF`` as the digit ``0``, so this is the cell a user types there.
+    """
+    if volume is None:
+        return NO_VOLUME_CHANGE
+
+    if volume == SILENT_VOLUME:
+        return VOLUME_OFF
+
+    return volume
+
+
 def _row_cell(
     row: Row,
     channel_generator: GeneratorName,
@@ -332,7 +351,7 @@ def _row_cell(
     Raises:
         ValueError: If the line references a sample slice that has no instrument.
     """
-    volume = row.volume if row.volume is not None else NO_VOLUME_CHANGE
+    volume = _volume_column(row.volume)
     cell = BitphaseRow(volume=volume)
 
     match row.command:

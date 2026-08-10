@@ -16,6 +16,9 @@ BITPHASE_DEFAULT_A4_TUNING: Final[float] = 440.0
 BITPHASE_DEFAULT_CHIP_TYPE: Final[str] = "ay"
 BITPHASE_DEFAULT_NOTE_NAME: Final[int] = 0
 BITPHASE_DEFAULT_OCTAVE: Final[int] = 0
+BITPHASE_DEFAULT_INSTRUMENT: Final[int] = 0
+BITPHASE_DEFAULT_TABLE: Final[int] = 0
+BITPHASE_DEFAULT_VOLUME: Final[int] = 0
 BITPHASE_DEFAULT_INSTRUMENT_ID: Final[str] = "01"
 BITPHASE_DEFAULT_LOOP: Final[int] = 0
 BITPHASE_DEFAULT_TABLE_ID: Final[int] = 0
@@ -123,9 +126,9 @@ def _note(data: Optional[Dict[str, Any]]) -> LoadedNote:
 def _row(data: Dict[str, Any]) -> LoadedRow:
     return LoadedRow(
         note=_note(data.get("note")),
-        instrument=data.get("instrument", 0),
-        table=data.get("table", 0),
-        volume=data.get("volume", 0),
+        instrument=data.get("instrument", BITPHASE_DEFAULT_INSTRUMENT),
+        table=data.get("table", BITPHASE_DEFAULT_TABLE),
+        volume=data.get("volume", BITPHASE_DEFAULT_VOLUME),
     )
 
 

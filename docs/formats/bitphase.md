@@ -175,6 +175,14 @@ Row cells follow from the columns: an instrument command writes the note from
 `initial_pitch + transpose`, the instrument number, the table column and the row's
 volume; a note-off writes note name `1`; a blank line leaves every column alone.
 
+**The volume column names silence.** In Bitphase you type `0` to silence a channel and
+leave the cell blank to carry its level forward — and the file stores those two as `-1` and
+`0`. The volume field is declared `allowZeroValue`, so Bitphase parses a typed `0` to `-1`
+and prints a stored `-1` back as `0`, while a stored `0` shows as a blank cell; its engine
+reads `-1` as volume zero. So a row asking for silence writes `-1`, a row naming a level
+writes it verbatim, and a row with an empty volume cell writes `0` — which is the same cell
+you would see in the tracker either way.
+
 ## E. Bitphase capacity limits
 
 | Quantity | Bitphase limit | Exporter behaviour |
@@ -184,6 +192,7 @@ volume; a note-off writes note name `1`; a blank line leaves every column alone.
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
 | Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables |
 | Note range | the 96-entry tuning table, pitch 24–119 | clamps to the nearest playable note |
+| Volume column | `-1` silences (the tracker shows `0`), `0` carries the level forward (shown blank), 1–15 set the level | writes the row's level, and `-1` where a row asks for silence |
 | Pattern length (rows) | 1–256 | clamps the preview pattern; a project keeps `rows_per_pattern` |
 | Order positions | unbounded | matches |
 | Speed | 1–255 | written verbatim from settings |
@@ -195,14 +204,12 @@ raises rather than writing a document whose later voices cannot be named.
 
 ## F. What does not cross over
 
-Three things the SampleToNES model holds have no counterpart in a Bitphase document,
-and the exporter leaves them behind:
+These parts of the SampleToNES model have no counterpart in a Bitphase document, and the
+exporter leaves them behind:
 
 - **`ProjectInfo.comment`** — a Bitphase project carries a name and an author only.
 - **`ProjectSettings.tempo`** — Bitphase's engine is speed-only, so `initialSpeed`
   carries `speed` and the tempo is left to the tick rate.
-- **A volume column of `0`** — Bitphase reads it as "leave the volume alone", so a row
-  that asks for silence through the volume column alone reaches playback unchanged.
 
 `interruptFrequency` carries the reconstruction's own tick rate. Bitphase's settings
 panel offers 50 and 60 Hz, and its loader and timeline accept any value, so a rate

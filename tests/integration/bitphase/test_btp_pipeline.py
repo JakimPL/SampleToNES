@@ -33,6 +33,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NO_INSTRUMENT_CHANGE,
     NOTE_RANGE,
     TABLE_COLUMN_OFFSET,
+    VOLUME_OFF,
     NoteName,
 )
 from sampletones_core.project.project import Project
@@ -188,7 +189,7 @@ class TestTheTriggersReachTheirVoices:
         assert all(MIN_NOTE_INDEX <= index <= MAX_NOTE_INDEX for index in indices)
 
     def test_every_volume_column_stays_within_the_channel_range(self, document: LoadedProject) -> None:
-        assert all(0 <= row.volume <= FULL_VOLUME for row in every_row(document))
+        assert all(VOLUME_OFF <= row.volume <= FULL_VOLUME for row in every_row(document))
 
 
 class TestTheInstrumentRowsArePlayable:

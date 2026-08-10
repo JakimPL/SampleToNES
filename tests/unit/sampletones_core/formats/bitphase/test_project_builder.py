@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
 from sampletones_core.formats.bitphase.notes import (
@@ -19,6 +20,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NO_VOLUME_CHANGE,
     SYMBOL_BASE,
     TABLE_COLUMN_OFFSET,
+    VOLUME_OFF,
     NoteName,
 )
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
@@ -46,6 +48,7 @@ TRIGGER_ROW: Final[int] = 0
 NOTE_OFF_ROW: Final[int] = 2
 TRANSPOSED_ROW: Final[int] = 4
 EMPTY_ROW: Final[int] = 6
+SILENCED_ROW: Final[int] = 7
 
 
 def build_reconstruction(
@@ -105,6 +108,7 @@ def source_fixture(lead: Sample, bass: Sample) -> Project:
         command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE1),
         transpose=TRANSPOSE,
     )
+    pulse_rows[SILENCED_ROW] = Row(volume=SILENT_VOLUME)
 
     triangle_rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
     triangle_rows[TRIGGER_ROW] = Row(
@@ -208,6 +212,15 @@ class TestRowCells:
     def test_a_row_that_sets_no_volume_leaves_the_column_alone(self, document: BitphaseProject) -> None:
         row = document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE1)].rows[TRANSPOSED_ROW]
         assert row.volume == NO_VOLUME_CHANGE
+
+    def test_a_row_asking_for_silence_silences_the_channel(self, document: BitphaseProject) -> None:
+        """Bitphase reads a stored volume of ``0`` as "carry the level forward", so silence
+        is the value below it — the one its editor prints as the digit ``0`` — and a row
+        asking for silence has to reach a different column than a row asking for nothing.
+        """
+        rows = document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE1)].rows
+        assert rows[SILENCED_ROW].volume == VOLUME_OFF
+        assert rows[SILENCED_ROW].volume != rows[TRANSPOSED_ROW].volume
 
     def test_a_note_off_stops_the_channel(self, document: BitphaseProject) -> None:
         row = document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE1)].rows[NOTE_OFF_ROW]
