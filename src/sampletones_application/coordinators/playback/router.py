@@ -52,6 +52,19 @@ class PlaybackRouter:
 
         self._audio_device_manager.stop()
 
+    def shutdown(self) -> None:
+        """Quiesces every source and the device ahead of tearing the audio backend down.
+
+        A source that streams to the device writes from a thread of its own, so the audio
+        backend stays safe to terminate only once each such thread has stopped and closed its
+        stream. Teardown therefore reaches every source rather than the engaged one alone, so a
+        source holding a stream is wound down whatever the transport reports at that moment.
+        """
+        for source in self._sources:
+            source.stop()
+
+        self._audio_device_manager.stop()
+
     @property
     def play_label(self) -> str:
         target = self._target()

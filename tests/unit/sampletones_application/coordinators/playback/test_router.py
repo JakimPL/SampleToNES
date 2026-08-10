@@ -161,6 +161,26 @@ class TestTransportCommands:
         assert device.stop_calls == 1
 
 
+class TestTransportShutdown:
+    def test_shutdown_stops_every_source_not_only_the_engaged_one(self) -> None:
+        engaged = FakeSource(loaded=True, state=PLAYING)
+        idle = FakeSource(loaded=True, state=IDLE)
+        router = _router(active=None, sources=[engaged, idle], device=FakeDevice())
+
+        router.shutdown()
+
+        assert engaged.calls == ["stop"]
+        assert idle.calls == ["stop"]
+
+    def test_shutdown_stops_the_device(self) -> None:
+        device = FakeDevice(playing=True)
+        router = _router(active=None, sources=[FakeSource(loaded=True)], device=device)
+
+        router.shutdown()
+
+        assert device.stop_calls == 1
+
+
 class TestTransportState(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class StateCase(BaseRegularTestCase):

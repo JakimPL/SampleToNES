@@ -1333,7 +1333,7 @@ class Application:
 
     def _exit_application(self) -> None:
         stop_background_workers()
-        self.audio_device_manager.stop()
+        self._playback_router.shutdown()
         self._main_tab.cleanup()
 
         dpg.stop_dearpygui()
@@ -1389,6 +1389,7 @@ class Application:
             return
         finally:
             stop_background_workers()
+            self._playback_router.shutdown()
             self._main_tab.cleanup()
             self.library_manager.shutdown()
             save_failed = self._save_config()
