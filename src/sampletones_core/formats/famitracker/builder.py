@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import List, Optional, Tuple
 
 from sampletones_core.constants.enums import GeneratorName
@@ -252,6 +250,7 @@ def _build_order(song: Song) -> Tuple[OrderFrame, ...]:
         for generator in GeneratorName.items():
             index = frame.get(generator)
             entries.append(index if index is not None else empty_indices[generator])
+
         entries.append(DPCM_EMPTY_PATTERN_INDEX)
         frames.append(tuple(entries))
 
@@ -285,7 +284,11 @@ def project_to_module(project: Project) -> FamiTrackerModule:
     patterns: List[PatternData] = []
     for generator in GeneratorName.items():
         patterns.extend(
-            _channel_patterns(generator, song.channels[generator], slots),
+            _channel_patterns(
+                generator,
+                song.channels[generator],
+                slots,
+            ),
         )
 
     track = Track(

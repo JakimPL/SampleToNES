@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final, List, Mapping, Optional, Sequence
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 import pytest
@@ -8,12 +8,19 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
+from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
 from sampletones_core.formats.bitphase.notes import (
     note_index_to_note_cell,
     pitch_to_note_index,
 )
 from sampletones_core.formats.bitphase.specification.channels import ChannelIndex
+from sampletones_core.formats.bitphase.specification.effects import (
+    NO_EFFECT_PARAMETER,
+    SPEED_EFFECT_DELAY,
+    EffectId,
+)
+from sampletones_core.formats.bitphase.specification.instruments import LOOP_FROM_START
 from sampletones_core.formats.bitphase.specification.patterns import (
     NO_INSTRUMENT_CHANGE,
     NO_TABLE_CHANGE,
@@ -49,6 +56,8 @@ NOTE_OFF_ROW: Final[int] = 2
 TRANSPOSED_ROW: Final[int] = 4
 EMPTY_ROW: Final[int] = 6
 SILENCED_ROW: Final[int] = 7
+GROOVE_TEMPO: Final[int] = 210
+GROOVE_TICKS: Final[Tuple[int, ...]] = (5, 4, 4, 4, 5, 4, 4, 4)
 
 
 def build_reconstruction(
@@ -136,6 +145,18 @@ def source_fixture(lead: Sample, bass: Sample) -> Project:
 @pytest.fixture(name="document")
 def document_fixture(source: Project) -> BitphaseProject:
     return project_to_bitphase(source)
+
+
+@pytest.fixture(name="grooved_document")
+def grooved_document_fixture(source: Project) -> BitphaseProject:
+    """The same project at a tempo whose row rate falls between two whole tick counts."""
+    source.settings.tempo = GROOVE_TEMPO
+    return project_to_bitphase(source)
+
+
+def groove_channel_rows(document: BitphaseProject, pattern_index: int) -> Tuple[BitphaseRow, ...]:
+    """The lines of the channel the groove rides, within one pattern."""
+    return document.songs[0].patterns[pattern_index].channels[int(ChannelIndex.DPCM)].rows
 
 
 class TestTheDocumentCarriesTheProject:
@@ -235,6 +256,63 @@ class TestRowCells:
             NO_TABLE_CHANGE,
             NO_VOLUME_CHANGE,
         )
+
+
+class TestTheTempoBecomesAGroove:
+    """A Bitphase song holds one speed value per row, so the fractional row rate most tempi
+    ask for is carried by a groove: whole tick counts that vary from row to row. The groove
+    reaches the engine as a table a speed effect reads a row at a time, triggered from the
+    channel this exporter leaves silent. A tempo whose rows all last alike is carried by the
+    song's initial speed alone.
+    """
+
+    def test_a_tempo_the_speed_column_states_needs_no_table(self, document: BitphaseProject) -> None:
+        assert len(document.tables) == len(document.instruments)
+
+    def test_a_tempo_the_speed_column_states_leaves_the_groove_channel_resting(
+        self,
+        document: BitphaseProject,
+    ) -> None:
+        assert all(row == BitphaseRow() for row in groove_channel_rows(document, 0))
+
+    def test_a_groove_takes_the_table_above_the_slices(self, grooved_document: BitphaseProject) -> None:
+        table = grooved_document.tables[-1]
+        assert table.id == len(grooved_document.instruments)
+        assert table.loop == LOOP_FROM_START
+
+    def test_the_table_holds_the_ticks_each_row_lasts(self, grooved_document: BitphaseProject) -> None:
+        assert grooved_document.tables[-1].rows == GROOVE_TICKS
+
+    def test_the_song_starts_on_the_ticks_its_first_row_lasts(self, grooved_document: BitphaseProject) -> None:
+        assert grooved_document.songs[0].initial_speed == GROOVE_TICKS[TRIGGER_ROW]
+
+    def test_every_pattern_triggers_the_groove_on_its_first_row(self, grooved_document: BitphaseProject) -> None:
+        """The speed table advances one entry per row and returns to the entry the trigger
+        names, so triggering it again at each pattern start holds every row on the entry that
+        describes it however the order jumps.
+        """
+        trigger = EffectCell(
+            effect=int(EffectId.SPEED),
+            delay=SPEED_EFFECT_DELAY,
+            parameter=NO_EFFECT_PARAMETER,
+            table_index=grooved_document.tables[-1].id,
+        )
+        triggers = [
+            groove_channel_rows(grooved_document, index)[TRIGGER_ROW].effects
+            for index in range(len(grooved_document.songs[0].patterns))
+        ]
+        assert triggers == [(trigger,)] * len(triggers)
+
+    def test_the_groove_channel_carries_nothing_but_the_trigger(self, grooved_document: BitphaseProject) -> None:
+        rows = groove_channel_rows(grooved_document, 0)
+        assert all(row == BitphaseRow() for row in rows[TRIGGER_ROW + 1 :])
+
+    def test_the_sounding_channels_keep_their_effect_columns(self, grooved_document: BitphaseProject) -> None:
+        """The groove rides the silent channel, so every channel that plays keeps the one
+        effect column the chip gives it.
+        """
+        channels = grooved_document.songs[0].patterns[0].channels[: int(ChannelIndex.DPCM)]
+        assert all(row.effects == (None,) for channel in channels for row in channel.rows)
 
 
 class TestAnUnbuildableRow:

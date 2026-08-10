@@ -19,6 +19,10 @@ BITPHASE_DEFAULT_OCTAVE: Final[int] = 0
 BITPHASE_DEFAULT_INSTRUMENT: Final[int] = 0
 BITPHASE_DEFAULT_TABLE: Final[int] = 0
 BITPHASE_DEFAULT_VOLUME: Final[int] = 0
+BITPHASE_DEFAULT_EFFECT: Final[int] = 0
+BITPHASE_DEFAULT_EFFECT_DELAY: Final[int] = 0
+BITPHASE_DEFAULT_EFFECT_PARAMETER: Final[int] = 0
+BITPHASE_NO_EFFECTS: Final[Tuple[None, ...]] = (None,)
 BITPHASE_DEFAULT_INSTRUMENT_ID: Final[str] = "01"
 BITPHASE_DEFAULT_LOOP: Final[int] = 0
 BITPHASE_DEFAULT_TABLE_ID: Final[int] = 0
@@ -36,8 +40,17 @@ class LoadedNote:
 
 
 @dataclass(frozen=True)
+class LoadedEffect:
+    effect: int
+    delay: int
+    parameter: int
+    table_index: Optional[int]
+
+
+@dataclass(frozen=True)
 class LoadedRow:
     note: LoadedNote
+    effects: List[Optional[LoadedEffect]]
     instrument: int
     table: int
     volume: int
@@ -123,9 +136,30 @@ def _note(data: Optional[Dict[str, Any]]) -> LoadedNote:
     )
 
 
+def _effect(data: Optional[Dict[str, Any]]) -> Optional[LoadedEffect]:
+    if data is None:
+        return None
+
+    return LoadedEffect(
+        effect=data.get("effect", BITPHASE_DEFAULT_EFFECT),
+        delay=data.get("delay", BITPHASE_DEFAULT_EFFECT_DELAY),
+        parameter=data.get("parameter", BITPHASE_DEFAULT_EFFECT_PARAMETER),
+        table_index=data.get("tableIndex"),
+    )
+
+
+def _effects(data: Optional[List[Optional[Dict[str, Any]]]]) -> List[Optional[LoadedEffect]]:
+    """One entry per effect column, which a row naming none reaches playback holding empty."""
+    if not data:
+        return list(BITPHASE_NO_EFFECTS)
+
+    return [_effect(entry) for entry in data]
+
+
 def _row(data: Dict[str, Any]) -> LoadedRow:
     return LoadedRow(
         note=_note(data.get("note")),
+        effects=_effects(data.get("effects")),
         instrument=data.get("instrument", BITPHASE_DEFAULT_INSTRUMENT),
         table=data.get("table", BITPHASE_DEFAULT_TABLE),
         volume=data.get("volume", BITPHASE_DEFAULT_VOLUME),

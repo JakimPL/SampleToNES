@@ -88,7 +88,7 @@ this, the same flag the FamiTracker exporter reads.
 counters, so they share a length and a loop point and stay in step for as long as the
 note sounds. `equalize_lengths` in `exporters/lengths.py` supplies that shared length —
 the same rule the FamiTracker exporter applies, with the item limit left unbounded
-here (section D).
+here (section F).
 
 ## C. Pitch
 
@@ -146,7 +146,41 @@ against the pitch the slice was reconstructed at, under the tuning a freshly cre
 Bitphase document plays — NTSC at concert pitch. The noise channel takes its period
 from the note, so its preset rows hold a flat offset.
 
-## D. What the exporter builds per scope
+## D. Tempo as a groove
+
+A Bitphase song states a **speed** — the engine ticks each row lasts — where a _SampleToNES_
+project states a tempo and a speed together. The row rate the pair asks for is fractional at
+most tempi, so the exporter carries it as a [groove](../glossary.md#groove): whole tick counts,
+one per row of a pattern, averaging out to that rate with the longer rows on the bar and the
+beat. `sampletones_core/timing/` builds them and in-app playback reads the same groove, so a
+document plays the rows the sequencer played. At 60 Hz, speed 6 and tempo 210, a 16-row
+pattern in common time comes to
+
+```
+5 4 5 4 5 4 4 4 5 4 4 4 5 4 4 4      69 ticks, a rate of 30/7 per row
+```
+
+**The groove reaches the engine as a table.** A speed effect that names a table reads one of
+its entries per pattern row, which is what carries a per-row tick count into a song:
+
+| Part | What the exporter writes |
+| --- | --- |
+| `initialSpeed` | the ticks the pattern's first row lasts |
+| The table | one entry per pattern row, `loop = 0`, taking the id above the last slice table |
+| The effect | `S` with `delay = 0` and an empty parameter, naming that table |
+| Its place | the first row of the DPCM channel, in every pattern |
+
+A speed effect applies from whichever channel carries it, so the groove rides the DPCM channel
+this exporter leaves silent and every sounding channel keeps the one effect column the chip
+gives it. The table advances an entry per row and resumes from where a trigger placed it, so
+triggering it again at each pattern start holds every row on the entry that describes it,
+however the order jumps.
+
+**A tempo the speed column states writes neither.** Where every row lasts alike — tempo 150 at
+60 Hz, where the rate is the speed itself — `initialSpeed` carries the tempo whole, and the
+document holds one table per slice with every effect column empty.
+
+## E. What the exporter builds per scope
 
 A `.btp` holds a whole document, so every scope lands in one file; a preset holds one
 instrument, so a reconstruction lands as a set of them beside the name the export was
@@ -183,33 +217,31 @@ reads `-1` as volume zero. So a row asking for silence writes `-1`, a row naming
 writes it verbatim, and a row with an empty volume cell writes `0` — which is the same cell
 you would see in the tracker either way.
 
-## E. Bitphase capacity limits
+## F. Bitphase capacity limits
 
 | Quantity | Bitphase limit | Exporter behaviour |
 | --- | --- | --- |
 | Items per instrument row list | unbounded | writes the envelope whole |
-| Rows per table | unbounded | writes the contour whole |
+| Rows per table | unbounded | writes the contour, or the groove, whole |
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
-| Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables |
+| Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, one of which a groove takes |
 | Note range | the 96-entry tuning table, pitch 24–119 | clamps to the nearest playable note |
 | Volume column | `-1` silences (the tracker shows `0`), `0` carries the level forward (shown blank), 1–15 set the level | writes the row's level, and `-1` where a row asks for silence |
 | Pattern length (rows) | 1–256 | clamps the preview pattern; a project keeps `rows_per_pattern` |
 | Order positions | unbounded | matches |
-| Speed | 1–255 | written verbatim from settings |
-| DPCM channel | present | emitted empty |
+| Speed | 1–255 | the groove's tick counts, bounded to that range |
+| DPCM channel | present | rests, apart from the groove trigger each pattern's first row carries |
 
 Tables and instruments are numbered together — each slice takes one of each — so the
-table column is what a wide document reaches first: 35 slices fit, and the exporter
-raises rather than writing a document whose later voices cannot be named.
+table column is what a wide document reaches first, and the exporter raises rather than
+writing a document whose later voices cannot be named. A song whose rows vary spends one
+of those ids on its groove, so the slices a document holds are those the table column can
+still name.
 
-## F. What does not cross over
+## G. What does not cross over
 
-These parts of the SampleToNES model have no counterpart in a Bitphase document, and the
-exporter leaves them behind:
-
-- **`ProjectInfo.comment`** — a Bitphase project carries a name and an author only.
-- **`ProjectSettings.tempo`** — Bitphase's engine is speed-only, so `initialSpeed`
-  carries `speed` and the tempo is left to the tick rate.
+**`ProjectInfo.comment`** has no counterpart in a Bitphase document, which carries a name and
+an author only, so the exporter leaves the comment behind.
 
 `interruptFrequency` carries the reconstruction's own tick rate. Bitphase's settings
 panel offers 50 and 60 Hz, and its loader and timeline accept any value, so a rate

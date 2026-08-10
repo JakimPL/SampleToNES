@@ -31,7 +31,7 @@
 * Code documentation (docstrings)
 * Backward compatibility: library/reconstruction upgrade scheme
 * Respecting FamiTracker limitations
-* Carrying the project comment and tempo into a Bitphase document, once the format holds them
+* Carrying the project comment into a Bitphase document, once the format holds it
 * Per-tab undo routing
 * Delete duplicated HistoryAction enumeration
 
