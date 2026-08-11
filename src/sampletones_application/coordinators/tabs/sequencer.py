@@ -89,7 +89,6 @@ from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
-from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
     HistoryDetailSegment,
@@ -97,7 +96,6 @@ from sampletones_application.view_model.shared.history import (
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
@@ -303,23 +301,23 @@ class SequencerTabCoordinator:
     def _wire_tracker_callbacks(self) -> None:
         self._sequencer_tracker_panel.on_clear_row = self._undoable(
             HistoryAction.CLEAR_ROW,
-            self._on_clear_row,
+            self._sequencer_tracker_logic.clear_cell,
             detail=self._history_detail.clear_row,
         )
         self._sequencer_tracker_panel.on_clear_subcolumn = self._undoable(
             HistoryAction.CLEAR_SUBCOLUMN,
-            self._on_clear_subcolumn,
+            self._sequencer_tracker_logic.clear_cell_subcolumn,
             detail=self._history_detail.clear_subcolumn,
         )
         self._sequencer_tracker_panel.on_set_row = self._undoable(
             HistoryAction.EDIT_ROW,
-            self._on_set_row,
+            self._sequencer_tracker_logic.write_cell,
             detail=self._history_detail.edit_row,
             coalesce=self._edit_row_key,
         )
         self._sequencer_tracker_panel.on_set_note_off = self._undoable(
             HistoryAction.NOTE_OFF,
-            self._on_set_note_off,
+            self._sequencer_tracker_logic.cut_note,
             detail=self._history_detail.note_off,
             coalesce=self._cell_key,
         )
@@ -328,13 +326,13 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_panel.on_play_from_frame = self.play_from_current_frame
         self._sequencer_tracker_panel.on_adjust_transpose = self._undoable(
             HistoryAction.ADJUST_TRANSPOSE,
-            self._on_adjust_transpose,
+            self._sequencer_tracker_logic.adjust_cell_transpose,
             detail=self._history_detail.adjust_transpose,
             coalesce=self._adjustment_key,
         )
         self._sequencer_tracker_panel.on_adjust_volume = self._undoable(
             HistoryAction.ADJUST_VOLUME,
-            self._on_adjust_volume,
+            self._sequencer_tracker_logic.adjust_cell_volume,
             detail=self._history_detail.adjust_volume,
             coalesce=self._adjustment_key,
         )
@@ -1025,94 +1023,6 @@ class SequencerTabCoordinator:
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
         self._on_edit_sample_requested(sample_id)
-
-    def _on_clear_row(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
-        if generator is None:
-            self._sequencer_tracker_logic.clear_all_generators(row_index)
-        else:
-            self._sequencer_tracker_logic.clear_row(generator, row_index)
-
-    def _on_clear_subcolumn(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        subcolumn: SubColumn,
-    ) -> None:
-        instrument = subcolumn is SubColumn.INSTRUMENT
-        transpose = subcolumn is SubColumn.TRANSPOSE
-        volume = subcolumn is SubColumn.VOLUME
-        if generator is None:
-            if instrument:
-                self._sequencer_tracker_logic.clear_subcolumn_all_generators(
-                    row_index,
-                    instrument=True,
-                )
-            else:
-                self._sequencer_tracker_logic.clear_sample_subcolumn(
-                    row_index,
-                    transpose=transpose,
-                    volume=volume,
-                )
-        else:
-            self._sequencer_tracker_logic.clear_subcolumn(
-                generator,
-                row_index,
-                instrument=instrument,
-                transpose=transpose,
-                volume=volume,
-            )
-
-    def _on_set_row(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        sample_id: Optional[str],
-        transpose: Optional[int],
-        volume: Optional[int],
-    ) -> None:
-        if generator is None:
-            if sample_id is not None:
-                self._sequencer_tracker_logic.set_sample_instrument(
-                    row_index,
-                    sample_id,
-                )
-            elif transpose is not None or volume is not None:
-                self._sequencer_tracker_logic.set_sample_subcolumn(
-                    row_index,
-                    transpose=transpose,
-                    volume=volume,
-                )
-        else:
-            command = (
-                Instrument(
-                    sample_id=sample_id,
-                    generator_name=generator,
-                )
-                if sample_id is not None
-                else None
-            )
-            self._sequencer_tracker_logic.set_row(
-                generator,
-                row_index,
-                command=command,
-                transpose=transpose,
-                volume=volume,
-            )
-
-    def _on_set_note_off(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
-        """Writes a note-off: to one channel, or across every channel from the sample column."""
-        if generator is None:
-            self._sequencer_tracker_logic.set_note_off_all_generators(row_index)
-        else:
-            self._sequencer_tracker_logic.set_note_off(generator, row_index)
 
     def _on_tracker_play_from_row(self, row_index: int) -> None:
         """Starts playback from the right-clicked row of the frame the tracker is showing."""

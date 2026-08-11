@@ -4,6 +4,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import (
     SequencerCellViewModel,
     SequencerRowViewModel,
@@ -38,6 +39,10 @@ class SequencerTrackerLogic(CallbackMixin):
     translates raw panel events into :class:`ProjectController` mutations. The
     controller's change events are wired (by the coordinator) back to the push
     methods here, so a single mutation round-trips into a refreshed view.
+
+    Cell-level edits take an ``Optional[GeneratorName]`` naming the column they
+    address: a generator reaches that channel alone, while ``None`` addresses the
+    sample column and spreads the edit over the channels that column governs.
     """
 
     def __init__(self, project_controller: ProjectController) -> None:
@@ -66,38 +71,51 @@ class SequencerTrackerLogic(CallbackMixin):
         frame_count = song.order_length()
         frame_index = self._clamp_frame(frame_count)
 
-        patterns: Dict[GeneratorName, Pattern] = {}
-        if frame_count > 0:
-            for generator in GeneratorName.items():
-                index = song.order[frame_index].get(generator)
-                pattern = song.pattern(generator, index) if index is not None else None
-                if pattern is not None:
-                    patterns[generator] = pattern
-
-        row_count = self._frame_row_count(patterns, song.rows_per_pattern) if frame_count > 0 else 0
-        rows = tuple(self._build_row(index, patterns) for index in range(row_count))
+        patterns = self._frame_patterns()
+        rows = tuple(self._build_row(index, patterns) for index in range(self.frame_row_count()))
         return SequencerTrackerViewModel(
             frame_index=frame_index,
             frame_count=frame_count,
             rows=rows,
         )
 
-    def _frame_row_count(
-        self,
-        patterns: Dict[GeneratorName, Pattern],
-        rows_per_pattern: int,
-    ) -> int:
-        """Rows to show for the current frame.
+    def frame_row_count(self) -> int:
+        """Rows the current frame holds, the height a whole-frame edit spans.
 
-        Empty (None) slots contribute no pattern, so a frame whose channels are all
-        empty falls back to ``rows_per_pattern`` blank rows — keeping the frame
-        editable so the first keystroke can auto-create a pattern for that channel.
+        A frame is as tall as its longest pattern. Empty (None) slots contribute no
+        pattern, so a frame whose channels are all empty falls back to
+        ``rows_per_pattern`` blank rows — keeping the frame editable so the first
+        keystroke can auto-create a pattern for that channel. Until the order holds
+        its first frame, the count is zero.
         """
-        lengths = [pattern.length for pattern in patterns.values()]
+        song = self._controller.project.song
+        if song.order_length() == 0:
+            return 0
+
+        lengths = [pattern.length for pattern in self._frame_patterns().values()]
         if lengths:
             return max(lengths)
 
-        return rows_per_pattern
+        return song.rows_per_pattern
+
+    def _frame_patterns(self) -> Dict[GeneratorName, Pattern]:
+        """The patterns the current frame's channels point at.
+
+        A channel contributes an entry once its slot names a pattern the song holds,
+        so the result covers exactly the channels carrying content at this frame.
+        """
+        song = self._controller.project.song
+        if self._frame_index >= song.order_length():
+            return {}
+
+        patterns: Dict[GeneratorName, Pattern] = {}
+        for generator in GeneratorName.items():
+            index = song.order[self._frame_index].get(generator)
+            pattern = song.pattern(generator, index) if index is not None else None
+            if pattern is not None:
+                patterns[generator] = pattern
+
+        return patterns
 
     def push_settings(self) -> None:
         self.call(self.on_settings_changed, self.settings)
@@ -122,6 +140,143 @@ class SequencerTrackerLogic(CallbackMixin):
 
     def set_speed(self, speed: int) -> None:
         self._controller.set_speed(speed)
+
+    def clear_cell(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
+        if generator is None:
+            self.clear_all_generators(row_index)
+        else:
+            self.clear_row(generator, row_index)
+
+    def clear_cell_subcolumn(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        subcolumn: SubColumn,
+    ) -> None:
+        """Empties one subcolumn of a cell.
+
+        From the sample column an instrument reaches every channel, since the sample
+        it names is the row's whole note, while transpose and volume follow the
+        channels that column governs.
+        """
+        instrument = subcolumn is SubColumn.INSTRUMENT
+        transpose = subcolumn is SubColumn.TRANSPOSE
+        volume = subcolumn is SubColumn.VOLUME
+        if generator is not None:
+            self.clear_subcolumn(
+                generator,
+                row_index,
+                instrument=instrument,
+                transpose=transpose,
+                volume=volume,
+            )
+        elif instrument:
+            self.clear_subcolumn_all_generators(row_index, instrument=True)
+        else:
+            self.clear_sample_subcolumn(
+                row_index,
+                transpose=transpose,
+                volume=volume,
+            )
+
+    def write_cell(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        sample_id: Optional[str],
+        transpose: Optional[int],
+        volume: Optional[int],
+    ) -> None:
+        """Writes the value a cell edit carries, keeping the rest of the cell as it stands.
+
+        An edit names one subcolumn, so a sample takes the write whenever one
+        arrives, and an offset lands on its own otherwise.
+        """
+        if sample_id is not None:
+            self.place_note(row_index, generator, sample_id)
+        elif transpose is not None or volume is not None:
+            self.set_cell_subcolumn(
+                row_index,
+                generator,
+                transpose=transpose,
+                volume=volume,
+            )
+
+    def place_note(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        sample_id: str,
+    ) -> None:
+        if generator is None:
+            self.set_sample_instrument(row_index, sample_id)
+        else:
+            self.set_row(
+                generator,
+                row_index,
+                command=Instrument(
+                    sample_id=sample_id,
+                    generator_name=generator,
+                ),
+            )
+
+    def cut_note(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
+        if generator is None:
+            self.set_note_off_all_generators(row_index)
+        else:
+            self.set_note_off(generator, row_index)
+
+    def set_cell_subcolumn(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        *,
+        transpose: Optional[int] = None,
+        volume: Optional[int] = None,
+    ) -> None:
+        if generator is None:
+            self.set_sample_subcolumn(
+                row_index,
+                transpose=transpose,
+                volume=volume,
+            )
+        else:
+            self.set_row(
+                generator,
+                row_index,
+                transpose=transpose,
+                volume=volume,
+            )
+
+    def adjust_cell_transpose(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        delta: int,
+    ) -> None:
+        if generator is None:
+            self.adjust_sample_transpose(row_index, delta)
+        else:
+            self.adjust_transpose(generator, row_index, delta)
+
+    def adjust_cell_volume(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        delta: int,
+    ) -> None:
+        if generator is None:
+            self.adjust_sample_volume(row_index, delta)
+        else:
+            self.adjust_volume(generator, row_index, delta)
 
     def set_row(
         self,
@@ -321,11 +476,12 @@ class SequencerTrackerLogic(CallbackMixin):
         for generator in self._subcolumn_generators(row_index):
             self.adjust_volume(generator, row_index, delta)
 
-    def _current_row(
+    def row(
         self,
         generator: GeneratorName,
         row_index: int,
     ) -> Optional[Row]:
+        """The row stored at a cell, present while its channel holds a pattern reaching that far."""
         pattern_index = self._pattern_index_at_frame(generator)
         if pattern_index is None:
             return None
@@ -341,14 +497,14 @@ class SequencerTrackerLogic(CallbackMixin):
         generator: GeneratorName,
         row_index: int,
     ) -> int:
-        row = self._current_row(generator, row_index)
+        row = self.row(generator, row_index)
         if row is None or row.transpose is None:
             return 0
 
         return row.transpose
 
     def _current_volume(self, generator: GeneratorName, row_index: int) -> int:
-        row = self._current_row(generator, row_index)
+        row = self.row(generator, row_index)
         if row is None or row.volume is None:
             return MAX_VOLUME
 
@@ -419,13 +575,20 @@ class SequencerTrackerLogic(CallbackMixin):
         Falls back to every channel when no sample constrains the row, mirroring
         :attr:`SequencerRowViewModel.subcolumn_generators`.
         """
-        relevant = self._relevant_generators(row_index)
-        if not relevant:
+        referenced = self.referenced_generators(row_index)
+        if not referenced:
             return GeneratorName.items()
 
-        return [generator for generator in GeneratorName.items() if generator in relevant]
+        return [generator for generator in GeneratorName.items() if generator in referenced]
 
-    def _relevant_generators(self, row_index: int) -> FrozenSet[GeneratorName]:
+    def referenced_generators(self, row_index: int) -> FrozenSet[GeneratorName]:
+        """The channels spanned by the samples a row names.
+
+        Reads the row from every channel's pattern, so it reports a sample's whole
+        span even where some of its cells stand empty. A row naming no sample
+        references no channel, which is what :meth:`relevant_generators` widens to
+        every channel.
+        """
         rows: Dict[GeneratorName, Optional[Row]] = {}
         for generator in GeneratorName.items():
             pattern_index = self._pattern_index_at_frame(generator)
@@ -439,9 +602,9 @@ class SequencerTrackerLogic(CallbackMixin):
             )
             rows[generator] = pattern.rows[row_index] if pattern is not None else None
 
-        return self._relevant_generators_from_rows(rows)
+        return self._referenced_generators_from_rows(rows)
 
-    def _relevant_generators_from_rows(
+    def _referenced_generators_from_rows(
         self,
         rows: Dict[GeneratorName, Optional[Row]],
     ) -> FrozenSet[GeneratorName]:
@@ -491,7 +654,7 @@ class SequencerTrackerLogic(CallbackMixin):
         return SequencerRowViewModel(
             index=index,
             cells=cells,
-            relevant_generators=self._relevant_generators_from_rows(rows),
+            relevant_generators=self._referenced_generators_from_rows(rows),
         )
 
     def _build_cell(self, row: Row) -> SequencerCellViewModel:
