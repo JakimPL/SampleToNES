@@ -19,8 +19,10 @@ left, set up how the reconstruction is done in the centre, and click **Convert
 sample** (or **Convert directory** for a folder). The
 [instruction library](../concepts/instruction-library.md) for your settings is
 built automatically the first time it is needed, so you can convert straight away.
-When a single file finishes, **Load** opens the result on the **Reconstructions**
-tab; **Cancel** stops a run, and only one runs at a time.
+While it runs, the panel names the file going in and where the result is going, and
+clicking either path shows it in your file manager. When a single file finishes,
+**Load** opens the result on the **Reconstructions** tab; **Cancel** stops a run, and
+only one runs at a time.
 
 A few settings are worth knowing before you convert. Under **Reconstructor
 settings**, the **Generators** toggles choose which channels take part — at least

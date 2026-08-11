@@ -31,7 +31,7 @@ from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.path import GUIPathText
+from sampletones_application.ui.elements.path import GUIDestinationPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
@@ -77,7 +77,7 @@ class GUIRenderWindow(GUIDialogWindow):
         self._path_colors = path_colors
         self._status_bar = status_bar
         self._view_model: Optional[SongRenderViewModel] = None
-        self._destination_text: Optional[GUIPathText] = None
+        self._destination_text: Optional[GUIDestinationPathText] = None
 
         self.on_settings_changed: Optional[SettingsCallback] = None
         self.on_browse: Optional[VoidCallback] = None
@@ -92,7 +92,7 @@ class GUIRenderWindow(GUIDialogWindow):
 
         self._fmt_sample_rate = language_manager["settings.render.template.sample_rate"]
         self._fmt_bitrate = language_manager["settings.render.template.bitrate"]
-        self._msg_path = language_manager["global.status.message.path"]
+        self._msg_destination = language_manager["global.status.message.destination"]
         self._format_labels: Dict[AudioFormat, str] = {
             AudioFormat.WAVE: language_manager["settings.render.label.format_wave"],
             AudioFormat.MP3: language_manager["settings.render.label.format_mp3"],
@@ -257,13 +257,13 @@ class GUIRenderWindow(GUIDialogWindow):
             parent=TAG_SETTINGS_RENDER_GROUP_DESTINATION,
             callback=self._request_destination,
         )
-        self._destination_text = GUIPathText(
+        self._destination_text = GUIDestinationPathText(
             tag=TAG_SETTINGS_RENDER_PATH_DESTINATION,
             path=self._require_view_model().destination,
             parent=TAG_SETTINGS_RENDER_GROUP_DESTINATION,
             color=self._path_colors.default,
             hover_color=self._path_colors.hover,
-            status_message=self._msg_path,
+            status_message=self._msg_destination,
             font=Font.REGULAR_SMALL,
             status_bar=self._status_bar,
         )

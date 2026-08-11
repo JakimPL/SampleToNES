@@ -149,7 +149,7 @@ The dialog holds the choices:
 | **Bit depth** (WAV) | How finely each sample is stored. 16-bit PCM is the usual choice; 8-bit is there for the crunch the NES itself has |
 | **Bitrate** (MP3) | How much the file spends per second — higher sounds better and takes more room. What is on offer depends on the sample rate, so the list follows when you change it |
 | **Normalize peak** | Lifts the whole song so its loudest moment reaches full scale, keeping the balance between channels as it was |
-| **File** | Where it is written. **Browse...** opens the save dialog, and the folder you pick is offered again next time |
+| **File** | Where it is written. **Browse...** opens the save dialog, clicking the path shows where the file is going in your file manager, and the folder you pick is offered again next time |
 
 **Length** tells you how long the file will be before you start. **Render** begins,
 and a bar reports how far it has got; **Cancel** stops it and leaves the file

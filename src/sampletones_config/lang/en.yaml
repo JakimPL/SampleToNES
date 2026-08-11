@@ -217,6 +217,7 @@ global.menu.label.tab_sequencer: "Sequencer"
 # Global — Status bar messages
 # =============================================================================
 global.status.message.path: "Click to open path in file explorer."
+global.status.message.destination: "Click to show the destination in file explorer."
 global.status.message.node_reconstruction_no_autoplay: "Double-click to open reconstruction. Right-click to open context menu."
 global.status.message.node_reconstruction: "Click to play reconstruction. Double-click to open reconstruction. Right-click to open context menu."
 global.status.message.node_library: "Double-click to open instructions library. Right-click to open context menu."
