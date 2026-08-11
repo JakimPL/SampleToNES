@@ -137,6 +137,121 @@ TAG_SETTINGS_DISPLAY_BUTTON_REVERT = TagName(
     "revert",
 )
 
+TAG_SETTINGS_RENDER_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.WINDOW,
+    "render",
+)
+TAG_SETTINGS_RENDER_GROUP_SETUP = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.GROUP,
+    "setup",
+)
+TAG_SETTINGS_RENDER_GROUP_PROGRESS = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.GROUP,
+    "progress",
+)
+TAG_SETTINGS_RENDER_GROUP_DEPTH = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.GROUP,
+    "depth",
+)
+TAG_SETTINGS_RENDER_GROUP_BITRATE = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.GROUP,
+    "bitrate",
+)
+TAG_SETTINGS_RENDER_GROUP_DESTINATION = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.GROUP,
+    "destination",
+)
+TAG_SETTINGS_RENDER_COMBO_FORMAT = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.COMBO,
+    "format",
+)
+TAG_SETTINGS_RENDER_COMBO_SAMPLE_RATE = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.COMBO,
+    "sample_rate",
+)
+TAG_SETTINGS_RENDER_COMBO_DEPTH = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.COMBO,
+    "depth",
+)
+TAG_SETTINGS_RENDER_COMBO_BITRATE = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.COMBO,
+    "bitrate",
+)
+TAG_SETTINGS_RENDER_CHECKBOX_NORMALIZE = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.CHECKBOX,
+    "normalize",
+)
+TAG_SETTINGS_RENDER_TEXT_DURATION = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.TEXT,
+    "duration",
+)
+TAG_SETTINGS_RENDER_TEXT_STATUS = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.TEXT,
+    "status",
+)
+TAG_SETTINGS_RENDER_PATH_DESTINATION = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.PATH,
+    "destination",
+)
+TAG_SETTINGS_RENDER_PROGRESS = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.PROGRESS,
+    "render",
+)
+TAG_SETTINGS_RENDER_BUTTON_BROWSE = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.BUTTON,
+    "browse",
+)
+TAG_SETTINGS_RENDER_BUTTON_START = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.BUTTON,
+    "start",
+)
+TAG_SETTINGS_RENDER_BUTTON_CLOSE = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.BUTTON,
+    "close",
+)
+TAG_SETTINGS_RENDER_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.RENDER,
+    Widget.BUTTON,
+    "cancel",
+)
+
 TAG_SETTINGS_KEYBINDINGS_WINDOW = TagName(
     Page.SETTINGS,
     Panel.KEYBINDINGS,

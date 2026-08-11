@@ -203,7 +203,22 @@ class Generator(ABC, Generic[InstructionT, TimerT]):
 
     @property
     def frame_length(self) -> int:
-        return self.config.library.frame_length
+        """The samples the next rendered frame spans.
+
+        The timer holds the length, seeded from the configuration it was built with. Setting it
+        renders the next frame over that many samples instead, which is how a caller driving the
+        engine's ticks gives each tick the span its clock states. Oscillator continuity is carried
+        by the timer's own state, so a frame of a different length resumes exactly where the last
+        one ended.
+        """
+        return self.timer.frame_length
+
+    @frame_length.setter
+    def frame_length(self, value: int) -> None:
+        if value < 1:
+            raise ValueError(f"frame_length must be at least 1, got {value}")
+
+        self.timer.frame_length = value
 
     @classmethod
     @abstractmethod

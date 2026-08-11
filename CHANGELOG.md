@@ -9,6 +9,8 @@
     * Theme selector
     * Keybinding settings
 * Bumped the reconstruction data-version to `2.1`.
+* Improved Sequencer module playback.
+* Added song export to WAV/MP3.
 
 ## v0.3.0 [2026-07-31]
 

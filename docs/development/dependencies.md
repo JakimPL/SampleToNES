@@ -24,6 +24,27 @@ Playback goes through PortAudio, reached with the `pyaudio` package. PyPI carrie
 
 Compiling on macOS also depends on the interpreter's architecture. The python.org installer ships a universal2 build, which compiles extensions for both Apple Silicon and Intel, while Homebrew's `libportaudio` carries the machine's own architecture. Pinning `ARCHFLAGS` to `uname -m` settles it on the native one: `make setup` sets it directly, and the CI workflows take it from `scripts/macos/build/build_env.sh`, which reports it as a `KEY=VALUE` line alongside the PortAudio prefix for a Homebrew installed outside its usual place.
 
+## Audio rendering
+
+Audio files are written with libsndfile, reached with the `soundfile` package. Its wheels carry a
+prebuilt libsndfile 1.2.2 for every supported platform, so the encoders come with the package and
+need nothing installed alongside them.
+
+Which formats an installation writes is asked of the library at runtime, because libsndfile is built
+with a codec set that varies by platform and packaging — the MP3 encoder in particular arrived in
+1.2.0 and is present where it was compiled in. The chooser offers the formats the library reports,
+so what a user is shown describes the machine it is running on.
+
+| Format | Sample rates | Quality |
+| --- | --- | --- |
+| WAV | 8000, 16000, 22050, 44100, 48000, 96000, 192000 Hz | 8, 16, 24 or 32-bit PCM, or 32-bit float |
+| MP3 | 8000, 16000, 22050, 44100, 48000 Hz | a bitrate from the ladder its MPEG version defines |
+
+The bitrates on offer narrow with the sample rate: up to 320 kbps at 44100 and 48000 Hz, 160 kbps at
+16000 and 22050 Hz, and 64 kbps at 8000 Hz. libsndfile takes MP3 quality as a compression level
+between 0 and 1 and turns it into a rung on that ladder, so a bitrate is reached through the level
+its rate maps it to, measured per rate and held in `sampletones_core/audio/writers/bitrate.py`.
+
 ## File dialogs
 
 Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser`), reached over D-Bus with the pure-Python `jeepney` package on Linux. The portal lists every offered file type in its selector and reports back the one the user picked, which is what lets a save settle its format from the type chosen there. Where no portal answers, `kdialog` and `zenity` take over, and Tk last.

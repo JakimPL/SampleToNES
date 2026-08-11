@@ -11,6 +11,7 @@ from .processing import (
     normalize,
     quantize,
     resample,
+    silence,
     to_mono,
 )
 from .validation import (
@@ -36,6 +37,7 @@ __all__ = [
     "quantize",
     "read_wave",
     "resample",
+    "silence",
     "to_mono",
     "validate_audio_array",
     "validate_buffer_size",

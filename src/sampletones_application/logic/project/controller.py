@@ -54,6 +54,11 @@ class ProjectController(CallbackMixin):
         return self._project_manager.is_open
 
     @property
+    def name(self) -> str:
+        """The name the open project is known by, which a project saved to a file takes from it."""
+        return self._project_manager.name
+
+    @property
     def has_samples(self) -> bool:
         return bool(self.project.samples)
 

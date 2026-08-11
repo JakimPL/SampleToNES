@@ -1,4 +1,4 @@
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any, Callable, Dict, Final, Generator, List
 from unittest.mock import PropertyMock, patch
@@ -67,6 +67,19 @@ def _display_patches() -> List[Any]:
     return display_patches
 
 
+@contextmanager
+def _no_audio_devices() -> Generator[None, None, None]:
+    """The machine a headless run comes up on: the backend reports no output device at all."""
+    with (
+        patch("pyaudio.PyAudio.get_device_count", return_value=0),
+        patch(
+            "pyaudio.PyAudio.get_default_output_device_info",
+            side_effect=OSError,
+        ),
+    ):
+        yield
+
+
 def _profile(directory: Path) -> UserProfile:
     """Starts the application on a profile of its own, in the state a first run finds.
 
@@ -93,6 +106,20 @@ class TestGUIStartup:
         with ExitStack() as stack:
             for display_patch in _display_patches():
                 stack.enter_context(display_patch)
+
+            Application(profile=_profile(tmp_path))
+
+    def test_initialises_where_nothing_can_play(self, tmp_path: Path) -> None:
+        """Editing a song, exporting a module and rendering to a file need no output device.
+
+        The rate the audio is rendered at is the consumer's to state, so a machine offering no
+        device to play through still opens the window and everything that writes rather than
+        sounds works on it.
+        """
+        with ExitStack() as stack:
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_no_audio_devices())
 
             Application(profile=_profile(tmp_path))
 

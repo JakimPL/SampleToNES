@@ -46,6 +46,7 @@ dependencies = [
     "rich>=13.0,<16",
     "scipy>=1.13,<2",
     "screeninfo>=0.8,<0.9",
+    "soundfile>=0.13,<0.14",
     "tqdm>=4.66,<5",
     "jeepney>=0.8,<1; sys_platform == 'linux'",
     "pytaskbar>=0.1.1,<0.2; platform_system == 'Windows'",

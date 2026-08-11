@@ -47,6 +47,7 @@ class ShortcutId(Enum):
     PROJECT_PROPERTIES = ("ProjectProperties", ShortcutCategory.APPLICATION)
     EXPORT_PROJECT_FAMITRACKER = ("ExportProjectFamiTracker", ShortcutCategory.APPLICATION)
     EXPORT_PROJECT_BITPHASE = ("ExportProjectBitphase", ShortcutCategory.APPLICATION)
+    RENDER_SONG = ("RenderSong", ShortcutCategory.APPLICATION)
     CLOSE_PROJECT = ("CloseProject", ShortcutCategory.APPLICATION)
     EXIT = ("Exit", ShortcutCategory.APPLICATION)
     UNDO = ("Undo", ShortcutCategory.APPLICATION)

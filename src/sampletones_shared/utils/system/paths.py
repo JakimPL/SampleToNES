@@ -93,6 +93,30 @@ def ensure_suffix(path: Path, suffix: str) -> Path:
     return path.with_name(f"{path.name}{normalized_suffix}")
 
 
+def replace_suffix(path: Path, previous: str, suffix: str) -> Path:
+    """
+    Returns the path carrying ``suffix`` where its name ends with ``previous``.
+
+    A destination follows the format written to it, so choosing another format renames the
+    file the destination points at. The ending is compared case-insensitively, and a name
+    ending in anything else keeps every part of itself and takes the new suffix on the end,
+    the way :func:`ensure_suffix` leaves incidental dots intact (``my.mix`` becomes
+    ``my.mix.mp3``).
+
+    Args:
+        path (Path): The path whose extension follows a change of format.
+        previous (str): The extension the name is expected to end with, leading dot included.
+        suffix (str): The extension the path takes, with or without a leading dot.
+
+    Returns:
+        Path: The path ending with the given suffix.
+    """
+    if previous and path.name.lower().endswith(previous.lower()):
+        return path.with_name(get_filename(path.name[: -len(previous)], suffix))
+
+    return ensure_suffix(path, suffix)
+
+
 def shorten_path(path: GeneralPathlike, levels: int = SHORTEN_PATH_LEVELS) -> str:
     """
     Shortens a file path for display by keeping the root, first directory, and last few parts.

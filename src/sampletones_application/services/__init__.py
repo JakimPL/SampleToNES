@@ -10,6 +10,11 @@ from sampletones_application.services.regeneration import (
     RegenerationResult,
     RegenerationService,
 )
+from sampletones_application.services.render import (
+    RenderResult,
+    RenderStage,
+    SongRenderService,
+)
 from sampletones_application.services.result import (
     ConversionResult,
     ServiceCancelled,
@@ -20,6 +25,7 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_application.services.retune import RetunedSample, RetuneResult, SampleRetuneService
+from sampletones_application.services.synthesis import RowSynthesizerProtocol
 
 __all__ = [
     "ConversionResult",
@@ -32,8 +38,11 @@ __all__ = [
     "RegeneratedInstrument",
     "RegenerationResult",
     "RegenerationService",
+    "RenderResult",
+    "RenderStage",
     "RetuneResult",
     "RetunedSample",
+    "RowSynthesizerProtocol",
     "SampleRetuneService",
     "ServiceBase",
     "ServiceCancelled",
@@ -42,4 +51,5 @@ __all__ = [
     "ServiceProgress",
     "ServiceStarted",
     "ServiceSuccess",
+    "SongRenderService",
 ]

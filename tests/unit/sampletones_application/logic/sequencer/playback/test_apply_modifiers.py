@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from sampletones_application.logic.sequencer.playback.synthesizer import (
-    _apply_modifiers,
+    apply_modifiers,
 )
 from sampletones_core.constants.general import MAX_PITCH, MAX_VOLUME, MIN_PITCH
 from sampletones_core.instructions import (
@@ -86,7 +86,7 @@ class TestPulseVolumeScaling:
             volume=case.instruction_volume,
             duty_cycle=0,
         )
-        result = _apply_modifiers(
+        result = apply_modifiers(
             instruction,
             transpose=0,
             row_volume=case.row_volume,
@@ -107,7 +107,7 @@ class TestNoiseVolumeScaling:
             volume=case.instruction_volume,
             short=False,
         )
-        result = _apply_modifiers(
+        result = apply_modifiers(
             instruction,
             transpose=0,
             row_volume=case.row_volume,
@@ -180,7 +180,7 @@ class TestPulseTranspose:
             volume=15,
             duty_cycle=0,
         )
-        result = _apply_modifiers(
+        result = apply_modifiers(
             instruction,
             transpose=case.transpose,
             row_volume=MAX_VOLUME,
@@ -253,7 +253,7 @@ class TestNoiseTranspose:
             volume=15,
             short=False,
         )
-        result = _apply_modifiers(
+        result = apply_modifiers(
             instruction,
             transpose=case.transpose,
             row_volume=MAX_VOLUME,
@@ -359,7 +359,7 @@ class TestTriangleModifiers:
         case: TriangleModifiersCase,
     ) -> None:
         instruction = TriangleInstruction(on=True, pitch=case.pitch)
-        result = _apply_modifiers(
+        result = apply_modifiers(
             instruction,
             transpose=case.transpose,
             row_volume=case.row_volume,

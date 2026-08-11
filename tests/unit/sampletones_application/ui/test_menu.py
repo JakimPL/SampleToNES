@@ -89,6 +89,7 @@ def _state(
         reconstruction_in_project=False,
         reconstruction_file_backed=False,
         reconstruction_audio_recorded=False,
+        operation_active=False,
         can_undo=False,
         can_redo=False,
         play_label="Play",

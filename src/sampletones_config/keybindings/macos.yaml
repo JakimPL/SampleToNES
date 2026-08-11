@@ -9,6 +9,7 @@ bindings:
   ProjectProperties: {combination: "Cmd+Alt+P"}
   ExportProjectFamiTracker: {combination: "Cmd+M"}
   ExportProjectBitphase: {combination: "Cmd+B"}
+  RenderSong: {combination: "Cmd+Shift+E"}
   CloseProject: {combination: "Cmd+W"}
   Exit: {combination: "Cmd+Q"}
 

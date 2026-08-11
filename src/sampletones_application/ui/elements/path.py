@@ -164,3 +164,30 @@ class GUIPathText(CallbackMixin):
     def destroy(self) -> None:
         dpg_delete_item(self.handler_tag)
         dpg_delete_item(self.tag)
+
+
+class GUIDestinationPathText(GUIPathText):
+    """A path an operation is going to write to, which reveals the nearest place that stands.
+
+    A destination names what the operation will leave behind, so it points into the filesystem
+    before anything is there. A click therefore reaches the destination itself once it is written,
+    and the closest directory on its way while it is still being described.
+    """
+
+    def _on_clicked(self) -> None:
+        standing = self._nearest_standing()
+        if standing is not None:
+            open_path_in_explorer(standing)
+
+    def _nearest_standing(self) -> Optional[Path]:
+        if not self.path.name:
+            return None
+
+        if self.path.exists():
+            return self.path
+
+        for directory in self.path.parents:
+            if directory.is_dir():
+                return directory
+
+        return None

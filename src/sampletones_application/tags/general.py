@@ -416,6 +416,12 @@ TAG_GLOBAL_MENU_ITEM_FILE_EXPORT = TagName(
     Widget.MENU,
     "item_file_export",
 )
+TAG_GLOBAL_MENU_ITEM_FILE_RENDER_SONG = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_file_render_song",
+)
 TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

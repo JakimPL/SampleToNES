@@ -197,6 +197,7 @@ class SequencerTabCoordinator:
                     project_controller,
                     config_manager.config,
                     active_channels=lambda: self._sequencer_channels_logic.active_channels,
+                    sample_rate=lambda: audio_device_manager.sample_rate,
                 ),
                 should_loop=lambda: session_manager.loop_song,
                 master_gain=lambda: session_manager.master_gain,

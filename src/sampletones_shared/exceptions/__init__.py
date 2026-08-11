@@ -1,4 +1,4 @@
-from .audio import PlaybackError, UnsupportedAudioFormatError
+from .audio import AudioWriteError, PlaybackError, UnsupportedAudioFormatError
 from .base import SampleToNESError
 from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning
@@ -42,6 +42,7 @@ from .validation import (
 from .window import WindowError, WindowNotAvailableError
 
 __all__ = [
+    "AudioWriteError",
     "CallbackQueueStop",
     "CuPyNotInstalledWarning",
     "DeserializationError",

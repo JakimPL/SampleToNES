@@ -67,6 +67,7 @@ class MenuElements(AbstractElement):
     GROUP_FILE_EXPORT = "group_file_export"
     ITEM_FILE_EXPORT_FAMITRACKER = "item_file_export_famitracker"
     ITEM_FILE_EXPORT_BITPHASE = "item_file_export_bitphase"
+    ITEM_FILE_RENDER_SONG = "item_file_render_song"
     ITEM_FILE_CLOSE_PROJECT = "item_file_close_project"
     ITEM_FILE_EXIT = "item_file_exit"
     GROUP_EDIT = "group_edit"

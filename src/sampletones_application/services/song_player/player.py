@@ -12,13 +12,13 @@ from sampletones_application.services.song_player.constants import (
     STOP_JOIN_TIMEOUT,
     STOP_POLL_TIMEOUT,
 )
-from sampletones_application.services.song_player.protocol import RowSynthesizerProtocol
 from sampletones_application.services.song_player.result import (
     SongPlaybackError,
     SongPlaybackStopped,
     SongPlayerResult,
     SongPositionUpdate,
 )
+from sampletones_application.services.synthesis.protocol import RowSynthesizerProtocol
 from sampletones_core.audio import AudioDeviceManager, clip_audio_inplace
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE
 from sampletones_core.project.song_position import SongPosition

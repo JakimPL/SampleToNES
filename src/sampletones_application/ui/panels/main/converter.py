@@ -28,7 +28,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.elements.path import GUIPathText
+from sampletones_application.ui.elements.path import GUIDestinationPathText, GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
@@ -57,7 +57,7 @@ class GUIConverterPanel(GUIPanel):
     ) -> None:
         self._language_manager = language_manager
         self.input_path_text: Optional[GUIPathText] = None
-        self.output_path_text: Optional[GUIPathText] = None
+        self.output_path_text: Optional[GUIDestinationPathText] = None
         self._status_bar = status_bar
         self._action_button: Optional[GUIButton] = None
         self._theme_convert: Optional[Theme] = None
@@ -69,6 +69,7 @@ class GUIConverterPanel(GUIPanel):
         self._layout = layout
         self._path_colors = path_colors
         self._msg_path = language_manager["global.status.message.path"]
+        self._msg_destination = language_manager["global.status.message.destination"]
         self._msg_status_convert = language_manager["main.converter.message.status_convert"]
         self._status_action_message = self._msg_status_convert
 
@@ -193,14 +194,14 @@ class GUIConverterPanel(GUIPanel):
                     font=Font.REGULAR_SMALL,
                     status_bar=self._status_bar,
                 )
-                self.output_path_text = GUIPathText(
+                self.output_path_text = GUIDestinationPathText(
                     path=None,
                     prefix=self._language_manager["main.converter.message.status_output_label"],
                     tag=TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH,
                     parent=TAG_MAIN_CONVERTER_GROUP_SUMMARY,
                     color=self._path_colors.default,
                     hover_color=self._path_colors.hover,
-                    status_message=self._msg_path,
+                    status_message=self._msg_destination,
                     font=Font.REGULAR_SMALL,
                     status_bar=self._status_bar,
                 )

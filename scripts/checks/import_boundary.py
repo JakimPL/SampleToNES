@@ -39,6 +39,7 @@ VISUAL = [
 
 SERVICE_CONTRACTS = [
     "sampletones_application.services.result",
+    "sampletones_application.services.render.result",
     "sampletones_application.services.song_player.result",
 ]
 

@@ -17,7 +17,13 @@ class ChannelGeneratorProtocol(Protocol):
     The instruction parameter is typed ``Any`` because the generator-to-instruction
     pairing is a runtime invariant maintained by ``GENERATOR_CLASSES`` dispatch, which
     lies outside the static type system.
+
+    ``frame_length`` is settable so the synthesiser can give each tick the span its clock
+    states, which is what keeps a rendered tick lasting ``1 / nes_frequency`` seconds at a
+    sample rate the tick divides unevenly.
     """
+
+    frame_length: int
 
     def __call__(
         self,
