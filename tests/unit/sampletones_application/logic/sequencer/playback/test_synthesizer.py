@@ -837,10 +837,10 @@ class TestNesFrequencyTempo:
         sample = add_sample(controller, recon)
         place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=SAMPLE_RATE)
-        pulse_state = synthesizer._channels.state(GeneratorName.PULSE1)
 
         controller.set_nes_frequency(60)
         synthesizer.render_row()
+        pulse_state = synthesizer._channels.state(GeneratorName.PULSE1)
         assert pulse_state.generator.frame_length == round(SAMPLE_RATE / 60)
 
         controller.set_nes_frequency(30)

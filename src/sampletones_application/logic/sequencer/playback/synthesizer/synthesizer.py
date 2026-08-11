@@ -46,9 +46,11 @@ class RowSynthesizer:
     audio runs at: the output device for live playback, the chosen format for a file. Reading it
     per row keeps the two in step, so a rendered second is a second wherever the audio goes.
 
-    Generators are held in a :class:`ChannelBank` built from ``config`` at the rates in force,
-    carrying timer state across rows for phase continuity within a sustained note. Triggering a
-    new note calls ``generator.reset()`` for a clean phase start.
+    Generators are held in a :class:`ChannelBank` built from ``config`` at the rates the first row
+    is rendered at, so the rate is asked for once there is audio to take it — a device is chosen by
+    the time playback starts, and a format by the time a render does. They carry timer state across
+    rows for phase continuity within a sustained note, and triggering a new note calls
+    ``generator.reset()`` for a clean phase start.
 
     ``active_channels`` reports which channels sound and is consulted once per channel per
     row, so muting or unmuting during playback is heard as the render-ahead buffer drains. A
@@ -65,12 +67,13 @@ class RowSynthesizer:
         sample_rate: Callable[[], int],
     ) -> None:
         self._project_source = project_source
+        self._config = config
         self._active_channels = active_channels
         self._sample_rate = sample_rate
         self._position = SongPosition()
         self._timing: SongTiming = SongTiming.from_project(project_source.project)
         self._groove: Groove = self._timing.groove()
-        self._channels = ChannelBank(config, self._current_rates())
+        self._channels: Optional[ChannelBank] = None
         self._elapsed_ticks: int = 0
 
     @property
@@ -92,17 +95,18 @@ class RowSynthesizer:
 
     def reset(self) -> None:
         self._elapsed_ticks = 0
-        self._channels.reset()
+        if self._channels is not None:
+            self._channels.reset()
 
     def render_row(self) -> Tuple[np.ndarray, SongPosition]:
         project = self._project_source.project
         song = project.song
         self._position.wrap_overflow(song.rows_per_pattern)
-        self._channels.follow(self._current_rates())
+        channels = self._bank()
         self._ensure_groove(project)
 
         frames = RowFrames.from_clock(
-            self._channels.clock,
+            channels.clock,
             elapsed_ticks=self._elapsed_ticks,
             ticks=self._groove.ticks[self._position.row_index],
         )
@@ -116,6 +120,7 @@ class RowSynthesizer:
                 project,
                 song,
                 frames,
+                channels,
             )
         )
 
@@ -124,6 +129,22 @@ class RowSynthesizer:
             self._advance_position(song)
 
         return mixed, position_before
+
+    def _bank(self) -> ChannelBank:
+        """The channels the row about to be rendered sounds through, at the rates in force.
+
+        Building them here is what lets a session start where nothing yet takes the audio: the rate
+        belongs to whoever consumes it, so it is asked for at the moment there is a consumer to
+        answer. Every later row follows the pair, so a device or a format changing underneath is
+        heard from the next row on.
+        """
+        rates = self._current_rates()
+        if self._channels is None:
+            self._channels = ChannelBank(self._config, rates)
+        else:
+            self._channels.follow(rates)
+
+        return self._channels
 
     def _current_rates(self) -> EngineRates:
         return EngineRates.from_project(
@@ -151,6 +172,7 @@ class RowSynthesizer:
         project: Project,
         song: Song,
         frames: RowFrames,
+        channels: ChannelBank,
     ) -> np.ndarray:
         mixed = silence(frames.total)
         for generator_name in GeneratorName.items():
@@ -159,6 +181,7 @@ class RowSynthesizer:
                 project,
                 song,
                 frames,
+                channels,
             )
             mixed += channel_audio
 
@@ -170,8 +193,9 @@ class RowSynthesizer:
         project: Project,
         song: Song,
         frames: RowFrames,
+        channels: ChannelBank,
     ) -> np.ndarray:
-        state = self._channels.state(generator_name)
+        state = channels.state(generator_name)
 
         row = self._resolve_row(generator_name, song)
         if row is not None:

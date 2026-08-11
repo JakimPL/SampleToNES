@@ -1,5 +1,5 @@
 from fractions import Fraction
-from typing import Final, Tuple
+from typing import Final, Optional, Tuple
 
 import numpy as np
 import pytest
@@ -159,6 +159,63 @@ class TestTheOutputRateIsFollowed(BaseTestSuite):
 
         difference = abs(Fraction(at_even, EVEN_SAMPLE_RATE) - Fraction(at_uneven, UNEVEN_SAMPLE_RATE))
         assert difference < Fraction(1, UNEVEN_SAMPLE_RATE)
+
+
+class _LateRate:
+    """The rate a machine with no output device reports: none, until a device is chosen."""
+
+    def __init__(self) -> None:
+        self.rate: Optional[int] = None
+        self.reads: int = 0
+
+    def __call__(self) -> int:
+        self.reads += 1
+        if self.rate is None:
+            raise ValueError("No audio device selected")
+
+        return self.rate
+
+
+class TestTheRateIsAskedForWhenAudioIsTaken(BaseTestSuite):
+    """The rate belongs to whoever takes the audio, so it is asked for once there is audio to take.
+
+    That is what lets a session come up on a machine where nothing can play it: the song is edited,
+    exported and rendered to a file all the same, and the first row sounds at the rate the consumer
+    that reached it reports.
+    """
+
+    def test_a_synthesizer_stands_where_no_rate_can_be_stated(self) -> None:
+        rate = _LateRate()
+
+        synthesizer = RowSynthesizer(
+            make_controller(),
+            Config(),
+            active_channels=all_channels,
+            sample_rate=rate,
+        )
+        synthesizer.set_position(0, 0)
+        synthesizer.reset()
+
+        assert rate.reads == 0
+
+    def test_the_first_row_renders_at_the_rate_that_answers(self) -> None:
+        controller = make_controller()
+        rate = _LateRate()
+        synthesizer = RowSynthesizer(
+            controller,
+            Config(),
+            active_channels=all_channels,
+            sample_rate=rate,
+        )
+
+        rate.rate = UNEVEN_SAMPLE_RATE
+        rendered = len(synthesizer.render_row()[0])
+
+        clock = TickClock.from_parameters(
+            sample_rate=UNEVEN_SAMPLE_RATE,
+            nes_frequency=controller.project.settings.nes_frequency,
+        )
+        assert rendered == clock.samples_at(_expected_ticks(controller)[0])
 
 
 class TestChannelsFillTheRow(BaseTestSuite):

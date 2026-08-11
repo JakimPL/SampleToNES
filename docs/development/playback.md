@@ -177,6 +177,11 @@ the project moves on. The **rate** is the consumer's: the device for playback, t
 format for a render. The kernel rebuilds its generators and its tick clock when either moves, so a
 file is written at the rate its engine ran at.
 
+A rate is therefore asked for once there is audio to take it, which is the first row a kernel
+renders: a device has been chosen by the time playback starts, and a format by the time a render
+does. A session on a machine offering no output device opens on that rule, and everything that
+writes rather than sounds — editing, exporting a module, rendering to a file — works on it.
+
 The song's exact length follows from the timing model before a sample is rendered: the order's
 length in rows gives the ticks, the tick clock gives the samples those ticks span. That figure is
 what the progress bar counts against and what a finished file measures.
