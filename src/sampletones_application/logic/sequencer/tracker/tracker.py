@@ -518,6 +518,10 @@ class SequencerTrackerLogic(CallbackMixin):
         self._frame_index = frame_index
         self.push_tracker()
 
+    def holds_sample(self, sample_id: str) -> bool:
+        """Whether the project holds the sample a note names, which is what makes the note placeable."""
+        return self._controller.project.samples.get(sample_id) is not None
+
     def used_generators(self, sample_id: str) -> List[GeneratorName]:
         """The channels a sample provides instructions for, empty when it is unknown."""
         sample = self._controller.project.samples.get(sample_id)

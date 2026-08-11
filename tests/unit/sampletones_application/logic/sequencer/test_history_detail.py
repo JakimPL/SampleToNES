@@ -1,8 +1,6 @@
-from pathlib import Path
 from typing import List, Tuple
 from unittest.mock import MagicMock
 
-import numpy as np
 import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
@@ -12,6 +10,8 @@ from sampletones_application.logic.sequencer.history_detail import (
 )
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
+from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
@@ -19,33 +19,14 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWord,
     HistoryDetailWordSegment,
 )
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.instructions import PulseInstruction
-from sampletones_core.reconstructions import Reconstruction
-
-_LENGTH = 64
+from tests.suite.sequencer import sample_reconstruction
 
 Pair = Tuple[str, HistoryDetailRole]
 
 
 def _controller() -> ProjectController:
     return ProjectController(ProjectManager())
-
-
-def _reconstruction(generators: List[GeneratorName]) -> Reconstruction:
-    instructions = {
-        generator: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)] for generator in generators
-    }
-    approximations = {generator: np.zeros(_LENGTH, dtype=np.float32) for generator in generators}
-    return Reconstruction.create(
-        approximation=np.zeros(_LENGTH, dtype=np.float32),
-        approximations=approximations,
-        instructions=instructions,
-        config=Config(),
-        coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
-    )
 
 
 def _formatter(controller: ProjectController) -> SequencerHistoryDetail:
@@ -66,8 +47,8 @@ def _pairs(segments: Tuple[HistoryDetailSegment, ...]) -> List[Pair]:
 class TestTrackerDetails:
     def test_edit_row_single_channel_places_sample(self) -> None:
         controller = _controller()
-        controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
-        target = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="bass")
+        controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="lead")
+        target = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="bass")
         formatter = _formatter(controller)
 
         segments = formatter.edit_row(10, GeneratorName.PULSE1, target.id, None, None)
@@ -83,7 +64,7 @@ class TestTrackerDetails:
     def test_edit_row_sample_column_lists_the_samples_channels(self) -> None:
         controller = _controller()
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE, GeneratorName.NOISE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE, GeneratorName.NOISE]),
             name="chord",
         )
         formatter = _formatter(controller)
@@ -135,6 +116,53 @@ class TestTrackerDetails:
             ("N", HistoryDetailRole.CHANNEL),
             ("00", HistoryDetailRole.ROW),
             ("v", HistoryDetailRole.VOLUME),
+        ]
+
+    def test_a_block_reads_as_the_channels_and_the_rows_it_covers(self) -> None:
+        formatter = _formatter(_controller())
+
+        segments = formatter.tracker_block(
+            TrackerRegion(
+                first_row=4,
+                last_row=11,
+                first_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.TRANSPOSE).flat_index,
+                last_slot=TrackerSlot(GeneratorName.PULSE2, SubColumn.INSTRUMENT).flat_index,
+            )
+        )
+
+        assert _pairs(segments) == [
+            ("00", HistoryDetailRole.FRAME),
+            ("Pp", HistoryDetailRole.CHANNEL),
+            ("04-0B", HistoryDetailRole.ROW),
+        ]
+
+    def test_a_block_reaching_the_sample_column_reads_as_every_channel(self) -> None:
+        formatter = _formatter(_controller())
+
+        segments = formatter.tracker_block(
+            TrackerRegion(
+                first_row=0,
+                last_row=0,
+                first_slot=TrackerSlot(None, SubColumn.INSTRUMENT).flat_index,
+                last_slot=TrackerSlot(None, SubColumn.VOLUME).flat_index,
+            )
+        )
+
+        assert _pairs(segments) == [
+            ("00", HistoryDetailRole.FRAME),
+            ("PpTN", HistoryDetailRole.CHANNEL),
+            ("00", HistoryDetailRole.ROW),
+        ]
+
+    def test_a_paste_reads_as_the_cell_it_was_written_from(self) -> None:
+        formatter = _formatter(_controller())
+
+        segments = formatter.tracker_paste(TrackerCell(row=3, generator=GeneratorName.NOISE))
+
+        assert _pairs(segments) == [
+            ("00", HistoryDetailRole.FRAME),
+            ("N", HistoryDetailRole.CHANNEL),
+            ("03", HistoryDetailRole.ROW),
         ]
 
     def test_adjust_transpose_shows_signed_delta(self) -> None:
@@ -205,7 +233,7 @@ class TestSampleDetails:
 
     def test_remove_sample_shows_position_and_name(self) -> None:
         controller = _controller()
-        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="Bass")
+        sample = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
         assert _pairs(formatter.remove_sample(sample.id)) == [
@@ -215,7 +243,7 @@ class TestSampleDetails:
 
     def test_replace_sample_shows_position_and_both_names(self) -> None:
         controller = _controller()
-        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="Bass")
+        sample = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
         assert _pairs(formatter.replace_sample(sample.id, "Kick")) == [
@@ -236,7 +264,7 @@ class TestSampleDetails:
 
     def test_move_sample_shows_source_position_and_destination(self) -> None:
         controller = _controller()
-        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="Bass")
+        sample = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
         assert _pairs(formatter.move_sample(sample.id, 5)) == [
@@ -247,7 +275,7 @@ class TestSampleDetails:
 
     def test_set_sample_loop_stores_the_state_as_a_word_key(self) -> None:
         controller = _controller()
-        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="Bass")
+        sample = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
         on_segments = formatter.set_sample_loop(sample.id, True)
@@ -272,7 +300,7 @@ class TestSampleDetails:
 class TestReconstructionDetails:
     def test_edit_reconstruction_names_position_channel_and_feature(self) -> None:
         controller = _controller()
-        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        sample = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="lead")
         formatter = _formatter(controller)
 
         segments = formatter.edit_reconstruction(sample.id, GeneratorName.PULSE1, FeatureKey.VOLUME)
@@ -301,7 +329,7 @@ class TestReconstructionDetails:
         role: HistoryDetailRole,
     ) -> None:
         controller = _controller()
-        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        sample = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="lead")
         formatter = _formatter(controller)
 
         segments = formatter.edit_reconstruction(sample.id, GeneratorName.PULSE1, feature_key)

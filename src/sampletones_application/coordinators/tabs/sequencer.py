@@ -37,6 +37,7 @@ from sampletones_application.logic.sequencer.samples import SequencerSamplesLogi
 from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
     TrackerBlockReader,
+    TrackerBlockWriter,
 )
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
@@ -86,7 +87,7 @@ from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
 )
-from sampletones_application.view_model.sequencer.region import TrackerRegion
+from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
@@ -185,6 +186,7 @@ class SequencerTabCoordinator:
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
         self._clipboard: SequencerClipboard = SequencerClipboard()
         self._tracker_block_reader: TrackerBlockReader = TrackerBlockReader(self._sequencer_tracker_logic)
+        self._tracker_block_writer: TrackerBlockWriter = TrackerBlockWriter(self._sequencer_tracker_logic)
         self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(
             project_controller,
             session_manager,
@@ -447,13 +449,40 @@ class SequencerTabCoordinator:
 
         A copy reads the project and leaves it as it stands, so it is wired straight through
         instead of through :meth:`_undoable`: a transaction over it would record an entry the
-        history has nothing to restore for.
+        history has nothing to restore for. The three gestures that do write are whole ones, each
+        recording the single entry that takes the grid back to where it stood.
         """
         self._sequencer_tracker_panel.on_copy_block = self._on_tracker_copy_block
+        self._sequencer_tracker_panel.on_cut_block = self._undoable(
+            HistoryAction.CUT_BLOCK,
+            self._cut_tracker_block,
+            detail=self._history_detail.tracker_block,
+        )
+        self._sequencer_tracker_panel.on_delete_block = self._undoable(
+            HistoryAction.DELETE_BLOCK,
+            self._tracker_block_writer.clear,
+            detail=self._history_detail.tracker_block,
+        )
+        self._sequencer_tracker_panel.on_paste_block = self._undoable(
+            HistoryAction.PASTE_BLOCK,
+            self._paste_tracker_block,
+            detail=self._history_detail.tracker_paste,
+        )
 
     def _on_tracker_copy_block(self, region: TrackerRegion) -> None:
         """Puts the tracker's selected block on the clipboard, for a paste to replay."""
         self._clipboard.store_tracker_block(self._tracker_block_reader.read(region))
+
+    def _cut_tracker_block(self, region: TrackerRegion) -> None:
+        """Takes the block a region covers onto the clipboard, then empties what it covered."""
+        self._on_tracker_copy_block(region)
+        self._tracker_block_writer.clear(region)
+
+    def _paste_tracker_block(self, cell: TrackerCell) -> None:
+        """Writes the block the tracker last copied at a cell, while a copy has been made."""
+        block = self._clipboard.tracker_block
+        if block is not None:
+            self._tracker_block_writer.write(block, cell)
 
     def _wire_samples_callbacks(self) -> None:
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed

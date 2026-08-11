@@ -20,9 +20,11 @@ from sampletones_application.logic.sequencer.channels import (
     SequencerChannelsLogic,
 )
 from sampletones_application.logic.sequencer.clipboard import SequencerClipboard
+from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
 from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
     TrackerBlockReader,
+    TrackerBlockWriter,
 )
 from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_application.paths import LANG_EN
@@ -31,7 +33,7 @@ from sampletones_application.ui.panels.sequencer import tracker as tracker_modul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
-from sampletones_application.view_model.sequencer.region import TrackerRegion
+from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
 from sampletones_application.view_model.sequencer.samples import SampleSelection
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
@@ -1330,10 +1332,11 @@ PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
 
 @pytest.fixture
 def block_coordinator() -> SequencerTabCoordinator:
-    """A coordinator whose copy path is real, from the tracker logic through to the clipboard.
+    """A coordinator whose block path is real, from the tracker logic through to the clipboard.
 
     A real manager observes the same controller production wires it to, so a test reads the
-    entries a gesture actually records.
+    entries a gesture actually records, and the hooks are the ones ``_wire_block_callbacks``
+    assigns rather than wrappers a test built to look like them.
     """
     instance = object.__new__(SequencerTabCoordinator)
     controller = ProjectController(ProjectManager())
@@ -1344,7 +1347,26 @@ def block_coordinator() -> SequencerTabCoordinator:
     instance._sequencer_tracker_logic = SequencerTrackerLogic(controller)
     instance._clipboard = SequencerClipboard()
     instance._tracker_block_reader = TrackerBlockReader(instance._sequencer_tracker_logic)
+    instance._tracker_block_writer = TrackerBlockWriter(instance._sequencer_tracker_logic)
+    instance._history_detail = SequencerHistoryDetail(
+        instance._sequencer_tracker_logic,
+        MagicMock(),
+    )
+    instance._sequencer_tracker_panel = MagicMock()
+    instance._wire_block_callbacks()
     return instance
+
+
+def _place_transpose(
+    coordinator: SequencerTabCoordinator,
+    transpose: int,
+) -> None:
+    """Puts one value in the frame, through the same wrapper an edit reaches the history by."""
+    edit = coordinator._undoable(
+        HistoryAction.EDIT_ROW,
+        coordinator._sequencer_tracker_logic.write_cell,
+    )
+    edit(0, GeneratorName.PULSE1, None, transpose, None)
 
 
 class TestBlockCopy:
@@ -1372,14 +1394,84 @@ class TestBlockCopy:
     ) -> None:
         """A gesture that only reads the project records nothing, where the edit beside it does."""
         coordinator = block_coordinator
-        edit = coordinator._undoable(
-            HistoryAction.EDIT_ROW,
-            coordinator._sequencer_tracker_logic.write_cell,
-        )
-        edit(0, GeneratorName.PULSE1, None, 5, None)
+        _place_transpose(coordinator, 5)
         recorded = len(coordinator._history.entries)
 
         coordinator._on_tracker_copy_block(PULSE1_CELL)
 
         assert recorded > 0
+        assert len(coordinator._history.entries) == recorded
+
+
+class TestBlockEdits:
+    """Each gesture that writes records the one entry that takes the grid back."""
+
+    def test_a_cut_takes_the_block_and_empties_what_it_covered(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+
+        coordinator._sequencer_tracker_panel.on_cut_block(PULSE1_CELL)
+
+        block = coordinator._clipboard.tracker_block
+        assert block is not None
+        assert block.transposes[(0, 1)] == 5
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 0).transpose is None
+
+    def test_a_cut_records_one_entry(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_cut_block(PULSE1_CELL)
+
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
+
+    def test_a_delete_empties_the_region_in_one_entry(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_delete_block(PULSE1_CELL)
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 0).transpose is None
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.DELETE_BLOCK
+
+    def test_a_paste_writes_the_copied_block_in_one_entry(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE2))
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE2, 1).transpose == 5
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
+
+    def test_a_paste_with_nothing_copied_records_nothing(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """A transaction over a gesture that writes nothing commits nothing, so an empty clipboard
+        leaves the history where it stood."""
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE2))
+
         assert len(coordinator._history.entries) == recorded

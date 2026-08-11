@@ -2,6 +2,7 @@ from typing import Dict, Final, List, Optional
 
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
@@ -20,6 +21,7 @@ from sampletones_core.utils.display import display_id, display_transpose, displa
 Segments = HistoryDetail
 
 _ARROW: Final[str] = ">"
+_RANGE: Final[str] = "-"
 _SUBCOLUMN_LETTERS: Final[Dict[SubColumn, str]] = {
     SubColumn.INSTRUMENT: "i",
     SubColumn.TRANSPOSE: "t",
@@ -153,6 +155,18 @@ class SequencerHistoryDetail:
         segments = list(self._location(row_index, generator, affected))
         segments.append(self._segment(f"{delta:+d}", HistoryDetailRole.VOLUME))
         return tuple(segments)
+
+    def tracker_block(self, region: TrackerRegion) -> Segments:
+        """Reads as the frame, the channels a block spans and the rows it covers."""
+        return (
+            self._frame(self._tracker_logic.frame_index),
+            self._channel(self._region_generators(region)),
+            self._row_range(region.first_row, region.last_row),
+        )
+
+    def tracker_paste(self, cell: TrackerCell) -> Segments:
+        """Reads as the cell a block was written from, the one place a paste chooses."""
+        return self._location(cell.row, cell.generator, GeneratorName.items())
 
     def add_frame(self, position: int) -> Segments:
         return (self._frame(position + 1),)
@@ -303,6 +317,24 @@ class SequencerHistoryDetail:
             text=display_id(index),
             role=HistoryDetailRole.ROW,
         )
+
+    def _row_range(self, first_row: int, last_row: int) -> HistoryDetailSegment:
+        """Reads a span of rows as one row token, a single row standing as its own index."""
+        if first_row == last_row:
+            return self._row(first_row)
+
+        return HistoryDetailSegment(
+            text=f"{display_id(first_row)}{_RANGE}{display_id(last_row)}",
+            role=HistoryDetailRole.ROW,
+        )
+
+    def _region_generators(self, region: TrackerRegion) -> List[GeneratorName]:
+        """The channels a region reaches, the sample column standing for every one it governs."""
+        covered = {slot.generator for slot in region.slots}
+        if None in covered:
+            return GeneratorName.items()
+
+        return [generator for generator in GeneratorName.items() if generator in covered]
 
     def _channel(self, generators: List[GeneratorName]) -> HistoryDetailSegment:
         return HistoryDetailSegment(

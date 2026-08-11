@@ -102,6 +102,8 @@ bindings:
   TrackerExtendSelectionToFirstRow: {combination: "Shift+Home"}
   TrackerExtendSelectionToLastRow: {combination: "Shift+End"}
   TrackerCopyBlock: {combination: "Ctrl+C"}
+  TrackerCutBlock: {combination: "Ctrl+X"}
+  TrackerPasteBlock: {combination: "Ctrl+V"}
   TrackerPageUp: {combination: "PgUp"}
   TrackerPageDown: {combination: "PgDn"}
   TrackerClearRow: {combination: "Del"}
