@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.layout.general.plus_minus_buttons import (
     PlusMinusButtonsLayout,
 )
@@ -43,7 +44,6 @@ from sampletones_application.ui.panels.sequencer.channels import (
 from sampletones_application.ui.panels.sequencer.columns import channel_color
 from sampletones_application.ui.panels.sequencer.input.order import (
     INDEX_DIGITS,
-    ORDER_ROWS,
     OrderCursor,
     OrderInputState,
 )
@@ -489,7 +489,7 @@ class GUISequencerOrderPanel(GUIPanel):
             )
 
         self._label_rows = {}
-        for generator in ORDER_ROWS:
+        for generator in CHANNEL_AXIS:
             self._build_row(generator, position_count)
             if generator is None:
                 self._build_divider_row(position_count)
@@ -691,7 +691,7 @@ class GUISequencerOrderPanel(GUIPanel):
     def _table_row(self, generator: Optional[GeneratorName]) -> int:
         if generator is None:
             return MASTER_TABLE_ROW
-        return ORDER_ROWS.index(generator) + 1
+        return CHANNEL_AXIS.index(generator) + 1
 
     def _apply_cursor_highlight(self, cursor: OrderCursor) -> None:
         dpg.highlight_table_cell(

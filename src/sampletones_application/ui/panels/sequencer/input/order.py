@@ -4,10 +4,10 @@ from typing import Final, Optional, Tuple
 
 from pydantic.dataclasses import dataclass
 
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_core.constants.enums import GeneratorName
 
 INDEX_DIGITS: Final[int] = 2
-ORDER_ROWS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
 
 
 @dataclass(frozen=True)
@@ -58,8 +58,8 @@ class OrderInputState:
         if self.cursor is None:
             return self
 
-        current = ORDER_ROWS.index(self.cursor.generator)
-        new_generator = ORDER_ROWS[(current + value) % len(ORDER_ROWS)]
+        current = CHANNEL_AXIS.index(self.cursor.generator)
+        new_generator = CHANNEL_AXIS[(current + value) % len(CHANNEL_AXIS)]
         return OrderInputState(
             cursor=OrderCursor(new_generator, self.cursor.position),
             pending="",

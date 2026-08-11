@@ -4,16 +4,17 @@ from typing import Dict, Final, Optional, Tuple
 
 from pydantic.dataclasses import dataclass
 
-from sampletones_application.ui.panels.sequencer.columns import (
-    COLUMNS,
-    SUBCOLUMNS,
-    flat_index,
-    from_flat,
-)
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
+)
+from sampletones_application.view_model.sequencer.slot import (
+    SLOT_COUNT,
+    SUBCOLUMNS,
+    TrackerSlot,
+    slot_from_flat,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.general import MAX_VOLUME
@@ -95,6 +96,12 @@ class TrackerInputState:
         value: int,
         absolute: bool = False,
     ) -> TrackerInputState:
+        """Steps the cursor along the flattened slot axis, wrapping at either end.
+
+        Wrapping is a navigation policy the cursor owns: walking right off the last
+        volume slot lands on the sample column's instrument, so a held arrow key
+        tours the whole row.
+        """
         if self.cursor is None:
             return self
 
@@ -109,9 +116,10 @@ class TrackerInputState:
                 pending="",
             )
 
-        current = flat_index(self.cursor.generator, self.cursor.subcolumn)
+        current = TrackerSlot(self.cursor.generator, self.cursor.subcolumn).flat_index
+        slot = slot_from_flat((current + value) % SLOT_COUNT)
         return TrackerInputState(
-            cursor=from_flat(self.cursor.row, current + value),
+            cursor=TrackerCursor(self.cursor.row, slot.generator, slot.subcolumn),
             pending="",
         )
 
@@ -119,10 +127,14 @@ class TrackerInputState:
         if self.cursor is None:
             return self
 
-        current_idx = COLUMNS.index(self.cursor.generator)
-        next_idx = (current_idx + delta) % len(COLUMNS)
+        current_idx = CHANNEL_AXIS.index(self.cursor.generator)
+        next_idx = (current_idx + delta) % len(CHANNEL_AXIS)
         return TrackerInputState(
-            cursor=TrackerCursor(self.cursor.row, COLUMNS[next_idx], self.cursor.subcolumn),
+            cursor=TrackerCursor(
+                self.cursor.row,
+                CHANNEL_AXIS[next_idx],
+                self.cursor.subcolumn,
+            ),
             pending="",
         )
 

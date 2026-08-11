@@ -1,7 +1,7 @@
 from typing import Optional
 
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.panels.sequencer.input.order import (
-    ORDER_ROWS,
     OrderCursor,
     OrderInputState,
 )
@@ -31,13 +31,13 @@ class TestNavigation:
 
     def test_channel_cycles_master_then_channels_and_wraps(self) -> None:
         visited = []
-        state = OrderInputState(cursor=OrderCursor(ORDER_ROWS[0], 0))
-        for _ in range(len(ORDER_ROWS)):
+        state = OrderInputState(cursor=OrderCursor(CHANNEL_AXIS[0], 0))
+        for _ in range(len(CHANNEL_AXIS)):
             visited.append(state.cursor.generator)
             state = state.navigate_channel(1)
 
-        assert visited == list(ORDER_ROWS)
-        assert state.cursor.generator == ORDER_ROWS[0]
+        assert visited == list(CHANNEL_AXIS)
+        assert state.cursor.generator == CHANNEL_AXIS[0]
 
 
 class TestEntry:
