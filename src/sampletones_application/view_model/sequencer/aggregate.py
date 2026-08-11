@@ -1,6 +1,7 @@
 from typing import Set
 
 from sampletones_shared.constants.symbols import MIXED
+from sampletones_shared.utils.agreement import Agreement
 
 
 def aggregate_labels(values: Set[str], *, default: str) -> str:
@@ -10,10 +11,4 @@ def aggregate_labels(values: Set[str], *, default: str) -> str:
     ``default`` (no relevant cells), a single shared value is shown verbatim, and
     any disagreement collapses to :data:`MIXED`.
     """
-    if not values:
-        return default
-
-    if len(values) == 1:
-        return next(iter(values))
-
-    return MIXED
+    return Agreement.collapse(values).resolve(absent=default, mixed=MIXED)

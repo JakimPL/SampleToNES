@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from sampletones_application.view_model.sequencer.aggregate import aggregate_labels
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import (
-    NOTE_OFF,
     display_id,
     display_transpose,
     display_volume,
@@ -41,52 +40,39 @@ class SequencerRowViewModel(BaseModel, frozen=True):
 
     @property
     def subcolumn_generators(self) -> FrozenSet[GeneratorName]:
-        """Channels the sample column's transpose/volume span.
+        """Channels every sample column summary spans.
 
-        Transpose and volume exist independently of an instrument, so on a row with
-        no sample they fall back to every channel; otherwise they track the
-        sample's channels exactly like the instrument does.
+        A sample governs the channels its reconstruction covers, so its subcolumns
+        summarise exactly those. Transpose and volume exist independently of an
+        instrument, so a row with no sample spans every channel.
         """
         return self.relevant_generators or frozenset(self.cells)
 
     @property
     def sample_instrument(self) -> str:
-        """The sample column's note value.
-
-        A referenced sample wins: the column shows its position (or :data:`MIXED` when the sample
-        spans more channels than it occupies here). With no sample present, the column reads ``--``
-        only when every channel is a note-off; any other mix — including a half-cut row of some
-        note-off and some blank — reads as empty.
-        """
-        if self.relevant_generators:
-            return self._aggregate(self.relevant_generators, lambda cell: cell.instrument, display_id(None))
-
-        if self.cells and all(cell.instrument == NOTE_OFF for cell in self.cells.values()):
-            return NOTE_OFF
-
-        return display_id(None)
+        return self._aggregate(lambda cell: cell.instrument, display_id(None))
 
     @property
     def sample_transpose(self) -> str:
-        return self._aggregate(self.subcolumn_generators, lambda cell: cell.transpose, display_transpose(None))
+        return self._aggregate(lambda cell: cell.transpose, display_transpose(None))
 
     @property
     def sample_volume(self) -> str:
-        return self._aggregate(self.subcolumn_generators, lambda cell: cell.volume, display_volume(None))
+        return self._aggregate(lambda cell: cell.volume, display_volume(None))
 
     def _aggregate(
         self,
-        generators: FrozenSet[GeneratorName],
         select: Callable[[SequencerCellViewModel], str],
         default: str,
     ) -> str:
-        """Summarise one subcolumn across the given channels.
+        """Summarise one subcolumn across the channels the sample column spans.
 
-        The summary holds a value only when every channel agrees on it, so a sample
-        missing from one of its channels (an empty cell there) reads as
-        :data:`MIXED`. With no channels the empty default is shown.
+        The summary holds a value only where every channel agrees on it, so
+        :data:`MIXED` marks each way they can differ: a sample missing from one of
+        its channels, a transpose set on some of them, or a row cut on some and
+        blank on the rest. A row with no cells at all shows the empty default.
         """
-        values: Set[str] = {select(self.cells[generator]) for generator in generators}
+        values: Set[str] = {select(self.cells[generator]) for generator in self.subcolumn_generators}
         return aggregate_labels(values, default=default)
 
 
