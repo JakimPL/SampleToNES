@@ -3,6 +3,7 @@ from typing import Iterator
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.utils.gui.dpg import dpg_container
 from sampletones_shared.types.application import Sender
 
 
@@ -25,11 +26,8 @@ def staged_container(stage: Sender) -> Iterator[None]:
     Items created with an explicit parent still honour that parent; the stage
     captures the parentless ones.
     """
-    dpg.push_container_stack(stage)
-    try:
+    with dpg_container(stage):
         yield
-    finally:
-        dpg.pop_container_stack()
 
 
 def attach_staged_item(item: Sender, parent: Sender) -> None:

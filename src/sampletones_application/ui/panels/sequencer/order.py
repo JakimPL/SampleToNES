@@ -1064,6 +1064,25 @@ class GUISequencerOrderPanel(GUIPanel):
             region=self._input_state.region_at(cell),
         )
 
+    def owns_edit_actions(self) -> bool:
+        """Whether the Edit menu states this table's actions, which it does while it owns keys.
+
+        The menu offers what the next press would reach, so one question decides both.
+        """
+        return self._keys_active()
+
+    def build_edit_actions(self) -> None:
+        """Builds this table's whole action set for the cell the cursor stands on.
+
+        The menu bar asks while the table owns the editing gestures, so the cursor names the target
+        the same way a pointer names it on the cell menu.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return
+
+        self._add_action_items(self._menu_target(cursor))
+
     def _add_action_items(self, target: OrderMenuTarget) -> None:
         """Builds every action an order cell offers, in the order each menu prints them.
 

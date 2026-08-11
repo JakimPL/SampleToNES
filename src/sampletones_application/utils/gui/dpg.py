@@ -1,8 +1,10 @@
 import functools
+from contextlib import contextmanager
 from typing import (
     Any,
     Callable,
     Concatenate,
+    Iterator,
     Optional,
     ParamSpec,
     TypeVar,
@@ -53,6 +55,20 @@ def dpg_wrapper(
 @dpg_wrapper(button_function=GUIButton.delete_item)
 def dpg_delete_item(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
     dpg.delete_item(tag, *args, **kwargs)
+
+
+@contextmanager
+def dpg_container(tag: Sender) -> Iterator[None]:
+    """Makes ``tag`` the container parentless items land in for the length of the block.
+
+    A builder that states its items without naming a parent can then be pointed at any container,
+    which is how one set of items is built into the menu, popup or panel that asked for it.
+    """
+    dpg.push_container_stack(tag)
+    try:
+        yield
+    finally:
+        dpg.pop_container_stack()
 
 
 def dpg_delete_children(tag: Sender, /, *_args: Any, **kwargs: Any) -> None:

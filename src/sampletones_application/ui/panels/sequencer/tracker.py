@@ -1287,6 +1287,25 @@ class GUISequencerTrackerPanel(GUIPanel):
             region=self._input_state.region_at(cell),
         )
 
+    def owns_edit_actions(self) -> bool:
+        """Whether the Edit menu states this grid's actions, which it does while the grid owns keys.
+
+        The menu offers what the next press would reach, so one question decides both.
+        """
+        return self._keys_active()
+
+    def build_edit_actions(self) -> None:
+        """Builds this grid's whole action set for the cell the cursor stands on.
+
+        The menu bar asks while the grid owns the editing gestures, so the cursor names the target
+        the same way a pointer names it on the cell menu.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return
+
+        self._add_action_items(self._menu_target(cursor))
+
     def _add_action_items(self, target: TrackerMenuTarget) -> None:
         """Builds every action a tracker cell offers, in the order each menu prints them.
 

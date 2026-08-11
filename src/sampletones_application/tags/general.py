@@ -440,6 +440,12 @@ TAG_GLOBAL_MENU_ITEM_EDIT_REDO = TagName(
     Widget.MENU,
     "item_edit_redo",
 )
+TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_edit_actions",
+)
 TAG_GLOBAL_DIALOG_PROJECT_SAVED = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

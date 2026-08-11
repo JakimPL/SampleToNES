@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec, Union
+from typing import Callable, Optional, ParamSpec, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -11,6 +11,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.playback import FollowMode
+from sampletones_application.coordinators.edit.protocol import EditSurfaceProtocol
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -1277,7 +1278,12 @@ class SequencerTabCoordinator:
         standing on one of them follows it, and the grid moves to the new frame for the reader
         to work on.
         """
-        self._relocate_playhead(lambda playhead: remap_after_insert(playhead, position))
+        self._relocate_playhead(
+            lambda playhead: remap_after_insert(
+                playhead,
+                position,
+            )
+        )
         self._select_frame_when_idle(position)
 
     def _on_order_insert(self, position: int) -> None:
@@ -1411,3 +1417,14 @@ class SequencerTabCoordinator:
     @property
     def player(self) -> AudioPlayerProtocol:
         return self._guarded_player
+
+    @property
+    def edit_surfaces(self) -> Tuple[EditSurfaceProtocol, ...]:
+        """The grids offering editing gestures on the cell they hold a cursor in.
+
+        The two hold one cursor between them, so the menu bar reaches whichever one has it.
+        """
+        return (
+            self._sequencer_tracker_panel,
+            self._sequencer_order_panel,
+        )

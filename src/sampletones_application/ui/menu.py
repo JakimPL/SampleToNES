@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Dict, Final, Tuple
+from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -19,6 +19,8 @@ from sampletones_application.layout.glyphs.player import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
+    SUF_HANDLER_REGISTRY,
+    TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS,
     TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
     TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
     TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
@@ -68,6 +70,8 @@ from sampletones_application.ui.panels.player.controls import (
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
+    dpg_container,
+    dpg_delete_children,
     dpg_set_item_label,
     dpg_set_value,
 )
@@ -81,6 +85,7 @@ from sampletones_application.utils.gui.shortcuts.ids import (
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
 PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
@@ -101,6 +106,12 @@ FOLLOW_MODE_LABELS: Final[Dict[FollowMode, MenuElements]] = {
     FollowMode.PATTERNS: MenuElements.ITEM_PLAYBACK_FOLLOW_PATTERNS,
     FollowMode.OFF: MenuElements.ITEM_PLAYBACK_FOLLOW_OFF,
 }
+UNFOCUSED_CLIPBOARD_ELEMENTS: Final[Tuple[ContextElements, ...]] = (
+    ContextElements.COPY,
+    ContextElements.CUT,
+    ContextElements.PASTE,
+    ContextElements.DELETE,
+)
 CHANNEL_LABELS: Final[Dict[GeneratorName, ContextElements]] = {
     GeneratorName.PULSE1: ContextElements.PULSE_1,
     GeneratorName.PULSE2: ContextElements.PULSE_2,
@@ -120,6 +131,7 @@ class MenuBar:
         player_glyphs: PlayerGlyphs,
         player_layout: PlayerLayout,
         language_manager: LanguageManager,
+        build_edit_actions: Callable[[], bool],
         on_play_from_start: VoidCallback,
         on_pause_or_resume: VoidCallback,
         on_stop: VoidCallback,
@@ -132,6 +144,7 @@ class MenuBar:
         self._player_glyphs = player_glyphs
         self._player_layout = player_layout
         self._language_manager = language_manager
+        self._build_edit_actions = build_edit_actions
         self._on_play_from_start = on_play_from_start
         self._on_pause_or_resume = on_pause_or_resume
         self._on_stop = on_stop
@@ -143,6 +156,12 @@ class MenuBar:
         self._stop_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_STOP)
         self._pause_tooltip_tag = compose_tag(self._pause_button_tag, SUF_PLAYER_TOOLTIP)
         self._lbl_pause = language_manager["global.player.label.pause"]
+
+        self._edit_actions_handler_tag = compose_tag(
+            TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS,
+            SUF_HANDLER_REGISTRY,
+        )
+        self._edit_actions_frame: Optional[int] = None
 
     def _label(self, element: MenuElements) -> str:
         return self._language_manager[
@@ -237,6 +256,11 @@ class MenuBar:
                 )
 
     def _create_edit_menu(self, state: MenuBarViewModel) -> None:
+        """Builds the Edit menu: the history steps, then the actions of whoever holds the cursor.
+
+        The trailing section is a container of its own, so the actions it holds are stated afresh
+        each time the menu is opened while Undo and Redo stand where they are.
+        """
         with dpg.menu(label=self._label(MenuElements.GROUP_EDIT)):
             self._shortcut_manager.add_menu_item(
                 ShortcutId.UNDO,
@@ -249,6 +273,55 @@ class MenuBar:
                 tag=TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
                 label=self._label(MenuElements.ITEM_EDIT_REDO),
                 enabled=state.redo_enabled,
+            )
+            dpg.add_separator()
+            dpg.add_group(tag=TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS)
+
+        with dpg.item_handler_registry(tag=self._edit_actions_handler_tag):
+            dpg.add_item_visible_handler(callback=self._on_edit_actions_drawn)
+
+        dpg.bind_item_handler_registry(
+            TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS,
+            self._edit_actions_handler_tag,
+        )
+        self._refresh_edit_actions()
+
+    def _on_edit_actions_drawn(
+        self,
+        _sender: Sender,
+        _app_data: Sender,
+    ) -> None:
+        """States the actions afresh each time the Edit menu is opened.
+
+        DearPyGui reports the section drawn once a frame while the menu stands open, so a gap in
+        those reports marks a fresh opening. The section stays built between openings, which gives
+        the popup its full height on the frame it appears, and the rebuilt one takes over a frame
+        later — long before an item can be reached and chosen.
+        """
+        frame = dpg.get_frame_count()
+        reopened = self._edit_actions_frame is None or frame - self._edit_actions_frame > 1
+        self._edit_actions_frame = frame
+        if reopened:
+            self._refresh_edit_actions()
+
+    def _refresh_edit_actions(self) -> None:
+        """Empties the Edit menu's trailing section and asks the focused surface to state it.
+
+        A surface builds the same actions its own cell menu offers, so the two doors print one set
+        with the keys and the enablement each action carries. With no surface holding a cursor, the
+        clipboard actions are named greyed out, so a reader still meets the commands.
+        """
+        dpg_delete_children(TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS)
+        with dpg_container(TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS):
+            if not self._build_edit_actions():
+                self._add_unfocused_clipboard_items()
+
+    def _add_unfocused_clipboard_items(self) -> None:
+        """Names the clipboard actions greyed out, the Edit menu with no grid holding a cursor."""
+        for element in UNFOCUSED_CLIPBOARD_ELEMENTS:
+            dpg.add_menu_item(
+                label=self._context_label(element),
+                enabled=False,
             )
 
     def _create_reconstruction_menu(self, state: MenuBarViewModel) -> None:
