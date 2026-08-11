@@ -2,6 +2,8 @@ from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import context_label
+from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -211,10 +213,10 @@ class GUISequencerOrderPanel(GUIPanel):
             return self._label(language_manager, element)
 
         self._lbl_context_play = label(SequencerOrderElements.CONTEXT_PLAY)
-        self._lbl_context_copy = label(SequencerOrderElements.CONTEXT_COPY)
-        self._lbl_context_cut = label(SequencerOrderElements.CONTEXT_CUT)
-        self._lbl_context_paste = label(SequencerOrderElements.CONTEXT_PASTE)
-        self._lbl_context_delete = label(SequencerOrderElements.CONTEXT_DELETE)
+        self._lbl_context_cut = context_label(language_manager, ContextElements.CUT)
+        self._lbl_context_copy = context_label(language_manager, ContextElements.COPY)
+        self._lbl_context_paste = context_label(language_manager, ContextElements.PASTE)
+        self._lbl_context_delete = context_label(language_manager, ContextElements.DELETE)
         self._lbl_context_duplicate = label(SequencerOrderElements.CONTEXT_DUPLICATE)
         self._lbl_context_clone = label(SequencerOrderElements.CONTEXT_CLONE)
         self._lbl_context_insert = label(SequencerOrderElements.CONTEXT_INSERT)

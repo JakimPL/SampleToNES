@@ -2,6 +2,8 @@ from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import context_label
+from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import (
     SequencerTrackerElements,
 )
@@ -244,10 +246,10 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         self._lbl_context_play = label(SequencerTrackerElements.CONTEXT_PLAY)
         self._lbl_context_play_from_frame = label(SequencerTrackerElements.CONTEXT_PLAY_FROM_FRAME)
-        self._lbl_context_copy = label(SequencerTrackerElements.CONTEXT_COPY)
-        self._lbl_context_cut = label(SequencerTrackerElements.CONTEXT_CUT)
-        self._lbl_context_paste = label(SequencerTrackerElements.CONTEXT_PASTE)
-        self._lbl_context_delete = label(SequencerTrackerElements.CONTEXT_DELETE)
+        self._lbl_context_cut = context_label(language_manager, ContextElements.CUT)
+        self._lbl_context_copy = context_label(language_manager, ContextElements.COPY)
+        self._lbl_context_paste = context_label(language_manager, ContextElements.PASTE)
+        self._lbl_context_delete = context_label(language_manager, ContextElements.DELETE)
         self._lbl_context_note_off = label(SequencerTrackerElements.CONTEXT_NOTE_OFF)
         self._lbl_context_set_instrument = label(SequencerTrackerElements.CONTEXT_SET_INSTRUMENT)
         self._lbl_context_no_samples = label(SequencerTrackerElements.CONTEXT_NO_SAMPLES)

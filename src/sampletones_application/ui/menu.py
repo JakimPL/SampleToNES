@@ -3,6 +3,7 @@ from typing import Callable, Dict, Final, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import context_label
 from sampletones_application.categories.elements.global_ import (
     ContextElements,
     MenuElements,
@@ -152,13 +153,7 @@ class MenuBar:
         ]
 
     def _context_label(self, element: ContextElements) -> str:
-        """Resolves a shared context-action label reused between the tree menus and this bar."""
-        return self._language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            element,
-        ]
+        return context_label(self._language_manager, element)
 
     def create(self, state: MenuBarViewModel) -> None:
         with dpg.menu_bar():
