@@ -565,6 +565,11 @@ class SequencerTabCoordinator:
         receives, and ``coalesce`` computes the gesture's target key from them:
         consecutive gestures sharing the same action and target collapse into a
         single entry.
+
+        The gesture is batched inside its transaction, so however many rows it
+        writes, the panels rebuild once — and they rebuild before the entry that
+        undoes them is recorded, because the snapshot reads the project rather
+        than the views.
         """
 
         def wrapped(
@@ -573,7 +578,14 @@ class SequencerTabCoordinator:
         ) -> None:
             description = detail(*args, **kwargs) if detail is not None else ()
             key = coalesce(*args, **kwargs) if coalesce is not None else None
-            with self._history.transaction(action, detail=description, coalesce=key):
+            with (
+                self._history.transaction(
+                    action,
+                    detail=description,
+                    coalesce=key,
+                ),
+                self._project_controller.batch(),
+            ):
                 callback(*args, **kwargs)
 
         return wrapped
@@ -1030,38 +1042,6 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_logic.frame_index,
             row_index,
         )
-
-    def _on_adjust_transpose(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> None:
-        """Shifts transpose: one channel, or across the sample column's channels."""
-        if generator is None:
-            self._sequencer_tracker_logic.adjust_sample_transpose(row_index, delta)
-        else:
-            self._sequencer_tracker_logic.adjust_transpose(
-                generator,
-                row_index,
-                delta,
-            )
-
-    def _on_adjust_volume(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> None:
-        """Shifts volume: one channel, or across the sample column's channels."""
-        if generator is None:
-            self._sequencer_tracker_logic.adjust_sample_volume(row_index, delta)
-        else:
-            self._sequencer_tracker_logic.adjust_volume(
-                generator,
-                row_index,
-                delta,
-            )
 
     def _on_samples_changed(
         self,

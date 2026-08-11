@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Final
+from typing import Dict, Final, List
 from unittest.mock import MagicMock
 
 import pytest
@@ -758,9 +758,15 @@ class TestReplaceTargetLabel:
 
 @pytest.fixture
 def history_coordinator() -> SequencerTabCoordinator:
-    """A coordinator with only the history collaborator wired."""
+    """A coordinator with the two collaborators an undoable gesture reaches.
+
+    The history is a mock, so a test reads the transaction a gesture opens; the
+    controller is real, so a test reads the notifications the gesture's mutations
+    actually produce.
+    """
     instance = object.__new__(SequencerTabCoordinator)
     instance._history = MagicMock()
+    instance._project_controller = ProjectController(ProjectManager())
     return instance
 
 
@@ -1222,6 +1228,25 @@ class TestUndoableWrapper:
             detail=(),
             coalesce=("tempo",),
         )
+
+    def test_wrapped_call_announces_one_song_change_for_the_whole_gesture(
+        self,
+        history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        controller = history_coordinator._project_controller
+        announcements: List[str] = []
+        controller.on_song_changed = lambda: announcements.append("song")
+        initial_length = controller.order_length
+
+        def append_frames(count: int) -> None:
+            for _ in range(count):
+                controller.append_frame()
+
+        wrapped = history_coordinator._undoable(HistoryAction.EDIT_ROW, append_frames)
+        wrapped(3)
+
+        assert controller.order_length == initial_length + 3
+        assert announcements == ["song"]
 
 
 @pytest.fixture

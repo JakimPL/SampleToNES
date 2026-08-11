@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Callable, List
 
 import numpy as np
+import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -583,3 +584,127 @@ class TestLiveLinkedReconstruction:
 
         stored = controller.project.sample(sample.id).reconstruction
         assert stored.get_generator_instructions(GeneratorName.PULSE1) == new_instructions
+
+
+class TestBatch:
+    def test_a_batch_announces_one_song_change_for_many_rows(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_song_changed = lambda: emitted.append("song")
+        pattern_index = controller.song.order[0][GeneratorName.PULSE1]
+
+        with controller.batch():
+            for row_index in range(8):
+                controller.set_row(
+                    GeneratorName.PULSE1,
+                    pattern_index,
+                    row_index,
+                    volume=15,
+                )
+
+        assert emitted == ["song"]
+
+    def test_a_mutation_applies_before_its_announcement_arrives(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            assert controller.project.settings.tempo == 150
+            assert emitted == []
+
+        assert emitted == ["settings"]
+
+    def test_each_kind_of_change_announces_once_in_the_order_it_first_arose(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+        controller.on_song_changed = lambda: emitted.append("song")
+        controller.on_info_changed = lambda: emitted.append("info")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            controller.append_frame()
+            controller.set_title("Demo")
+            controller.set_speed(4)
+            controller.append_frame()
+
+        assert emitted == ["settings", "song", "info"]
+
+    def test_the_dirty_stamp_lands_once_for_the_whole_batch(self) -> None:
+        project_manager = ProjectManager()
+        controller = ProjectController(project_manager)
+        stamps: List[str] = []
+        project_manager.session.on_state_changed = lambda: stamps.append("state")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            controller.set_speed(4)
+            assert controller.is_dirty is False
+
+        assert stamps == ["state"]
+        assert controller.is_dirty is True
+
+    def test_every_mutation_signals_the_history_as_it_lands(self) -> None:
+        controller = _controller()
+        mutations: List[str] = []
+        controller.on_mutation = lambda: mutations.append("mutation")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            controller.set_speed(4)
+            assert mutations == ["mutation", "mutation"]
+
+        assert mutations == ["mutation", "mutation"]
+
+    def test_nested_batches_announce_on_the_outermost_exit(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            with controller.batch():
+                controller.set_speed(4)
+
+            assert emitted == []
+
+        assert emitted == ["settings"]
+
+    def test_a_batch_that_raises_still_announces_what_landed(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+
+        with pytest.raises(RuntimeError), controller.batch():
+            controller.set_tempo(150)
+            raise RuntimeError("boom")
+
+        assert emitted == ["settings"]
+        assert controller.project.settings.tempo == 150
+        assert controller.is_dirty is True
+
+    def test_a_batch_without_mutations_announces_nothing(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+        controller.on_song_changed = lambda: emitted.append("song")
+
+        with controller.batch():
+            pass
+
+        assert emitted == []
+        assert controller.is_dirty is False
+
+    def test_announcements_resume_immediately_after_a_batch(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+
+        with controller.batch():
+            controller.set_tempo(150)
+
+        controller.set_speed(4)
+
+        assert emitted == ["settings", "settings"]

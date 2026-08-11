@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
@@ -13,6 +14,7 @@ from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 from sampletones_shared.utils.callbacks import CallbackMixin
 
+from .batch import MutationBatch
 from .manager import ProjectManager
 
 
@@ -24,10 +26,14 @@ class ProjectController(CallbackMixin):
       and the observer signal always happen together.
     - Each mutation kind fires a distinct callback so that subscribers can
       respond precisely to the specific change.
+    - :meth:`batch` widens that grain to a whole gesture: its mutations still
+      apply one at a time, while the dirty stamp and the observer signals they
+      raise arrive once each, on the way out.
     """
 
     def __init__(self, project_manager: ProjectManager) -> None:
         self._project_manager = project_manager
+        self._batch: Optional[MutationBatch] = None
 
         self.on_project_replaced: Optional[VoidCallback] = None
         self.on_info_changed: Optional[VoidCallback] = None
@@ -70,6 +76,29 @@ class ProjectController(CallbackMixin):
     def is_dirty(self) -> bool:
         return self._project_manager.is_dirty
 
+    @contextmanager
+    def batch(self) -> Iterator[None]:
+        """Groups every mutation of one gesture into a single round of notifications.
+
+        A gesture that writes many rows — pasting a block of cells, spreading a
+        sample across the channels it covers — leaves each mutation applying the
+        moment it is made, while the dirty stamp and the observer signals it raises
+        wait for the scope to close and then arrive once each, in the order they
+        first arose. Subscribers therefore rebuild their views once per gesture
+        instead of once per row.
+
+        Nested scopes join the outermost one, and the flush runs on scope exit even
+        when the gesture raises: the mutations that already landed are part of the
+        live project, so their subscribers hear about them. The history's mutation
+        signal stays immediate (see :meth:`_touch`), and the lifecycle signals —
+        a project replaced, a project saved — are unaffected.
+        """
+        self._begin_batch()
+        try:
+            yield
+        finally:
+            self._flush_batch()
+
     def new(self) -> None:
         self._project_manager.new()
         self.call(self.on_project_replaced)
@@ -106,57 +135,57 @@ class ProjectController(CallbackMixin):
 
     def mark_updated(self) -> None:
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def set_title(self, title: str) -> None:
         self.project.info.title = title
         self._touch()
-        self.call(self.on_info_changed)
+        self._announce(self.on_info_changed)
 
     def set_author(self, author: str) -> None:
         self.project.info.author = author
         self._touch()
-        self.call(self.on_info_changed)
+        self._announce(self.on_info_changed)
 
     def set_comment(self, comment: str) -> None:
         self.project.info.comment = comment
         self._touch()
-        self.call(self.on_info_changed)
+        self._announce(self.on_info_changed)
 
     def set_tempo(self, tempo: int) -> None:
         self.project.settings.tempo = tempo
         self._touch()
-        self.call(self.on_settings_changed)
+        self._announce(self.on_settings_changed)
 
     def set_speed(self, speed: int) -> None:
         self.project.settings.speed = speed
         self._touch()
-        self.call(self.on_settings_changed)
+        self._announce(self.on_settings_changed)
 
     def set_first_highlight(self, first_highlight: int) -> None:
         self.project.settings.first_highlight = first_highlight
         self._touch()
-        self.call(self.on_settings_changed)
+        self._announce(self.on_settings_changed)
 
     def set_second_highlight(self, second_highlight: int) -> None:
         self.project.settings.second_highlight = second_highlight
         self._touch()
-        self.call(self.on_settings_changed)
+        self._announce(self.on_settings_changed)
 
     def set_nes_frequency(self, nes_frequency: int) -> None:
         self.project.settings.nes_frequency = nes_frequency
         self._touch()
-        self.call(self.on_settings_changed)
+        self._announce(self.on_settings_changed)
 
     def set_sample_rate(self, sample_rate: int) -> None:
         self.project.settings.sample_rate = sample_rate
         self._touch()
-        self.call(self.on_settings_changed)
+        self._announce(self.on_settings_changed)
 
     def set_rows_per_pattern(self, rows_per_pattern: int) -> None:
         self.song.resize_patterns(rows_per_pattern)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def add_sample(self, reconstruction: Reconstruction, name: str) -> Sample:
         """Embeds a reconstruction as a project sample, detaching its local source-audio origin.
@@ -168,7 +197,7 @@ class ProjectController(CallbackMixin):
         sample = Sample(name=name, reconstruction=reconstruction)
         self.project.samples.append(sample)
         self._touch()
-        self.call(self.on_samples_changed)
+        self._announce(self.on_samples_changed)
         return sample
 
     def replace_sample_reconstruction(self, sample_id: str, reconstruction: Reconstruction) -> None:
@@ -181,19 +210,19 @@ class ProjectController(CallbackMixin):
         reconstruction.detach_source()
         self.project.samples[sample_id].reconstruction = reconstruction
         self._touch()
-        self.call(self.on_samples_changed)
-        self.call(self.on_song_changed)
+        self._announce(self.on_samples_changed)
+        self._announce(self.on_song_changed)
 
     def rename_sample(self, sample_id: str, name: str) -> None:
         self.project.samples[sample_id].name = name
         self._touch()
-        self.call(self.on_samples_changed)
-        self.call(self.on_song_changed)
+        self._announce(self.on_samples_changed)
+        self._announce(self.on_song_changed)
 
     def set_sample_loop(self, sample_id: str, loop: bool) -> None:
         self.project.samples[sample_id].loop = loop
         self._touch()
-        self.call(self.on_samples_changed)
+        self._announce(self.on_samples_changed)
 
     def is_sample_used(self, sample_id: str) -> bool:
         return self.song.references_sample(sample_id)
@@ -202,8 +231,8 @@ class ProjectController(CallbackMixin):
         self.project.samples.pop(sample_id)
         self.song.clear_sample_references(sample_id)
         self._touch()
-        self.call(self.on_samples_changed)
-        self.call(self.on_song_changed)
+        self._announce(self.on_samples_changed)
+        self._announce(self.on_song_changed)
 
     def duplicate_sample(self, sample_id: str) -> Sample:
         """Appends an independent copy of a sample (same name and loop flag).
@@ -214,7 +243,7 @@ class ProjectController(CallbackMixin):
         clone = self.project.samples[sample_id].clone()
         self.project.samples.append(clone)
         self._touch()
-        self.call(self.on_samples_changed)
+        self._announce(self.on_samples_changed)
         return clone
 
     def move_sample(self, sample_id: str, to_index: int) -> None:
@@ -226,13 +255,13 @@ class ProjectController(CallbackMixin):
         """
         self.project.samples.move(sample_id, to_index)
         self._touch()
-        self.call(self.on_samples_changed)
-        self.call(self.on_song_changed)
+        self._announce(self.on_samples_changed)
+        self._announce(self.on_song_changed)
 
     def add_pattern(self, generator: GeneratorName) -> int:
         index = self.song.add_pattern(generator)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
         return index
 
     def clone_pattern(
@@ -242,7 +271,7 @@ class ProjectController(CallbackMixin):
     ) -> int:
         clone_index = self.song.clone_pattern(generator, pattern_index)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
         return clone_index
 
     def remove_pattern(
@@ -252,7 +281,7 @@ class ProjectController(CallbackMixin):
     ) -> None:
         self.song.remove_pattern(generator, pattern_index)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def _clamp_transpose(self, transpose: Optional[int]) -> Optional[int]:
         if transpose is None:
@@ -315,7 +344,7 @@ class ProjectController(CallbackMixin):
             row,
         )
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def update_row(
         self,
@@ -372,12 +401,12 @@ class ProjectController(CallbackMixin):
     def append_frame(self) -> None:
         self.song.append_frame()
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def insert_frame(self, position: int) -> None:
         self.song.insert_frame(position)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def set_order_entry(
         self,
@@ -387,41 +416,89 @@ class ProjectController(CallbackMixin):
     ) -> None:
         self.song.set_order_entry(position, generator, pattern_index)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def remove_frame(self, position: int) -> None:
         self.song.remove_frame(position)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def move_frame(self, from_position: int, to_position: int) -> None:
         self.song.move_frame(from_position, to_position)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def duplicate_frame(self, position: int) -> None:
         self.song.duplicate_frame(position)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def clone_frame(self, position: int) -> None:
         self.song.clone_frame(position)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
 
     def clear_frame(self, position: int) -> None:
         self.song.clear_frame(position)
         self._touch()
-        self.call(self.on_song_changed)
+        self._announce(self.on_song_changed)
+
+    def _begin_batch(self) -> None:
+        if self._batch is None:
+            self._batch = MutationBatch()
+            return
+
+        self._batch.depth += 1
+
+    def _flush_batch(self) -> None:
+        """Delivers the outermost batch's stamp and announcements, each exactly once.
+
+        The batch is closed before anything is delivered, so a subscriber that reads
+        the project — or mutates it further — sees a controller that notifies
+        immediately again.
+        """
+        if self._batch is None:
+            return
+
+        self._batch.depth -= 1
+        if self._batch.depth > 0:
+            return
+
+        batch = self._batch
+        self._batch = None
+        if batch.stamped:
+            self._stamp()
+
+        for announcement in batch.announcements:
+            self.call(announcement)
+
+    def _announce(self, announcement: Optional[VoidCallback]) -> None:
+        """Signals a change to its subscribers, or keeps it for the open batch's flush."""
+        if self._batch is not None:
+            self._batch.record(announcement)
+            return
+
+        self.call(announcement)
+
+    def _stamp(self) -> None:
+        """Records the project as carrying unsaved changes, once per batch while one is open."""
+        if self._batch is not None:
+            self._batch.stamped = True
+            return
+
+        self.project.info.touch()
+        self._project_manager.mark_updated()
 
     def _touch(self) -> None:
         """Stamps the project as modified and signals the mutation to the history.
 
-        ``on_mutation`` is invoked through a direct ``None`` check so mutations stay
-        silent in history-free contexts (tests, tools), where the hook is intentionally
-        unwired and :meth:`CallbackMixin.call` would log a warning for each one.
+        ``on_mutation`` fires for every mutation as it lands, batch or no batch, so the
+        history keeps seeing each one inside the transaction that caused it — that
+        immediacy is what its completeness check rests on. It is invoked through a
+        direct ``None`` check so mutations stay silent in history-free contexts (tests,
+        tools), where the hook is intentionally unwired and :meth:`CallbackMixin.call`
+        would log a warning for each one.
         """
-        self.project.info.touch()
-        self._project_manager.mark_updated()
+        self._stamp()
         if self.on_mutation is not None:
             self.on_mutation()

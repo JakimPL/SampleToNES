@@ -253,7 +253,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 
 *Managers* own a domain object's lifecycle (load, save, close). They hold the current object, a `Session` that tracks dirty state, and fire `CallbackMixin` callbacks when the state changes.
 
-*Controllers* are thin mutation façades over a manager. `ProjectController` exposes named, typed mutation methods (`set_title`, `add_sample`, …) and emits a finer-grained callback per mutation kind (`on_info_changed`, `on_samples_changed`, …). This lets the UI respond precisely to what changed.
+*Controllers* are thin mutation façades over a manager. `ProjectController` exposes named, typed mutation methods (`set_title`, `add_sample`, …) and emits a finer-grained callback per mutation kind (`on_info_changed`, `on_samples_changed`, …). This lets the UI respond precisely to what changed. `ProjectController.batch()` widens that grain to a whole gesture: each mutation still applies the moment it is made, while the callbacks it raises wait for the scope to close and then arrive once each, so a gesture writing hundreds of rows rebuilds its subscribers once.
 
 *Logic objects* (e.g. `ConverterLogic`) orchestrate multi-step workflows within a feature area. They subscribe to services and translate service results into view model updates.
 

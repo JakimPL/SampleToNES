@@ -34,9 +34,14 @@ the regeneration worker's background thread.
   consecutive commits sharing the same action and key replace the top entry
   instead of appending, so a continuous interaction — a graph drag, repeated
   edits of one cell — records a single entry. Any undo, redo, or jump breaks
-  the run, so a state the user navigated to is always preserved.
+  the run, so a state the user navigated to is always preserved. `_undoable`
+  opens `ProjectController.batch()` inside the transaction, so one gesture is
+  one entry and one round of view notifications alike.
 - **Detection — the controller.** `ProjectController._touch()` fires `on_mutation`
-  on every fine-grained mutation. `HistoryManager.handle_mutation` counts those
+  on every fine-grained mutation, as it lands — a batch defers the view
+  notifications and the dirty stamp, leaving this signal immediate so the check
+  below sees each mutation inside the transaction that caused it.
+  `HistoryManager.handle_mutation` counts those
   inside a transaction and rejects any that occur outside one: under strict
   deployment it raises `UntrackedMutationError`; otherwise it self-heals by
   recording the mutation as its own entry. This makes completeness a checkable
