@@ -134,3 +134,29 @@ When the song is ready, **Export as FamiTracker module** (or **File ▸ Export
 FamiTracker module...**) writes the `.ftm`. See
 [FamiTracker export](../formats/famitracker.md) for what the module contains and
 the limits it respects.
+
+## Rendering to audio
+
+A module is for a tracker. To get a file anyone can play, use **File ▸ Render
+song...** (`Ctrl+Shift+E`), which writes the whole song as audio.
+
+The dialog holds the choices:
+
+| Setting | What it does |
+|---------|--------------|
+| **Format** | **WAV** for the full-quality file, **MP3** for a smaller one |
+| **Sample rate** | How many samples a second the file holds; 44100 Hz is the usual choice |
+| **Bit depth** (WAV) | How finely each sample is stored. 16-bit PCM is the usual choice; 8-bit is there for the crunch the NES itself has |
+| **Bitrate** (MP3) | How much the file spends per second — higher sounds better and takes more room. What is on offer depends on the sample rate, so the list follows when you change it |
+| **Normalize peak** | Lifts the whole song so its loudest moment reaches full scale, keeping the balance between channels as it was |
+| **File** | Where it is written. **Browse...** opens the save dialog, and the folder you pick is offered again next time |
+
+**Length** tells you how long the file will be before you start. **Render** begins,
+and a bar reports how far it has got; **Cancel** stops it and leaves the file
+unwritten. When it finishes, _SampleToNES_ shows the file it wrote — click the path
+to open its folder.
+
+A render takes the song itself, once through, with every channel sounding: muting
+and **Loop song** are for listening and stay out of the file. It is one of the long
+jobs that run alone, so the item is unavailable while a conversion or a library
+generation is going, and those wait for a render in the same way.

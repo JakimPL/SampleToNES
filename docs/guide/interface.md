@@ -78,7 +78,12 @@ redo, **Reconstruction** for the current reconstruction and its exports,
 **Playback** for playing and for muting the sequencer's channels, **View** for
 settings and the window, and **Help** for **About**.
 
-Two of them are easy to miss. **View ▸ Show advanced settings** reveals the extra
+Two items write audio you can play anywhere: **Reconstruction ▸ Export to WAV...**
+for the reconstruction on show, and **File ▸ Render song...** (`Ctrl+Shift+E`) for
+the sequencer's whole song, as a WAV or an MP3 —
+[rendering to audio](sequencer.md#rendering-to-audio) covers the options it offers.
+
+Two other items are easy to miss. **View ▸ Show advanced settings** reveals the extra
 options on the **Main** tab. **Playback ▸ Audio settings...** picks the playback
 device, sample rate, and buffer size; these change what you hear, while the
 **Sample rate** and **NES frequency** on the **Main** tab change how audio is

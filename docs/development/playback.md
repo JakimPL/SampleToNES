@@ -25,14 +25,17 @@ a control over what is heard. The contracts here bind every tab and every player
    same behaviour.
 5. **Listening choices stay out of the document.** What the user chooses to hear is session state;
    what the project holds is the whole song. Saving, export, rendering, and history read the
-   document, so each of them works on the full song whatever the user is listening to.
+   document, so each of them works on the full song whatever the user is listening to. A render
+   reads the document as it stood when it was asked for: every channel sounding, at unity gain,
+   played through once.
 6. **Live state is pulled while sound is produced.** A player reads the settings that shape its
    sound as it renders, so a change is heard as the render-ahead buffer drains. This is what lets a
    listening control take effect inside the sound already playing.
 7. **A row's duration belongs to the song, not to the player.** How long a row lasts follows from
    the project's tempo and metre together with the row's place in the pattern, so it is a function
    of position: the same row lasts the same time however playback reached it, and a module exported
-   from the song can state the same figures.
+   from the song can state the same figures. The integer tick counts the groove places *are* the
+   tempo, so a render realises them exactly at every rate it offers.
 
 ## Two kinds of sound
 
@@ -159,6 +162,37 @@ sequencer distinguishes a history restore from a document transition. And the mu
 listening session, so opening, creating, or closing a document starts a fresh one with every channel
 audible.
 
+## Rendering the song to a file
+
+A render writes the whole song to an audio file through the kernel that plays it. `RowSynthesizer`
+serves both: the player drives it to feed the device, the render drives it to feed a file writer.
+The synthesis is therefore written once, and the file and the playback agree on what the song
+sounds like by construction.
+
+Two things differ between them, and each is stated by whoever asks for the audio. The **document**
+is a seam: a kernel reads its project through `ProjectSource`, which the live controller satisfies
+for playback and a frozen `ProjectSnapshot` satisfies for a render — so the player follows every
+edit as the buffer drains (principle 6), while a render describes one state of the document however
+the project moves on. The **rate** is the consumer's: the device for playback, the chosen output
+format for a render. The kernel rebuilds its generators and its tick clock when either moves, so a
+file is written at the rate its engine ran at.
+
+The song's exact length follows from the timing model before a sample is rendered: the order's
+length in rows gives the ticks, the tick clock gives the samples those ticks span. That figure is
+what the progress bar counts against and what a finished file measures.
+
+Rendering is an exclusive operation (architecture principle 10). It occupies the application from
+the moment its dialog opens until that dialog closes, and it joins the same busy authority as
+conversion and library generation, so each of the three holds the others off and every surface
+offering one reads a single answer.
+
+The write itself takes one pass, or two where the user asks for a normalised peak: the first pass
+spills raw samples and discovers the peak, the second reads them back and encodes at the scale that
+peak sets. Each pass names itself, so the bar crosses one axis — samples — twice, holding a single
+unit across both. A cancel is honoured between rows and between encoded blocks, and a render that
+is stopped or fails clears the destination and the spill, so a result names a path where a finished
+file stands.
+
 ## Teardown
 
 The device is torn down once every source holding a stream has released it. A source that streams to
@@ -196,6 +230,12 @@ terminating would reclaim.
 | How long each row of a pattern lasts | `Groove` (`sampletones_core/timing/`), indexed by row while rendering |
 | How many samples one of that row's ticks spans | `TickClock` (`sampletones_core/timing/`), followed by `EngineRates` |
 | The song's render-ahead buffer | `services/song_player/` |
+| The document a kernel reads, live or captured | `ProjectSource` / `ProjectSnapshot` (`logic/shared/project_source.py`) |
+| The ticks the order lasts and the samples they span | `SongLength` (`logic/sequencer/playback/synthesizer/length.py`) |
+| Rendering the song to a file, its passes and its progress | `SongRenderService` (`services/render/`) |
+| Where a rendered file's samples go, normalised or direct | `RenderSink` (`services/render/sink.py`) |
+| The choices a render is made under, and the phase it is in | `SongRenderLogic` (`logic/render/`) |
+| The formats a file may be written in, and what each accepts | `sampletones_core/audio/writers/` |
 
 The sequencer song is an ordinary intentional source alongside the reconstruction and instruction
 players: it implements the same protocol and is arbitrated by the same rules.
