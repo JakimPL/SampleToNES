@@ -66,6 +66,12 @@ bindings:
   OrderNextChannel: {combination: "Down"}
   OrderFirstPosition: {combination: "Home", aliases: ["Cmd+Left"]}
   OrderLastPosition: {combination: "End", aliases: ["Cmd+Right"]}
+  OrderExtendSelectionUp: {combination: "Shift+Up"}
+  OrderExtendSelectionDown: {combination: "Shift+Down"}
+  OrderExtendSelectionLeft: {combination: "Shift+Left"}
+  OrderExtendSelectionRight: {combination: "Shift+Right"}
+  OrderExtendSelectionToFirstPosition: {combination: "Shift+Home", aliases: ["Cmd+Shift+Left"]}
+  OrderExtendSelectionToLastPosition: {combination: "Shift+End", aliases: ["Cmd+Shift+Right"]}
   OrderMoveFrameLeft: {combination: "Alt+Left"}
   OrderMoveFrameRight: {combination: "Alt+Right"}
   OrderMoveFrameToStart: {combination: "Alt+Home", aliases: ["Cmd+Alt+Left"]}
@@ -89,6 +95,12 @@ bindings:
   TrackerNextColumn: {combination: "Tab"}
   TrackerFirstRow: {combination: "Home", aliases: ["Cmd+Up"]}
   TrackerLastRow: {combination: "End", aliases: ["Cmd+Down"]}
+  TrackerExtendSelectionUp: {combination: "Shift+Up"}
+  TrackerExtendSelectionDown: {combination: "Shift+Down"}
+  TrackerExtendSelectionLeft: {combination: "Shift+Left"}
+  TrackerExtendSelectionRight: {combination: "Shift+Right"}
+  TrackerExtendSelectionToFirstRow: {combination: "Shift+Home", aliases: ["Cmd+Shift+Up"]}
+  TrackerExtendSelectionToLastRow: {combination: "Shift+End", aliases: ["Cmd+Shift+Down"]}
   TrackerPageUp: {combination: "PgUp", aliases: ["Alt+Up"]}
   TrackerPageDown: {combination: "PgDn", aliases: ["Alt+Down"]}
   TrackerClearRow: {combination: "Del", aliases: ["Cmd+Backspace"]}

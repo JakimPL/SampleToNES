@@ -41,6 +41,21 @@ class TestTrackerEscapeYieldsToGlobalStop:
         assert panel._on_key_pressed(_escape()) is True
         assert applied and applied[0].pending == ""
 
+    def test_escape_drops_a_selection_and_consumes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A selection is state the grid holds, so Escape takes it down before it reaches Stop."""
+        panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+        panel._shortcuts = shipped_source()
+        panel._current_row_count = 64
+        panel._input_state = TrackerInputState(
+            cursor=TrackerCursor(4, None, SubColumn.INSTRUMENT),
+            anchor=TrackerCursor(2, None, SubColumn.INSTRUMENT),
+        )
+        applied: List[TrackerInputState] = []
+        monkeypatch.setattr(panel, "_apply_state", applied.append)
+
+        assert panel._on_key_pressed(_escape()) is True
+        assert applied and applied[0].region is None
+
 
 class TestOrderEscapeYieldsToGlobalStop:
     """With no partial cell edit to cancel, the order table lets Escape fall through to global Stop."""
@@ -61,3 +76,18 @@ class TestOrderEscapeYieldsToGlobalStop:
 
         assert panel._on_key_pressed(_escape()) is True
         assert applied and applied[0].pending == ""
+
+    def test_escape_drops_a_selection_and_consumes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A selection is state the table holds, so Escape takes it down before it reaches Stop."""
+        panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+        panel._shortcuts = shipped_source()
+        panel._position_count = 8
+        panel._input_state = OrderInputState(
+            cursor=OrderCursor(None, 3),
+            anchor=OrderCursor(None, 1),
+        )
+        applied: List[OrderInputState] = []
+        monkeypatch.setattr(panel, "_apply_state", applied.append)
+
+        assert panel._on_key_pressed(_escape()) is True
+        assert applied and applied[0].region is None

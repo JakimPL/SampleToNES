@@ -10,6 +10,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
 )
+from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import (
     SLOT_COUNT,
     SUBCOLUMNS,
@@ -65,11 +66,89 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
 
 @dataclass
 class TrackerInputState:
+    """Edit cursor, pending entry and selection anchor for the tracker grid.
+
+    The anchor is where a range selection was started; the cursor is its other end, so the two
+    together are the region a block operation acts on. Every plain move builds a state without
+    one, which is what makes a move collapse a selection to the cell it lands in.
+    """
+
     cursor: Optional[TrackerCursor] = None
     pending: str = ""
+    anchor: Optional[TrackerCursor] = None
 
     def reset_pending(self) -> TrackerInputState:
-        return TrackerInputState(cursor=self.cursor, pending="")
+        """Drops a partial entry, leaving the cursor and any selection where they stand.
+
+        The anchor survives because this runs before every move, the extending ones included:
+        each gesture then decides whether to hold the selection or collapse it.
+        """
+        return TrackerInputState(cursor=self.cursor, pending="", anchor=self.anchor)
+
+    def collapse(self) -> TrackerInputState:
+        """Drops the selection, leaving the cursor's own cell as the whole target."""
+        return TrackerInputState(cursor=self.cursor, pending=self.pending)
+
+    @property
+    def region(self) -> Optional[TrackerRegion]:
+        """The block a selection covers, once one has been started."""
+        if self.cursor is None or self.anchor is None:
+            return None
+
+        anchor_slot = TrackerSlot(self.anchor.generator, self.anchor.subcolumn).flat_index
+        cursor_slot = TrackerSlot(self.cursor.generator, self.cursor.subcolumn).flat_index
+        return TrackerRegion(
+            first_row=min(self.anchor.row, self.cursor.row),
+            last_row=max(self.anchor.row, self.cursor.row),
+            first_slot=min(anchor_slot, cursor_slot),
+            last_slot=max(anchor_slot, cursor_slot),
+        )
+
+    def extend_to(self, cursor: TrackerCursor) -> TrackerInputState:
+        """Carries the moving end of the selection to ``cursor``, anchoring it where it began.
+
+        A selection that has not been started yet takes the cell the cursor stands on as its
+        anchor, so the first extending gesture selects the cell it came from as well as the one
+        it reaches.
+        """
+        return TrackerInputState(
+            cursor=cursor,
+            pending="",
+            anchor=self.anchor if self.anchor is not None else self.cursor,
+        )
+
+    def extend_row(
+        self,
+        value: int,
+        row_count: int,
+        absolute: bool = False,
+    ) -> TrackerInputState:
+        """Carries the selection's moving end to another row of the same slot."""
+        if self.cursor is None or row_count == 0:
+            return self
+
+        new_row = value if absolute else self.cursor.row + value
+        new_row = max(0, min(new_row, row_count - 1))
+        return self.extend_to(
+            TrackerCursor(
+                new_row,
+                self.cursor.generator,
+                self.cursor.subcolumn,
+            )
+        )
+
+    def extend_slot(self, value: int) -> TrackerInputState:
+        """Carries the selection's moving end along the flat slot axis, stopping at either end.
+
+        A selection covers a run of the grid, so the walk stops at the first and the last slot
+        rather than wrapping around the way plain navigation does.
+        """
+        if self.cursor is None:
+            return self
+
+        current = TrackerSlot(self.cursor.generator, self.cursor.subcolumn).flat_index
+        slot = slot_from_flat(max(0, min(current + value, SLOT_COUNT - 1)))
+        return self.extend_to(TrackerCursor(self.cursor.row, slot.generator, slot.subcolumn))
 
     def navigate_row(
         self,
@@ -146,7 +225,7 @@ class TrackerInputState:
             return self, None
 
         if self.cursor.subcolumn is SubColumn.INSTRUMENT and char == MINUS:
-            return self.reset_pending(), self._note_off_action(self.cursor)
+            return self._after_entry(), self._note_off_action(self.cursor)
 
         if self.cursor.subcolumn is SubColumn.TRANSPOSE:
             return self._type_transpose_char(char)
@@ -160,7 +239,15 @@ class TrackerInputState:
             return TrackerInputState(cursor=self.cursor, pending=pending), None
 
         action = _parse(self.cursor, pending)
-        return self.reset_pending(), action
+        return self._after_entry(), action
+
+    def _after_entry(self) -> TrackerInputState:
+        """The state a committed entry leaves: the cursor alone, nothing pending and nothing selected.
+
+        Typing writes the one cell the cursor stands on, so it takes the selection down to that
+        cell instead of leaving a range for the next gesture to act on.
+        """
+        return self.collapse().reset_pending()
 
     def _note_off_action(self, cursor: TrackerCursor) -> EditAction:
         return EditAction(
@@ -203,7 +290,7 @@ class TrackerInputState:
             return TrackerInputState(cursor=self.cursor, pending=pending), None
 
         action = _parse(self.cursor, pending)
-        return self.reset_pending(), action
+        return self._after_entry(), action
 
     def commit_partial(self) -> Tuple[TrackerInputState, Optional[EditAction]]:
         if not self.pending or self.cursor is None:
@@ -234,4 +321,5 @@ class TrackerInputState:
         return self.reset_pending(), action
 
     def cancel(self) -> TrackerInputState:
-        return self.reset_pending()
+        """Drops a partial entry and any selection, which is what Escape asks of the grid."""
+        return self.collapse().reset_pending()

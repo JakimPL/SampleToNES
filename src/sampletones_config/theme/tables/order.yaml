@@ -10,3 +10,8 @@ components:
       - type: color
         key: HeaderActive
         value: .transparent
+  - item_type: Selectable
+    entries:
+      - type: color
+        key: Header
+        value: .block_selection

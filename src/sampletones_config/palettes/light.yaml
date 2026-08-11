@@ -166,6 +166,7 @@ colors:
   tracker_beat_row: "#00000016"
   tracker_bar_row: "#0000002c"
 
+  block_selection: "#6b4ea840"
   pattern_highlight: "#00000018"
   cell_cursor: "#0b4c8c60"
   cursor_row: "#0b4c8c24"

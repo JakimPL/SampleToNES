@@ -35,6 +35,7 @@ class EditableCells(Generic[KeyT]):
 
     def __init__(self) -> None:
         self._widgets: Dict[KeyT, Sender] = {}
+        self._keys: Dict[Sender, KeyT] = {}
         self._values: Dict[KeyT, str] = {}
 
     @property
@@ -44,13 +45,23 @@ class EditableCells(Generic[KeyT]):
     def reset(self, values: Dict[KeyT, str]) -> None:
         """Drops the widget references and reseeds the value cache for a rebuild."""
         self._widgets = {}
+        self._keys = {}
         self._values = dict(values)
 
     def register(self, key: KeyT, widget: Sender) -> None:
         self._widgets[key] = widget
+        self._keys[widget] = key
 
     def widget(self, key: KeyT) -> Optional[Sender]:
         return self._widgets.get(key)
+
+    def key(self, widget: Sender) -> Optional[KeyT]:
+        """The cell a widget stands for, which is what a handler reporting an item needs.
+
+        DearPyGui hands an item handler the widget it fired for, so the cache is read from
+        both sides: a panel looks a widget up here rather than reading its user data back.
+        """
+        return self._keys.get(widget)
 
     def reconcile(self, values: Dict[KeyT, str], render: Callable[[KeyT], str]) -> None:
         """Updates only the cells whose label changed since the last reconcile."""

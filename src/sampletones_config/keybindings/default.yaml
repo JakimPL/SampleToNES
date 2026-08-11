@@ -66,6 +66,12 @@ bindings:
   OrderNextChannel: {combination: "Down"}
   OrderFirstPosition: {combination: "Home"}
   OrderLastPosition: {combination: "End"}
+  OrderExtendSelectionUp: {combination: "Shift+Up"}
+  OrderExtendSelectionDown: {combination: "Shift+Down"}
+  OrderExtendSelectionLeft: {combination: "Shift+Left"}
+  OrderExtendSelectionRight: {combination: "Shift+Right"}
+  OrderExtendSelectionToFirstPosition: {combination: "Shift+Home"}
+  OrderExtendSelectionToLastPosition: {combination: "Shift+End"}
   OrderMoveFrameLeft: {combination: "Alt+Left"}
   OrderMoveFrameRight: {combination: "Alt+Right"}
   OrderMoveFrameToStart: {combination: "Alt+Home"}
@@ -89,6 +95,12 @@ bindings:
   TrackerNextColumn: {combination: "Tab"}
   TrackerFirstRow: {combination: "Home"}
   TrackerLastRow: {combination: "End"}
+  TrackerExtendSelectionUp: {combination: "Shift+Up"}
+  TrackerExtendSelectionDown: {combination: "Shift+Down"}
+  TrackerExtendSelectionLeft: {combination: "Shift+Left"}
+  TrackerExtendSelectionRight: {combination: "Shift+Right"}
+  TrackerExtendSelectionToFirstRow: {combination: "Shift+Home"}
+  TrackerExtendSelectionToLastRow: {combination: "Shift+End"}
   TrackerPageUp: {combination: "PgUp"}
   TrackerPageDown: {combination: "PgDn"}
   TrackerClearRow: {combination: "Del"}

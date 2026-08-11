@@ -5,6 +5,8 @@ from sampletones_application.ui.panels.sequencer.input.state import TrackerInput
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 
+ROW_COUNT = 64
+
 
 def _state(
     subcolumn: SubColumn,
@@ -35,6 +37,101 @@ class TestNoteOffEntry:
         new_state, action = _state(SubColumn.TRANSPOSE).type_char("-")
         assert action is None
         assert new_state.pending.startswith("-")
+
+
+class TestSelection:
+    """Shift-extended moves grow a region from the cell the selection was started on."""
+
+    def test_a_state_without_an_anchor_covers_no_region(self) -> None:
+        assert _state(SubColumn.INSTRUMENT).region is None
+
+    def test_the_first_extend_anchors_the_cell_it_came_from(self) -> None:
+        extended = _state(SubColumn.INSTRUMENT, row=4).extend_row(1, ROW_COUNT)
+
+        region = extended.region
+        assert region is not None
+        assert (region.first_row, region.last_row) == (4, 5)
+        assert region.row_count == 2
+
+    def test_extending_upwards_names_the_same_region_as_downwards(self) -> None:
+        """The bounds are ordered by the region, so the direction of the drag leaves no trace."""
+        upwards = _state(SubColumn.INSTRUMENT, row=5).extend_row(-1, ROW_COUNT).region
+        downwards = _state(SubColumn.INSTRUMENT, row=4).extend_row(1, ROW_COUNT).region
+
+        assert upwards == downwards
+
+    def test_a_further_extend_keeps_the_original_anchor(self) -> None:
+        extended = _state(SubColumn.INSTRUMENT, row=4).extend_row(1, ROW_COUNT).extend_row(3, ROW_COUNT)
+
+        region = extended.region
+        assert region is not None
+        assert (region.first_row, region.last_row) == (4, 8)
+
+    def test_extending_slots_reaches_across_the_column_boundary(self) -> None:
+        extended = _state(SubColumn.VOLUME, generator=None).extend_slot(1)
+
+        region = extended.region
+        assert region is not None
+        assert (region.first_slot, region.last_slot) == (2, 3)
+        assert extended.cursor is not None
+        assert extended.cursor.generator is GeneratorName.PULSE1
+        assert extended.cursor.subcolumn is SubColumn.INSTRUMENT
+
+    def test_extending_slots_stops_at_either_end_of_the_axis(self) -> None:
+        """A selection covers a run of the grid, so its reach stops where plain navigation wraps."""
+        first = _state(SubColumn.INSTRUMENT, generator=None).extend_slot(-1)
+        last = _state(SubColumn.VOLUME, generator=GeneratorName.NOISE).extend_slot(1)
+
+        assert first.cursor == TrackerCursor(0, None, SubColumn.INSTRUMENT)
+        assert last.cursor == TrackerCursor(0, GeneratorName.NOISE, SubColumn.VOLUME)
+
+    def test_a_plain_move_collapses_the_selection(self) -> None:
+        moved = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT).navigate_row(1, ROW_COUNT)
+
+        assert moved.anchor is None
+        assert moved.region is None
+
+    def test_a_plain_column_move_collapses_the_selection(self) -> None:
+        moved = _state(SubColumn.INSTRUMENT).extend_row(2, ROW_COUNT).navigate_column_by(1)
+
+        assert moved.region is None
+
+    def test_dropping_a_partial_entry_holds_the_selection(self) -> None:
+        """Every move commits what was typed first, the extending ones included."""
+        held = _state(SubColumn.VOLUME, pending="5").extend_row(1, ROW_COUNT).reset_pending()
+
+        assert held.region is not None
+
+    def test_typing_a_value_collapses_the_selection(self) -> None:
+        selected = _state(SubColumn.VOLUME, row=4).extend_row(2, ROW_COUNT)
+
+        typed, action = selected.type_char("7")
+
+        assert action is not None
+        assert typed.region is None
+
+    def test_a_note_off_collapses_the_selection(self) -> None:
+        selected = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT)
+
+        typed, action = selected.type_char("-")
+
+        assert action is not None
+        assert action.note_off is True
+        assert typed.region is None
+
+    def test_cancel_drops_the_selection_and_the_partial_entry(self) -> None:
+        cancelled = _state(SubColumn.VOLUME, pending="5").extend_row(1, ROW_COUNT).cancel()
+
+        assert cancelled.region is None
+        assert cancelled.pending == ""
+
+    def test_collapse_keeps_the_cursor_where_it_stands(self) -> None:
+        selected = _state(SubColumn.TRANSPOSE, row=4).extend_row(2, ROW_COUNT)
+
+        collapsed = selected.collapse()
+
+        assert collapsed.cursor == selected.cursor
+        assert collapsed.region is None
 
 
 class TestColumnNavigation:

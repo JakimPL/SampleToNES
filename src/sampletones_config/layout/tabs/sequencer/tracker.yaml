@@ -1,5 +1,7 @@
 rows: 64
 page_size: 16
+row_height: 29
+header_height: 30
 channel_column_tint: 0.09
 muted_text_fraction: 0.45
 subcolumn_widths:
