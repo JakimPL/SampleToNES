@@ -168,37 +168,104 @@ class TestSongDuplicateFrame:
         assert song.order_length() == 3
         assert song.order[2][GeneratorName.PULSE1] == 3
 
-    def test_duplicate_points_channels_at_fresh_patterns(self) -> None:
+    def test_duplicate_points_channels_at_the_same_patterns(self) -> None:
         song = _song()
 
         song.duplicate_frame(0)
 
         source_index = song.order[0][GeneratorName.PULSE1]
         duplicate_index = song.order[1][GeneratorName.PULSE1]
-        assert duplicate_index != source_index
+        assert duplicate_index == source_index
 
-    def test_duplicate_avoids_indices_referenced_by_other_frames(self) -> None:
+    def test_duplicate_allocates_no_pattern(self) -> None:
+        song = _song()
+        pattern_count = len(song[GeneratorName.PULSE1].patterns)
+
+        song.duplicate_frame(0)
+
+        assert len(song[GeneratorName.PULSE1].patterns) == pattern_count
+
+    def test_editing_a_shared_pattern_is_heard_in_both_frames(self) -> None:
+        song = _song()
+        song.duplicate_frame(0)
+        duplicate_index = song.order[1][GeneratorName.PULSE1]
+        assert duplicate_index is not None
+
+        _place_instrument(song, GeneratorName.PULSE1, "sample-a", row_index=0)
+
+        shared_pattern = song.pattern(GeneratorName.PULSE1, duplicate_index)
+        assert shared_pattern is not None
+        assert shared_pattern.rows[0].command is not None
+
+    def test_repointing_one_frame_leaves_the_other_where_it_was(self) -> None:
+        """The copy is a fresh mapping, so the two frames' slots move independently."""
+        song = _song()
+        song.duplicate_frame(0)
+
+        song.set_order_entry(1, GeneratorName.PULSE1, 9)
+
+        assert song.order[0][GeneratorName.PULSE1] == 0
+
+    def test_duplicate_carries_an_unmaterialised_index_across(self) -> None:
+        song = _song()
+        song.set_order_entry(0, GeneratorName.PULSE1, 7)
+
+        song.duplicate_frame(0)
+
+        assert song.order[1][GeneratorName.PULSE1] == 7
+        assert song.pattern(GeneratorName.PULSE1, 7) is None
+
+
+class TestSongCloneFrame:
+    def test_clone_inserts_frame_after_position(self) -> None:
+        song = _song()
+        song.append_frame()
+        song.set_order_entry(1, GeneratorName.PULSE1, 3)
+
+        song.clone_frame(0)
+
+        assert song.order_length() == 3
+        assert song.order[2][GeneratorName.PULSE1] == 3
+
+    def test_clone_points_channels_at_fresh_patterns(self) -> None:
+        song = _song()
+
+        song.clone_frame(0)
+
+        source_index = song.order[0][GeneratorName.PULSE1]
+        clone_index = song.order[1][GeneratorName.PULSE1]
+        assert clone_index != source_index
+
+    def test_clone_avoids_indices_referenced_by_other_frames(self) -> None:
         song = _song()
         song.append_frame()
         song.set_order_entry(1, GeneratorName.PULSE1, 7)
 
-        song.duplicate_frame(0)
+        song.clone_frame(0)
 
-        duplicate_index = song.order[1][GeneratorName.PULSE1]
-        assert duplicate_index != 7
+        clone_index = song.order[1][GeneratorName.PULSE1]
+        assert clone_index != 7
 
-    def test_editing_duplicated_pattern_leaves_the_source_untouched(self) -> None:
+    def test_editing_a_cloned_pattern_leaves_the_source_untouched(self) -> None:
         song = _song()
         _place_instrument(song, GeneratorName.PULSE1, "sample-a", row_index=0)
         source_index = song.order[0][GeneratorName.PULSE1]
 
-        song.duplicate_frame(0)
-        duplicate_index = song.order[1][GeneratorName.PULSE1]
-        song[GeneratorName.PULSE1].set_row(duplicate_index, 0, Row())
+        song.clone_frame(0)
+        clone_index = song.order[1][GeneratorName.PULSE1]
+        song[GeneratorName.PULSE1].set_row(clone_index, 0, Row())
 
         source_pattern = song.pattern(GeneratorName.PULSE1, source_index)
         assert source_pattern is not None
         assert source_pattern.rows[0].command is not None
+
+    def test_clone_keeps_a_silent_slot_silent(self) -> None:
+        song = _song()
+        song.set_order_entry(0, GeneratorName.NOISE, None)
+
+        song.clone_frame(0)
+
+        assert song.order[1][GeneratorName.NOISE] is None
 
 
 class TestSongPatternAllocation:
@@ -211,12 +278,12 @@ class TestSongPatternAllocation:
         assert index != 4
         assert index in song[GeneratorName.PULSE1].patterns
 
-    def test_duplicate_pattern_skips_indices_referenced_by_the_order(self) -> None:
+    def test_clone_pattern_skips_indices_referenced_by_the_order(self) -> None:
         song = _song()
         song.append_frame()
         song.set_order_entry(1, GeneratorName.PULSE1, 6)
 
-        clone_index = song.duplicate_pattern(GeneratorName.PULSE1, 0)
+        clone_index = song.clone_pattern(GeneratorName.PULSE1, 0)
 
         assert clone_index != 6
 

@@ -74,6 +74,7 @@ bindings:
   OrderInsertFrame: {combination: "Plus", aliases: ["NumPlus", "Shift+Plus"]}
   OrderRemoveFrame: {combination: "Minus", aliases: ["NumMinus"]}
   OrderDuplicateFrame: {combination: "Ctrl+Ins", aliases: ["Cmd+Alt+Enter"]}
+  OrderCloneFrame: {combination: "Ctrl+Shift+Ins", aliases: ["Cmd+Alt+Shift+Enter"]}
   OrderClearFrame: {combination: "Shift+Del", aliases: ["Cmd+Shift+Backspace"]}
   OrderClearCell: {combination: "Del", aliases: ["Cmd+Backspace"]}
   OrderClearPreviousCell: {combination: "Backspace"}

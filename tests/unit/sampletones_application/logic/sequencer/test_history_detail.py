@@ -157,10 +157,11 @@ class TestOrderDetails:
 
         assert _pairs(formatter.add_frame(2)) == [("03", HistoryDetailRole.FRAME)]
 
-    def test_duplicate_frame_points_source_to_the_copy(self) -> None:
+    def test_copy_frame_points_source_to_the_copy(self) -> None:
+        """One builder serves both duplicating and cloning, since each lands a copy after its source."""
         formatter = _formatter(_controller())
 
-        assert _pairs(formatter.duplicate_frame(2)) == [
+        assert _pairs(formatter.copy_frame(2)) == [
             ("02", HistoryDetailRole.FRAME),
             (">", HistoryDetailRole.SEPARATOR),
             ("03", HistoryDetailRole.FRAME),

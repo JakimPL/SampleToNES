@@ -97,6 +97,7 @@ class KeybindingActionElements(AbstractElement):
     ORDER_INSERT_FRAME = "order_insert_frame"
     ORDER_REMOVE_FRAME = "order_remove_frame"
     ORDER_DUPLICATE_FRAME = "order_duplicate_frame"
+    ORDER_CLONE_FRAME = "order_clone_frame"
     ORDER_CLEAR_FRAME = "order_clear_frame"
     ORDER_CLEAR_CELL = "order_clear_cell"
     ORDER_CLEAR_PREVIOUS_CELL = "order_clear_previous_cell"

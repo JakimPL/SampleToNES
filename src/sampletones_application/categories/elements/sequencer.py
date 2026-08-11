@@ -63,6 +63,7 @@ class SequencerOrderElements(AbstractElement):
     LABEL_MASTER = "label_master"
     CONTEXT_PLAY = "context_play"
     CONTEXT_DUPLICATE = "context_duplicate"
+    CONTEXT_CLONE = "context_clone"
     CONTEXT_INSERT = "context_insert"
     CONTEXT_CLEAR = "context_clear"
     CONTEXT_REMOVE = "context_remove"

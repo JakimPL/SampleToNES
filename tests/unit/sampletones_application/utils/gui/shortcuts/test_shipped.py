@@ -15,6 +15,7 @@ from tests.suite.case import BaseRegularTestCase
 
 DISPLAY_SETTINGS_COMBINATION = "Ctrl+D"
 DUPLICATE_FRAME_COMBINATION = "Ctrl+Ins"
+CLONE_FRAME_COMBINATION = "Ctrl+Shift+Ins"
 
 
 def _press(text: str) -> KeyEvent:
@@ -56,6 +57,15 @@ class TestDuplicateFrameKey:
         action = shipped.action(ShortcutCategory.ORDER, _press(DUPLICATE_FRAME_COMBINATION))
 
         assert action is ShortcutId.ORDER_DUPLICATE_FRAME
+
+    def test_clone_frame_reads_under_the_combination_it_answers(self, shipped: ShortcutScheme) -> None:
+        assert shipped.shortcut(ShortcutId.ORDER_CLONE_FRAME).display() == CLONE_FRAME_COMBINATION
+
+    def test_clone_frame_answers_its_press_in_the_order_table(self, shipped: ShortcutScheme) -> None:
+        """Shift is what separates the deep copy from the repeat, so the two keys stay adjacent."""
+        action = shipped.action(ShortcutCategory.ORDER, _press(CLONE_FRAME_COMBINATION))
+
+        assert action is ShortcutId.ORDER_CLONE_FRAME
 
     def test_adding_a_frame_keeps_the_unmodified_insert(self, shipped: ShortcutScheme) -> None:
         assert shipped.action(ShortcutCategory.ORDER, _press("Ins")) is ShortcutId.ORDER_ADD_FRAME

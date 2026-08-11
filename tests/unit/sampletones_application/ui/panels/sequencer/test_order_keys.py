@@ -26,6 +26,7 @@ class OrderPanelFixture:
     panel: GUISequencerOrderPanel
     inserted: List[int] = field(default_factory=list)
     duplicated: List[int] = field(default_factory=list)
+    cloned: List[int] = field(default_factory=list)
     cleared: List[int] = field(default_factory=list)
     removed: List[int] = field(default_factory=list)
     moved: List[Move] = field(default_factory=list)
@@ -45,6 +46,7 @@ def order(monkeypatch: pytest.MonkeyPatch) -> OrderPanelFixture:
     fixture = OrderPanelFixture(panel=panel)
     panel.on_insert_requested = fixture.inserted.append
     panel.on_duplicate_requested = fixture.duplicated.append
+    panel.on_clone_requested = fixture.cloned.append
     panel.on_clear_requested = fixture.cleared.append
     panel.on_remove_requested = fixture.removed.append
     panel.on_move_requested = lambda position, target: fixture.moved.append((position, target))
@@ -63,6 +65,13 @@ class TestFrameActions:
     def test_the_duplicate_key_duplicates_the_cursor_frame(self, order: OrderPanelFixture) -> None:
         assert order.panel._on_key_pressed(_press("Ctrl+Ins")) is True
         assert order.duplicated == [CURSOR_POSITION]
+        assert order.cloned == []
+
+    def test_the_clone_key_clones_the_cursor_frame(self, order: OrderPanelFixture) -> None:
+        """Shift separates the two copies: the plain key repeats, the shifted one clones."""
+        assert order.panel._on_key_pressed(_press("Ctrl+Shift+Ins")) is True
+        assert order.cloned == [CURSOR_POSITION]
+        assert order.duplicated == []
 
     def test_the_display_settings_key_reaches_the_application(self, order: OrderPanelFixture) -> None:
         """Ctrl+D belongs to the display settings now, so the table hands it to the shortcut scope."""

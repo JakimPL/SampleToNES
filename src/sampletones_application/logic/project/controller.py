@@ -235,12 +235,12 @@ class ProjectController(CallbackMixin):
         self.call(self.on_song_changed)
         return index
 
-    def duplicate_pattern(
+    def clone_pattern(
         self,
         generator: GeneratorName,
         pattern_index: int,
     ) -> int:
-        clone_index = self.song.duplicate_pattern(generator, pattern_index)
+        clone_index = self.song.clone_pattern(generator, pattern_index)
         self._touch()
         self.call(self.on_song_changed)
         return clone_index
@@ -401,6 +401,11 @@ class ProjectController(CallbackMixin):
 
     def duplicate_frame(self, position: int) -> None:
         self.song.duplicate_frame(position)
+        self._touch()
+        self.call(self.on_song_changed)
+
+    def clone_frame(self, position: int) -> None:
+        self.song.clone_frame(position)
         self._touch()
         self.call(self.on_song_changed)
 

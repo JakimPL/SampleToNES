@@ -401,7 +401,12 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.on_duplicate_requested = self._undoable(
             HistoryAction.DUPLICATE_FRAME,
             self._on_order_duplicate,
-            detail=self._history_detail.duplicate_frame,
+            detail=self._history_detail.copy_frame,
+        )
+        self._sequencer_order_panel.on_clone_requested = self._undoable(
+            HistoryAction.CLONE_FRAME,
+            self._on_order_clone,
+            detail=self._history_detail.copy_frame,
         )
         self._sequencer_order_panel.on_insert_requested = self._undoable(
             HistoryAction.ADD_FRAME,
@@ -1264,13 +1269,21 @@ class SequencerTabCoordinator:
 
     def _on_order_duplicate(self, position: int) -> None:
         self._sequencer_order_logic.duplicate_frame(position)
-        self._relocate_playhead(
-            lambda playhead: remap_after_insert(
-                playhead,
-                position + 1,
-            )
-        )
-        self._select_frame_when_idle(position + 1)
+        self._settle_inserted_frame(position + 1)
+
+    def _on_order_clone(self, position: int) -> None:
+        self._sequencer_order_logic.clone_frame(position)
+        self._settle_inserted_frame(position + 1)
+
+    def _settle_inserted_frame(self, position: int) -> None:
+        """Carries the playhead and the shown frame over a frame that has just been inserted.
+
+        A frame arriving at ``position`` pushes every later frame one along, so a playhead
+        standing on one of them follows it, and the grid moves to the new frame for the reader
+        to work on.
+        """
+        self._relocate_playhead(lambda playhead: remap_after_insert(playhead, position))
+        self._select_frame_when_idle(position)
 
     def _on_order_insert(self, position: int) -> None:
         self._sequencer_order_logic.insert_frame(position + 1)

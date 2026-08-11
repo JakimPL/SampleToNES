@@ -103,6 +103,7 @@ class ShortcutId(Enum):
     ORDER_INSERT_FRAME = ("OrderInsertFrame", ShortcutCategory.ORDER)
     ORDER_REMOVE_FRAME = ("OrderRemoveFrame", ShortcutCategory.ORDER)
     ORDER_DUPLICATE_FRAME = ("OrderDuplicateFrame", ShortcutCategory.ORDER)
+    ORDER_CLONE_FRAME = ("OrderCloneFrame", ShortcutCategory.ORDER)
     ORDER_CLEAR_FRAME = ("OrderClearFrame", ShortcutCategory.ORDER)
     ORDER_CLEAR_CELL = ("OrderClearCell", ShortcutCategory.ORDER)
     ORDER_CLEAR_PREVIOUS_CELL = ("OrderClearPreviousCell", ShortcutCategory.ORDER)

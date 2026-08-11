@@ -58,8 +58,12 @@ class SequencerOrderLogic(CallbackMixin):
         self._controller.insert_frame(position)
 
     def duplicate_frame(self, position: int) -> None:
-        """Inserts a copy of the frame at ``position`` directly after it."""
+        """Repeats the frame at ``position`` directly after it, playing the same patterns."""
         self._controller.duplicate_frame(position)
+
+    def clone_frame(self, position: int) -> None:
+        """Inserts a copy of the frame at ``position`` directly after it, with its own patterns."""
+        self._controller.clone_frame(position)
 
     def clear_frame(self, position: int) -> None:
         """Empties every channel in the frame at ``position``."""

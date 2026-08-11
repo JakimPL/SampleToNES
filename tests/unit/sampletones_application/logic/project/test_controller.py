@@ -519,10 +519,10 @@ class TestPatternManagement:
         index = controller.add_pattern(GeneratorName.PULSE1)
         assert isinstance(index, int)
 
-    def test_duplicate_pattern_creates_independent_copy(self) -> None:
+    def test_clone_pattern_creates_independent_copy(self) -> None:
         controller = _controller()
         original_index = controller.add_pattern(GeneratorName.TRIANGLE)
-        clone_index = controller.duplicate_pattern(
+        clone_index = controller.clone_pattern(
             GeneratorName.TRIANGLE,
             original_index,
         )

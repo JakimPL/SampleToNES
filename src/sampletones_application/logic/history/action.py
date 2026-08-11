@@ -18,6 +18,7 @@ class HistoryAction(AbstractElement):
     ADD_FRAME = "add_frame"
     REMOVE_FRAME = "remove_frame"
     DUPLICATE_FRAME = "duplicate_frame"
+    CLONE_FRAME = "clone_frame"
     CLEAR_FRAME = "clear_frame"
     MOVE_FRAME = "move_frame"
     SET_ORDER_ENTRY = "set_order_entry"

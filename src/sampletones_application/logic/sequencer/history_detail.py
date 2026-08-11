@@ -163,7 +163,8 @@ class SequencerHistoryDetail:
     def clear_frame(self, position: int) -> Segments:
         return (self._frame(position),)
 
-    def duplicate_frame(self, position: int) -> Segments:
+    def copy_frame(self, position: int) -> Segments:
+        """Reads as source frame to copy, which is what both duplicating and cloning produce."""
         return (self._frame(position), self._arrow(), self._frame(position + 1))
 
     def move_frame(self, from_position: int, to_position: int) -> Segments:

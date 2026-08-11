@@ -149,6 +149,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
         self.on_remove_requested: Optional[OnRemoveCallback] = None
         self.on_duplicate_requested: Optional[OnFrameActionCallback] = None
+        self.on_clone_requested: Optional[OnFrameActionCallback] = None
         self.on_insert_requested: Optional[OnFrameActionCallback] = None
         self.on_clear_requested: Optional[OnFrameActionCallback] = None
         self.on_play_from_requested: Optional[OnFrameActionCallback] = None
@@ -197,6 +198,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
         self._lbl_context_play = label(SequencerOrderElements.CONTEXT_PLAY)
         self._lbl_context_duplicate = label(SequencerOrderElements.CONTEXT_DUPLICATE)
+        self._lbl_context_clone = label(SequencerOrderElements.CONTEXT_CLONE)
         self._lbl_context_insert = label(SequencerOrderElements.CONTEXT_INSERT)
         self._lbl_context_clear = label(SequencerOrderElements.CONTEXT_CLEAR)
         self._lbl_context_remove = label(SequencerOrderElements.CONTEXT_REMOVE)
@@ -883,6 +885,11 @@ class GUISequencerOrderPanel(GUIPanel):
                 callback=lambda: self.call(self.on_duplicate_requested, position),
             )
             dpg.add_menu_item(
+                label=self._lbl_context_clone,
+                shortcut=self._shortcuts.display(ShortcutId.ORDER_CLONE_FRAME),
+                callback=lambda: self.call(self.on_clone_requested, position),
+            )
+            dpg.add_menu_item(
                 label=self._lbl_context_insert,
                 shortcut=self._shortcuts.display(ShortcutId.ORDER_INSERT_FRAME),
                 callback=lambda: self.call(self.on_insert_requested, position),
@@ -1039,6 +1046,8 @@ class GUISequencerOrderPanel(GUIPanel):
                 self._on_remove_clicked()
             case ShortcutId.ORDER_DUPLICATE_FRAME:
                 self.call(self.on_duplicate_requested, position)
+            case ShortcutId.ORDER_CLONE_FRAME:
+                self.call(self.on_clone_requested, position)
             case ShortcutId.ORDER_CLEAR_FRAME:
                 self.call(self.on_clear_requested, position)
             case _:

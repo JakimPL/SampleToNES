@@ -66,15 +66,23 @@ class TestOrderFrameOps:
 
         assert _order_column(logic, GeneratorName.PULSE1) == [None, 5]
 
-    def test_duplicate_frame_gives_the_copy_its_own_pattern(self) -> None:
+    def test_duplicate_frame_repeats_the_same_pattern(self) -> None:
         logic = _logic()
         logic.set_order_entry(GeneratorName.PULSE1, 0, 5)
 
         logic.duplicate_frame(0)
 
-        source_index, duplicate_index = _order_column(logic, GeneratorName.PULSE1)
+        assert _order_column(logic, GeneratorName.PULSE1) == [5, 5]
+
+    def test_clone_frame_gives_the_copy_its_own_pattern(self) -> None:
+        logic = _logic()
+        logic.set_order_entry(GeneratorName.PULSE1, 0, 5)
+
+        logic.clone_frame(0)
+
+        source_index, clone_index = _order_column(logic, GeneratorName.PULSE1)
         assert source_index == 5
-        assert duplicate_index != 5
+        assert clone_index != 5
 
     def test_clear_frame_empties_every_channel(self) -> None:
         logic = _logic()
