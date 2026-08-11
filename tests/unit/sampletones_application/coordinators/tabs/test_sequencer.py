@@ -8,6 +8,7 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.playback import FollowMode
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
@@ -21,6 +22,11 @@ from sampletones_application.logic.sequencer.channels import (
 )
 from sampletones_application.logic.sequencer.clipboard import SequencerClipboard
 from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
+from sampletones_application.logic.sequencer.order import (
+    OrderBlockReader,
+    OrderBlockWriter,
+    SequencerOrderLogic,
+)
 from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
     TrackerBlockReader,
@@ -33,7 +39,12 @@ from sampletones_application.ui.panels.sequencer import tracker as tracker_modul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
-from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
+from sampletones_application.view_model.sequencer.region import (
+    OrderCell,
+    OrderRegion,
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.samples import SampleSelection
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
@@ -1328,6 +1339,12 @@ PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
     first_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.INSTRUMENT).flat_index,
     last_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME).flat_index,
 )
+PULSE1_FRAME: Final[OrderRegion] = OrderRegion(
+    first_row=CHANNEL_AXIS.index(GeneratorName.PULSE1),
+    last_row=CHANNEL_AXIS.index(GeneratorName.PULSE1),
+    first_position=0,
+    last_position=0,
+)
 
 
 @pytest.fixture
@@ -1342,17 +1359,23 @@ def block_coordinator() -> SequencerTabCoordinator:
     controller = ProjectController(ProjectManager())
     history = HistoryManager(controller, budget=10, strict=True)
     controller.on_mutation = history.handle_mutation
+    controller.new()
+    history.reset()
     instance._project_controller = controller
     instance._history = history
     instance._sequencer_tracker_logic = SequencerTrackerLogic(controller)
     instance._clipboard = SequencerClipboard()
     instance._tracker_block_reader = TrackerBlockReader(instance._sequencer_tracker_logic)
     instance._tracker_block_writer = TrackerBlockWriter(instance._sequencer_tracker_logic)
+    instance._sequencer_order_logic = SequencerOrderLogic(controller)
+    instance._order_block_reader = OrderBlockReader(instance._sequencer_order_logic)
+    instance._order_block_writer = OrderBlockWriter(instance._sequencer_order_logic)
     instance._history_detail = SequencerHistoryDetail(
         instance._sequencer_tracker_logic,
         MagicMock(),
     )
     instance._sequencer_tracker_panel = MagicMock()
+    instance._sequencer_order_panel = MagicMock()
     instance._wire_block_callbacks()
     return instance
 
@@ -1461,6 +1484,70 @@ class TestBlockEdits:
         assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE2, 1).transpose == 5
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
+
+
+class TestOrderBlockEdits:
+    """The order's gestures reach the same clipboard and record the same one entry each."""
+
+    def test_a_copy_fills_the_clipboard_and_leaves_the_history_as_it_stands(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_order_panel.on_copy_block(PULSE1_FRAME)
+
+        block = coordinator._clipboard.order_block
+        assert block is not None
+        assert block.entries == {(0, 0): 0}
+        assert len(coordinator._history.entries) == recorded
+
+    def test_a_cut_takes_the_block_and_silences_what_it_covered(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_order_panel.on_cut_block(PULSE1_FRAME)
+
+        assert coordinator._sequencer_order_logic.entry(GeneratorName.PULSE1, 0) is None
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
+
+    def test_a_delete_silences_the_region_in_one_entry(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_order_panel.on_delete_block(PULSE1_FRAME)
+
+        assert coordinator._sequencer_order_logic.entry(GeneratorName.PULSE1, 0) is None
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.DELETE_BLOCK
+
+    def test_a_paste_covers_the_frames_it_appends_and_the_entries_it_writes(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """One entry stands for the whole gesture, so an undo takes the appended frames back too."""
+        coordinator = block_coordinator
+        coordinator._sequencer_order_panel.on_copy_block(PULSE1_FRAME)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_order_panel.on_paste_block(OrderCell(generator=GeneratorName.NOISE, position=1))
+
+        assert coordinator._sequencer_order_logic.position_count() == 2
+        assert coordinator._sequencer_order_logic.entry(GeneratorName.NOISE, 1) == 0
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
+
+        coordinator._history.undo()
+
+        assert coordinator._sequencer_order_logic.position_count() == 1
 
     def test_a_paste_with_nothing_copied_records_nothing(
         self,

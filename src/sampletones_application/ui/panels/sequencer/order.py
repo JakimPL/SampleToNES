@@ -74,6 +74,7 @@ from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.order import (
     SequencerOrderTrackerViewModel,
 )
+from sampletones_application.view_model.sequencer.region import OrderCell, OrderRegion
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.types.application import ColorRGBA, Sender
@@ -89,6 +90,9 @@ OnSetOrderEntryCallback = Callable[[GeneratorName, int, Optional[int]], None]
 OnSetMasterEntryCallback = Callable[[int, Optional[int]], None]
 OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
 OnChannelSoloedCallback = Callable[[GeneratorName], None]
+OnBlockRegionCallback = Callable[[OrderRegion], None]
+OnPasteBlockCallback = Callable[[OrderCell], None]
+CanPasteBlockQuery = Callable[[], bool]
 
 MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {
     ShortcutId.ORDER_MOVE_FRAME_LEFT: MoveDirection.PREVIOUS,
@@ -162,6 +166,11 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_set_order_entry: Optional[OnSetOrderEntryCallback] = None
         self.on_set_master_entry: Optional[OnSetMasterEntryCallback] = None
         self.on_cell_selected: Optional[VoidCallback] = None
+        self.on_copy_block: Optional[OnBlockRegionCallback] = None
+        self.on_cut_block: Optional[OnBlockRegionCallback] = None
+        self.on_delete_block: Optional[OnBlockRegionCallback] = None
+        self.on_paste_block: Optional[OnPasteBlockCallback] = None
+        self.can_paste_block: Optional[CanPasteBlockQuery] = None
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
         self.on_channels_toggled: Optional[VoidCallback] = None
@@ -202,6 +211,10 @@ class GUISequencerOrderPanel(GUIPanel):
             return self._label(language_manager, element)
 
         self._lbl_context_play = label(SequencerOrderElements.CONTEXT_PLAY)
+        self._lbl_context_copy = label(SequencerOrderElements.CONTEXT_COPY)
+        self._lbl_context_cut = label(SequencerOrderElements.CONTEXT_CUT)
+        self._lbl_context_paste = label(SequencerOrderElements.CONTEXT_PASTE)
+        self._lbl_context_delete = label(SequencerOrderElements.CONTEXT_DELETE)
         self._lbl_context_duplicate = label(SequencerOrderElements.CONTEXT_DUPLICATE)
         self._lbl_context_clone = label(SequencerOrderElements.CONTEXT_CLONE)
         self._lbl_context_insert = label(SequencerOrderElements.CONTEXT_INSERT)
@@ -972,10 +985,10 @@ class GUISequencerOrderPanel(GUIPanel):
         _sender: Sender,
         app_data: Tuple[int, int],
     ) -> None:
-        """Opens the frame-operations menu for the right-clicked frame.
+        """Opens the frame-operations menu for the right-clicked cell.
 
-        The menu acts on the clicked frame directly and leaves the edit cursor (and, while
-        following playback, the playhead) where it is — right-clicking should not seek.
+        The menu acts on the clicked cell and its frame directly, and leaves the edit cursor (and,
+        while following playback, the playhead) where it is — right-clicking should not seek.
         """
         mouse_button, clicked_item = app_data
         if mouse_button != dpg.mvMouseButton_Right:
@@ -985,8 +998,8 @@ class GUISequencerOrderPanel(GUIPanel):
         if key is None:
             return
 
-        _, position = key
-        self._show_context_menu(position)
+        generator, position = key
+        self._show_context_menu(generator, position)
 
     def _on_label_clicked(
         self,
@@ -1023,7 +1036,11 @@ class GUISequencerOrderPanel(GUIPanel):
             dpg.add_separator()
             self._channel_switch.add_menu_items(generator, self._current_channels)
 
-    def _show_context_menu(self, position: int) -> None:
+    def _show_context_menu(
+        self,
+        generator: Optional[GeneratorName],
+        position: int,
+    ) -> None:
         with context_menu():
             header = dpg.add_text(display_id(position))
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
@@ -1033,6 +1050,8 @@ class GUISequencerOrderPanel(GUIPanel):
                 lambda: self.call(self.on_play_from_requested, position),
                 shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
+            dpg.add_separator()
+            self._add_block_items(generator, position)
             dpg.add_separator()
             dpg.add_menu_item(
                 label=self._lbl_context_duplicate,
@@ -1080,6 +1099,67 @@ class GUISequencerOrderPanel(GUIPanel):
                 ShortcutId.ORDER_MOVE_FRAME_TO_END,
                 position,
             )
+
+    def _menu_region(
+        self,
+        generator: Optional[GeneratorName],
+        position: int,
+    ) -> OrderRegion:
+        """The block a menu raised on a cell acts on: the selection it stands in, or the cell alone.
+
+        A menu opened inside a selection acts on the whole of it, which is what a reader who has
+        just dragged a range out expects the actions to reach; one opened anywhere else acts on the
+        cell it was raised on, the same block the cursor alone stands for.
+        """
+        region = self._input_state.region
+        if region is not None and region.covers(generator, position):
+            return region
+
+        row = CHANNEL_AXIS.index(generator)
+        return OrderRegion(
+            first_row=row,
+            last_row=row,
+            first_position=position,
+            last_position=position,
+        )
+
+    def _add_block_items(
+        self,
+        generator: Optional[GeneratorName],
+        position: int,
+    ) -> None:
+        """Builds the clipboard items, acting on the block the menu was raised on.
+
+        Paste is offered once a block has been copied, and it anchors at the clicked cell, so the
+        menu lands a block where the pointer is while the keys land it under the cursor. Delete
+        prints no key of its own, because ``Del`` empties a selection while one stands and clears
+        the cell under the cursor otherwise.
+        """
+        region = self._menu_region(generator, position)
+        cell = OrderCell(
+            generator=generator,
+            position=position,
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_copy,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_COPY_BLOCK),
+            callback=lambda: self.call(self.on_copy_block, region),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_cut,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_CUT_BLOCK),
+            callback=lambda: self.call(self.on_cut_block, region),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_paste,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_PASTE_BLOCK),
+            enabled=self.query(self.can_paste_block, default=False),
+            callback=lambda: self.call(self.on_paste_block, cell),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_delete,
+            callback=lambda: self.call(self.on_delete_block, region),
+        )
 
     def _add_move_item(
         self,
@@ -1132,6 +1212,9 @@ class GUISequencerOrderPanel(GUIPanel):
         if self._extend_selection(shortcut_id):
             return True
 
+        if self._block_action(shortcut_id):
+            return True
+
         if self._edit_cell(shortcut_id):
             return True
 
@@ -1180,6 +1263,53 @@ class GUISequencerOrderPanel(GUIPanel):
                 return False
 
         return True
+
+    def _block_action(self, shortcut_id: ShortcutId) -> bool:
+        """Acts on the selected block, reporting whether the action was one of its gestures.
+
+        Delete is a block gesture only while a selection stands: with one it empties every cell the
+        selection covers and keeps it, and with none it falls through to clearing the cell under
+        the cursor, the meaning that key already carries.
+        """
+        match shortcut_id:
+            case ShortcutId.ORDER_COPY_BLOCK:
+                self._region_gesture(self.on_copy_block)
+            case ShortcutId.ORDER_CUT_BLOCK:
+                self._region_gesture(self.on_cut_block)
+            case ShortcutId.ORDER_CLEAR_CELL if self._input_state.region is not None:
+                self._region_gesture(self.on_delete_block)
+            case ShortcutId.ORDER_PASTE_BLOCK:
+                self._paste_block()
+            case _:
+                return False
+
+        return True
+
+    def _region_gesture(self, callback: Optional[OnBlockRegionCallback]) -> None:
+        """Hands the selected block out to a gesture, the cell under the cursor standing for itself.
+
+        A partial entry is committed first, so the block carries the index the reader has just
+        finished typing.
+        """
+        state = self._committed_state()
+        self._apply_state(state)
+        region = state.target_region
+        if region is not None:
+            self.call(callback, region)
+
+    def _paste_block(self) -> None:
+        """Names the cell a block is written from, which is wherever the cursor stands."""
+        state = self._committed_state()
+        self._apply_state(state)
+        cursor = state.cursor
+        if cursor is not None:
+            self.call(
+                self.on_paste_block,
+                OrderCell(
+                    generator=cursor.generator,
+                    position=cursor.position,
+                ),
+            )
 
     def _edit_cell(self, shortcut_id: ShortcutId) -> bool:
         """Empties the cell under the cursor or drops a partial entry, reporting whether the action

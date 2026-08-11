@@ -1,8 +1,13 @@
-from typing import Dict, Final, List, Optional
+from typing import Dict, Final, List, Optional, Set
 
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
-from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
+from sampletones_application.view_model.sequencer.region import (
+    OrderCell,
+    OrderRegion,
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
@@ -22,6 +27,8 @@ Segments = HistoryDetail
 
 _ARROW: Final[str] = ">"
 _RANGE: Final[str] = "-"
+
+
 _SUBCOLUMN_LETTERS: Final[Dict[SubColumn, str]] = {
     SubColumn.INSTRUMENT: "i",
     SubColumn.TRANSPOSE: "t",
@@ -48,6 +55,11 @@ _FEATURE_ROLES: Final[Dict[FeatureKey, HistoryDetailRole]] = {
     FeatureKey.HI_PITCH: HistoryDetailRole.FEATURE_PITCH,
     FeatureKey.DUTY_CYCLE: HistoryDetailRole.FEATURE_DUTY_CYCLE,
 }
+
+
+def _span(first: int, last: int) -> str:
+    """Reads a run of indices as the pair it lies between."""
+    return f"{display_id(first)}{_RANGE}{display_id(last)}"
 
 
 class SequencerHistoryDetail:
@@ -160,13 +172,27 @@ class SequencerHistoryDetail:
         """Reads as the frame, the channels a block spans and the rows it covers."""
         return (
             self._frame(self._tracker_logic.frame_index),
-            self._channel(self._region_generators(region)),
+            self._channel(self._covered_channels({slot.generator for slot in region.slots})),
             self._row_range(region.first_row, region.last_row),
         )
 
     def tracker_paste(self, cell: TrackerCell) -> Segments:
         """Reads as the cell a block was written from, the one place a paste chooses."""
         return self._location(cell.row, cell.generator, GeneratorName.items())
+
+    def order_block(self, region: OrderRegion) -> Segments:
+        """Reads as the positions a block covers and the channels its rows reach."""
+        return (
+            self._frame_range(region.first_position, region.last_position),
+            self._channel(self._covered_channels(set(region.generators))),
+        )
+
+    def order_paste(self, cell: OrderCell) -> Segments:
+        """Reads as the cell a block was written from, the one place a paste chooses."""
+        return (
+            self._frame(cell.position),
+            self._channel(self._covered_channels({cell.generator})),
+        )
 
     def add_frame(self, position: int) -> Segments:
         return (self._frame(position + 1),)
@@ -324,13 +350,27 @@ class SequencerHistoryDetail:
             return self._row(first_row)
 
         return HistoryDetailSegment(
-            text=f"{display_id(first_row)}{_RANGE}{display_id(last_row)}",
+            text=_span(first_row, last_row),
             role=HistoryDetailRole.ROW,
         )
 
-    def _region_generators(self, region: TrackerRegion) -> List[GeneratorName]:
-        """The channels a region reaches, the sample column standing for every one it governs."""
-        covered = {slot.generator for slot in region.slots}
+    def _frame_range(self, first_position: int, last_position: int) -> HistoryDetailSegment:
+        """Reads a span of positions as one frame token, a single position standing as its own."""
+        if first_position == last_position:
+            return self._frame(first_position)
+
+        return HistoryDetailSegment(
+            text=_span(first_position, last_position),
+            role=HistoryDetailRole.FRAME,
+        )
+
+    @staticmethod
+    def _covered_channels(covered: Set[Optional[GeneratorName]]) -> List[GeneratorName]:
+        """The channels a run of columns names, an aggregate one standing for all it summarises.
+
+        Both grids carry a column that answers for every channel — the tracker's sample column and
+        the order's master row — so a gesture reaching one of them reads as the whole set.
+        """
         if None in covered:
             return GeneratorName.items()
 

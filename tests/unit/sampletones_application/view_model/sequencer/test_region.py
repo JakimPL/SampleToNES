@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 from pydantic import ValidationError
 
@@ -6,7 +8,11 @@ from sampletones_application.view_model.sequencer.region import (
     OrderRegion,
     TrackerRegion,
 )
-from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot
+from sampletones_application.view_model.sequencer.slot import (
+    SLOT_COUNT,
+    TrackerSlot,
+    slot_from_flat,
+)
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 
@@ -90,3 +96,83 @@ class TestOrderRegion:
                 first_position=0,
                 last_position=0,
             )
+
+
+class TestTrackerRegionMembership:
+    """Which cells a rectangle holds, which is what a gesture raised on one asks."""
+
+    @pytest.fixture
+    def region(self) -> TrackerRegion:
+        return TrackerRegion(first_row=2, last_row=5, first_slot=3, last_slot=7)
+
+    @pytest.mark.parametrize(
+        ("row", "slot_index"),
+        [
+            (2, 3),
+            (5, 7),
+            (3, 5),
+        ],
+    )
+    def test_a_cell_inside_the_rectangle_belongs_to_it(
+        self,
+        region: TrackerRegion,
+        row: int,
+        slot_index: int,
+    ) -> None:
+        assert region.covers(row, slot_from_flat(slot_index)) is True
+
+    @pytest.mark.parametrize(
+        ("row", "slot_index"),
+        [
+            (1, 5),
+            (6, 5),
+            (3, 2),
+            (3, 8),
+        ],
+    )
+    def test_a_cell_outside_the_rectangle_stands_on_its_own(
+        self,
+        region: TrackerRegion,
+        row: int,
+        slot_index: int,
+    ) -> None:
+        assert region.covers(row, slot_from_flat(slot_index)) is False
+
+
+class TestOrderRegionMembership:
+    @pytest.fixture
+    def region(self) -> OrderRegion:
+        return OrderRegion(first_row=1, last_row=2, first_position=3, last_position=6)
+
+    @pytest.mark.parametrize(
+        ("generator", "position"),
+        [
+            (GeneratorName.PULSE1, 3),
+            (GeneratorName.PULSE2, 6),
+            (GeneratorName.PULSE1, 5),
+        ],
+    )
+    def test_a_cell_inside_the_rectangle_belongs_to_it(
+        self,
+        region: OrderRegion,
+        generator: GeneratorName,
+        position: int,
+    ) -> None:
+        assert region.covers(generator, position) is True
+
+    @pytest.mark.parametrize(
+        ("generator", "position"),
+        [
+            (None, 5),
+            (GeneratorName.TRIANGLE, 5),
+            (GeneratorName.PULSE1, 2),
+            (GeneratorName.PULSE1, 7),
+        ],
+    )
+    def test_a_cell_outside_the_rectangle_stands_on_its_own(
+        self,
+        region: OrderRegion,
+        generator: Optional[GeneratorName],
+        position: int,
+    ) -> None:
+        assert region.covers(generator, position) is False

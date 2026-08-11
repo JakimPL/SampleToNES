@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.history_detail import (
@@ -10,7 +11,12 @@ from sampletones_application.logic.sequencer.history_detail import (
 )
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
-from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
+from sampletones_application.view_model.sequencer.region import (
+    OrderCell,
+    OrderRegion,
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
@@ -222,6 +228,50 @@ class TestOrderDetails:
             ("PpTN", HistoryDetailRole.CHANNEL),
             (">", HistoryDetailRole.SEPARATOR),
             ("05", HistoryDetailRole.VALUE),
+        ]
+
+    def test_a_block_reads_as_the_positions_and_the_channels_it_covers(self) -> None:
+        formatter = _formatter(_controller())
+
+        segments = formatter.order_block(
+            OrderRegion(
+                first_row=CHANNEL_AXIS.index(GeneratorName.PULSE2),
+                last_row=CHANNEL_AXIS.index(GeneratorName.TRIANGLE),
+                first_position=1,
+                last_position=4,
+            )
+        )
+
+        assert _pairs(segments) == [
+            ("01-04", HistoryDetailRole.FRAME),
+            ("pT", HistoryDetailRole.CHANNEL),
+        ]
+
+    def test_a_block_reaching_the_master_row_reads_as_every_channel(self) -> None:
+        formatter = _formatter(_controller())
+
+        segments = formatter.order_block(
+            OrderRegion(
+                first_row=CHANNEL_AXIS.index(None),
+                last_row=CHANNEL_AXIS.index(None),
+                first_position=2,
+                last_position=2,
+            )
+        )
+
+        assert _pairs(segments) == [
+            ("02", HistoryDetailRole.FRAME),
+            ("PpTN", HistoryDetailRole.CHANNEL),
+        ]
+
+    def test_a_paste_reads_as_the_cell_it_was_written_from(self) -> None:
+        formatter = _formatter(_controller())
+
+        segments = formatter.order_paste(OrderCell(generator=GeneratorName.NOISE, position=3))
+
+        assert _pairs(segments) == [
+            ("03", HistoryDetailRole.FRAME),
+            ("N", HistoryDetailRole.CHANNEL),
         ]
 
 

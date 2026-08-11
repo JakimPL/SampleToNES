@@ -36,8 +36,49 @@ the cursor row, and **Play from this frame** to start at the top of the shown fr
 
 A song plays a sequence of patterns, and the **Order** grid sets that sequence —
 one column per position, with a row for the master and each channel. Type an entry
-to place a pattern, or right-click a frame to **Insert frame**, **Duplicate**,
-**Clear frame**, **Remove**, move it, or **Play from this frame**.
+to place a pattern, or right-click a frame for the rest: **Duplicate** repeats the
+frame with the patterns it already plays, **Clone** gives the copy patterns of its
+own so you can change it on its own, and **Insert frame**, **Clear frame**,
+**Remove**, the moves, and **Play from this frame** do what they say.
+
+## Working on a block
+
+Both grids take a **selection** — a rectangle of cells you copy, cut, paste, and
+delete in one go. Hold `Shift` and press the arrow keys to reach out from the
+cursor, or drag the pointer across the cells; `Shift`+click carries the selection to
+the cell you click. Any plain move, and `Escape`, puts it away again.
+
+| Key | Action |
+|-----|--------|
+| `Shift`+arrows | Reach the selection out a cell at a time |
+| `Shift+Home` / `Shift+End` | Reach it to the first or the last row (tracker) or position (order) |
+| `Ctrl+C` | Copy |
+| `Ctrl+X` | Cut — copy, then empty what was selected |
+| `Ctrl+V` | Paste, starting at the cursor |
+| `Del` | Empty the selection |
+
+With nothing selected these act on the cell the cursor stands on, so copying one
+cell needs no selection first. The same four sit on each grid's right-click menu:
+raised inside a selection they act on the whole of it, raised anywhere else on the
+cell you clicked. Each grid keeps its own copy, so a tracker block pastes into the
+tracker and an order block into the order.
+
+A paste is anchored: the block starts at the cell you paste onto and lands the rest
+down and to the right of it.
+
+In the **Tracker**, a block keeps the kinds of the cells it came from — a transpose
+lands in a transpose, a volume in a volume, whichever column you paste onto — and
+whatever reaches past the last row or the last column is left out. A cell reading
+`?`, where the **Sample** column's channels disagree, passes over its target and
+leaves what was there; an empty cell empties it.
+
+In the **Order**, a block pasted past the last frame grows the song to hold it, and
+one reaching past the **Noise** row stops there. The **Master** row copies the index
+its channels share and reads `?` when they differ, which pasted leaves each channel
+as it was.
+
+Emptying cells keeps the rows and frames they sit in, and every block action is one
+step in the history, so a single **Undo** takes it all back.
 
 ## Playing the song
 

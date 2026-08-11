@@ -57,6 +57,47 @@ class TestOrderMutations:
             assert _order_column(logic, generator) == [None]
 
 
+class TestEntryAccess:
+    """The reading and writing seam a block gesture goes through, which is the table's own rule."""
+
+    def test_write_entry_reaches_one_channel(self) -> None:
+        logic = _logic()
+
+        logic.write_entry(GeneratorName.PULSE1, 0, 3)
+
+        assert _order_column(logic, GeneratorName.PULSE1) == [3]
+        assert _order_column(logic, GeneratorName.TRIANGLE) == [0]
+
+    def test_write_entry_through_the_master_row_reaches_every_channel(self) -> None:
+        logic = _logic()
+
+        logic.write_entry(None, 0, 3)
+
+        for generator in GeneratorName.items():
+            assert _order_column(logic, generator) == [3]
+
+    def test_entry_reads_the_index_a_channel_plays(self) -> None:
+        logic = _logic()
+        logic.set_order_entry(GeneratorName.NOISE, 0, 7)
+
+        assert logic.entry(GeneratorName.NOISE, 0) == 7
+
+    def test_entry_past_the_last_frame_reads_as_silence(self) -> None:
+        logic = _logic()
+
+        assert logic.entry(GeneratorName.NOISE, logic.position_count()) is None
+
+    def test_append_frame_lengthens_the_order_by_one(self) -> None:
+        logic = _logic()
+        length = logic.position_count()
+
+        logic.append_frame()
+
+        assert logic.position_count() == length + 1
+        for generator in GeneratorName.items():
+            assert logic.entry(generator, length) is None
+
+
 class TestOrderFrameOps:
     def test_insert_frame_adds_empty_frame_at_position(self) -> None:
         logic = _logic()

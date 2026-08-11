@@ -117,6 +117,7 @@ OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
 OnChannelSoloedCallback = Callable[[GeneratorName], None]
 OnBlockRegionCallback = Callable[[TrackerRegion], None]
 OnPasteBlockCallback = Callable[[TrackerCell], None]
+CanPasteBlockQuery = Callable[[], bool]
 
 
 VOLUME_FINE_STEP: Final[int] = 1
@@ -190,6 +191,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_cut_block: Optional[OnBlockRegionCallback] = None
         self.on_delete_block: Optional[OnBlockRegionCallback] = None
         self.on_paste_block: Optional[OnPasteBlockCallback] = None
+        self.can_paste_block: Optional[CanPasteBlockQuery] = None
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
         self.on_channels_toggled: Optional[VoidCallback] = None
@@ -242,6 +244,10 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         self._lbl_context_play = label(SequencerTrackerElements.CONTEXT_PLAY)
         self._lbl_context_play_from_frame = label(SequencerTrackerElements.CONTEXT_PLAY_FROM_FRAME)
+        self._lbl_context_copy = label(SequencerTrackerElements.CONTEXT_COPY)
+        self._lbl_context_cut = label(SequencerTrackerElements.CONTEXT_CUT)
+        self._lbl_context_paste = label(SequencerTrackerElements.CONTEXT_PASTE)
+        self._lbl_context_delete = label(SequencerTrackerElements.CONTEXT_DELETE)
         self._lbl_context_note_off = label(SequencerTrackerElements.CONTEXT_NOTE_OFF)
         self._lbl_context_set_instrument = label(SequencerTrackerElements.CONTEXT_SET_INSTRUMENT)
         self._lbl_context_no_samples = label(SequencerTrackerElements.CONTEXT_NO_SAMPLES)
@@ -1268,6 +1274,8 @@ class GUISequencerTrackerPanel(GUIPanel):
                 shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
             dpg.add_separator()
+            self._add_block_items(row_index, generator, subcolumn)
+            dpg.add_separator()
             self._add_instrument_submenu(row_index, generator)
             dpg.add_menu_item(
                 label=self._lbl_context_note_off,
@@ -1279,6 +1287,69 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._add_volume_items(row_index, generator)
             dpg.add_separator()
             self._add_clear_items(row_index, generator, subcolumn)
+
+    def _menu_region(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        subcolumn: SubColumn,
+    ) -> TrackerRegion:
+        """The block a menu raised on a cell acts on: the selection it stands in, or the cell alone.
+
+        A menu opened inside a selection acts on the whole of it, which is what a reader who has
+        just dragged a range out expects the actions to reach; one opened anywhere else acts on the
+        cell it was raised on, the same block the cursor alone stands for.
+        """
+        slot = TrackerSlot(generator, subcolumn)
+        region = self._input_state.region
+        if region is not None and region.covers(row_index, slot):
+            return region
+
+        return TrackerRegion(
+            first_row=row_index,
+            last_row=row_index,
+            first_slot=slot.flat_index,
+            last_slot=slot.flat_index,
+        )
+
+    def _add_block_items(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        subcolumn: SubColumn,
+    ) -> None:
+        """Builds the clipboard items, acting on the block the menu was raised on.
+
+        Paste is offered once a block has been copied, and it anchors at the clicked cell, so the
+        menu lands a block where the pointer is while the keys land it under the cursor. Delete
+        prints no key of its own, because ``Del`` empties a selection while one stands and clears
+        the cell under the cursor otherwise.
+        """
+        region = self._menu_region(row_index, generator, subcolumn)
+        cell = TrackerCell(
+            row=row_index,
+            generator=generator,
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_copy,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_COPY_BLOCK),
+            callback=lambda: self.call(self.on_copy_block, region),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_cut,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_CUT_BLOCK),
+            callback=lambda: self.call(self.on_cut_block, region),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_paste,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_PASTE_BLOCK),
+            enabled=self.query(self.can_paste_block, default=False),
+            callback=lambda: self.call(self.on_paste_block, cell),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_delete,
+            callback=lambda: self.call(self.on_delete_block, region),
+        )
 
     def _add_instrument_submenu(
         self,

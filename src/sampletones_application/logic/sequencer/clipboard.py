@@ -1,5 +1,6 @@
 from typing import Optional
 
+from sampletones_application.logic.sequencer.order import OrderBlock
 from sampletones_application.logic.sequencer.tracker import TrackerBlock
 
 
@@ -17,6 +18,7 @@ class SequencerClipboard:
 
     def __init__(self) -> None:
         self._tracker_block: Optional[TrackerBlock] = None
+        self._order_block: Optional[OrderBlock] = None
 
     @property
     def tracker_block(self) -> Optional[TrackerBlock]:
@@ -25,3 +27,11 @@ class SequencerClipboard:
 
     def store_tracker_block(self, block: TrackerBlock) -> None:
         self._tracker_block = block
+
+    @property
+    def order_block(self) -> Optional[OrderBlock]:
+        """The block the order last copied, present once a copy has been made."""
+        return self._order_block
+
+    def store_order_block(self, block: OrderBlock) -> None:
+        self._order_block = block

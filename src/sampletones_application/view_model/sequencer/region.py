@@ -57,6 +57,9 @@ class GridRegion(BaseModel, frozen=True):
     def rows(self) -> range:
         return range(self.first_row, self.last_row + 1)
 
+    def covers_row(self, row: int) -> bool:
+        return self.first_row <= row <= self.last_row
+
 
 class TrackerRegion(GridRegion, frozen=True):
     """A rectangle of the tracker grid: pattern rows crossed with a run of slots.
@@ -84,6 +87,14 @@ class TrackerRegion(GridRegion, frozen=True):
     def slots(self) -> Tuple[TrackerSlot, ...]:
         """The slots the region covers, each as the column and subcolumn it addresses."""
         return tuple(slot_from_flat(index) for index in range(self.first_slot, self.last_slot + 1))
+
+    def covers(self, row: int, slot: TrackerSlot) -> bool:
+        """Whether a cell of the grid falls inside the rectangle.
+
+        This is what a gesture raised on a cell asks to learn which block it belongs to: one
+        landing inside a selection acts on the whole of it, and one landing outside acts alone.
+        """
+        return self.covers_row(row) and self.first_slot <= slot.flat_index <= self.last_slot
 
 
 class OrderRegion(GridRegion, frozen=True):
@@ -119,3 +130,15 @@ class OrderRegion(GridRegion, frozen=True):
     def generators(self) -> Tuple[Optional[GeneratorName], ...]:
         """The rows the region covers, each as the channel it addresses, master reading ``None``."""
         return tuple(CHANNEL_AXIS[row] for row in self.rows)
+
+    def covers(
+        self,
+        generator: Optional[GeneratorName],
+        position: int,
+    ) -> bool:
+        """Whether a cell of the table falls inside the rectangle.
+
+        This is what a gesture raised on a cell asks to learn which block it belongs to: one
+        landing inside a selection acts on the whole of it, and one landing outside acts alone.
+        """
+        return self.covers_row(CHANNEL_AXIS.index(generator)) and position in self.positions

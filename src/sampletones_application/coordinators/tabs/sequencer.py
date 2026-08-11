@@ -25,7 +25,11 @@ from sampletones_application.logic.sequencer.clipboard import SequencerClipboard
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
 )
-from sampletones_application.logic.sequencer.order import SequencerOrderLogic
+from sampletones_application.logic.sequencer.order import (
+    OrderBlockReader,
+    OrderBlockWriter,
+    SequencerOrderLogic,
+)
 from sampletones_application.logic.sequencer.playback.playhead import (
     remap_after_insert,
     remap_after_move,
@@ -87,7 +91,12 @@ from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
 )
-from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
+from sampletones_application.view_model.sequencer.region import (
+    OrderCell,
+    OrderRegion,
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
@@ -187,6 +196,8 @@ class SequencerTabCoordinator:
         self._clipboard: SequencerClipboard = SequencerClipboard()
         self._tracker_block_reader: TrackerBlockReader = TrackerBlockReader(self._sequencer_tracker_logic)
         self._tracker_block_writer: TrackerBlockWriter = TrackerBlockWriter(self._sequencer_tracker_logic)
+        self._order_block_reader: OrderBlockReader = OrderBlockReader(self._sequencer_order_logic)
+        self._order_block_writer: OrderBlockWriter = OrderBlockWriter(self._sequencer_order_logic)
         self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(
             project_controller,
             session_manager,
@@ -451,7 +462,12 @@ class SequencerTabCoordinator:
         instead of through :meth:`_undoable`: a transaction over it would record an entry the
         history has nothing to restore for. The three gestures that do write are whole ones, each
         recording the single entry that takes the grid back to where it stood.
+
+        Each grid also asks whether its own slot holds a block, which is what a menu offering
+        Paste consults before it is opened.
         """
+        self._sequencer_tracker_panel.can_paste_block = self._can_paste_tracker_block
+        self._sequencer_order_panel.can_paste_block = self._can_paste_order_block
         self._sequencer_tracker_panel.on_copy_block = self._on_tracker_copy_block
         self._sequencer_tracker_panel.on_cut_block = self._undoable(
             HistoryAction.CUT_BLOCK,
@@ -468,6 +484,30 @@ class SequencerTabCoordinator:
             self._paste_tracker_block,
             detail=self._history_detail.tracker_paste,
         )
+        self._sequencer_order_panel.on_copy_block = self._on_order_copy_block
+        self._sequencer_order_panel.on_cut_block = self._undoable(
+            HistoryAction.CUT_BLOCK,
+            self._cut_order_block,
+            detail=self._history_detail.order_block,
+        )
+        self._sequencer_order_panel.on_delete_block = self._undoable(
+            HistoryAction.DELETE_BLOCK,
+            self._order_block_writer.clear,
+            detail=self._history_detail.order_block,
+        )
+        self._sequencer_order_panel.on_paste_block = self._undoable(
+            HistoryAction.PASTE_BLOCK,
+            self._paste_order_block,
+            detail=self._history_detail.order_paste,
+        )
+
+    def _can_paste_tracker_block(self) -> bool:
+        """Whether the tracker has a block to write, which is what its Paste item is offered on."""
+        return self._clipboard.tracker_block is not None
+
+    def _can_paste_order_block(self) -> bool:
+        """Whether the order has a block to write, which is what its Paste item is offered on."""
+        return self._clipboard.order_block is not None
 
     def _on_tracker_copy_block(self, region: TrackerRegion) -> None:
         """Puts the tracker's selected block on the clipboard, for a paste to replay."""
@@ -483,6 +523,21 @@ class SequencerTabCoordinator:
         block = self._clipboard.tracker_block
         if block is not None:
             self._tracker_block_writer.write(block, cell)
+
+    def _on_order_copy_block(self, region: OrderRegion) -> None:
+        """Puts the order's selected block on the clipboard, for a paste to replay."""
+        self._clipboard.store_order_block(self._order_block_reader.read(region))
+
+    def _cut_order_block(self, region: OrderRegion) -> None:
+        """Takes the block a region covers onto the clipboard, then silences what it covered."""
+        self._on_order_copy_block(region)
+        self._order_block_writer.clear(region)
+
+    def _paste_order_block(self, cell: OrderCell) -> None:
+        """Writes the block the order last copied at a cell, while a copy has been made."""
+        block = self._clipboard.order_block
+        if block is not None:
+            self._order_block_writer.write(block, cell)
 
     def _wire_samples_callbacks(self) -> None:
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed

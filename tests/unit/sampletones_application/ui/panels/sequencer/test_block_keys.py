@@ -3,13 +3,24 @@ from typing import List, Optional, Tuple
 
 import pytest
 
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
+from sampletones_application.ui.panels.sequencer.input.order import (
+    OrderCursor,
+    OrderInputState,
+)
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
-from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
+from sampletones_application.view_model.sequencer.region import (
+    OrderCell,
+    OrderRegion,
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
@@ -17,6 +28,10 @@ from tests.suite.shortcuts import shipped_source
 
 ROW_COUNT = 64
 CURSOR_ROW = 4
+POSITION_COUNT = 8
+CURSOR_POSITION = 2
+MASTER_ROW = CHANNEL_AXIS.index(None)
+PULSE1_ROW = CHANNEL_AXIS.index(GeneratorName.PULSE1)
 
 
 @dataclass
@@ -28,6 +43,17 @@ class Gestures:
     deleted: List[TrackerRegion] = field(default_factory=list)
     pasted: List[TrackerCell] = field(default_factory=list)
     cleared: List[Tuple[int, Optional[GeneratorName]]] = field(default_factory=list)
+
+
+@dataclass
+class OrderGestures:
+    """What each of the order's block hooks was handed, read the same way the tracker's are."""
+
+    copied: List[OrderRegion] = field(default_factory=list)
+    cut: List[OrderRegion] = field(default_factory=list)
+    deleted: List[OrderRegion] = field(default_factory=list)
+    pasted: List[OrderCell] = field(default_factory=list)
+    cleared: List[Tuple[GeneratorName, int, Optional[int]]] = field(default_factory=list)
 
 
 def _press(text: str) -> KeyEvent:
@@ -59,6 +85,26 @@ def _panel(
     panel.on_paste_block = gestures.pasted.append
     panel.on_clear_row = lambda row, generator_name: gestures.cleared.append((row, generator_name))
     monkeypatch.setattr(panel, "_apply_state", lambda state: None)
+    return panel
+
+
+def _order_panel(
+    monkeypatch: pytest.MonkeyPatch,
+    gestures: OrderGestures,
+    *,
+    generator: Optional[GeneratorName] = GeneratorName.PULSE1,
+) -> GUISequencerOrderPanel:
+    """An order panel reporting the gestures it fires, with its table left unbuilt."""
+    panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+    panel._shortcuts = shipped_source()
+    panel._input_state = OrderInputState(cursor=OrderCursor(generator, CURSOR_POSITION))
+    panel._position_count = POSITION_COUNT
+    panel.on_copy_block = gestures.copied.append
+    panel.on_cut_block = gestures.cut.append
+    panel.on_delete_block = gestures.deleted.append
+    panel.on_paste_block = gestures.pasted.append
+    panel.on_set_order_entry = lambda channel, position, index: gestures.cleared.append((channel, position, index))
+    monkeypatch.setattr(panel, "_apply_state", lambda state, notify=True: None)
     return panel
 
 
@@ -168,3 +214,115 @@ class TestTrackerDeleteKey:
         assert panel._on_key_pressed(_press("Del")) is True
         assert gestures.deleted == []
         assert gestures.cleared == [(CURSOR_ROW, GeneratorName.PULSE1)]
+
+
+class TestOrderCopyKey:
+    def test_a_selection_is_copied_whole(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        gestures = OrderGestures()
+        panel = _order_panel(monkeypatch, gestures)
+        panel._input_state = panel._input_state.extend_position(1, POSITION_COUNT)
+
+        assert panel._on_key_pressed(_press("Ctrl+C")) is True
+        assert gestures.copied == [
+            OrderRegion(
+                first_row=PULSE1_ROW,
+                last_row=PULSE1_ROW,
+                first_position=CURSOR_POSITION,
+                last_position=CURSOR_POSITION + 1,
+            )
+        ]
+
+    def test_a_cursor_alone_copies_the_cell_it_stands_on(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        gestures = OrderGestures()
+        panel = _order_panel(monkeypatch, gestures, generator=None)
+
+        assert panel._on_key_pressed(_press("Ctrl+C")) is True
+        assert gestures.copied == [
+            OrderRegion(
+                first_row=MASTER_ROW,
+                last_row=MASTER_ROW,
+                first_position=CURSOR_POSITION,
+                last_position=CURSOR_POSITION,
+            )
+        ]
+
+    def test_a_table_with_no_cursor_copies_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        gestures = OrderGestures()
+        panel = _order_panel(monkeypatch, gestures)
+        panel._input_state = OrderInputState()
+
+        assert panel._on_key_pressed(_press("Ctrl+C")) is False
+        assert gestures.copied == []
+
+
+class TestOrderCutKey:
+    def test_a_selection_is_cut_whole(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        gestures = OrderGestures()
+        panel = _order_panel(monkeypatch, gestures)
+        panel._input_state = panel._input_state.extend_channel(1)
+
+        assert panel._on_key_pressed(_press("Ctrl+X")) is True
+        assert gestures.cut == [
+            OrderRegion(
+                first_row=PULSE1_ROW,
+                last_row=PULSE1_ROW + 1,
+                first_position=CURSOR_POSITION,
+                last_position=CURSOR_POSITION,
+            )
+        ]
+        assert gestures.copied == []
+
+
+class TestOrderPasteKey:
+    def test_a_paste_names_the_cell_the_cursor_stands_on(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        gestures = OrderGestures()
+        panel = _order_panel(monkeypatch, gestures)
+
+        assert panel._on_key_pressed(_press("Ctrl+V")) is True
+        assert gestures.pasted == [OrderCell(generator=GeneratorName.PULSE1, position=CURSOR_POSITION)]
+
+    def test_the_master_row_is_a_cell_a_block_lands_on(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        gestures = OrderGestures()
+        panel = _order_panel(monkeypatch, gestures, generator=None)
+
+        assert panel._on_key_pressed(_press("Ctrl+V")) is True
+        assert gestures.pasted == [OrderCell(generator=None, position=CURSOR_POSITION)]
+
+
+class TestOrderDeleteKey:
+    def test_a_selection_is_deleted_whole(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        gestures = OrderGestures()
+        panel = _order_panel(monkeypatch, gestures)
+        panel._input_state = panel._input_state.extend_position(1, POSITION_COUNT)
+
+        assert panel._on_key_pressed(_press("Del")) is True
+        assert gestures.deleted == [
+            OrderRegion(
+                first_row=PULSE1_ROW,
+                last_row=PULSE1_ROW,
+                first_position=CURSOR_POSITION,
+                last_position=CURSOR_POSITION + 1,
+            )
+        ]
+        assert gestures.cleared == []
+
+    def test_a_cursor_alone_keeps_clearing_the_cell_it_stands_on(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Delete already means something without a selection, so that meaning is what it keeps."""
+        gestures = OrderGestures()
+        panel = _order_panel(monkeypatch, gestures)
+
+        assert panel._on_key_pressed(_press("Del")) is True
+        assert gestures.deleted == []
+        assert gestures.cleared == [(GeneratorName.PULSE1, CURSOR_POSITION, None)]

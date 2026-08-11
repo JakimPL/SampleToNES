@@ -72,6 +72,9 @@ bindings:
   OrderExtendSelectionRight: {combination: "Shift+Right"}
   OrderExtendSelectionToFirstPosition: {combination: "Shift+Home"}
   OrderExtendSelectionToLastPosition: {combination: "Shift+End"}
+  OrderCopyBlock: {combination: "Ctrl+C"}
+  OrderCutBlock: {combination: "Ctrl+X"}
+  OrderPasteBlock: {combination: "Ctrl+V"}
   OrderMoveFrameLeft: {combination: "Alt+Left"}
   OrderMoveFrameRight: {combination: "Alt+Right"}
   OrderMoveFrameToStart: {combination: "Alt+Home"}

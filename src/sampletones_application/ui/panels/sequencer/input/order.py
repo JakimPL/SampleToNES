@@ -66,6 +66,27 @@ class OrderInputState:
             last_position=max(self.anchor.position, self.cursor.position),
         )
 
+    @property
+    def target_region(self) -> Optional[OrderRegion]:
+        """The region a block gesture acts on: the selection, or the cursor's own cell.
+
+        A cursor with nothing selected stands on a block of one cell, so copying reaches the cell
+        the reader is working in and needs no selection made first.
+        """
+        if self.region is not None:
+            return self.region
+
+        if self.cursor is None:
+            return None
+
+        row = CHANNEL_AXIS.index(self.cursor.generator)
+        return OrderRegion(
+            first_row=row,
+            last_row=row,
+            first_position=self.cursor.position,
+            last_position=self.cursor.position,
+        )
+
     def extend_to(self, cursor: OrderCursor) -> OrderInputState:
         """Carries the moving end of the selection to ``cursor``, anchoring it where it began.
 

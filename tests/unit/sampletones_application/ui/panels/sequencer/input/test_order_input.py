@@ -110,6 +110,25 @@ class TestSelection:
         assert cancelled.pending == ""
 
 
+class TestTarget:
+    """The region a block gesture acts on, which is the selection wherever one has been made."""
+
+    def test_a_cursor_alone_targets_its_own_cell(self) -> None:
+        region = _state(GeneratorName.PULSE2, position=4).target_region
+
+        assert region is not None
+        assert (region.first_position, region.last_position) == (4, 4)
+        assert region.generators == (GeneratorName.PULSE2,)
+
+    def test_a_selection_is_targeted_whole(self) -> None:
+        selected = _state(position=4).extend_position(2, POSITION_COUNT)
+
+        assert selected.target_region == selected.region
+
+    def test_a_table_with_no_cursor_targets_nothing(self) -> None:
+        assert OrderInputState().target_region is None
+
+
 class TestEntry:
     def test_type_char_commits_after_two_digits(self) -> None:
         partial, first = _state().type_char("A")

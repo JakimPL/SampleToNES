@@ -4,6 +4,8 @@ from typing import Dict, Final, List, Optional, Sequence, Tuple
 import numpy as np
 
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.sequencer.order import OrderBlock, SequencerOrderLogic
+from sampletones_application.logic.sequencer.order.block import BlockKey as OrderBlockKey
 from sampletones_application.logic.sequencer.tracker import BlockNote, SequencerTrackerLogic, TrackerBlock
 from sampletones_application.logic.sequencer.tracker.block import BlockKey
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS
@@ -83,6 +85,75 @@ def render_slots(
     """
     frame = controller.project.song.order[frame_index]
     return " ".join(display_id(frame.get(generator)) for generator in GeneratorName.items())
+
+
+def render_order(order_logic: SequencerOrderLogic) -> Tuple[str, ...]:
+    """Every channel's row of the order, each read as the pattern indices the table draws.
+
+    A row is written the way it appears on screen, so an expectation and a screenshot read alike.
+    The master row is left out because it holds nothing of its own: it summarises these four, and
+    stating it again would pin the summary rather than what a gesture wrote.
+    """
+    view_model = order_logic.build_order()
+    return tuple(
+        " ".join(view_model.entry_label(generator, position) for position in range(view_model.position_count))
+        for generator in GeneratorName.items()
+    )
+
+
+def parse_order_block(rows: Sequence[str]) -> OrderBlock:
+    """Reads an order block written the way the table draws it, one line per row.
+
+    A ``?`` states that the block says nothing about that cell, which is what leaves it out of the
+    map entirely, while ``..`` states the silence it writes.
+
+    Raises:
+        ValueError: if the rows differ in width.
+    """
+    entries: Dict[OrderBlockKey, Optional[int]] = {}
+    lines = [line.split() for line in rows]
+    widths = {len(tokens) for tokens in lines}
+    if len(widths) != 1:
+        raise ValueError(f"An order block's rows differ in width: {sorted(widths)}")
+
+    for row_offset, tokens in enumerate(lines):
+        for position_offset, token in enumerate(tokens):
+            if token != MIXED:
+                entries[(row_offset, position_offset)] = parse_index(token)
+
+    return OrderBlock(
+        row_count=len(rows),
+        position_count=widths.pop(),
+        entries=entries,
+    )
+
+
+def fill_order(
+    order_logic: SequencerOrderLogic,
+    rows: Sequence[str],
+) -> None:
+    """Writes an order stated the way the table draws it, one channel entry at a time.
+
+    Each entry reaches its own channel, so a setup states the arrangement it wants while the master
+    row's fan-out stays out of it — which leaves the gesture under test the only thing that
+    exercised it. The order grows to hold the positions the statement names.
+    """
+    lines = [line.split() for line in rows]
+    reach = max((len(tokens) for tokens in lines), default=0)
+    for _ in range(reach - order_logic.position_count()):
+        order_logic.append_frame()
+
+    for generator, tokens in zip(GeneratorName.items(), lines):
+        for position, token in enumerate(tokens):
+            order_logic.set_order_entry(generator, position, parse_index(token))
+
+
+def parse_index(token: str) -> Optional[int]:
+    """The pattern index a token names, an empty slot reading as none."""
+    if token == display_id(None):
+        return None
+
+    return int(token, 16)
 
 
 def parse_block(

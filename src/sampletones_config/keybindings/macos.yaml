@@ -72,6 +72,9 @@ bindings:
   OrderExtendSelectionRight: {combination: "Shift+Right"}
   OrderExtendSelectionToFirstPosition: {combination: "Shift+Home", aliases: ["Cmd+Shift+Left"]}
   OrderExtendSelectionToLastPosition: {combination: "Shift+End", aliases: ["Cmd+Shift+Right"]}
+  OrderCopyBlock: {combination: "Cmd+C"}
+  OrderCutBlock: {combination: "Cmd+X"}
+  OrderPasteBlock: {combination: "Cmd+V"}
   OrderMoveFrameLeft: {combination: "Alt+Left"}
   OrderMoveFrameRight: {combination: "Alt+Right"}
   OrderMoveFrameToStart: {combination: "Alt+Home", aliases: ["Cmd+Alt+Left"]}

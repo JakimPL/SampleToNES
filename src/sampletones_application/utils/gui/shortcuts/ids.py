@@ -107,6 +107,9 @@ class ShortcutId(Enum):
         "OrderExtendSelectionToLastPosition",
         ShortcutCategory.ORDER,
     )
+    ORDER_COPY_BLOCK = ("OrderCopyBlock", ShortcutCategory.ORDER)
+    ORDER_CUT_BLOCK = ("OrderCutBlock", ShortcutCategory.ORDER)
+    ORDER_PASTE_BLOCK = ("OrderPasteBlock", ShortcutCategory.ORDER)
     ORDER_MOVE_FRAME_LEFT = ("OrderMoveFrameLeft", ShortcutCategory.ORDER)
     ORDER_MOVE_FRAME_RIGHT = ("OrderMoveFrameRight", ShortcutCategory.ORDER)
     ORDER_MOVE_FRAME_TO_START = ("OrderMoveFrameToStart", ShortcutCategory.ORDER)

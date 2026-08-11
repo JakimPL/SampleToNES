@@ -11,6 +11,7 @@
 * Bumped the reconstruction data-version to `2.1`.
 * Improved Sequencer module playback.
 * Added song export to WAV/MP3.
+* Added tracker selection operations.
 
 ## v0.3.0 [2026-07-31]
 
