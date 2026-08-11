@@ -21,6 +21,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
+from sampletones_application.logic.sequencer.clipboard import SequencerClipboard
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
 )
@@ -33,7 +34,10 @@ from sampletones_application.logic.sequencer.playback.playhead import (
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
-from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.logic.sequencer.tracker import (
+    SequencerTrackerLogic,
+    TrackerBlockReader,
+)
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.player import SongPlayerService
@@ -82,6 +86,7 @@ from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
 )
+from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
@@ -178,6 +183,8 @@ class SequencerTabCoordinator:
         )
         self._sequencer_tracker_logic: SequencerTrackerLogic = SequencerTrackerLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
+        self._clipboard: SequencerClipboard = SequencerClipboard()
+        self._tracker_block_reader: TrackerBlockReader = TrackerBlockReader(self._sequencer_tracker_logic)
         self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(
             project_controller,
             session_manager,
@@ -261,6 +268,7 @@ class SequencerTabCoordinator:
         self._wire_tracker_callbacks()
         self._wire_channels_callbacks()
         self._wire_order_callbacks()
+        self._wire_block_callbacks()
         self._wire_samples_callbacks()
         self._wire_browser_callbacks()
         self._wire_playback_callbacks()
@@ -433,6 +441,19 @@ class SequencerTabCoordinator:
             detail=self._history_detail.set_master_entry,
         )
         self._sequencer_order_panel.on_cell_selected = self._on_order_cell_focused
+
+    def _wire_block_callbacks(self) -> None:
+        """Connects the grids' block gestures to the clipboard they copy into.
+
+        A copy reads the project and leaves it as it stands, so it is wired straight through
+        instead of through :meth:`_undoable`: a transaction over it would record an entry the
+        history has nothing to restore for.
+        """
+        self._sequencer_tracker_panel.on_copy_block = self._on_tracker_copy_block
+
+    def _on_tracker_copy_block(self, region: TrackerRegion) -> None:
+        """Puts the tracker's selected block on the clipboard, for a paste to replay."""
+        self._clipboard.store_tracker_block(self._tracker_block_reader.read(region))
 
     def _wire_samples_callbacks(self) -> None:
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed

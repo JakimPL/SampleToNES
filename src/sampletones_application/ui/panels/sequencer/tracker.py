@@ -80,6 +80,7 @@ from sampletones_application.utils.palette.colors.layered import LayeredColor
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
+from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
@@ -114,6 +115,7 @@ OnPlayFromFrameCallback = VoidCallback
 OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
 OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
 OnChannelSoloedCallback = Callable[[GeneratorName], None]
+OnCopyBlockCallback = Callable[[TrackerRegion], None]
 
 
 VOLUME_FINE_STEP: Final[int] = 1
@@ -183,6 +185,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_play_from_frame: Optional[OnPlayFromFrameCallback] = None
         self.on_adjust_transpose: Optional[OnAdjustCallback] = None
         self.on_adjust_volume: Optional[OnAdjustCallback] = None
+        self.on_copy_block: Optional[OnCopyBlockCallback] = None
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
         self.on_channels_toggled: Optional[VoidCallback] = None
@@ -1425,6 +1428,9 @@ class GUISequencerTrackerPanel(GUIPanel):
         if self._extend_selection(shortcut_id):
             return True
 
+        if self._block_action(shortcut_id):
+            return True
+
         return self._edit_row(shortcut_id)
 
     def _move_cursor(self, shortcut_id: ShortcutId) -> bool:
@@ -1478,6 +1484,28 @@ class GUISequencerTrackerPanel(GUIPanel):
                 return False
 
         return True
+
+    def _block_action(self, shortcut_id: ShortcutId) -> bool:
+        """Acts on the selected block, reporting whether the action was one of its gestures."""
+        match shortcut_id:
+            case ShortcutId.TRACKER_COPY_BLOCK:
+                self._copy_block()
+            case _:
+                return False
+
+        return True
+
+    def _copy_block(self) -> None:
+        """Hands the selected block out to be copied, the cell under the cursor standing for itself.
+
+        A partial entry is committed first, so the block carries the value the reader has just
+        finished typing.
+        """
+        state = self._committed_state()
+        self._apply_state(state)
+        region = state.target_region
+        if region is not None:
+            self.call(self.on_copy_block, region)
 
     def _edit_row(self, shortcut_id: ShortcutId) -> bool:
         """Empties the cell under the cursor or drops a partial entry, reporting whether the action

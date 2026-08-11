@@ -805,6 +805,7 @@ settings.keybindings.label.tracker_extend_selection_left: "Extend selection left
 settings.keybindings.label.tracker_extend_selection_right: "Extend selection right"
 settings.keybindings.label.tracker_extend_selection_to_first_row: "Extend selection to the first row"
 settings.keybindings.label.tracker_extend_selection_to_last_row: "Extend selection to the last row"
+settings.keybindings.label.tracker_copy_block: "Copy selection"
 settings.keybindings.label.tracker_page_up: "Page up"
 settings.keybindings.label.tracker_page_down: "Page down"
 settings.keybindings.label.tracker_clear_row: "Clear row"

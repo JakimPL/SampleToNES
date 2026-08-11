@@ -19,6 +19,11 @@ from sampletones_application.logic.sequencer.channels import (
     ALL_CHANNELS,
     SequencerChannelsLogic,
 )
+from sampletones_application.logic.sequencer.clipboard import SequencerClipboard
+from sampletones_application.logic.sequencer.tracker import (
+    SequencerTrackerLogic,
+    TrackerBlockReader,
+)
 from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.panels.sequencer import channels as channels_module
@@ -26,8 +31,11 @@ from sampletones_application.ui.panels.sequencer import tracker as tracker_modul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
+from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.samples import SampleSelection
+from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -1310,3 +1318,68 @@ class TestPlayerExposure:
         exposure_coordinator: SequencerTabCoordinator,
     ) -> None:
         assert isinstance(exposure_coordinator.player, GuardedPlayer)
+
+
+PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
+    first_row=0,
+    last_row=0,
+    first_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.INSTRUMENT).flat_index,
+    last_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME).flat_index,
+)
+
+
+@pytest.fixture
+def block_coordinator() -> SequencerTabCoordinator:
+    """A coordinator whose copy path is real, from the tracker logic through to the clipboard.
+
+    A real manager observes the same controller production wires it to, so a test reads the
+    entries a gesture actually records.
+    """
+    instance = object.__new__(SequencerTabCoordinator)
+    controller = ProjectController(ProjectManager())
+    history = HistoryManager(controller, budget=10, strict=True)
+    controller.on_mutation = history.handle_mutation
+    instance._project_controller = controller
+    instance._history = history
+    instance._sequencer_tracker_logic = SequencerTrackerLogic(controller)
+    instance._clipboard = SequencerClipboard()
+    instance._tracker_block_reader = TrackerBlockReader(instance._sequencer_tracker_logic)
+    return instance
+
+
+class TestBlockCopy:
+    def test_a_copy_fills_the_clipboard_with_the_block_it_covers(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        with coordinator._history.transaction(HistoryAction.EDIT_ROW):
+            coordinator._sequencer_tracker_logic.set_cell_subcolumn(
+                0,
+                GeneratorName.PULSE1,
+                transpose=5,
+            )
+
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+
+        block = coordinator._clipboard.tracker_block
+        assert block is not None
+        assert block.transposes[(0, 1)] == 5
+
+    def test_a_copy_leaves_the_history_stack_as_it_stands(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """A gesture that only reads the project records nothing, where the edit beside it does."""
+        coordinator = block_coordinator
+        edit = coordinator._undoable(
+            HistoryAction.EDIT_ROW,
+            coordinator._sequencer_tracker_logic.write_cell,
+        )
+        edit(0, GeneratorName.PULSE1, None, 5, None)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+
+        assert recorded > 0
+        assert len(coordinator._history.entries) == recorded

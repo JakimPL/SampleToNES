@@ -123,6 +123,7 @@ class KeybindingActionElements(AbstractElement):
     TRACKER_EXTEND_SELECTION_RIGHT = "tracker_extend_selection_right"
     TRACKER_EXTEND_SELECTION_TO_FIRST_ROW = "tracker_extend_selection_to_first_row"
     TRACKER_EXTEND_SELECTION_TO_LAST_ROW = "tracker_extend_selection_to_last_row"
+    TRACKER_COPY_BLOCK = "tracker_copy_block"
     TRACKER_PAGE_UP = "tracker_page_up"
     TRACKER_PAGE_DOWN = "tracker_page_down"
     TRACKER_CLEAR_ROW = "tracker_clear_row"

@@ -101,6 +101,7 @@ bindings:
   TrackerExtendSelectionRight: {combination: "Shift+Right"}
   TrackerExtendSelectionToFirstRow: {combination: "Shift+Home", aliases: ["Cmd+Shift+Up"]}
   TrackerExtendSelectionToLastRow: {combination: "Shift+End", aliases: ["Cmd+Shift+Down"]}
+  TrackerCopyBlock: {combination: "Cmd+C"}
   TrackerPageUp: {combination: "PgUp", aliases: ["Alt+Up"]}
   TrackerPageDown: {combination: "PgDn", aliases: ["Alt+Down"]}
   TrackerClearRow: {combination: "Del", aliases: ["Cmd+Backspace"]}

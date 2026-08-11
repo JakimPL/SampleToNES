@@ -2,6 +2,7 @@ from typing import Optional
 
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 
@@ -132,6 +133,25 @@ class TestSelection:
 
         assert collapsed.cursor == selected.cursor
         assert collapsed.region is None
+
+
+class TestTargetRegion:
+    """The region a block gesture acts on, which is the selection wherever one has been made."""
+
+    def test_a_cursor_alone_targets_its_own_cell(self) -> None:
+        region = _state(SubColumn.TRANSPOSE, row=4).target_region
+
+        assert region is not None
+        assert (region.first_row, region.last_row) == (4, 4)
+        assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.TRANSPOSE),)
+
+    def test_a_selection_is_targeted_whole(self) -> None:
+        selected = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT)
+
+        assert selected.target_region == selected.region
+
+    def test_a_grid_with_no_cursor_targets_nothing(self) -> None:
+        assert TrackerInputState().target_region is None
 
 
 class TestColumnNavigation:

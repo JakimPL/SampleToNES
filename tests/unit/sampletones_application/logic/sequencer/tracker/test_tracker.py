@@ -1,50 +1,18 @@
-from pathlib import Path
-from typing import List
-
-import numpy as np
-
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME
-from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
-from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.constants.symbols import MIXED
-
-_LENGTH = 64
+from tests.suite.sequencer import sample_reconstruction
 
 
 def _controller() -> ProjectController:
     return ProjectController(ProjectManager())
-
-
-def _reconstruction(generators: List[GeneratorName]) -> Reconstruction:
-    instructions = {
-        generator: [
-            PulseInstruction(
-                on=True,
-                pitch=60,
-                volume=8,
-                duty_cycle=0,
-            )
-        ]
-        for generator in generators
-    }
-    approximations = {generator: np.zeros(_LENGTH, dtype=np.float32) for generator in generators}
-    return Reconstruction.create(
-        approximation=np.zeros(_LENGTH, dtype=np.float32),
-        approximations=approximations,
-        instructions=instructions,
-        config=Config(),
-        coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
-    )
 
 
 def _row(
@@ -110,7 +78,7 @@ class TestClearCellSubcolumn:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -125,7 +93,7 @@ class TestClearCellSubcolumn:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -146,7 +114,7 @@ class TestWriteCell:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
 
@@ -163,7 +131,7 @@ class TestWriteCell:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1]),
+            sample_reconstruction([GeneratorName.PULSE1]),
             name="lead",
         )
 
@@ -241,7 +209,7 @@ class TestAdjustCell:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -303,7 +271,7 @@ class TestReferencedGenerators:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         _place_instrument(controller, GeneratorName.PULSE1, sample.id)
@@ -351,7 +319,7 @@ class TestSetSampleInstrument:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
 
@@ -370,7 +338,7 @@ class TestSetSampleInstrument:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         stale = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE2]),
+            sample_reconstruction([GeneratorName.PULSE2]),
             name="bass",
         )
         pattern_index = controller.project.song.order[0][GeneratorName.PULSE2]
@@ -386,7 +354,7 @@ class TestSetSampleInstrument:
         )
 
         lead = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1]),
+            sample_reconstruction([GeneratorName.PULSE1]),
             name="lead",
         )
         logic.set_sample_instrument(0, lead.id)
@@ -400,7 +368,7 @@ class TestSetSampleInstrument:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1]),
+            sample_reconstruction([GeneratorName.PULSE1]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -418,7 +386,7 @@ class TestSampleSubcolumn:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         _place_instrument(controller, GeneratorName.PULSE1, sample.id)
@@ -459,7 +427,7 @@ class TestSampleSubcolumn:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -505,7 +473,7 @@ class TestAdjustTranspose:
     def test_preserves_instrument_and_volume(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        sample = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="lead")
         _place_instrument(controller, GeneratorName.PULSE1, sample.id)
         logic.adjust_volume(GeneratorName.PULSE1, 0, -1)
 
@@ -549,7 +517,7 @@ class TestAdjustSampleColumn:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -566,7 +534,7 @@ class TestAdjustSampleColumn:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -582,7 +550,7 @@ class TestBuildTrackerAggregation:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         _place_instrument(controller, GeneratorName.PULSE1, sample.id)
@@ -595,7 +563,7 @@ class TestBuildTrackerAggregation:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -609,7 +577,7 @@ class TestBuildTrackerAggregation:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)
@@ -623,7 +591,7 @@ class TestBuildTrackerAggregation:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
             name="lead",
         )
         logic.set_sample_instrument(0, sample.id)

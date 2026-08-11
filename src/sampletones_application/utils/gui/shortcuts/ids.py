@@ -141,6 +141,7 @@ class ShortcutId(Enum):
         "TrackerExtendSelectionToLastRow",
         ShortcutCategory.TRACKER,
     )
+    TRACKER_COPY_BLOCK = ("TrackerCopyBlock", ShortcutCategory.TRACKER)
     TRACKER_PAGE_UP = ("TrackerPageUp", ShortcutCategory.TRACKER)
     TRACKER_PAGE_DOWN = ("TrackerPageDown", ShortcutCategory.TRACKER)
     TRACKER_CLEAR_ROW = ("TrackerClearRow", ShortcutCategory.TRACKER)
