@@ -20,7 +20,8 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
-    TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS,
+    TAG_GLOBAL_MENU_GROUP_EDIT,
+    TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
     TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
     TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
     TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
@@ -69,9 +70,9 @@ from sampletones_application.ui.panels.player.controls import (
 )
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import (
+    dpg_append_items,
     dpg_configure_item,
-    dpg_container,
-    dpg_delete_children,
+    dpg_delete_item,
     dpg_set_item_label,
     dpg_set_value,
 )
@@ -158,10 +159,11 @@ class MenuBar:
         self._lbl_pause = language_manager["global.player.label.pause"]
 
         self._edit_actions_handler_tag = compose_tag(
-            TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS,
+            TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
             SUF_HANDLER_REGISTRY,
         )
         self._edit_actions_frame: Optional[int] = None
+        self._edit_action_items: Tuple[Sender, ...] = ()
 
     def _label(self, element: MenuElements) -> str:
         return self._language_manager[
@@ -258,10 +260,16 @@ class MenuBar:
     def _create_edit_menu(self, state: MenuBarViewModel) -> None:
         """Builds the Edit menu: the history steps, then the actions of whoever holds the cursor.
 
-        The trailing section is a container of its own, so the actions it holds are stated afresh
-        each time the menu is opened while Undo and Redo stand where they are.
+        The actions are stated into the menu itself and taken away again on each opening, so they
+        follow the cursor. A marker leads the menu, holding nothing and reporting the popup drawn:
+        a container standing below a menu item takes the width those items span as its own, which
+        the popup then grows to fit on every frame it stays open.
         """
-        with dpg.menu(label=self._label(MenuElements.GROUP_EDIT)):
+        with dpg.menu(
+            label=self._label(MenuElements.GROUP_EDIT),
+            tag=TAG_GLOBAL_MENU_GROUP_EDIT,
+        ):
+            dpg.add_group(tag=TAG_GLOBAL_MENU_GROUP_EDIT_MARKER)
             self._shortcut_manager.add_menu_item(
                 ShortcutId.UNDO,
                 tag=TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
@@ -275,13 +283,12 @@ class MenuBar:
                 enabled=state.redo_enabled,
             )
             dpg.add_separator()
-            dpg.add_group(tag=TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS)
 
         with dpg.item_handler_registry(tag=self._edit_actions_handler_tag):
             dpg.add_item_visible_handler(callback=self._on_edit_actions_drawn)
 
         dpg.bind_item_handler_registry(
-            TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS,
+            TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
             self._edit_actions_handler_tag,
         )
         self._refresh_edit_actions()
@@ -293,10 +300,10 @@ class MenuBar:
     ) -> None:
         """States the actions afresh each time the Edit menu is opened.
 
-        DearPyGui reports the section drawn once a frame while the menu stands open, so a gap in
-        those reports marks a fresh opening. The section stays built between openings, which gives
-        the popup its full height on the frame it appears, and the rebuilt one takes over a frame
-        later — long before an item can be reached and chosen.
+        DearPyGui reports the marker drawn once a frame while the menu stands open, so a gap in
+        those reports marks a fresh opening. The actions stay standing between openings, which
+        gives the popup its full height on the frame it appears, and the rebuilt ones take over a
+        frame later — long before an item can be reached and chosen.
         """
         frame = dpg.get_frame_count()
         reopened = self._edit_actions_frame is None or frame - self._edit_actions_frame > 1
@@ -305,16 +312,24 @@ class MenuBar:
             self._refresh_edit_actions()
 
     def _refresh_edit_actions(self) -> None:
-        """Empties the Edit menu's trailing section and asks the focused surface to state it.
+        """Takes the standing actions out of the Edit menu and asks the focused surface for its own.
 
         A surface builds the same actions its own cell menu offers, so the two doors print one set
-        with the keys and the enablement each action carries. With no surface holding a cursor, the
-        clipboard actions are named greyed out, so a reader still meets the commands.
+        with the keys and the enablement each action carries. The history steps above them stand
+        where they are, since only what the last build stated is taken away.
         """
-        dpg_delete_children(TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS)
-        with dpg_container(TAG_GLOBAL_MENU_GROUP_EDIT_ACTIONS):
-            if not self._build_edit_actions():
-                self._add_unfocused_clipboard_items()
+        for item in self._edit_action_items:
+            dpg_delete_item(item)
+
+        self._edit_action_items = dpg_append_items(
+            TAG_GLOBAL_MENU_GROUP_EDIT,
+            self._add_edit_action_items,
+        )
+
+    def _add_edit_action_items(self) -> None:
+        """States the focused surface's actions, or the clipboard four greyed out while none is."""
+        if not self._build_edit_actions():
+            self._add_unfocused_clipboard_items()
 
     def _add_unfocused_clipboard_items(self) -> None:
         """Names the clipboard actions greyed out, the Edit menu with no grid holding a cursor."""
