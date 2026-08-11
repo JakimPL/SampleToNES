@@ -4,10 +4,12 @@ from typing import Any, Iterator, List, Tuple
 import pytest
 
 from sampletones_application.ui.panels.sequencer import tracker as tracker_module
+from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
     SequencerSamplesViewModel,
 )
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 
@@ -74,13 +76,18 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuItemRecorder:
     return instance
 
 
+def _cell(row: int, generator: GeneratorName) -> TrackerCursor:
+    """The cell a menu was raised on, which the items carry as their payload."""
+    return TrackerCursor(row, generator, SubColumn.INSTRUMENT)
+
+
 class TestMenuDispatchPreservesPayload:
     def test_transpose_items_pass_the_configured_step(self, recorder: _MenuItemRecorder) -> None:
         panel = _panel()
         deltas: List[int] = []
         panel.on_adjust_transpose = lambda row, generator, delta: deltas.append(delta)
 
-        panel._add_transpose_items(2, GeneratorName.PULSE1)
+        panel._add_transpose_items(_cell(2, GeneratorName.PULSE1))
         recorder.dispatch_as_dpg()
 
         assert deltas == [
@@ -95,7 +102,7 @@ class TestMenuDispatchPreservesPayload:
         deltas: List[int] = []
         panel.on_adjust_volume = lambda row, generator, delta: deltas.append(delta)
 
-        panel._add_volume_items(2, GeneratorName.PULSE1)
+        panel._add_volume_items(_cell(2, GeneratorName.PULSE1))
         recorder.dispatch_as_dpg()
 
         assert deltas == [
@@ -110,7 +117,7 @@ class TestMenuDispatchPreservesPayload:
         calls: List[Tuple[int, GeneratorName, int]] = []
         panel.on_adjust_transpose = lambda row, generator, delta: calls.append((row, generator, delta))
 
-        panel._add_transpose_items(7, GeneratorName.TRIANGLE)
+        panel._add_transpose_items(_cell(7, GeneratorName.TRIANGLE))
         recorder.dispatch_as_dpg()
 
         assert calls[0] == (7, GeneratorName.TRIANGLE, SEMITONE_STEP)
@@ -129,7 +136,7 @@ class TestMenuDispatchPreservesPayload:
         chosen: List[str] = []
         panel.on_set_row = lambda row, generator, sample_id, transpose, volume: chosen.append(sample_id)
 
-        panel._add_instrument_submenu(0, GeneratorName.PULSE2)
+        panel._add_instrument_submenu(_cell(0, GeneratorName.PULSE2))
         recorder.dispatch_as_dpg()
 
         assert chosen == ["lead-id"]

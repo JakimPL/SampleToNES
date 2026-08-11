@@ -51,6 +51,7 @@ from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
 )
+from sampletones_application.ui.panels.sequencer.input.target import OrderMenuTarget
 from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
     create_selectable_text_theme,
@@ -1043,6 +1044,7 @@ class GUISequencerOrderPanel(GUIPanel):
         generator: Optional[GeneratorName],
         position: int,
     ) -> None:
+        target = self._menu_target(OrderCursor(generator, position))
         with context_menu():
             header = dpg.add_text(display_id(position))
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
@@ -1053,114 +1055,106 @@ class GUISequencerOrderPanel(GUIPanel):
                 shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
             dpg.add_separator()
-            self._add_block_items(generator, position)
-            dpg.add_separator()
-            dpg.add_menu_item(
-                label=self._lbl_context_duplicate,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_DUPLICATE_FRAME),
-                callback=lambda: self.call(self.on_duplicate_requested, position),
-            )
-            dpg.add_menu_item(
-                label=self._lbl_context_clone,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_CLONE_FRAME),
-                callback=lambda: self.call(self.on_clone_requested, position),
-            )
-            dpg.add_menu_item(
-                label=self._lbl_context_insert,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_INSERT_FRAME),
-                callback=lambda: self.call(self.on_insert_requested, position),
-            )
-            dpg.add_menu_item(
-                label=self._lbl_context_clear,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_CLEAR_FRAME),
-                callback=lambda: self.call(self.on_clear_requested, position),
-            )
-            dpg.add_menu_item(
-                label=self._lbl_context_remove,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_REMOVE_FRAME),
-                callback=lambda: self.call(self.on_remove_requested, position),
-            )
-            dpg.add_separator()
-            self._add_move_item(
-                self._lbl_context_move_left,
-                ShortcutId.ORDER_MOVE_FRAME_LEFT,
-                position,
-            )
-            self._add_move_item(
-                self._lbl_context_move_right,
-                ShortcutId.ORDER_MOVE_FRAME_RIGHT,
-                position,
-            )
-            self._add_move_item(
-                self._lbl_context_move_start,
-                ShortcutId.ORDER_MOVE_FRAME_TO_START,
-                position,
-            )
-            self._add_move_item(
-                self._lbl_context_move_end,
-                ShortcutId.ORDER_MOVE_FRAME_TO_END,
-                position,
-            )
+            self._add_action_items(target)
 
-    def _menu_region(
-        self,
-        generator: Optional[GeneratorName],
-        position: int,
-    ) -> OrderRegion:
-        """The block a menu raised on a cell acts on: the selection it stands in, or the cell alone.
-
-        A menu opened inside a selection acts on the whole of it, which is what a reader who has
-        just dragged a range out expects the actions to reach; one opened anywhere else acts on the
-        cell it was raised on, the same block the cursor alone stands for.
-        """
-        region = self._input_state.region
-        if region is not None and region.covers(generator, position):
-            return region
-
-        row = CHANNEL_AXIS.index(generator)
-        return OrderRegion(
-            first_row=row,
-            last_row=row,
-            first_position=position,
-            last_position=position,
+    def _menu_target(self, cell: OrderCursor) -> OrderMenuTarget:
+        """The cell a set of actions is built for, paired with the block those actions act on."""
+        return OrderMenuTarget(
+            cell=cell,
+            region=self._input_state.region_at(cell),
         )
 
-    def _add_block_items(
-        self,
-        generator: Optional[GeneratorName],
-        position: int,
-    ) -> None:
-        """Builds the clipboard items, acting on the block the menu was raised on.
+    def _add_action_items(self, target: OrderMenuTarget) -> None:
+        """Builds every action an order cell offers, in the order each menu prints them.
 
-        Paste is offered once a block has been copied, and it anchors at the clicked cell, so the
-        menu lands a block where the pointer is while the keys land it under the cursor. Delete
-        prints no key of its own, because ``Del`` empties a selection while one stands and clears
-        the cell under the cursor otherwise.
+        The table states its actions once, and whoever asks for them decides where they are shown:
+        the cell menu asks for the cell a pointer landed on, and the menu bar asks for the cell the
+        cursor stands on. An action added here reaches both.
         """
-        region = self._menu_region(generator, position)
-        cell = OrderCell(
-            generator=generator,
-            position=position,
-        )
+        self._add_block_items(target)
+        dpg.add_separator()
+        self._add_frame_items(target.cell.position)
+        dpg.add_separator()
+        self._add_move_items(target.cell.position)
+
+    def _add_block_items(self, target: OrderMenuTarget) -> None:
+        """Builds the clipboard items, acting on the block the actions were raised on.
+
+        Paste is offered once a block has been copied, and it anchors at the target's own cell, so
+        the cell menu lands a block where the pointer is while the keys land it under the cursor.
+        Delete prints no key of its own, because ``Del`` empties a selection while one stands and
+        clears the cell under the cursor otherwise.
+        """
         dpg.add_menu_item(
             label=self._lbl_context_copy,
             shortcut=self._shortcuts.display(ShortcutId.ORDER_COPY_BLOCK),
-            callback=lambda: self.call(self.on_copy_block, region),
+            callback=lambda: self.call(self.on_copy_block, target.region),
         )
         dpg.add_menu_item(
             label=self._lbl_context_cut,
             shortcut=self._shortcuts.display(ShortcutId.ORDER_CUT_BLOCK),
-            callback=lambda: self.call(self.on_cut_block, region),
+            callback=lambda: self.call(self.on_cut_block, target.region),
         )
         dpg.add_menu_item(
             label=self._lbl_context_paste,
             shortcut=self._shortcuts.display(ShortcutId.ORDER_PASTE_BLOCK),
             enabled=self.query(self.can_paste_block, default=False),
-            callback=lambda: self.call(self.on_paste_block, cell),
+            callback=lambda: self.call(self.on_paste_block, target.anchor),
         )
         dpg.add_menu_item(
             label=self._lbl_context_delete,
-            callback=lambda: self.call(self.on_delete_block, region),
+            callback=lambda: self.call(self.on_delete_block, target.region),
+        )
+
+    def _add_frame_items(self, position: int) -> None:
+        """Builds the frame operations, each acting on the whole frame the target cell sits in."""
+        dpg.add_menu_item(
+            label=self._lbl_context_duplicate,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_DUPLICATE_FRAME),
+            callback=lambda: self.call(self.on_duplicate_requested, position),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_clone,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_CLONE_FRAME),
+            callback=lambda: self.call(self.on_clone_requested, position),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_insert,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_INSERT_FRAME),
+            callback=lambda: self.call(self.on_insert_requested, position),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_clear,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_CLEAR_FRAME),
+            callback=lambda: self.call(self.on_clear_requested, position),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_remove,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_REMOVE_FRAME),
+            callback=lambda: self.call(self.on_remove_requested, position),
+        )
+
+    def _add_move_items(self, position: int) -> None:
+        """Builds the four moves a frame can make, in the order they walk the song."""
+        self._add_move_item(
+            self._lbl_context_move_left,
+            ShortcutId.ORDER_MOVE_FRAME_LEFT,
+            position,
+        )
+        self._add_move_item(
+            self._lbl_context_move_right,
+            ShortcutId.ORDER_MOVE_FRAME_RIGHT,
+            position,
+        )
+        self._add_move_item(
+            self._lbl_context_move_start,
+            ShortcutId.ORDER_MOVE_FRAME_TO_START,
+            position,
+        )
+        self._add_move_item(
+            self._lbl_context_move_end,
+            ShortcutId.ORDER_MOVE_FRAME_TO_END,
+            position,
         )
 
     def _add_move_item(

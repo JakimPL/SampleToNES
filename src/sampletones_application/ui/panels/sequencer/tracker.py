@@ -56,6 +56,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
     EditAction,
 )
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.target import TrackerMenuTarget
 from sampletones_application.ui.panels.sequencer.rows import RowCues, row_background
 from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
@@ -1259,6 +1260,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         generator: Optional[GeneratorName],
         subcolumn: SubColumn,
     ) -> None:
+        target = self._menu_target(TrackerCursor(row_index, generator, subcolumn))
         with context_menu():
             header = dpg.add_text(
                 tracker_display.indexed_label(row_index, self._column_labels[generator]),
@@ -1276,88 +1278,66 @@ class GUISequencerTrackerPanel(GUIPanel):
                 shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
             dpg.add_separator()
-            self._add_block_items(row_index, generator, subcolumn)
-            dpg.add_separator()
-            self._add_instrument_submenu(row_index, generator)
-            dpg.add_menu_item(
-                label=self._lbl_context_note_off,
-                callback=lambda: self.call(self.on_set_note_off, row_index, generator),
-            )
-            dpg.add_separator()
-            self._add_transpose_items(row_index, generator)
-            dpg.add_separator()
-            self._add_volume_items(row_index, generator)
-            dpg.add_separator()
-            self._add_clear_items(row_index, generator, subcolumn)
+            self._add_action_items(target)
 
-    def _menu_region(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        subcolumn: SubColumn,
-    ) -> TrackerRegion:
-        """The block a menu raised on a cell acts on: the selection it stands in, or the cell alone.
-
-        A menu opened inside a selection acts on the whole of it, which is what a reader who has
-        just dragged a range out expects the actions to reach; one opened anywhere else acts on the
-        cell it was raised on, the same block the cursor alone stands for.
-        """
-        slot = TrackerSlot(generator, subcolumn)
-        region = self._input_state.region
-        if region is not None and region.covers(row_index, slot):
-            return region
-
-        return TrackerRegion(
-            first_row=row_index,
-            last_row=row_index,
-            first_slot=slot.flat_index,
-            last_slot=slot.flat_index,
+    def _menu_target(self, cell: TrackerCursor) -> TrackerMenuTarget:
+        """The cell a set of actions is built for, paired with the block those actions act on."""
+        return TrackerMenuTarget(
+            cell=cell,
+            region=self._input_state.region_at(cell),
         )
 
-    def _add_block_items(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        subcolumn: SubColumn,
-    ) -> None:
-        """Builds the clipboard items, acting on the block the menu was raised on.
+    def _add_action_items(self, target: TrackerMenuTarget) -> None:
+        """Builds every action a tracker cell offers, in the order each menu prints them.
 
-        Paste is offered once a block has been copied, and it anchors at the clicked cell, so the
-        menu lands a block where the pointer is while the keys land it under the cursor. Delete
-        prints no key of its own, because ``Del`` empties a selection while one stands and clears
-        the cell under the cursor otherwise.
+        The grid states its actions once, and whoever asks for them decides where they are shown:
+        the cell menu asks for the cell a pointer landed on, and the menu bar asks for the cell the
+        cursor stands on. An action added here reaches both.
         """
-        region = self._menu_region(row_index, generator, subcolumn)
-        cell = TrackerCell(
-            row=row_index,
-            generator=generator,
+        self._add_block_items(target)
+        dpg.add_separator()
+        self._add_instrument_submenu(target.cell)
+        dpg.add_menu_item(
+            label=self._lbl_context_note_off,
+            callback=lambda: self.call(self.on_set_note_off, target.cell.row, target.cell.generator),
         )
+        dpg.add_separator()
+        self._add_transpose_items(target.cell)
+        dpg.add_separator()
+        self._add_volume_items(target.cell)
+        dpg.add_separator()
+        self._add_clear_items(target.cell)
+
+    def _add_block_items(self, target: TrackerMenuTarget) -> None:
+        """Builds the clipboard items, acting on the block the actions were raised on.
+
+        Paste is offered once a block has been copied, and it anchors at the target's own cell, so
+        the cell menu lands a block where the pointer is while the keys land it under the cursor.
+        Delete prints no key of its own, because ``Del`` empties a selection while one stands and
+        clears the cell under the cursor otherwise.
+        """
         dpg.add_menu_item(
             label=self._lbl_context_copy,
             shortcut=self._shortcuts.display(ShortcutId.TRACKER_COPY_BLOCK),
-            callback=lambda: self.call(self.on_copy_block, region),
+            callback=lambda: self.call(self.on_copy_block, target.region),
         )
         dpg.add_menu_item(
             label=self._lbl_context_cut,
             shortcut=self._shortcuts.display(ShortcutId.TRACKER_CUT_BLOCK),
-            callback=lambda: self.call(self.on_cut_block, region),
+            callback=lambda: self.call(self.on_cut_block, target.region),
         )
         dpg.add_menu_item(
             label=self._lbl_context_paste,
             shortcut=self._shortcuts.display(ShortcutId.TRACKER_PASTE_BLOCK),
             enabled=self.query(self.can_paste_block, default=False),
-            callback=lambda: self.call(self.on_paste_block, cell),
+            callback=lambda: self.call(self.on_paste_block, target.anchor),
         )
         dpg.add_menu_item(
             label=self._lbl_context_delete,
-            callback=lambda: self.call(self.on_delete_block, region),
+            callback=lambda: self.call(self.on_delete_block, target.region),
         )
 
-    def _add_instrument_submenu(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
+    def _add_instrument_submenu(self, cell: TrackerCursor) -> None:
         with dpg.menu(label=self._lbl_context_set_instrument):
             samples = self._current_samples.samples if self._current_samples is not None else ()
             if not samples:
@@ -1370,15 +1350,11 @@ class GUISequencerTrackerPanel(GUIPanel):
             for index, sample in enumerate(samples):
                 dpg.add_menu_item(
                     label=tracker_display.indexed_label(index, sample.name),
-                    user_data=(row_index, generator, sample.sample_id),
+                    user_data=(cell.row, cell.generator, sample.sample_id),
                     callback=self._on_set_instrument_menu,
                 )
 
-    def _add_transpose_items(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
+    def _add_transpose_items(self, cell: TrackerCursor) -> None:
         for label, delta in (
             (self._lbl_context_transpose_up, SEMITONE_STEP),
             (self._lbl_context_transpose_down, -SEMITONE_STEP),
@@ -1387,15 +1363,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         ):
             dpg.add_menu_item(
                 label=label,
-                user_data=(row_index, generator, delta),
+                user_data=(cell.row, cell.generator, delta),
                 callback=self._on_transpose_menu,
             )
 
-    def _add_volume_items(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
+    def _add_volume_items(self, cell: TrackerCursor) -> None:
         for label, delta in (
             (self._lbl_context_volume_up, VOLUME_FINE_STEP),
             (self._lbl_context_volume_down, -VOLUME_FINE_STEP),
@@ -1404,7 +1376,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         ):
             dpg.add_menu_item(
                 label=label,
-                user_data=(row_index, generator, delta),
+                user_data=(cell.row, cell.generator, delta),
                 callback=self._on_volume_menu,
             )
 
@@ -1435,13 +1407,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         row_index, generator, delta = user_data
         self.call(self.on_adjust_volume, row_index, generator, delta)
 
-    def _add_clear_items(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        subcolumn: SubColumn,
-    ) -> None:
-        """Builds the three clear levels: the clicked subcolumn, the whole channel cell, the whole row.
+    def _add_clear_items(self, cell: TrackerCursor) -> None:
+        """Builds the three clear levels: the target's subcolumn, its whole channel cell, its whole row.
 
         The cell and row levels coincide on the sample column, which already clears every channel,
         so the per-channel ``Clear cell`` item is offered only for an actual channel.
@@ -1450,23 +1417,23 @@ class GUISequencerTrackerPanel(GUIPanel):
             label=self._lbl_context_clear_subcolumn,
             callback=lambda: self.call(
                 self.on_clear_subcolumn,
-                row_index,
-                generator,
-                subcolumn,
+                cell.row,
+                cell.generator,
+                cell.subcolumn,
             ),
         )
-        if generator is not None:
+        if cell.generator is not None:
             dpg.add_menu_item(
                 label=self._lbl_context_clear_cell,
                 callback=lambda: self.call(
                     self.on_clear_row,
-                    row_index,
-                    generator,
+                    cell.row,
+                    cell.generator,
                 ),
             )
         dpg.add_menu_item(
             label=self._lbl_context_clear_row,
-            callback=lambda: self.call(self.on_clear_row, row_index, None),
+            callback=lambda: self.call(self.on_clear_row, cell.row, None),
         )
 
     def _keys_active(self) -> bool:

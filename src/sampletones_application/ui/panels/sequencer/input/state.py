@@ -104,6 +104,26 @@ class TrackerInputState:
             last_slot=max(anchor_slot, cursor_slot),
         )
 
+    def region_at(self, cell: TrackerCursor) -> TrackerRegion:
+        """The block a gesture raised on ``cell`` acts on: the selection it stands in, or the cell
+        alone.
+
+        A gesture raised inside a selection acts on the whole of it, which is what a reader who has
+        just dragged a range out expects it to reach; one raised anywhere else acts on the cell it
+        names, which is a block of exactly that cell.
+        """
+        slot = TrackerSlot(cell.generator, cell.subcolumn)
+        region = self.region
+        if region is not None and region.covers(cell.row, slot):
+            return region
+
+        return TrackerRegion(
+            first_row=cell.row,
+            last_row=cell.row,
+            first_slot=slot.flat_index,
+            last_slot=slot.flat_index,
+        )
+
     @property
     def target_region(self) -> Optional[TrackerRegion]:
         """The region a block gesture acts on: the selection, or the cursor's own cell.
@@ -111,19 +131,10 @@ class TrackerInputState:
         A cursor with nothing selected stands on a block of one cell, so copying reaches the cell
         the reader is working in and needs no selection made first.
         """
-        if self.region is not None:
-            return self.region
-
         if self.cursor is None:
             return None
 
-        slot = TrackerSlot(self.cursor.generator, self.cursor.subcolumn).flat_index
-        return TrackerRegion(
-            first_row=self.cursor.row,
-            last_row=self.cursor.row,
-            first_slot=slot,
-            last_slot=slot,
-        )
+        return self.region_at(self.cursor)
 
     def extend_to(self, cursor: TrackerCursor) -> TrackerInputState:
         """Carries the moving end of the selection to ``cursor``, anchoring it where it began.
