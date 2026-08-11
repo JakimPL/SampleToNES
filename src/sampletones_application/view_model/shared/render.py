@@ -226,6 +226,23 @@ class SongRenderViewModel(BaseModel, frozen=True):
         """Whether the chosen container stores samples, which is what gives it a depth to choose."""
         return self.spec.capability.stores_samples
 
+    def sample_rate_labels(self, template: str) -> Tuple[str, ...]:
+        """The rates on offer, each as ``template`` states it."""
+        return tuple(template.format(rate=sample_rate) for sample_rate in self.sample_rates)
+
+    def sample_rate_label(self, template: str) -> str:
+        """The chosen rate, as ``template`` states it."""
+        return template.format(rate=self.spec.sample_rate)
+
+    def bitrate_labels(self, template: str) -> Tuple[str, ...]:
+        """The bitrates on offer, each as ``template`` states it."""
+        return tuple(template.format(bitrate=bitrate) for bitrate in self.bitrates)
+
+    def bitrate_label(self, template: str) -> str:
+        """The chosen bitrate, as ``template`` states it, for a container that offers one."""
+        bitrate = self.settings.bitrate
+        return template.format(bitrate=bitrate) if bitrate is not None else ""
+
     @property
     def duration_seconds(self) -> float:
         """How long the song plays for, in seconds."""
@@ -252,6 +269,26 @@ class SongRenderViewModel(BaseModel, frozen=True):
     @property
     def progress_visible(self) -> bool:
         return self.phase != RenderPhase.CONFIGURING
+
+    @property
+    def depth_visible(self) -> bool:
+        """Whether the depth is chosen here, which a container storing samples is what offers."""
+        return self.stores_samples
+
+    @property
+    def bitrate_visible(self) -> bool:
+        """Whether the bitrate is chosen here, which a container encoding to one is what offers."""
+        return not self.stores_samples
+
+    @property
+    def depth_enabled(self) -> bool:
+        """Whether the depth takes an edit: offered by the container, while the setup is showing."""
+        return self.setup_visible and self.depth_visible
+
+    @property
+    def bitrate_enabled(self) -> bool:
+        """Whether the bitrate takes an edit: offered by the container, while the setup is showing."""
+        return self.setup_visible and self.bitrate_visible
 
     @property
     def render_enabled(self) -> bool:
