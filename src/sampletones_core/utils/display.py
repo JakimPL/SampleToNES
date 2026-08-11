@@ -70,9 +70,14 @@ def display_volume(value: Optional[int]) -> str:
 
 
 def display_transpose(value: Optional[int]) -> str:
-    if value is None or value == 0:
+    """Render a transpose as a signed two-digit offset, or ``...`` for an empty one.
+
+    An explicit zero reads ``+00``, since a row storing it resets the channel's
+    transpose to the sample's own pitch, while an empty cell keeps whatever
+    transpose is already in force.
+    """
+    if value is None:
         return NOTE_BLANK
 
-    sign = PLUS if value > 0 else MINUS
-    abs_value = abs(value)
-    return f"{sign}{abs_value:02X}"
+    sign = PLUS if value >= 0 else MINUS
+    return f"{sign}{abs(value):02X}"
