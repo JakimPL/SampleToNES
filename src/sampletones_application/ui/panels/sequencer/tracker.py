@@ -32,7 +32,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
-from sampletones_application.ui.elements.table.drag import DragGesture
+from sampletones_application.ui.elements.table.drag import DragSelection
 from sampletones_application.ui.panels.sequencer import display as tracker_display
 from sampletones_application.ui.panels.sequencer.channels import (
     ChannelMenuLabels,
@@ -171,7 +171,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._follows_playing_row: bool = False
         self._input_state: TrackerInputState = TrackerInputState()
         self._selection: FrozenSet[CellKey] = frozenset()
-        self._drag: Optional[DragGesture[CellKey]] = None
+        self._drag: DragSelection[CellKey] = DragSelection(
+            cells=self._editable_cells,
+            cell_at=self._cell_at,
+        )
         self._subcolumn_themes: Dict[SubColumn, int] = {}
         self._muted_subcolumn_themes: Dict[SubColumn, int] = {}
         self._row_number_theme: int = 0
@@ -488,7 +491,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg_delete_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
         self._input_state = self._input_state.collapse()
         self._selection = frozenset()
-        self._drag = None
+        self._drag.clear()
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self.repaint()
@@ -1093,8 +1096,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         dpg.set_value(sender, False)
         self._selection -= {user_data}
-        if self._drag is not None and self._drag.moved:
-            self._drag = None
+        if self._drag.claims_click():
             self._repaint_selection()
             return
 
@@ -1110,32 +1112,18 @@ class GUISequencerTrackerPanel(GUIPanel):
     def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:
         """Carries the selection to the cell under a held pointer, which is what drags a range out.
 
-        DearPyGui reports no hover for the cells a held pointer passes over, so the cell the drag
-        has reached is read off the grid's own geometry while the held cell names where the press
-        landed. A press that stays on its own cell is still a click, and the click itself is what
-        places the cursor there.
+        The gesture states how far the pointer has carried: a plain drag anchors at the cell the
+        press landed on, and one whose press held Shift carries the selection already standing.
         """
-        if self._drag is None:
-            origin = self._editable_cells.key(app_data)
-            if origin is None:
-                return
-
-            self._drag = DragGesture(
-                origin=origin,
-                extends=Modifier.SHIFT in capture_modifiers(),
-            )
+        reach = self._drag.hold(app_data)
+        if reach is None:
             return
 
-        reached = self._cell_at()
-        if reached is None or (reached == self._drag.origin and not self._drag.moved):
-            return
-
-        self._drag.moved = True
         state = self._committed_state()
-        if not self._drag.extends:
-            state = TrackerInputState(cursor=TrackerCursor(*self._drag.origin))
+        if not reach.extends:
+            state = TrackerInputState(cursor=TrackerCursor(*reach.origin))
 
-        self._apply_state(state.extend_to(TrackerCursor(*reached)))
+        self._apply_state(state.extend_to(TrackerCursor(*reach.reached)))
 
     def _on_pointer_pressed(self, _sender: Sender, _app_data: int) -> None:
         """Drops the gesture a finished drag left behind, so this press selects on its own.
@@ -1144,7 +1132,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         reaches this panel ahead of the click the cell itself reports: a drag that comes back to
         the cell it started from would otherwise have its selection taken down by its own click.
         """
-        self._drag = None
+        self._drag.clear()
 
     def _cell_at(self) -> Optional[CellKey]:
         """The cell the pointer stands on, clamped to the grid the shown frame lays out.

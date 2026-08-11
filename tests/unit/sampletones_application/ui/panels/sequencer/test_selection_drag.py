@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import pytest
 
@@ -11,6 +11,7 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
 )
 from sampletones_application.ui.elements.table.cells import EditableCells
+from sampletones_application.ui.elements.table.drag import DragSelection
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
@@ -49,9 +50,15 @@ def _hold_modifiers(
     module: str,
     shift: bool,
 ) -> None:
+    """Holds Shift down for both readers of it: the drag reads the press, the panel the click."""
+    modifiers = {Modifier.SHIFT} if shift else set()
     monkeypatch.setattr(
         f"sampletones_application.ui.panels.sequencer.{module}.capture_modifiers",
-        lambda: {Modifier.SHIFT} if shift else set(),
+        lambda: modifiers,
+    )
+    monkeypatch.setattr(
+        "sampletones_application.ui.elements.table.drag.capture_modifiers",
+        lambda: modifiers,
     )
 
 
@@ -63,9 +70,12 @@ def _tracker(
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._input_state = TrackerInputState()
     panel._current_row_count = ROW_COUNT
-    panel._drag = None
     panel._editable_cells = EditableCells()
     panel._editable_cells.register(ORIGIN_CELL, ORIGIN_WIDGET)
+    panel._drag = DragSelection(
+        cells=panel._editable_cells,
+        cell_at=lambda: panel._cell_at(),
+    )
 
     states: List[TrackerInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
@@ -82,9 +92,12 @@ def _order(
     panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
     panel._input_state = OrderInputState()
     panel._position_count = POSITION_COUNT
-    panel._drag = None
     panel._order = EditableCells()
     panel._order.register(ORIGIN_ENTRY, ORIGIN_WIDGET)
+    panel._drag = DragSelection(
+        cells=panel._order,
+        cell_at=lambda: panel._cell_at(),
+    )
 
     states: List[OrderInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
@@ -93,28 +106,18 @@ def _order(
     return panel, states
 
 
-class TestEditableCellKeys:
-    """A cell cache answers from both sides, because a handler reports the widget it fired for."""
-
-    def test_a_registered_widget_reads_back_as_its_key(self) -> None:
-        cells: EditableCells[CellKey] = EditableCells()
-        cells.register(ORIGIN_CELL, ORIGIN_WIDGET)
-
-        assert cells.key(ORIGIN_WIDGET) == ORIGIN_CELL
-        assert cells.widget(ORIGIN_CELL) == ORIGIN_WIDGET
-
-    def test_a_rebuild_drops_both_directions(self) -> None:
-        cells: EditableCells[CellKey] = EditableCells()
-        cells.register(ORIGIN_CELL, ORIGIN_WIDGET)
-        cells.reset({})
-
-        assert cells.key(ORIGIN_WIDGET) is None
-        assert cells.widget(ORIGIN_CELL) is None
-
-    def test_an_unknown_widget_names_no_cell(self) -> None:
-        cells: EditableCells[CellKey] = EditableCells()
-
-        assert cells.key(ORIGIN_WIDGET) is None
+def _silence_click(
+    monkeypatch: pytest.MonkeyPatch,
+    panel: Union[GUISequencerTrackerPanel, GUISequencerOrderPanel],
+    module: str,
+) -> None:
+    """Lets a click run over a grid that was never drawn: the cell releases, the repaint stands in."""
+    panel._selection = frozenset()
+    monkeypatch.setattr(panel, "_repaint_selection", lambda: None)
+    monkeypatch.setattr(
+        f"sampletones_application.ui.panels.sequencer.{module}.dpg.set_value",
+        lambda widget, value: None,
+    )
 
 
 class TestTrackerDrag:
@@ -125,9 +128,6 @@ class TestTrackerDrag:
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
 
-        assert panel._drag is not None
-        assert panel._drag.origin == ORIGIN_CELL
-        assert panel._drag.moved is False
         assert states == []
 
     def test_a_press_held_on_its_own_cell_stays_a_click(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -145,8 +145,6 @@ class TestTrackerDrag:
         panel._on_cell_held(0, ORIGIN_WIDGET)
         panel._on_cell_held(0, ORIGIN_WIDGET)
 
-        assert panel._drag is not None
-        assert panel._drag.moved is True
         assert states[-1].region == TrackerRegion(
             first_row=2,
             last_row=5,
@@ -202,21 +200,27 @@ class TestTrackerDrag:
             last_slot=4,
         )
 
-    def test_a_press_on_a_cell_the_cache_forgot_starts_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_a_press_on_a_cell_the_cache_forgot_selects_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel, states = _tracker(monkeypatch, reached=ORIGIN_CELL)
 
         panel._on_cell_held(0, ORIGIN_WIDGET + 1)
+        panel._on_cell_held(0, ORIGIN_WIDGET + 1)
 
-        assert panel._drag is None
         assert states == []
 
     def test_a_new_press_ends_the_gesture_before_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel, _ = _tracker(monkeypatch, reached=ORIGIN_CELL)
+        """The press starting a gesture ends the one before it, so its click places the cursor."""
+        reached: CellKey = (5, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+        panel, states = _tracker(monkeypatch, reached=reached)
+        _silence_click(monkeypatch, panel, "tracker")
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
+        panel._on_cell_held(0, ORIGIN_WIDGET)
         panel._on_pointer_pressed(0, 0)
+        panel._on_cell_clicked(ORIGIN_WIDGET, True, ORIGIN_CELL)
 
-        assert panel._drag is None
+        assert states[-1].cursor == TrackerCursor(*ORIGIN_CELL)
+        assert states[-1].region is None
 
     def test_the_click_ending_a_drag_leaves_the_selection_alone(
         self,
@@ -225,12 +229,7 @@ class TestTrackerDrag:
         """A drag returning to its own cell releases there, and that release reports a click."""
         reached: CellKey = (5, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
         panel, states = _tracker(monkeypatch, reached=reached)
-        panel._selection = frozenset({ORIGIN_CELL})
-        monkeypatch.setattr(panel, "_repaint_selection", lambda: None)
-        monkeypatch.setattr(
-            "sampletones_application.ui.panels.sequencer.tracker.dpg.set_value",
-            lambda widget, value: None,
-        )
+        _silence_click(monkeypatch, panel, "tracker")
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
         panel._on_cell_held(0, ORIGIN_WIDGET)
@@ -238,7 +237,6 @@ class TestTrackerDrag:
         panel._on_cell_clicked(ORIGIN_WIDGET, True, ORIGIN_CELL)
 
         assert len(states) == applied
-        assert panel._drag is None
 
 
 class TestTrackerDragHitTest:
@@ -294,8 +292,6 @@ class TestOrderDrag:
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
 
-        assert panel._drag is not None
-        assert panel._drag.origin == ORIGIN_ENTRY
         assert states == []
 
     def test_a_drag_anchors_at_the_pressed_cell(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -326,12 +322,18 @@ class TestOrderDrag:
         assert states[-1].anchor == OrderCursor(GeneratorName.NOISE, 6)
 
     def test_a_new_press_ends_the_gesture_before_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel, _ = _order(monkeypatch, reached=ORIGIN_ENTRY)
+        """The press starting a gesture ends the one before it, so its click places the cursor."""
+        reached: OrderKey = (GeneratorName.PULSE2, 4)
+        panel, states = _order(monkeypatch, reached=reached)
+        _silence_click(monkeypatch, panel, "order")
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
+        panel._on_cell_held(0, ORIGIN_WIDGET)
         panel._on_pointer_pressed(0, 0)
+        panel._on_cell_clicked(ORIGIN_WIDGET, True, ORIGIN_ENTRY)
 
-        assert panel._drag is None
+        assert states[-1].cursor == OrderCursor(*ORIGIN_ENTRY)
+        assert states[-1].region is None
 
     def test_the_click_ending_a_drag_leaves_the_selection_alone(
         self,
@@ -339,12 +341,7 @@ class TestOrderDrag:
     ) -> None:
         reached: OrderKey = (GeneratorName.PULSE2, 4)
         panel, states = _order(monkeypatch, reached=reached)
-        panel._selection = frozenset({ORIGIN_ENTRY})
-        monkeypatch.setattr(panel, "_repaint_selection", lambda: None)
-        monkeypatch.setattr(
-            "sampletones_application.ui.panels.sequencer.order.dpg.set_value",
-            lambda widget, value: None,
-        )
+        _silence_click(monkeypatch, panel, "order")
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
         panel._on_cell_held(0, ORIGIN_WIDGET)
@@ -352,4 +349,3 @@ class TestOrderDrag:
         panel._on_cell_clicked(ORIGIN_WIDGET, True, ORIGIN_ENTRY)
 
         assert len(states) == applied
-        assert panel._drag is None

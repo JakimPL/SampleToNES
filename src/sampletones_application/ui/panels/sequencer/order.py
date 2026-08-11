@@ -39,7 +39,7 @@ from sampletones_application.ui.elements.plus_minus_buttons import (
 )
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
-from sampletones_application.ui.elements.table.drag import DragGesture
+from sampletones_application.ui.elements.table.drag import DragSelection
 from sampletones_application.ui.panels.sequencer.channels import (
     ChannelMenuLabels,
     ChannelSwitch,
@@ -142,7 +142,10 @@ class GUISequencerOrderPanel(GUIPanel):
         self._order: EditableCells[OrderKey] = EditableCells()
         self._input_state: OrderInputState = OrderInputState()
         self._selection: FrozenSet[OrderKey] = frozenset()
-        self._drag: Optional[DragGesture[OrderKey]] = None
+        self._drag: DragSelection[OrderKey] = DragSelection(
+            cells=self._order,
+            cell_at=self._cell_at,
+        )
         self._highlighted: Optional[OrderCursor] = None
         self._highlighted_column: Optional[int] = None
         self._current_position: Optional[int] = None
@@ -483,7 +486,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._highlighted = None
         self._highlighted_column = None
         self._selection = frozenset()
-        self._drag = None
+        self._drag.clear()
         self._order.reset(cell_values)
         self._position_count = view_model.position_count
         self._build_table(view_model.position_count)
@@ -873,8 +876,7 @@ class GUISequencerOrderPanel(GUIPanel):
         """
         dpg.set_value(sender, False)
         self._selection -= {user_data}
-        if self._drag is not None and self._drag.moved:
-            self._drag = None
+        if self._drag.claims_click():
             self._repaint_selection()
             return
 
@@ -890,32 +892,18 @@ class GUISequencerOrderPanel(GUIPanel):
     def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:
         """Carries the selection to the cell under a held pointer, which is what drags a range out.
 
-        DearPyGui reports no hover for the cells a held pointer passes over, so the cell the drag
-        has reached is read off the table's own geometry while the held cell names where the press
-        landed. A press that stays on its own cell is still a click, and the click itself is what
-        places the cursor there.
+        The gesture states how far the pointer has carried: a plain drag anchors at the cell the
+        press landed on, and one whose press held Shift carries the selection already standing.
         """
-        if self._drag is None:
-            origin = self._order.key(app_data)
-            if origin is None:
-                return
-
-            self._drag = DragGesture(
-                origin=origin,
-                extends=Modifier.SHIFT in capture_modifiers(),
-            )
+        reach = self._drag.hold(app_data)
+        if reach is None:
             return
 
-        reached = self._cell_at()
-        if reached is None or (reached == self._drag.origin and not self._drag.moved):
-            return
-
-        self._drag.moved = True
         state = self._committed_state()
-        if not self._drag.extends:
-            state = OrderInputState(cursor=OrderCursor(*self._drag.origin))
+        if not reach.extends:
+            state = OrderInputState(cursor=OrderCursor(*reach.origin))
 
-        self._apply_state(state.extend_to(OrderCursor(*reached)))
+        self._apply_state(state.extend_to(OrderCursor(*reach.reached)))
 
     def _on_pointer_pressed(self, _sender: Sender, _app_data: int) -> None:
         """Drops the gesture a finished drag left behind, so this press selects on its own.
@@ -924,7 +912,7 @@ class GUISequencerOrderPanel(GUIPanel):
         reaches this panel ahead of the click the cell itself reports: a drag that comes back to
         the cell it started from would otherwise have its selection taken down by its own click.
         """
-        self._drag = None
+        self._drag.clear()
 
     def _cell_at(self) -> Optional[OrderKey]:
         """The cell the pointer stands on, clamped to the table the order lays out.
