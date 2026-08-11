@@ -23,6 +23,7 @@ from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.coordinators.reconstruction import (
     ReconstructionCoordinator,
 )
+from sampletones_application.coordinators.render import SongRenderCoordinator
 from sampletones_application.coordinators.tabs.instructions import (
     InstructionsTabCoordinator,
 )
@@ -46,6 +47,7 @@ from sampletones_application.logic.project.title.document import (
 )
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.render import SongRenderLogic
 from sampletones_application.parameters import (
     InstructionsTabParameters,
     MainTabParameters,
@@ -72,6 +74,7 @@ from sampletones_application.services import (
     ServiceCancelled,
     ServiceError,
     ServiceSuccess,
+    SongRenderService,
 )
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.tags.general import (
@@ -100,6 +103,7 @@ from sampletones_application.ui.panels.dialogs.keybindings import GUIKeybindings
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
 )
+from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -228,6 +232,7 @@ class Application:
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
+        self.render_service: SongRenderService = SongRenderService(priority=_priority)
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
 
@@ -278,6 +283,14 @@ class Application:
             revert_label=self.language_manager["settings.display.label.revert_button"],
             key_router=self.key_router,
             shortcut_source=self._shortcut_source,
+        )
+        self.render_window: GUIRenderWindow = GUIRenderWindow(
+            layout=self.layout.settings,
+            path_colors=self.layout.general.colors.paths,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+            status_bar=self.status_bar,
         )
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
@@ -466,6 +479,23 @@ class Application:
             language_manager=self.language_manager,
         )
 
+        self._render_logic = SongRenderLogic(
+            self.project_controller,
+            self.config_manager,
+            self.session_manager,
+            self.render_service,
+            language_manager=self.language_manager,
+            is_operation_active=self._is_operation_active,
+        )
+
+        self._render_coordinator = SongRenderCoordinator(
+            self._render_logic,
+            window=self.render_window,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+            on_activity_changed=self._on_render_activity_changed,
+        )
+
         self._shell = ApplicationShell(
             session_manager=self.session_manager,
             language_manager=self.language_manager,
@@ -554,6 +584,7 @@ class Application:
             save_project_as=self._project_coordinator.save_as_dialog,
             project_properties=self._open_project_properties,
             export_project=self._project_coordinator.export_project_dialog,
+            render_song=self._render_coordinator.open,
             close_project=self._project_coordinator.close_with_confirmation,
             exit=self._on_close,
             undo=self._sequencer_tab.undo,
@@ -663,6 +694,7 @@ class Application:
             reconstruction_in_project=self._editing_project_sample(),
             reconstruction_file_backed=self._reconstruction_coordinator.is_saveable(),
             reconstruction_audio_recorded=self.reconstruction_manager.audio_filepath is not None,
+            operation_active=self._is_operation_active(),
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
             play_label=self.language_manager["global.menu.label.item_playback_play"],
@@ -701,6 +733,7 @@ class Application:
             reconstruction_in_project=self._editing_project_sample(),
             reconstruction_file_backed=self._reconstruction_coordinator.is_saveable(),
             reconstruction_audio_recorded=self.reconstruction_manager.audio_filepath is not None,
+            operation_active=self._is_operation_active(),
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
             play_label=self._playback_router.play_label,
@@ -809,14 +842,30 @@ class Application:
         return self._main_tab.is_converter_panel_visible()
 
     def _is_operation_active(self) -> bool:
-        return self._main_tab.is_converter_active() or self._instructions_tab.is_library_generating()
+        return (
+            self._main_tab.is_converter_active()
+            or self._instructions_tab.is_library_generating()
+            or self._render_coordinator.is_active
+        )
 
     def _refresh_busy_state(self) -> None:
-        """Re-evaluate the reconstruct and generate-library buttons whenever a conversion or library
-        generation starts or finishes, keeping the two long operations mutually exclusive. Each panel
-        reads the live ``_is_operation_active`` state for itself; this only nudges them to
-        re-apply, so the busy truth lives in one place."""
+        """Re-evaluate the reconstruct and generate-library buttons whenever a conversion, library
+        generation or render starts or finishes, keeping the long operations mutually exclusive. Each
+        panel reads the live ``_is_operation_active`` state for itself; this only nudges them to
+        re-apply, so the busy truth lives in one place. The menu follows the same edge, since what
+        greys an entry offering another such operation is one already running."""
         self._instructions_tab.refresh_generate_button()
+        self._update_menu()
+
+    def _on_render_activity_changed(self) -> None:
+        """Follows a render claiming the application and handing it back.
+
+        What a render occupies is the same ground a conversion or a library generation occupies,
+        so its edges reach the same busy state — the action buttons of each tab, the converter's
+        own view, and the menu entries that would start another exclusive operation.
+        """
+        self._refresh_busy_state()
+        self._main_tab.refresh_converter_view()
 
     def _on_library_operation_changed(self) -> None:
         """Responds to a library generation starting or finishing: refreshes the cross-tab action
@@ -1361,6 +1410,7 @@ class Application:
         return self.project_controller.is_open
 
     def _exit_application(self) -> None:
+        self._render_coordinator.cleanup()
         stop_background_workers()
         self._playback_router.shutdown()
         self._main_tab.cleanup()
@@ -1417,6 +1467,7 @@ class Application:
         except KeyboardInterrupt:
             return
         finally:
+            self._render_coordinator.cleanup()
             stop_background_workers()
             self._playback_router.shutdown()
             self._main_tab.cleanup()

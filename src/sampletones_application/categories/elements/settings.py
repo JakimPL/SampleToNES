@@ -41,6 +41,7 @@ class KeybindingActionElements(AbstractElement):
     PROJECT_PROPERTIES = "project_properties"
     EXPORT_PROJECT_FAMITRACKER = "export_project_famitracker"
     EXPORT_PROJECT_BITPHASE = "export_project_bitphase"
+    RENDER_SONG = "render_song"
     CLOSE_PROJECT = "close_project"
     EXIT = "exit"
     UNDO = "undo"

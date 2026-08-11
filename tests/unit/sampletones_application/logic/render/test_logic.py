@@ -1,6 +1,5 @@
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Final, List, Optional
+from typing import Final, List
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +11,7 @@ from sampletones_application.logic.sequencer.playback.synthesizer import (
     RowSynthesizer,
     SongLength,
 )
-from sampletones_application.services.render.result import RenderResult, RenderStage
+from sampletones_application.services.render.result import RenderStage
 from sampletones_application.services.result import (
     ServiceCancelled,
     ServiceError,
@@ -23,84 +22,14 @@ from sampletones_application.view_model.shared.render import (
     RenderPhase,
     SongRenderViewModel,
 )
-from sampletones_core.audio.writers import AudioFormat, AudioOutputSpec
+from sampletones_core.audio.writers import AudioFormat
 from sampletones_core.configs import Config
 from tests.suite.language import FakeLanguageManager
+from tests.suite.render import FakeRenderService
 
 AUDIO_DIRECTORY: Final[Path] = Path("/home/user/audio")
 PROJECT_NAME: Final[str] = "chiptune"
 LOW_RATE: Final[int] = 8000
-
-
-@dataclass(frozen=True)
-class RenderRequest:
-    synthesizer: RowSynthesizer
-    destination: Path
-    spec: AudioOutputSpec
-    normalize: bool
-    total_samples: int
-
-
-class FakeRenderService:
-    """The render service as the logic drives it, holding what it was asked to render.
-
-    Results are delivered through the handler the logic subscribes, so a test walks a render the
-    way the worker reports one.
-    """
-
-    def __init__(self, *, accepts: bool = True) -> None:
-        self.accepts = accepts
-        self.requests: List[RenderRequest] = []
-        self.cancels: int = 0
-        self.shutdowns: int = 0
-        self.running: bool = False
-        self._handler: Optional[Callable[[RenderResult], None]] = None
-
-    def subscribe(self, handler: Callable[[RenderResult], None]) -> None:
-        self._handler = handler
-
-    def start(
-        self,
-        *,
-        synthesizer: RowSynthesizer,
-        destination: Path,
-        spec: AudioOutputSpec,
-        normalize: bool,
-        total_samples: int,
-    ) -> bool:
-        if not self.accepts:
-            return False
-
-        self.requests.append(
-            RenderRequest(
-                synthesizer=synthesizer,
-                destination=destination,
-                spec=spec,
-                normalize=normalize,
-                total_samples=total_samples,
-            )
-        )
-        self.running = True
-        return True
-
-    def cancel(self) -> None:
-        self.cancels += 1
-
-    def is_running(self) -> bool:
-        return self.running
-
-    def shutdown(self) -> None:
-        self.shutdowns += 1
-
-    def emit(self, result: RenderResult) -> None:
-        assert self._handler is not None, "The logic subscribes to the service it is given"
-        self.running = not isinstance(result, (ServiceSuccess, ServiceError, ServiceCancelled))
-        self._handler(result)
-
-    @property
-    def request(self) -> RenderRequest:
-        assert self.requests, "A render was expected to start"
-        return self.requests[-1]
 
 
 class RenderFixture:

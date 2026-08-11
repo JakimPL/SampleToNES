@@ -25,6 +25,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_FILE_NEW_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_OPEN_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_PROJECT_PROPERTIES,
+    TAG_GLOBAL_MENU_ITEM_FILE_RENDER_SONG,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
@@ -203,6 +204,12 @@ class MenuBar:
                 enabled=state.project_open,
             )
             self._create_project_export_menu(state)
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.RENDER_SONG,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_RENDER_SONG,
+                label=self._label(MenuElements.ITEM_FILE_RENDER_SONG),
+                enabled=state.render_enabled,
+            )
             dpg.add_separator()
             self._shortcut_manager.add_menu_item(
                 ShortcutId.CLOSE_PROJECT,
@@ -513,6 +520,10 @@ class MenuBar:
         for project_item_tag in PROJECT_ITEM_TAGS:
             dpg_configure_item(project_item_tag, enabled=state.project_open)
 
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_FILE_RENDER_SONG,
+            enabled=state.render_enabled,
+        )
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
             enabled=state.undo_enabled,

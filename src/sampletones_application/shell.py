@@ -71,6 +71,7 @@ class ShortcutBindings:
     save_project_as: Callback
     project_properties: Callback
     export_project: Callable[[TrackerFormat], None]
+    render_song: Callback
     close_project: Callback
     exit: Callback
     undo: Callback
@@ -216,6 +217,7 @@ class ApplicationShell:
             ShortcutId.SAVE_PROJECT: bindings.save_project,
             ShortcutId.SAVE_PROJECT_AS: bindings.save_project_as,
             ShortcutId.PROJECT_PROPERTIES: bindings.project_properties,
+            ShortcutId.RENDER_SONG: bindings.render_song,
             ShortcutId.CLOSE_PROJECT: bindings.close_project,
             ShortcutId.EXIT: bindings.exit,
             ShortcutId.UNDO: bindings.undo,
