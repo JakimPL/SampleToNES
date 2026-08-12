@@ -10,6 +10,7 @@ from sampletones_application.layout.general.plus_minus_buttons import PlusMinusB
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.parameters.geometry import TabGeometry
 from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.utils.palette.colors.base import BaseColor
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class SequencerTabParameters:
     plus_minus: PlusMinusButtonsLayout
     feature_colors: FeatureColors
     tree_colors: TreeColors
+    muted_color: BaseColor
     scheduling: SchedulingBehavior
 
     @classmethod
@@ -52,5 +54,6 @@ class SequencerTabParameters:
                 general.colors,
                 accent=general.colors.headers.reconstruction,
             ),
+            muted_color=general.colors.text.disabled,
             scheduling=config.behavior.scheduling,
         )

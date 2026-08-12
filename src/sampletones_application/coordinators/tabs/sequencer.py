@@ -276,6 +276,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
             layout=layout.sequencer,
+            detail_color=layout.muted_color,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_INSTRUMENTS_PANEL),
             language_manager=language_manager,
             key_router=key_router,
@@ -601,6 +602,7 @@ class SequencerTabCoordinator:
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
         self._sequencer_samples_logic.on_autoplay_error = self._on_preview_error
+        self._sequencer_samples_panel.sample_footprint = self._sequencer_samples_logic.build_sample_footprint
         self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
         self._sequencer_samples_panel.on_loop_changed = self._undoable(

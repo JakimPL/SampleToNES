@@ -3,7 +3,7 @@ from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.context import context_label
+from sampletones_application.categories.context import channel_label, context_label
 from sampletones_application.categories.elements.global_ import (
     ContextElements,
     MenuElements,
@@ -113,12 +113,6 @@ UNFOCUSED_CLIPBOARD_ELEMENTS: Final[Tuple[ContextElements, ...]] = (
     ContextElements.PASTE,
     ContextElements.DELETE,
 )
-CHANNEL_LABELS: Final[Dict[GeneratorName, ContextElements]] = {
-    GeneratorName.PULSE1: ContextElements.PULSE_1,
-    GeneratorName.PULSE2: ContextElements.PULSE_2,
-    GeneratorName.TRIANGLE: ContextElements.TRIANGLE,
-    GeneratorName.NOISE: ContextElements.NOISE,
-}
 
 
 class MenuBar:
@@ -516,7 +510,7 @@ class MenuBar:
                     shortcut_id,
                     callback=partial(self._on_channel_muted, generator),
                     tag=self._channel_menu_item_tag(generator),
-                    label=self._context_label(CHANNEL_LABELS[generator]),
+                    label=channel_label(self._language_manager, generator),
                     check=True,
                     default_value=not state.channels.is_muted(generator),
                 )

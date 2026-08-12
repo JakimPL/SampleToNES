@@ -33,7 +33,10 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.context_menu import add_play_menu_item
+from sampletones_application.ui.elements.context_menu import (
+    add_detail_items,
+    add_play_menu_item,
+)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -390,7 +393,11 @@ class GUITreePanel(GUIPanel, ABC):
         ) -> None:
             user_data = dpg.get_item_user_data(app_data[1])
             if item_double_click_callback is not None:
-                item_double_click_callback(sender, app_data, user_data=user_data)
+                item_double_click_callback(
+                    sender,
+                    app_data,
+                    user_data=user_data,
+                )
 
         return double_click_callback
 
@@ -570,22 +577,17 @@ class GUITreePanel(GUIPanel, ABC):
         ]
 
     def _add_context_menu_details(self, node: TreeNode) -> None:
-        detail_items = self._node_detail_items(node)
-        if not detail_items:
-            return
-
-        dpg.add_separator()
-        for label, value in detail_items:
-            detail_text = dpg.add_text(f"{label}: {value}")
-            dpg_set_palette_color(detail_text, self._colors.muted)
-            FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
+        add_detail_items(self._node_detail_items(node), color=self._colors.muted)
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:
         if not self._logic.is_playable_file(node):
             return
 
         dpg.add_separator()
-        add_play_menu_item(self._language_manager["global.context.label.play"], lambda: self._logic.play_node(node))
+        add_play_menu_item(
+            self._language_manager["global.context.label.play"],
+            lambda: self._logic.play_node(node),
+        )
 
     def _add_context_menu_path_items(self, path: Path) -> None:
         dpg.add_separator()
@@ -723,7 +725,11 @@ class GUITreePanel(GUIPanel, ABC):
         for child in node.children:
             self._update_node_visibility_recursive(child)
 
-    def apply_filter(self, query: str, predicate: Callable[[TreeNode, str], bool]) -> None:
+    def apply_filter(
+        self,
+        query: str,
+        predicate: Callable[[TreeNode, str], bool],
+    ) -> None:
         self.tree.apply_filter(query, predicate)
 
     def clear_filter(self) -> None:
@@ -759,7 +765,10 @@ class GUITreePanel(GUIPanel, ABC):
         if isinstance(node, FileSystemNode):
             match node.node_type:
                 case NodeType.DIRECTORY:
-                    return self._resolve_directory_theme_tag(node, has_favorite_ancestor=has_favorite_ancestor)
+                    return self._resolve_directory_theme_tag(
+                        node,
+                        has_favorite_ancestor=has_favorite_ancestor,
+                    )
                 case NodeType.FILE:
                     return self._resolve_file_theme_tag(
                         node,
@@ -823,7 +832,11 @@ class GUITreePanel(GUIPanel, ABC):
             case _:
                 return TAG_GLOBAL_THEME_DEFAULT
 
-    def _reapply_theme_recursively(self, node: FileSystemNode, has_favorite_ancestor: bool = False) -> None:
+    def _reapply_theme_recursively(
+        self,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
         node_tag = self._generate_node_tag(node)
         if not dpg.does_item_exist(node_tag):
             return

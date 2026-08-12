@@ -20,8 +20,10 @@ frequency**; **Add anyway** adds it regardless.
 Manage the imported samples in the **Samples** list on the right: right-click one
 to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it, and toggle its
 **Loop** flag. The **Edit** menu carries the same actions for the sample you have
-picked. Removing a sample that patterns still use asks **Remove sample** first,
-because it clears every row that references it.
+picked. The right-click menu also names how much room the sample takes on the NES —
+its total, then each channel it plays — measured as its **Loop** flag has it.
+Removing a sample that patterns still use asks **Remove sample** first, because it
+clears every row that references it.
 
 ## Writing a pattern
 

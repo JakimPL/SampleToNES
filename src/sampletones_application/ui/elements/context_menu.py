@@ -1,8 +1,12 @@
 import contextlib
-from typing import Iterator
+from typing import Iterator, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -43,3 +47,29 @@ def add_play_menu_item(
         shortcut=shortcut,
         callback=on_play,
     )
+
+
+def add_detail_items(
+    items: Sequence[Tuple[str, str]],
+    *,
+    color: BaseColor,
+) -> None:
+    """Add a block of read-only ``label: value`` lines to the context menu being built.
+
+    A menu states what its target is alongside what can be done to it: a file browser prints the
+    settings a reconstruction was made with, and the samples menu prints the bytes a sample
+    occupies. Both read as the same tinted, monospaced block under a separator of its own, so the
+    facts stay apart from the items a reader clicks.
+
+    Args:
+        items: The label and value of each line, in the order the menu prints them.
+        color: The tint the lines take, which marks them as facts rather than actions.
+    """
+    if not items:
+        return
+
+    dpg.add_separator()
+    for label, value in items:
+        detail_text = dpg.add_text(f"{label}: {value}")
+        dpg_set_palette_color(detail_text, color)
+        FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
