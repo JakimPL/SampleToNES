@@ -202,3 +202,50 @@ for order slots the song leaves unset; a channel that already fills indices up t
 127 leaves no room for it, which the exporter reports rather than emitting a corrupt
 order. When the domain model grows to enforce these limits, the editor can prevent
 reaching a state the exporter would reject.
+
+## D. Driver memory footprint
+
+Compiling a module into an NSF lays each instrument out across two regions of the driver's
+data, and an instrument's sequences size both of them. `footprint.py` measures the two, and
+`specification/memory.py` names every field the measurement counts. The instruments panel and
+the samples context menu display the result, so the cost of a sample is readable before an
+export.
+
+The **instrument region** holds the instrument list — one pointer per instrument — followed by
+each instrument's body: a sequence-enable bitmask, then one pointer per populated sequence. The
+**sequence region** holds one chunk per sequence: a four-field header followed by the items.
+
+| Field | Bytes | Region |
+| --- | --- | --- |
+| instrument list entry | 2 | instrument |
+| sequence-enable bitmask | 1 | instrument |
+| sequence pointer, per populated sequence | 2 | instrument |
+| item count · loop point · release point · setting | 1 each | sequence |
+| item, per tick | 1 | sequence |
+
+An instrument with `n` populated sequences carrying `s₁ … sₙ` items therefore occupies
+`3 + 2n` bytes of the instrument region and `Σ (4 + sᵢ)` of the sequence region. A dimension the
+channel leaves unused is written as a disabled slot, and the populated sequences alone are
+charged: `n` is 3 on the pulse and noise channels (volume, arpeggio, duty) and 2 on triangle.
+Every populated sequence of one instrument shares a length (section B), so the sequence region
+comes to `n · (4 + s)` and an instrument tops out at 777 bytes — three sequences at the 252-item
+limit.
+
+These two figures are the ones FamiTracker itself prints while creating an NSF —
+`Instruments used: N (X bytes)` and `Sequences used: M (Y bytes)` — which is how a measurement
+is held against the tracker.
+
+**Version.** The figures are vanilla FamiTracker 0.4.6, the target section A names. The 0CC and
+Dn-FamiTracker forks open each instrument body with a channel-type byte, so an instrument costs
+one byte more there.
+
+**Pooling narrows a module's total.** The `SEQUENCES` block stores each distinct sequence once
+(section A.2), so a module holding two instruments with the same volume envelope pays for that
+chunk once. A per-instrument or per-sample figure states that instrument's own cost, and a
+module total is therefore at most the sum of them. Within one instrument each kind appears
+once, so its own sequences are charged once each.
+
+**Looping shortens the sequences.** A looping instrument shares its shortest dimension's length
+and a one-shot its longest (section B), so one set of envelopes costs less as a loop. A sample
+carries the flag that decides which applies; a reconstruction standing on its own is measured as
+a one-shot, matching the instrument its **Export instrument** writes.
