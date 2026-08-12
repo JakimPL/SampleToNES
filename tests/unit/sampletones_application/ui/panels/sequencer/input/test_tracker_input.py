@@ -51,7 +51,6 @@ class TestSelection:
         region = extended.region
         assert region is not None
         assert (region.first_row, region.last_row) == (4, 5)
-        assert region.row_count == 2
 
     def test_extending_upwards_names_the_same_region_as_downwards(self) -> None:
         """The bounds are ordered by the region, so the direction of the drag leaves no trace."""

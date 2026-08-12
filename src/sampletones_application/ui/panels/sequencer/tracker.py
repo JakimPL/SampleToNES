@@ -32,7 +32,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
-from sampletones_application.ui.elements.table.drag import DragSelection
+from sampletones_application.ui.elements.table.selection import TableSelection
 from sampletones_application.ui.panels.sequencer import display as tracker_display
 from sampletones_application.ui.panels.sequencer.channels import (
     ChannelMenuLabels,
@@ -170,10 +170,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._painted_row: Optional[int] = None
         self._follows_playing_row: bool = False
         self._input_state: TrackerInputState = TrackerInputState()
-        self._selection: FrozenSet[CellKey] = frozenset()
-        self._drag: DragSelection[CellKey] = DragSelection(
+        self._selection: TableSelection[CellKey] = TableSelection(
             cells=self._editable_cells,
             cell_at=self._cell_at,
+            covered=self._selected_cells,
         )
         self._subcolumn_themes: Dict[SubColumn, int] = {}
         self._muted_subcolumn_themes: Dict[SubColumn, int] = {}
@@ -491,8 +491,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         dpg_delete_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
         self._input_state = self._input_state.collapse()
-        self._selection = frozenset()
-        self._drag.clear()
+        self._selection.reset()
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self.repaint()
@@ -823,7 +822,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             else:
                 self._input_state = TrackerInputState()
 
-        self._repaint_selection()
+        self._selection.repaint()
         self._update_caret()
 
     def deselect_cell(self) -> None:
@@ -831,7 +830,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if cursor is not None:
             self._input_state = TrackerInputState()
             self._remove_cell_highlight(cursor.row, cursor.generator)
-            self._repaint_selection()
+            self._selection.repaint()
 
         self._update_caret()
 
@@ -858,7 +857,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if new_pos != old_pos and new_cursor is not None:
             self.call(self.on_cell_selected)
 
-        self._repaint_selection()
+        self._selection.repaint()
         self._update_caret()
 
     def update_samples(self, view_model: SequencerSamplesViewModel) -> None:
@@ -1049,20 +1048,6 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         return frozenset(keys)
 
-    def _repaint_selection(self) -> None:
-        """Marks the cells the selection now covers and releases the ones it has left.
-
-        A selected cell is drawn by the selectable's own selected state, which the pattern table's
-        theme colours, so a repaint reaches only the cells whose membership actually changed.
-        """
-        selected = self._selected_cells()
-        for key in self._selection ^ selected:
-            widget = self._editable_cells.widget(key)
-            if widget is not None:
-                dpg.set_value(widget, key in selected)
-
-        self._selection = selected
-
     def _remove_cell_highlight(
         self,
         row_index: int,
@@ -1088,17 +1073,10 @@ class GUISequencerTrackerPanel(GUIPanel):
     ) -> None:
         """Places the cursor on the clicked cell, or carries a selection out to it while Shift is held.
 
-        The click leaves the selectable holding whatever DearPyGui toggled it to, so the cell is
-        released here and its membership dropped: the repaint that follows is what states whether
-        the cell the user clicked belongs to the selection.
-
-        A drag that comes back to the cell it started from ends on a click, and that click is the
-        end of the drag rather than a gesture of its own, so it leaves the selection standing.
+        A drag that comes back to the cell it started from ends on a click, and the selection takes
+        that click as the end of the drag, so the range dragged out stands and the cursor with it.
         """
-        dpg.set_value(sender, False)
-        self._selection -= {user_data}
-        if self._drag.claims_click():
-            self._repaint_selection()
+        if self._selection.claims_click(sender, user_data):
             return
 
         state = self._committed_state()
@@ -1116,7 +1094,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         The gesture states how far the pointer has carried: a plain drag anchors at the cell the
         press landed on, and one whose press held Shift carries the selection already standing.
         """
-        reach = self._drag.hold(app_data)
+        reach = self._selection.hold(app_data)
         if reach is None:
             return
 
@@ -1133,7 +1111,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         reaches this panel ahead of the click the cell itself reports: a drag that comes back to
         the cell it started from would otherwise have its selection taken down by its own click.
         """
-        self._drag.clear()
+        self._selection.drop_gesture()
 
     def _cell_at(self) -> Optional[CellKey]:
         """The cell the pointer stands on, clamped to the grid the shown frame lays out.

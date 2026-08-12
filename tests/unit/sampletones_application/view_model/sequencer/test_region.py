@@ -21,8 +21,6 @@ class TestTrackerRegion:
     def test_a_single_cell_region_covers_that_cell(self) -> None:
         region = TrackerRegion(first_row=3, last_row=3, first_slot=4, last_slot=4)
 
-        assert region.row_count == 1
-        assert region.slot_count == 1
         assert tuple(region.rows) == (3,)
         assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.TRANSPOSE),)
 
@@ -38,8 +36,8 @@ class TestTrackerRegion:
     def test_a_region_spans_the_whole_axis(self) -> None:
         region = TrackerRegion(first_row=0, last_row=63, first_slot=0, last_slot=SLOT_COUNT - 1)
 
-        assert region.row_count == 64
-        assert region.slot_count == SLOT_COUNT
+        assert tuple(region.rows) == tuple(range(64))
+        assert region.slots == tuple(slot_from_flat(index) for index in range(SLOT_COUNT))
 
     def test_inverted_rows_are_rejected(self) -> None:
         with pytest.raises(ValidationError):
@@ -63,8 +61,6 @@ class TestOrderRegion:
     def test_a_single_cell_region_covers_that_cell(self) -> None:
         region = OrderRegion(first_row=0, last_row=0, first_position=2, last_position=2)
 
-        assert region.row_count == 1
-        assert region.position_count == 1
         assert region.generators == (None,)
         assert tuple(region.positions) == (2,)
 
@@ -82,7 +78,7 @@ class TestOrderRegion:
         )
 
         assert region.generators == CHANNEL_AXIS
-        assert region.position_count == 8
+        assert tuple(region.positions) == tuple(range(8))
 
     def test_inverted_positions_are_rejected(self) -> None:
         with pytest.raises(ValidationError):

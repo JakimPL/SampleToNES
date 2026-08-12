@@ -39,7 +39,7 @@ from sampletones_application.ui.elements.plus_minus_buttons import (
 )
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
-from sampletones_application.ui.elements.table.drag import DragSelection
+from sampletones_application.ui.elements.table.selection import TableSelection
 from sampletones_application.ui.panels.sequencer.channels import (
     ChannelMenuLabels,
     ChannelSwitch,
@@ -142,10 +142,10 @@ class GUISequencerOrderPanel(GUIPanel):
         self._position_count: int = 0
         self._order: EditableCells[OrderKey] = EditableCells()
         self._input_state: OrderInputState = OrderInputState()
-        self._selection: FrozenSet[OrderKey] = frozenset()
-        self._drag: DragSelection[OrderKey] = DragSelection(
+        self._selection: TableSelection[OrderKey] = TableSelection(
             cells=self._order,
             cell_at=self._cell_at,
+            covered=self._selected_cells,
         )
         self._highlighted: Optional[OrderCursor] = None
         self._highlighted_column: Optional[int] = None
@@ -398,7 +398,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._clear_cursor_highlight()
         self._clear_column_highlight()
         self._input_state = OrderInputState()
-        self._repaint_selection()
+        self._selection.repaint()
         self._update_caret()
 
         if cursor is not None:
@@ -487,8 +487,7 @@ class GUISequencerOrderPanel(GUIPanel):
         dpg_delete_item(TAG_SEQUENCER_ORDER_TABLE)
         self._highlighted = None
         self._highlighted_column = None
-        self._selection = frozenset()
-        self._drag.clear()
+        self._selection.reset()
         self._order.reset(cell_values)
         self._position_count = view_model.position_count
         self._build_table(view_model.position_count)
@@ -754,20 +753,6 @@ class GUISequencerOrderPanel(GUIPanel):
 
         return frozenset(keys)
 
-    def _repaint_selection(self) -> None:
-        """Marks the cells the selection now covers and releases the ones it has left.
-
-        A selected cell is drawn by the selectable's own selected state, which the order table's
-        theme colours, so a repaint reaches only the cells whose membership actually changed.
-        """
-        selected = self._selected_cells()
-        for key in self._selection ^ selected:
-            widget = self._order.widget(key)
-            if widget is not None:
-                dpg.set_value(widget, key in selected)
-
-        self._selection = selected
-
     def _clear_cursor_highlight(self) -> None:
         if self._highlighted is None:
             return
@@ -834,7 +819,7 @@ class GUISequencerOrderPanel(GUIPanel):
             if old is None or old.position != new.position:
                 self.call(self.on_frame_selected, new.position)
 
-        self._repaint_selection()
+        self._selection.repaint()
         self._update_caret()
         self._refresh_remove_enabled()
 
@@ -869,17 +854,10 @@ class GUISequencerOrderPanel(GUIPanel):
     ) -> None:
         """Places the cursor on the clicked cell, or carries a selection out to it while Shift is held.
 
-        The click leaves the selectable holding whatever DearPyGui toggled it to, so the cell is
-        released here and its membership dropped: the repaint that follows is what states whether
-        the cell the user clicked belongs to the selection.
-
-        A drag that comes back to the cell it started from ends on a click, and that click is the
-        end of the drag rather than a gesture of its own, so it leaves the selection standing.
+        A drag that comes back to the cell it started from ends on a click, and the selection takes
+        that click as the end of the drag, so the range dragged out stands and the cursor with it.
         """
-        dpg.set_value(sender, False)
-        self._selection -= {user_data}
-        if self._drag.claims_click():
-            self._repaint_selection()
+        if self._selection.claims_click(sender, user_data):
             return
 
         state = self._committed_state()
@@ -897,7 +875,7 @@ class GUISequencerOrderPanel(GUIPanel):
         The gesture states how far the pointer has carried: a plain drag anchors at the cell the
         press landed on, and one whose press held Shift carries the selection already standing.
         """
-        reach = self._drag.hold(app_data)
+        reach = self._selection.hold(app_data)
         if reach is None:
             return
 
@@ -914,7 +892,7 @@ class GUISequencerOrderPanel(GUIPanel):
         reaches this panel ahead of the click the cell itself reports: a drag that comes back to
         the cell it started from would otherwise have its selection taken down by its own click.
         """
-        self._drag.clear()
+        self._selection.drop_gesture()
 
     def _cell_at(self) -> Optional[OrderKey]:
         """The cell the pointer stands on, clamped to the table the order lays out.

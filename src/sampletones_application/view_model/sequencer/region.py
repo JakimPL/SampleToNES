@@ -50,10 +50,6 @@ class GridRegion(BaseModel, frozen=True):
         return self
 
     @property
-    def row_count(self) -> int:
-        return self.last_row - self.first_row + 1
-
-    @property
     def rows(self) -> range:
         return range(self.first_row, self.last_row + 1)
 
@@ -78,10 +74,6 @@ class TrackerRegion(GridRegion, frozen=True):
             raise ValueError(f"A region's slots end at {self.last_slot}, before they begin at {self.first_slot}")
 
         return self
-
-    @property
-    def slot_count(self) -> int:
-        return self.last_slot - self.first_slot + 1
 
     @property
     def slots(self) -> Tuple[TrackerSlot, ...]:
@@ -117,10 +109,6 @@ class OrderRegion(GridRegion, frozen=True):
             )
 
         return self
-
-    @property
-    def position_count(self) -> int:
-        return self.last_position - self.first_position + 1
 
     @property
     def positions(self) -> range:

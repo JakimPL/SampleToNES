@@ -54,7 +54,6 @@ class TestSelection:
         region = extended.region
         assert region is not None
         assert (region.first_position, region.last_position) == (2, 3)
-        assert region.position_count == 2
 
     def test_extending_leftwards_names_the_same_region_as_rightwards(self) -> None:
         leftwards = _state(position=3).extend_position(-1, POSITION_COUNT).region
