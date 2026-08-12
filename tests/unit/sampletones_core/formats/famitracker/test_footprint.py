@@ -62,7 +62,7 @@ class TestFeaturesFootprint(BaseTestSuite):
         FootprintCase(
             features=build_features([15, 12, 9, 0], [0, 2, 4], [1, 1, 2]),
             loop=False,
-            expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=24),
+            expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=22),
             label="pulse_one_shot",
         ),
         FootprintCase(
@@ -72,9 +72,15 @@ class TestFeaturesFootprint(BaseTestSuite):
             label="pulse_loop",
         ),
         FootprintCase(
+            features=build_features([15, 0], [0], [0]),
+            loop=False,
+            expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=16),
+            label="dimensions_of_differing_lengths",
+        ),
+        FootprintCase(
             features=build_features([15, 12, 0], [0, 1], None),
             loop=False,
-            expected=InstrumentFootprint(instrument_bytes=7, sequence_bytes=14),
+            expected=InstrumentFootprint(instrument_bytes=7, sequence_bytes=13),
             label="triangle",
         ),
         FootprintCase(

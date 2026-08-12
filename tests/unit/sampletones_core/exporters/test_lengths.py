@@ -3,7 +3,7 @@ from typing import Dict, Final, Tuple
 
 import pytest
 
-from sampletones_core.exporters.lengths import equalize_lengths
+from sampletones_core.exporters.lengths import equalize_lengths, limit_lengths
 
 VOLUME: Final[str] = "volume"
 ARPEGGIO: Final[str] = "arpeggio"
@@ -42,6 +42,34 @@ class TestEqualizeLengths:
     def test_all_dimensions_empty_stay_empty(self) -> None:
         equalized = equalize_lengths({VOLUME: (), ARPEGGIO: (), DUTY: ()}, loop=True)
         assert all(items == () for items in equalized.values())
+
+
+class TestLimitLengths:
+    def test_every_dimension_keeps_its_own_length(self) -> None:
+        limited = limit_lengths({VOLUME: (15, 12, 9, 0), ARPEGGIO: (0, 2, 4)}, limit=ITEM_LIMIT)
+        assert limited[VOLUME] == (15, 12, 9, 0)
+        assert limited[ARPEGGIO] == (0, 2, 4)
+
+    def test_empty_dimensions_stay_empty(self) -> None:
+        limited = limit_lengths({VOLUME: (15, 12, 0), ARPEGGIO: ()}, limit=ITEM_LIMIT)
+        assert limited[ARPEGGIO] == ()
+
+    def test_an_over_long_envelope_keeps_its_opening_items(self) -> None:
+        limited = limit_lengths(volume_and_arpeggio(ITEM_LIMIT + 48), limit=ITEM_LIMIT)
+        assert limited[VOLUME] == items_of(ITEM_LIMIT)
+        assert len(limited[ARPEGGIO]) == ITEM_LIMIT
+
+    def test_an_over_long_envelope_is_reported(self, caplog: pytest.LogCaptureFixture) -> None:
+        with caplog.at_level(logging.WARNING):
+            limit_lengths(volume_and_arpeggio(ITEM_LIMIT + 1), limit=ITEM_LIMIT)
+
+        assert str(ITEM_LIMIT) in caplog.text
+
+    def test_an_envelope_within_the_limit_is_quiet(self, caplog: pytest.LogCaptureFixture) -> None:
+        with caplog.at_level(logging.WARNING):
+            limit_lengths(volume_and_arpeggio(ITEM_LIMIT), limit=ITEM_LIMIT)
+
+        assert caplog.text == ""
 
 
 class TestItemLimit:

@@ -611,6 +611,7 @@ class ReconstructionTabCoordinator:
 
     def update_reconstruction(self) -> None:
         self._reconstruction_panel_logic.update_reconstruction()
+        self._reconstruction_instruments_logic.refresh_footprint()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
