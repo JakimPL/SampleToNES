@@ -4,8 +4,9 @@ A **block** is a rectangle of one sequencer grid, lifted out of the song so it c
 written back somewhere else. Copy, cut, paste and delete are the four gestures over it,
 and both grids — the tracker's pattern rows and the order's frames — carry the same set.
 
-This document states the rules those gestures follow, and how a grid's actions reach the
-menus and the keyboard that fire them. The layering they sit in is
+This document states the rules those gestures follow, how a block leaves the app as text,
+how a selection is drawn, and how a grid's actions reach the menus and the keyboard that
+fire them. The layering they sit in is
 [Architecture](architecture.md); the conventions the code is held to are the
 [coding guidelines](guidelines.md).
 
@@ -101,6 +102,58 @@ Each cell reaches the grid through the single-cell adjustment that already gover
 pasted cell does, so a shift lands exactly the writes the same nudge repeated by hand would make —
 the transpose and volume ranges included.
 
+## A block states itself as text
+
+A copy also writes the block to the desktop's clipboard, as the lines the grid prints — a
+tracker block:
+
+```
+SampleToNES/1 tracker rows=2 slots=3..5
+00 +05 3
+.. -02 .
+```
+
+and an order block:
+
+```
+SampleToNES/1 order rows=1 positions=0..1
+00 03
+```
+
+The form and its reading live in `logic/sequencer/clipboard/`, which deals in blocks and
+strings alone; the desktop's clipboard is reached through
+`utils/gui/clipboard.py::TextClipboard`, one more piece of external behaviour standing behind
+a protocol ([Architecture](architecture.md), principle 11). The sequencer coordinator wires
+the two.
+
+**A field prints what the grid prints in its cell**, which is what carries the three states
+across: a value reads as its value, an empty cell as the dots beneath it, and a mixed one as
+the marks filling its field. The marks fill the whole width, so every line measures the same
+and a block pasted into a message still reads as a grid; reading takes any run of them.
+
+**The header is a declaration the body is held to.** It names the grid, the count of rows, and
+the span of slots or positions the block stands on, and a body whose lines or fields disagree
+with it states no block. The span also carries the alignment a tracker block needs, since the
+first slot decides which subcolumn the block opens on.
+
+**A note names its sample by list position**, the figure the grid prints, so a block carried to
+another project plays whichever sample stands at that position there. A position the project's
+list falls short of reads as mixed, which is what the writer already makes of a sample it has
+nothing to place.
+
+A field the form has no reading for refuses the whole text, so a parse answers with a block or
+with nothing. Digits are read in either case, and transpose and volume are held to the ranges a
+row accepts, so text typed by hand lands the values the grid would.
+
+### Which block a paste writes
+
+A copy writes both clipboards, and a paste reads the desktop's text first: it stands while it
+parses as a block for *that* grid, and any other text leaves the grid's own block in hand. So a
+block copied in a second instance pastes here, and a copy taken in this one survives whatever
+else the desktop picks up afterwards. `can_paste_block` asks the same question through a
+`ParsedBlockCache`, which reparses only when the text has changed, so opening a menu costs one
+string compare.
+
 ## A grid declares its actions once
 
 Where they are shown is decided by whoever asks for them. Each grid builds its whole
@@ -146,6 +199,23 @@ covers is its coalescing target, so a streak over one selection leaves a single 
 shift after the cursor moves or the selection is reached out starts the next entry. Transpose and
 volume count separately, each carrying its own action.
 
+## A shape selects to the grid's own edges
+
+`Ctrl+A` and its neighbours select a whole shape at once. Each shape is stated on the input
+state as a run of bounds along one axis — slots in the tracker, rows in the order — handed to a
+single builder that spans the other axis to the grid's full extent and lands the cursor on the
+far corner. The whole frame, a column and a subcolumn are therefore three namings of one
+rectangle, as the whole order and a channel row are of the other, and a grid laying out nothing
+keeps the selection it had.
+
+The aggregate is an ordinary member of the axis here: selecting the **Sample** column selects a
+column the way selecting a channel does, and the **Master** row a row.
+
+A press names its shape from the cell the cursor stands on, which is the cell the context menu's
+items name too, so a key and an item reach the same rectangle. In the tracker a shape ends at
+the frame's last row, so standing one carries the grid to where the cursor landed — the same
+reveal a `Shift+End` reach makes.
+
 ## Dragging a range out
 
 Both grids compose one `TableSelection` (`ui/elements/table/selection.py`), which holds what
@@ -167,13 +237,41 @@ position lookup is arithmetic in the same way, taking its pitch from the first t
 columns; its channel lookup walks the rows, because the master row stands apart from the
 channels beneath it.
 
+### A drag past the edge carries the view
+
+A pointer held past the cells on screen travels the grid under it, so a selection reaches
+further than the viewport holds. `grid/scroll/` states this in three pieces: a `ScrollAxis`
+naming the one DearPyGui axis a table scrolls along and the pointer coordinate that runs past
+its edges, a `TravelBand` saying where the cells stand along that axis, and the `DragTravel`
+that reads the two each frame. The tracker travels vertically and the order horizontally, both
+from the same class.
+
+Three rules make the travel feel like one gesture:
+
+- **The pointer report drives it.** A held pointer keeps reporting wherever it is carried to,
+  including past the window, so the travel runs off the same report the drag itself reads.
+- **The frame's own duration paces it**, so the same stretch of grid passes under the pointer
+  however fast the frames arrive. The pace answers how far past the edge the pointer stands,
+  rising from a floor to a ceiling over a few cells' overshoot: a nudge creeps, a reach covers
+  the grid.
+- **Each step is added to the offset last issued.** A table reports the scroll it was drawn
+  with rather than the one just set, so a travel reading it back would re-issue an offset it
+  has already reached. It rests as soon as the pointer stands within the band again, at the
+  press that opens the next gesture, and on a rebuild — and the travel that follows sets out
+  from the offset the grid is drawn with.
+
 ## Accepted limitations
 
 - **A rebuilt table has no selection.** Both grids reconstruct their input state on
   rebuild, so following playback and the rebuild after a growing paste leave the cursor
   and drop the selection. The rows a region named belong to the body that was replaced.
 - **The selection stays put after a paste** rather than becoming the pasted footprint.
-- **Cross-project paste is lossy in the note column and exact in transpose and volume.**
-  A slot survives a project close, because it must survive `on_project_replaced`, which
-  fires on every undo; a note naming a sample the project in place lacks is left out of
-  the write, and the target keeps what it had.
+- **A note crosses a project by whichever route it took.** The in-app slot survives a project
+  close, because it must survive `on_project_replaced`, which fires on every undo, and it names
+  its sample by id: a note whose sample the project in place lacks is left out of the write, and
+  the target keeps what it had. The clipboard's text names a list position instead, so the same
+  note pasted through it plays whichever sample stands at that position. Transpose and volume
+  are exact by either route.
+- **A drag past the edge and the followed playhead both write the scroll.** With **Follow rows**
+  on during playback, `_reveal_playing_row` carries the sounding row to the head of the band
+  while a held pointer travels the grid, so the two take turns each frame.

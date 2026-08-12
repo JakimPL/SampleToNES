@@ -18,8 +18,9 @@ the project already has samples, _SampleToNES_ warns with **Different NES
 frequency**; **Add anyway** adds it regardless.
 
 Manage the imported samples in the **Samples** list on the right: right-click one
-to **Rename**, **Duplicate**, **Remove**, or reorder it, and toggle its **Loop**
-flag. Removing a sample that patterns still use asks **Remove sample** first,
+to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it, and toggle its
+**Loop** flag. The **Edit** menu carries the same actions for the sample you have
+picked. Removing a sample that patterns still use asks **Remove sample** first,
 because it clears every row that references it.
 
 ## Writing a pattern
@@ -46,22 +47,30 @@ own so you can change it on its own, and **Insert frame**, **Clear frame**,
 Both grids take a **selection** — a rectangle of cells you copy, cut, paste, and
 delete in one go. Hold `Shift` and press the arrow keys to reach out from the
 cursor, or drag the pointer across the cells; `Shift`+click carries the selection to
-the cell you click. Any plain move, and `Escape`, puts it away again.
+the cell you click. Dragging past the edge of a grid scrolls it along, so a selection
+can run further than the screen shows. Any plain move, and `Escape`, puts the
+selection away again.
 
 | Key | Action |
 |-----|--------|
 | `Shift`+arrows | Reach the selection out a cell at a time |
 | `Shift+Home` / `Shift+End` | Reach it to the first or the last row (tracker) or position (order) |
+| `Ctrl+A` | Select the whole frame, or the whole order |
+| `Ctrl+Shift+A` | Select the column you are in (tracker), or your channel's row (order) |
+| `Ctrl+Alt+A` | Select the subcolumn you are in (tracker) |
 | `Ctrl+C` | Copy |
 | `Ctrl+X` | Cut — copy, then empty what was selected |
 | `Ctrl+V` | Paste, starting at the cursor |
 | `Del` | Empty the selection |
 
-With nothing selected these act on the cell the cursor stands on, so copying one
-cell needs no selection first. The same four sit on each grid's right-click menu:
-raised inside a selection they act on the whole of it, raised anywhere else on the
-cell you clicked. Each grid keeps its own copy, so a tracker block pastes into the
-tracker and an order block into the order.
+Copy, cut, paste and delete act on the cell the cursor stands on when nothing is
+selected, so copying one cell needs no selection first. All four sit on each grid's
+right-click menu: raised inside a selection they act on the whole of it, raised
+anywhere else on the cell you clicked. Each grid keeps its own copy, so a tracker
+block pastes into the tracker and an order block into the order.
+
+The **Select** keys work from the cell you are on and reach the whole length of the
+grid. They sit on the right-click menu too.
 
 A paste is anchored: the block starts at the cell you paste onto and lands the rest
 down and to the right of it.
@@ -79,6 +88,13 @@ as it was.
 
 Emptying cells keeps the rows and frames they sit in, and every block action is one
 step in the history, so a single **Undo** takes it all back.
+
+A copy also goes to your desktop's clipboard as plain text, so a block carries between
+two open windows of _SampleToNES_ — copy in one, paste in the other — and you can paste
+one into a message to show someone what you wrote. Anything else on the clipboard
+leaves you with the last block you copied here. Notes travel by their number in the
+**Samples** list, so a block pasted into another project plays whichever sample holds
+that number there.
 
 ## Transposing and shading
 
