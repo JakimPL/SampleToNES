@@ -45,6 +45,9 @@ from sampletones_application.ui.panels.sequencer.channels import (
 )
 from sampletones_application.ui.panels.sequencer.columns import channel_color
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
+from sampletones_application.ui.panels.sequencer.grid.scroll.axis import HorizontalScroll
+from sampletones_application.ui.panels.sequencer.grid.scroll.band import TravelBand
+from sampletones_application.ui.panels.sequencer.grid.scroll.travel import DragTravel
 from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
     BlockShortcuts,
     ClipboardItems,
@@ -150,6 +153,11 @@ class GUISequencerOrderPanel(GUIPanel):
             cells=self._order,
             cell_at=self._cell_at,
             covered=self._selected_cells,
+        )
+        self._travel: DragTravel = DragTravel(
+            axis=HorizontalScroll(table=TAG_SEQUENCER_ORDER_TABLE),
+            band=self._travel_band,
+            elapsed=dpg.get_delta_time,
         )
         self._highlighted: Optional[OrderCursor] = None
         self._highlighted_column: Optional[int] = None
@@ -502,6 +510,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._highlighted = None
         self._highlighted_column = None
         self._selection.reset()
+        self._travel.rest()
         self._order.reset(cell_values)
         self._position_count = view_model.position_count
         self._build_table(view_model.position_count)
@@ -888,7 +897,11 @@ class GUISequencerOrderPanel(GUIPanel):
 
         The gesture states how far the pointer has carried: a plain drag anchors at the cell the
         press landed on, and one whose press held Shift carries the selection already standing.
+
+        A pointer held past an edge travels the table first, so the reach that follows reads the
+        positions the travel has brought into view.
         """
+        self._travel.advance()
         reach = self._selection.hold(app_data)
         if reach is None:
             return
@@ -907,6 +920,24 @@ class GUISequencerOrderPanel(GUIPanel):
         the cell it started from would otherwise have its selection taken down by its own click.
         """
         self._selection.drop_gesture()
+        self._travel.rest()
+
+    def _travel_band(self) -> Optional[TravelBand]:
+        """Where the order's positions stand, which is the band a drag held beside them travels across.
+
+        Two positions state the pitch the columns are laid out at, so an order holding one of them
+        travels nowhere — there is nothing beside it to reach.
+        """
+        first = self._cell_left(0)
+        following = self._cell_left(1)
+        if first is None or following is None:
+            return None
+
+        return TravelBand(
+            first_edge=first,
+            cell_extent=following - first,
+            cell_count=self._position_count,
+        )
 
     def _cell_at(self) -> Optional[OrderKey]:
         """The cell the pointer stands on, clamped to the table the order lays out.

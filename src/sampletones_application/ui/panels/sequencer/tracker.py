@@ -49,6 +49,9 @@ from sampletones_application.ui.panels.sequencer.columns import (
 )
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
+from sampletones_application.ui.panels.sequencer.grid.scroll.axis import VerticalScroll
+from sampletones_application.ui.panels.sequencer.grid.scroll.band import TravelBand
+from sampletones_application.ui.panels.sequencer.grid.scroll.travel import DragTravel
 from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
     BlockShortcuts,
     ClipboardItems,
@@ -235,6 +238,11 @@ class GUISequencerTrackerPanel(GUIPanel):
             cells=self._editable_cells,
             cell_at=self._cell_at,
             covered=self._selected_cells,
+        )
+        self._travel: DragTravel = DragTravel(
+            axis=VerticalScroll(table=TAG_SEQUENCER_TRACKER_TABLE),
+            band=self._travel_band,
+            elapsed=dpg.get_delta_time,
         )
         self._subcolumn_themes: Dict[SubColumn, int] = {}
         self._muted_subcolumn_themes: Dict[SubColumn, int] = {}
@@ -559,6 +567,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg_delete_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
         self._input_state = self._input_state.collapse()
         self._selection.reset()
+        self._travel.rest()
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self.repaint()
@@ -1160,7 +1169,11 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         The gesture states how far the pointer has carried: a plain drag anchors at the cell the
         press landed on, and one whose press held Shift carries the selection already standing.
+
+        A pointer held past an edge travels the grid first, so the reach that follows reads the rows
+        the travel has brought into view.
         """
+        self._travel.advance()
         reach = self._selection.hold(app_data)
         if reach is None:
             return
@@ -1179,6 +1192,19 @@ class GUISequencerTrackerPanel(GUIPanel):
         the cell it started from would otherwise have its selection taken down by its own click.
         """
         self._selection.drop_gesture()
+        self._travel.rest()
+
+    def _travel_band(self) -> Optional[TravelBand]:
+        """Where the frame's rows stand, which is the band a drag held below them travels across."""
+        first = self._row_top(0)
+        if first is None or self._current_row_count == 0:
+            return None
+
+        return TravelBand(
+            first_edge=first,
+            cell_extent=self._layout.tracker.row_height,
+            cell_count=self._current_row_count,
+        )
 
     def _cell_at(self) -> Optional[CellKey]:
         """The cell the pointer stands on, clamped to the grid the shown frame lays out.

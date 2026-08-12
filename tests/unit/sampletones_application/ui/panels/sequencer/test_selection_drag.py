@@ -10,8 +10,19 @@ from sampletones_application.paths import (
     LAYOUT_DIRECTORY,
     PALETTES_DIRECTORY,
 )
+from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_ORDER_TABLE,
+    TAG_SEQUENCER_TRACKER_TABLE,
+)
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.elements.table.selection import TableSelection
+from sampletones_application.ui.panels.sequencer.grid.scroll.axis import (
+    HorizontalScroll,
+    ScrollAxis,
+    VerticalScroll,
+)
+from sampletones_application.ui.panels.sequencer.grid.scroll.band import TravelBand
+from sampletones_application.ui.panels.sequencer.grid.scroll.travel import DragTravel
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
@@ -42,6 +53,11 @@ def layout_config() -> LayoutConfig:
 @pytest.fixture
 def sequencer_layout(layout_config: LayoutConfig) -> SequencerLayout:
     return layout_config.tabs.sequencer
+
+
+def _resting_travel(axis: ScrollAxis) -> DragTravel:
+    """A travel over a grid that was never drawn: stating no band, it carries a drag nowhere."""
+    return DragTravel(axis=axis, band=lambda: None, elapsed=lambda: 1.0 / 60.0)
 
 
 def _hold_modifiers(
@@ -76,6 +92,7 @@ def _tracker(
         cell_at=lambda: panel._cell_at(),
         covered=panel._selected_cells,
     )
+    panel._travel = _resting_travel(VerticalScroll(table=TAG_SEQUENCER_TRACKER_TABLE))
 
     states: List[TrackerInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
@@ -99,6 +116,7 @@ def _order(
         cell_at=lambda: panel._cell_at(),
         covered=panel._selected_cells,
     )
+    panel._travel = _resting_travel(HorizontalScroll(table=TAG_SEQUENCER_ORDER_TABLE))
 
     states: List[OrderInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
@@ -277,6 +295,75 @@ class TestTrackerDragHitTest:
         monkeypatch.setattr(panel, "_row_top", lambda index: None)
 
         assert panel._row_at(100.0) is None
+
+
+class TestTravelBands:
+    """Each grid states the band a drag held past an edge travels across, in its own axis."""
+
+    def test_the_tracker_band_runs_from_the_first_row(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sequencer_layout: SequencerLayout,
+    ) -> None:
+        panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+        panel._layout = sequencer_layout
+        panel._current_row_count = ROW_COUNT
+        monkeypatch.setattr(panel, "_row_top", lambda index: 100.0 if index == 0 else None)
+
+        assert panel._travel_band() == TravelBand(
+            first_edge=100.0,
+            cell_extent=sequencer_layout.tracker.row_height,
+            cell_count=ROW_COUNT,
+        )
+
+    def test_a_tracker_awaiting_its_rows_states_no_band(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sequencer_layout: SequencerLayout,
+    ) -> None:
+        panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+        panel._layout = sequencer_layout
+        panel._current_row_count = ROW_COUNT
+        monkeypatch.setattr(panel, "_row_top", lambda index: None)
+
+        assert panel._travel_band() is None
+
+    def test_an_empty_frame_states_no_band(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sequencer_layout: SequencerLayout,
+    ) -> None:
+        panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+        panel._layout = sequencer_layout
+        panel._current_row_count = 0
+        monkeypatch.setattr(panel, "_row_top", lambda index: 100.0)
+
+        assert panel._travel_band() is None
+
+    def test_the_order_band_runs_across_from_the_first_position(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+        panel._position_count = POSITION_COUNT
+        monkeypatch.setattr(panel, "_cell_left", lambda position: 40.0 + 25.0 * position)
+
+        assert panel._travel_band() == TravelBand(
+            first_edge=40.0,
+            cell_extent=25.0,
+            cell_count=POSITION_COUNT,
+        )
+
+    def test_an_order_of_one_position_states_no_band(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A single position holds every width there is, so nothing states the pitch to travel by."""
+        panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+        panel._position_count = 1
+        monkeypatch.setattr(panel, "_cell_left", lambda position: 40.0 if position == 0 else None)
+
+        assert panel._travel_band() is None
 
 
 class TestOrderDrag:
