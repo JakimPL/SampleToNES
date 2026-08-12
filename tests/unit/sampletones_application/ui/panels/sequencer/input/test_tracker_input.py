@@ -137,20 +137,19 @@ class TestSelection:
 class TestTargetRegion:
     """The region a block gesture acts on, which is the selection wherever one has been made."""
 
-    def test_a_cursor_alone_targets_its_own_cell(self) -> None:
-        region = _state(SubColumn.TRANSPOSE, row=4).target_region
+    def test_a_cell_of_a_grid_with_nothing_selected_is_raised_on_itself(self) -> None:
+        cell = TrackerCursor(4, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
 
-        assert region is not None
+        region = _state(SubColumn.TRANSPOSE, row=4).region_at(cell)
+
         assert (region.first_row, region.last_row) == (4, 4)
         assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.TRANSPOSE),)
 
-    def test_a_selection_is_targeted_whole(self) -> None:
+    def test_a_cell_of_a_selection_is_raised_on_the_whole_of_it(self) -> None:
         selected = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT)
+        cell = TrackerCursor(5, GeneratorName.PULSE1, SubColumn.INSTRUMENT)
 
-        assert selected.target_region == selected.region
-
-    def test_a_grid_with_no_cursor_targets_nothing(self) -> None:
-        assert TrackerInputState().target_region is None
+        assert selected.region_at(cell) == selected.region
 
 
 class TestColumnNavigation:

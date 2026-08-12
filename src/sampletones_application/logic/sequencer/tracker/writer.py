@@ -1,13 +1,6 @@
+from collections.abc import Hashable
 from typing import Callable, Dict, Optional, TypeVar
 
-from sampletones_application.logic.sequencer.tracker.block import (
-    BlockKey,
-    BlockNote,
-    TrackerBlock,
-)
-from sampletones_application.logic.sequencer.tracker.tracker import (
-    SequencerTrackerLogic,
-)
 from sampletones_application.view_model.sequencer.region import (
     TrackerCell,
     TrackerRegion,
@@ -21,7 +14,10 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.note_off import NoteOff
 
-ValueT = TypeVar("ValueT")
+from .block import BlockKey, BlockNote, TrackerBlock
+from .tracker import SequencerTrackerLogic
+
+ValueT = TypeVar("ValueT", bound=Hashable)
 
 
 class TrackerBlockWriter:

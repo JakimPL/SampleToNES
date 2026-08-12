@@ -50,11 +50,12 @@ from sampletones_application.ui.panels.sequencer.columns import (
     tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
+from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
 )
-from sampletones_application.ui.panels.sequencer.input.target import TrackerMenuTarget
+from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.rows import RowCues, row_background
 from sampletones_application.ui.themes.inline import (
@@ -203,6 +204,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_channels_muted: Optional[VoidCallback] = None
         self.on_channels_unmuted: Optional[VoidCallback] = None
 
+        self._blocks: BlockGestures[TrackerRegion, TrackerCell] = BlockGestures(grid=self)
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 
         self._lbl_tracker = self._label(
@@ -1247,7 +1249,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         generator: Optional[GeneratorName],
         subcolumn: SubColumn,
     ) -> None:
-        target = self._menu_target(TrackerCursor(row_index, generator, subcolumn))
+        target = self._target_at(TrackerCursor(row_index, generator, subcolumn))
         with context_menu():
             header = dpg.add_text(
                 tracker_display.indexed_label(row_index, self._column_labels[generator]),
@@ -1267,12 +1269,20 @@ class GUISequencerTrackerPanel(GUIPanel):
             dpg.add_separator()
             self._add_action_items(target)
 
-    def _menu_target(self, cell: TrackerCursor) -> TrackerMenuTarget:
-        """The cell a set of actions is built for, paired with the block those actions act on."""
-        return TrackerMenuTarget(
+    def _target_at(self, cell: TrackerCursor) -> TrackerTarget:
+        """The cell a set of actions is raised on, paired with the block those actions act on."""
+        return TrackerTarget(
             cell=cell,
             region=self._input_state.region_at(cell),
         )
+
+    def cursor_target(self) -> Optional[TrackerTarget]:
+        """The target the cursor names, which is what a key press and the Edit menu act on."""
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return None
+
+        return self._target_at(cursor)
 
     def owns_edit_actions(self) -> bool:
         """Whether the Edit menu states this grid's actions, which it does while the grid owns keys.
@@ -1287,13 +1297,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         The menu bar asks while the grid owns the editing gestures, so the cursor names the target
         the same way a pointer names it on the cell menu.
         """
-        cursor = self._input_state.cursor
-        if cursor is None:
-            return
+        target = self.cursor_target()
+        if target is not None:
+            self._add_action_items(target)
 
-        self._add_action_items(self._menu_target(cursor))
-
-    def _add_action_items(self, target: TrackerMenuTarget) -> None:
+    def _add_action_items(self, target: TrackerTarget) -> None:
         """Builds every action a tracker cell offers, in the order each menu prints them.
 
         The grid states its actions once, and whoever asks for them decides where they are shown:
@@ -1314,7 +1322,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg.add_separator()
         self._add_clear_items(target.cell)
 
-    def _add_block_items(self, target: TrackerMenuTarget) -> None:
+    def _add_block_items(self, target: TrackerTarget) -> None:
         """Builds the clipboard items, acting on the block the actions were raised on.
 
         Paste is offered once a block has been copied, and it anchors at the target's own cell, so
@@ -1325,22 +1333,22 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg.add_menu_item(
             label=self._lbl_context_copy,
             shortcut=self._shortcuts.display(ShortcutId.TRACKER_COPY_BLOCK),
-            callback=lambda: self.call(self.on_copy_block, target.region),
+            callback=lambda: self._blocks.copy_at(target),
         )
         dpg.add_menu_item(
             label=self._lbl_context_cut,
             shortcut=self._shortcuts.display(ShortcutId.TRACKER_CUT_BLOCK),
-            callback=lambda: self.call(self.on_cut_block, target.region),
+            callback=lambda: self._blocks.cut_at(target),
         )
         dpg.add_menu_item(
             label=self._lbl_context_paste,
             shortcut=self._shortcuts.display(ShortcutId.TRACKER_PASTE_BLOCK),
-            enabled=self.query(self.can_paste_block, default=False),
-            callback=lambda: self.call(self.on_paste_block, target.anchor),
+            enabled=self._blocks.can_paste(),
+            callback=lambda: self._blocks.paste_at(target),
         )
         dpg.add_menu_item(
             label=self._lbl_context_delete,
-            callback=lambda: self.call(self.on_delete_block, target.region),
+            callback=lambda: self._blocks.delete_at(target),
         )
 
     def _add_instrument_submenu(self, cell: TrackerCursor) -> None:
@@ -1544,43 +1552,17 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         match shortcut_id:
             case ShortcutId.TRACKER_COPY_BLOCK:
-                self._region_gesture(self.on_copy_block)
+                self._blocks.copy()
             case ShortcutId.TRACKER_CUT_BLOCK:
-                self._region_gesture(self.on_cut_block)
+                self._blocks.cut()
             case ShortcutId.TRACKER_CLEAR_ROW if self._input_state.region is not None:
-                self._region_gesture(self.on_delete_block)
+                self._blocks.delete()
             case ShortcutId.TRACKER_PASTE_BLOCK:
-                self._paste_block()
+                self._blocks.paste()
             case _:
                 return False
 
         return True
-
-    def _region_gesture(self, callback: Optional[OnBlockRegionCallback]) -> None:
-        """Hands the selected block out to a gesture, the cell under the cursor standing for itself.
-
-        A partial entry is committed first, so the block carries the value the reader has just
-        finished typing.
-        """
-        state = self._committed_state()
-        self._apply_state(state)
-        region = state.target_region
-        if region is not None:
-            self.call(callback, region)
-
-    def _paste_block(self) -> None:
-        """Names the cell a block is written from, which is wherever the cursor stands."""
-        state = self._committed_state()
-        self._apply_state(state)
-        cursor = state.cursor
-        if cursor is not None:
-            self.call(
-                self.on_paste_block,
-                TrackerCell(
-                    row=cursor.row,
-                    generator=cursor.generator,
-                ),
-            )
 
     def _edit_row(self, shortcut_id: ShortcutId) -> bool:
         """Empties the cell under the cursor or drops a partial entry, reporting whether the action
@@ -1741,6 +1723,14 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._handle_edit_action(edit_action)
 
         return state
+
+    def commit_entry(self) -> None:
+        """Writes the entry being typed into the cell the cursor stands on.
+
+        A block gesture takes this first, so what it lifts out carries the value the reader has
+        just finished typing.
+        """
+        self._apply_state(self._committed_state())
 
     def _type_character(self, event: KeyEvent) -> bool:
         """Types a note, digit or sign into the cell under the cursor, reporting whether the press

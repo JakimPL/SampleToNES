@@ -90,11 +90,11 @@ emptied trailing frames stand as silent ones.
 ## What a gesture acts on
 
 - **From the keyboard**: the selection, or — with none up — the cursor's own cell.
-  `target_region` on each input state is where that fallback lives, so copying one cell
+  `region_at` on the shared input state is where that fallback lives, so copying one cell
   needs no selection made first.
 - **From a context menu**: the selection when the menu was raised inside it, and the
-  clicked cell otherwise (`_menu_region` on each panel, over `Region.covers`). A paste
-  from a menu anchors at the clicked cell; a paste from the keyboard anchors at the cursor.
+  clicked cell otherwise (the same `region_at`, over `Region.covers`). A paste from a menu
+  anchors at the clicked cell; a paste from the keyboard anchors at the cursor.
 - **`Del`** carries two meanings, resolved by whether a selection stands. Two ids cannot
   share a combination inside a shortcut category, so this branch is the route; it also
   matches tracker convention.

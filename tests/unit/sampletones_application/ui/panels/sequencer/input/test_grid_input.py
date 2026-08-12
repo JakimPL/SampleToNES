@@ -105,21 +105,13 @@ class TestSelection:
 class TestTarget:
     """The region a block gesture acts on, which is the selection wherever one has been made."""
 
-    def test_a_cursor_alone_targets_its_own_cell(self) -> None:
-        assert _state(row=2, column=1).target_region == _Block(
+    def test_a_cell_of_a_grid_with_nothing_selected_is_raised_on_itself(self) -> None:
+        assert _state(row=2, column=1).region_at(_Cell(2, 1)) == _Block(
             first_row=2,
             last_row=2,
             first_column=1,
             last_column=1,
         )
-
-    def test_a_selection_is_targeted_whole(self) -> None:
-        selected = _state().extend_to(_Cell(4, 3))
-
-        assert selected.target_region == selected.region
-
-    def test_a_grid_with_no_cursor_targets_nothing(self) -> None:
-        assert _GridState().target_region is None
 
     def test_a_cell_inside_the_selection_is_raised_on_the_whole_of_it(self) -> None:
         selected = _state(row=2, column=1).extend_to(_Cell(6, 5))

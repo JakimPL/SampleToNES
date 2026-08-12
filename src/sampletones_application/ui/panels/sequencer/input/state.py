@@ -56,25 +56,15 @@ class GridInputState(ABC, Generic[CursorT, RegionT]):
 
         A gesture raised inside a selection acts on the whole of it, which is what a reader who has
         just dragged a range out expects it to reach; one raised anywhere else acts on the cell it
-        names, which is a block of exactly that cell.
+        names, which is a block of exactly that cell. A cursor with nothing selected therefore
+        stands on a block of one cell, so copying reaches the cell the reader is working in and
+        needs no selection made first.
         """
         region = self.region
         if region is not None and self._covers(region, cell):
             return region
 
         return self._region_between(cell, cell)
-
-    @property
-    def target_region(self) -> Optional[RegionT]:
-        """The region a block gesture acts on: the selection, or the cursor's own cell.
-
-        A cursor with nothing selected stands on a block of one cell, so copying reaches the cell
-        the reader is working in and needs no selection made first.
-        """
-        if self.cursor is None:
-            return None
-
-        return self.region_at(self.cursor)
 
     def extend_to(self, cursor: CursorT) -> Self:
         """Carries the moving end of the selection to ``cursor``, anchoring it where it began.

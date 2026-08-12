@@ -142,7 +142,6 @@ class TestChannelColumn:
 
         block = reader.read(_column(GeneratorName.PULSE1, last_row=3))
 
-        assert block.row_count == 4
         assert block.volumes[_key(SubColumn.VOLUME)] == 4
         assert block.volumes[_key(SubColumn.VOLUME, 2)] is None
         assert block.volumes[_key(SubColumn.VOLUME, 3)] is None
@@ -232,15 +231,15 @@ class TestSampleColumn:
         assert block.volumes[_key(SubColumn.VOLUME)] is None
 
 
-class TestExtent:
-    """A block states the rectangle it was read from, whatever the cells in it turned out to hold."""
+class TestOffsets:
+    """A block addresses its values by the offsets it was read at, whatever the cells hold."""
 
-    def test_a_mixed_edge_column_keeps_its_place_in_the_block(
+    def test_a_mixed_edge_column_leaves_only_itself_out(
         self,
         logic: SequencerTrackerLogic,
         reader: TrackerBlockReader,
     ) -> None:
-        """The last slot reads as nothing, and the extent is what still states the block reaches it."""
+        """The last slot reads as nothing, and the cells beside it keep the offsets they stand at."""
         logic.set_cell_subcolumn(0, GeneratorName.PULSE1, volume=2)
 
         block = reader.read(
@@ -252,8 +251,8 @@ class TestExtent:
             )
         )
 
-        assert (block.first_slot, block.last_slot) == (0, 2)
-        assert block.slot_count == 3
+        assert set(block.notes) == {_key(SubColumn.INSTRUMENT)}
+        assert set(block.transposes) == {_key(SubColumn.TRANSPOSE)}
         assert _key(SubColumn.VOLUME) not in block.volumes
 
     def test_the_offsets_are_measured_from_the_column_the_block_begins_in(
@@ -274,7 +273,6 @@ class TestExtent:
             )
         )
 
-        assert (block.first_slot, block.last_slot) == (1, 3)
         assert set(block.transposes) == {(0, 1)}
         assert set(block.volumes) == {(0, 2)}
         assert set(block.notes) == {(0, 3)}

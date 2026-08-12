@@ -46,12 +46,13 @@ from sampletones_application.ui.panels.sequencer.channels import (
     channel_tooltip,
 )
 from sampletones_application.ui.panels.sequencer.columns import channel_color
+from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.input.order import (
     INDEX_DIGITS,
     OrderCursor,
     OrderInputState,
 )
-from sampletones_application.ui.panels.sequencer.input.target import OrderMenuTarget
+from sampletones_application.ui.panels.sequencer.input.target import OrderTarget
 from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
     create_selectable_text_theme,
@@ -183,6 +184,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_channels_muted: Optional[VoidCallback] = None
         self.on_channels_unmuted: Optional[VoidCallback] = None
 
+        self._blocks: BlockGestures[OrderRegion, OrderCell] = BlockGestures(grid=self)
         self._lbl_order = self._label(language_manager, SequencerOrderElements.ORDER_TEXT)
         self._load_row_labels(language_manager)
         self._load_context_labels(language_manager)
@@ -1032,7 +1034,7 @@ class GUISequencerOrderPanel(GUIPanel):
         generator: Optional[GeneratorName],
         position: int,
     ) -> None:
-        target = self._menu_target(OrderCursor(generator, position))
+        target = self._target_at(OrderCursor(generator, position))
         with context_menu():
             header = dpg.add_text(display_id(position))
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
@@ -1045,12 +1047,20 @@ class GUISequencerOrderPanel(GUIPanel):
             dpg.add_separator()
             self._add_action_items(target)
 
-    def _menu_target(self, cell: OrderCursor) -> OrderMenuTarget:
-        """The cell a set of actions is built for, paired with the block those actions act on."""
-        return OrderMenuTarget(
+    def _target_at(self, cell: OrderCursor) -> OrderTarget:
+        """The cell a set of actions is raised on, paired with the block those actions act on."""
+        return OrderTarget(
             cell=cell,
             region=self._input_state.region_at(cell),
         )
+
+    def cursor_target(self) -> Optional[OrderTarget]:
+        """The target the cursor names, which is what a key press and the Edit menu act on."""
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return None
+
+        return self._target_at(cursor)
 
     def owns_edit_actions(self) -> bool:
         """Whether the Edit menu states this table's actions, which it does while it owns keys.
@@ -1065,13 +1075,11 @@ class GUISequencerOrderPanel(GUIPanel):
         The menu bar asks while the table owns the editing gestures, so the cursor names the target
         the same way a pointer names it on the cell menu.
         """
-        cursor = self._input_state.cursor
-        if cursor is None:
-            return
+        target = self.cursor_target()
+        if target is not None:
+            self._add_action_items(target)
 
-        self._add_action_items(self._menu_target(cursor))
-
-    def _add_action_items(self, target: OrderMenuTarget) -> None:
+    def _add_action_items(self, target: OrderTarget) -> None:
         """Builds every action an order cell offers, in the order each menu prints them.
 
         The table states its actions once, and whoever asks for them decides where they are shown:
@@ -1084,7 +1092,7 @@ class GUISequencerOrderPanel(GUIPanel):
         dpg.add_separator()
         self._add_move_items(target.cell.position)
 
-    def _add_block_items(self, target: OrderMenuTarget) -> None:
+    def _add_block_items(self, target: OrderTarget) -> None:
         """Builds the clipboard items, acting on the block the actions were raised on.
 
         Paste is offered once a block has been copied, and it anchors at the target's own cell, so
@@ -1095,22 +1103,22 @@ class GUISequencerOrderPanel(GUIPanel):
         dpg.add_menu_item(
             label=self._lbl_context_copy,
             shortcut=self._shortcuts.display(ShortcutId.ORDER_COPY_BLOCK),
-            callback=lambda: self.call(self.on_copy_block, target.region),
+            callback=lambda: self._blocks.copy_at(target),
         )
         dpg.add_menu_item(
             label=self._lbl_context_cut,
             shortcut=self._shortcuts.display(ShortcutId.ORDER_CUT_BLOCK),
-            callback=lambda: self.call(self.on_cut_block, target.region),
+            callback=lambda: self._blocks.cut_at(target),
         )
         dpg.add_menu_item(
             label=self._lbl_context_paste,
             shortcut=self._shortcuts.display(ShortcutId.ORDER_PASTE_BLOCK),
-            enabled=self.query(self.can_paste_block, default=False),
-            callback=lambda: self.call(self.on_paste_block, target.anchor),
+            enabled=self._blocks.can_paste(),
+            callback=lambda: self._blocks.paste_at(target),
         )
         dpg.add_menu_item(
             label=self._lbl_context_delete,
-            callback=lambda: self.call(self.on_delete_block, target.region),
+            callback=lambda: self._blocks.delete_at(target),
         )
 
     def _add_frame_items(self, position: int) -> None:
@@ -1276,43 +1284,17 @@ class GUISequencerOrderPanel(GUIPanel):
         """
         match shortcut_id:
             case ShortcutId.ORDER_COPY_BLOCK:
-                self._region_gesture(self.on_copy_block)
+                self._blocks.copy()
             case ShortcutId.ORDER_CUT_BLOCK:
-                self._region_gesture(self.on_cut_block)
+                self._blocks.cut()
             case ShortcutId.ORDER_CLEAR_CELL if self._input_state.region is not None:
-                self._region_gesture(self.on_delete_block)
+                self._blocks.delete()
             case ShortcutId.ORDER_PASTE_BLOCK:
-                self._paste_block()
+                self._blocks.paste()
             case _:
                 return False
 
         return True
-
-    def _region_gesture(self, callback: Optional[OnBlockRegionCallback]) -> None:
-        """Hands the selected block out to a gesture, the cell under the cursor standing for itself.
-
-        A partial entry is committed first, so the block carries the index the reader has just
-        finished typing.
-        """
-        state = self._committed_state()
-        self._apply_state(state)
-        region = state.target_region
-        if region is not None:
-            self.call(callback, region)
-
-    def _paste_block(self) -> None:
-        """Names the cell a block is written from, which is wherever the cursor stands."""
-        state = self._committed_state()
-        self._apply_state(state)
-        cursor = state.cursor
-        if cursor is not None:
-            self.call(
-                self.on_paste_block,
-                OrderCell(
-                    generator=cursor.generator,
-                    position=cursor.position,
-                ),
-            )
 
     def _edit_cell(self, shortcut_id: ShortcutId) -> bool:
         """Empties the cell under the cursor or drops a partial entry, reporting whether the action
@@ -1416,6 +1398,14 @@ class GUISequencerOrderPanel(GUIPanel):
             self._emit(self._input_state.cursor, index)
 
         return state
+
+    def commit_entry(self) -> None:
+        """Writes the entry being typed into the cell the cursor stands on.
+
+        A block gesture takes this first, so what it lifts out carries the index the reader has
+        just finished typing.
+        """
+        self._apply_state(self._committed_state())
 
     def _type_character(self, event: KeyEvent) -> bool:
         """Types a hex digit into the cell under the cursor, reporting whether the press was one.

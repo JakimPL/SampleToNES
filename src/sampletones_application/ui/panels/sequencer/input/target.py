@@ -11,12 +11,13 @@ from sampletones_application.view_model.sequencer.region import (
 
 
 @dataclass(frozen=True)
-class TrackerMenuTarget:
+class TrackerTarget:
     """The tracker cell a set of actions was raised on, and the block those actions act on.
 
     Both are needed at once: the block decides what the clipboard actions cover, while the cell
     decides where a pasted block lands and which row and channel the cell-level actions reach.
-    A target keeps the pair together, so a builder handed one prints a whole action set.
+    A target keeps the pair together, so a builder handed one prints a whole action set and a key
+    press handed one reaches the same block the menus would.
     """
 
     cell: TrackerCursor
@@ -36,7 +37,7 @@ class TrackerMenuTarget:
 
 
 @dataclass(frozen=True)
-class OrderMenuTarget:
+class OrderTarget:
     """The order cell a set of actions was raised on, and the block those actions act on.
 
     Both are needed at once: the block decides what the clipboard actions cover, while the cell

@@ -8,6 +8,7 @@ import pytest
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.panels.sequencer import order as order_module
 from sampletones_application.ui.panels.sequencer import tracker as tracker_module
+from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
@@ -139,6 +140,7 @@ def _tracker_panel(
     panel.on_delete_block = gestures.deleted.append
     panel.on_paste_block = gestures.pasted.append
     panel.can_paste_block = lambda: can_paste
+    panel._blocks = BlockGestures(grid=panel)
     return panel
 
 
@@ -158,6 +160,7 @@ def _order_panel(
     panel.on_delete_block = gestures.deleted.append
     panel.on_paste_block = gestures.pasted.append
     panel.can_paste_block = lambda: can_paste
+    panel._blocks = BlockGestures(grid=panel)
     return panel
 
 
@@ -210,12 +213,12 @@ def _selected_order_state() -> OrderInputState:
     return state.extend_position(2, POSITION_COUNT)
 
 
-class TestTrackerMenuTarget:
+class TestTrackerTarget:
     def test_a_menu_raised_inside_a_selection_acts_on_the_whole_of_it(self) -> None:
         panel = _tracker_panel(Gestures())
         panel._input_state = _selected_tracker_state()
 
-        target = panel._menu_target(
+        target = panel._target_at(
             TrackerCursor(
                 CLICKED_ROW + 1,
                 GeneratorName.PULSE1,
@@ -229,7 +232,7 @@ class TestTrackerMenuTarget:
         panel = _tracker_panel(Gestures())
         panel._input_state = _selected_tracker_state()
 
-        target = panel._menu_target(
+        target = panel._target_at(
             TrackerCursor(
                 CLICKED_ROW,
                 GeneratorName.TRIANGLE,
@@ -247,7 +250,7 @@ class TestTrackerMenuTarget:
     def test_a_menu_raised_with_nothing_selected_acts_on_the_clicked_cell(self) -> None:
         panel = _tracker_panel(Gestures())
 
-        target = panel._menu_target(TrackerCursor(CLICKED_ROW, None, SubColumn.INSTRUMENT))
+        target = panel._target_at(TrackerCursor(CLICKED_ROW, None, SubColumn.INSTRUMENT))
 
         assert target.region.rows == range(CLICKED_ROW, CLICKED_ROW + 1)
         assert target.region.slots == (TrackerSlot(None, SubColumn.INSTRUMENT),)
@@ -256,19 +259,23 @@ class TestTrackerMenuTarget:
         """The menu bar asks for the cursor's own target, which is the standing selection."""
         panel = _tracker_panel(Gestures())
         panel._input_state = _selected_tracker_state()
-        cursor = TrackerCursor(CLICKED_ROW + 2, GeneratorName.PULSE1, SubColumn.VOLUME)
 
-        target = panel._menu_target(cursor)
+        target = panel.cursor_target()
 
+        assert target is not None
         assert target.region == panel._input_state.region
+
+    def test_a_grid_holding_no_cursor_names_no_target(self) -> None:
+        assert _tracker_panel(Gestures()).cursor_target() is None
 
     def test_the_cursor_resolves_to_its_own_cell_with_nothing_selected(self) -> None:
         panel = _tracker_panel(Gestures())
         cursor = TrackerCursor(CLICKED_ROW, GeneratorName.NOISE, SubColumn.VOLUME)
         panel._input_state = TrackerInputState(cursor=cursor)
 
-        target = panel._menu_target(cursor)
+        target = panel.cursor_target()
 
+        assert target is not None
         assert target.region == TrackerRegion(
             first_row=CLICKED_ROW,
             last_row=CLICKED_ROW,
@@ -288,7 +295,7 @@ class TestTrackerMenuItems:
         panel._input_state = _selected_tracker_state()
         selection = panel._input_state.region
 
-        panel._add_block_items(panel._menu_target(_tracker_cell(GeneratorName.PULSE1)))
+        panel._add_block_items(panel._target_at(_tracker_cell(GeneratorName.PULSE1)))
         for item in tracker_recorder.items:
             item.callback()
 
@@ -302,7 +309,7 @@ class TestTrackerMenuItems:
         panel = _tracker_panel(gestures)
 
         panel._add_block_items(
-            panel._menu_target(
+            panel._target_at(
                 TrackerCursor(
                     CLICKED_ROW,
                     GeneratorName.NOISE,
@@ -317,7 +324,7 @@ class TestTrackerMenuItems:
     def test_paste_awaits_a_copy(self, tracker_recorder: _MenuRecorder) -> None:
         panel = _tracker_panel(Gestures(), can_paste=False)
 
-        panel._add_block_items(panel._menu_target(_tracker_cell(GeneratorName.PULSE1)))
+        panel._add_block_items(panel._target_at(_tracker_cell(GeneratorName.PULSE1)))
 
         assert tracker_recorder.items[PASTE_ITEM].enabled is False
         assert [item.enabled for item in tracker_recorder.items] == [True, True, False, True]
@@ -328,17 +335,17 @@ class TestTrackerMenuItems:
     ) -> None:
         panel = _tracker_panel(Gestures())
 
-        panel._add_block_items(panel._menu_target(_tracker_cell(GeneratorName.PULSE1)))
+        panel._add_block_items(panel._target_at(_tracker_cell(GeneratorName.PULSE1)))
 
         assert [item.label for item in tracker_recorder.items] == ["Copy", "Cut", "Paste", "Delete"]
 
 
-class TestOrderMenuTarget:
+class TestOrderTarget:
     def test_a_menu_raised_inside_a_selection_acts_on_the_whole_of_it(self) -> None:
         panel = _order_panel(Gestures())
         panel._input_state = _selected_order_state()
 
-        target = panel._menu_target(OrderCursor(GeneratorName.PULSE1, CLICKED_POSITION + 1))
+        target = panel._target_at(OrderCursor(GeneratorName.PULSE1, CLICKED_POSITION + 1))
 
         assert target.region == panel._input_state.region
 
@@ -346,7 +353,7 @@ class TestOrderMenuTarget:
         panel = _order_panel(Gestures())
         panel._input_state = _selected_order_state()
 
-        target = panel._menu_target(_order_cell(None))
+        target = panel._target_at(_order_cell(None))
 
         assert target.region == OrderRegion(
             first_row=CHANNEL_AXIS.index(None),
@@ -358,7 +365,7 @@ class TestOrderMenuTarget:
     def test_a_menu_raised_with_nothing_selected_acts_on_the_clicked_cell(self) -> None:
         panel = _order_panel(Gestures())
 
-        target = panel._menu_target(_order_cell(GeneratorName.PULSE1))
+        target = panel._target_at(_order_cell(GeneratorName.PULSE1))
 
         assert target.region == OrderRegion(
             first_row=PULSE1_ROW,
@@ -371,19 +378,23 @@ class TestOrderMenuTarget:
         """The menu bar asks for the cursor's own target, which is the standing selection."""
         panel = _order_panel(Gestures())
         panel._input_state = _selected_order_state()
-        cursor = OrderCursor(GeneratorName.PULSE1, CLICKED_POSITION + 2)
 
-        target = panel._menu_target(cursor)
+        target = panel.cursor_target()
 
+        assert target is not None
         assert target.region == panel._input_state.region
+
+    def test_a_table_holding_no_cursor_names_no_target(self) -> None:
+        assert _order_panel(Gestures()).cursor_target() is None
 
     def test_the_cursor_resolves_to_its_own_cell_with_nothing_selected(self) -> None:
         panel = _order_panel(Gestures())
         cursor = OrderCursor(GeneratorName.PULSE1, CLICKED_POSITION)
         panel._input_state = OrderInputState(cursor=cursor)
 
-        target = panel._menu_target(cursor)
+        target = panel.cursor_target()
 
+        assert target is not None
         assert target.region == OrderRegion(
             first_row=PULSE1_ROW,
             last_row=PULSE1_ROW,
@@ -403,7 +414,7 @@ class TestOrderMenuItems:
         panel._input_state = _selected_order_state()
         selection = panel._input_state.region
 
-        panel._add_block_items(panel._menu_target(_order_cell(GeneratorName.PULSE1)))
+        panel._add_block_items(panel._target_at(_order_cell(GeneratorName.PULSE1)))
         for item in order_recorder.items:
             item.callback()
 
@@ -415,7 +426,7 @@ class TestOrderMenuItems:
         gestures = Gestures()
         panel = _order_panel(gestures)
 
-        panel._add_block_items(panel._menu_target(_order_cell(None)))
+        panel._add_block_items(panel._target_at(_order_cell(None)))
         order_recorder.items[PASTE_ITEM].callback()
 
         assert gestures.pasted == [OrderCell(generator=None, position=CLICKED_POSITION)]
@@ -423,7 +434,7 @@ class TestOrderMenuItems:
     def test_paste_awaits_a_copy(self, order_recorder: _MenuRecorder) -> None:
         panel = _order_panel(Gestures(), can_paste=False)
 
-        panel._add_block_items(panel._menu_target(_order_cell(GeneratorName.PULSE1)))
+        panel._add_block_items(panel._target_at(_order_cell(GeneratorName.PULSE1)))
 
         assert order_recorder.items[PASTE_ITEM].enabled is False
         assert [item.enabled for item in order_recorder.items] == [True, True, False, True]
@@ -434,7 +445,7 @@ class TestOrderMenuItems:
     ) -> None:
         panel = _order_panel(Gestures())
 
-        panel._add_block_items(panel._menu_target(_order_cell(GeneratorName.PULSE1)))
+        panel._add_block_items(panel._target_at(_order_cell(GeneratorName.PULSE1)))
 
         assert [item.label for item in order_recorder.items] == ["Copy", "Cut", "Paste", "Delete"]
 
@@ -448,7 +459,7 @@ class TestActionSet:
     ) -> None:
         panel = _tracker_panel(Gestures())
 
-        panel._add_action_items(panel._menu_target(_tracker_cell(GeneratorName.PULSE1)))
+        panel._add_action_items(panel._target_at(_tracker_cell(GeneratorName.PULSE1)))
 
         labels = [item.label for item in tracker_recorder.items]
         assert labels[:4] == ["Copy", "Cut", "Paste", "Delete"]
@@ -460,7 +471,7 @@ class TestActionSet:
     ) -> None:
         panel = _order_panel(Gestures())
 
-        panel._add_action_items(panel._menu_target(_order_cell(GeneratorName.PULSE1)))
+        panel._add_action_items(panel._target_at(_order_cell(GeneratorName.PULSE1)))
 
         labels = [item.label for item in order_recorder.items]
         assert labels[:4] == ["Copy", "Cut", "Paste", "Delete"]
@@ -473,7 +484,7 @@ class TestMenuItemOrder:
     def test_the_indices_name_the_items_they_stand_for(self, tracker_recorder: _MenuRecorder) -> None:
         panel = _tracker_panel(Gestures())
 
-        panel._add_block_items(panel._menu_target(_tracker_cell(GeneratorName.PULSE1)))
+        panel._add_block_items(panel._target_at(_tracker_cell(GeneratorName.PULSE1)))
 
         labels = [item.label for item in tracker_recorder.items]
         assert labels[COPY_ITEM] == "Copy"

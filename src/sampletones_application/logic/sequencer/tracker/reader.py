@@ -33,9 +33,6 @@ class TrackerBlockReader:
         """Takes the values a region covers, keeping each kind of subcolumn in a map of its own."""
         base = column_slot_base(slot_from_flat(region.first_slot).generator)
         return TrackerBlock(
-            row_count=region.row_count,
-            first_slot=region.first_slot - base,
-            last_slot=region.last_slot - base,
             notes=self._read_subcolumn(region, base, SubColumn.INSTRUMENT, self._note_of),
             transposes=self._read_subcolumn(region, base, SubColumn.TRANSPOSE, self._transpose_of),
             volumes=self._read_subcolumn(region, base, SubColumn.VOLUME, self._volume_of),

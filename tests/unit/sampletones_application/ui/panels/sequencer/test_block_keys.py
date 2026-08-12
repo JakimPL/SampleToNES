@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.elements.table.cells import EditableCells
+from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
@@ -83,6 +84,8 @@ def _panel(
     panel.on_delete_block = gestures.deleted.append
     panel.on_paste_block = gestures.pasted.append
     panel.on_clear_row = lambda row, generator_name: gestures.cleared.append((row, generator_name))
+    panel.can_paste_block = lambda: True
+    panel._blocks = BlockGestures(grid=panel)
     monkeypatch.setattr(panel, "_apply_state", lambda state: None)
     return panel
 
@@ -103,6 +106,8 @@ def _order_panel(
     panel.on_delete_block = gestures.deleted.append
     panel.on_paste_block = gestures.pasted.append
     panel.on_set_order_entry = lambda channel, position, index: gestures.cleared.append((channel, position, index))
+    panel.can_paste_block = lambda: True
+    panel._blocks = BlockGestures(grid=panel)
     monkeypatch.setattr(panel, "_apply_state", lambda state, notify=True: None)
     return panel
 

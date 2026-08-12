@@ -113,20 +113,19 @@ class TestSelection:
 class TestTarget:
     """The region a block gesture acts on, which is the selection wherever one has been made."""
 
-    def test_a_cursor_alone_targets_its_own_cell(self) -> None:
-        region = _state(GeneratorName.PULSE2, position=4).target_region
+    def test_a_cell_of_a_table_with_nothing_selected_is_raised_on_itself(self) -> None:
+        cell = OrderCursor(GeneratorName.PULSE2, 4)
 
-        assert region is not None
+        region = _state(GeneratorName.PULSE2, position=4).region_at(cell)
+
         assert (region.first_position, region.last_position) == (4, 4)
         assert region.generators == (GeneratorName.PULSE2,)
 
-    def test_a_selection_is_targeted_whole(self) -> None:
+    def test_a_cell_of_a_selection_is_raised_on_the_whole_of_it(self) -> None:
         selected = _state(position=4).extend_position(2, POSITION_COUNT)
+        cell = OrderCursor(GeneratorName.PULSE1, 5)
 
-        assert selected.target_region == selected.region
-
-    def test_a_table_with_no_cursor_targets_nothing(self) -> None:
-        assert OrderInputState().target_region is None
+        assert selected.region_at(cell) == selected.region
 
 
 class TestEntry:

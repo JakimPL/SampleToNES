@@ -32,11 +32,7 @@ class OrderBlockReader:
                 if agreement.is_unanimous:
                     entries[(row_offset, position_offset)] = agreement.value
 
-        return OrderBlock(
-            row_count=region.row_count,
-            position_count=region.position_count,
-            entries=entries,
-        )
+        return OrderBlock(entries=entries)
 
     def _agree(
         self,

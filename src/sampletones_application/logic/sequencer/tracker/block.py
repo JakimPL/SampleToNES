@@ -30,21 +30,6 @@ class TrackerBlock:
     channel to whichever column it is written into.
     """
 
-    row_count: int
-    first_slot: int
-    last_slot: int
     notes: Dict[BlockKey, Optional[BlockNote]]
     transposes: Dict[BlockKey, Optional[int]]
     volumes: Dict[BlockKey, Optional[int]]
-
-    @property
-    def slot_count(self) -> int:
-        return self.last_slot - self.first_slot + 1
-
-    @property
-    def slots(self) -> range:
-        return range(self.first_slot, self.last_slot + 1)
-
-    @property
-    def rows(self) -> range:
-        return range(self.row_count)

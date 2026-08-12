@@ -149,34 +149,8 @@ class TestMasterRow:
         assert block.entries == {(0, 0): 0}
 
 
-class TestExtent:
-    """A block states the rectangle it was read at, which a mixed edge column cannot take away."""
-
-    def test_a_region_carries_the_shape_it_covers(
-        self,
-        logic: SequencerOrderLogic,
-        reader: OrderBlockReader,
-    ) -> None:
-        fill_order(
-            logic,
-            (
-                "00 01 02",
-                "00 01 02",
-                "00 01 02",
-                "00 01 02",
-            ),
-        )
-
-        block = reader.read(
-            OrderRegion(
-                first_row=MASTER_ROW,
-                last_row=NOISE_ROW,
-                first_position=1,
-                last_position=2,
-            )
-        )
-
-        assert (block.row_count, block.position_count) == (5, 2)
+class TestOffsets:
+    """A block addresses its entries by the offsets they stand at, counted from where it begins."""
 
     def test_offsets_run_from_the_cell_the_region_begins_at(
         self,

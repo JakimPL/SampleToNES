@@ -20,6 +20,4 @@ class OrderBlock:
     reaches nothing, so the order ends where the last written column does.
     """
 
-    row_count: int
-    position_count: int
     entries: Dict[BlockKey, Optional[int]]

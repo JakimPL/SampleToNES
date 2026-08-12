@@ -121,11 +121,7 @@ def parse_order_block(rows: Sequence[str]) -> OrderBlock:
             if token != MIXED:
                 entries[(row_offset, position_offset)] = parse_index(token)
 
-    return OrderBlock(
-        row_count=len(rows),
-        position_count=widths.pop(),
-        entries=entries,
-    )
+    return OrderBlock(entries=entries)
 
 
 def fill_order(
@@ -200,9 +196,6 @@ def parse_block(
                     volumes[key] = parse_volume(token)
 
     return TrackerBlock(
-        row_count=len(rows),
-        first_slot=first_slot,
-        last_slot=first_slot + widths.pop() - 1,
         notes=notes,
         transposes=transposes,
         volumes=volumes,
