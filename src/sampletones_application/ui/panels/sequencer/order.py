@@ -44,15 +44,20 @@ from sampletones_application.ui.panels.sequencer.channels import (
     channel_tooltip,
 )
 from sampletones_application.ui.panels.sequencer.columns import channel_color
+from sampletones_application.ui.panels.sequencer.display import cell_title
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
-from sampletones_application.ui.panels.sequencer.grid.scroll.axis import HorizontalScroll
+from sampletones_application.ui.panels.sequencer.grid.scroll.axis import (
+    HorizontalScroll,
+)
 from sampletones_application.ui.panels.sequencer.grid.scroll.band import TravelBand
 from sampletones_application.ui.panels.sequencer.grid.scroll.travel import DragTravel
 from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
     BlockShortcuts,
     ClipboardItems,
 )
-from sampletones_application.ui.panels.sequencer.grid.surface.edit import GridEditSurface
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import (
+    GridEditSurface,
+)
 from sampletones_application.ui.panels.sequencer.input.order import (
     INDEX_DIGITS,
     OrderCursor,
@@ -72,7 +77,10 @@ from sampletones_application.utils.gui.keyboard import (
     KeyRouter,
 )
 from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS
-from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    Modifier,
+    capture_modifiers,
+)
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -1050,7 +1058,10 @@ class GUISequencerOrderPanel(GUIPanel):
             header = dpg.add_text(self._row_labels[generator])
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
-            self._channel_switch.add_menu_items(generator, self._current_channels)
+            self._channel_switch.add_menu_items(
+                generator,
+                self._current_channels,
+            )
 
     def _show_context_menu(
         self,
@@ -1059,7 +1070,12 @@ class GUISequencerOrderPanel(GUIPanel):
     ) -> None:
         target = self._surface.target_at(OrderCursor(generator, position))
         with context_menu():
-            header = dpg.add_text(display_id(position))
+            header = dpg.add_text(
+                cell_title(
+                    position,
+                    self._row_labels[generator],
+                )
+            )
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             add_play_menu_item(
@@ -1108,12 +1124,18 @@ class GUISequencerOrderPanel(GUIPanel):
         dpg.add_menu_item(
             label=self._lbl_context_select_all,
             shortcut=self._shortcuts.display(ShortcutId.ORDER_SELECT_ALL),
-            callback=lambda: self._select_shape(ShortcutId.ORDER_SELECT_ALL, cell),
+            callback=lambda: self._select_shape(
+                ShortcutId.ORDER_SELECT_ALL,
+                cell,
+            ),
         )
         dpg.add_menu_item(
             label=self._lbl_context_select_row,
             shortcut=self._shortcuts.display(ShortcutId.ORDER_SELECT_ROW),
-            callback=lambda: self._select_shape(ShortcutId.ORDER_SELECT_ROW, cell),
+            callback=lambda: self._select_shape(
+                ShortcutId.ORDER_SELECT_ROW,
+                cell,
+            ),
         )
 
     def _add_frame_items(self, position: int) -> None:
@@ -1178,12 +1200,19 @@ class GUISequencerOrderPanel(GUIPanel):
         The action names both the direction it moves and the accelerator it prints, so the item a
         reader sees is the one the key press performs.
         """
-        target = MOVE_DIRECTIONS[shortcut_id].target(position, self._position_count)
+        target = MOVE_DIRECTIONS[shortcut_id].target(
+            position,
+            self._position_count,
+        )
         dpg.add_menu_item(
             label=label,
             shortcut=self._shortcuts.display(shortcut_id),
             enabled=target is not None,
-            callback=lambda: self.call(self.on_move_requested, position, target),
+            callback=lambda: self.call(
+                self.on_move_requested,
+                position,
+                target,
+            ),
         )
 
     def _keys_active(self) -> bool:
@@ -1294,10 +1323,19 @@ class GUISequencerOrderPanel(GUIPanel):
         return True
 
     def _select_all(self) -> None:
-        self._apply_state(self._committed_state().select_all(self._position_count))
+        self._apply_state(
+            self._committed_state().select_all(
+                self._position_count,
+            )
+        )
 
     def _select_row(self, cell: OrderCursor) -> None:
-        self._apply_state(self._committed_state().select_row(cell, self._position_count))
+        self._apply_state(
+            self._committed_state().select_row(
+                cell,
+                self._position_count,
+            )
+        )
 
     def _block_action(self, shortcut_id: ShortcutId) -> bool:
         """Acts on the selected block, reporting whether the action was one of its gestures.

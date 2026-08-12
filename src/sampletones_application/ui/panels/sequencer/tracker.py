@@ -1323,7 +1323,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         target = self._surface.target_at(TrackerCursor(row_index, generator, subcolumn))
         with context_menu():
             header = dpg.add_text(
-                tracker_display.indexed_label(row_index, self._column_labels[generator]),
+                tracker_display.cell_title(row_index, self._column_labels[generator]),
             )
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
