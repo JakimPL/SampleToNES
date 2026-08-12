@@ -22,11 +22,18 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
-from sampletones_application.logic.sequencer.clipboard import SequencerClipboard
+from sampletones_application.logic.sequencer.clipboard import (
+    OrderBlockText,
+    ParsedBlockCache,
+    ProjectSampleDirectory,
+    SequencerClipboard,
+    TrackerBlockText,
+)
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
 )
 from sampletones_application.logic.sequencer.order import (
+    OrderBlock,
     OrderBlockReader,
     OrderBlockWriter,
     SequencerOrderLogic,
@@ -41,6 +48,7 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
+    TrackerBlock,
     TrackerBlockReader,
     TrackerBlockWriter,
     TrackerRegionAdjuster,
@@ -81,6 +89,10 @@ from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderP
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.gui.clipboard import (
+    SystemTextClipboard,
+    TextClipboard,
+)
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -196,6 +208,13 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_logic: SequencerTrackerLogic = SequencerTrackerLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
         self._clipboard: SequencerClipboard = SequencerClipboard()
+        self._system_clipboard: TextClipboard = SystemTextClipboard()
+        self._tracker_block_text: TrackerBlockText = TrackerBlockText(
+            samples=ProjectSampleDirectory(project_controller),
+        )
+        self._order_block_text: OrderBlockText = OrderBlockText()
+        self._tracker_text_cache: ParsedBlockCache[TrackerBlock] = ParsedBlockCache(self._tracker_block_text.parse)
+        self._order_text_cache: ParsedBlockCache[OrderBlock] = ParsedBlockCache(self._order_block_text.parse)
         self._tracker_block_reader: TrackerBlockReader = TrackerBlockReader(self._sequencer_tracker_logic)
         self._tracker_block_writer: TrackerBlockWriter = TrackerBlockWriter(self._sequencer_tracker_logic)
         self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
@@ -506,15 +525,45 @@ class SequencerTabCoordinator:
 
     def _can_paste_tracker_block(self) -> bool:
         """Whether the tracker has a block to write, which is what its Paste item is offered on."""
-        return self._clipboard.tracker_block is not None
+        return self._tracker_block_in_hand() is not None
 
     def _can_paste_order_block(self) -> bool:
         """Whether the order has a block to write, which is what its Paste item is offered on."""
-        return self._clipboard.order_block is not None
+        return self._order_block_in_hand() is not None
+
+    def _tracker_block_in_hand(self) -> Optional[TrackerBlock]:
+        """The block a tracker paste would write: the system clipboard's while its text is one.
+
+        Text another instance copied reads as a block here, so it stands ahead of the slot the
+        tracker copied into, and text from anywhere else leaves that slot's own block in hand.
+        """
+        parsed = self._tracker_text_cache.block(self._system_clipboard.read())
+        if parsed is not None:
+            return parsed
+
+        return self._clipboard.tracker_block
+
+    def _order_block_in_hand(self) -> Optional[OrderBlock]:
+        """The block an order paste would write: the system clipboard's while its text is one.
+
+        Text another instance copied reads as a block here, so it stands ahead of the slot the
+        order copied into, and text from anywhere else leaves that slot's own block in hand.
+        """
+        parsed = self._order_text_cache.block(self._system_clipboard.read())
+        if parsed is not None:
+            return parsed
+
+        return self._clipboard.order_block
 
     def _on_tracker_copy_block(self, region: TrackerRegion) -> None:
-        """Puts the tracker's selected block on the clipboard, for a paste to replay."""
-        self._clipboard.store_tracker_block(self._tracker_block_reader.read(region))
+        """Puts the tracker's selected block on both clipboards, for a paste to replay.
+
+        The slot keeps the block exactly, and the system clipboard keeps the text form of it, so
+        the same copy reaches a paste here and a paste in another instance.
+        """
+        block = self._tracker_block_reader.read(region)
+        self._clipboard.store_tracker_block(block)
+        self._system_clipboard.write(self._tracker_block_text.state(block, region))
 
     def _cut_tracker_block(self, region: TrackerRegion) -> None:
         """Takes the block a region covers onto the clipboard, then empties what it covered."""
@@ -522,14 +571,20 @@ class SequencerTabCoordinator:
         self._tracker_block_writer.clear(region)
 
     def _paste_tracker_block(self, cell: TrackerCell) -> None:
-        """Writes the block the tracker last copied at a cell, while a copy has been made."""
-        block = self._clipboard.tracker_block
+        """Writes the block the tracker has in hand at a cell, while a copy has been made."""
+        block = self._tracker_block_in_hand()
         if block is not None:
             self._tracker_block_writer.write(block, cell)
 
     def _on_order_copy_block(self, region: OrderRegion) -> None:
-        """Puts the order's selected block on the clipboard, for a paste to replay."""
-        self._clipboard.store_order_block(self._order_block_reader.read(region))
+        """Puts the order's selected block on both clipboards, for a paste to replay.
+
+        The slot keeps the block exactly, and the system clipboard keeps the text form of it, so
+        the same copy reaches a paste here and a paste in another instance.
+        """
+        block = self._order_block_reader.read(region)
+        self._clipboard.store_order_block(block)
+        self._system_clipboard.write(self._order_block_text.state(block, region))
 
     def _cut_order_block(self, region: OrderRegion) -> None:
         """Takes the block a region covers onto the clipboard, then silences what it covered."""
@@ -537,8 +592,8 @@ class SequencerTabCoordinator:
         self._order_block_writer.clear(region)
 
     def _paste_order_block(self, cell: OrderCell) -> None:
-        """Writes the block the order last copied at a cell, while a copy has been made."""
-        block = self._clipboard.order_block
+        """Writes the block the order has in hand at a cell, while a copy has been made."""
+        block = self._order_block_in_hand()
         if block is not None:
             self._order_block_writer.write(block, cell)
 

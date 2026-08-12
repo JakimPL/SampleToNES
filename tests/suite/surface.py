@@ -2,9 +2,15 @@ from dataclasses import dataclass
 from typing import Callable, Final, List, Optional
 
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
-from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import ClipboardItems
-from sampletones_application.ui.panels.sequencer.grid.surface.edit import GridEditSurface
-from sampletones_application.ui.panels.sequencer.grid.surface.targets import CursorTargets
+from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
+    ClipboardItems,
+)
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import (
+    GridEditSurface,
+)
+from sampletones_application.ui.panels.sequencer.grid.surface.targets import (
+    CursorTargets,
+)
 from sampletones_application.ui.panels.sequencer.input.state import GridInputState
 from tests.suite.grid import CLIPBOARD_LABELS, TRACKER_BLOCK_SHORTCUTS
 from tests.suite.shortcuts import shipped_source

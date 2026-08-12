@@ -20,7 +20,13 @@ from sampletones_application.logic.sequencer.channels import (
     ALL_CHANNELS,
     SequencerChannelsLogic,
 )
-from sampletones_application.logic.sequencer.clipboard import SequencerClipboard
+from sampletones_application.logic.sequencer.clipboard import (
+    OrderBlockText,
+    ParsedBlockCache,
+    ProjectSampleDirectory,
+    SequencerClipboard,
+    TrackerBlockText,
+)
 from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
 from sampletones_application.logic.sequencer.order import (
     OrderBlockReader,
@@ -1347,13 +1353,27 @@ PULSE1_FRAME: Final[OrderRegion] = OrderRegion(
 )
 
 
+class FakeTextClipboard:
+    """The desktop's clipboard, held in memory so a test reads what a copy put there."""
+
+    def __init__(self) -> None:
+        self.text: str = ""
+
+    def read(self) -> str:
+        return self.text
+
+    def write(self, text: str) -> None:
+        self.text = text
+
+
 @pytest.fixture
 def block_coordinator() -> SequencerTabCoordinator:
     """A coordinator whose block path is real, from the tracker logic through to the clipboard.
 
     A real manager observes the same controller production wires it to, so a test reads the
     entries a gesture actually records, and the hooks are the ones ``_wire_block_callbacks``
-    assigns rather than wrappers a test built to look like them.
+    assigns rather than wrappers a test built to look like them. The system clipboard is the one
+    boundary standing in, since the desktop's own is reached through a running viewport.
     """
     instance = object.__new__(SequencerTabCoordinator)
     controller = ProjectController(ProjectManager())
@@ -1365,6 +1385,11 @@ def block_coordinator() -> SequencerTabCoordinator:
     instance._history = history
     instance._sequencer_tracker_logic = SequencerTrackerLogic(controller)
     instance._clipboard = SequencerClipboard()
+    instance._system_clipboard = FakeTextClipboard()
+    instance._tracker_block_text = TrackerBlockText(samples=ProjectSampleDirectory(controller))
+    instance._order_block_text = OrderBlockText()
+    instance._tracker_text_cache = ParsedBlockCache(instance._tracker_block_text.parse)
+    instance._order_text_cache = ParsedBlockCache(instance._order_block_text.parse)
     instance._tracker_block_reader = TrackerBlockReader(instance._sequencer_tracker_logic)
     instance._tracker_block_writer = TrackerBlockWriter(instance._sequencer_tracker_logic)
     instance._sequencer_order_logic = SequencerOrderLogic(controller)
@@ -1562,3 +1587,110 @@ class TestOrderBlockEdits:
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE2))
 
         assert len(coordinator._history.entries) == recorded
+
+
+class TestSystemClipboardCopy:
+    """A copy writes both clipboards, so the same gesture reaches a paste here and elsewhere."""
+
+    def test_a_copy_states_the_block_as_text(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+
+        assert coordinator._system_clipboard.text == "SampleToNES/1 tracker rows=1 slots=3..5\n.. +05 ."
+
+    def test_an_order_copy_states_its_own_grid(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+
+        coordinator._on_order_copy_block(PULSE1_FRAME)
+
+        assert coordinator._system_clipboard.text == "SampleToNES/1 order rows=1 positions=0..0\n00"
+
+    def test_a_cut_states_the_block_it_took(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+
+        coordinator._sequencer_tracker_panel.on_cut_block(PULSE1_CELL)
+
+        assert coordinator._system_clipboard.text == "SampleToNES/1 tracker rows=1 slots=3..5\n.. +05 ."
+
+
+class TestSystemClipboardPrecedence:
+    """Text that reads as a block for this grid stands ahead of the slot it copied into."""
+
+    def test_a_block_copied_elsewhere_is_the_one_a_paste_writes(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """This is a second instance's copy arriving, which is what carries a block between them."""
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+        coordinator._system_clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 9
+
+    def test_unrelated_text_leaves_the_copied_block_in_hand(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+        coordinator._system_clipboard.write("a line from a message")
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 5
+
+    def test_a_truncated_block_leaves_the_copied_block_in_hand(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+        coordinator._system_clipboard.write("SampleToNES/1 tracker rows=4 slots=3..5\n.. +09 .")
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 5
+
+    def test_the_other_grid_s_text_leaves_the_copied_block_in_hand(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """A tracker copy stands on the clipboard while the order pastes, so each grid keeps its own."""
+        coordinator = block_coordinator
+        coordinator._on_order_copy_block(PULSE1_FRAME)
+        coordinator._system_clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
+
+        coordinator._sequencer_order_panel.on_paste_block(OrderCell(generator=GeneratorName.NOISE, position=1))
+
+        assert coordinator._sequencer_order_logic.entry(GeneratorName.NOISE, 1) == 0
+
+    def test_a_paste_offers_itself_on_the_text_standing_on_the_clipboard(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """The menu asks the same question the paste does, so it offers what the next press reaches."""
+        coordinator = block_coordinator
+
+        assert not coordinator._can_paste_tracker_block()
+
+        coordinator._system_clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
+
+        assert coordinator._can_paste_tracker_block()
+        assert not coordinator._can_paste_order_block()
