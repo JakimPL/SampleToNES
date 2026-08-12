@@ -75,10 +75,11 @@ instructions data** to re-read the catalogue; selecting an entry in the
 
 The menu bar and status bar sit outside the tabs.
 
-Each menu covers one kind of work: **File** for projects, **Edit** for undo and
-redo, **Reconstruction** for the current reconstruction and its exports,
-**Playback** for playing and for muting the sequencer's channels, **View** for
-settings and the window, and **Help** for **About**.
+Each menu covers one kind of work: **File** for projects, **Edit** for undo, redo,
+and what you can do where your cursor stands, **Reconstruction** for the current
+reconstruction and its exports, **Playback** for playing and for muting the
+sequencer's channels, **View** for settings and the window, and **Help** for
+**About**.
 
 Two items write audio you can play anywhere: **Reconstruction ▸ Export to WAV...**
 for the reconstruction on show, and **File ▸ Render song...** (`Ctrl+Shift+E`) for

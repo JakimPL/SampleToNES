@@ -4,7 +4,8 @@ A **block** is a rectangle of one sequencer grid, lifted out of the song so it c
 written back somewhere else. Copy, cut, paste and delete are the four gestures over it,
 and both grids — the tracker's pattern rows and the order's frames — carry the same set.
 
-This document states the rules those gestures follow. The layering they sit in is
+This document states the rules those gestures follow, and how a grid's actions reach the
+menus and the keyboard that fire them. The layering they sit in is
 [Architecture](architecture.md); the conventions the code is held to are the
 [coding guidelines](guidelines.md).
 
@@ -87,25 +88,54 @@ Growth runs before the first write, so one history entry covers the appended fra
 the values in them, and a single undo takes both back. Delete keeps the order's length:
 emptied trailing frames stand as silent ones.
 
-## What a gesture acts on
+## A grid declares its actions once
 
-- **From the keyboard**: the selection, or — with none up — the cursor's own cell.
-  `region_at` on the shared input state is where that fallback lives, so copying one cell
-  needs no selection made first.
-- **From a context menu**: the selection when the menu was raised inside it, and the
-  clicked cell otherwise (the same `region_at`, over `Region.covers`). A paste from a menu
-  anchors at the clicked cell; a paste from the keyboard anchors at the cursor.
-- **`Del`** carries two meanings, resolved by whether a selection stands. Two ids cannot
-  share a combination inside a shortcut category, so this branch is the route; it also
-  matches tracker convention.
+Where they are shown is decided by whoever asks for them. Each grid builds its whole
+action set from one **target** — the cell a gesture is aimed at, paired with the region
+that gesture acts on — and three doors resolve that target their own way:
 
-Copy is wired straight through rather than through `_undoable` — it mutates nothing, so a
-transaction over it would record an entry with nothing to restore. Cut, delete and paste
-each record exactly one entry, and none of them coalesces: a block gesture is already a
-whole gesture, and folding two consecutive pastes would hide a repeat the reader performed
-on purpose.
+| Door | Aims at | Anchors a paste at |
+|------|---------|--------------------|
+| The keyboard | the cursor's cell | the cursor |
+| A context menu | the cell it was raised on | the clicked cell |
+| The menu bar's **Edit** menu | the cursor's cell | the cursor |
+
+The region behind a target is `region_at` on the shared input state: the selection when the
+cell falls inside it (`Region.covers`), and the cell alone otherwise. So copying one cell
+needs no selection made first, and a menu raised inside a selection acts on the whole of it.
+
+One builder means an action added to a grid appears at every door, and the accelerator
+**Edit** prints is the one that grid answers to, since a binding is declared once and every
+reader of it reads that entry ([Architecture](architecture.md), principle 12).
+
+`EditRouter` (`coordinators/edit/`) is the menu-side counterpart of the `KeyRouter` the
+keyboard runs through. Each surface states whether it owns the editing gestures at this
+moment — the same predicate its key scope answers with, so the menu offers what the next
+press would reach — and the router asks the one that does to build its items into the menu
+the bar has opened. It holds no state, resolving the surface on each call, so the menu
+states the actions of whoever holds the cursor at the moment it is opened. The bar names the
+clipboard four greyed out when no grid answers, which is how a reader working from the menus
+learns the commands exist.
+
+**`Del`** carries two meanings, resolved by whether a selection stands. Two ids cannot share
+a combination inside a shortcut category, so this branch is the route; it also matches
+tracker convention.
+
+## One gesture, one history entry
+
+Cut, delete and paste each record exactly one entry, whichever door fired them, and none of
+them coalesces: a block gesture is already a whole gesture, and folding two consecutive
+pastes would hide a repeat the reader performed on purpose. Copy runs outside a transaction,
+since it mutates nothing.
 
 ## Dragging a range out
+
+Both grids compose one `TableSelection` (`ui/elements/table/selection.py`), which holds what
+stands painted and the drag gesture that draws it. The grid states which of its cells the
+selection covers, in its own coordinates; the repaint that follows reaches the cells whose
+membership changed, marking each through the selectable's own selected state, which the
+table's theme colours. A rebuilt table asks for a reset, since the cells a selection stood on
+belong to the body that was replaced.
 
 Both panels read the cell under a held pointer off their own geometry, because DearPyGui
 reports no hover for the cells a held pointer passes over. A drag carried past an edge
