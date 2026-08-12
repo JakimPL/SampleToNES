@@ -175,13 +175,43 @@ class TestTrackerDetails:
         controller = _controller()
         formatter = _formatter(controller)
 
-        segments = formatter.adjust_transpose(0, GeneratorName.PULSE2, -3)
+        segments = formatter.adjust_transpose(
+            TrackerRegion(
+                first_row=0,
+                last_row=0,
+                first_slot=TrackerSlot(GeneratorName.PULSE2, SubColumn.INSTRUMENT).flat_index,
+                last_slot=TrackerSlot(GeneratorName.PULSE2, SubColumn.VOLUME).flat_index,
+            ),
+            -3,
+        )
 
         assert _pairs(segments) == [
             ("00", HistoryDetailRole.FRAME),
             ("p", HistoryDetailRole.CHANNEL),
             ("00", HistoryDetailRole.ROW),
             ("-03", HistoryDetailRole.TRANSPOSE),
+        ]
+
+    def test_adjust_volume_reads_the_rows_it_covers(self) -> None:
+        """A shift over a selection names the span it reached, the way a block gesture does."""
+        controller = _controller()
+        formatter = _formatter(controller)
+
+        segments = formatter.adjust_volume(
+            TrackerRegion(
+                first_row=0,
+                last_row=3,
+                first_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME).flat_index,
+                last_slot=TrackerSlot(GeneratorName.PULSE2, SubColumn.VOLUME).flat_index,
+            ),
+            -1,
+        )
+
+        assert _pairs(segments) == [
+            ("00", HistoryDetailRole.FRAME),
+            ("Pp", HistoryDetailRole.CHANNEL),
+            ("00-03", HistoryDetailRole.ROW),
+            ("-1", HistoryDetailRole.VOLUME),
         ]
 
 

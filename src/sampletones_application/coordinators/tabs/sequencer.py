@@ -43,6 +43,7 @@ from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
     TrackerBlockReader,
     TrackerBlockWriter,
+    TrackerRegionAdjuster,
 )
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
@@ -197,6 +198,7 @@ class SequencerTabCoordinator:
         self._clipboard: SequencerClipboard = SequencerClipboard()
         self._tracker_block_reader: TrackerBlockReader = TrackerBlockReader(self._sequencer_tracker_logic)
         self._tracker_block_writer: TrackerBlockWriter = TrackerBlockWriter(self._sequencer_tracker_logic)
+        self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
         self._order_block_reader: OrderBlockReader = OrderBlockReader(self._sequencer_order_logic)
         self._order_block_writer: OrderBlockWriter = OrderBlockWriter(self._sequencer_order_logic)
         self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(
@@ -348,13 +350,13 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_panel.on_play_from_frame = self.play_from_current_frame
         self._sequencer_tracker_panel.on_adjust_transpose = self._undoable(
             HistoryAction.ADJUST_TRANSPOSE,
-            self._sequencer_tracker_logic.adjust_cell_transpose,
+            self._tracker_region_adjuster.adjust_transpose,
             detail=self._history_detail.adjust_transpose,
             coalesce=self._adjustment_key,
         )
         self._sequencer_tracker_panel.on_adjust_volume = self._undoable(
             HistoryAction.ADJUST_VOLUME,
-            self._sequencer_tracker_logic.adjust_cell_volume,
+            self._tracker_region_adjuster.adjust_volume,
             detail=self._history_detail.adjust_volume,
             coalesce=self._adjustment_key,
         )
@@ -711,11 +713,22 @@ class SequencerTabCoordinator:
 
     def _adjustment_key(
         self,
-        row_index: int,
-        generator: Optional[GeneratorName],
+        region: TrackerRegion,
         _delta: int,
     ) -> CoalesceKey:
-        return self._cell_key(row_index, generator)
+        """Identifies the cells an adjustment covers as one coalescing target.
+
+        A streak of nudges over the same block reads as one entry, so holding a transpose key steps
+        the selection and leaves a single step to undo; moving the cursor or reaching the selection
+        out starts the next one.
+        """
+        return (
+            self._sequencer_tracker_logic.frame_index,
+            region.first_row,
+            region.last_row,
+            region.first_slot,
+            region.last_slot,
+        )
 
     def _edit_row_key(
         self,

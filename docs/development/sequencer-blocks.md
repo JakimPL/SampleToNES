@@ -88,6 +88,19 @@ Growth runs before the first write, so one history entry covers the appended fra
 the values in them, and a single undo takes both back. Delete keeps the order's length:
 emptied trailing frames stand as silent ones.
 
+## A shift reads the columns behind a region
+
+Transpose and volume move whole cells, while a region names its edges as subcolumns. A shift
+therefore reads the columns a region covers (`TrackerRegion.columns`) and reaches each of their
+channels once, at every row the region spans. Two consequences follow: a nudge raised with the
+cursor on a volume subcolumn still moves that cell's transpose, and a region covering the sample
+column together with a channel beneath it moves that channel a single step, since the sample column
+stands for the channels a value typed in it writes to.
+
+Each cell reaches the grid through the single-cell adjustment that already governs it, the way a
+pasted cell does, so a shift lands exactly the writes the same nudge repeated by hand would make —
+the transpose and volume ranges included.
+
 ## A grid declares its actions once
 
 Where they are shown is decided by whoever asks for them. Each grid builds its whole
@@ -127,6 +140,11 @@ Cut, delete and paste each record exactly one entry, whichever door fired them, 
 them coalesces: a block gesture is already a whole gesture, and folding two consecutive
 pastes would hide a repeat the reader performed on purpose. Copy runs outside a transaction,
 since it mutates nothing.
+
+A shift coalesces, because a nudge is a step of one gesture rather than a whole one. The block it
+covers is its coalescing target, so a streak over one selection leaves a single step to undo and a
+shift after the cursor moves or the selection is reached out starts the next entry. Transpose and
+volume count separately, each carrying its own action.
 
 ## Dragging a range out
 

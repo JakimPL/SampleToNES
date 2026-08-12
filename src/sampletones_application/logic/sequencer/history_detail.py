@@ -144,37 +144,23 @@ class SequencerHistoryDetail:
         segments.append(self._subcolumn(subcolumn))
         return tuple(segments)
 
-    def adjust_transpose(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> Segments:
-        affected = self._tracker_logic.relevant_generators(row_index)
-        segments = list(self._location(row_index, generator, affected))
-        segments.append(
+    def adjust_transpose(self, region: TrackerRegion, delta: int) -> Segments:
+        """Reads as the cells a shift covers, followed by the semitones it moves them."""
+        return (
+            *self._tracker_region(region),
             self._segment(display_transpose(delta), HistoryDetailRole.TRANSPOSE),
         )
-        return tuple(segments)
 
-    def adjust_volume(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> Segments:
-        affected = self._tracker_logic.relevant_generators(row_index)
-        segments = list(self._location(row_index, generator, affected))
-        segments.append(self._segment(f"{delta:+d}", HistoryDetailRole.VOLUME))
-        return tuple(segments)
+    def adjust_volume(self, region: TrackerRegion, delta: int) -> Segments:
+        """Reads as the cells a shift covers, followed by the steps it moves them."""
+        return (
+            *self._tracker_region(region),
+            self._segment(f"{delta:+d}", HistoryDetailRole.VOLUME),
+        )
 
     def tracker_block(self, region: TrackerRegion) -> Segments:
         """Reads as the frame, the channels a block spans and the rows it covers."""
-        return (
-            self._frame(self._tracker_logic.frame_index),
-            self._channel(self._covered_channels({slot.generator for slot in region.slots})),
-            self._row_range(region.first_row, region.last_row),
-        )
+        return self._tracker_region(region)
 
     def tracker_paste(self, cell: TrackerCell) -> Segments:
         """Reads as the cell a block was written from, the one place a paste chooses."""
@@ -318,6 +304,18 @@ class SequencerHistoryDetail:
             return self._tracker_logic.used_generators(sample_id)
 
         return self._tracker_logic.relevant_generators(row_index)
+
+    def _tracker_region(self, region: TrackerRegion) -> Segments:
+        """Reads a rectangle of the tracker as its frame, the channels it spans and the rows it covers.
+
+        Every gesture over a region reads the same way, so a block and a shift describe the cells
+        they reach in one form.
+        """
+        return (
+            self._frame(self._tracker_logic.frame_index),
+            self._channel(self._covered_channels(set(region.columns))),
+            self._row_range(region.first_row, region.last_row),
+        )
 
     def _location(
         self,

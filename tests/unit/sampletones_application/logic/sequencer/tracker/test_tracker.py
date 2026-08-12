@@ -195,34 +195,6 @@ class TestCutNote:
             assert isinstance(_row(controller, generator).command, NoteOff)
 
 
-class TestAdjustCell:
-    def test_a_channel_cell_shifts_only_that_channel(self) -> None:
-        controller = _controller()
-        logic = SequencerTrackerLogic(controller)
-
-        logic.adjust_cell_volume(0, GeneratorName.PULSE1, -1)
-
-        assert _row(controller, GeneratorName.PULSE1).volume == MAX_VOLUME - 1
-        assert _row(controller, GeneratorName.PULSE2).volume is None
-
-    def test_the_sample_column_shifts_the_sample_channels(self) -> None:
-        controller = _controller()
-        logic = SequencerTrackerLogic(controller)
-        sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
-            name="lead",
-        )
-        logic.set_sample_instrument(0, sample.id)
-
-        logic.adjust_cell_transpose(0, None, 3)
-
-        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
-            assert _row(controller, generator).transpose == 3
-
-        for generator in (GeneratorName.PULSE2, GeneratorName.NOISE):
-            assert _row(controller, generator).transpose is None
-
-
 class TestFrameRowCount:
     def test_counts_the_rows_the_grid_builds(self) -> None:
         controller = _controller()
@@ -510,39 +482,6 @@ class TestAdjustVolume:
         logic.adjust_volume(GeneratorName.PULSE1, 0, -4)
 
         assert _row(controller, GeneratorName.PULSE1).volume == 0
-
-
-class TestAdjustSampleColumn:
-    def test_sample_transpose_shifts_only_relevant_channels(self) -> None:
-        controller = _controller()
-        logic = SequencerTrackerLogic(controller)
-        sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
-            name="lead",
-        )
-        logic.set_sample_instrument(0, sample.id)
-
-        logic.adjust_sample_transpose(0, 3)
-
-        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
-            assert _row(controller, generator).transpose == 3
-
-        for generator in (GeneratorName.PULSE2, GeneratorName.NOISE):
-            assert _row(controller, generator).transpose is None
-
-    def test_sample_volume_steps_relevant_channels_down_from_full(self) -> None:
-        controller = _controller()
-        logic = SequencerTrackerLogic(controller)
-        sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
-            name="lead",
-        )
-        logic.set_sample_instrument(0, sample.id)
-
-        logic.adjust_sample_volume(0, -1)
-
-        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
-            assert _row(controller, generator).volume == MAX_VOLUME - 1
 
 
 class TestBuildTrackerAggregation:

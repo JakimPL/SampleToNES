@@ -80,6 +80,22 @@ as it was.
 Emptying cells keeps the rows and frames they sit in, and every block action is one
 step in the history, so a single **Undo** takes it all back.
 
+## Transposing and shading
+
+In the **Tracker**, transpose and volume move whatever the selection covers, so a
+run of rows nudges together.
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+Up` / `Ctrl+Down` | Transpose a semitone |
+| `Ctrl+Shift+Up` / `Ctrl+Shift+Down` | Transpose an octave |
+| `Alt+Up` / `Alt+Down` | Volume a step |
+| `Alt+Shift+Up` / `Alt+Shift+Down` | Volume four steps |
+
+Control carries pitch, Alt carries volume, and Shift makes the step the bigger one.
+With nothing selected they act on the cell the cursor stands on, and the same
+commands sit on the right-click menu with these keys beside them.
+
 ## Playing the song
 
 The transport below the grid plays the song, and the keyboard drives playback

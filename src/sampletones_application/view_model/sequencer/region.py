@@ -80,6 +80,16 @@ class TrackerRegion(GridRegion, frozen=True):
         """The slots the region covers, each as the column and subcolumn it addresses."""
         return tuple(slot_from_flat(index) for index in range(self.first_slot, self.last_slot + 1))
 
+    @property
+    def columns(self) -> Tuple[Optional[GeneratorName], ...]:
+        """The columns the region reaches, each named once and in the order the axis lays them out.
+
+        A region names its edges as subcolumns, while a gesture acting on whole cells — a transpose
+        or a volume shift — reaches the columns behind them. The sample column reads ``None``, as it
+        does everywhere the axis is read.
+        """
+        return tuple(dict.fromkeys(slot.generator for slot in self.slots))
+
     def covers(self, row: int, slot: TrackerSlot) -> bool:
         """Whether a cell of the grid falls inside the rectangle.
 

@@ -107,6 +107,14 @@ bindings:
   TrackerCopyBlock: {combination: "Ctrl+C"}
   TrackerCutBlock: {combination: "Ctrl+X"}
   TrackerPasteBlock: {combination: "Ctrl+V"}
+  TrackerTransposeUp: {combination: "Ctrl+Up"}
+  TrackerTransposeDown: {combination: "Ctrl+Down"}
+  TrackerTransposeOctaveUp: {combination: "Ctrl+Shift+Up"}
+  TrackerTransposeOctaveDown: {combination: "Ctrl+Shift+Down"}
+  TrackerVolumeUp: {combination: "Alt+Up"}
+  TrackerVolumeDown: {combination: "Alt+Down"}
+  TrackerVolumeUpCoarse: {combination: "Alt+Shift+Up"}
+  TrackerVolumeDownCoarse: {combination: "Alt+Shift+Down"}
   TrackerPageUp: {combination: "PgUp"}
   TrackerPageDown: {combination: "PgDn"}
   TrackerClearRow: {combination: "Del"}

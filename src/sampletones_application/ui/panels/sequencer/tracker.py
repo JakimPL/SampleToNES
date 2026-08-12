@@ -115,7 +115,7 @@ OnSetNoteOffCallback = Callable[[int, Optional[GeneratorName]], None]
 OnCellSelectedCallback = VoidCallback
 OnPlayFromRowCallback = Callable[[int], None]
 OnPlayFromFrameCallback = VoidCallback
-OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
+OnAdjustCallback = Callable[[TrackerRegion, int], None]
 OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
 OnChannelSoloedCallback = Callable[[GeneratorName], None]
 OnBlockRegionCallback = Callable[[TrackerRegion], None]
@@ -126,6 +126,63 @@ CanPasteBlockQuery = Callable[[], bool]
 VOLUME_FINE_STEP: Final[int] = 1
 VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
 PLAYHEAD_PAINT_FRAMES: Final[int] = 1
+
+AdjustAction = Tuple[SequencerTrackerElements, ShortcutId, int]
+AdjustMenuCallback = Callable[[Sender, None, Tuple[TrackerRegion, int]], None]
+
+TRANSPOSE_ACTIONS: Final[Tuple[AdjustAction, ...]] = (
+    (
+        SequencerTrackerElements.CONTEXT_TRANSPOSE_UP,
+        ShortcutId.TRACKER_TRANSPOSE_UP,
+        SEMITONE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_TRANSPOSE_DOWN,
+        ShortcutId.TRACKER_TRANSPOSE_DOWN,
+        -SEMITONE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_UP,
+        ShortcutId.TRACKER_TRANSPOSE_OCTAVE_UP,
+        OCTAVE_SEMITONES,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_DOWN,
+        ShortcutId.TRACKER_TRANSPOSE_OCTAVE_DOWN,
+        -OCTAVE_SEMITONES,
+    ),
+)
+
+VOLUME_ACTIONS: Final[Tuple[AdjustAction, ...]] = (
+    (
+        SequencerTrackerElements.CONTEXT_VOLUME_UP,
+        ShortcutId.TRACKER_VOLUME_UP,
+        VOLUME_FINE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_VOLUME_DOWN,
+        ShortcutId.TRACKER_VOLUME_DOWN,
+        -VOLUME_FINE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_VOLUME_UP_COARSE,
+        ShortcutId.TRACKER_VOLUME_UP_COARSE,
+        VOLUME_COARSE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_VOLUME_DOWN_COARSE,
+        ShortcutId.TRACKER_VOLUME_DOWN_COARSE,
+        -VOLUME_COARSE_STEP,
+    ),
+)
+
+
+def _steps(actions: Tuple[AdjustAction, ...]) -> Dict[ShortcutId, int]:
+    return {shortcut_id: delta for _, shortcut_id, delta in actions}
+
+
+TRANSPOSE_STEPS: Final[Dict[ShortcutId, int]] = _steps(TRANSPOSE_ACTIONS)
+VOLUME_STEPS: Final[Dict[ShortcutId, int]] = _steps(VOLUME_ACTIONS)
 
 
 class GUISequencerTrackerPanel(GUIPanel):
@@ -261,14 +318,9 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._lbl_context_clear_subcolumn = label(SequencerTrackerElements.CONTEXT_CLEAR_SUBCOLUMN)
         self._lbl_context_clear_cell = label(SequencerTrackerElements.CONTEXT_CLEAR_CELL)
         self._lbl_context_clear_row = label(SequencerTrackerElements.CONTEXT_CLEAR_ROW)
-        self._lbl_context_transpose_up = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_UP)
-        self._lbl_context_transpose_down = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_DOWN)
-        self._lbl_context_transpose_octave_up = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_UP)
-        self._lbl_context_transpose_octave_down = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_DOWN)
-        self._lbl_context_volume_up = label(SequencerTrackerElements.CONTEXT_VOLUME_UP)
-        self._lbl_context_volume_down = label(SequencerTrackerElements.CONTEXT_VOLUME_DOWN)
-        self._lbl_context_volume_up_coarse = label(SequencerTrackerElements.CONTEXT_VOLUME_UP_COARSE)
-        self._lbl_context_volume_down_coarse = label(SequencerTrackerElements.CONTEXT_VOLUME_DOWN_COARSE)
+        self._lbl_adjust: Dict[SequencerTrackerElements, str] = {
+            element: label(element) for element, _, _ in (*TRANSPOSE_ACTIONS, *VOLUME_ACTIONS)
+        }
 
     def _load_header_tooltips(self, language_manager: LanguageManager) -> None:
         """Reads the header tooltips, which name the click gestures the labels carry."""
@@ -1294,9 +1346,9 @@ class GUISequencerTrackerPanel(GUIPanel):
             callback=lambda: self.call(self.on_set_note_off, target.cell.row, target.cell.generator),
         )
         dpg.add_separator()
-        self._add_transpose_items(target.cell)
+        self._add_transpose_items(target)
         dpg.add_separator()
-        self._add_volume_items(target.cell)
+        self._add_volume_items(target)
         dpg.add_separator()
         self._add_clear_items(target.cell)
 
@@ -1346,30 +1398,31 @@ class GUISequencerTrackerPanel(GUIPanel):
                     callback=self._on_set_instrument_menu,
                 )
 
-    def _add_transpose_items(self, cell: TrackerCursor) -> None:
-        for label, delta in (
-            (self._lbl_context_transpose_up, SEMITONE_STEP),
-            (self._lbl_context_transpose_down, -SEMITONE_STEP),
-            (self._lbl_context_transpose_octave_up, OCTAVE_SEMITONES),
-            (self._lbl_context_transpose_octave_down, -OCTAVE_SEMITONES),
-        ):
-            dpg.add_menu_item(
-                label=label,
-                user_data=(cell.row, cell.generator, delta),
-                callback=self._on_transpose_menu,
-            )
+    def _add_transpose_items(self, target: TrackerTarget) -> None:
+        self._add_adjust_items(target, TRANSPOSE_ACTIONS, self._on_transpose_menu)
 
-    def _add_volume_items(self, cell: TrackerCursor) -> None:
-        for label, delta in (
-            (self._lbl_context_volume_up, VOLUME_FINE_STEP),
-            (self._lbl_context_volume_down, -VOLUME_FINE_STEP),
-            (self._lbl_context_volume_up_coarse, VOLUME_COARSE_STEP),
-            (self._lbl_context_volume_down_coarse, -VOLUME_COARSE_STEP),
-        ):
+    def _add_volume_items(self, target: TrackerTarget) -> None:
+        self._add_adjust_items(target, VOLUME_ACTIONS, self._on_volume_menu)
+
+    def _add_adjust_items(
+        self,
+        target: TrackerTarget,
+        actions: Tuple[AdjustAction, ...],
+        callback: AdjustMenuCallback,
+    ) -> None:
+        """Builds one axis of adjustment items, each shifting the cells its target covers.
+
+        An adjustment acts on whole cells, so it reaches the columns the target's block covers and
+        the rows it spans: a nudge with a selection standing moves all of it, and one on a cell
+        alone moves that cell. Each item prints the key it answers to, since the action states its
+        label, its binding and its step in one entry.
+        """
+        for element, shortcut_id, delta in actions:
             dpg.add_menu_item(
-                label=label,
-                user_data=(cell.row, cell.generator, delta),
-                callback=self._on_volume_menu,
+                label=self._lbl_adjust[element],
+                shortcut=self._shortcuts.display(shortcut_id),
+                user_data=(target.region, delta),
+                callback=callback,
             )
 
     def _on_set_instrument_menu(
@@ -1385,19 +1438,19 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         _sender: Sender,
         _app_data: None,
-        user_data: Tuple[int, Optional[GeneratorName], int],
+        user_data: Tuple[TrackerRegion, int],
     ) -> None:
-        row_index, generator, delta = user_data
-        self.call(self.on_adjust_transpose, row_index, generator, delta)
+        region, delta = user_data
+        self.call(self.on_adjust_transpose, region, delta)
 
     def _on_volume_menu(
         self,
         _sender: Sender,
         _app_data: None,
-        user_data: Tuple[int, Optional[GeneratorName], int],
+        user_data: Tuple[TrackerRegion, int],
     ) -> None:
-        row_index, generator, delta = user_data
-        self.call(self.on_adjust_volume, row_index, generator, delta)
+        region, delta = user_data
+        self.call(self.on_adjust_volume, region, delta)
 
     def _add_clear_items(self, cell: TrackerCursor) -> None:
         """Builds the three clear levels: the target's subcolumn, its whole channel cell, its whole row.
@@ -1465,6 +1518,9 @@ class GUISequencerTrackerPanel(GUIPanel):
             return True
 
         if self._block_action(shortcut_id):
+            return True
+
+        if self._adjust_action(shortcut_id):
             return True
 
         return self._edit_row(shortcut_id)
@@ -1541,6 +1597,41 @@ class GUISequencerTrackerPanel(GUIPanel):
                 return False
 
         return True
+
+    def _adjust_action(self, shortcut_id: ShortcutId) -> bool:
+        """Shifts the covered cells' transpose or volume, reporting whether the action was one of
+        the two axes.
+
+        A press acts on the block the cursor stands in, which is the selection while one covers it
+        and the cursor's own cell otherwise — the target the menus resolve as well, so a key and a
+        menu item reach the same cells.
+        """
+        transpose_step = TRANSPOSE_STEPS.get(shortcut_id)
+        if transpose_step is not None:
+            self._adjust_at_cursor(self.on_adjust_transpose, transpose_step)
+            return True
+
+        volume_step = VOLUME_STEPS.get(shortcut_id)
+        if volume_step is not None:
+            self._adjust_at_cursor(self.on_adjust_volume, volume_step)
+            return True
+
+        return False
+
+    def _adjust_at_cursor(
+        self,
+        hook: Optional[OnAdjustCallback],
+        delta: int,
+    ) -> None:
+        """Raises an adjustment on the block the cursor stands in, the entry being typed landing first.
+
+        Committing ahead of the shift is what lets a nudge carry the value the reader has just
+        finished typing, the rule the block gestures follow as well.
+        """
+        self.commit_entry()
+        target = self.cursor_target()
+        if target is not None:
+            self.call(hook, target.region, delta)
 
     def _edit_row(self, shortcut_id: ShortcutId) -> bool:
         """Empties the cell under the cursor or drops a partial entry, reporting whether the action

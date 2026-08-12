@@ -119,6 +119,123 @@ class TestChannelKeys(BaseTestSuite):
         assert shipped.action(ShortcutCategory.SAMPLES, _press("F2")) is ShortcutId.SAMPLES_RENAME_SAMPLE
 
 
+class TestTrackerAdjustKeys(BaseTestSuite):
+    """The keys the tracker's shifts answer to: Ctrl carries pitch, Alt carries volume, and Shift
+    makes the step the bigger one."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        shortcut_id: ShortcutId
+        expected: str
+
+    test_cases = (
+        TestCase(label="transpose up", shortcut_id=ShortcutId.TRACKER_TRANSPOSE_UP, expected="Ctrl+Up"),
+        TestCase(label="transpose down", shortcut_id=ShortcutId.TRACKER_TRANSPOSE_DOWN, expected="Ctrl+Down"),
+        TestCase(
+            label="an octave up",
+            shortcut_id=ShortcutId.TRACKER_TRANSPOSE_OCTAVE_UP,
+            expected="Ctrl+Shift+Up",
+        ),
+        TestCase(
+            label="an octave down",
+            shortcut_id=ShortcutId.TRACKER_TRANSPOSE_OCTAVE_DOWN,
+            expected="Ctrl+Shift+Down",
+        ),
+        TestCase(label="volume up", shortcut_id=ShortcutId.TRACKER_VOLUME_UP, expected="Alt+Up"),
+        TestCase(label="volume down", shortcut_id=ShortcutId.TRACKER_VOLUME_DOWN, expected="Alt+Down"),
+        TestCase(
+            label="a coarse volume up",
+            shortcut_id=ShortcutId.TRACKER_VOLUME_UP_COARSE,
+            expected="Alt+Shift+Up",
+        ),
+        TestCase(
+            label="a coarse volume down",
+            shortcut_id=ShortcutId.TRACKER_VOLUME_DOWN_COARSE,
+            expected="Alt+Shift+Down",
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_shift_reads_under_the_combination_it_answers(
+        self,
+        test_case: TestCase,
+        shipped: ShortcutScheme,
+    ) -> None:
+        assert shipped.shortcut(test_case.shortcut_id).display() == test_case.expected
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_shift_answers_its_press_in_the_tracker(
+        self,
+        test_case: TestCase,
+        shipped: ShortcutScheme,
+    ) -> None:
+        action = shipped.action(ShortcutCategory.TRACKER, _press(test_case.expected))
+
+        assert action is test_case.shortcut_id
+
+
+class TestMacosAdjustKeys(BaseTestSuite):
+    """What a Mac reaches the tracker's shifts through.
+
+    The alternatives a Mac keyboard needs already answer on Cmd and Alt with the arrows, so the
+    shifts take Cmd+Alt there and read their axis from the direction: the arrows up and down carry
+    pitch, those left and right carry volume, and Shift makes the step the bigger one.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        shortcut_id: ShortcutId
+        expected: str
+
+    test_cases = (
+        TestCase(label="transpose up", shortcut_id=ShortcutId.TRACKER_TRANSPOSE_UP, expected="Cmd+Alt+Up"),
+        TestCase(label="transpose down", shortcut_id=ShortcutId.TRACKER_TRANSPOSE_DOWN, expected="Cmd+Alt+Down"),
+        TestCase(
+            label="an octave up",
+            shortcut_id=ShortcutId.TRACKER_TRANSPOSE_OCTAVE_UP,
+            expected="Cmd+Alt+Shift+Up",
+        ),
+        TestCase(
+            label="an octave down",
+            shortcut_id=ShortcutId.TRACKER_TRANSPOSE_OCTAVE_DOWN,
+            expected="Cmd+Alt+Shift+Down",
+        ),
+        TestCase(label="volume up", shortcut_id=ShortcutId.TRACKER_VOLUME_UP, expected="Cmd+Alt+Right"),
+        TestCase(label="volume down", shortcut_id=ShortcutId.TRACKER_VOLUME_DOWN, expected="Cmd+Alt+Left"),
+        TestCase(
+            label="a coarse volume up",
+            shortcut_id=ShortcutId.TRACKER_VOLUME_UP_COARSE,
+            expected="Cmd+Alt+Shift+Right",
+        ),
+        TestCase(
+            label="a coarse volume down",
+            shortcut_id=ShortcutId.TRACKER_VOLUME_DOWN_COARSE,
+            expected="Cmd+Alt+Shift+Left",
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_shift_reads_under_the_combination_a_mac_gives_it(
+        self,
+        test_case: TestCase,
+        macos: ShortcutScheme,
+        mac_keyboard: None,
+    ) -> None:
+        assert macos.shortcut(test_case.shortcut_id).display() == test_case.expected
+
+
 class TestMacosKeys(BaseTestSuite):
     """What a Mac reads its keys as, spelled the way that keyboard is labelled."""
 

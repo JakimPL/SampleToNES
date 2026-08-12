@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.elements.table.cells import EditableCells
+from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
@@ -24,6 +25,7 @@ from sampletones_application.view_model.sequencer.region import (
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from tests.suite.shortcuts import shipped_source
 
 ROW_COUNT = 64
@@ -36,13 +38,16 @@ PULSE1_ROW = CHANNEL_AXIS.index(GeneratorName.PULSE1)
 
 @dataclass
 class Gestures:
-    """What each block hook was handed, which is the whole of what a press reaches the grid with."""
+    """What each of the tracker's hooks was handed, which is the whole of what a press reaches the
+    grid with."""
 
     copied: List[TrackerRegion] = field(default_factory=list)
     cut: List[TrackerRegion] = field(default_factory=list)
     deleted: List[TrackerRegion] = field(default_factory=list)
     pasted: List[TrackerCell] = field(default_factory=list)
     cleared: List[Tuple[int, Optional[GeneratorName]]] = field(default_factory=list)
+    transposed: List[Tuple[TrackerRegion, int]] = field(default_factory=list)
+    volume_shifted: List[Tuple[TrackerRegion, int]] = field(default_factory=list)
 
 
 @dataclass
@@ -84,6 +89,8 @@ def _panel(
     panel.on_delete_block = gestures.deleted.append
     panel.on_paste_block = gestures.pasted.append
     panel.on_clear_row = lambda row, generator_name: gestures.cleared.append((row, generator_name))
+    panel.on_adjust_transpose = lambda region, delta: gestures.transposed.append((region, delta))
+    panel.on_adjust_volume = lambda region, delta: gestures.volume_shifted.append((region, delta))
     panel.can_paste_block = lambda: True
     panel._blocks = BlockGestures(grid=panel)
     monkeypatch.setattr(panel, "_apply_state", lambda state: None)
@@ -218,6 +225,55 @@ class TestTrackerDeleteKey:
         assert panel._on_key_pressed(_press("Del")) is True
         assert gestures.deleted == []
         assert gestures.cleared == [(CURSOR_ROW, GeneratorName.PULSE1)]
+
+
+class TestTrackerAdjustKeys:
+    """The shifts reach the same block the clipboard keys do, so a selection moves whole."""
+
+    def test_a_selection_is_transposed_whole(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        gestures = Gestures()
+        panel = _panel(monkeypatch, gestures)
+        panel._input_state = panel._input_state.extend_row(2, ROW_COUNT)
+
+        assert panel._on_key_pressed(_press("Ctrl+Up")) is True
+        assert gestures.transposed == [
+            (
+                TrackerRegion(
+                    first_row=CURSOR_ROW,
+                    last_row=CURSOR_ROW + 2,
+                    first_slot=3,
+                    last_slot=3,
+                ),
+                SEMITONE_STEP,
+            )
+        ]
+
+    def test_a_cursor_alone_shifts_the_cell_it_stands_on(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        gestures = Gestures()
+        panel = _panel(monkeypatch, gestures, subcolumn=SubColumn.VOLUME)
+
+        assert panel._on_key_pressed(_press("Alt+Down")) is True
+        region, delta = gestures.volume_shifted[-1]
+        assert region.rows == range(CURSOR_ROW, CURSOR_ROW + 1)
+        assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME),)
+        assert delta == -tracker_module.VOLUME_FINE_STEP
+
+    def test_shift_makes_the_step_the_bigger_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        gestures = Gestures()
+        panel = _panel(monkeypatch, gestures)
+
+        assert panel._on_key_pressed(_press("Ctrl+Shift+Up")) is True
+        assert panel._on_key_pressed(_press("Alt+Shift+Up")) is True
+        assert gestures.transposed[-1][1] == OCTAVE_SEMITONES
+        assert gestures.volume_shifted[-1][1] == tracker_module.VOLUME_COARSE_STEP
+
+    def test_a_grid_with_no_cursor_shifts_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        gestures = Gestures()
+        panel = _panel(monkeypatch, gestures)
+        panel._input_state = TrackerInputState()
+
+        assert panel._on_key_pressed(_press("Ctrl+Up")) is False
+        assert gestures.transposed == []
 
 
 class TestOrderCopyKey:

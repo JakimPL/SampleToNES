@@ -256,28 +256,6 @@ class SequencerTrackerLogic(CallbackMixin):
                 volume=volume,
             )
 
-    def adjust_cell_transpose(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> None:
-        if generator is None:
-            self.adjust_sample_transpose(row_index, delta)
-        else:
-            self.adjust_transpose(generator, row_index, delta)
-
-    def adjust_cell_volume(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> None:
-        if generator is None:
-            self.adjust_sample_volume(row_index, delta)
-        else:
-            self.adjust_volume(generator, row_index, delta)
-
     def set_row(
         self,
         generator: GeneratorName,
@@ -465,16 +443,6 @@ class SequencerTrackerLogic(CallbackMixin):
             row_index,
             volume=self._current_volume(generator, row_index) + delta,
         )
-
-    def adjust_sample_transpose(self, row_index: int, delta: int) -> None:
-        """Shifts transpose by ``delta`` across the sample column's channels."""
-        for generator in self._subcolumn_generators(row_index):
-            self.adjust_transpose(generator, row_index, delta)
-
-    def adjust_sample_volume(self, row_index: int, delta: int) -> None:
-        """Shifts volume by ``delta`` across the sample column's channels."""
-        for generator in self._subcolumn_generators(row_index):
-            self.adjust_volume(generator, row_index, delta)
 
     def row(
         self,

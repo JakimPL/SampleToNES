@@ -92,14 +92,6 @@ TRACKER_LABELS = (
     "clear_subcolumn",
     "clear_cell",
     "clear_row",
-    "transpose_up",
-    "transpose_down",
-    "transpose_octave_up",
-    "transpose_octave_down",
-    "volume_up",
-    "volume_down",
-    "volume_up_coarse",
-    "volume_down_coarse",
 )
 
 ORDER_LABELS = (
@@ -124,6 +116,13 @@ def _labels(panel: Any, names: Tuple[str, ...]) -> None:
         setattr(panel, f"_lbl_context_{name}", name)
 
 
+def _adjust_labels(panel: Any) -> None:
+    """Gives the panel the words its transpose and volume items print, each reading as its element."""
+    panel._lbl_adjust = {
+        element: element.value for element, _, _ in (*tracker_module.TRANSPOSE_ACTIONS, *tracker_module.VOLUME_ACTIONS)
+    }
+
+
 def _tracker_panel(
     gestures: Gestures,
     *,
@@ -132,6 +131,7 @@ def _tracker_panel(
     """A tracker panel whose menu builder can run with no DearPyGui context behind it."""
     panel = tracker_module.GUISequencerTrackerPanel.__new__(tracker_module.GUISequencerTrackerPanel)
     _labels(panel, TRACKER_LABELS)
+    _adjust_labels(panel)
     panel._shortcuts = shipped_source()
     panel._input_state = TrackerInputState()
     panel._current_samples = None
