@@ -69,7 +69,7 @@ carries every register value the channel takes for that tick. From
 | Field | Range | Runtime meaning | What the exporter writes |
 | --- | --- | --- | --- |
 | `pulseWidth` | 0–3 | square duty cycle; on the noise channel, any nonzero value selects the short LFSR | the duty-cycle envelope item (squares), the short/long mode (noise), a flat value (triangle) |
-| `volumeOrRate` | 0–15 | the literal channel volume while `envelope` stays off | the volume envelope item |
+| `volumeOrRate` | 0–15 | the literal channel volume while `envelope` stays off | the volume envelope item, or a full level where the slice leaves its volume to the channel |
 | `envelope` | bool | reads `volumeOrRate` as a hardware decay rate | `false`, so each item is the volume itself |
 | `soundLength` | 0–511 | length counter in ticks; `0` holds the note | `0`, so the volume envelope alone shapes the note |
 | `toneAdd` | −4096–4095 | period offset added to the tuning-table period (squares and triangle) | `0` in a document, the pitch contour in a preset |
@@ -79,10 +79,18 @@ carries every register value the channel takes for that tick. From
 
 **Looping.** Playback returns to the instrument's `loop` row once it runs off the end,
 which is the only mode there is. A looping slice therefore sets `loop = 0` so its
-envelopes repeat from the start while the note is held; a one-shot sets
-`loop = len - 1`, and since the volume envelope ends on a note-off item, the
-instrument rests in silence once it has played through. A sample's `loop` flag drives
-this, the same flag the FamiTracker exporter reads.
+envelopes repeat from the start while the note is held; a one-shot sets `loop = len - 1`
+and rests on the level that row carries — silence where the volume envelope ends on a
+note-off item, the channel's own level where the slice holds its volume. A sample's
+`loop` flag drives this, the same flag the FamiTracker exporter reads.
+
+**A held volume.** A slice whose volume envelope carries no item leaves its level to the
+channel, so the exporter writes a full `volumeOrRate` for every frame the slice
+describes. Playback combines a row's level with the pattern's volume column through a
+PT3 volume table, where a full-level row comes out at the column's own level, so those
+rows sound at whatever level the channel carries — the same reading FamiTracker gives a
+disabled volume sequence. A slice describing no frame at all is what writes a single
+silent row, the smallest instrument Bitphase plays.
 
 **Equal lengths.** Instrument rows and table rows advance on independent per-tick
 counters, so they share a length and a loop point and stay in step for as long as the
