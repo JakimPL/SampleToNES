@@ -110,6 +110,16 @@ class Features(BaseModel):
         return max((len(array) for array in arrays if array is not None), default=0)
 
     @property
+    def has_frames(self) -> bool:
+        """Whether the envelopes describe a frame, which is what a channel plays.
+
+        Every dimension left to the channel leaves an instrument describing nothing, so this
+        is what tells a channel that sounds from one that stands by: an export writes the
+        instruments that have frames, and the driver stores only those.
+        """
+        return self.frame_count > 0
+
+    @property
     def held_features(self) -> Tuple[FeatureKey, ...]:
         """The dimensions the channel governs, whose envelopes carry no item.
 

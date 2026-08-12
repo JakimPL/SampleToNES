@@ -18,6 +18,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_INPUT_INVALID,
     TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
+    TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
     TAG_GLOBAL_THEME_PANEL_INSTRUMENT,
 )
 from sampletones_application.tags.graphs import (
@@ -67,9 +68,8 @@ from sampletones_core.constants.enums import (
     GeneratorName,
     LibraryGeneratorName,
 )
-from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
-from sampletones_core.features import GENERATOR_KIND, supported_features
+from sampletones_core.features import GENERATOR_KIND, resting_reference, supported_features
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
@@ -104,6 +104,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
         self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
+        self._export_buttons: Dict[GeneratorName, GUIButton] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
         self.no_data_message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE)
@@ -306,7 +307,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         ):
             self.generator_plots[generator_name] = {}
             button_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT, tab_tag)
-            GUIButton(
+            self._export_buttons[generator_name] = GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
                 label=self._language_manager["reconstructions.instruments.label.export_instrument_button"],
@@ -346,7 +347,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._create_generator_feature_displays(generator_name, window_tag)
 
     def _default_initial_pitch(self, generator_name: GeneratorName) -> int:
-        return MAX_PERIOD if generator_name == GeneratorName.NOISE else MIN_PITCH
+        return resting_reference(generator_name)
 
     def _create_generator_feature_displays(
         self,
@@ -435,6 +436,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self,
         view_model: ReconstructionInstrumentsViewModel,
     ) -> None:
+        """Shows a tab per channel, marking the ones standing by.
+
+        Every channel is editable for as long as a reconstruction is open, so writing an
+        envelope into a channel standing by is what puts it in play. A muted tab label and a
+        withheld export say which channels are there.
+        """
         is_loaded = view_model.reconstruction_loaded
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
@@ -443,26 +450,46 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         for generator_name in GeneratorName.items():
             tab_tag = self._get_generator_tab_tag(generator_name)
-            is_available = generator_name in view_model.available_generators
-            dpg_configure_item(tab_tag, show=is_available)
+            dpg_configure_item(tab_tag, show=is_loaded)
+            self._apply_playing_state(
+                generator_name,
+                generator_name in view_model.playing_generators,
+            )
+
+    def _apply_playing_state(
+        self,
+        generator_name: GeneratorName,
+        is_playing: bool,
+    ) -> None:
+        """Marks one channel's tab as playing or standing by.
+
+        The muted theme reaches the tab label alone; the tab's body carries its own text colour,
+        so a channel standing by stays as readable to edit as one that plays.
+        """
+        theme_tag = TAG_GLOBAL_THEME_INSTRUMENT_TABS if is_playing else TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED
+        ThemeRegistry.get(theme_tag).bind_to_item(self._get_generator_tab_tag(generator_name))
+
+        export_button = self._export_buttons.get(generator_name)
+        if export_button is not None:
+            export_button.set_enabled(is_playing)
 
     def _update_sizes(
         self,
         footprint: Optional[SampleFootprintViewModel],
     ) -> None:
-        """Writes the byte figures the loaded reconstruction occupies, the sample's and each channel's."""
+        """Writes the byte figures the loaded reconstruction occupies, the sample's and each channel's.
+
+        A channel standing by is written by no export, so it reads as the nothing it costs.
+        """
         if footprint is None:
             return
 
         dpg_set_value(self.sample_size_tag, self._format_size(footprint.total_bytes))
         for generator_name in GeneratorName.items():
             instrument_bytes = footprint.bytes_for(generator_name)
-            if instrument_bytes is None:
-                continue
-
             dpg_set_value(
                 self._get_instrument_size_tag(generator_name),
-                self._format_size(instrument_bytes),
+                self._format_size(instrument_bytes if instrument_bytes is not None else 0),
             )
 
     def _format_size(self, byte_count: int) -> str:

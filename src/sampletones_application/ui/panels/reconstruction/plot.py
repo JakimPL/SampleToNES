@@ -86,16 +86,22 @@ class GUIReconstructionPlotPanel(GUIPanel):
             self._create_tooltips()
 
     def update_view(self, view_model: ReconstructionViewModel) -> None:
+        """Offers a checkbox for each channel that plays, ticked where the reader keeps it on.
+
+        The channels an edit puts in play arrive already selected and one switched off by hand
+        arrives as it was left, so the boxes report what plays without overruling a choice.
+        """
         for generator_name in GeneratorName:
             tag = self._get_generator_checkbox_tag(generator_name)
-            is_available = generator_name in view_model.available_generators
+            is_playing = generator_name in view_model.playing_generators
+            is_selected = generator_name in view_model.selected_generators
             dpg_configure_item(
                 tag,
-                enabled=is_available,
-                default_value=is_available,
+                enabled=is_playing,
+                default_value=is_selected,
             )
-            dpg_set_value(tag, is_available)
-            if is_available:
+            dpg_set_value(tag, is_selected)
+            if is_playing:
                 ThemeRegistry.get(_GENERATOR_THEME_TAGS[generator_name]).bind_to_item(tag)
             else:
                 dpg.bind_item_theme(tag, 0)

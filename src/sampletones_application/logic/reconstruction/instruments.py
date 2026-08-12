@@ -47,12 +47,12 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.call(self.on_view_changed, self._build_view_model(generators))
         self.call(self.on_feature_data_changed, generators)
 
-    def refresh_footprint(self) -> None:
-        """Reports the sizes the loaded envelopes occupy, leaving the displayed envelopes as they are.
+    def refresh_view(self) -> None:
+        """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
 
-        A regeneration replaces what an instrument exports, so the byte figures settle on it. The
-        envelopes themselves are left to the edit that started the regeneration, so a field the
-        user is still typing in keeps what they wrote.
+        A regeneration replaces what an instrument exports, so the byte figures and the standing-by
+        channels settle on it. The envelopes themselves are left to the edit that started the
+        regeneration, so a field the user is still typing in keeps what they wrote.
         """
         self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
 
@@ -67,14 +67,16 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         if generators is None:
             return ReconstructionInstrumentsViewModel(
                 reconstruction_loaded=False,
-                available_generators=frozenset(),
+                playing_generators=frozenset(),
                 footprint=None,
             )
 
-        available_generators: FrozenSet[GeneratorName] = frozenset(generators.keys())
+        playing_generators: FrozenSet[GeneratorName] = frozenset(
+            generator_name for generator_name, features in generators.items() if features.has_frames
+        )
         return ReconstructionInstrumentsViewModel(
             reconstruction_loaded=True,
-            available_generators=available_generators,
+            playing_generators=playing_generators,
             footprint=self._build_footprint(generators),
         )
 
@@ -82,16 +84,18 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self,
         generators: Dict[GeneratorName, Features],
     ) -> SampleFootprintViewModel:
-        """Measures each channel's instrument as the size its own export writes.
+        """Measures each playing channel's instrument as the size its own export writes.
 
         A reconstruction has no loop flag of its own — that belongs to a sample placed in a
         project — so each instrument is measured playing its envelopes once, matching what
-        **Export instrument...** produces.
+        **Export instrument...** produces. A channel standing by is written nowhere, so it is
+        measured nowhere and the sample's total names what the export costs.
         """
         return SampleFootprintViewModel.from_footprints(
             {
                 generator_name: features_footprint(features, loop=False)
                 for generator_name, features in generators.items()
+                if features.has_frames
             }
         )
 
@@ -214,6 +218,4 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         current_features = self.reconstruction_manager.current_features
         assert current_features is not None, "Current features should not be None"
 
-        features = current_features.get_generator_features(generator_name)
-        assert features is not None, f"Features for generator {generator_name} should not be None"
-        return features
+        return current_features[generator_name]

@@ -18,6 +18,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
+from sampletones_core.instructions import TriangleInstruction
 from sampletones_core.paths import (
     EXT_FILE_BITPHASE,
     EXT_FILE_INSTRUMENT,
@@ -280,6 +281,103 @@ class TestReconstructionPanelLogicUpdate:
         panel_logic.on_audio_data_changed = callback
         panel_logic.update_reconstruction()
         callback.assert_not_called()
+
+
+class TestReconstructionPanelLogicPlayingChannels:
+    """Which channels the waveform offers, and what an edit does to the reader's choice."""
+
+    @staticmethod
+    def _received(panel_logic: ReconstructionPanelLogic) -> List[ReconstructionViewModel]:
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+        return received
+
+    def test_display_offers_the_channels_that_play(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        received = self._received(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1})
+        assert received[0].selected_generators == frozenset({GeneratorName.PULSE1})
+
+    def test_an_edit_reports_the_view_again(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.display_reconstruction()
+        received = self._received(panel_logic)
+
+        panel_logic.update_reconstruction()
+
+        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1})
+
+    def test_a_channel_switched_off_by_hand_survives_an_edit(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.display_reconstruction()
+        panel_logic.set_selected_generators([])
+        received = self._received(panel_logic)
+
+        panel_logic.update_reconstruction()
+
+        assert received[0].selected_generators == frozenset()
+
+    def test_a_channel_gaining_its_first_frame_joins_the_waveform(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.display_reconstruction()
+        loaded_data.reconstruction.update_generator_data(
+            GeneratorName.TRIANGLE,
+            [TriangleInstruction(on=True, pitch=48)],
+            np.ones(64, dtype=np.float32),
+            48,
+            (),
+        )
+        received = self._received(panel_logic)
+
+        panel_logic.update_reconstruction()
+
+        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1, GeneratorName.TRIANGLE})
+        assert received[0].selected_generators == frozenset({GeneratorName.PULSE1, GeneratorName.TRIANGLE})
+
+    def test_a_channel_taken_out_of_play_leaves_the_waveform(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.display_reconstruction()
+        loaded_data.reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [],
+            np.zeros(0, dtype=np.float32),
+            60,
+            (),
+        )
+        received = self._received(panel_logic)
+
+        panel_logic.update_reconstruction()
+
+        assert received[0].playing_generators == frozenset()
+        assert received[0].selected_generators == frozenset()
 
 
 class TestReconstructionPanelLogicClose:

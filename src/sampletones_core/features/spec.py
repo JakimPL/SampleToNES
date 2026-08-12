@@ -9,6 +9,7 @@ from sampletones_core.constants.general import (
     MAX_NOISE_MODE,
     MAX_PERIOD,
     MAX_VOLUME,
+    NUM_PERIODS,
 )
 
 
@@ -36,6 +37,10 @@ CHANNEL_FEATURE_DEFAULTS: Final[Dict[FeatureKey, int]] = {
 }
 
 
+RESTING_REFERENCE_PITCH: Final[int] = 60
+RESTING_REFERENCE_PERIOD: Final[int] = NUM_PERIODS // 2
+
+
 GENERATOR_FEATURE_RANGES: Final[Dict[LibraryGeneratorName, Dict[FeatureKey, FeatureRange]]] = {
     LibraryGeneratorName.PULSE: {
         FeatureKey.VOLUME: FeatureRange(0, MAX_VOLUME),
@@ -60,6 +65,26 @@ GENERATOR_KIND: Final[Dict[GeneratorName, LibraryGeneratorName]] = {
     GeneratorName.TRIANGLE: LibraryGeneratorName.TRIANGLE,
     GeneratorName.NOISE: LibraryGeneratorName.NOISE,
 }
+
+
+def resting_reference(generator_name: GeneratorName) -> int:
+    """The reference an arpeggio envelope is measured against while a channel describes no frame.
+
+    A channel with no frames still carries a reference, since the first envelope given to it
+    sounds every frame at that value. Resting mid-range puts a channel added by hand on an
+    audible note, and on a noise period between the extremes.
+
+    Args:
+        generator_name: The channel whose resting reference is read.
+
+    Returns:
+        int: The pitch a tonal channel rests at, or the period the noise channel rests at.
+    """
+    match GENERATOR_KIND[generator_name]:
+        case LibraryGeneratorName.NOISE:
+            return RESTING_REFERENCE_PERIOD
+        case _:
+            return RESTING_REFERENCE_PITCH
 
 
 def supported_features(kind: LibraryGeneratorName) -> list[FeatureKey]:

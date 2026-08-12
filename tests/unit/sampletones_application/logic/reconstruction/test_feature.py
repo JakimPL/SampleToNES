@@ -25,10 +25,19 @@ def feature_data(reconstruction: Reconstruction) -> FeatureData:
 class TestFeatureDataLoad:
     def test_load_creates_entry_for_each_generator(
         self,
+        feature_data: FeatureData,
+    ) -> None:
+        assert set(feature_data.generators.keys()) == set(GeneratorName.items())
+
+    def test_a_channel_standing_by_carries_empty_envelopes(
+        self,
         reconstruction: Reconstruction,
         feature_data: FeatureData,
     ) -> None:
-        assert set(feature_data.generators.keys()) == set(reconstruction.approximations.keys())
+        """A channel the reconstruction leaves silent is loaded describing no frame."""
+        standing_by = set(GeneratorName.items()) - set(reconstruction.playing_generators)
+        assert standing_by
+        assert all(not feature_data[generator_name].has_frames for generator_name in standing_by)
 
     def test_loaded_features_include_initial_pitch(
         self,
@@ -39,15 +48,10 @@ class TestFeatureDataLoad:
 
 
 class TestFeatureDataQueries:
-    def test_get_generator_features_returns_features_for_present(
+    @pytest.mark.parametrize("generator_name", GeneratorName.items(), ids=lambda name: name.value)
+    def test_every_channel_answers_with_its_features(
         self,
         feature_data: FeatureData,
+        generator_name: GeneratorName,
     ) -> None:
-        result = feature_data.get_generator_features(GeneratorName.PULSE1)
-        assert isinstance(result, Features)
-
-    def test_get_generator_features_returns_none_for_absent(
-        self,
-        feature_data: FeatureData,
-    ) -> None:
-        assert feature_data.get_generator_features(GeneratorName.TRIANGLE) is None
+        assert isinstance(feature_data[generator_name], Features)

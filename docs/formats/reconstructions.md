@@ -26,10 +26,14 @@ A `.stn` file holds:
 * **approximation** — the rendered NES audio: the sum of every channel's output,
   the closest match to the original;
 * **per-channel approximations** — the audio each channel contributes on its own,
-  one waveform per enabled channel (`pulse1`, `pulse2`, `triangle`, `noise`);
+  one waveform per channel that sounds;
 * **per-channel instructions** — the instruction stream each channel plays, one
   [instruction](../glossary.md#instruction) per frame. This is the data a
-  FamiTracker export is built from;
+  FamiTracker export is built from. A reconstruction holds a stream for every one
+  of the four channels (`pulse1`, `pulse2`, `triangle`, `noise`), and a stream of
+  no frames is a channel standing by: it is written by no export and costs
+  nothing, while staying open to edit, so writing an envelope into it puts the
+  channel in play and clearing every envelope takes it out again;
 * **per-channel reference pitch** — the note each channel's arpeggio offsets are
   measured against, chosen once when the reconstruction is built and stored with
   the instructions it describes. An export reads the offsets against this pitch,
@@ -41,6 +45,9 @@ A `.stn` file holds:
   channel's, and the player keeps the value it already holds for them. A freshly
   built reconstruction writes them all, and clearing an envelope in the
   instruments panel adds that dimension here.
+
+A channel standing by rests at a reference pitch of its own, so the first envelope
+written into it sounds on a mid-range note.
 
 ## Detached reconstructions
 

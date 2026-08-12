@@ -100,22 +100,23 @@ def reconstruction_footprints(
     *,
     loop: bool,
 ) -> Dict[GeneratorName, InstrumentFootprint]:
-    """Measures one instrument per channel a reconstruction covers.
+    """Measures one instrument per channel a reconstruction plays.
 
-    A reconstruction exports one instrument for each of its one to four channels, so the result
-    holds an entry per covered channel and :func:`total_footprint` sums them into what the whole
-    sample costs.
+    An export writes an instrument for each channel that plays, so the result holds an entry
+    per playing channel and :func:`total_footprint` sums them into what the whole sample costs.
+    A channel standing by is written nowhere and therefore measured nowhere.
 
     Args:
         reconstruction: The reconstruction whose channels are measured.
         loop: Whether the sample carrying it loops while its note is held.
 
     Returns:
-        Dict[GeneratorName, InstrumentFootprint]: The footprint of each channel's instrument.
+        Dict[GeneratorName, InstrumentFootprint]: The footprint of each playing channel's instrument.
     """
     return {
         generator_name: features_footprint(features, loop=loop)
         for generator_name, features in reconstruction.export().items()
+        if features.has_frames
     }
 
 

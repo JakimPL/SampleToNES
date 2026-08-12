@@ -168,6 +168,10 @@ instruments panel puts it in (see [Reconstructions](reconstructions.md)).
 
 **How _SampleToNES_ fills an instrument.** Each generator slice of a sample's
 reconstruction becomes one instrument, so a sample yields one to four instruments.
+A reconstruction holds a stream for every channel, and one describing no frame is a
+channel standing by (see [Reconstructions](reconstructions.md#contents)): it takes no
+place in the instrument table, so the instruments an export writes are the channels
+that play.
 The arpeggio sequence carries the reconstruction's pitch contour as signed offsets,
 and triggering the instrument at `initial_pitch` replays that contour. Volume, duty
 (or noise mode) and any pitch sequences carry across directly. The DPCM

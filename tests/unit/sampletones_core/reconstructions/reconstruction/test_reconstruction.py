@@ -9,6 +9,7 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.data import Metadata
+from sampletones_core.features import resting_reference
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.application import (
@@ -335,6 +336,95 @@ class TestHeldFeatures:
         loaded = Reconstruction.load(path)
 
         assert loaded.held_features == reconstruction.held_features
+
+
+class TestChannelSet:
+    """A reconstruction holds every channel, so one that stands by stays editable.
+
+    An instruction stream describing no frame is what a channel standing by looks like: it
+    exports empty envelopes, costs nothing, and gaining a frame is what puts it in play.
+    """
+
+    def test_a_fresh_reconstruction_holds_every_channel(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        assert set(reconstruction.instructions) == set(GeneratorName.items())
+        assert reconstruction.playing_generators == (GeneratorName.PULSE1,)
+
+    def test_a_channel_standing_by_rests_at_the_shared_reference(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        assert reconstruction.initial_pitches[GeneratorName.TRIANGLE] == resting_reference(GeneratorName.TRIANGLE)
+        assert reconstruction.initial_pitches[GeneratorName.NOISE] == resting_reference(GeneratorName.NOISE)
+
+    def test_a_channel_standing_by_exports_empty_envelopes(self) -> None:
+        features = _reconstruction([_pulse(_BASE_PITCH)]).export()[GeneratorName.PULSE2]
+
+        assert not features.has_frames
+        assert features.volume.size == 0
+        assert features.arpeggio.size == 0
+
+    def test_a_channel_standing_by_renders_no_audio(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        assert GeneratorName.PULSE2 not in reconstruction.approximations
+
+    def test_clearing_every_frame_keeps_the_channel(self) -> None:
+        """Taking a channel out of play leaves its stream in place, so the edit is reversible."""
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
+
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [],
+            np.zeros(0, dtype=np.float32),
+            _BASE_PITCH,
+            (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+        )
+
+        assert reconstruction.playing_generators == ()
+        assert GeneratorName.PULSE1 in reconstruction.instructions
+        assert reconstruction.initial_pitches[GeneratorName.PULSE1] == _BASE_PITCH
+        assert not reconstruction.export()[GeneratorName.PULSE1].has_frames
+
+    def test_a_frame_puts_a_channel_standing_by_into_play(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE2,
+            [_pulse(_BASE_PITCH)] * 2,
+            np.ones(_AUDIO_LENGTH, dtype=np.float32),
+            _BASE_PITCH,
+            (),
+        )
+
+        assert reconstruction.playing_generators == (GeneratorName.PULSE1, GeneratorName.PULSE2)
+        assert reconstruction.export()[GeneratorName.PULSE2].has_frames
+        assert GeneratorName.PULSE2 in reconstruction.approximations
+
+    def test_a_reconstruction_of_channels_standing_by_stays_valid(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [],
+            np.zeros(0, dtype=np.float32),
+            _BASE_PITCH,
+            (),
+        )
+
+        assert reconstruction.approximations == {}
+        assert reconstruction.approximation.size == 0
+
+    def test_the_channel_set_survives_a_save_load_round_trip(self, tmp_path: Path) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+        path = tmp_path / "channels.stn"
+
+        reconstruction.save(path)
+        loaded = Reconstruction.load(path)
+
+        assert set(loaded.instructions) == set(GeneratorName.items())
+        assert loaded.playing_generators == reconstruction.playing_generators
+        assert loaded.initial_pitches == reconstruction.initial_pitches
 
 
 class TestWithNesFrequency:

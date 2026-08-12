@@ -3,8 +3,11 @@ from .spec import (
     FEATURE_DIMENSION_ORDER,
     GENERATOR_FEATURE_RANGES,
     GENERATOR_KIND,
+    RESTING_REFERENCE_PERIOD,
+    RESTING_REFERENCE_PITCH,
     FeatureRange,
     feature_range,
+    resting_reference,
     supported_features,
     supports,
 )
@@ -14,8 +17,11 @@ __all__ = [
     "FEATURE_DIMENSION_ORDER",
     "GENERATOR_FEATURE_RANGES",
     "GENERATOR_KIND",
+    "RESTING_REFERENCE_PERIOD",
+    "RESTING_REFERENCE_PITCH",
     "FeatureRange",
     "feature_range",
+    "resting_reference",
     "supported_features",
     "supports",
 ]

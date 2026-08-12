@@ -87,7 +87,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         instruments_logic.update_display()
         assert received == [feature_data.generators]
 
-    def test_with_features_exposes_available_generators(
+    def test_with_features_exposes_the_playing_generators(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
@@ -97,7 +97,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
         instruments_logic.update_display()
-        assert GeneratorName.PULSE1 in received[0].available_generators
+        assert GeneratorName.PULSE1 in received[0].playing_generators
 
 
 class TestReconstructionInstrumentsLogicFootprint:
@@ -114,7 +114,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         instruments_logic.update_display()
         assert received[0].footprint is None
 
-    def test_every_covered_channel_is_measured(
+    def test_every_playing_channel_is_measured(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
@@ -127,7 +127,9 @@ class TestReconstructionInstrumentsLogicFootprint:
         instruments_logic.update_display()
         footprint = received[0].footprint
         assert footprint is not None
-        assert {instrument.generator for instrument in footprint.instruments} == set(feature_data.generators)
+        assert {instrument.generator for instrument in footprint.instruments} == {
+            generator_name for generator_name, features in feature_data.generators.items() if features.has_frames
+        }
 
     def test_the_size_is_the_one_a_one_shot_export_writes(
         self,
@@ -144,7 +146,9 @@ class TestReconstructionInstrumentsLogicFootprint:
         footprint = received[0].footprint
         assert footprint is not None
         expected = total_footprint(
-            features_footprint(features, loop=False) for features in feature_data.generators.values()
+            features_footprint(features, loop=False)
+            for features in feature_data.generators.values()
+            if features.has_frames
         )
         assert footprint.total_bytes == expected.total_bytes
 
@@ -224,7 +228,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         instruments_logic.on_view_changed = received.append
         instruments_logic.on_feature_data_changed = feature_updates.append
 
-        instruments_logic.refresh_footprint()
+        instruments_logic.refresh_view()
 
         assert len(received) == 1
         assert received[0].footprint is not None

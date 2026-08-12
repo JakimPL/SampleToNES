@@ -182,6 +182,12 @@ TAG_GLOBAL_THEME_INSTRUMENT_TABS = TagName(
     Widget.THEME,
     "instrument_tabs",
 )
+TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "instrument_tabs_muted",
+)
 TAG_GLOBAL_THEME_PANEL_INSTRUMENT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

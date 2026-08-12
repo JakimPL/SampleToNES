@@ -81,11 +81,11 @@ def make_sample(
     expected_slices: FrozenSet[GeneratorName],
     loop: bool = False,
 ) -> Sample:
-    """Reconstructs ``audio`` into a `Sample`, asserting the covered channel slices."""
+    """Reconstructs ``audio`` into a `Sample`, asserting the channels it plays."""
     reconstruction = reconstruct_sample(audio, config, library, tmp_dir=tmp_dir, name=name)
-    covered = frozenset(reconstruction.instructions)
-    if covered != expected_slices:
-        raise AssertionError(f"Sample '{name}' covers {set(covered)}, expected {set(expected_slices)}")
+    played = frozenset(reconstruction.playing_generators)
+    if played != expected_slices:
+        raise AssertionError(f"Sample '{name}' covers {set(played)}, expected {set(expected_slices)}")
 
     return Sample(name=name, reconstruction=reconstruction, loop=loop)
 

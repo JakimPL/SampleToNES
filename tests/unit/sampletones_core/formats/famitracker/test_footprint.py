@@ -158,7 +158,8 @@ class TestTotalFootprint:
 
 
 class TestReconstructionFootprints:
-    def test_one_entry_per_covered_channel(self) -> None:
+    def test_one_entry_per_playing_channel(self) -> None:
+        """The sample holds every channel; the two that play are the two an export writes."""
         sample = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
         footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loop)
         assert set(footprints) == {GeneratorName.PULSE1, GeneratorName.TRIANGLE}
@@ -176,7 +177,9 @@ class TestReconstructionFootprints:
         features = sample.reconstruction.export()
         for loop in (False, True):
             assert reconstruction_footprints(sample.reconstruction, loop=loop) == {
-                generator_name: features_footprint(feature, loop=loop) for generator_name, feature in features.items()
+                generator_name: features_footprint(feature, loop=loop)
+                for generator_name, feature in features.items()
+                if feature.has_frames
             }
 
     def test_looping_costs_the_shortest_dimensions_length(self) -> None:
