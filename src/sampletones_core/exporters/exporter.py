@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import ClassVar, Dict, Final, Generic, List, Optional, Union, cast
+from typing import ClassVar, Dict, Generic, Iterable, List, Optional, Union, cast
 
 import numpy as np
 
 from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.generators import GeneratorTypeUnion
 from sampletones_core.instructions import (
     InstructionFields,
@@ -14,8 +15,6 @@ from sampletones_core.types.feature import FeatureMap
 from sampletones_shared.utils.arrays import hold, trim
 
 from .feature import Features
-
-EMPTY_ENVELOPE_VALUE: Final[int] = 0
 
 
 class Exporter(ABC, Generic[InstructionT]):
@@ -38,18 +37,26 @@ class Exporter(ABC, Generic[InstructionT]):
         self,
         instructions: List[InstructionT],
         initial_pitch: int,
+        held_features: Iterable[FeatureKey],
     ) -> Features:
         """Converts an instruction sequence into its :class:`Features`.
+
+        An instruction states every dimension of its frame, so the dimensions the instrument
+        leaves to the channel are named alongside the sequence and come back with empty
+        envelopes: what the frames carry for them is the value the channel held.
 
         Args:
             instructions: The channel's per-frame instructions.
             initial_pitch: Reference pitch the arpeggio envelope is measured against.
+            held_features: The dimensions the channel governs.
 
         Returns:
             Features: The envelope representation of the sequence.
         """
         feature_map = self.get_feature_map(instructions, initial_pitch)
-        return self.from_feature_map_to_features(feature_map)
+        features = self.from_feature_map_to_features(feature_map)
+        features.leave_to_channel(held_features)
+        return features
 
     @staticmethod
     def from_feature_map_to_features(feature_map: FeatureMap) -> Features:
@@ -115,7 +122,10 @@ class Exporter(ABC, Generic[InstructionT]):
         Walks the envelopes frame by frame and assembles one instruction per frame. Every
         envelope is read relative to itself — a dimension trimmed shorter than the sequence
         holds its own final value over the remaining frames — so the arpeggio stays an
-        offset from ``initial_pitch`` for the whole sequence.
+        offset from ``initial_pitch`` for the whole sequence. A dimension the instrument
+        leaves to the channel carries no item, and every frame states the value a channel
+        holds for it from the start of a song, which is what the sequence sounds like played
+        on its own.
 
         Args:
             features: The envelope representation of a channel.
@@ -139,7 +149,13 @@ class Exporter(ABC, Generic[InstructionT]):
                 if not attribute:
                     continue
 
-                instruction_dictionary[attribute] = int(hold(array, index, default=EMPTY_ENVELOPE_VALUE))
+                instruction_dictionary[attribute] = int(
+                    hold(
+                        array,
+                        index,
+                        default=CHANNEL_FEATURE_DEFAULTS[key],
+                    )
+                )
 
             instructions.append(cls._features_dictionary_to_instruction(instruction_dictionary, initial_pitch))
 

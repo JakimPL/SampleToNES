@@ -1,6 +1,6 @@
 import threading
 from types import SimpleNamespace
-from typing import Any, Callable, Dict, Final, Iterator, List, TypeAlias, cast
+from typing import Any, Callable, Dict, Final, Iterator, List, Tuple, TypeAlias, cast
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -26,12 +26,17 @@ class FakeFeatures(Dict[Any, Any]):
     """Stands in for ``Features``: records the edited dimension and carries a reference pitch.
 
     Assigning ``FeatureKey.INITIAL_PITCH`` moves the reference pitch, matching the real model,
-    so the pitch stepper's edit is observable through ``initial_pitch``.
+    so the pitch stepper's edit is observable through ``initial_pitch``. The dimensions left to
+    the channel are read the same way the real model reports them: those whose envelope is empty.
     """
 
     def __init__(self, initial_pitch: int) -> None:
         super().__init__()
         self.initial_pitch = initial_pitch
+
+    @property
+    def held_features(self) -> Tuple[FeatureKey, ...]:
+        return tuple(key for key, value in self.items() if isinstance(value, np.ndarray) and value.size == 0)
 
     def __setitem__(self, feature_key: Any, value: Any) -> None:
         if feature_key == FeatureKey.INITIAL_PITCH:

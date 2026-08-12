@@ -69,6 +69,7 @@ class TestBuildInstrumentTable:
             arpeggiated,
             np.ones(RECONSTRUCTION_LENGTH, dtype=np.float32),
             LEAD_PITCH,
+            (),
         )
 
         instruments, slots = build_instrument_table(project_fixture.project)

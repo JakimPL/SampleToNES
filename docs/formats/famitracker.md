@@ -162,7 +162,9 @@ passes that length, so the limit is visible before an export.
 
 An empty dimension is written as a disabled sequence, which is a different instrument from
 one carrying a single zero: the disabled slot leaves that dimension to the channel, while a
-one-item sequence sets the value once and holds it.
+one-item sequence sets the value once and holds it. A dimension arrives empty when the
+reconstruction records it as one the channel governs — the state clearing the envelope in the
+instruments panel puts it in (see [Reconstructions](reconstructions.md)).
 
 **How _SampleToNES_ fills an instrument.** Each generator slice of a sample's
 reconstruction becomes one instrument, so a sample yields one to four instruments.

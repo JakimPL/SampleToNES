@@ -3,14 +3,14 @@ from __future__ import annotations
 import struct
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, Final, List, Mapping, Optional, Self, Sequence
+from typing import Any, Dict, Final, Iterable, List, Mapping, Optional, Self, Sequence, Tuple
 from uuid import uuid4
 
 import numpy as np
 from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.data import DataModel, Metadata, MetadataContract
 from sampletones_core.exporters import (
     GENERATOR_NAME_TO_EXPORTER_MAP,
@@ -99,6 +99,16 @@ class Reconstruction(DataModel):
         """The reference pitch each generator's arpeggio envelope is measured against."""
         return {item.generator_name: item.initial_pitch for item in self.instructions_data}
 
+    @cached_property
+    def held_features(self) -> Dict[GeneratorName, Tuple[FeatureKey, ...]]:
+        """The dimensions each generator leaves to the channel.
+
+        An instruction states every dimension of its frame, so which of them the instrument
+        itself writes is stated here: the rest are the channel's, and an export leaves their
+        envelopes empty for the player to fill from the value it holds.
+        """
+        return {item.generator_name: tuple(item.held_features) for item in self.instructions_data}
+
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
         return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
@@ -144,6 +154,7 @@ class Reconstruction(DataModel):
                     generator_name=generator_name,
                     instructions=channel_instructions,
                     initial_pitch=cls._derive_initial_pitch(generator_name, channel_instructions),
+                    held_features=(),
                 )
             )
 
@@ -187,11 +198,14 @@ class Reconstruction(DataModel):
         instructions: List[InstructionUnion],
         partial_approximation: np.ndarray,
         initial_pitch: int,
+        held_features: Iterable[FeatureKey],
     ) -> None:
-        """Replaces one generator's instructions, audio, and reference pitch.
+        """Replaces one generator's instructions, audio, reference pitch, and held dimensions.
 
         The reference pitch travels with the instructions it produced, so a later export
-        measures the arpeggio against the same base the edit was made from.
+        measures the arpeggio against the same base the edit was made from. The held
+        dimensions travel with them for the same reason: the frames state a value for every
+        dimension, and this is what says which of them the instrument itself wrote.
         """
         partial_approximation = np.trim_zeros(partial_approximation, trim="b")
         max_length = max(
@@ -210,6 +224,7 @@ class Reconstruction(DataModel):
                     generator_name=generator_name,
                     instructions=instructions,
                     initial_pitch=initial_pitch,
+                    held_features=held_features,
                 )
                 if item.generator_name == generator_name
                 else item
@@ -317,6 +332,7 @@ class Reconstruction(DataModel):
         reconstruction.__dict__.pop("approximations", None)
         reconstruction.__dict__.pop("instructions", None)
         reconstruction.__dict__.pop("initial_pitches", None)
+        reconstruction.__dict__.pop("held_features", None)
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
@@ -387,6 +403,7 @@ class Reconstruction(DataModel):
             feature: Features = exporter.to_features(
                 instructions,  # type: ignore[arg-type]
                 self.initial_pitches[name],
+                self.held_features[name],
             )
             features[name] = feature
 

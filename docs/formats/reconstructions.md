@@ -34,7 +34,13 @@ A `.stn` file holds:
   measured against, chosen once when the reconstruction is built and stored with
   the instructions it describes. An export reads the offsets against this pitch,
   so editing an arpeggio moves the frames around a base that stays put (see
-  [FamiTracker export](famitracker.md)).
+  [FamiTracker export](famitracker.md));
+* **per-channel held dimensions** — the envelopes each channel leaves to the
+  player. An instruction states a value for every dimension of its frame, so this
+  is what says which of them the instrument itself writes; the rest are the
+  channel's, and the player keeps the value it already holds for them. A freshly
+  built reconstruction writes them all, and clearing an envelope in the
+  instruments panel adds that dimension here.
 
 ## Detached reconstructions
 

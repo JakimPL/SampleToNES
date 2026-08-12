@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.data import Metadata
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
@@ -247,6 +247,7 @@ class TestInitialPitchReference:
             arpeggiated,
             np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
+            (),
         )
 
         features = reconstruction.export()[GeneratorName.PULSE1]
@@ -262,6 +263,7 @@ class TestInitialPitchReference:
             [_pulse(_RESET_PITCH)],
             np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _RESET_PITCH,
+            (),
         )
 
         assert reconstruction.initial_pitches[GeneratorName.PULSE1] == _RESET_PITCH
@@ -274,6 +276,65 @@ class TestInitialPitchReference:
         loaded = Reconstruction.load(path)
 
         assert loaded.initial_pitches == reconstruction.initial_pitches
+
+
+class TestHeldFeatures:
+    """The dimensions each generator leaves to the channel travel with its instructions.
+
+    A frame states every dimension, so an export reads which of them the instrument itself
+    wrote from the reconstruction rather than from the frames.
+    """
+
+    def test_a_fresh_reconstruction_writes_every_dimension(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        assert reconstruction.held_features[GeneratorName.PULSE1] == ()
+
+    def test_a_held_dimension_exports_an_empty_envelope(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
+
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [_pulse(_BASE_PITCH)] * 3,
+            np.ones(_AUDIO_LENGTH, dtype=np.float32),
+            _BASE_PITCH,
+            (FeatureKey.ARPEGGIO,),
+        )
+
+        features = reconstruction.export()[GeneratorName.PULSE1]
+        assert features.arpeggio.size == 0
+        assert features.volume.size > 0
+
+    def test_the_written_dimensions_export_their_items(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
+
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [_pulse(_BASE_PITCH)] * 3,
+            np.ones(_AUDIO_LENGTH, dtype=np.float32),
+            _BASE_PITCH,
+            (FeatureKey.ARPEGGIO,),
+        )
+
+        features = reconstruction.export()[GeneratorName.PULSE1]
+        assert features.duty_cycle is not None
+        assert features.duty_cycle.size > 0
+
+    def test_held_dimensions_survive_a_save_load_round_trip(self, tmp_path: Path) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [_pulse(_BASE_PITCH)] * 3,
+            np.ones(_AUDIO_LENGTH, dtype=np.float32),
+            _BASE_PITCH,
+            (FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+        )
+        path = tmp_path / "held.stn"
+
+        reconstruction.save(path)
+        loaded = Reconstruction.load(path)
+
+        assert loaded.held_features == reconstruction.held_features
 
 
 class TestWithNesFrequency:

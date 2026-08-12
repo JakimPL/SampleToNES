@@ -27,6 +27,15 @@ FEATURE_DIMENSION_ORDER: Final[Tuple[FeatureKey, ...]] = (
 )
 
 
+CHANNEL_FEATURE_DEFAULTS: Final[Dict[FeatureKey, int]] = {
+    FeatureKey.VOLUME: MAX_VOLUME,
+    FeatureKey.ARPEGGIO: 0,
+    FeatureKey.PITCH: 0,
+    FeatureKey.HI_PITCH: 0,
+    FeatureKey.DUTY_CYCLE: 0,
+}
+
+
 GENERATOR_FEATURE_RANGES: Final[Dict[LibraryGeneratorName, Dict[FeatureKey, FeatureRange]]] = {
     LibraryGeneratorName.PULSE: {
         FeatureKey.VOLUME: FeatureRange(0, MAX_VOLUME),

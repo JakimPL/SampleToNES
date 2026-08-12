@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 
+from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.exporters import Features
 
 
@@ -26,3 +27,26 @@ class TestFrameCount:
 
     def test_empty_envelopes_count_no_frames(self) -> None:
         assert build_features(0).frame_count == 0
+
+
+class TestHeldFeatures:
+    """The dimensions an instrument leaves to the channel, read off the envelopes."""
+
+    def test_an_instrument_writing_every_dimension_leaves_none(self) -> None:
+        assert build_features(8, duty_cycle_frames=8).held_features == ()
+
+    def test_an_empty_envelope_marks_a_dimension_the_channel_governs(self) -> None:
+        features = build_features(8, duty_cycle_frames=8)
+        features[FeatureKey.ARPEGGIO] = np.array([], dtype=np.int8)
+        assert features.held_features == (FeatureKey.ARPEGGIO,)
+
+    def test_a_dimension_the_channel_lacks_stays_out_of_the_listing(self) -> None:
+        """The triangle channel offers no duty cycle, which is a different absence."""
+        assert build_features(8).held_features == ()
+
+    def test_leaving_a_dimension_to_the_channel_empties_its_envelope(self) -> None:
+        features = build_features(8, duty_cycle_frames=8)
+        features.leave_to_channel((FeatureKey.VOLUME, FeatureKey.DUTY_CYCLE))
+        assert features.volume.size == 0
+        assert features.duty_cycle is not None and features.duty_cycle.size == 0
+        assert features.held_features == (FeatureKey.VOLUME, FeatureKey.DUTY_CYCLE)
