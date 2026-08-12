@@ -22,7 +22,7 @@ from sampletones_application.view_model.sequencer.region import (
     TrackerCell,
     TrackerRegion,
 )
-from sampletones_application.view_model.sequencer.slot import TrackerSlot
+from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot, slot_from_flat
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from tests.suite.grid import (
@@ -42,6 +42,11 @@ CUT_ITEM = 1
 PASTE_ITEM = 2
 DELETE_ITEM = 3
 
+SELECT_ALL_ITEM = 0
+SELECT_COLUMN_ITEM = 1
+SELECT_SUBCOLUMN_ITEM = 2
+SELECT_ROW_ITEM = 1
+
 PULSE1_ROW = CHANNEL_AXIS.index(GeneratorName.PULSE1)
 
 
@@ -52,6 +57,7 @@ class MenuItem:
     label: str
     enabled: bool
     callback: Callable[[], None]
+    shortcut: str = ""
 
 
 @dataclass
@@ -80,12 +86,16 @@ class _MenuRecorder:
                 label=kwargs["label"],
                 enabled=kwargs.get("enabled", True),
                 callback=kwargs.get("callback", _prints_only),
+                shortcut=kwargs.get("shortcut", ""),
             )
         )
         return 0
 
 
 TRACKER_LABELS = (
+    "select_all",
+    "select_column",
+    "select_subcolumn",
     "note_off",
     "set_instrument",
     "no_samples",
@@ -95,6 +105,8 @@ TRACKER_LABELS = (
 )
 
 ORDER_LABELS = (
+    "select_all",
+    "select_row",
     "duplicate",
     "clone",
     "insert",
@@ -200,6 +212,30 @@ def _tracker_cell(generator: Optional[GeneratorName]) -> TrackerCursor:
 def _order_cell(generator: Optional[GeneratorName]) -> OrderCursor:
     """The clicked cell the order item tests raise their menu on."""
     return OrderCursor(generator, CLICKED_POSITION)
+
+
+def _tracker_selections(
+    monkeypatch: pytest.MonkeyPatch,
+    panel: tracker_module.GUISequencerTrackerPanel,
+) -> List[TrackerInputState]:
+    """The states a select item applies, on a grid holding a cursor and the rows to reach."""
+    panel._input_state = TrackerInputState(cursor=_tracker_cell(GeneratorName.PULSE1))
+    panel._current_row_count = ROW_COUNT
+    states: List[TrackerInputState] = []
+    monkeypatch.setattr(panel, "_apply_state", states.append)
+    monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: None)
+    return states
+
+
+def _order_selections(
+    monkeypatch: pytest.MonkeyPatch,
+    panel: order_module.GUISequencerOrderPanel,
+) -> List[OrderInputState]:
+    """The states a select item applies, on a table holding a cursor and the positions to reach."""
+    panel._input_state = OrderInputState(cursor=_order_cell(GeneratorName.PULSE1))
+    states: List[OrderInputState] = []
+    monkeypatch.setattr(panel, "_apply_state", lambda state, notify=True: states.append(state))
+    return states
 
 
 def _selected_tracker_state() -> TrackerInputState:
@@ -454,7 +490,7 @@ class TestOrderMenuItems:
 class TestActionSet:
     """One builder states each grid's actions, so every menu offering them prints the same set."""
 
-    def test_the_tracker_action_set_opens_with_the_clipboard_items(
+    def test_the_tracker_action_set_leads_with_the_shapes_a_selection_takes(
         self,
         tracker_recorder: _MenuRecorder,
     ) -> None:
@@ -463,10 +499,11 @@ class TestActionSet:
         panel.add_action_items(panel._surface.target_at(_tracker_cell(GeneratorName.PULSE1)))
 
         labels = [item.label for item in tracker_recorder.items]
-        assert labels[:4] == ["Copy", "Cut", "Paste", "Delete"]
+        assert labels[:3] == ["select_all", "select_column", "select_subcolumn"]
+        assert labels[3:7] == ["Copy", "Cut", "Paste", "Delete"]
         assert panel._lbl_context_clear_row in labels
 
-    def test_the_order_action_set_opens_with_the_clipboard_items(
+    def test_the_order_action_set_leads_with_the_shapes_a_selection_takes(
         self,
         order_recorder: _MenuRecorder,
     ) -> None:
@@ -475,7 +512,8 @@ class TestActionSet:
         panel.add_action_items(panel._surface.target_at(_order_cell(GeneratorName.PULSE1)))
 
         labels = [item.label for item in order_recorder.items]
-        assert labels[:4] == ["Copy", "Cut", "Paste", "Delete"]
+        assert labels[:2] == ["select_all", "select_row"]
+        assert labels[2:6] == ["Copy", "Cut", "Paste", "Delete"]
         assert panel._lbl_context_move_end in labels
 
 
@@ -492,3 +530,73 @@ class TestMenuItemOrder:
         assert labels[CUT_ITEM] == "Cut"
         assert labels[PASTE_ITEM] == "Paste"
         assert labels[DELETE_ITEM] == "Delete"
+
+
+class TestSelectItems:
+    """The shapes each grid states, printed with their keys and firing what those keys fire."""
+
+    def test_the_tracker_items_print_the_keys_they_answer(self, tracker_recorder: _MenuRecorder) -> None:
+        panel = _tracker_panel(Gestures())
+
+        panel._add_select_items(_tracker_cell(GeneratorName.PULSE1))
+
+        assert [item.shortcut for item in tracker_recorder.items] == [
+            "Ctrl+A",
+            "Ctrl+Shift+A",
+            "Ctrl+Alt+A",
+        ]
+
+    def test_a_tracker_item_selects_the_column_the_menu_was_raised_on(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tracker_recorder: _MenuRecorder,
+    ) -> None:
+        """A menu names the cell it was raised on, so the shape reaches that cell's own column."""
+        panel = _tracker_panel(Gestures())
+        states = _tracker_selections(monkeypatch, panel)
+
+        panel._add_select_items(_tracker_cell(GeneratorName.TRIANGLE))
+        tracker_recorder.items[SELECT_COLUMN_ITEM].callback()
+
+        region = states[-1].region
+        assert region is not None
+        assert region.columns == (GeneratorName.TRIANGLE,)
+        assert (region.first_row, region.last_row) == (0, ROW_COUNT - 1)
+
+    def test_a_tracker_item_selects_the_whole_frame(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tracker_recorder: _MenuRecorder,
+    ) -> None:
+        panel = _tracker_panel(Gestures())
+        states = _tracker_selections(monkeypatch, panel)
+
+        panel._add_select_items(_tracker_cell(GeneratorName.TRIANGLE))
+        tracker_recorder.items[SELECT_ALL_ITEM].callback()
+
+        region = states[-1].region
+        assert region is not None
+        assert region.slots == tuple(slot_from_flat(index) for index in range(SLOT_COUNT))
+
+    def test_the_order_items_print_the_keys_they_answer(self, order_recorder: _MenuRecorder) -> None:
+        panel = _order_panel(Gestures())
+
+        panel._add_select_items(_order_cell(GeneratorName.PULSE1))
+
+        assert [item.shortcut for item in order_recorder.items] == ["Ctrl+A", "Ctrl+Shift+A"]
+
+    def test_an_order_item_selects_the_row_the_menu_was_raised_on(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        order_recorder: _MenuRecorder,
+    ) -> None:
+        panel = _order_panel(Gestures())
+        states = _order_selections(monkeypatch, panel)
+
+        panel._add_select_items(_order_cell(None))
+        order_recorder.items[SELECT_ROW_ITEM].callback()
+
+        region = states[-1].region
+        assert region is not None
+        assert region.generators == (None,)
+        assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)

@@ -50,6 +50,37 @@ class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
     def _covers(self, region: OrderRegion, cell: OrderCursor) -> bool:
         return region.covers(cell.generator, cell.position)
 
+    def select_all(self, position_count: int) -> OrderInputState:
+        """Selects the whole order: every channel row, across every position it holds."""
+        return self._select_rows(CHANNEL_AXIS[0], CHANNEL_AXIS[-1], position_count)
+
+    def select_row(
+        self,
+        cell: OrderCursor,
+        position_count: int,
+    ) -> OrderInputState:
+        """Selects the row ``cell`` stands in: that channel, across every position.
+
+        The master row is an ordinary member of the axis here, so selecting it selects a row the
+        way selecting a channel does.
+        """
+        return self._select_rows(cell.generator, cell.generator, position_count)
+
+    def _select_rows(
+        self,
+        first_generator: Optional[GeneratorName],
+        last_generator: Optional[GeneratorName],
+        position_count: int,
+    ) -> OrderInputState:
+        """Selects a run of rows across the whole order, the cursor landing on its far corner."""
+        if position_count == 0:
+            return self
+
+        return self.select_between(
+            OrderCursor(first_generator, 0),
+            OrderCursor(last_generator, position_count - 1),
+        )
+
     def extend_position(
         self,
         value: int,

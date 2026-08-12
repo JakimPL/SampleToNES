@@ -255,11 +255,12 @@ class TestFieldFocusGate:
         source: ShortcutSource,
         field_kind: Dict[str, FieldKind],
     ) -> None:
+        """Ctrl+Z undoes the text being typed, so the application's own undo stays out of it."""
         callback = Mock()
-        manager = _manager(source, ShortcutId.AUDIO_SETTINGS, callback)
+        manager = _manager(source, ShortcutId.UNDO, callback)
         field_kind["kind"] = FieldKind.TEXT_ENTRY
 
-        claimed = manager._dispatch(_event(dpg.mvKey_A, modifiers=CTRL))
+        claimed = manager._dispatch(_event(dpg.mvKey_Z, modifiers=CTRL))
 
         assert not claimed
         callback.assert_not_called()
@@ -269,12 +270,12 @@ class TestFieldFocusGate:
         source: ShortcutSource,
         field_kind: Dict[str, FieldKind],
     ) -> None:
-        """Ctrl+Shift+A carries a chord letter without being a text chord, so the shortcut fires."""
+        """Ctrl+Shift+S is no text chord, so the shortcut fires while a field holds the keyboard."""
         callback = Mock()
-        manager = _manager(source, ShortcutId.TOGGLE_ADVANCED_SETTINGS, callback)
+        manager = _manager(source, ShortcutId.SAVE_PROJECT_AS, callback)
         field_kind["kind"] = FieldKind.TEXT_ENTRY
 
-        claimed = manager._dispatch(_event(dpg.mvKey_A, modifiers=CTRL_SHIFT))
+        claimed = manager._dispatch(_event(dpg.mvKey_S, modifiers=CTRL_SHIFT))
 
         assert claimed
         callback.assert_called_once()

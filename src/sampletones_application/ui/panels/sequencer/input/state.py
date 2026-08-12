@@ -79,6 +79,15 @@ class GridInputState(ABC, Generic[CursorT, RegionT]):
             anchor=self.anchor if self.anchor is not None else self.cursor,
         )
 
+    def select_between(self, anchor: CursorT, cursor: CursorT) -> Self:
+        """Stands a selection between two cells, the cursor landing on the second.
+
+        A select gesture names a shape by the two corners bounding it, and leaves the cursor on the
+        far one: the next extending press then grows or shrinks the selection from the edge the
+        reader has just reached.
+        """
+        return type(self)(cursor=cursor, pending="", anchor=anchor)
+
     def cancel(self) -> Self:
         """Drops a partial entry and any selection, which is what Escape asks of a grid."""
         return self.collapse().reset_pending()

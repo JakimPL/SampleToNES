@@ -2,6 +2,7 @@ from typing import List, Optional
 
 import pytest
 
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
@@ -12,7 +13,7 @@ from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrac
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.view_model.sequencer.region import OrderRegion, TrackerRegion
-from sampletones_application.view_model.sequencer.slot import TrackerSlot
+from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from tests.suite.shortcuts import shipped_source
@@ -178,3 +179,74 @@ class TestOrderSelectionKeys:
 
         assert panel._on_key_pressed(_press("Right")) is True
         assert states[-1].region is None
+
+
+class TestTrackerSelectKeys:
+    """The A chord selects a shape of the grid, each shape wider than the one Shift and Alt add."""
+
+    def test_ctrl_a_selects_the_whole_frame(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _tracker()
+        states = _tracker_states(monkeypatch, panel)
+
+        assert panel._on_key_pressed(_press("Ctrl+A")) is True
+        region = states[-1].region
+        assert region is not None
+        assert (region.first_row, region.last_row) == (0, ROW_COUNT - 1)
+        assert (region.first_slot, region.last_slot) == (0, SLOT_COUNT - 1)
+
+    def test_ctrl_shift_a_selects_the_column_the_cursor_stands_in(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _tracker(generator=GeneratorName.TRIANGLE, subcolumn=SubColumn.VOLUME)
+        states = _tracker_states(monkeypatch, panel)
+
+        assert panel._on_key_pressed(_press("Ctrl+Shift+A")) is True
+        region = states[-1].region
+        assert region is not None
+        assert region.slots == tuple(TrackerSlot(GeneratorName.TRIANGLE, subcolumn) for subcolumn in SubColumn)
+
+    def test_ctrl_alt_a_selects_the_subcolumn_the_cursor_stands_in(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _tracker(subcolumn=SubColumn.VOLUME)
+        states = _tracker_states(monkeypatch, panel)
+
+        assert panel._on_key_pressed(_press("Ctrl+Alt+A")) is True
+        region = states[-1].region
+        assert region is not None
+        assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME),)
+
+    def test_a_shape_stands_the_cursor_at_the_end_it_reaches(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A Shift+Up straight after shrinks the selection from the row the shape ended on."""
+        panel = _tracker()
+        states = _tracker_states(monkeypatch, panel)
+
+        assert panel._on_key_pressed(_press("Ctrl+A")) is True
+        assert states[-1].cursor == TrackerCursor(ROW_COUNT - 1, GeneratorName.NOISE, SubColumn.VOLUME)
+
+
+class TestOrderSelectKeys:
+    """The A chord selects a shape of the table, the whole order or the row the cursor stands in."""
+
+    def test_ctrl_a_selects_the_whole_order(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _order()
+        states = _order_states(monkeypatch, panel)
+
+        assert panel._on_key_pressed(_press("Ctrl+A")) is True
+        region = states[-1].region
+        assert region is not None
+        assert region.generators == CHANNEL_AXIS
+        assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)
+
+    def test_ctrl_shift_a_selects_the_row_the_cursor_stands_in(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _order(generator=None)
+        states = _order_states(monkeypatch, panel)
+
+        assert panel._on_key_pressed(_press("Ctrl+Shift+A")) is True
+        region = states[-1].region
+        assert region is not None
+        assert region.generators == (None,)
+        assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)
+
+    def test_a_shape_stands_the_cursor_at_the_end_it_reaches(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _order()
+        states = _order_states(monkeypatch, panel)
+
+        assert panel._on_key_pressed(_press("Ctrl+A")) is True
+        assert states[-1].cursor == OrderCursor(CHANNEL_AXIS[-1], POSITION_COUNT - 1)

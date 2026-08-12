@@ -136,8 +136,8 @@ class TestCellEntry:
         assert order.states[-1].pending == "A"
 
     def test_a_modified_hex_key_reaches_the_application(self, order: OrderPanelFixture) -> None:
-        """Ctrl+A opens the audio settings, so cell entry keeps the plain key alone."""
-        assert order.panel._on_key_pressed(_press("Ctrl+A")) is False
+        """Ctrl+D opens the display settings, so cell entry keeps the plain key alone."""
+        assert order.panel._on_key_pressed(_press("Ctrl+D")) is False
         assert order.states == []
 
     def test_the_clear_cell_key_empties_the_cell_and_moves_on(self, order: OrderPanelFixture) -> None:

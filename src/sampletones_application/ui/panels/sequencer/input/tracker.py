@@ -14,6 +14,7 @@ from sampletones_application.view_model.sequencer.slot import (
     SLOT_COUNT,
     SUBCOLUMNS,
     TrackerSlot,
+    column_slot_base,
     slot_from_flat,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
@@ -96,6 +97,49 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
 
     def _covers(self, region: TrackerRegion, cell: TrackerCursor) -> bool:
         return region.covers(cell.row, TrackerSlot(cell.generator, cell.subcolumn))
+
+    def select_all(self, row_count: int) -> TrackerInputState:
+        """Selects the whole frame: every row of it, across every slot the axis lays out."""
+        return self._select_slots(0, SLOT_COUNT - 1, row_count)
+
+    def select_column(
+        self,
+        cell: TrackerCursor,
+        row_count: int,
+    ) -> TrackerInputState:
+        """Selects the column ``cell`` stands in: every row of it, across that column's subcolumns.
+
+        The sample column is an ordinary member of the axis here, so selecting it selects a column
+        the way selecting a channel does.
+        """
+        base = column_slot_base(cell.generator)
+        return self._select_slots(base, base + len(SUBCOLUMNS) - 1, row_count)
+
+    def select_subcolumn(
+        self,
+        cell: TrackerCursor,
+        row_count: int,
+    ) -> TrackerInputState:
+        """Selects the subcolumn ``cell`` stands in: every row of it, at that one slot."""
+        slot = TrackerSlot(cell.generator, cell.subcolumn).flat_index
+        return self._select_slots(slot, slot, row_count)
+
+    def _select_slots(
+        self,
+        first_slot: int,
+        last_slot: int,
+        row_count: int,
+    ) -> TrackerInputState:
+        """Selects a run of slots down the whole frame, the cursor landing on its far corner."""
+        if row_count == 0:
+            return self
+
+        first = slot_from_flat(first_slot)
+        last = slot_from_flat(last_slot)
+        return self.select_between(
+            TrackerCursor(0, first.generator, first.subcolumn),
+            TrackerCursor(row_count - 1, last.generator, last.subcolumn),
+        )
 
     def extend_row(
         self,

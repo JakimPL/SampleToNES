@@ -50,10 +50,10 @@ bindings:
   UnmuteAllChannels: {combination: ~}
 
   # view
-  AudioSettings: {combination: "Cmd+A"}
+  AudioSettings: {combination: "Cmd+U"}
   DisplaySettings: {combination: "Cmd+D"}
   KeyboardSettings: {combination: "Cmd+K"}
-  ToggleAdvancedSettings: {combination: "Cmd+Shift+A"}
+  ToggleAdvancedSettings: {combination: "Cmd+Alt+T"}
   ToggleFullscreen: {combination: "Cmd+Ctrl+F"}
   AboutDialog: {combination: ~}
   NextTab: {combination: "Cmd+Alt+Right", aliases: ["Cmd+PgDn"], field_transparent: true}
@@ -72,6 +72,8 @@ bindings:
   OrderExtendSelectionRight: {combination: "Shift+Right"}
   OrderExtendSelectionToFirstPosition: {combination: "Shift+Home", aliases: ["Cmd+Shift+Left"]}
   OrderExtendSelectionToLastPosition: {combination: "Shift+End", aliases: ["Cmd+Shift+Right"]}
+  OrderSelectAll: {combination: "Cmd+A"}
+  OrderSelectRow: {combination: "Cmd+Shift+A"}
   OrderCopyBlock: {combination: "Cmd+C"}
   OrderCutBlock: {combination: "Cmd+X"}
   OrderPasteBlock: {combination: "Cmd+V"}
@@ -104,6 +106,9 @@ bindings:
   TrackerExtendSelectionRight: {combination: "Shift+Right"}
   TrackerExtendSelectionToFirstRow: {combination: "Shift+Home", aliases: ["Cmd+Shift+Up"]}
   TrackerExtendSelectionToLastRow: {combination: "Shift+End", aliases: ["Cmd+Shift+Down"]}
+  TrackerSelectAll: {combination: "Cmd+A"}
+  TrackerSelectColumn: {combination: "Cmd+Shift+A"}
+  TrackerSelectSubcolumn: {combination: "Cmd+Alt+A"}
   TrackerCopyBlock: {combination: "Cmd+C"}
   TrackerCutBlock: {combination: "Cmd+X"}
   TrackerPasteBlock: {combination: "Cmd+V"}

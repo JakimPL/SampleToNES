@@ -324,6 +324,9 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         self._lbl_context_play = label(SequencerTrackerElements.CONTEXT_PLAY)
         self._lbl_context_play_from_frame = label(SequencerTrackerElements.CONTEXT_PLAY_FROM_FRAME)
+        self._lbl_context_select_all = label(SequencerTrackerElements.CONTEXT_SELECT_ALL)
+        self._lbl_context_select_column = label(SequencerTrackerElements.CONTEXT_SELECT_COLUMN)
+        self._lbl_context_select_subcolumn = label(SequencerTrackerElements.CONTEXT_SELECT_SUBCOLUMN)
         self._lbl_context_note_off = label(SequencerTrackerElements.CONTEXT_NOTE_OFF)
         self._lbl_context_set_instrument = label(SequencerTrackerElements.CONTEXT_SET_INSTRUMENT)
         self._lbl_context_no_samples = label(SequencerTrackerElements.CONTEXT_NO_SAMPLES)
@@ -1331,6 +1334,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         the cell menu asks for the cell a pointer landed on, and the menu bar asks for the cell the
         cursor stands on. An action added here reaches both.
         """
+        self._add_select_items(target.cell)
+        dpg.add_separator()
         self._surface.add_block_items(target)
         dpg.add_separator()
         self._add_instrument_submenu(target.cell)
@@ -1344,6 +1349,29 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._add_volume_items(target)
         dpg.add_separator()
         self._add_clear_items(target.cell)
+
+    def _add_select_items(self, cell: TrackerCursor) -> None:
+        """Builds the three shapes a selection takes, from the whole frame down to one subcolumn.
+
+        Each item fires the gesture its key fires, on the cell the menu names: a column selected
+        from a cell menu is the column that cell stands in, and one selected from the menu bar is
+        the column the cursor stands in.
+        """
+        dpg.add_menu_item(
+            label=self._lbl_context_select_all,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_SELECT_ALL),
+            callback=lambda: self._select_shape(ShortcutId.TRACKER_SELECT_ALL, cell),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_select_column,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_SELECT_COLUMN),
+            callback=lambda: self._select_shape(ShortcutId.TRACKER_SELECT_COLUMN, cell),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_select_subcolumn,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_SELECT_SUBCOLUMN),
+            callback=lambda: self._select_shape(ShortcutId.TRACKER_SELECT_SUBCOLUMN, cell),
+        )
 
     def _add_instrument_submenu(self, cell: TrackerCursor) -> None:
         with dpg.menu(label=self._lbl_context_set_instrument):
@@ -1481,6 +1509,9 @@ class GUISequencerTrackerPanel(GUIPanel):
         if self._extend_selection(shortcut_id):
             return True
 
+        if self._select_shape(shortcut_id, cursor):
+            return True
+
         if self._block_action(shortcut_id):
             return True
 
@@ -1540,6 +1571,46 @@ class GUISequencerTrackerPanel(GUIPanel):
                 return False
 
         return True
+
+    def _select_shape(
+        self,
+        shortcut_id: ShortcutId,
+        cell: TrackerCursor,
+    ) -> bool:
+        """Selects a rectangle of the grid, reporting whether the action was one of its shapes.
+
+        A press names its shape from the cell the cursor stands on, which is the cell the menu
+        items name as well, so a key and an item select the same block.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_SELECT_ALL:
+                self._select_all()
+            case ShortcutId.TRACKER_SELECT_COLUMN:
+                self._select_column(cell)
+            case ShortcutId.TRACKER_SELECT_SUBCOLUMN:
+                self._select_subcolumn(cell)
+            case _:
+                return False
+
+        return True
+
+    def _select_all(self) -> None:
+        self._select(self._committed_state().select_all(self._current_row_count))
+
+    def _select_column(self, cell: TrackerCursor) -> None:
+        self._select(self._committed_state().select_column(cell, self._current_row_count))
+
+    def _select_subcolumn(self, cell: TrackerCursor) -> None:
+        self._select(self._committed_state().select_subcolumn(cell, self._current_row_count))
+
+    def _select(self, new_state: TrackerInputState) -> None:
+        """Stands a selected shape, revealing the row its cursor landed on.
+
+        A shape ends at the frame's last row, so the reveal carries the grid to the end the cursor
+        now holds — the same landing a Shift+End reach makes.
+        """
+        self._apply_state(new_state)
+        self._scroll_cursor_into_view()
 
     def _block_action(self, shortcut_id: ShortcutId) -> bool:
         """Acts on the selected block, reporting whether the action was one of its gestures.

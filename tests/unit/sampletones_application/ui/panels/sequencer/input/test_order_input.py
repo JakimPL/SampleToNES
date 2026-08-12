@@ -127,6 +127,49 @@ class TestTarget:
         assert selected.region_at(cell) == selected.region
 
 
+class TestSelectShapes:
+    """The two shapes the table states, each running every position and ending at its far corner."""
+
+    def test_selecting_all_reaches_every_row_and_every_position(self) -> None:
+        selected = _state(position=2).select_all(POSITION_COUNT)
+
+        region = selected.region
+        assert region is not None
+        assert region.generators == CHANNEL_AXIS
+        assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)
+
+    def test_selecting_a_row_reaches_the_cursor_s_channel_across_the_order(self) -> None:
+        cell = OrderCursor(GeneratorName.TRIANGLE, 2)
+
+        selected = _state(GeneratorName.TRIANGLE, position=2).select_row(cell, POSITION_COUNT)
+
+        region = selected.region
+        assert region is not None
+        assert region.generators == (GeneratorName.TRIANGLE,)
+        assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)
+
+    def test_the_master_row_is_a_row_like_any_other(self) -> None:
+        cell = OrderCursor(None, 2)
+
+        selected = _state(None, position=2).select_row(cell, POSITION_COUNT)
+
+        region = selected.region
+        assert region is not None
+        assert region.generators == (None,)
+
+    def test_a_shape_stands_the_cursor_on_the_last_position_it_reaches(self) -> None:
+        """A shape ends where the next Shift+arrow starts, which is the far corner it covers."""
+        selected = _state(position=2).select_all(POSITION_COUNT)
+
+        assert selected.anchor == OrderCursor(CHANNEL_AXIS[0], 0)
+        assert selected.cursor == OrderCursor(CHANNEL_AXIS[-1], POSITION_COUNT - 1)
+
+    def test_an_order_holding_no_positions_selects_nothing(self) -> None:
+        state = _state()
+
+        assert state.select_all(0) is state
+
+
 class TestEntry:
     def test_type_char_commits_after_two_digits(self) -> None:
         partial, first = _state().type_char("A")

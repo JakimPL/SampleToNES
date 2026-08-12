@@ -235,6 +235,8 @@ class GUISequencerOrderPanel(GUIPanel):
             return self._label(language_manager, element)
 
         self._lbl_context_play = label(SequencerOrderElements.CONTEXT_PLAY)
+        self._lbl_context_select_all = label(SequencerOrderElements.CONTEXT_SELECT_ALL)
+        self._lbl_context_select_row = label(SequencerOrderElements.CONTEXT_SELECT_ROW)
         self._lbl_context_duplicate = label(SequencerOrderElements.CONTEXT_DUPLICATE)
         self._lbl_context_clone = label(SequencerOrderElements.CONTEXT_CLONE)
         self._lbl_context_insert = label(SequencerOrderElements.CONTEXT_INSERT)
@@ -1057,11 +1059,31 @@ class GUISequencerOrderPanel(GUIPanel):
         the cell menu asks for the cell a pointer landed on, and the menu bar asks for the cell the
         cursor stands on. An action added here reaches both.
         """
+        self._add_select_items(target.cell)
+        dpg.add_separator()
         self._surface.add_block_items(target)
         dpg.add_separator()
         self._add_frame_items(target.cell.position)
         dpg.add_separator()
         self._add_move_items(target.cell.position)
+
+    def _add_select_items(self, cell: OrderCursor) -> None:
+        """Builds the two shapes a selection takes, the whole order and one row of it.
+
+        Each item fires the gesture its key fires, on the cell the menu names: a row selected from
+        a cell menu is the row that cell stands in, and one selected from the menu bar is the row
+        the cursor stands in.
+        """
+        dpg.add_menu_item(
+            label=self._lbl_context_select_all,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_SELECT_ALL),
+            callback=lambda: self._select_shape(ShortcutId.ORDER_SELECT_ALL, cell),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_select_row,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_SELECT_ROW),
+            callback=lambda: self._select_shape(ShortcutId.ORDER_SELECT_ROW, cell),
+        )
 
     def _add_frame_items(self, position: int) -> None:
         """Builds the frame operations, each acting on the whole frame the target cell sits in."""
@@ -1165,6 +1187,9 @@ class GUISequencerOrderPanel(GUIPanel):
         if self._extend_selection(shortcut_id):
             return True
 
+        if self._select_shape(shortcut_id, cursor):
+            return True
+
         if self._block_action(shortcut_id):
             return True
 
@@ -1216,6 +1241,32 @@ class GUISequencerOrderPanel(GUIPanel):
                 return False
 
         return True
+
+    def _select_shape(
+        self,
+        shortcut_id: ShortcutId,
+        cell: OrderCursor,
+    ) -> bool:
+        """Selects a rectangle of the table, reporting whether the action was one of its shapes.
+
+        A press names its shape from the cell the cursor stands on, which is the cell the menu
+        items name as well, so a key and an item select the same block.
+        """
+        match shortcut_id:
+            case ShortcutId.ORDER_SELECT_ALL:
+                self._select_all()
+            case ShortcutId.ORDER_SELECT_ROW:
+                self._select_row(cell)
+            case _:
+                return False
+
+        return True
+
+    def _select_all(self) -> None:
+        self._apply_state(self._committed_state().select_all(self._position_count))
+
+    def _select_row(self, cell: OrderCursor) -> None:
+        self._apply_state(self._committed_state().select_row(cell, self._position_count))
 
     def _block_action(self, shortcut_id: ShortcutId) -> bool:
         """Acts on the selected block, reporting whether the action was one of its gestures.

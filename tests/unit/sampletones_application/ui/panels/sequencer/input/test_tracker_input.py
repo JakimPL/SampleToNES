@@ -1,7 +1,7 @@
 from typing import Optional
 
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
-from sampletones_application.view_model.sequencer.slot import TrackerSlot
+from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 
@@ -149,6 +149,61 @@ class TestTargetRegion:
         cell = TrackerCursor(5, GeneratorName.PULSE1, SubColumn.INSTRUMENT)
 
         assert selected.region_at(cell) == selected.region
+
+
+class TestSelectShapes:
+    """The three shapes the grid states, each running the whole frame and ending at its far corner."""
+
+    def test_selecting_all_reaches_every_row_and_every_slot(self) -> None:
+        selected = _state(SubColumn.TRANSPOSE, row=4).select_all(ROW_COUNT)
+
+        region = selected.region
+        assert region is not None
+        assert (region.first_row, region.last_row) == (0, ROW_COUNT - 1)
+        assert (region.first_slot, region.last_slot) == (0, SLOT_COUNT - 1)
+
+    def test_selecting_a_column_reaches_the_cursor_s_channel_and_its_subcolumns(self) -> None:
+        cell = TrackerCursor(4, GeneratorName.TRIANGLE, SubColumn.TRANSPOSE)
+
+        selected = _state(SubColumn.TRANSPOSE, row=4).select_column(cell, ROW_COUNT)
+
+        region = selected.region
+        assert region is not None
+        assert (region.first_row, region.last_row) == (0, ROW_COUNT - 1)
+        assert region.slots == tuple(TrackerSlot(GeneratorName.TRIANGLE, subcolumn) for subcolumn in SubColumn)
+
+    def test_the_sample_column_is_a_column_like_any_other(self) -> None:
+        cell = TrackerCursor(4, None, SubColumn.VOLUME)
+
+        selected = _state(SubColumn.VOLUME, row=4, generator=None).select_column(cell, ROW_COUNT)
+
+        region = selected.region
+        assert region is not None
+        assert region.columns == (None,)
+
+    def test_selecting_a_subcolumn_reaches_the_one_slot_the_cursor_stands_on(self) -> None:
+        cell = TrackerCursor(4, GeneratorName.NOISE, SubColumn.VOLUME)
+
+        selected = _state(SubColumn.VOLUME, row=4, generator=GeneratorName.NOISE).select_subcolumn(cell, ROW_COUNT)
+
+        region = selected.region
+        assert region is not None
+        assert (region.first_row, region.last_row) == (0, ROW_COUNT - 1)
+        assert region.slots == (TrackerSlot(GeneratorName.NOISE, SubColumn.VOLUME),)
+
+    def test_a_shape_stands_the_cursor_on_the_last_row_it_reaches(self) -> None:
+        """A shape ends where the next Shift+arrow starts, which is the far corner it covers."""
+        cell = TrackerCursor(4, GeneratorName.PULSE1, SubColumn.INSTRUMENT)
+
+        selected = _state(SubColumn.INSTRUMENT, row=4).select_column(cell, ROW_COUNT)
+
+        assert selected.cursor == TrackerCursor(ROW_COUNT - 1, GeneratorName.PULSE1, SubColumn.VOLUME)
+        assert selected.anchor == TrackerCursor(0, GeneratorName.PULSE1, SubColumn.INSTRUMENT)
+
+    def test_a_frame_holding_no_rows_selects_nothing(self) -> None:
+        state = _state(SubColumn.INSTRUMENT)
+
+        assert state.select_all(0) is state
 
 
 class TestColumnNavigation:

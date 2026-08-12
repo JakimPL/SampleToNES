@@ -71,6 +71,170 @@ class TestDuplicateFrameKey:
         assert shipped.action(ShortcutCategory.ORDER, _press("Ins")) is ShortcutId.ORDER_ADD_FRAME
 
 
+class TestSelectKeys(BaseTestSuite):
+    """The A chord is selection and nothing else, each modifier narrowing the shape it names."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        category: ShortcutCategory
+        shortcut_id: ShortcutId
+        expected: str
+
+    test_cases = (
+        TestCase(
+            label="the whole frame",
+            category=ShortcutCategory.TRACKER,
+            shortcut_id=ShortcutId.TRACKER_SELECT_ALL,
+            expected="Ctrl+A",
+        ),
+        TestCase(
+            label="a column",
+            category=ShortcutCategory.TRACKER,
+            shortcut_id=ShortcutId.TRACKER_SELECT_COLUMN,
+            expected="Ctrl+Shift+A",
+        ),
+        TestCase(
+            label="a subcolumn",
+            category=ShortcutCategory.TRACKER,
+            shortcut_id=ShortcutId.TRACKER_SELECT_SUBCOLUMN,
+            expected="Ctrl+Alt+A",
+        ),
+        TestCase(
+            label="the whole order",
+            category=ShortcutCategory.ORDER,
+            shortcut_id=ShortcutId.ORDER_SELECT_ALL,
+            expected="Ctrl+A",
+        ),
+        TestCase(
+            label="an order row",
+            category=ShortcutCategory.ORDER,
+            shortcut_id=ShortcutId.ORDER_SELECT_ROW,
+            expected="Ctrl+Shift+A",
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_shape_reads_under_the_combination_it_answers(
+        self,
+        test_case: TestCase,
+        shipped: ShortcutScheme,
+    ) -> None:
+        assert shipped.shortcut(test_case.shortcut_id).display() == test_case.expected
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_shape_answers_its_press_in_the_grid_that_states_it(
+        self,
+        test_case: TestCase,
+        shipped: ShortcutScheme,
+    ) -> None:
+        action = shipped.action(test_case.category, _press(test_case.expected))
+
+        assert action is test_case.shortcut_id
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_mac_reaches_the_shape_through_its_own_modifier(
+        self,
+        test_case: TestCase,
+        macos: ShortcutScheme,
+    ) -> None:
+        """A Mac spells the chord with Command, so the family reads the same on either keyboard."""
+        combination = test_case.expected.replace("Ctrl", "Cmd")
+
+        assert macos.action(test_case.category, _press(combination)) is test_case.shortcut_id
+
+
+class TestDisplacedSettingsKeys(BaseTestSuite):
+    """Where the two settings the A chord displaced now answer, each keeping its family's shape."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        shortcut_id: ShortcutId
+        expected: str
+        mac_expected: str
+
+    test_cases = (
+        TestCase(
+            label="audio settings",
+            shortcut_id=ShortcutId.AUDIO_SETTINGS,
+            expected="Ctrl+U",
+            mac_expected="Cmd+U",
+        ),
+        TestCase(
+            label="advanced settings",
+            shortcut_id=ShortcutId.TOGGLE_ADVANCED_SETTINGS,
+            expected="Ctrl+Alt+T",
+            mac_expected="Cmd+Alt+T",
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_setting_reads_under_the_combination_it_answers(
+        self,
+        test_case: TestCase,
+        shipped: ShortcutScheme,
+    ) -> None:
+        assert shipped.shortcut(test_case.shortcut_id).display() == test_case.expected
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_setting_answers_its_press_wherever_no_grid_claims_it(
+        self,
+        test_case: TestCase,
+        shipped: ShortcutScheme,
+    ) -> None:
+        action = shipped.action(ShortcutCategory.APPLICATION, _press(test_case.expected))
+
+        assert action is test_case.shortcut_id
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_setting_reads_under_the_combination_a_mac_gives_it(
+        self,
+        test_case: TestCase,
+        macos: ShortcutScheme,
+        mac_keyboard: None,
+    ) -> None:
+        assert macos.shortcut(test_case.shortcut_id).display() == test_case.mac_expected
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_grids_leave_the_settings_key_alone(
+        self,
+        test_case: TestCase,
+        shipped: ShortcutScheme,
+    ) -> None:
+        """A grid is asked before the application is, so a dialog opens while the cursor stands in one."""
+        press = _press(test_case.expected)
+
+        assert shipped.action(ShortcutCategory.TRACKER, press) is None
+        assert shipped.action(ShortcutCategory.ORDER, press) is None
+
+
 class TestChannelKeys(BaseTestSuite):
     """The four channels sit on the four function keys, in the order the tracker shows them."""
 

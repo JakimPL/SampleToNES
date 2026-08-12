@@ -50,10 +50,10 @@ bindings:
   UnmuteAllChannels: {combination: ~}
 
   # view
-  AudioSettings: {combination: "Ctrl+A"}
+  AudioSettings: {combination: "Ctrl+U"}
   DisplaySettings: {combination: "Ctrl+D"}
   KeyboardSettings: {combination: "Ctrl+K"}
-  ToggleAdvancedSettings: {combination: "Ctrl+Shift+A"}
+  ToggleAdvancedSettings: {combination: "Ctrl+Alt+T"}
   ToggleFullscreen: {combination: "F11"}
   AboutDialog: {combination: ~}
   NextTab: {combination: "Ctrl+PgDn", field_transparent: true}
@@ -72,6 +72,8 @@ bindings:
   OrderExtendSelectionRight: {combination: "Shift+Right"}
   OrderExtendSelectionToFirstPosition: {combination: "Shift+Home"}
   OrderExtendSelectionToLastPosition: {combination: "Shift+End"}
+  OrderSelectAll: {combination: "Ctrl+A"}
+  OrderSelectRow: {combination: "Ctrl+Shift+A"}
   OrderCopyBlock: {combination: "Ctrl+C"}
   OrderCutBlock: {combination: "Ctrl+X"}
   OrderPasteBlock: {combination: "Ctrl+V"}
@@ -104,6 +106,9 @@ bindings:
   TrackerExtendSelectionRight: {combination: "Shift+Right"}
   TrackerExtendSelectionToFirstRow: {combination: "Shift+Home"}
   TrackerExtendSelectionToLastRow: {combination: "Shift+End"}
+  TrackerSelectAll: {combination: "Ctrl+A"}
+  TrackerSelectColumn: {combination: "Ctrl+Shift+A"}
+  TrackerSelectSubcolumn: {combination: "Ctrl+Alt+A"}
   TrackerCopyBlock: {combination: "Ctrl+C"}
   TrackerCutBlock: {combination: "Ctrl+X"}
   TrackerPasteBlock: {combination: "Ctrl+V"}

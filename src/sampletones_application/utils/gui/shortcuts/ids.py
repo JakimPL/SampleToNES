@@ -107,6 +107,8 @@ class ShortcutId(Enum):
         "OrderExtendSelectionToLastPosition",
         ShortcutCategory.ORDER,
     )
+    ORDER_SELECT_ALL = ("OrderSelectAll", ShortcutCategory.ORDER)
+    ORDER_SELECT_ROW = ("OrderSelectRow", ShortcutCategory.ORDER)
     ORDER_COPY_BLOCK = ("OrderCopyBlock", ShortcutCategory.ORDER)
     ORDER_CUT_BLOCK = ("OrderCutBlock", ShortcutCategory.ORDER)
     ORDER_PASTE_BLOCK = ("OrderPasteBlock", ShortcutCategory.ORDER)
@@ -144,6 +146,9 @@ class ShortcutId(Enum):
         "TrackerExtendSelectionToLastRow",
         ShortcutCategory.TRACKER,
     )
+    TRACKER_SELECT_ALL = ("TrackerSelectAll", ShortcutCategory.TRACKER)
+    TRACKER_SELECT_COLUMN = ("TrackerSelectColumn", ShortcutCategory.TRACKER)
+    TRACKER_SELECT_SUBCOLUMN = ("TrackerSelectSubcolumn", ShortcutCategory.TRACKER)
     TRACKER_COPY_BLOCK = ("TrackerCopyBlock", ShortcutCategory.TRACKER)
     TRACKER_CUT_BLOCK = ("TrackerCutBlock", ShortcutCategory.TRACKER)
     TRACKER_PASTE_BLOCK = ("TrackerPasteBlock", ShortcutCategory.TRACKER)

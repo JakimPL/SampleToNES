@@ -100,6 +100,33 @@ class TestSelection:
         assert isinstance(_state().extend_to(_Cell(4, 3)), _GridState)
         assert isinstance(_state().reset_pending(), _GridState)
         assert isinstance(_state().collapse(), _GridState)
+        assert isinstance(_state().select_between(_Cell(0, 0), _Cell(4, 3)), _GridState)
+
+
+class TestSelectBetween:
+    """A select gesture names a shape by its corners, which is how each grid states its own shapes."""
+
+    def test_the_selection_covers_the_rectangle_the_two_cells_bound(self) -> None:
+        selected = _state().select_between(_Cell(0, 0), _Cell(6, 5))
+
+        assert selected.region == _Block(first_row=0, last_row=6, first_column=0, last_column=5)
+
+    def test_the_cursor_lands_on_the_far_corner(self) -> None:
+        """The next extending press then works from the edge the reader has just reached."""
+        selected = _state().select_between(_Cell(0, 0), _Cell(6, 5))
+
+        assert selected.anchor == _Cell(0, 0)
+        assert selected.cursor == _Cell(6, 5)
+
+    def test_a_shape_takes_over_from_the_selection_standing(self) -> None:
+        held = _state().extend_to(_Cell(4, 3))
+
+        selected = held.select_between(_Cell(0, 0), _Cell(6, 5))
+
+        assert selected.region == _Block(first_row=0, last_row=6, first_column=0, last_column=5)
+
+    def test_a_shape_settles_a_partial_entry(self) -> None:
+        assert _state(pending="5").select_between(_Cell(0, 0), _Cell(6, 5)).pending == ""
 
 
 class TestTarget:
