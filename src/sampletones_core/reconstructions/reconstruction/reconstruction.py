@@ -100,16 +100,31 @@ class Reconstruction(DataModel):
         return {item.generator_name: item.approximation for item in self.approximations_data}
 
     @cached_property
+    def streams(self) -> Dict[GeneratorName, InstructionsItem]:
+        """The instruction stream each channel carries, in channel order.
+
+        This is where the channel set is made whole: a channel the stored data names a stream
+        for keeps it, and one it names none for rests, which is what a channel standing by
+        carries. Every per-channel view reads from here, so each of them covers the four
+        channels however a reconstruction reached memory.
+        """
+        stored = {item.generator_name: item for item in self.instructions_data}
+        return {
+            generator_name: stored.get(generator_name, InstructionsItem.resting(generator_name))
+            for generator_name in GeneratorName.items()
+        }
+
+    @cached_property
     def instructions(self) -> Dict[GeneratorName, List[InstructionUnion]]:
         return {
-            item.generator_name: [instruction.instruction for instruction in item.instructions]
-            for item in self.instructions_data
+            generator_name: [instruction.instruction for instruction in item.instructions]
+            for generator_name, item in self.streams.items()
         }
 
     @cached_property
     def initial_pitches(self) -> Dict[GeneratorName, int]:
         """The reference pitch each generator's arpeggio envelope is measured against."""
-        return {item.generator_name: item.initial_pitch for item in self.instructions_data}
+        return {generator_name: item.initial_pitch for generator_name, item in self.streams.items()}
 
     @cached_property
     def held_features(self) -> Dict[GeneratorName, Tuple[FeatureKey, ...]]:
@@ -119,7 +134,7 @@ class Reconstruction(DataModel):
         itself writes is stated here: the rest are the channel's, and an export leaves their
         envelopes empty for the player to fill from the value it holds.
         """
-        return {item.generator_name: tuple(item.held_features) for item in self.instructions_data}
+        return {generator_name: tuple(item.held_features) for generator_name, item in self.streams.items()}
 
     @cached_property
     def playing_generators(self) -> Tuple[GeneratorName, ...]:
@@ -129,7 +144,7 @@ class Reconstruction(DataModel):
         play: the rest stand by, exporting nothing and costing nothing, while describing a
         frame is what puts one in play.
         """
-        return tuple(name for name in GeneratorName.items() if self.instructions.get(name))
+        return tuple(generator_name for generator_name, item in self.streams.items() if item.instructions)
 
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
@@ -264,16 +279,14 @@ class Reconstruction(DataModel):
 
         self.approximations_data = self._build_approximations_data(rendered, max_length)
 
-        streams = {item.generator_name: item for item in self.instructions_data}
+        streams = dict(self.streams)
         streams[generator_name] = InstructionsItem.create(
             generator_name=generator_name,
             instructions=instructions,
             initial_pitch=initial_pitch,
             held_features=held_features,
         )
-        self.instructions_data = [
-            streams[name] if name in streams else InstructionsItem.resting(name) for name in GeneratorName.items()
-        ]
+        self.instructions_data = [streams[name] for name in GeneratorName.items()]
         self._invalidate_derived_caches(self)
         self.approximation = self._sum_approximations([item.approximation for item in self.approximations_data])
 
@@ -281,7 +294,7 @@ class Reconstruction(DataModel):
         self,
         generator_name: GeneratorName,
     ) -> List[InstructionUnion]:
-        return self.instructions.get(generator_name, [])
+        return self.instructions[generator_name]
 
     def detach_source(self) -> None:
         """Drops the local source-audio location so the reconstruction becomes self-contained.
@@ -382,6 +395,7 @@ class Reconstruction(DataModel):
     def _invalidate_derived_caches(reconstruction: Reconstruction) -> None:
         """Drops the memoized per-generator views so they recompute from their backing data."""
         reconstruction.__dict__.pop("approximations", None)
+        reconstruction.__dict__.pop("streams", None)
         reconstruction.__dict__.pop("instructions", None)
         reconstruction.__dict__.pop("initial_pitches", None)
         reconstruction.__dict__.pop("held_features", None)

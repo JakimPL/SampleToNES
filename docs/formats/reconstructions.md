@@ -47,7 +47,8 @@ A `.stn` file holds:
   instruments panel adds that dimension here.
 
 A channel standing by rests at a reference pitch of its own, so the first envelope
-written into it sounds on a mid-range note.
+written into it sounds on a mid-range note. A file naming a stream for the channels
+it plays alone reads as the whole four, with the rest coming back standing by.
 
 ## Detached reconstructions
 

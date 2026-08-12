@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Final, FrozenSet, List, Optional, Tuple
 
 import numpy as np
+import pytest
 
 from sampletones_application.constants.playback import (
     MAX_TICKS_PER_ROW,
@@ -12,8 +13,10 @@ from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timing import Metre, RowRate, calculate_groove
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
@@ -27,6 +30,8 @@ from tests.unit.sampletones_application.logic.sequencer.playback.conftest import
 )
 
 SAMPLE_RATE: Final[int] = DEFAULT_SAMPLE_RATE
+SUSTAINED_FRAMES: Final[int] = 64
+QUIET_VOLUME: Final[int] = 3
 
 
 class MaskProvider:
@@ -848,3 +853,105 @@ class TestNesFrequencyTempo:
 
         assert pulse_state.generator.frame_length == round(SAMPLE_RATE / 30)
         assert pulse_state.sample_id is not None
+
+
+class TestChannelHeldValues:
+    """A dimension an instrument leaves to the channel sounds at the value the channel holds.
+
+    The channel carries that value from the start of a song, taking up a new one wherever an
+    instrument writes it, so an instrument with an empty volume envelope plays at whatever the
+    one before it left behind.
+    """
+
+    @staticmethod
+    def _place(
+        context: SynthesizerContext,
+        reconstruction: Reconstruction,
+        *,
+        row_index: int,
+        name: str,
+    ) -> None:
+        sample = add_sample(_controller(context), reconstruction, name=name)
+        place_row(
+            _controller(context),
+            generator=GeneratorName.PULSE1,
+            row_index=row_index,
+            sample_id=sample.id,
+        )
+
+    @staticmethod
+    def _peak(audio: np.ndarray) -> float:
+        return float(np.max(np.abs(audio)))
+
+    def test_the_channel_takes_up_the_level_its_instrument_writes(self) -> None:
+        context = _make_context()
+        self._place(
+            context,
+            make_pulse_reconstruction(volume=QUIET_VOLUME, count=SUSTAINED_FRAMES),
+            row_index=0,
+            name="writes",
+        )
+
+        _render(context)
+
+        assert _state(context).feature_values[FeatureKey.VOLUME] == QUIET_VOLUME
+
+    def test_a_sample_holding_its_level_sounds_at_the_channels(self) -> None:
+        context = _make_context()
+        self._place(
+            context,
+            make_pulse_reconstruction(volume=QUIET_VOLUME, count=SUSTAINED_FRAMES),
+            row_index=0,
+            name="writes",
+        )
+        self._place(
+            context,
+            make_pulse_reconstruction(
+                volume=MAX_VOLUME,
+                count=SUSTAINED_FRAMES,
+                held_features=(FeatureKey.VOLUME,),
+            ),
+            row_index=1,
+            name="holds",
+        )
+
+        written = _render(context)
+        held = _render(context)
+
+        assert self._peak(held) == pytest.approx(self._peak(written))
+
+    def test_a_song_starts_a_held_level_at_full_volume(self) -> None:
+        holding = _make_context()
+        self._place(
+            holding,
+            make_pulse_reconstruction(
+                volume=QUIET_VOLUME,
+                count=SUSTAINED_FRAMES,
+                held_features=(FeatureKey.VOLUME,),
+            ),
+            row_index=0,
+            name="holds",
+        )
+        writing = _make_context()
+        self._place(
+            writing,
+            make_pulse_reconstruction(volume=MAX_VOLUME, count=SUSTAINED_FRAMES),
+            row_index=0,
+            name="writes",
+        )
+
+        assert self._peak(_render(holding)) == pytest.approx(self._peak(_render(writing)))
+
+    def test_a_reset_returns_every_channel_to_the_values_a_song_starts_on(self) -> None:
+        context = _make_context()
+        self._place(
+            context,
+            make_pulse_reconstruction(volume=QUIET_VOLUME, count=SUSTAINED_FRAMES),
+            row_index=0,
+            name="writes",
+        )
+        _render(context)
+
+        context.synthesizer.reset()
+
+        assert _state(context).feature_values == CHANNEL_FEATURE_DEFAULTS

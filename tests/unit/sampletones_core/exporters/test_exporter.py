@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Final, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Final, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pytest
@@ -439,3 +439,111 @@ class TestHeldDimensionRoundTrip:
         )
 
         assert PulseExporter.from_features(features) == []
+
+
+class TestSingleFrameReading(BaseTestSuite):
+    """One frame reads into envelope values and back, which is what a player works a tick in.
+
+    A song plays a sample frame by frame and fills in the dimensions its instrument leaves to
+    the channel, so the two directions `to_features` and `from_features` run over a whole
+    sequence are needed over a single frame as well.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        exporter: ExporterTypeUnion
+        instruction: InstructionUnion
+        silent: InstructionUnion
+        reference: int
+        expected: Dict[FeatureKey, int]
+
+    test_cases = (
+        TestCase(
+            label="pulse",
+            exporter=PulseExporter,
+            instruction=PulseInstruction(
+                on=True,
+                pitch=REFERENCE_PITCH + OCTAVE,
+                volume=PULSE_VOLUME,
+                duty_cycle=1,
+            ),
+            silent=PulseInstruction.null_instruction(),
+            reference=REFERENCE_PITCH,
+            expected={
+                FeatureKey.VOLUME: PULSE_VOLUME,
+                FeatureKey.ARPEGGIO: OCTAVE,
+                FeatureKey.DUTY_CYCLE: 1,
+            },
+        ),
+        TestCase(
+            label="triangle",
+            exporter=TriangleExporter,
+            instruction=TriangleInstruction(on=True, pitch=REFERENCE_PITCH - OCTAVE),
+            silent=TriangleInstruction.null_instruction(),
+            reference=REFERENCE_PITCH,
+            expected={
+                FeatureKey.VOLUME: MAX_VOLUME,
+                FeatureKey.ARPEGGIO: -OCTAVE,
+            },
+        ),
+        TestCase(
+            label="noise",
+            exporter=NoiseExporter,
+            instruction=NoiseInstruction(
+                on=True,
+                period=REFERENCE_PERIOD + PERIOD_STEP,
+                volume=NOISE_VOLUME,
+                short=True,
+            ),
+            silent=NoiseInstruction.null_instruction(),
+            reference=REFERENCE_PERIOD,
+            expected={
+                FeatureKey.VOLUME: NOISE_VOLUME,
+                FeatureKey.ARPEGGIO: PERIOD_STEP,
+                FeatureKey.DUTY_CYCLE: 1,
+            },
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_sounding_frame_states_every_dimension(self, test_case: TestCase) -> None:
+        values = test_case.exporter.feature_values(test_case.instruction, test_case.reference)
+
+        assert values == test_case.expected
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_silent_frame_states_its_level_alone(self, test_case: TestCase) -> None:
+        """The rest is the channel's, which is how a sequence holds its pitch across a rest."""
+        values = test_case.exporter.feature_values(test_case.silent, test_case.reference)
+
+        assert values == {FeatureKey.VOLUME: 0}
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_values_a_frame_states_sound_it_back(self, test_case: TestCase) -> None:
+        values = test_case.exporter.feature_values(test_case.instruction, test_case.reference)
+
+        assert test_case.exporter.instruction_from_values(values, test_case.reference) == test_case.instruction
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_dimension_the_channel_reads_nothing_from_is_passed_over(self, test_case: TestCase) -> None:
+        """One set of channel values serves every channel, so each takes the dimensions it reads."""
+        values = dict(test_case.expected)
+        values[FeatureKey.HI_PITCH] = 3
+
+        assert test_case.exporter.instruction_from_values(values, test_case.reference) == test_case.instruction

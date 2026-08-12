@@ -162,6 +162,64 @@ class Exporter(ABC, Generic[InstructionT]):
         return instructions
 
     @classmethod
+    def feature_values(
+        cls,
+        instruction: InstructionT,
+        initial_pitch: int,
+    ) -> Dict[FeatureKey, int]:
+        """The envelope values one frame states.
+
+        A frame that sounds states every dimension the channel reads, each in the terms its
+        envelope is written in. A silent frame states its level alone, leaving the rest to the
+        channel, which is how a sequence holds its pitch and timbre across a rest.
+
+        Reading the frame as a sequence of one is what keeps this the same reading `to_features`
+        gives it, so a frame played in a song carries the values its envelopes show.
+
+        Args:
+            instruction: The frame to read.
+            initial_pitch: Reference pitch the arpeggio value is measured against.
+
+        Returns:
+            Dict[FeatureKey, int]: The value the frame states for each dimension it names.
+        """
+        if not instruction.on:
+            return {FeatureKey.VOLUME: 0}
+
+        feature_map = cls.get_feature_map([instruction], initial_pitch)
+        return {
+            key: int(value[0]) for key, value in feature_map.items() if isinstance(value, np.ndarray) and value.size
+        }
+
+    @classmethod
+    def instruction_from_values(
+        cls,
+        values: Dict[FeatureKey, int],
+        initial_pitch: int,
+    ) -> InstructionT:
+        """The frame a row of envelope values describes.
+
+        This is the single-frame form of `from_features`: values arrive in envelope terms and
+        come back as the instruction a generator sounds, with the arpeggio measured against
+        ``initial_pitch``. Dimensions this channel reads nothing from are passed over, so one
+        set of values serves every channel.
+
+        Args:
+            values: The value each dimension carries for one frame.
+            initial_pitch: Reference pitch the arpeggio value is measured against.
+
+        Returns:
+            InstructionT: The frame those values describe.
+        """
+        dictionary: Dict[str, Union[bool, int]] = {}
+        for key, value in values.items():
+            attribute = cls._remap_feature_key(key)
+            if attribute is not None:
+                dictionary[attribute] = value
+
+        return cls._features_dictionary_to_instruction(dictionary, initial_pitch)
+
+    @classmethod
     @abstractmethod
     def _features_dictionary_to_instruction(
         cls,

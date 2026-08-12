@@ -23,6 +23,7 @@ from .modifiers import apply_modifiers
 from .rates import EngineRates
 from .state import ChannelState
 from .timing import SongTiming
+from .voice import SampleVoice
 
 
 class RowSynthesizer:
@@ -261,10 +262,11 @@ class RowSynthesizer:
         if sample is None:
             return silence(frames.total)
 
-        instructions = sample.reconstruction.instructions.get(generator_name)
+        instructions = sample.reconstruction.instructions[generator_name]
         if not instructions:
             return silence(frames.total)
 
+        voice = SampleVoice.read(sample.reconstruction, generator_name)
         output = silence(frames.total)
         silence_frame = silence(frames.longest)
 
@@ -275,6 +277,7 @@ class RowSynthesizer:
                 silence_frame[:frame_length],
                 sample.loop,
                 frame_length,
+                voice,
             )
             output[frames.bounds[tick] : frames.bounds[tick + 1]] = frame
             state.tick_index += 1
@@ -288,6 +291,7 @@ class RowSynthesizer:
         silence_frame: np.ndarray,
         loop: bool,
         frame_length: int,
+        voice: SampleVoice,
     ) -> np.ndarray:
         if loop:
             instruction = instructions[state.tick_index % len(instructions)]
@@ -299,7 +303,7 @@ class RowSynthesizer:
         state.generator.frame_length = frame_length
         return state.generator(
             apply_modifiers(
-                instruction,
+                voice.sound(instruction, state.feature_values),
                 state.transpose,
                 state.volume,
             ),

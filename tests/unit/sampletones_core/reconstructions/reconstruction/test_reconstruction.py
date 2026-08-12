@@ -55,6 +55,20 @@ def _reconstruction(instructions: List[PulseInstruction]) -> Reconstruction:
     )
 
 
+def _saved_playing_channels_only(path: Path) -> Path:
+    """Writes a reconstruction the way a file saved before the channel set holds one.
+
+    Such a file names a stream for the channels it plays, leaving the rest to be filled in
+    on the way back.
+    """
+    reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+    reconstruction.instructions_data = [
+        item for item in reconstruction.instructions_data if item.generator_name == GeneratorName.PULSE1
+    ]
+    reconstruction.save(path)
+    return path
+
+
 class TestRoundTrip:
     def test_save_load_round_trip(
         self,
@@ -425,6 +439,27 @@ class TestChannelSet:
         assert set(loaded.instructions) == set(GeneratorName.items())
         assert loaded.playing_generators == reconstruction.playing_generators
         assert loaded.initial_pitches == reconstruction.initial_pitches
+
+    def test_a_file_storing_fewer_streams_reads_as_the_whole_channel_set(self, tmp_path: Path) -> None:
+        loaded = Reconstruction.load(_saved_playing_channels_only(tmp_path / "one_channel.stn"))
+
+        assert set(loaded.instructions) == set(GeneratorName.items())
+        assert loaded.playing_generators == (GeneratorName.PULSE1,)
+        assert loaded.initial_pitches[GeneratorName.NOISE] == resting_reference(GeneratorName.NOISE)
+        assert not loaded.export()[GeneratorName.TRIANGLE].has_frames
+
+    def test_editing_such_a_file_writes_the_whole_channel_set(self, tmp_path: Path) -> None:
+        loaded = Reconstruction.load(_saved_playing_channels_only(tmp_path / "one_channel.stn"))
+
+        loaded.update_generator_data(
+            GeneratorName.PULSE2,
+            [_pulse(_BASE_PITCH)],
+            np.ones(_AUDIO_LENGTH, dtype=np.float32),
+            _BASE_PITCH,
+            (),
+        )
+
+        assert [item.generator_name for item in loaded.instructions_data] == list(GeneratorName.items())
 
 
 class TestWithNesFrequency:
