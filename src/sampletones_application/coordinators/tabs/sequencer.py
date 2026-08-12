@@ -1438,6 +1438,6 @@ class SequencerTabCoordinator:
         The two hold one cursor between them, so the menu bar reaches whichever one has it.
         """
         return (
-            self._sequencer_tracker_panel,
-            self._sequencer_order_panel,
+            self._sequencer_tracker_panel.edit_surface,
+            self._sequencer_order_panel.edit_surface,
         )

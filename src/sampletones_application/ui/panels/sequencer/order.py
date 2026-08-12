@@ -2,8 +2,6 @@ from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.context import context_label
-from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -47,6 +45,11 @@ from sampletones_application.ui.panels.sequencer.channels import (
 )
 from sampletones_application.ui.panels.sequencer.columns import channel_color
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
+from sampletones_application.ui.panels.sequencer.grid.surface import (
+    BlockShortcuts,
+    GridEditSurface,
+    clipboard_labels,
+)
 from sampletones_application.ui.panels.sequencer.input.order import (
     INDEX_DIGITS,
     OrderCursor,
@@ -97,6 +100,7 @@ OnChannelSoloedCallback = Callable[[GeneratorName], None]
 OnBlockRegionCallback = Callable[[OrderRegion], None]
 OnPasteBlockCallback = Callable[[OrderCell], None]
 CanPasteBlockQuery = Callable[[], bool]
+OrderEditSurface = GridEditSurface[OrderCursor, OrderRegion, OrderCell, OrderTarget]
 
 MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {
     ShortcutId.ORDER_MOVE_FRAME_LEFT: MoveDirection.PREVIOUS,
@@ -185,6 +189,18 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_channels_unmuted: Optional[VoidCallback] = None
 
         self._blocks: BlockGestures[OrderRegion, OrderCell] = BlockGestures(grid=self)
+        self._surface: OrderEditSurface = GridEditSurface(
+            grid=self,
+            blocks=self._blocks,
+            target=OrderTarget,
+            shortcuts=shortcut_source,
+            block_shortcuts=BlockShortcuts(
+                copy=ShortcutId.ORDER_COPY_BLOCK,
+                cut=ShortcutId.ORDER_CUT_BLOCK,
+                paste=ShortcutId.ORDER_PASTE_BLOCK,
+            ),
+            labels=clipboard_labels(language_manager),
+        )
         self._lbl_order = self._label(language_manager, SequencerOrderElements.ORDER_TEXT)
         self._load_row_labels(language_manager)
         self._load_context_labels(language_manager)
@@ -219,10 +235,6 @@ class GUISequencerOrderPanel(GUIPanel):
             return self._label(language_manager, element)
 
         self._lbl_context_play = label(SequencerOrderElements.CONTEXT_PLAY)
-        self._lbl_context_cut = context_label(language_manager, ContextElements.CUT)
-        self._lbl_context_copy = context_label(language_manager, ContextElements.COPY)
-        self._lbl_context_paste = context_label(language_manager, ContextElements.PASTE)
-        self._lbl_context_delete = context_label(language_manager, ContextElements.DELETE)
         self._lbl_context_duplicate = label(SequencerOrderElements.CONTEXT_DUPLICATE)
         self._lbl_context_clone = label(SequencerOrderElements.CONTEXT_CLONE)
         self._lbl_context_insert = label(SequencerOrderElements.CONTEXT_INSERT)
@@ -1012,7 +1024,7 @@ class GUISequencerOrderPanel(GUIPanel):
         generator: Optional[GeneratorName],
         position: int,
     ) -> None:
-        target = self._target_at(OrderCursor(generator, position))
+        target = self._surface.target_at(OrderCursor(generator, position))
         with context_menu():
             header = dpg.add_text(display_id(position))
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
@@ -1023,81 +1035,33 @@ class GUISequencerOrderPanel(GUIPanel):
                 shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
             dpg.add_separator()
-            self._add_action_items(target)
+            self.add_action_items(target)
 
-    def _target_at(self, cell: OrderCursor) -> OrderTarget:
-        """The cell a set of actions is raised on, paired with the block those actions act on."""
-        return OrderTarget(
-            cell=cell,
-            region=self._input_state.region_at(cell),
-        )
+    @property
+    def edit_surface(self) -> OrderEditSurface:
+        """This table as the menu bar's Edit menu reaches it."""
+        return self._surface
 
-    def cursor_target(self) -> Optional[OrderTarget]:
-        """The target the cursor names, which is what a key press and the Edit menu act on."""
-        cursor = self._input_state.cursor
-        if cursor is None:
-            return None
+    def input_state(self) -> OrderInputState:
+        """Where the cursor stands and what it has selected, which a target is resolved from."""
+        return self._input_state
 
-        return self._target_at(cursor)
-
-    def owns_edit_actions(self) -> bool:
-        """Whether the Edit menu states this table's actions, which it does while it owns keys.
-
-        The menu offers what the next press would reach, so one question decides both.
-        """
+    def owns_keys(self) -> bool:
+        """Whether the table owns the next key, which is also what the Edit menu asks."""
         return self._keys_active()
 
-    def build_edit_actions(self) -> None:
-        """Builds this table's whole action set for the cell the cursor stands on.
-
-        The menu bar asks while the table owns the editing gestures, so the cursor names the target
-        the same way a pointer names it on the cell menu.
-        """
-        target = self.cursor_target()
-        if target is not None:
-            self._add_action_items(target)
-
-    def _add_action_items(self, target: OrderTarget) -> None:
+    def add_action_items(self, target: OrderTarget) -> None:
         """Builds every action an order cell offers, in the order each menu prints them.
 
         The table states its actions once, and whoever asks for them decides where they are shown:
         the cell menu asks for the cell a pointer landed on, and the menu bar asks for the cell the
         cursor stands on. An action added here reaches both.
         """
-        self._add_block_items(target)
+        self._surface.add_block_items(target)
         dpg.add_separator()
         self._add_frame_items(target.cell.position)
         dpg.add_separator()
         self._add_move_items(target.cell.position)
-
-    def _add_block_items(self, target: OrderTarget) -> None:
-        """Builds the clipboard items, acting on the block the actions were raised on.
-
-        Paste is offered once a block has been copied, and it anchors at the target's own cell, so
-        the cell menu lands a block where the pointer is while the keys land it under the cursor.
-        Delete prints no key of its own, because ``Del`` empties a selection while one stands and
-        clears the cell under the cursor otherwise.
-        """
-        dpg.add_menu_item(
-            label=self._lbl_context_copy,
-            shortcut=self._shortcuts.display(ShortcutId.ORDER_COPY_BLOCK),
-            callback=lambda: self._blocks.copy_at(target),
-        )
-        dpg.add_menu_item(
-            label=self._lbl_context_cut,
-            shortcut=self._shortcuts.display(ShortcutId.ORDER_CUT_BLOCK),
-            callback=lambda: self._blocks.cut_at(target),
-        )
-        dpg.add_menu_item(
-            label=self._lbl_context_paste,
-            shortcut=self._shortcuts.display(ShortcutId.ORDER_PASTE_BLOCK),
-            enabled=self._blocks.can_paste(),
-            callback=lambda: self._blocks.paste_at(target),
-        )
-        dpg.add_menu_item(
-            label=self._lbl_context_delete,
-            callback=lambda: self._blocks.delete_at(target),
-        )
 
     def _add_frame_items(self, position: int) -> None:
         """Builds the frame operations, each acting on the whole frame the target cell sits in."""
@@ -1262,13 +1226,13 @@ class GUISequencerOrderPanel(GUIPanel):
         """
         match shortcut_id:
             case ShortcutId.ORDER_COPY_BLOCK:
-                self._blocks.copy()
+                self._surface.copy()
             case ShortcutId.ORDER_CUT_BLOCK:
-                self._blocks.cut()
+                self._surface.cut()
             case ShortcutId.ORDER_CLEAR_CELL if self._input_state.region is not None:
-                self._blocks.delete()
+                self._surface.delete()
             case ShortcutId.ORDER_PASTE_BLOCK:
-                self._blocks.paste()
+                self._surface.paste()
             case _:
                 return False
 

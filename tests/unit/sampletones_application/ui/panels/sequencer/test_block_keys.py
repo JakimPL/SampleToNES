@@ -11,6 +11,7 @@ from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
 )
+from sampletones_application.ui.panels.sequencer.input.target import OrderTarget, TrackerTarget
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
@@ -26,6 +27,11 @@ from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
+from tests.suite.grid import (
+    ORDER_BLOCK_SHORTCUTS,
+    TRACKER_BLOCK_SHORTCUTS,
+    attach_edit_surface,
+)
 from tests.suite.shortcuts import shipped_source
 
 ROW_COUNT = 64
@@ -93,6 +99,7 @@ def _panel(
     panel.on_adjust_volume = lambda region, delta: gestures.volume_shifted.append((region, delta))
     panel.can_paste_block = lambda: True
     panel._blocks = BlockGestures(grid=panel)
+    attach_edit_surface(panel, TRACKER_BLOCK_SHORTCUTS, TrackerTarget)
     monkeypatch.setattr(panel, "_apply_state", lambda state: None)
     return panel
 
@@ -115,6 +122,7 @@ def _order_panel(
     panel.on_set_order_entry = lambda channel, position, index: gestures.cleared.append((channel, position, index))
     panel.can_paste_block = lambda: True
     panel._blocks = BlockGestures(grid=panel)
+    attach_edit_surface(panel, ORDER_BLOCK_SHORTCUTS, OrderTarget)
     monkeypatch.setattr(panel, "_apply_state", lambda state, notify=True: None)
     return panel
 
