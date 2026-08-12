@@ -8,8 +8,8 @@ import pytest
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.panels.sequencer import order as order_module
 from sampletones_application.ui.panels.sequencer import tracker as tracker_module
-from sampletones_application.ui.panels.sequencer.grid import surface as surface_module
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
+from sampletones_application.ui.panels.sequencer.grid.surface import clipboard as clipboard_module
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
@@ -174,7 +174,7 @@ def _record_into(
     module: ModuleType,
 ) -> _MenuRecorder:
     recorder = _MenuRecorder()
-    for target in (module, surface_module):
+    for target in (module, clipboard_module):
         monkeypatch.setattr(target.dpg, "add_menu_item", recorder.add_menu_item)
         monkeypatch.setattr(target.dpg, "add_separator", lambda **_kwargs: 0)
         monkeypatch.setattr(target.dpg, "menu", _submenu)

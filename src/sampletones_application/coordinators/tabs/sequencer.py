@@ -1433,11 +1433,13 @@ class SequencerTabCoordinator:
 
     @property
     def edit_surfaces(self) -> Tuple[EditSurfaceProtocol, ...]:
-        """The grids offering editing gestures on the cell they hold a cursor in.
+        """The panels offering editing gestures on what they hold selected.
 
-        The two hold one cursor between them, so the menu bar reaches whichever one has it.
+        The three hold one selection between them — a cursor in either grid, a row in the samples
+        list — so the menu bar reaches whichever one has it.
         """
         return (
             self._sequencer_tracker_panel.edit_surface,
             self._sequencer_order_panel.edit_surface,
+            self._sequencer_samples_panel,
         )

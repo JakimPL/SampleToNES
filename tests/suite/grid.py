@@ -1,7 +1,8 @@
 from typing import Any, Dict, Final
 
 from sampletones_application.categories.elements.global_ import ContextElements
-from sampletones_application.ui.panels.sequencer.grid.surface import BlockShortcuts, GridEditSurface
+from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import BlockShortcuts
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import GridEditSurface
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 
 CLIPBOARD_LABELS: Final[Dict[ContextElements, str]] = {
@@ -34,7 +35,7 @@ def attach_edit_surface(
     A case that builds a panel without its constructor supplies the collaborators the panel would
     have composed, and this is the one that resolves a target and prints the clipboard items.
     """
-    panel._surface = GridEditSurface(
+    panel._surface = GridEditSurface.build(
         grid=panel,
         blocks=panel._blocks,
         target=target,

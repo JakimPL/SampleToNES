@@ -49,11 +49,11 @@ from sampletones_application.ui.panels.sequencer.columns import (
 )
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
-from sampletones_application.ui.panels.sequencer.grid.surface import (
+from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
     BlockShortcuts,
-    GridEditSurface,
-    clipboard_labels,
+    ClipboardItems,
 )
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import GridEditSurface
 from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
@@ -266,7 +266,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_channels_unmuted: Optional[VoidCallback] = None
 
         self._blocks: BlockGestures[TrackerRegion, TrackerCell] = BlockGestures(grid=self)
-        self._surface: TrackerEditSurface = GridEditSurface(
+        self._surface: TrackerEditSurface = GridEditSurface.build(
             grid=self,
             blocks=self._blocks,
             target=TrackerTarget,
@@ -276,7 +276,7 @@ class GUISequencerTrackerPanel(GUIPanel):
                 cut=ShortcutId.TRACKER_CUT_BLOCK,
                 paste=ShortcutId.TRACKER_PASTE_BLOCK,
             ),
-            labels=clipboard_labels(language_manager),
+            labels=ClipboardItems.labels(language_manager),
         )
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 

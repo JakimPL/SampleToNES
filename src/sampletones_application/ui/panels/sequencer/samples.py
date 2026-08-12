@@ -1,7 +1,12 @@
+from dataclasses import dataclass
 from typing import Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import context_label
+from sampletones_application.categories.elements.global_ import ContextElements
+from sampletones_application.categories.elements.sequencer import SequencerInstrumentsElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
@@ -43,12 +48,40 @@ from sampletones_shared.types.callback import StringCallback
 
 FROZEN_HEADER_ROWS: Final[int] = 1
 
-MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {
-    ShortcutId.SAMPLES_MOVE_SAMPLE_UP: MoveDirection.PREVIOUS,
-    ShortcutId.SAMPLES_MOVE_SAMPLE_DOWN: MoveDirection.NEXT,
-    ShortcutId.SAMPLES_MOVE_SAMPLE_TO_TOP: MoveDirection.FIRST,
-    ShortcutId.SAMPLES_MOVE_SAMPLE_TO_BOTTOM: MoveDirection.LAST,
-}
+
+@dataclass(frozen=True)
+class SampleMove:
+    """One of the four moves, as its key press and its menu item each name it."""
+
+    element: SequencerInstrumentsElements
+    shortcut: ShortcutId
+    direction: MoveDirection
+
+
+SAMPLE_MOVES: Final[Tuple[SampleMove, ...]] = (
+    SampleMove(
+        element=SequencerInstrumentsElements.CONTEXT_MOVE_UP,
+        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_UP,
+        direction=MoveDirection.PREVIOUS,
+    ),
+    SampleMove(
+        element=SequencerInstrumentsElements.CONTEXT_MOVE_DOWN,
+        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_DOWN,
+        direction=MoveDirection.NEXT,
+    ),
+    SampleMove(
+        element=SequencerInstrumentsElements.CONTEXT_MOVE_TOP,
+        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_TO_TOP,
+        direction=MoveDirection.FIRST,
+    ),
+    SampleMove(
+        element=SequencerInstrumentsElements.CONTEXT_MOVE_BOTTOM,
+        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_TO_BOTTOM,
+        direction=MoveDirection.LAST,
+    ),
+)
+
+MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {move.shortcut: move.direction for move in SAMPLE_MOVES}
 
 
 class GUISequencerSamplesPanel(GUIPanel):
@@ -92,7 +125,7 @@ class GUISequencerSamplesPanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._language_manager["sequencer.instruments.label.instruments_text"],
+            self._label(self._language_manager, SequencerInstrumentsElements.INSTRUMENTS_TEXT),
             glyph=self._glyphs.headers.samples,
         ):
             self._create_samples_table()
@@ -142,17 +175,17 @@ class GUISequencerSamplesPanel(GUIPanel):
             ),
         ):
             dpg.add_table_column(
-                label=self._language_manager["sequencer.instruments.label.column_id"],
+                label=self._label(self._language_manager, SequencerInstrumentsElements.COLUMN_ID),
                 width_fixed=True,
                 init_width_or_weight=self._layout.table_cells.instrument.id,
             )
             dpg.add_table_column(
-                label=self._language_manager["sequencer.instruments.label.column_name"],
+                label=self._label(self._language_manager, SequencerInstrumentsElements.COLUMN_NAME),
                 width_stretch=True,
                 init_width_or_weight=self._layout.table_cells.instrument.name,
             )
             dpg.add_table_column(
-                label=self._language_manager["sequencer.instruments.label.column_loop"],
+                label=self._label(self._language_manager, SequencerInstrumentsElements.COLUMN_LOOP),
                 width_fixed=True,
                 init_width_or_weight=self._layout.table_cells.instrument.loop,
             )
@@ -489,77 +522,91 @@ class GUISequencerSamplesPanel(GUIPanel):
         if entry is None:
             return
 
+        target = SampleSelection(
+            sample_id=sample_id,
+            position=position,
+            name=entry.name,
+        )
         with context_menu():
-            header = dpg.add_text(display_sample_label(position, entry.name))
+            header = dpg.add_text(target.label)
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             add_play_menu_item(
-                self._language_manager["global.context.label.play"],
+                context_label(self._language_manager, ContextElements.PLAY),
                 lambda: self.call(
                     self.on_play_requested,
                     sample_id,
                 ),
             )
-            dpg.add_menu_item(
-                label=self._language_manager["sequencer.instruments.label.context_edit"],
-                callback=lambda: self.call(self.on_sample_edit_requested, sample_id),
-            )
-            dpg.add_menu_item(
-                label=self._language_manager["sequencer.instruments.label.context_rename"],
-                callback=lambda: self._start_rename(sample_id),
-            )
-            dpg.add_menu_item(
-                label=self._language_manager["sequencer.instruments.label.context_duplicate"],
-                callback=lambda: self.call(self.on_duplicate_requested, sample_id),
-            )
             dpg.add_separator()
-            dpg.add_menu_item(
-                label=self._language_manager["sequencer.instruments.label.context_remove"],
-                callback=lambda: self.call(self.on_remove_requested, sample_id),
-            )
-            dpg.add_separator()
-            count = len(self._entries)
-            self._add_move_item(
-                self._language_manager["sequencer.instruments.label.context_move_up"],
-                sample_id,
-                position,
-                count,
-                MoveDirection.PREVIOUS,
-            )
-            self._add_move_item(
-                self._language_manager["sequencer.instruments.label.context_move_down"],
-                sample_id,
-                position,
-                count,
-                MoveDirection.NEXT,
-            )
-            self._add_move_item(
-                self._language_manager["sequencer.instruments.label.context_move_top"],
-                sample_id,
-                position,
-                count,
-                MoveDirection.FIRST,
-            )
-            self._add_move_item(
-                self._language_manager["sequencer.instruments.label.context_move_bottom"],
-                sample_id,
-                position,
-                count,
-                MoveDirection.LAST,
-            )
+            self.add_action_items(target)
+
+    def owns_edit_actions(self) -> bool:
+        """Whether the Edit menu states this panel's actions, which it does while it holds a sample.
+
+        The menu offers what the next press would reach, so the key scope decides it, and the
+        selection those keys act on is the one the actions are built for.
+        """
+        return self._keys_active() and self.selection is not None
+
+    def build_edit_actions(self) -> None:
+        """Builds the panel's whole action set for the sample the selection holds."""
+        selection = self.selection
+        if selection is not None:
+            self.add_action_items(selection)
+
+    def add_action_items(self, target: SampleSelection) -> None:
+        """Builds every action a sample offers, in the order each menu prints them.
+
+        The panel states its actions once, and whoever asks for them decides where they are shown:
+        the row menu asks for the sample a pointer landed on, and the menu bar asks for the one the
+        selection holds. An action added here reaches both, printing the key it answers to.
+        """
+        dpg.add_menu_item(
+            label=self._label(self._language_manager, SequencerInstrumentsElements.CONTEXT_EDIT),
+            callback=lambda: self.call(self.on_sample_edit_requested, target.sample_id),
+        )
+        dpg.add_menu_item(
+            label=self._label(self._language_manager, SequencerInstrumentsElements.CONTEXT_RENAME),
+            shortcut=self._shortcuts.display(ShortcutId.SAMPLES_RENAME_SAMPLE),
+            callback=lambda: self._start_rename(target.sample_id),
+        )
+        dpg.add_menu_item(
+            label=self._label(self._language_manager, SequencerInstrumentsElements.CONTEXT_DUPLICATE),
+            callback=lambda: self.call(self.on_duplicate_requested, target.sample_id),
+        )
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=self._label(self._language_manager, SequencerInstrumentsElements.CONTEXT_REMOVE),
+            shortcut=self._shortcuts.display(ShortcutId.SAMPLES_REMOVE_SAMPLE),
+            callback=lambda: self.call(self.on_remove_requested, target.sample_id),
+        )
+        dpg.add_separator()
+        for move in SAMPLE_MOVES:
+            self._add_move_item(move, target)
 
     def _add_move_item(
         self,
-        label: str,
-        sample_id: str,
-        position: int,
-        count: int,
-        direction: MoveDirection,
+        move: SampleMove,
+        target: SampleSelection,
     ) -> None:
-        """Add a move item, greyed out (disabled) when the move would have no effect."""
-        target = direction.target(position, count)
+        """Builds one move item, offered while the move carries the sample somewhere new."""
+        position = move.direction.target(target.position, len(self._entries))
         dpg.add_menu_item(
-            label=label,
-            enabled=target is not None,
-            callback=lambda: self.call(self.on_move_requested, sample_id, target),
+            label=self._label(self._language_manager, move.element),
+            shortcut=self._shortcuts.display(move.shortcut),
+            enabled=position is not None,
+            callback=lambda: self.call(self.on_move_requested, target.sample_id, position),
         )
+
+    @staticmethod
+    def _label(
+        language_manager: LanguageManager,
+        element: SequencerInstrumentsElements,
+    ) -> str:
+        return language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            element,
+        ]

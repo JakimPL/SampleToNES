@@ -45,11 +45,11 @@ from sampletones_application.ui.panels.sequencer.channels import (
 )
 from sampletones_application.ui.panels.sequencer.columns import channel_color
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
-from sampletones_application.ui.panels.sequencer.grid.surface import (
+from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
     BlockShortcuts,
-    GridEditSurface,
-    clipboard_labels,
+    ClipboardItems,
 )
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import GridEditSurface
 from sampletones_application.ui.panels.sequencer.input.order import (
     INDEX_DIGITS,
     OrderCursor,
@@ -189,7 +189,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_channels_unmuted: Optional[VoidCallback] = None
 
         self._blocks: BlockGestures[OrderRegion, OrderCell] = BlockGestures(grid=self)
-        self._surface: OrderEditSurface = GridEditSurface(
+        self._surface: OrderEditSurface = GridEditSurface.build(
             grid=self,
             blocks=self._blocks,
             target=OrderTarget,
@@ -199,7 +199,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 cut=ShortcutId.ORDER_CUT_BLOCK,
                 paste=ShortcutId.ORDER_PASTE_BLOCK,
             ),
-            labels=clipboard_labels(language_manager),
+            labels=ClipboardItems.labels(language_manager),
         )
         self._lbl_order = self._label(language_manager, SequencerOrderElements.ORDER_TEXT)
         self._load_row_labels(language_manager)
