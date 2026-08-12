@@ -4,7 +4,7 @@ from typing import Any, Iterator, List, Tuple
 import pytest
 
 from sampletones_application.ui.panels.sequencer import tracker as tracker_module
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
     SequencerSamplesViewModel,

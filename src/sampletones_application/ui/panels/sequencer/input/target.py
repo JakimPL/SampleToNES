@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.order import OrderCursor
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,

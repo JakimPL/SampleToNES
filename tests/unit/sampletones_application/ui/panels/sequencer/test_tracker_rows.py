@@ -9,8 +9,7 @@ from sampletones_application.ui.panels.sequencer.columns import (
     tracker_table_column,
     tracker_table_row,
 )
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.sequencer.settings import (

@@ -12,12 +12,11 @@ from sampletones_application.paths import (
 )
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.elements.table.drag import DragSelection
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
 )
-from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel, OrderKey
 from sampletones_application.ui.panels.sequencer.tracker import CellKey, GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier

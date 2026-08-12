@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Final, Optional, Tuple
 
-from pydantic.dataclasses import dataclass
-
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
+from sampletones_application.ui.panels.sequencer.input.state import GridInputState
 from sampletones_application.view_model.sequencer.region import OrderRegion
 from sampletones_core.constants.enums import GeneratorName
 
@@ -24,92 +24,31 @@ def _parse(pending: str) -> Optional[int]:
         return None
 
 
-@dataclass
-class OrderInputState:
+@dataclass(frozen=True)
+class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
     """Edit cursor, pending hex entry and selection anchor for the order table.
 
     The order has no subcolumns, so a cell holds a single pattern index; typing
     accumulates :data:`INDEX_DIGITS` hex digits and then commits the parsed index.
-    Navigation moves along positions (columns) or channels/master (rows). The anchor is where a
-    range selection was started and the cursor is its other end, so the two together are the
-    block a copy or a paste acts on.
+    Navigation moves along positions (columns) or channels/master (rows).
     """
 
-    cursor: Optional[OrderCursor] = None
-    pending: str = ""
-    anchor: Optional[OrderCursor] = None
-
-    def reset_pending(self) -> OrderInputState:
-        """Drops a partial entry, leaving the cursor and any selection where they stand.
-
-        The anchor survives because this runs before every move, the extending ones included:
-        each gesture then decides whether to hold the selection or collapse it.
-        """
-        return OrderInputState(cursor=self.cursor, pending="", anchor=self.anchor)
-
-    def collapse(self) -> OrderInputState:
-        """Drops the selection, leaving the cursor's own cell as the whole target."""
-        return OrderInputState(cursor=self.cursor, pending=self.pending)
-
-    @property
-    def region(self) -> Optional[OrderRegion]:
-        """The block a selection covers, once one has been started."""
-        if self.cursor is None or self.anchor is None:
-            return None
-
-        anchor_row = CHANNEL_AXIS.index(self.anchor.generator)
-        cursor_row = CHANNEL_AXIS.index(self.cursor.generator)
+    def _region_between(
+        self,
+        first: OrderCursor,
+        second: OrderCursor,
+    ) -> OrderRegion:
+        first_row = CHANNEL_AXIS.index(first.generator)
+        second_row = CHANNEL_AXIS.index(second.generator)
         return OrderRegion(
-            first_row=min(anchor_row, cursor_row),
-            last_row=max(anchor_row, cursor_row),
-            first_position=min(self.anchor.position, self.cursor.position),
-            last_position=max(self.anchor.position, self.cursor.position),
+            first_row=min(first_row, second_row),
+            last_row=max(first_row, second_row),
+            first_position=min(first.position, second.position),
+            last_position=max(first.position, second.position),
         )
 
-    def region_at(self, cell: OrderCursor) -> OrderRegion:
-        """The block a gesture raised on ``cell`` acts on: the selection it stands in, or the cell
-        alone.
-
-        A gesture raised inside a selection acts on the whole of it, which is what a reader who has
-        just dragged a range out expects it to reach; one raised anywhere else acts on the cell it
-        names, which is a block of exactly that cell.
-        """
-        region = self.region
-        if region is not None and region.covers(cell.generator, cell.position):
-            return region
-
-        row = CHANNEL_AXIS.index(cell.generator)
-        return OrderRegion(
-            first_row=row,
-            last_row=row,
-            first_position=cell.position,
-            last_position=cell.position,
-        )
-
-    @property
-    def target_region(self) -> Optional[OrderRegion]:
-        """The region a block gesture acts on: the selection, or the cursor's own cell.
-
-        A cursor with nothing selected stands on a block of one cell, so copying reaches the cell
-        the reader is working in and needs no selection made first.
-        """
-        if self.cursor is None:
-            return None
-
-        return self.region_at(self.cursor)
-
-    def extend_to(self, cursor: OrderCursor) -> OrderInputState:
-        """Carries the moving end of the selection to ``cursor``, anchoring it where it began.
-
-        A selection that has not been started yet takes the cell the cursor stands on as its
-        anchor, so the first extending gesture selects the cell it came from as well as the one
-        it reaches.
-        """
-        return OrderInputState(
-            cursor=cursor,
-            pending="",
-            anchor=self.anchor if self.anchor is not None else self.cursor,
-        )
+    def _covers(self, region: OrderRegion, cell: OrderCursor) -> bool:
+        return region.covers(cell.generator, cell.position)
 
     def extend_position(
         self,
@@ -175,20 +114,8 @@ class OrderInputState:
 
         return self._after_entry(), _parse(pending)
 
-    def _after_entry(self) -> OrderInputState:
-        """The state a committed entry leaves: the cursor alone, nothing pending and nothing selected.
-
-        Typing writes the one cell the cursor stands on, so it takes the selection down to that
-        cell instead of leaving a range for the next gesture to act on.
-        """
-        return self.collapse().reset_pending()
-
     def commit_partial(self) -> Tuple[OrderInputState, Optional[int]]:
         if not self.pending or self.cursor is None:
             return self, None
 
         return self.reset_pending(), _parse(self.pending.zfill(INDEX_DIGITS))
-
-    def cancel(self) -> OrderInputState:
-        """Drops a partial entry and any selection, which is what Escape asks of the table."""
-        return self.collapse().reset_pending()

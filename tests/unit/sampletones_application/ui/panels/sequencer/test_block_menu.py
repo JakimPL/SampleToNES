@@ -8,12 +8,11 @@ import pytest
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.panels.sequencer import order as order_module
 from sampletones_application.ui.panels.sequencer import tracker as tracker_module
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
 )
-from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,

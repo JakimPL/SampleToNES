@@ -1,7 +1,7 @@
 from typing import Dict, Final, Optional, Tuple
 
 from sampletones_application.ui.elements.table.cells import pending_label
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import SequencerCellViewModel
 from sampletones_core.constants.enums import GeneratorName

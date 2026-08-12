@@ -50,13 +50,12 @@ from sampletones_application.ui.panels.sequencer.columns import (
     tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
 )
-from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.panels.sequencer.input.target import TrackerMenuTarget
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.rows import RowCues, row_background
 from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
