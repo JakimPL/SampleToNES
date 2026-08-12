@@ -47,6 +47,27 @@ class TestEditableCells:
         configure.assert_called_once_with(20, label="label-b")
         assert cells.values["b"] == "z"
 
+    def test_a_registered_widget_reads_back_as_its_key(self) -> None:
+        """A cell cache answers from both sides, because a handler reports the widget it fired for."""
+        cells: EditableCells[str] = EditableCells()
+        cells.register("a", 1)
+
+        assert cells.key(1) == "a"
+        assert cells.widget("a") == 1
+
+    def test_a_rebuild_drops_both_directions(self) -> None:
+        cells: EditableCells[str] = EditableCells()
+        cells.register("a", 1)
+        cells.reset({})
+
+        assert cells.key(1) is None
+        assert cells.widget("a") is None
+
+    def test_an_unknown_widget_names_no_cell(self) -> None:
+        cells: EditableCells[str] = EditableCells()
+
+        assert cells.key(1) is None
+
     def test_reconcile_caches_value_even_without_a_widget(self) -> None:
         cells: EditableCells[str] = EditableCells()
         cells.reset({"a": "x"})

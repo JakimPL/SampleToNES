@@ -57,6 +57,47 @@ class TestOrderMutations:
             assert _order_column(logic, generator) == [None]
 
 
+class TestEntryAccess:
+    """The reading and writing seam a block gesture goes through, which is the table's own rule."""
+
+    def test_write_entry_reaches_one_channel(self) -> None:
+        logic = _logic()
+
+        logic.write_entry(GeneratorName.PULSE1, 0, 3)
+
+        assert _order_column(logic, GeneratorName.PULSE1) == [3]
+        assert _order_column(logic, GeneratorName.TRIANGLE) == [0]
+
+    def test_write_entry_through_the_master_row_reaches_every_channel(self) -> None:
+        logic = _logic()
+
+        logic.write_entry(None, 0, 3)
+
+        for generator in GeneratorName.items():
+            assert _order_column(logic, generator) == [3]
+
+    def test_entry_reads_the_index_a_channel_plays(self) -> None:
+        logic = _logic()
+        logic.set_order_entry(GeneratorName.NOISE, 0, 7)
+
+        assert logic.entry(GeneratorName.NOISE, 0) == 7
+
+    def test_entry_past_the_last_frame_reads_as_silence(self) -> None:
+        logic = _logic()
+
+        assert logic.entry(GeneratorName.NOISE, logic.position_count()) is None
+
+    def test_append_frame_lengthens_the_order_by_one(self) -> None:
+        logic = _logic()
+        length = logic.position_count()
+
+        logic.append_frame()
+
+        assert logic.position_count() == length + 1
+        for generator in GeneratorName.items():
+            assert logic.entry(generator, length) is None
+
+
 class TestOrderFrameOps:
     def test_insert_frame_adds_empty_frame_at_position(self) -> None:
         logic = _logic()
@@ -66,15 +107,23 @@ class TestOrderFrameOps:
 
         assert _order_column(logic, GeneratorName.PULSE1) == [None, 5]
 
-    def test_duplicate_frame_gives_the_copy_its_own_pattern(self) -> None:
+    def test_duplicate_frame_repeats_the_same_pattern(self) -> None:
         logic = _logic()
         logic.set_order_entry(GeneratorName.PULSE1, 0, 5)
 
         logic.duplicate_frame(0)
 
-        source_index, duplicate_index = _order_column(logic, GeneratorName.PULSE1)
+        assert _order_column(logic, GeneratorName.PULSE1) == [5, 5]
+
+    def test_clone_frame_gives_the_copy_its_own_pattern(self) -> None:
+        logic = _logic()
+        logic.set_order_entry(GeneratorName.PULSE1, 0, 5)
+
+        logic.clone_frame(0)
+
+        source_index, clone_index = _order_column(logic, GeneratorName.PULSE1)
         assert source_index == 5
-        assert duplicate_index != 5
+        assert clone_index != 5
 
     def test_clear_frame_empties_every_channel(self) -> None:
         logic = _logic()

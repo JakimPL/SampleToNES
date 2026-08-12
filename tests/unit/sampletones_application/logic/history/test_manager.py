@@ -92,6 +92,22 @@ class TestGrouping:
         assert len(history.entries) == 2
         assert history.entries[-1].action is HistoryAction.ADD_SAMPLE
 
+    def test_batched_edit_commits_one_entry(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+        original = controller.project.settings.tempo
+
+        with history.transaction(HistoryAction.SET_TEMPO), controller.batch():
+            controller.set_tempo(150)
+            controller.set_speed(4)
+
+        assert len(history.entries) == 2
+
+        history.undo()
+        assert controller.project.settings.tempo == original
+
     def test_exception_inside_transaction_commits_partial_gesture(
         self,
         history_factory: HistoryFactory,
@@ -445,6 +461,16 @@ class TestCompleteness:
         controller, _ = history_factory(strict=True)
 
         with pytest.raises(UntrackedMutationError):
+            controller.set_tempo(120)
+
+    def test_batched_mutation_outside_a_transaction_raises_under_strict(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        """A batch defers the notifications a gesture raises, never the mutations it records."""
+        controller, _ = history_factory(strict=True)
+
+        with pytest.raises(UntrackedMutationError), controller.batch():
             controller.set_tempo(120)
 
     def test_untracked_mutation_self_heals_when_lenient(

@@ -7,7 +7,7 @@ components:
       - type: style
         key: CellPadding
         x: 3
-        y: 4
+        y: 0
       - type: color
         key: HeaderHovered
         value: .overlay/0.25
@@ -20,6 +20,19 @@ components:
       - type: color
         key: TableRowBgAlt
         value: .table_row
+  - item_type: Selectable
+    entries:
+      - type: style
+        key: ItemSpacing
+        x: 0
+        y: 0
+      - type: style
+        key: SelectableTextAlign
+        x: 0
+        y: 0.5
+      - type: color
+        key: Header
+        value: .block_selection
   - item_type: All
     entries:
       - type: color

@@ -50,6 +50,37 @@ class SequencerOrderLogic(CallbackMixin):
         for generator in GeneratorName.items():
             self._controller.set_order_entry(generator, position, pattern_index)
 
+    def write_entry(
+        self,
+        generator: Optional[GeneratorName],
+        position: int,
+        pattern_index: Optional[int],
+    ) -> None:
+        """Plays a pattern index at a position, the master row settling every channel at once.
+
+        This is the rule the table's two kinds of row follow, kept in one place so a gesture
+        reaching across them writes what the reader typing into each by hand would.
+        """
+        if generator is None:
+            self.set_master_entry(position, pattern_index)
+        else:
+            self.set_order_entry(generator, position, pattern_index)
+
+    def entry(self, generator: GeneratorName, position: int) -> Optional[int]:
+        """The pattern index a channel plays at a position, empty past the order's last frame."""
+        order = self._controller.song.order
+        if position >= len(order):
+            return None
+
+        return order[position].get(generator)
+
+    def position_count(self) -> int:
+        return self._controller.order_length
+
+    def append_frame(self) -> None:
+        """Adds one empty frame (all channels silent) after the order's last."""
+        self._controller.append_frame()
+
     def remove_from_order(self, position: int) -> None:
         self._controller.remove_frame(position)
 
@@ -58,8 +89,12 @@ class SequencerOrderLogic(CallbackMixin):
         self._controller.insert_frame(position)
 
     def duplicate_frame(self, position: int) -> None:
-        """Inserts a copy of the frame at ``position`` directly after it."""
+        """Repeats the frame at ``position`` directly after it, playing the same patterns."""
         self._controller.duplicate_frame(position)
+
+    def clone_frame(self, position: int) -> None:
+        """Inserts a copy of the frame at ``position`` directly after it, with its own patterns."""
+        self._controller.clone_frame(position)
 
     def clear_frame(self, position: int) -> None:
         """Empties every channel in the frame at ``position``."""

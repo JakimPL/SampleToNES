@@ -15,6 +15,7 @@ from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
+from sampletones_application.coordinators.edit.router import EditRouter
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -312,6 +313,7 @@ class Application:
             player_glyphs=self.layout.glyphs.player,
             player_layout=self.layout.player,
             language_manager=self.language_manager,
+            build_edit_actions=self._build_edit_actions,
             on_play_from_start=self._play_from_start,
             on_pause_or_resume=self._play,
             on_stop=self._stop,
@@ -460,6 +462,8 @@ class Application:
             on_nes_frequency_changed=self._retune_samples_for_rate,
             on_channels_changed=self._update_menu,
         )
+
+        self._edit_router = EditRouter(surfaces=self._sequencer_tab.edit_surfaces)
 
         self._playback_router = PlaybackRouter(
             sources=(
@@ -1324,6 +1328,10 @@ class Application:
         current_tab = self._shell.get_current_tab()
         self.session_manager.set_current_tab(current_tab)
         self.session_manager.save_config()
+
+    def _build_edit_actions(self) -> bool:
+        """States the actions of the grid holding the cursor into the Edit menu being built."""
+        return self._edit_router.build_menu_actions()
 
     def _play_from_start(self) -> None:
         self._playback_router.play_from_start()

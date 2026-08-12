@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Any, Dict, FrozenSet, Iterator, List
+from typing import Any, Callable, Dict, FrozenSet, Iterator, List, Tuple
 
 import pytest
 
@@ -7,6 +7,8 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.general import (
+    TAG_GLOBAL_MENU_GROUP_EDIT,
+    TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
 )
@@ -36,11 +38,13 @@ FOLLOW_MODE_NAMES = {
 class _ShortcutManagerRecorder:
     """Records the items a menu asks for, in place of the manager that would create them."""
 
-    def __init__(self) -> None:
+    def __init__(self, built: List[str]) -> None:
         self.items: List[Dict[str, Any]] = []
+        self._built = built
 
     def add_menu_item(self, shortcut_id: ShortcutId, **kwargs: Any) -> None:
         self.items.append({"shortcut_id": shortcut_id, **kwargs})
+        self._built.append(f"item:{kwargs['label']}")
 
     @property
     def labels(self) -> List[str]:
@@ -57,6 +61,10 @@ class _DearPyGuiRecorder:
         self.values: Dict[str, bool] = {}
         self.enabled: Dict[str, bool] = {}
         self.menus: List[Dict[str, Any]] = []
+        self.items: List[Dict[str, Any]] = []
+        self.built: List[str] = []
+        self.containers: List[str] = []
+        self.deleted: List[int] = []
 
     @contextmanager
     def menu(self, **kwargs: Any) -> Iterator[int]:
@@ -67,7 +75,37 @@ class _DearPyGuiRecorder:
         return next(entry for entry in self.menus if entry.get("tag") == tag)
 
     def add_separator(self, **kwargs: Any) -> int:
+        self.built.append("separator")
         return 0
+
+    def add_group(self, *, tag: str) -> int:
+        self.built.append(f"group:{tag}")
+        return 0
+
+    def add_menu_item(self, **kwargs: Any) -> int:
+        self.items.append(kwargs)
+        self.built.append(f"item:{kwargs['label']}")
+        return 0
+
+    @contextmanager
+    def item_handler_registry(self, **kwargs: Any) -> Iterator[int]:
+        yield 0
+
+    def add_item_visible_handler(self, **kwargs: Any) -> int:
+        return 0
+
+    def bind_item_handler_registry(self, item: str, registry: str) -> None:
+        return None
+
+    def append_items(self, tag: str, build: Callable[[], None]) -> Tuple[int, ...]:
+        """Stands in for the helper that reports what one build left in the container."""
+        self.containers.append(tag)
+        standing = len(self.items)
+        build()
+        return tuple(range(standing, len(self.items)))
+
+    def delete_item(self, item: int) -> None:
+        self.deleted.append(item)
 
     def set_value(self, item: str, value: bool) -> None:
         self.values[item] = value
@@ -113,14 +151,21 @@ def framework(monkeypatch: pytest.MonkeyPatch) -> _DearPyGuiRecorder:
     instance = _DearPyGuiRecorder()
     monkeypatch.setattr(menu_module.dpg, "menu", instance.menu)
     monkeypatch.setattr(menu_module.dpg, "add_separator", instance.add_separator)
+    monkeypatch.setattr(menu_module.dpg, "add_menu_item", instance.add_menu_item)
+    monkeypatch.setattr(menu_module.dpg, "add_group", instance.add_group)
+    monkeypatch.setattr(menu_module.dpg, "item_handler_registry", instance.item_handler_registry)
+    monkeypatch.setattr(menu_module.dpg, "add_item_visible_handler", instance.add_item_visible_handler)
+    monkeypatch.setattr(menu_module.dpg, "bind_item_handler_registry", instance.bind_item_handler_registry)
     monkeypatch.setattr(menu_module, "dpg_set_value", instance.set_value)
     monkeypatch.setattr(menu_module, "dpg_configure_item", instance.configure_item)
+    monkeypatch.setattr(menu_module, "dpg_append_items", instance.append_items)
+    monkeypatch.setattr(menu_module, "dpg_delete_item", instance.delete_item)
     return instance
 
 
 @pytest.fixture
-def shortcuts() -> _ShortcutManagerRecorder:
-    return _ShortcutManagerRecorder()
+def shortcuts(framework: _DearPyGuiRecorder) -> _ShortcutManagerRecorder:
+    return _ShortcutManagerRecorder(framework.built)
 
 
 @pytest.fixture
@@ -134,11 +179,15 @@ def menu_bar(
     shortcuts: _ShortcutManagerRecorder,
     switched: List[GeneratorName],
 ) -> MenuBar:
-    """A bar with the collaborators its Channels submenu reads, from the real language file."""
+    """A bar with the collaborators its submenus read, from the real language file."""
     instance = MenuBar.__new__(MenuBar)
     instance._shortcut_manager = shortcuts
     instance._language_manager = LanguageManager(LANG_EN)
     instance._on_channel_muted = switched.append
+    instance._build_edit_actions = lambda: False
+    instance._edit_actions_handler_tag = "handlers"
+    instance._edit_actions_frame = None
+    instance._edit_action_items = ()
     return instance
 
 
@@ -359,3 +408,120 @@ class TestChannelsMenuUpdate:
         menu_bar._update_channels(_state(frozenset()))
 
         assert framework.enabled == {TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS: False}
+
+
+def _edit_bar(build_edit_actions: Callable[[], bool]) -> MenuBar:
+    """A bar holding what the Edit menu's action section reads, and nothing else."""
+    instance = MenuBar.__new__(MenuBar)
+    instance._language_manager = LanguageManager(LANG_EN)
+    instance._build_edit_actions = build_edit_actions
+    instance._edit_actions_frame = None
+    instance._edit_action_items = ()
+    return instance
+
+
+class TestEditActionsSection:
+    """The Edit menu carries the actions of the grid holding the cursor, and names them itself
+    while no grid holds one."""
+
+    def test_the_clipboard_actions_are_named_greyed_out_with_no_grid_focused(
+        self,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        _edit_bar(lambda: False)._refresh_edit_actions()
+
+        assert [item["label"] for item in framework.items] == ["Copy", "Cut", "Paste", "Delete"]
+        assert [item["enabled"] for item in framework.items] == [False] * 4
+
+    def test_a_focused_grid_states_its_own_actions(
+        self,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        requests: List[bool] = []
+
+        def build() -> bool:
+            requests.append(True)
+            return True
+
+        _edit_bar(build)._refresh_edit_actions()
+
+        assert requests == [True]
+        assert framework.items == []
+
+    def test_the_actions_are_stated_into_the_menu_itself(
+        self,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        _edit_bar(lambda: False)._refresh_edit_actions()
+
+        assert framework.containers == [TAG_GLOBAL_MENU_GROUP_EDIT]
+
+    def test_a_build_takes_away_only_what_the_one_before_it_stated(
+        self,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar = _edit_bar(lambda: False)
+
+        menu_bar._refresh_edit_actions()
+        menu_bar._refresh_edit_actions()
+
+        assert framework.deleted == [0, 1, 2, 3]
+
+
+class TestEditMenuOrder:
+    """The marker leads the Edit menu. A container standing below a menu item takes the width the
+    items span as its own, and the popup grows to fit it on every frame it stays open."""
+
+    def test_the_marker_stands_before_every_item(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_edit_menu(_state(frozenset()))
+
+        assert framework.built == [
+            f"group:{TAG_GLOBAL_MENU_GROUP_EDIT_MARKER}",
+            "item:Undo",
+            "item:Redo",
+            "separator",
+            "item:Copy",
+            "item:Cut",
+            "item:Paste",
+            "item:Delete",
+        ]
+
+
+class TestEditActionsRefresh:
+    """DearPyGui reports the section drawn once a frame while the menu stands open, so a gap in
+    those reports is what marks a fresh opening."""
+
+    def test_the_actions_are_stated_once_while_the_menu_stays_open(
+        self,
+        framework: _DearPyGuiRecorder,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        frames = iter([10, 11, 12, 13])
+        monkeypatch.setattr(menu_module.dpg, "get_frame_count", lambda: next(frames))
+        requests: List[int] = []
+        menu_bar = _edit_bar(lambda: bool(requests.append(1)))
+
+        for _ in range(4):
+            menu_bar._on_edit_actions_drawn(0, 0)
+
+        assert len(requests) == 1
+
+    def test_the_actions_are_stated_afresh_each_time_the_menu_is_opened(
+        self,
+        framework: _DearPyGuiRecorder,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        frames = iter([10, 11, 40, 41])
+        monkeypatch.setattr(menu_module.dpg, "get_frame_count", lambda: next(frames))
+        requests: List[int] = []
+        menu_bar = _edit_bar(lambda: bool(requests.append(1)))
+
+        for _ in range(4):
+            menu_bar._on_edit_actions_drawn(0, 0)
+
+        assert len(requests) == 2

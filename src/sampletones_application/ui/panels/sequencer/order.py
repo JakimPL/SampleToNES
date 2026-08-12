@@ -1,16 +1,18 @@
-from typing import Callable, Dict, Final, Optional, Tuple
+from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.layout.general.plus_minus_buttons import (
     PlusMinusButtonsLayout,
 )
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
+    SUF_HANDLER_DRAG,
     SUF_HANDLER_HEADER,
     SUF_HANDLER_REGISTRY,
 )
@@ -35,18 +37,33 @@ from sampletones_application.ui.elements.plus_minus_buttons import (
 )
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
+from sampletones_application.ui.elements.table.selection import TableSelection
 from sampletones_application.ui.panels.sequencer.channels import (
     ChannelMenuLabels,
     ChannelSwitch,
     channel_tooltip,
 )
 from sampletones_application.ui.panels.sequencer.columns import channel_color
+from sampletones_application.ui.panels.sequencer.display import cell_title
+from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
+from sampletones_application.ui.panels.sequencer.grid.scroll.axis import (
+    HorizontalScroll,
+)
+from sampletones_application.ui.panels.sequencer.grid.scroll.band import TravelBand
+from sampletones_application.ui.panels.sequencer.grid.scroll.travel import DragTravel
+from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
+    BlockShortcuts,
+    ClipboardItems,
+)
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import (
+    GridEditSurface,
+)
 from sampletones_application.ui.panels.sequencer.input.order import (
     INDEX_DIGITS,
-    ORDER_ROWS,
     OrderCursor,
     OrderInputState,
 )
+from sampletones_application.ui.panels.sequencer.input.target import OrderTarget
 from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
     create_selectable_text_theme,
@@ -60,7 +77,10 @@ from sampletones_application.utils.gui.keyboard import (
     KeyRouter,
 )
 from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS
-from sampletones_application.utils.gui.keyboard.modifiers import Modifier
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    Modifier,
+    capture_modifiers,
+)
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -72,6 +92,7 @@ from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.order import (
     SequencerOrderTrackerViewModel,
 )
+from sampletones_application.view_model.sequencer.region import OrderCell, OrderRegion
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.types.application import ColorRGBA, Sender
@@ -87,6 +108,10 @@ OnSetOrderEntryCallback = Callable[[GeneratorName, int, Optional[int]], None]
 OnSetMasterEntryCallback = Callable[[int, Optional[int]], None]
 OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
 OnChannelSoloedCallback = Callable[[GeneratorName], None]
+OnBlockRegionCallback = Callable[[OrderRegion], None]
+OnPasteBlockCallback = Callable[[OrderCell], None]
+CanPasteBlockQuery = Callable[[], bool]
+OrderEditSurface = GridEditSurface[OrderCursor, OrderRegion, OrderCell, OrderTarget]
 
 MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {
     ShortcutId.ORDER_MOVE_FRAME_LEFT: MoveDirection.PREVIOUS,
@@ -132,12 +157,23 @@ class GUISequencerOrderPanel(GUIPanel):
         self._position_count: int = 0
         self._order: EditableCells[OrderKey] = EditableCells()
         self._input_state: OrderInputState = OrderInputState()
+        self._selection: TableSelection[OrderKey] = TableSelection(
+            cells=self._order,
+            cell_at=self._cell_at,
+            covered=self._selected_cells,
+        )
+        self._travel: DragTravel = DragTravel(
+            axis=HorizontalScroll(table=TAG_SEQUENCER_ORDER_TABLE),
+            band=self._travel_band,
+            elapsed=dpg.get_delta_time,
+        )
         self._highlighted: Optional[OrderCursor] = None
         self._highlighted_column: Optional[int] = None
         self._current_position: Optional[int] = None
         self._playing_position: Optional[int] = None
         self._cell_handler_tag = compose_tag(TAG_SEQUENCER_ORDER_TABLE, SUF_HANDLER_REGISTRY)
         self._label_handler_tag = compose_tag(TAG_SEQUENCER_ORDER_TABLE, SUF_HANDLER_HEADER)
+        self._drag_handler_tag = compose_tag(TAG_SEQUENCER_ORDER_TABLE, SUF_HANDLER_DRAG)
         self._label_rows: Dict[Sender, Optional[GeneratorName]] = {}
         self._entry_theme: int = 0
         self._muted_entry_theme: int = 0
@@ -149,6 +185,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
         self.on_remove_requested: Optional[OnRemoveCallback] = None
         self.on_duplicate_requested: Optional[OnFrameActionCallback] = None
+        self.on_clone_requested: Optional[OnFrameActionCallback] = None
         self.on_insert_requested: Optional[OnFrameActionCallback] = None
         self.on_clear_requested: Optional[OnFrameActionCallback] = None
         self.on_play_from_requested: Optional[OnFrameActionCallback] = None
@@ -156,12 +193,30 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_set_order_entry: Optional[OnSetOrderEntryCallback] = None
         self.on_set_master_entry: Optional[OnSetMasterEntryCallback] = None
         self.on_cell_selected: Optional[VoidCallback] = None
+        self.on_copy_block: Optional[OnBlockRegionCallback] = None
+        self.on_cut_block: Optional[OnBlockRegionCallback] = None
+        self.on_delete_block: Optional[OnBlockRegionCallback] = None
+        self.on_paste_block: Optional[OnPasteBlockCallback] = None
+        self.can_paste_block: Optional[CanPasteBlockQuery] = None
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
         self.on_channels_toggled: Optional[VoidCallback] = None
         self.on_channels_muted: Optional[VoidCallback] = None
         self.on_channels_unmuted: Optional[VoidCallback] = None
 
+        self._blocks: BlockGestures[OrderRegion, OrderCell] = BlockGestures(grid=self)
+        self._surface: OrderEditSurface = GridEditSurface.build(
+            grid=self,
+            blocks=self._blocks,
+            target=OrderTarget,
+            shortcuts=shortcut_source,
+            block_shortcuts=BlockShortcuts(
+                copy=ShortcutId.ORDER_COPY_BLOCK,
+                cut=ShortcutId.ORDER_CUT_BLOCK,
+                paste=ShortcutId.ORDER_PASTE_BLOCK,
+            ),
+            labels=ClipboardItems.labels(language_manager),
+        )
         self._lbl_order = self._label(language_manager, SequencerOrderElements.ORDER_TEXT)
         self._load_row_labels(language_manager)
         self._load_context_labels(language_manager)
@@ -196,7 +251,10 @@ class GUISequencerOrderPanel(GUIPanel):
             return self._label(language_manager, element)
 
         self._lbl_context_play = label(SequencerOrderElements.CONTEXT_PLAY)
+        self._lbl_context_select_all = label(SequencerOrderElements.CONTEXT_SELECT_ALL)
+        self._lbl_context_select_row = label(SequencerOrderElements.CONTEXT_SELECT_ROW)
         self._lbl_context_duplicate = label(SequencerOrderElements.CONTEXT_DUPLICATE)
+        self._lbl_context_clone = label(SequencerOrderElements.CONTEXT_CLONE)
         self._lbl_context_insert = label(SequencerOrderElements.CONTEXT_INSERT)
         self._lbl_context_clear = label(SequencerOrderElements.CONTEXT_CLEAR)
         self._lbl_context_remove = label(SequencerOrderElements.CONTEXT_REMOVE)
@@ -309,9 +367,16 @@ class GUISequencerOrderPanel(GUIPanel):
 
         with dpg.item_handler_registry(tag=self._cell_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
+            dpg.add_item_active_handler(callback=self._on_cell_held)
 
         with dpg.item_handler_registry(tag=self._label_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_label_right_clicked)
+
+        with dpg.handler_registry(tag=self._drag_handler_tag):
+            dpg.add_mouse_click_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_pointer_pressed,
+            )
 
     def update_order(self, view_model: SequencerOrderTrackerViewModel) -> None:
         """Reconciles the order table; rebuilds only when the position count changes."""
@@ -363,6 +428,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._clear_cursor_highlight()
         self._clear_column_highlight()
         self._input_state = OrderInputState()
+        self._selection.repaint()
         self._update_caret()
 
         if cursor is not None:
@@ -444,11 +510,15 @@ class GUISequencerOrderPanel(GUIPanel):
         state (and any highlight keyed by column index) dangling, which corrupted
         the heap. Replacing the table item wholesale sidesteps that: the cursor and
         column highlights die with the old table, so nothing references freed
-        columns.
+        columns. The selected cells go with them, and :meth:`_restore_cursor` brings the
+        cursor back on its own — a table of another width is a table a region no longer
+        describes.
         """
         dpg_delete_item(TAG_SEQUENCER_ORDER_TABLE)
         self._highlighted = None
         self._highlighted_column = None
+        self._selection.reset()
+        self._travel.rest()
         self._order.reset(cell_values)
         self._position_count = view_model.position_count
         self._build_table(view_model.position_count)
@@ -487,7 +557,7 @@ class GUISequencerOrderPanel(GUIPanel):
             )
 
         self._label_rows = {}
-        for generator in ORDER_ROWS:
+        for generator in CHANNEL_AXIS:
             self._build_row(generator, position_count)
             if generator is None:
                 self._build_divider_row(position_count)
@@ -689,7 +759,7 @@ class GUISequencerOrderPanel(GUIPanel):
     def _table_row(self, generator: Optional[GeneratorName]) -> int:
         if generator is None:
             return MASTER_TABLE_ROW
-        return ORDER_ROWS.index(generator) + 1
+        return CHANNEL_AXIS.index(generator) + 1
 
     def _apply_cursor_highlight(self, cursor: OrderCursor) -> None:
         dpg.highlight_table_cell(
@@ -699,6 +769,20 @@ class GUISequencerOrderPanel(GUIPanel):
             color=self._layout.colors.cell_cursor.rgba,
         )
         self._highlighted = cursor
+
+    def _selected_cells(self) -> FrozenSet[OrderKey]:
+        """Every cell the selection covers, clipped to the positions the table holds."""
+        region = self._input_state.region
+        if region is None:
+            return frozenset()
+
+        keys: Set[OrderKey] = set()
+        for generator in region.generators:
+            for position in region.positions:
+                if position < self._position_count:
+                    keys.add((generator, position))
+
+        return frozenset(keys)
 
     def _clear_cursor_highlight(self) -> None:
         if self._highlighted is None:
@@ -766,6 +850,7 @@ class GUISequencerOrderPanel(GUIPanel):
             if old is None or old.position != new.position:
                 self.call(self.on_frame_selected, new.position)
 
+        self._selection.repaint()
         self._update_caret()
         self._refresh_remove_enabled()
 
@@ -798,27 +883,136 @@ class GUISequencerOrderPanel(GUIPanel):
         _app_data: bool,
         user_data: OrderKey,
     ) -> None:
-        dpg.set_value(sender, False)
-        self._committed_state()
+        """Places the cursor on the clicked cell, or carries a selection out to it while Shift is held.
+
+        A drag that comes back to the cell it started from ends on a click, and the selection takes
+        that click as the end of the drag, so the range dragged out stands and the cursor with it.
+        """
+        if self._selection.claims_click(sender, user_data):
+            return
+
+        state = self._committed_state()
         generator, position = user_data
-        self._apply_state(
-            OrderInputState(
-                cursor=OrderCursor(
-                    generator,
-                    position,
-                )
-            )
+        cursor = OrderCursor(generator, position)
+        if Modifier.SHIFT in capture_modifiers():
+            self._apply_state(state.extend_to(cursor))
+            return
+
+        self._apply_state(OrderInputState(cursor=cursor))
+
+    def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:
+        """Carries the selection to the cell under a held pointer, which is what drags a range out.
+
+        The gesture states how far the pointer has carried: a plain drag anchors at the cell the
+        press landed on, and one whose press held Shift carries the selection already standing.
+
+        A pointer held past an edge travels the table first, so the reach that follows reads the
+        positions the travel has brought into view.
+        """
+        self._travel.advance()
+        reach = self._selection.hold(app_data)
+        if reach is None:
+            return
+
+        state = self._committed_state()
+        if not reach.extends:
+            state = OrderInputState(cursor=OrderCursor(*reach.origin))
+
+        self._apply_state(state.extend_to(OrderCursor(*reach.reached)))
+
+    def _on_pointer_pressed(self, _sender: Sender, _app_data: int) -> None:
+        """Drops the gesture a finished drag left behind, so this press selects on its own.
+
+        A press is where a gesture ends rather than the release before it, because the release
+        reaches this panel ahead of the click the cell itself reports: a drag that comes back to
+        the cell it started from would otherwise have its selection taken down by its own click.
+        """
+        self._selection.drop_gesture()
+        self._travel.rest()
+
+    def _travel_band(self) -> Optional[TravelBand]:
+        """Where the order's positions stand, which is the band a drag held beside them travels across.
+
+        Two positions state the pitch the columns are laid out at, so an order holding one of them
+        travels nowhere — there is nothing beside it to reach.
+        """
+        first = self._cell_left(0)
+        following = self._cell_left(1)
+        if first is None or following is None:
+            return None
+
+        return TravelBand(
+            first_edge=first,
+            cell_extent=following - first,
+            cell_count=self._position_count,
         )
+
+    def _cell_at(self) -> Optional[OrderKey]:
+        """The cell the pointer stands on, clamped to the table the order lays out.
+
+        A drag that runs past an edge reads as the edge itself, so carrying the pointer beyond
+        the last channel or the last position selects up to it rather than stopping there.
+        """
+        left, top = dpg.get_mouse_pos(local=False)
+        position = self._position_at(left)
+        if position is None:
+            return None
+
+        return (self._generator_at(top), position)
+
+    def _generator_at(self, top: float) -> Optional[GeneratorName]:
+        """Which channel row stands at a height, the master row reading ``None``.
+
+        The master row stands apart from the channels beneath it, so the walk asks each row where
+        it was drawn and takes the first one reaching past the pointer.
+        """
+        for generator in CHANNEL_AXIS:
+            widget = self._order.widget((generator, 0))
+            if widget is None:
+                continue
+
+            _, row_top = dpg.get_item_rect_min(widget)
+            _, row_height = dpg.get_item_rect_size(widget)
+            if top < row_top + row_height:
+                return generator
+
+        return CHANNEL_AXIS[-1]
+
+    def _position_at(self, left: float) -> Optional[int]:
+        """Which position stands at a width, counted from the first cell's left edge.
+
+        Every position column is the same width, so the count is arithmetic once two of them
+        state the pitch; an order of a single position holds every width there is.
+        """
+        first = self._cell_left(0)
+        if first is None:
+            return None
+
+        following = self._cell_left(1)
+        if following is None:
+            return 0
+
+        position = int((left - first) // (following - first))
+        return max(0, min(position, self._position_count - 1))
+
+    def _cell_left(self, position: int) -> Optional[float]:
+        """Where a position column's cells begin, in the coordinates the viewport is drawn in."""
+        widget = self._order.widget((None, position))
+        if widget is None:
+            return None
+
+        cell_left, _ = dpg.get_item_rect_min(widget)
+        return float(cell_left)
 
     def _on_cell_right_clicked(
         self,
         _sender: Sender,
         app_data: Tuple[int, int],
     ) -> None:
-        """Opens the frame-operations menu for the right-clicked frame.
+        """Opens the frame-operations menu for the right-clicked cell.
 
-        The menu acts on the clicked frame directly and leaves the edit cursor (and, while
-        following playback, the playhead) where it is — right-clicking should not seek.
+        The menu acts on the clicked cell and its frame directly, and leaves the edit cursor (and,
+        while following playback, the playhead) where it is — right-clicking should not seek.
         """
         mouse_button, clicked_item = app_data
         if mouse_button != dpg.mvMouseButton_Right:
@@ -828,8 +1022,8 @@ class GUISequencerOrderPanel(GUIPanel):
         if key is None:
             return
 
-        _, position = key
-        self._show_context_menu(position)
+        generator, position = key
+        self._show_context_menu(generator, position)
 
     def _on_label_clicked(
         self,
@@ -864,11 +1058,24 @@ class GUISequencerOrderPanel(GUIPanel):
             header = dpg.add_text(self._row_labels[generator])
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
-            self._channel_switch.add_menu_items(generator, self._current_channels)
+            self._channel_switch.add_menu_items(
+                generator,
+                self._current_channels,
+            )
 
-    def _show_context_menu(self, position: int) -> None:
+    def _show_context_menu(
+        self,
+        generator: Optional[GeneratorName],
+        position: int,
+    ) -> None:
+        target = self._surface.target_at(OrderCursor(generator, position))
         with context_menu():
-            header = dpg.add_text(display_id(position))
+            header = dpg.add_text(
+                cell_title(
+                    position,
+                    self._row_labels[generator],
+                )
+            )
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             add_play_menu_item(
@@ -877,47 +1084,110 @@ class GUISequencerOrderPanel(GUIPanel):
                 shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
             dpg.add_separator()
-            dpg.add_menu_item(
-                label=self._lbl_context_duplicate,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_DUPLICATE_FRAME),
-                callback=lambda: self.call(self.on_duplicate_requested, position),
-            )
-            dpg.add_menu_item(
-                label=self._lbl_context_insert,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_INSERT_FRAME),
-                callback=lambda: self.call(self.on_insert_requested, position),
-            )
-            dpg.add_menu_item(
-                label=self._lbl_context_clear,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_CLEAR_FRAME),
-                callback=lambda: self.call(self.on_clear_requested, position),
-            )
-            dpg.add_menu_item(
-                label=self._lbl_context_remove,
-                shortcut=self._shortcuts.display(ShortcutId.ORDER_REMOVE_FRAME),
-                callback=lambda: self.call(self.on_remove_requested, position),
-            )
-            dpg.add_separator()
-            self._add_move_item(
-                self._lbl_context_move_left,
-                ShortcutId.ORDER_MOVE_FRAME_LEFT,
-                position,
-            )
-            self._add_move_item(
-                self._lbl_context_move_right,
-                ShortcutId.ORDER_MOVE_FRAME_RIGHT,
-                position,
-            )
-            self._add_move_item(
-                self._lbl_context_move_start,
-                ShortcutId.ORDER_MOVE_FRAME_TO_START,
-                position,
-            )
-            self._add_move_item(
-                self._lbl_context_move_end,
-                ShortcutId.ORDER_MOVE_FRAME_TO_END,
-                position,
-            )
+            self.add_action_items(target)
+
+    @property
+    def edit_surface(self) -> OrderEditSurface:
+        """This table as the menu bar's Edit menu reaches it."""
+        return self._surface
+
+    def input_state(self) -> OrderInputState:
+        """Where the cursor stands and what it has selected, which a target is resolved from."""
+        return self._input_state
+
+    def owns_keys(self) -> bool:
+        """Whether the table owns the next key, which is also what the Edit menu asks."""
+        return self._keys_active()
+
+    def add_action_items(self, target: OrderTarget) -> None:
+        """Builds every action an order cell offers, in the order each menu prints them.
+
+        The table states its actions once, and whoever asks for them decides where they are shown:
+        the cell menu asks for the cell a pointer landed on, and the menu bar asks for the cell the
+        cursor stands on. An action added here reaches both.
+        """
+        self._add_select_items(target.cell)
+        dpg.add_separator()
+        self._surface.add_block_items(target)
+        dpg.add_separator()
+        self._add_frame_items(target.cell.position)
+        dpg.add_separator()
+        self._add_move_items(target.cell.position)
+
+    def _add_select_items(self, cell: OrderCursor) -> None:
+        """Builds the two shapes a selection takes, the whole order and one row of it.
+
+        Each item fires the gesture its key fires, on the cell the menu names: a row selected from
+        a cell menu is the row that cell stands in, and one selected from the menu bar is the row
+        the cursor stands in.
+        """
+        dpg.add_menu_item(
+            label=self._lbl_context_select_all,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_SELECT_ALL),
+            callback=lambda: self._select_shape(
+                ShortcutId.ORDER_SELECT_ALL,
+                cell,
+            ),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_select_row,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_SELECT_ROW),
+            callback=lambda: self._select_shape(
+                ShortcutId.ORDER_SELECT_ROW,
+                cell,
+            ),
+        )
+
+    def _add_frame_items(self, position: int) -> None:
+        """Builds the frame operations, each acting on the whole frame the target cell sits in."""
+        dpg.add_menu_item(
+            label=self._lbl_context_duplicate,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_DUPLICATE_FRAME),
+            callback=lambda: self.call(self.on_duplicate_requested, position),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_clone,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_CLONE_FRAME),
+            callback=lambda: self.call(self.on_clone_requested, position),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_insert,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_INSERT_FRAME),
+            callback=lambda: self.call(self.on_insert_requested, position),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_clear,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_CLEAR_FRAME),
+            callback=lambda: self.call(self.on_clear_requested, position),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_remove,
+            shortcut=self._shortcuts.display(ShortcutId.ORDER_REMOVE_FRAME),
+            callback=lambda: self.call(self.on_remove_requested, position),
+        )
+
+    def _add_move_items(self, position: int) -> None:
+        """Builds the four moves a frame can make, in the order they walk the song."""
+        self._add_move_item(
+            self._lbl_context_move_left,
+            ShortcutId.ORDER_MOVE_FRAME_LEFT,
+            position,
+        )
+        self._add_move_item(
+            self._lbl_context_move_right,
+            ShortcutId.ORDER_MOVE_FRAME_RIGHT,
+            position,
+        )
+        self._add_move_item(
+            self._lbl_context_move_start,
+            ShortcutId.ORDER_MOVE_FRAME_TO_START,
+            position,
+        )
+        self._add_move_item(
+            self._lbl_context_move_end,
+            ShortcutId.ORDER_MOVE_FRAME_TO_END,
+            position,
+        )
 
     def _add_move_item(
         self,
@@ -930,12 +1200,19 @@ class GUISequencerOrderPanel(GUIPanel):
         The action names both the direction it moves and the accelerator it prints, so the item a
         reader sees is the one the key press performs.
         """
-        target = MOVE_DIRECTIONS[shortcut_id].target(position, self._position_count)
+        target = MOVE_DIRECTIONS[shortcut_id].target(
+            position,
+            self._position_count,
+        )
         dpg.add_menu_item(
             label=label,
             shortcut=self._shortcuts.display(shortcut_id),
             enabled=target is not None,
-            callback=lambda: self.call(self.on_move_requested, position, target),
+            callback=lambda: self.call(
+                self.on_move_requested,
+                position,
+                target,
+            ),
         )
 
     def _keys_active(self) -> bool:
@@ -967,6 +1244,15 @@ class GUISequencerOrderPanel(GUIPanel):
         if self._move_cursor(shortcut_id):
             return True
 
+        if self._extend_selection(shortcut_id):
+            return True
+
+        if self._select_shape(shortcut_id, cursor):
+            return True
+
+        if self._block_action(shortcut_id):
+            return True
+
         if self._edit_cell(shortcut_id):
             return True
 
@@ -992,12 +1278,92 @@ class GUISequencerOrderPanel(GUIPanel):
 
         return True
 
+    def _extend_selection(self, shortcut_id: ShortcutId) -> bool:
+        """Grows or shrinks the selected block, reporting whether the action was one of its reaches.
+
+        Each reach moves the end the cursor holds while the anchor stays where the selection began,
+        so the same keys that move the cursor select with Shift held.
+        """
+        match shortcut_id:
+            case ShortcutId.ORDER_EXTEND_SELECTION_UP:
+                self._extend_channel(-1)
+            case ShortcutId.ORDER_EXTEND_SELECTION_DOWN:
+                self._extend_channel(1)
+            case ShortcutId.ORDER_EXTEND_SELECTION_LEFT:
+                self._extend_position(-1)
+            case ShortcutId.ORDER_EXTEND_SELECTION_RIGHT:
+                self._extend_position(1)
+            case ShortcutId.ORDER_EXTEND_SELECTION_TO_FIRST_POSITION:
+                self._extend_to_position(0)
+            case ShortcutId.ORDER_EXTEND_SELECTION_TO_LAST_POSITION:
+                self._extend_to_position(self._position_count - 1)
+            case _:
+                return False
+
+        return True
+
+    def _select_shape(
+        self,
+        shortcut_id: ShortcutId,
+        cell: OrderCursor,
+    ) -> bool:
+        """Selects a rectangle of the table, reporting whether the action was one of its shapes.
+
+        A press names its shape from the cell the cursor stands on, which is the cell the menu
+        items name as well, so a key and an item select the same block.
+        """
+        match shortcut_id:
+            case ShortcutId.ORDER_SELECT_ALL:
+                self._select_all()
+            case ShortcutId.ORDER_SELECT_ROW:
+                self._select_row(cell)
+            case _:
+                return False
+
+        return True
+
+    def _select_all(self) -> None:
+        self._apply_state(
+            self._committed_state().select_all(
+                self._position_count,
+            )
+        )
+
+    def _select_row(self, cell: OrderCursor) -> None:
+        self._apply_state(
+            self._committed_state().select_row(
+                cell,
+                self._position_count,
+            )
+        )
+
+    def _block_action(self, shortcut_id: ShortcutId) -> bool:
+        """Acts on the selected block, reporting whether the action was one of its gestures.
+
+        Delete is a block gesture only while a selection stands: with one it empties every cell the
+        selection covers and keeps it, and with none it falls through to clearing the cell under
+        the cursor, the meaning that key already carries.
+        """
+        match shortcut_id:
+            case ShortcutId.ORDER_COPY_BLOCK:
+                self._surface.copy()
+            case ShortcutId.ORDER_CUT_BLOCK:
+                self._surface.cut()
+            case ShortcutId.ORDER_CLEAR_CELL if self._input_state.region is not None:
+                self._surface.delete()
+            case ShortcutId.ORDER_PASTE_BLOCK:
+                self._surface.paste()
+            case _:
+                return False
+
+        return True
+
     def _edit_cell(self, shortcut_id: ShortcutId) -> bool:
         """Empties the cell under the cursor or drops a partial entry, reporting whether the action
         was one of the cell edits.
 
-        A cancel with nothing typed leaves the press to the application, so Escape stops playback
-        while the table holds a cursor.
+        A cancel with nothing typed and nothing selected leaves the press to the application, so
+        Escape stops playback while the table holds a cursor.
         """
         match shortcut_id:
             case ShortcutId.ORDER_CLEAR_CELL:
@@ -1007,7 +1373,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 self._clear_cell()
                 self._move_position(-1)
             case ShortcutId.ORDER_CANCEL_ENTRY:
-                if not self._input_state.pending:
+                if not self._input_state.pending and self._input_state.anchor is None:
                     return False
 
                 self._apply_state(self._input_state.cancel())
@@ -1039,6 +1405,8 @@ class GUISequencerOrderPanel(GUIPanel):
                 self._on_remove_clicked()
             case ShortcutId.ORDER_DUPLICATE_FRAME:
                 self.call(self.on_duplicate_requested, position)
+            case ShortcutId.ORDER_CLONE_FRAME:
+                self.call(self.on_clone_requested, position)
             case ShortcutId.ORDER_CLEAR_FRAME:
                 self.call(self.on_clear_requested, position)
             case _:
@@ -1066,12 +1434,40 @@ class GUISequencerOrderPanel(GUIPanel):
     def _move_channel(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_channel(delta))
 
+    def _extend_position(self, delta: int) -> None:
+        self._apply_state(
+            self._committed_state().extend_position(
+                delta,
+                self._position_count,
+            ),
+        )
+
+    def _extend_to_position(self, index: int) -> None:
+        self._apply_state(
+            self._committed_state().extend_position(
+                index,
+                self._position_count,
+                absolute=True,
+            ),
+        )
+
+    def _extend_channel(self, delta: int) -> None:
+        self._apply_state(self._committed_state().extend_channel(delta))
+
     def _committed_state(self) -> OrderInputState:
         state, index = self._input_state.commit_partial()
         if index is not None:
             self._emit(self._input_state.cursor, index)
 
         return state
+
+    def commit_entry(self) -> None:
+        """Writes the entry being typed into the cell the cursor stands on.
+
+        A block gesture takes this first, so what it lifts out carries the index the reader has
+        just finished typing.
+        """
+        self._apply_state(self._committed_state())
 
     def _type_character(self, event: KeyEvent) -> bool:
         """Types a hex digit into the cell under the cursor, reporting whether the press was one.

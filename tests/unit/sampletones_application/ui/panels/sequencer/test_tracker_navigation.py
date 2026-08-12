@@ -5,8 +5,7 @@ from typing import List, Tuple
 import pytest
 
 from sampletones_application.ui.panels.sequencer import tracker
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
@@ -341,10 +340,10 @@ class TestGridCellEntry:
         assert states[-1].pending == "C"
 
     def test_a_modified_key_reaches_the_application(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Ctrl+C carries no tracker action, so cell entry keeps the plain key alone."""
+        """Ctrl+D opens the display settings, so cell entry keeps the plain hex key alone."""
         panel = _panel()
         states: List[TrackerInputState] = []
         monkeypatch.setattr(panel, "_apply_state", states.append)
 
-        assert panel._on_key_pressed(_press("Ctrl+C")) is False
+        assert panel._on_key_pressed(_press("Ctrl+D")) is False
         assert states == []

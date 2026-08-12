@@ -1,5 +1,7 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from unittest.mock import Mock
+
+import pytest
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project import Project
@@ -7,11 +9,14 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.utils.display import (
+    NOTE_BLANK,
     NOTE_OFF,
     display_command,
     display_id,
     display_sample,
     display_sample_label,
+    display_transpose,
+    display_volume,
 )
 
 
@@ -121,3 +126,41 @@ class TestDisplayCommand:
             )
             == NOTE_OFF
         )
+
+
+_TRANSPOSE_CASES = [
+    (5, "+05"),
+    (-5, "-05"),
+    (26, "+1A"),
+    (-26, "-1A"),
+]
+
+
+class TestDisplayTranspose:
+    @pytest.mark.parametrize(("value", "expected"), _TRANSPOSE_CASES)
+    def test_signed_offset_is_two_hexadecimal_digits(self, value: int, expected: str) -> None:
+        assert display_transpose(value) == expected
+
+    def test_explicit_zero_reads_as_a_zero_offset(self) -> None:
+        """A row storing zero resets the channel's transpose, so the cell shows the reset."""
+        assert display_transpose(0) == "+00"
+
+    def test_absent_transpose_is_placeholder(self) -> None:
+        assert display_transpose(None) == NOTE_BLANK
+
+    def test_zero_and_absent_read_apart(self) -> None:
+        assert display_transpose(0) != display_transpose(None)
+
+    @pytest.mark.parametrize("value", [None, 0, 5, -5, 26, -26])
+    def test_every_rendering_is_the_same_width(self, value: Optional[int]) -> None:
+        """The grid lays transpose out in a fixed field, so every value fills it exactly."""
+        assert len(display_transpose(value)) == len(NOTE_BLANK)
+
+
+class TestDisplayVolume:
+    def test_silent_volume_reads_as_zero(self) -> None:
+        """Volume already tells a stored zero apart from an empty cell; this pins it."""
+        assert display_volume(0) == "0"
+
+    def test_absent_volume_is_placeholder(self) -> None:
+        assert display_volume(None) == "."

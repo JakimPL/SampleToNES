@@ -18,8 +18,9 @@ the project already has samples, _SampleToNES_ warns with **Different NES
 frequency**; **Add anyway** adds it regardless.
 
 Manage the imported samples in the **Samples** list on the right: right-click one
-to **Rename**, **Duplicate**, **Remove**, or reorder it, and toggle its **Loop**
-flag. Removing a sample that patterns still use asks **Remove sample** first,
+to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it, and toggle its
+**Loop** flag. The **Edit** menu carries the same actions for the sample you have
+picked. Removing a sample that patterns still use asks **Remove sample** first,
 because it clears every row that references it.
 
 ## Writing a pattern
@@ -36,8 +37,80 @@ the cursor row, and **Play from this frame** to start at the top of the shown fr
 
 A song plays a sequence of patterns, and the **Order** grid sets that sequence —
 one column per position, with a row for the master and each channel. Type an entry
-to place a pattern, or right-click a frame to **Insert frame**, **Duplicate**,
-**Clear frame**, **Remove**, move it, or **Play from this frame**.
+to place a pattern, or right-click a frame for the rest: **Duplicate** repeats the
+frame with the patterns it already plays, **Clone** gives the copy patterns of its
+own so you can change it on its own, and **Insert frame**, **Clear frame**,
+**Remove**, the moves, and **Play from this frame** do what they say.
+
+## Working on a block
+
+Both grids take a **selection** — a rectangle of cells you copy, cut, paste, and
+delete in one go. Hold `Shift` and press the arrow keys to reach out from the
+cursor, or drag the pointer across the cells; `Shift`+click carries the selection to
+the cell you click. Dragging past the edge of a grid scrolls it along, so a selection
+can run further than the screen shows. Any plain move, and `Escape`, puts the
+selection away again.
+
+| Key | Action |
+|-----|--------|
+| `Shift`+arrows | Reach the selection out a cell at a time |
+| `Shift+Home` / `Shift+End` | Reach it to the first or the last row (tracker) or position (order) |
+| `Ctrl+A` | Select the whole frame, or the whole order |
+| `Ctrl+Shift+A` | Select the column you are in (tracker), or your channel's row (order) |
+| `Ctrl+Alt+A` | Select the subcolumn you are in (tracker) |
+| `Ctrl+C` | Copy |
+| `Ctrl+X` | Cut — copy, then empty what was selected |
+| `Ctrl+V` | Paste, starting at the cursor |
+| `Del` | Empty the selection |
+
+Copy, cut, paste and delete act on the cell the cursor stands on when nothing is
+selected, so copying one cell needs no selection first. All four sit on each grid's
+right-click menu: raised inside a selection they act on the whole of it, raised
+anywhere else on the cell you clicked. Each grid keeps its own copy, so a tracker
+block pastes into the tracker and an order block into the order.
+
+The **Select** keys work from the cell you are on and reach the whole length of the
+grid. They sit on the right-click menu too.
+
+A paste is anchored: the block starts at the cell you paste onto and lands the rest
+down and to the right of it.
+
+In the **Tracker**, a block keeps the kinds of the cells it came from — a transpose
+lands in a transpose, a volume in a volume, whichever column you paste onto — and
+whatever reaches past the last row or the last column is left out. A cell reading
+`?`, where the **Sample** column's channels disagree, passes over its target and
+leaves what was there; an empty cell empties it.
+
+In the **Order**, a block pasted past the last frame grows the song to hold it, and
+one reaching past the **Noise** row stops there. The **Master** row copies the index
+its channels share and reads `?` when they differ, which pasted leaves each channel
+as it was.
+
+Emptying cells keeps the rows and frames they sit in, and every block action is one
+step in the history, so a single **Undo** takes it all back.
+
+A copy also goes to your desktop's clipboard as plain text, so a block carries between
+two open windows of _SampleToNES_ — copy in one, paste in the other — and you can paste
+one into a message to show someone what you wrote. Anything else on the clipboard
+leaves you with the last block you copied here. Notes travel by their number in the
+**Samples** list, so a block pasted into another project plays whichever sample holds
+that number there.
+
+## Transposing and shading
+
+In the **Tracker**, transpose and volume move whatever the selection covers, so a
+run of rows nudges together.
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+Up` / `Ctrl+Down` | Transpose a semitone |
+| `Ctrl+Shift+Up` / `Ctrl+Shift+Down` | Transpose an octave |
+| `Alt+Up` / `Alt+Down` | Volume a step |
+| `Alt+Shift+Up` / `Alt+Shift+Down` | Volume four steps |
+
+Control carries pitch, Alt carries volume, and Shift makes the step the bigger one.
+With nothing selected they act on the cell the cursor stands on, and the same
+commands sit on the right-click menu with these keys beside them.
 
 ## Playing the song
 

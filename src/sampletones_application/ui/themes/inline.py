@@ -4,6 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
 from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.faded import FadedColor
 
 
 def create_selectable_text_theme(color: BaseColor) -> int:
@@ -27,6 +28,24 @@ def create_header_selectable_theme(
             dpg.mvThemeCol_Text: text_color,
             dpg.mvThemeCol_HeaderHovered: hovered_color,
             dpg.mvThemeCol_HeaderActive: active_color,
+        },
+    )
+
+
+def create_label_selectable_theme(color: BaseColor) -> int:
+    """Builds a theme for a selectable that carries a label rather than a gesture.
+
+    Every header wash takes the label's own colour at zero alpha, so the cell reads as plain
+    text while it keeps the layout a selectable lays out with, which is what lets it line up
+    with the clickable labels beside it.
+    """
+    washed_out = FadedColor(color=color, fraction=0.0)
+    return _create_selectable_theme(
+        {
+            dpg.mvThemeCol_Text: color,
+            dpg.mvThemeCol_Header: washed_out,
+            dpg.mvThemeCol_HeaderHovered: washed_out,
+            dpg.mvThemeCol_HeaderActive: washed_out,
         },
     )
 

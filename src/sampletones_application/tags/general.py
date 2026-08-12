@@ -440,6 +440,18 @@ TAG_GLOBAL_MENU_ITEM_EDIT_REDO = TagName(
     Widget.MENU,
     "item_edit_redo",
 )
+TAG_GLOBAL_MENU_GROUP_EDIT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_edit",
+)
+TAG_GLOBAL_MENU_GROUP_EDIT_MARKER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_edit_marker",
+)
 TAG_GLOBAL_DIALOG_PROJECT_SAVED = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -668,6 +680,7 @@ SUF_HANDLER_STATUS = compose_tag("handler", "status")
 SUF_HANDLER_NODE = compose_tag("handler", "node")
 SUF_HANDLER_DETAIL_TOOLTIP = compose_tag("handler", "detail_tooltip")
 SUF_HANDLER_HEADER = compose_tag("handler", "header")
+SUF_HANDLER_DRAG = compose_tag("handler", "drag")
 SUF_LABEL = "label"
 SUF_PATH = "path"
 SUF_TEXT = "text"

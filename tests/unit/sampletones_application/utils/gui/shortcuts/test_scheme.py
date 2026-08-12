@@ -139,8 +139,13 @@ class TestAction:
         assert shipped.action(ShortcutCategory.DIALOG, _press("Esc")) is ShortcutId.DIALOG_CANCEL
 
     def test_a_modifier_the_combination_omits_leaves_the_press_unnamed(self, shipped: ShortcutScheme) -> None:
-        """A binding names the modifiers held with it, so Shift+Left is not the plain Left move."""
-        assert shipped.action(ShortcutCategory.ORDER, _press("Shift+Left")) is None
+        """A binding names the modifiers held with it, so Ctrl+Up is not the plain Up move."""
+        assert shipped.action(ShortcutCategory.ORDER, _press("Ctrl+Up")) is None
+
+    def test_a_modifier_a_binding_does_name_reaches_its_own_action(self, shipped: ShortcutScheme) -> None:
+        """Shift+Up selects where Up moves, which is one combination reaching each of two actions."""
+        assert shipped.action(ShortcutCategory.ORDER, _press("Up")) is ShortcutId.ORDER_PREVIOUS_CHANNEL
+        assert shipped.action(ShortcutCategory.ORDER, _press("Shift+Up")) is ShortcutId.ORDER_EXTEND_SELECTION_UP
 
 
 class TestClaimant:

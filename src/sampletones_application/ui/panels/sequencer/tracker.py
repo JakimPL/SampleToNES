@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Final, Optional, Tuple
+from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -10,6 +10,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
+    SUF_HANDLER_DRAG,
     SUF_HANDLER_HEADER,
     SUF_HANDLER_REGISTRY,
 )
@@ -29,6 +30,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
+from sampletones_application.ui.elements.table.selection import TableSelection
 from sampletones_application.ui.panels.sequencer import display as tracker_display
 from sampletones_application.ui.panels.sequencer.channels import (
     ChannelMenuLabels,
@@ -46,15 +48,25 @@ from sampletones_application.ui.panels.sequencer.columns import (
     tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
+from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
+from sampletones_application.ui.panels.sequencer.grid.scroll.axis import VerticalScroll
+from sampletones_application.ui.panels.sequencer.grid.scroll.band import TravelBand
+from sampletones_application.ui.panels.sequencer.grid.scroll.travel import DragTravel
+from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
+    BlockShortcuts,
+    ClipboardItems,
+)
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import GridEditSurface
 from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
 )
-from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.rows import RowCues, row_background
 from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
+    create_label_selectable_theme,
     create_selectable_text_theme,
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -67,7 +79,7 @@ from sampletones_application.utils.gui.keyboard import (
     KeyRouter,
 )
 from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS, SIGN_KEYS
-from sampletones_application.utils.gui.keyboard.modifiers import Modifier
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -77,11 +89,17 @@ from sampletones_application.utils.palette.colors.layered import LayeredColor
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
+from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
+)
+from sampletones_application.view_model.sequencer.slot import (
+    SLOT_COUNT,
+    TrackerSlot,
+    slot_from_flat,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import (
@@ -103,14 +121,75 @@ OnSetNoteOffCallback = Callable[[int, Optional[GeneratorName]], None]
 OnCellSelectedCallback = VoidCallback
 OnPlayFromRowCallback = Callable[[int], None]
 OnPlayFromFrameCallback = VoidCallback
-OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
+OnAdjustCallback = Callable[[TrackerRegion, int], None]
 OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
 OnChannelSoloedCallback = Callable[[GeneratorName], None]
+OnBlockRegionCallback = Callable[[TrackerRegion], None]
+OnPasteBlockCallback = Callable[[TrackerCell], None]
+CanPasteBlockQuery = Callable[[], bool]
+TrackerEditSurface = GridEditSurface[TrackerCursor, TrackerRegion, TrackerCell, TrackerTarget]
 
 
 VOLUME_FINE_STEP: Final[int] = 1
 VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
 PLAYHEAD_PAINT_FRAMES: Final[int] = 1
+
+AdjustAction = Tuple[SequencerTrackerElements, ShortcutId, int]
+AdjustMenuCallback = Callable[[Sender, None, Tuple[TrackerRegion, int]], None]
+
+TRANSPOSE_ACTIONS: Final[Tuple[AdjustAction, ...]] = (
+    (
+        SequencerTrackerElements.CONTEXT_TRANSPOSE_UP,
+        ShortcutId.TRACKER_TRANSPOSE_UP,
+        SEMITONE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_TRANSPOSE_DOWN,
+        ShortcutId.TRACKER_TRANSPOSE_DOWN,
+        -SEMITONE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_UP,
+        ShortcutId.TRACKER_TRANSPOSE_OCTAVE_UP,
+        OCTAVE_SEMITONES,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_DOWN,
+        ShortcutId.TRACKER_TRANSPOSE_OCTAVE_DOWN,
+        -OCTAVE_SEMITONES,
+    ),
+)
+
+VOLUME_ACTIONS: Final[Tuple[AdjustAction, ...]] = (
+    (
+        SequencerTrackerElements.CONTEXT_VOLUME_UP,
+        ShortcutId.TRACKER_VOLUME_UP,
+        VOLUME_FINE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_VOLUME_DOWN,
+        ShortcutId.TRACKER_VOLUME_DOWN,
+        -VOLUME_FINE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_VOLUME_UP_COARSE,
+        ShortcutId.TRACKER_VOLUME_UP_COARSE,
+        VOLUME_COARSE_STEP,
+    ),
+    (
+        SequencerTrackerElements.CONTEXT_VOLUME_DOWN_COARSE,
+        ShortcutId.TRACKER_VOLUME_DOWN_COARSE,
+        -VOLUME_COARSE_STEP,
+    ),
+)
+
+
+def _steps(actions: Tuple[AdjustAction, ...]) -> Dict[ShortcutId, int]:
+    return {shortcut_id: delta for _, shortcut_id, delta in actions}
+
+
+TRANSPOSE_STEPS: Final[Dict[ShortcutId, int]] = _steps(TRANSPOSE_ACTIONS)
+VOLUME_STEPS: Final[Dict[ShortcutId, int]] = _steps(VOLUME_ACTIONS)
 
 
 class GUISequencerTrackerPanel(GUIPanel):
@@ -142,6 +221,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._item_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_PANEL, SUF_HANDLER_REGISTRY)
         self._cell_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_REGISTRY)
         self._header_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_HEADER)
+        self._drag_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_DRAG)
 
         self._rows: Dict[Optional[int], Sender] = {}
         self._header_columns: Dict[Sender, Optional[GeneratorName]] = {}
@@ -154,11 +234,22 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._painted_row: Optional[int] = None
         self._follows_playing_row: bool = False
         self._input_state: TrackerInputState = TrackerInputState()
+        self._selection: TableSelection[CellKey] = TableSelection(
+            cells=self._editable_cells,
+            cell_at=self._cell_at,
+            covered=self._selected_cells,
+        )
+        self._travel: DragTravel = DragTravel(
+            axis=VerticalScroll(table=TAG_SEQUENCER_TRACKER_TABLE),
+            band=self._travel_band,
+            elapsed=dpg.get_delta_time,
+        )
         self._subcolumn_themes: Dict[SubColumn, int] = {}
         self._muted_subcolumn_themes: Dict[SubColumn, int] = {}
         self._row_number_theme: int = 0
         self._header_theme: int = 0
         self._muted_header_theme: int = 0
+        self._column_label_theme: int = 0
         self._current_samples: Optional[SequencerSamplesViewModel] = None
         self._current_channels: Optional[SequencerChannelsViewModel] = None
 
@@ -171,12 +262,30 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_play_from_frame: Optional[OnPlayFromFrameCallback] = None
         self.on_adjust_transpose: Optional[OnAdjustCallback] = None
         self.on_adjust_volume: Optional[OnAdjustCallback] = None
+        self.on_copy_block: Optional[OnBlockRegionCallback] = None
+        self.on_cut_block: Optional[OnBlockRegionCallback] = None
+        self.on_delete_block: Optional[OnBlockRegionCallback] = None
+        self.on_paste_block: Optional[OnPasteBlockCallback] = None
+        self.can_paste_block: Optional[CanPasteBlockQuery] = None
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
         self.on_channels_toggled: Optional[VoidCallback] = None
         self.on_channels_muted: Optional[VoidCallback] = None
         self.on_channels_unmuted: Optional[VoidCallback] = None
 
+        self._blocks: BlockGestures[TrackerRegion, TrackerCell] = BlockGestures(grid=self)
+        self._surface: TrackerEditSurface = GridEditSurface.build(
+            grid=self,
+            blocks=self._blocks,
+            target=TrackerTarget,
+            shortcuts=shortcut_source,
+            block_shortcuts=BlockShortcuts(
+                copy=ShortcutId.TRACKER_COPY_BLOCK,
+                cut=ShortcutId.TRACKER_CUT_BLOCK,
+                paste=ShortcutId.TRACKER_PASTE_BLOCK,
+            ),
+            labels=ClipboardItems.labels(language_manager),
+        )
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 
         self._lbl_tracker = self._label(
@@ -223,20 +332,18 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         self._lbl_context_play = label(SequencerTrackerElements.CONTEXT_PLAY)
         self._lbl_context_play_from_frame = label(SequencerTrackerElements.CONTEXT_PLAY_FROM_FRAME)
+        self._lbl_context_select_all = label(SequencerTrackerElements.CONTEXT_SELECT_ALL)
+        self._lbl_context_select_column = label(SequencerTrackerElements.CONTEXT_SELECT_COLUMN)
+        self._lbl_context_select_subcolumn = label(SequencerTrackerElements.CONTEXT_SELECT_SUBCOLUMN)
         self._lbl_context_note_off = label(SequencerTrackerElements.CONTEXT_NOTE_OFF)
         self._lbl_context_set_instrument = label(SequencerTrackerElements.CONTEXT_SET_INSTRUMENT)
         self._lbl_context_no_samples = label(SequencerTrackerElements.CONTEXT_NO_SAMPLES)
         self._lbl_context_clear_subcolumn = label(SequencerTrackerElements.CONTEXT_CLEAR_SUBCOLUMN)
         self._lbl_context_clear_cell = label(SequencerTrackerElements.CONTEXT_CLEAR_CELL)
         self._lbl_context_clear_row = label(SequencerTrackerElements.CONTEXT_CLEAR_ROW)
-        self._lbl_context_transpose_up = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_UP)
-        self._lbl_context_transpose_down = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_DOWN)
-        self._lbl_context_transpose_octave_up = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_UP)
-        self._lbl_context_transpose_octave_down = label(SequencerTrackerElements.CONTEXT_TRANSPOSE_OCTAVE_DOWN)
-        self._lbl_context_volume_up = label(SequencerTrackerElements.CONTEXT_VOLUME_UP)
-        self._lbl_context_volume_down = label(SequencerTrackerElements.CONTEXT_VOLUME_DOWN)
-        self._lbl_context_volume_up_coarse = label(SequencerTrackerElements.CONTEXT_VOLUME_UP_COARSE)
-        self._lbl_context_volume_down_coarse = label(SequencerTrackerElements.CONTEXT_VOLUME_DOWN_COARSE)
+        self._lbl_adjust: Dict[SequencerTrackerElements, str] = {
+            element: label(element) for element, _, _ in (*TRANSPOSE_ACTIONS, *VOLUME_ACTIONS)
+        }
 
     def _load_header_tooltips(self, language_manager: LanguageManager) -> None:
         """Reads the header tooltips, which name the click gestures the labels carry."""
@@ -284,9 +391,16 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         with dpg.item_handler_registry(tag=self._cell_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
+            dpg.add_item_active_handler(callback=self._on_cell_held)
 
         with dpg.item_handler_registry(tag=self._header_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_header_right_clicked)
+
+        with dpg.handler_registry(tag=self._drag_handler_tag):
+            dpg.add_mouse_click_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_pointer_pressed,
+            )
 
         self._router.register(
             self._on_key_pressed,
@@ -338,6 +452,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             header.hovered,
             header.active,
         )
+        self._column_label_theme = create_label_selectable_theme(self._layout.colors.label)
 
     def _create_tracker_view(self, parent: str) -> None:
         """Builds the tracker card and the empty table its rows are filled into.
@@ -445,8 +560,14 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         A table repopulated this frame reports the scroll extent of the body it replaced, so the
         reveal is repeated a frame later, when DearPyGui has measured the rows now in it.
+
+        The frame the grid stands on has a row count of its own, so a selection is taken down to
+        its cursor: the cells it covered belong to the body being replaced.
         """
         dpg_delete_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
+        self._input_state = self._input_state.collapse()
+        self._selection.reset()
+        self._travel.rest()
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self.repaint()
@@ -649,9 +770,18 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._add_header_selectable(row_id, generator)
 
     def _add_header_label_cell(self, row_id: Sender) -> None:
-        """Places the row-number column's label, which names a column the user reads only."""
+        """Places the row-number column's label, which names a column the user reads only.
+
+        It is laid out as a selectable like the labels beside it, so it takes the header's
+        height and sits on their line; its own theme leaves it reading as text.
+        """
         label_cell = dpg.add_table_cell(parent=row_id)
-        dpg.add_text(self._lbl_col_row, parent=label_cell)
+        label = dpg.add_selectable(
+            parent=label_cell,
+            label=self._lbl_col_row,
+            height=self._layout.tracker.header_height,
+        )
+        dpg.bind_item_theme(label, self._column_label_theme)
 
     def _add_header_selectable(
         self,
@@ -669,6 +799,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         selectable = dpg.add_selectable(
             parent=header_cell,
             label=self._column_labels[generator],
+            height=self._layout.tracker.header_height,
             user_data=generator,
             callback=self._on_header_clicked,
         )
@@ -706,6 +837,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         selectable = dpg.add_selectable(
             parent=number_cell,
             label=display_id(row_index),
+            height=self._layout.tracker.row_height,
             user_data=row_index,
             callback=self._on_row_number_clicked,
         )
@@ -749,6 +881,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             parent=group,
             label=self._render_cell(key),
             width=self._subcolumn_widths[subcolumn],
+            height=self._layout.tracker.row_height,
             user_data=key,
             callback=self._on_cell_clicked,
         )
@@ -765,6 +898,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             else:
                 self._input_state = TrackerInputState()
 
+        self._selection.repaint()
         self._update_caret()
 
     def deselect_cell(self) -> None:
@@ -772,6 +906,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if cursor is not None:
             self._input_state = TrackerInputState()
             self._remove_cell_highlight(cursor.row, cursor.generator)
+            self._selection.repaint()
 
         self._update_caret()
 
@@ -798,6 +933,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if new_pos != old_pos and new_cursor is not None:
             self.call(self.on_cell_selected)
 
+        self._selection.repaint()
         self._update_caret()
 
     def update_samples(self, view_model: SequencerSamplesViewModel) -> None:
@@ -968,6 +1104,26 @@ class GUISequencerTrackerPanel(GUIPanel):
             color=self._layout.colors.cell_cursor.rgba,
         )
 
+    def _selected_cells(self) -> FrozenSet[CellKey]:
+        """Every cell the selection covers, clipped to the rows the shown frame holds.
+
+        A region names rows of the grid rather than widgets, so a row past the end of a shorter
+        frame is left out: the selection reaches as far as the pattern does.
+        """
+        region = self._input_state.region
+        if region is None:
+            return frozenset()
+
+        keys: Set[CellKey] = set()
+        for row_index in region.rows:
+            if row_index >= self._current_row_count:
+                continue
+
+            for slot in region.slots:
+                keys.add((row_index, slot.generator, slot.subcolumn))
+
+        return frozenset(keys)
+
     def _remove_cell_highlight(
         self,
         row_index: int,
@@ -991,14 +1147,113 @@ class GUISequencerTrackerPanel(GUIPanel):
         _app_data: bool,
         user_data: Tuple[int, Optional[GeneratorName], SubColumn],
     ) -> None:
-        dpg.set_value(sender, False)
-        self._committed_state()
+        """Places the cursor on the clicked cell, or carries a selection out to it while Shift is held.
+
+        A drag that comes back to the cell it started from ends on a click, and the selection takes
+        that click as the end of the drag, so the range dragged out stands and the cursor with it.
+        """
+        if self._selection.claims_click(sender, user_data):
+            return
+
+        state = self._committed_state()
         row_index, generator, subcolumn = user_data
-        new_state = TrackerInputState(
-            cursor=TrackerCursor(row_index, generator, subcolumn),
-            pending="",
+        cursor = TrackerCursor(row_index, generator, subcolumn)
+        if Modifier.SHIFT in capture_modifiers():
+            self._apply_state(state.extend_to(cursor))
+            return
+
+        self._apply_state(TrackerInputState(cursor=cursor, pending=""))
+
+    def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:
+        """Carries the selection to the cell under a held pointer, which is what drags a range out.
+
+        The gesture states how far the pointer has carried: a plain drag anchors at the cell the
+        press landed on, and one whose press held Shift carries the selection already standing.
+
+        A pointer held past an edge travels the grid first, so the reach that follows reads the rows
+        the travel has brought into view.
+        """
+        self._travel.advance()
+        reach = self._selection.hold(app_data)
+        if reach is None:
+            return
+
+        state = self._committed_state()
+        if not reach.extends:
+            state = TrackerInputState(cursor=TrackerCursor(*reach.origin))
+
+        self._apply_state(state.extend_to(TrackerCursor(*reach.reached)))
+
+    def _on_pointer_pressed(self, _sender: Sender, _app_data: int) -> None:
+        """Drops the gesture a finished drag left behind, so this press selects on its own.
+
+        A press is where a gesture ends rather than the release before it, because the release
+        reaches this panel ahead of the click the cell itself reports: a drag that comes back to
+        the cell it started from would otherwise have its selection taken down by its own click.
+        """
+        self._selection.drop_gesture()
+        self._travel.rest()
+
+    def _travel_band(self) -> Optional[TravelBand]:
+        """Where the frame's rows stand, which is the band a drag held below them travels across."""
+        first = self._row_top(0)
+        if first is None or self._current_row_count == 0:
+            return None
+
+        return TravelBand(
+            first_edge=first,
+            cell_extent=self._layout.tracker.row_height,
+            cell_count=self._current_row_count,
         )
-        self._apply_state(new_state)
+
+    def _cell_at(self) -> Optional[CellKey]:
+        """The cell the pointer stands on, clamped to the grid the shown frame lays out.
+
+        A drag that runs past an edge reads as the edge itself, so carrying the pointer beyond
+        the last row or the last column selects up to it rather than stopping where the grid ends.
+        """
+        left, top = dpg.get_mouse_pos(local=False)
+        row_index = self._row_at(top)
+        slot = self._slot_at(left)
+        if row_index is None or slot is None:
+            return None
+
+        return (row_index, slot.generator, slot.subcolumn)
+
+    def _row_at(self, top: float) -> Optional[int]:
+        """Which pattern row stands at a height, counted from the first row's top edge.
+
+        Every row is the height the layout states, so the count is arithmetic: the rows the
+        grid holds are evenly pitched whether or not they are scrolled into view.
+        """
+        first = self._row_top(0)
+        if first is None or self._current_row_count == 0:
+            return None
+
+        row_index = int((top - first) // self._layout.tracker.row_height)
+        return max(0, min(row_index, self._current_row_count - 1))
+
+    def _slot_at(self, left: float) -> Optional[TrackerSlot]:
+        """Which subcolumn stands at a width, taken from where the first row's cells are drawn.
+
+        The subcolumns differ in width and the columns stand apart, so the walk asks each cell
+        where it was drawn and takes the first one reaching past the pointer.
+        """
+        if self._current_row_count == 0:
+            return None
+
+        for index in range(SLOT_COUNT):
+            slot = slot_from_flat(index)
+            widget = self._editable_cells.widget((0, slot.generator, slot.subcolumn))
+            if widget is None:
+                return None
+
+            cell_left, _ = dpg.get_item_rect_min(widget)
+            cell_width, _ = dpg.get_item_rect_size(widget)
+            if left < cell_left + cell_width:
+                return slot
+
+        return slot_from_flat(SLOT_COUNT - 1)
 
     def _on_header_clicked(
         self,
@@ -1065,9 +1320,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         generator: Optional[GeneratorName],
         subcolumn: SubColumn,
     ) -> None:
+        target = self._surface.target_at(TrackerCursor(row_index, generator, subcolumn))
         with context_menu():
             header = dpg.add_text(
-                tracker_display.indexed_label(row_index, self._column_labels[generator]),
+                tracker_display.cell_title(row_index, self._column_labels[generator]),
             )
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
@@ -1082,23 +1338,68 @@ class GUISequencerTrackerPanel(GUIPanel):
                 shortcut=self._shortcuts.display(ShortcutId.PLAY_FROM_FRAME),
             )
             dpg.add_separator()
-            self._add_instrument_submenu(row_index, generator)
-            dpg.add_menu_item(
-                label=self._lbl_context_note_off,
-                callback=lambda: self.call(self.on_set_note_off, row_index, generator),
-            )
-            dpg.add_separator()
-            self._add_transpose_items(row_index, generator)
-            dpg.add_separator()
-            self._add_volume_items(row_index, generator)
-            dpg.add_separator()
-            self._add_clear_items(row_index, generator, subcolumn)
+            self.add_action_items(target)
 
-    def _add_instrument_submenu(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
+    @property
+    def edit_surface(self) -> TrackerEditSurface:
+        """This grid as the menu bar's Edit menu reaches it."""
+        return self._surface
+
+    def input_state(self) -> TrackerInputState:
+        """Where the cursor stands and what it has selected, which a target is resolved from."""
+        return self._input_state
+
+    def owns_keys(self) -> bool:
+        """Whether the grid owns the next key, which is also what the Edit menu asks."""
+        return self._keys_active()
+
+    def add_action_items(self, target: TrackerTarget) -> None:
+        """Builds every action a tracker cell offers, in the order each menu prints them.
+
+        The grid states its actions once, and whoever asks for them decides where they are shown:
+        the cell menu asks for the cell a pointer landed on, and the menu bar asks for the cell the
+        cursor stands on. An action added here reaches both.
+        """
+        self._add_select_items(target.cell)
+        dpg.add_separator()
+        self._surface.add_block_items(target)
+        dpg.add_separator()
+        self._add_instrument_submenu(target.cell)
+        dpg.add_menu_item(
+            label=self._lbl_context_note_off,
+            callback=lambda: self.call(self.on_set_note_off, target.cell.row, target.cell.generator),
+        )
+        dpg.add_separator()
+        self._add_transpose_items(target)
+        dpg.add_separator()
+        self._add_volume_items(target)
+        dpg.add_separator()
+        self._add_clear_items(target.cell)
+
+    def _add_select_items(self, cell: TrackerCursor) -> None:
+        """Builds the three shapes a selection takes, from the whole frame down to one subcolumn.
+
+        Each item fires the gesture its key fires, on the cell the menu names: a column selected
+        from a cell menu is the column that cell stands in, and one selected from the menu bar is
+        the column the cursor stands in.
+        """
+        dpg.add_menu_item(
+            label=self._lbl_context_select_all,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_SELECT_ALL),
+            callback=lambda: self._select_shape(ShortcutId.TRACKER_SELECT_ALL, cell),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_select_column,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_SELECT_COLUMN),
+            callback=lambda: self._select_shape(ShortcutId.TRACKER_SELECT_COLUMN, cell),
+        )
+        dpg.add_menu_item(
+            label=self._lbl_context_select_subcolumn,
+            shortcut=self._shortcuts.display(ShortcutId.TRACKER_SELECT_SUBCOLUMN),
+            callback=lambda: self._select_shape(ShortcutId.TRACKER_SELECT_SUBCOLUMN, cell),
+        )
+
+    def _add_instrument_submenu(self, cell: TrackerCursor) -> None:
         with dpg.menu(label=self._lbl_context_set_instrument):
             samples = self._current_samples.samples if self._current_samples is not None else ()
             if not samples:
@@ -1111,42 +1412,35 @@ class GUISequencerTrackerPanel(GUIPanel):
             for index, sample in enumerate(samples):
                 dpg.add_menu_item(
                     label=tracker_display.indexed_label(index, sample.name),
-                    user_data=(row_index, generator, sample.sample_id),
+                    user_data=(cell.row, cell.generator, sample.sample_id),
                     callback=self._on_set_instrument_menu,
                 )
 
-    def _add_transpose_items(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
-        for label, delta in (
-            (self._lbl_context_transpose_up, SEMITONE_STEP),
-            (self._lbl_context_transpose_down, -SEMITONE_STEP),
-            (self._lbl_context_transpose_octave_up, OCTAVE_SEMITONES),
-            (self._lbl_context_transpose_octave_down, -OCTAVE_SEMITONES),
-        ):
-            dpg.add_menu_item(
-                label=label,
-                user_data=(row_index, generator, delta),
-                callback=self._on_transpose_menu,
-            )
+    def _add_transpose_items(self, target: TrackerTarget) -> None:
+        self._add_adjust_items(target, TRANSPOSE_ACTIONS, self._on_transpose_menu)
 
-    def _add_volume_items(
+    def _add_volume_items(self, target: TrackerTarget) -> None:
+        self._add_adjust_items(target, VOLUME_ACTIONS, self._on_volume_menu)
+
+    def _add_adjust_items(
         self,
-        row_index: int,
-        generator: Optional[GeneratorName],
+        target: TrackerTarget,
+        actions: Tuple[AdjustAction, ...],
+        callback: AdjustMenuCallback,
     ) -> None:
-        for label, delta in (
-            (self._lbl_context_volume_up, VOLUME_FINE_STEP),
-            (self._lbl_context_volume_down, -VOLUME_FINE_STEP),
-            (self._lbl_context_volume_up_coarse, VOLUME_COARSE_STEP),
-            (self._lbl_context_volume_down_coarse, -VOLUME_COARSE_STEP),
-        ):
+        """Builds one axis of adjustment items, each shifting the cells its target covers.
+
+        An adjustment acts on whole cells, so it reaches the columns the target's block covers and
+        the rows it spans: a nudge with a selection standing moves all of it, and one on a cell
+        alone moves that cell. Each item prints the key it answers to, since the action states its
+        label, its binding and its step in one entry.
+        """
+        for element, shortcut_id, delta in actions:
             dpg.add_menu_item(
-                label=label,
-                user_data=(row_index, generator, delta),
-                callback=self._on_volume_menu,
+                label=self._lbl_adjust[element],
+                shortcut=self._shortcuts.display(shortcut_id),
+                user_data=(target.region, delta),
+                callback=callback,
             )
 
     def _on_set_instrument_menu(
@@ -1162,27 +1456,22 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         _sender: Sender,
         _app_data: None,
-        user_data: Tuple[int, Optional[GeneratorName], int],
+        user_data: Tuple[TrackerRegion, int],
     ) -> None:
-        row_index, generator, delta = user_data
-        self.call(self.on_adjust_transpose, row_index, generator, delta)
+        region, delta = user_data
+        self.call(self.on_adjust_transpose, region, delta)
 
     def _on_volume_menu(
         self,
         _sender: Sender,
         _app_data: None,
-        user_data: Tuple[int, Optional[GeneratorName], int],
+        user_data: Tuple[TrackerRegion, int],
     ) -> None:
-        row_index, generator, delta = user_data
-        self.call(self.on_adjust_volume, row_index, generator, delta)
+        region, delta = user_data
+        self.call(self.on_adjust_volume, region, delta)
 
-    def _add_clear_items(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        subcolumn: SubColumn,
-    ) -> None:
-        """Builds the three clear levels: the clicked subcolumn, the whole channel cell, the whole row.
+    def _add_clear_items(self, cell: TrackerCursor) -> None:
+        """Builds the three clear levels: the target's subcolumn, its whole channel cell, its whole row.
 
         The cell and row levels coincide on the sample column, which already clears every channel,
         so the per-channel ``Clear cell`` item is offered only for an actual channel.
@@ -1191,23 +1480,23 @@ class GUISequencerTrackerPanel(GUIPanel):
             label=self._lbl_context_clear_subcolumn,
             callback=lambda: self.call(
                 self.on_clear_subcolumn,
-                row_index,
-                generator,
-                subcolumn,
+                cell.row,
+                cell.generator,
+                cell.subcolumn,
             ),
         )
-        if generator is not None:
+        if cell.generator is not None:
             dpg.add_menu_item(
                 label=self._lbl_context_clear_cell,
                 callback=lambda: self.call(
                     self.on_clear_row,
-                    row_index,
-                    generator,
+                    cell.row,
+                    cell.generator,
                 ),
             )
         dpg.add_menu_item(
             label=self._lbl_context_clear_row,
-            callback=lambda: self.call(self.on_clear_row, row_index, None),
+            callback=lambda: self.call(self.on_clear_row, cell.row, None),
         )
 
     def _keys_active(self) -> bool:
@@ -1243,6 +1532,18 @@ class GUISequencerTrackerPanel(GUIPanel):
         if self._move_cursor(shortcut_id):
             return True
 
+        if self._extend_selection(shortcut_id):
+            return True
+
+        if self._select_shape(shortcut_id, cursor):
+            return True
+
+        if self._block_action(shortcut_id):
+            return True
+
+        if self._adjust_action(shortcut_id):
+            return True
+
         return self._edit_row(shortcut_id)
 
     def _move_cursor(self, shortcut_id: ShortcutId) -> bool:
@@ -1273,12 +1574,132 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         return True
 
+    def _extend_selection(self, shortcut_id: ShortcutId) -> bool:
+        """Grows or shrinks the selected block, reporting whether the action was one of its reaches.
+
+        Each reach moves the end the cursor holds while the anchor stays where the selection began,
+        so the same keys that move the cursor select with Shift held.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_EXTEND_SELECTION_UP:
+                self._extend_row(-1)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_DOWN:
+                self._extend_row(1)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_LEFT:
+                self._extend_slot(-1)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_RIGHT:
+                self._extend_slot(1)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_TO_FIRST_ROW:
+                self._extend_to_row(0)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_TO_LAST_ROW:
+                self._extend_to_row(self._current_row_count - 1)
+            case _:
+                return False
+
+        return True
+
+    def _select_shape(
+        self,
+        shortcut_id: ShortcutId,
+        cell: TrackerCursor,
+    ) -> bool:
+        """Selects a rectangle of the grid, reporting whether the action was one of its shapes.
+
+        A press names its shape from the cell the cursor stands on, which is the cell the menu
+        items name as well, so a key and an item select the same block.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_SELECT_ALL:
+                self._select_all()
+            case ShortcutId.TRACKER_SELECT_COLUMN:
+                self._select_column(cell)
+            case ShortcutId.TRACKER_SELECT_SUBCOLUMN:
+                self._select_subcolumn(cell)
+            case _:
+                return False
+
+        return True
+
+    def _select_all(self) -> None:
+        self._select(self._committed_state().select_all(self._current_row_count))
+
+    def _select_column(self, cell: TrackerCursor) -> None:
+        self._select(self._committed_state().select_column(cell, self._current_row_count))
+
+    def _select_subcolumn(self, cell: TrackerCursor) -> None:
+        self._select(self._committed_state().select_subcolumn(cell, self._current_row_count))
+
+    def _select(self, new_state: TrackerInputState) -> None:
+        """Stands a selected shape, revealing the row its cursor landed on.
+
+        A shape ends at the frame's last row, so the reveal carries the grid to the end the cursor
+        now holds — the same landing a Shift+End reach makes.
+        """
+        self._apply_state(new_state)
+        self._scroll_cursor_into_view()
+
+    def _block_action(self, shortcut_id: ShortcutId) -> bool:
+        """Acts on the selected block, reporting whether the action was one of its gestures.
+
+        Delete is a block gesture only while a selection stands: with one it empties what the
+        selection covers and keeps it, and with none it falls through to clearing the cell under
+        the cursor, the meaning that key already carries.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_COPY_BLOCK:
+                self._surface.copy()
+            case ShortcutId.TRACKER_CUT_BLOCK:
+                self._surface.cut()
+            case ShortcutId.TRACKER_CLEAR_ROW if self._input_state.region is not None:
+                self._surface.delete()
+            case ShortcutId.TRACKER_PASTE_BLOCK:
+                self._surface.paste()
+            case _:
+                return False
+
+        return True
+
+    def _adjust_action(self, shortcut_id: ShortcutId) -> bool:
+        """Shifts the covered cells' transpose or volume, reporting whether the action was one of
+        the two axes.
+
+        A press acts on the block the cursor stands in, which is the selection while one covers it
+        and the cursor's own cell otherwise — the target the menus resolve as well, so a key and a
+        menu item reach the same cells.
+        """
+        transpose_step = TRANSPOSE_STEPS.get(shortcut_id)
+        if transpose_step is not None:
+            self._adjust_at_cursor(self.on_adjust_transpose, transpose_step)
+            return True
+
+        volume_step = VOLUME_STEPS.get(shortcut_id)
+        if volume_step is not None:
+            self._adjust_at_cursor(self.on_adjust_volume, volume_step)
+            return True
+
+        return False
+
+    def _adjust_at_cursor(
+        self,
+        hook: Optional[OnAdjustCallback],
+        delta: int,
+    ) -> None:
+        """Raises an adjustment on the block the cursor stands in, the entry being typed landing first.
+
+        Committing ahead of the shift is what lets a nudge carry the value the reader has just
+        finished typing, the rule the block gestures follow as well.
+        """
+        self.commit_entry()
+        target = self._surface.cursor_target()
+        if target is not None:
+            self.call(hook, target.region, delta)
+
     def _edit_row(self, shortcut_id: ShortcutId) -> bool:
         """Empties the cell under the cursor or drops a partial entry, reporting whether the action
         was one of the cell edits.
 
-        A cancel with nothing typed leaves the press to the application, so Escape stops playback
-        while the grid holds a cursor.
+        A cancel with nothing typed and nothing selected leaves the press to the application, so
+        Escape stops playback while the grid holds a cursor.
         """
         match shortcut_id:
             case ShortcutId.TRACKER_CLEAR_ROW:
@@ -1288,7 +1709,7 @@ class GUISequencerTrackerPanel(GUIPanel):
                 self._clear_row()
                 self._move_row(-1)
             case ShortcutId.TRACKER_CANCEL_ENTRY:
-                if not self._input_state.pending:
+                if not self._input_state.pending and self._input_state.anchor is None:
                     return False
 
                 self._apply_state(self._input_state.cancel())
@@ -1319,6 +1740,27 @@ class GUISequencerTrackerPanel(GUIPanel):
             )
         )
         self._scroll_cursor_into_view()
+
+    def _extend_row(self, delta: int) -> None:
+        self._apply_state(
+            self._committed_state().extend_row(
+                delta,
+                self._current_row_count,
+            )
+        )
+
+    def _extend_to_row(self, index: int) -> None:
+        self._apply_state(
+            self._committed_state().extend_row(
+                index,
+                self._current_row_count,
+                absolute=True,
+            )
+        )
+        self._scroll_cursor_into_view()
+
+    def _extend_slot(self, delta: int) -> None:
+        self._apply_state(self._committed_state().extend_slot(delta))
 
     def _move_subcolumn(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_subcolumn(delta))
@@ -1411,6 +1853,14 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._handle_edit_action(edit_action)
 
         return state
+
+    def commit_entry(self) -> None:
+        """Writes the entry being typed into the cell the cursor stands on.
+
+        A block gesture takes this first, so what it lifts out carries the value the reader has
+        just finished typing.
+        """
+        self._apply_state(self._committed_state())
 
     def _type_character(self, event: KeyEvent) -> bool:
         """Types a note, digit or sign into the cell under the cursor, reporting whether the press

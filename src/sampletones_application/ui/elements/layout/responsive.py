@@ -25,17 +25,16 @@ def stacked_graph_height(
     viewport_height: int,
     baseline_viewport_height: int,
     graph_count: int,
-    max_stack_height: int,
+    max_graph_height: int,
 ) -> int:
     """Grows each graph of a vertical stack as the viewport grows past the lowest-resolution baseline.
 
     At ``baseline_viewport_height`` — the smallest supported window — the stacked graphs sit at
     ``base_height`` and together fill their column. The extra room a taller viewport offers is shared
-    equally across the ``graph_count`` graphs, so the stack keeps filling as the window grows, until the
-    graphs together reach ``max_stack_height``; from there each graph holds at its
-    ``max_stack_height // graph_count`` cap and the surplus stays free.
+    equally across the ``graph_count`` graphs, so the stack keeps filling as the window grows, until
+    each graph stands at ``max_graph_height`` and holds there, leaving the remaining surplus free. The
+    ceiling reads as one graph's height so it stays the same however many graphs the stack holds.
     """
     surplus = viewport_height - baseline_viewport_height
     expansion = max(0, round(surplus / graph_count))
-    max_graph_height = max_stack_height // graph_count
     return min(base_height + expansion, max_graph_height)

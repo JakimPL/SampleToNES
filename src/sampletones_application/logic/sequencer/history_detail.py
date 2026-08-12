@@ -1,7 +1,13 @@
-from typing import Dict, Final, List, Optional
+from typing import Dict, Final, List, Optional, Set
 
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.view_model.sequencer.region import (
+    OrderCell,
+    OrderRegion,
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
@@ -20,6 +26,9 @@ from sampletones_core.utils.display import display_id, display_transpose, displa
 Segments = HistoryDetail
 
 _ARROW: Final[str] = ">"
+_RANGE: Final[str] = "-"
+
+
 _SUBCOLUMN_LETTERS: Final[Dict[SubColumn, str]] = {
     SubColumn.INSTRUMENT: "i",
     SubColumn.TRANSPOSE: "t",
@@ -46,6 +55,11 @@ _FEATURE_ROLES: Final[Dict[FeatureKey, HistoryDetailRole]] = {
     FeatureKey.HI_PITCH: HistoryDetailRole.FEATURE_PITCH,
     FeatureKey.DUTY_CYCLE: HistoryDetailRole.FEATURE_DUTY_CYCLE,
 }
+
+
+def _span(first: int, last: int) -> str:
+    """Reads a run of indices as the pair it lies between."""
+    return f"{display_id(first)}{_RANGE}{display_id(last)}"
 
 
 class SequencerHistoryDetail:
@@ -130,29 +144,41 @@ class SequencerHistoryDetail:
         segments.append(self._subcolumn(subcolumn))
         return tuple(segments)
 
-    def adjust_transpose(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> Segments:
-        affected = self._tracker_logic.relevant_generators(row_index)
-        segments = list(self._location(row_index, generator, affected))
-        segments.append(
+    def adjust_transpose(self, region: TrackerRegion, delta: int) -> Segments:
+        """Reads as the cells a shift covers, followed by the semitones it moves them."""
+        return (
+            *self._tracker_region(region),
             self._segment(display_transpose(delta), HistoryDetailRole.TRANSPOSE),
         )
-        return tuple(segments)
 
-    def adjust_volume(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> Segments:
-        affected = self._tracker_logic.relevant_generators(row_index)
-        segments = list(self._location(row_index, generator, affected))
-        segments.append(self._segment(f"{delta:+d}", HistoryDetailRole.VOLUME))
-        return tuple(segments)
+    def adjust_volume(self, region: TrackerRegion, delta: int) -> Segments:
+        """Reads as the cells a shift covers, followed by the steps it moves them."""
+        return (
+            *self._tracker_region(region),
+            self._segment(f"{delta:+d}", HistoryDetailRole.VOLUME),
+        )
+
+    def tracker_block(self, region: TrackerRegion) -> Segments:
+        """Reads as the frame, the channels a block spans and the rows it covers."""
+        return self._tracker_region(region)
+
+    def tracker_paste(self, cell: TrackerCell) -> Segments:
+        """Reads as the cell a block was written from, the one place a paste chooses."""
+        return self._location(cell.row, cell.generator, GeneratorName.items())
+
+    def order_block(self, region: OrderRegion) -> Segments:
+        """Reads as the positions a block covers and the channels its rows reach."""
+        return (
+            self._frame_range(region.first_position, region.last_position),
+            self._channel(self._covered_channels(set(region.generators))),
+        )
+
+    def order_paste(self, cell: OrderCell) -> Segments:
+        """Reads as the cell a block was written from, the one place a paste chooses."""
+        return (
+            self._frame(cell.position),
+            self._channel(self._covered_channels({cell.generator})),
+        )
 
     def add_frame(self, position: int) -> Segments:
         return (self._frame(position + 1),)
@@ -163,7 +189,8 @@ class SequencerHistoryDetail:
     def clear_frame(self, position: int) -> Segments:
         return (self._frame(position),)
 
-    def duplicate_frame(self, position: int) -> Segments:
+    def copy_frame(self, position: int) -> Segments:
+        """Reads as source frame to copy, which is what both duplicating and cloning produce."""
         return (self._frame(position), self._arrow(), self._frame(position + 1))
 
     def move_frame(self, from_position: int, to_position: int) -> Segments:
@@ -278,6 +305,18 @@ class SequencerHistoryDetail:
 
         return self._tracker_logic.relevant_generators(row_index)
 
+    def _tracker_region(self, region: TrackerRegion) -> Segments:
+        """Reads a rectangle of the tracker as its frame, the channels it spans and the rows it covers.
+
+        Every gesture over a region reads the same way, so a block and a shift describe the cells
+        they reach in one form.
+        """
+        return (
+            self._frame(self._tracker_logic.frame_index),
+            self._channel(self._covered_channels(set(region.columns))),
+            self._row_range(region.first_row, region.last_row),
+        )
+
     def _location(
         self,
         row_index: int,
@@ -302,6 +341,38 @@ class SequencerHistoryDetail:
             text=display_id(index),
             role=HistoryDetailRole.ROW,
         )
+
+    def _row_range(self, first_row: int, last_row: int) -> HistoryDetailSegment:
+        """Reads a span of rows as one row token, a single row standing as its own index."""
+        if first_row == last_row:
+            return self._row(first_row)
+
+        return HistoryDetailSegment(
+            text=_span(first_row, last_row),
+            role=HistoryDetailRole.ROW,
+        )
+
+    def _frame_range(self, first_position: int, last_position: int) -> HistoryDetailSegment:
+        """Reads a span of positions as one frame token, a single position standing as its own."""
+        if first_position == last_position:
+            return self._frame(first_position)
+
+        return HistoryDetailSegment(
+            text=_span(first_position, last_position),
+            role=HistoryDetailRole.FRAME,
+        )
+
+    @staticmethod
+    def _covered_channels(covered: Set[Optional[GeneratorName]]) -> List[GeneratorName]:
+        """The channels a run of columns names, an aggregate one standing for all it summarises.
+
+        Both grids carry a column that answers for every channel — the tracker's sample column and
+        the order's master row — so a gesture reaching one of them reads as the whole set.
+        """
+        if None in covered:
+            return GeneratorName.items()
+
+        return [generator for generator in GeneratorName.items() if generator in covered]
 
     def _channel(self, generators: List[GeneratorName]) -> HistoryDetailSegment:
         return HistoryDetailSegment(

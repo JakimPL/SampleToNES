@@ -103,6 +103,7 @@ CORE_STYLE_MAP: Final[Dict[str, int]] = {
     "PopupRounding": dpg.mvStyleVar_PopupRounding,
     "ScrollbarRounding": dpg.mvStyleVar_ScrollbarRounding,
     "ScrollbarSize": dpg.mvStyleVar_ScrollbarSize,
+    "SelectableTextAlign": dpg.mvStyleVar_SelectableTextAlign,
     "TabRounding": dpg.mvStyleVar_TabRounding,
     "WindowBorderSize": dpg.mvStyleVar_WindowBorderSize,
     "WindowPadding": dpg.mvStyleVar_WindowPadding,

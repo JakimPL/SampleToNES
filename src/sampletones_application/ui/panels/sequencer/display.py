@@ -1,7 +1,7 @@
 from typing import Dict, Final, Optional, Tuple
 
 from sampletones_application.ui.elements.table.cells import pending_label
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
+from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import SequencerCellViewModel
 from sampletones_core.constants.enums import GeneratorName
@@ -9,6 +9,8 @@ from sampletones_core.utils.display import display_id, display_transpose, displa
 
 CellKey = Tuple[int, Optional[GeneratorName], SubColumn]
 CellValues = Dict[CellKey, str]
+
+CELL_TITLE_SEPARATOR: Final[str] = " | "
 
 _DEFAULT_LABELS: Final[Dict[SubColumn, str]] = {
     SubColumn.INSTRUMENT: display_id(None),
@@ -18,8 +20,17 @@ _DEFAULT_LABELS: Final[Dict[SubColumn, str]] = {
 
 
 def indexed_label(index: int, label: str) -> str:
-    """Joins a formatted index and a label into one display string, e.g. ``"03 Pulse 1"``."""
+    """Joins a formatted index and a label into one display string, e.g. ``"03 Bass"``."""
     return f"{display_id(index)} {label}"
+
+
+def cell_title(index: int, label: str) -> str:
+    """Names the cell a menu was raised on, e.g. ``"0C | Pulse 1"``.
+
+    Both grids title their cell menus this way: where along the grid the cell sits, then the
+    channel it belongs to, so a menu states its target the same wherever it is opened.
+    """
+    return f"{display_id(index)}{CELL_TITLE_SEPARATOR}{label}"
 
 
 def cell_display(cell_view_model: SequencerCellViewModel, subcolumn: SubColumn) -> str:
@@ -56,8 +67,15 @@ def subcolumn_label(
     is_active = (
         cursor is not None and cursor.row == row and cursor.generator == generator and cursor.subcolumn == subcolumn
     )
-    stored = cell_values.get((row, generator, subcolumn), _DEFAULT_LABELS[subcolumn])
+    stored = cell_values.get(
+        (row, generator, subcolumn),
+        _DEFAULT_LABELS[subcolumn],
+    )
     if is_active:
-        return pending_label(pending, stored, len(_DEFAULT_LABELS[subcolumn]))
+        return pending_label(
+            pending,
+            stored,
+            len(_DEFAULT_LABELS[subcolumn]),
+        )
 
     return stored

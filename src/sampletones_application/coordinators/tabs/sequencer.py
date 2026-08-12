@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec, Union
+from typing import Callable, Optional, ParamSpec, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -11,6 +11,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.playback import FollowMode
+from sampletones_application.coordinators.edit.protocol import EditSurfaceProtocol
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -21,10 +22,22 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
+from sampletones_application.logic.sequencer.clipboard import (
+    OrderBlockText,
+    ParsedBlockCache,
+    ProjectSampleDirectory,
+    SequencerClipboard,
+    TrackerBlockText,
+)
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
 )
-from sampletones_application.logic.sequencer.order import SequencerOrderLogic
+from sampletones_application.logic.sequencer.order import (
+    OrderBlock,
+    OrderBlockReader,
+    OrderBlockWriter,
+    SequencerOrderLogic,
+)
 from sampletones_application.logic.sequencer.playback.playhead import (
     remap_after_insert,
     remap_after_move,
@@ -33,7 +46,13 @@ from sampletones_application.logic.sequencer.playback.playhead import (
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
-from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.logic.sequencer.tracker import (
+    SequencerTrackerLogic,
+    TrackerBlock,
+    TrackerBlockReader,
+    TrackerBlockWriter,
+    TrackerRegionAdjuster,
+)
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.player import SongPlayerService
@@ -70,6 +89,10 @@ from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderP
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.gui.clipboard import (
+    SystemTextClipboard,
+    TextClipboard,
+)
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -82,6 +105,12 @@ from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
 )
+from sampletones_application.view_model.sequencer.region import (
+    OrderCell,
+    OrderRegion,
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
@@ -89,7 +118,6 @@ from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
-from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
     HistoryDetailSegment,
@@ -97,7 +125,6 @@ from sampletones_application.view_model.shared.history import (
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
@@ -180,6 +207,19 @@ class SequencerTabCoordinator:
         )
         self._sequencer_tracker_logic: SequencerTrackerLogic = SequencerTrackerLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
+        self._clipboard: SequencerClipboard = SequencerClipboard()
+        self._system_clipboard: TextClipboard = SystemTextClipboard()
+        self._tracker_block_text: TrackerBlockText = TrackerBlockText(
+            samples=ProjectSampleDirectory(project_controller),
+        )
+        self._order_block_text: OrderBlockText = OrderBlockText()
+        self._tracker_text_cache: ParsedBlockCache[TrackerBlock] = ParsedBlockCache(self._tracker_block_text.parse)
+        self._order_text_cache: ParsedBlockCache[OrderBlock] = ParsedBlockCache(self._order_block_text.parse)
+        self._tracker_block_reader: TrackerBlockReader = TrackerBlockReader(self._sequencer_tracker_logic)
+        self._tracker_block_writer: TrackerBlockWriter = TrackerBlockWriter(self._sequencer_tracker_logic)
+        self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
+        self._order_block_reader: OrderBlockReader = OrderBlockReader(self._sequencer_order_logic)
+        self._order_block_writer: OrderBlockWriter = OrderBlockWriter(self._sequencer_order_logic)
         self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(
             project_controller,
             session_manager,
@@ -263,6 +303,7 @@ class SequencerTabCoordinator:
         self._wire_tracker_callbacks()
         self._wire_channels_callbacks()
         self._wire_order_callbacks()
+        self._wire_block_callbacks()
         self._wire_samples_callbacks()
         self._wire_browser_callbacks()
         self._wire_playback_callbacks()
@@ -303,23 +344,23 @@ class SequencerTabCoordinator:
     def _wire_tracker_callbacks(self) -> None:
         self._sequencer_tracker_panel.on_clear_row = self._undoable(
             HistoryAction.CLEAR_ROW,
-            self._on_clear_row,
+            self._sequencer_tracker_logic.clear_cell,
             detail=self._history_detail.clear_row,
         )
         self._sequencer_tracker_panel.on_clear_subcolumn = self._undoable(
             HistoryAction.CLEAR_SUBCOLUMN,
-            self._on_clear_subcolumn,
+            self._sequencer_tracker_logic.clear_cell_subcolumn,
             detail=self._history_detail.clear_subcolumn,
         )
         self._sequencer_tracker_panel.on_set_row = self._undoable(
             HistoryAction.EDIT_ROW,
-            self._on_set_row,
+            self._sequencer_tracker_logic.write_cell,
             detail=self._history_detail.edit_row,
             coalesce=self._edit_row_key,
         )
         self._sequencer_tracker_panel.on_set_note_off = self._undoable(
             HistoryAction.NOTE_OFF,
-            self._on_set_note_off,
+            self._sequencer_tracker_logic.cut_note,
             detail=self._history_detail.note_off,
             coalesce=self._cell_key,
         )
@@ -328,13 +369,13 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_panel.on_play_from_frame = self.play_from_current_frame
         self._sequencer_tracker_panel.on_adjust_transpose = self._undoable(
             HistoryAction.ADJUST_TRANSPOSE,
-            self._on_adjust_transpose,
+            self._tracker_region_adjuster.adjust_transpose,
             detail=self._history_detail.adjust_transpose,
             coalesce=self._adjustment_key,
         )
         self._sequencer_tracker_panel.on_adjust_volume = self._undoable(
             HistoryAction.ADJUST_VOLUME,
-            self._on_adjust_volume,
+            self._tracker_region_adjuster.adjust_volume,
             detail=self._history_detail.adjust_volume,
             coalesce=self._adjustment_key,
         )
@@ -401,7 +442,12 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.on_duplicate_requested = self._undoable(
             HistoryAction.DUPLICATE_FRAME,
             self._on_order_duplicate,
-            detail=self._history_detail.duplicate_frame,
+            detail=self._history_detail.copy_frame,
+        )
+        self._sequencer_order_panel.on_clone_requested = self._undoable(
+            HistoryAction.CLONE_FRAME,
+            self._on_order_clone,
+            detail=self._history_detail.copy_frame,
         )
         self._sequencer_order_panel.on_insert_requested = self._undoable(
             HistoryAction.ADD_FRAME,
@@ -430,6 +476,126 @@ class SequencerTabCoordinator:
             detail=self._history_detail.set_master_entry,
         )
         self._sequencer_order_panel.on_cell_selected = self._on_order_cell_focused
+
+    def _wire_block_callbacks(self) -> None:
+        """Connects the grids' block gestures to the clipboard they copy into.
+
+        A copy reads the project and leaves it as it stands, so it is wired straight through
+        instead of through :meth:`_undoable`: a transaction over it would record an entry the
+        history has nothing to restore for. The three gestures that do write are whole ones, each
+        recording the single entry that takes the grid back to where it stood.
+
+        Each grid also asks whether its own slot holds a block, which is what a menu offering
+        Paste consults before it is opened.
+        """
+        self._sequencer_tracker_panel.can_paste_block = self._can_paste_tracker_block
+        self._sequencer_order_panel.can_paste_block = self._can_paste_order_block
+        self._sequencer_tracker_panel.on_copy_block = self._on_tracker_copy_block
+        self._sequencer_tracker_panel.on_cut_block = self._undoable(
+            HistoryAction.CUT_BLOCK,
+            self._cut_tracker_block,
+            detail=self._history_detail.tracker_block,
+        )
+        self._sequencer_tracker_panel.on_delete_block = self._undoable(
+            HistoryAction.DELETE_BLOCK,
+            self._tracker_block_writer.clear,
+            detail=self._history_detail.tracker_block,
+        )
+        self._sequencer_tracker_panel.on_paste_block = self._undoable(
+            HistoryAction.PASTE_BLOCK,
+            self._paste_tracker_block,
+            detail=self._history_detail.tracker_paste,
+        )
+        self._sequencer_order_panel.on_copy_block = self._on_order_copy_block
+        self._sequencer_order_panel.on_cut_block = self._undoable(
+            HistoryAction.CUT_BLOCK,
+            self._cut_order_block,
+            detail=self._history_detail.order_block,
+        )
+        self._sequencer_order_panel.on_delete_block = self._undoable(
+            HistoryAction.DELETE_BLOCK,
+            self._order_block_writer.clear,
+            detail=self._history_detail.order_block,
+        )
+        self._sequencer_order_panel.on_paste_block = self._undoable(
+            HistoryAction.PASTE_BLOCK,
+            self._paste_order_block,
+            detail=self._history_detail.order_paste,
+        )
+
+    def _can_paste_tracker_block(self) -> bool:
+        """Whether the tracker has a block to write, which is what its Paste item is offered on."""
+        return self._tracker_block_in_hand() is not None
+
+    def _can_paste_order_block(self) -> bool:
+        """Whether the order has a block to write, which is what its Paste item is offered on."""
+        return self._order_block_in_hand() is not None
+
+    def _tracker_block_in_hand(self) -> Optional[TrackerBlock]:
+        """The block a tracker paste would write: the system clipboard's while its text is one.
+
+        Text another instance copied reads as a block here, so it stands ahead of the slot the
+        tracker copied into, and text from anywhere else leaves that slot's own block in hand.
+        """
+        parsed = self._tracker_text_cache.block(self._system_clipboard.read())
+        if parsed is not None:
+            return parsed
+
+        return self._clipboard.tracker_block
+
+    def _order_block_in_hand(self) -> Optional[OrderBlock]:
+        """The block an order paste would write: the system clipboard's while its text is one.
+
+        Text another instance copied reads as a block here, so it stands ahead of the slot the
+        order copied into, and text from anywhere else leaves that slot's own block in hand.
+        """
+        parsed = self._order_text_cache.block(self._system_clipboard.read())
+        if parsed is not None:
+            return parsed
+
+        return self._clipboard.order_block
+
+    def _on_tracker_copy_block(self, region: TrackerRegion) -> None:
+        """Puts the tracker's selected block on both clipboards, for a paste to replay.
+
+        The slot keeps the block exactly, and the system clipboard keeps the text form of it, so
+        the same copy reaches a paste here and a paste in another instance.
+        """
+        block = self._tracker_block_reader.read(region)
+        self._clipboard.store_tracker_block(block)
+        self._system_clipboard.write(self._tracker_block_text.state(block, region))
+
+    def _cut_tracker_block(self, region: TrackerRegion) -> None:
+        """Takes the block a region covers onto the clipboard, then empties what it covered."""
+        self._on_tracker_copy_block(region)
+        self._tracker_block_writer.clear(region)
+
+    def _paste_tracker_block(self, cell: TrackerCell) -> None:
+        """Writes the block the tracker has in hand at a cell, while a copy has been made."""
+        block = self._tracker_block_in_hand()
+        if block is not None:
+            self._tracker_block_writer.write(block, cell)
+
+    def _on_order_copy_block(self, region: OrderRegion) -> None:
+        """Puts the order's selected block on both clipboards, for a paste to replay.
+
+        The slot keeps the block exactly, and the system clipboard keeps the text form of it, so
+        the same copy reaches a paste here and a paste in another instance.
+        """
+        block = self._order_block_reader.read(region)
+        self._clipboard.store_order_block(block)
+        self._system_clipboard.write(self._order_block_text.state(block, region))
+
+    def _cut_order_block(self, region: OrderRegion) -> None:
+        """Takes the block a region covers onto the clipboard, then silences what it covered."""
+        self._on_order_copy_block(region)
+        self._order_block_writer.clear(region)
+
+    def _paste_order_block(self, cell: OrderCell) -> None:
+        """Writes the block the order has in hand at a cell, while a copy has been made."""
+        block = self._order_block_in_hand()
+        if block is not None:
+            self._order_block_writer.write(block, cell)
 
     def _wire_samples_callbacks(self) -> None:
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
@@ -562,6 +728,11 @@ class SequencerTabCoordinator:
         receives, and ``coalesce`` computes the gesture's target key from them:
         consecutive gestures sharing the same action and target collapse into a
         single entry.
+
+        The gesture is batched inside its transaction, so however many rows it
+        writes, the panels rebuild once — and they rebuild before the entry that
+        undoes them is recorded, because the snapshot reads the project rather
+        than the views.
         """
 
         def wrapped(
@@ -570,7 +741,14 @@ class SequencerTabCoordinator:
         ) -> None:
             description = detail(*args, **kwargs) if detail is not None else ()
             key = coalesce(*args, **kwargs) if coalesce is not None else None
-            with self._history.transaction(action, detail=description, coalesce=key):
+            with (
+                self._history.transaction(
+                    action,
+                    detail=description,
+                    coalesce=key,
+                ),
+                self._project_controller.batch(),
+            ):
                 callback(*args, **kwargs)
 
         return wrapped
@@ -590,11 +768,22 @@ class SequencerTabCoordinator:
 
     def _adjustment_key(
         self,
-        row_index: int,
-        generator: Optional[GeneratorName],
+        region: TrackerRegion,
         _delta: int,
     ) -> CoalesceKey:
-        return self._cell_key(row_index, generator)
+        """Identifies the cells an adjustment covers as one coalescing target.
+
+        A streak of nudges over the same block reads as one entry, so holding a transpose key steps
+        the selection and leaves a single step to undo; moving the cursor or reaching the selection
+        out starts the next one.
+        """
+        return (
+            self._sequencer_tracker_logic.frame_index,
+            region.first_row,
+            region.last_row,
+            region.first_slot,
+            region.last_slot,
+        )
 
     def _edit_row_key(
         self,
@@ -1021,132 +1210,12 @@ class SequencerTabCoordinator:
     def _dispatch_edit_sample(self, sample_id: str) -> None:
         self._on_edit_sample_requested(sample_id)
 
-    def _on_clear_row(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
-        if generator is None:
-            self._sequencer_tracker_logic.clear_all_generators(row_index)
-        else:
-            self._sequencer_tracker_logic.clear_row(generator, row_index)
-
-    def _on_clear_subcolumn(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        subcolumn: SubColumn,
-    ) -> None:
-        instrument = subcolumn is SubColumn.INSTRUMENT
-        transpose = subcolumn is SubColumn.TRANSPOSE
-        volume = subcolumn is SubColumn.VOLUME
-        if generator is None:
-            if instrument:
-                self._sequencer_tracker_logic.clear_subcolumn_all_generators(
-                    row_index,
-                    instrument=True,
-                )
-            else:
-                self._sequencer_tracker_logic.clear_sample_subcolumn(
-                    row_index,
-                    transpose=transpose,
-                    volume=volume,
-                )
-        else:
-            self._sequencer_tracker_logic.clear_subcolumn(
-                generator,
-                row_index,
-                instrument=instrument,
-                transpose=transpose,
-                volume=volume,
-            )
-
-    def _on_set_row(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        sample_id: Optional[str],
-        transpose: Optional[int],
-        volume: Optional[int],
-    ) -> None:
-        if generator is None:
-            if sample_id is not None:
-                self._sequencer_tracker_logic.set_sample_instrument(
-                    row_index,
-                    sample_id,
-                )
-            elif transpose is not None or volume is not None:
-                self._sequencer_tracker_logic.set_sample_subcolumn(
-                    row_index,
-                    transpose=transpose,
-                    volume=volume,
-                )
-        else:
-            command = (
-                Instrument(
-                    sample_id=sample_id,
-                    generator_name=generator,
-                )
-                if sample_id is not None
-                else None
-            )
-            self._sequencer_tracker_logic.set_row(
-                generator,
-                row_index,
-                command=command,
-                transpose=transpose,
-                volume=volume,
-            )
-
-    def _on_set_note_off(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-    ) -> None:
-        """Writes a note-off: to one channel, or across every channel from the sample column."""
-        if generator is None:
-            self._sequencer_tracker_logic.set_note_off_all_generators(row_index)
-        else:
-            self._sequencer_tracker_logic.set_note_off(generator, row_index)
-
     def _on_tracker_play_from_row(self, row_index: int) -> None:
         """Starts playback from the right-clicked row of the frame the tracker is showing."""
         self._song_player_logic.play_from(
             self._sequencer_tracker_logic.frame_index,
             row_index,
         )
-
-    def _on_adjust_transpose(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> None:
-        """Shifts transpose: one channel, or across the sample column's channels."""
-        if generator is None:
-            self._sequencer_tracker_logic.adjust_sample_transpose(row_index, delta)
-        else:
-            self._sequencer_tracker_logic.adjust_transpose(
-                generator,
-                row_index,
-                delta,
-            )
-
-    def _on_adjust_volume(
-        self,
-        row_index: int,
-        generator: Optional[GeneratorName],
-        delta: int,
-    ) -> None:
-        """Shifts volume: one channel, or across the sample column's channels."""
-        if generator is None:
-            self._sequencer_tracker_logic.adjust_sample_volume(row_index, delta)
-        else:
-            self._sequencer_tracker_logic.adjust_volume(
-                generator,
-                row_index,
-                delta,
-            )
 
     def _on_samples_changed(
         self,
@@ -1264,13 +1333,26 @@ class SequencerTabCoordinator:
 
     def _on_order_duplicate(self, position: int) -> None:
         self._sequencer_order_logic.duplicate_frame(position)
+        self._settle_inserted_frame(position + 1)
+
+    def _on_order_clone(self, position: int) -> None:
+        self._sequencer_order_logic.clone_frame(position)
+        self._settle_inserted_frame(position + 1)
+
+    def _settle_inserted_frame(self, position: int) -> None:
+        """Carries the playhead and the shown frame over a frame that has just been inserted.
+
+        A frame arriving at ``position`` pushes every later frame one along, so a playhead
+        standing on one of them follows it, and the grid moves to the new frame for the reader
+        to work on.
+        """
         self._relocate_playhead(
             lambda playhead: remap_after_insert(
                 playhead,
-                position + 1,
+                position,
             )
         )
-        self._select_frame_when_idle(position + 1)
+        self._select_frame_when_idle(position)
 
     def _on_order_insert(self, position: int) -> None:
         self._sequencer_order_logic.insert_frame(position + 1)
@@ -1403,3 +1485,16 @@ class SequencerTabCoordinator:
     @property
     def player(self) -> AudioPlayerProtocol:
         return self._guarded_player
+
+    @property
+    def edit_surfaces(self) -> Tuple[EditSurfaceProtocol, ...]:
+        """The panels offering editing gestures on what they hold selected.
+
+        The three hold one selection between them — a cursor in either grid, a row in the samples
+        list — so the menu bar reaches whichever one has it.
+        """
+        return (
+            self._sequencer_tracker_panel.edit_surface,
+            self._sequencer_order_panel.edit_surface,
+            self._sequencer_samples_panel,
+        )

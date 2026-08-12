@@ -1,10 +1,15 @@
 import functools
+from contextlib import contextmanager
 from typing import (
     Any,
     Callable,
     Concatenate,
+    Final,
+    Iterator,
+    List,
     Optional,
     ParamSpec,
+    Tuple,
     TypeVar,
     cast,
 )
@@ -13,10 +18,12 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.callback import Callback, VoidCallback
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+SLOT_ITEMS: Final[int] = 1
 
 
 def dpg_wrapper(
@@ -55,8 +62,41 @@ def dpg_delete_item(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
     dpg.delete_item(tag, *args, **kwargs)
 
 
+@contextmanager
+def dpg_container(tag: Sender) -> Iterator[None]:
+    """Makes ``tag`` the container parentless items land in for the length of the block.
+
+    A builder that states its items without naming a parent can then be pointed at any container,
+    which is how one set of items is built into the menu, popup or panel that asked for it.
+    """
+    dpg.push_container_stack(tag)
+    try:
+        yield
+    finally:
+        dpg.pop_container_stack()
+
+
 def dpg_delete_children(tag: Sender, /, *_args: Any, **kwargs: Any) -> None:
     dpg_delete_item(tag, children_only=True, **kwargs)
+
+
+def dpg_item_children(tag: Sender) -> Tuple[Sender, ...]:
+    """The items the container holds, in the order they are drawn."""
+    children = cast(List[Sender], dpg.get_item_children(tag, SLOT_ITEMS))
+    return tuple(children)
+
+
+def dpg_append_items(tag: Sender, build: VoidCallback) -> Tuple[Sender, ...]:
+    """Runs ``build`` with ``tag`` open as the container, reporting the items it left there.
+
+    What one build stated is known by what the container gained, so a caller that rebuilds a
+    section takes exactly those items away again and leaves the rest of the container standing.
+    """
+    standing = len(dpg_item_children(tag))
+    with dpg_container(tag):
+        build()
+
+    return dpg_item_children(tag)[standing:]
 
 
 def dpg_bind_item_theme(

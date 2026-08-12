@@ -8,12 +8,11 @@
 * Drag and drop
 * Multiple Reconstruction views
 * Playing a fragment by clicking on a waveform
-* Transpose/note pitch display duality
+* Note pitch shown as a transpose offset rather than a note name
 
 ### Tracker
 
 * Basic shapes as instruments
-* Selection operations on patterns and orders
 
 ### Workflow
 

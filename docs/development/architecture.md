@@ -253,7 +253,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 
 *Managers* own a domain object's lifecycle (load, save, close). They hold the current object, a `Session` that tracks dirty state, and fire `CallbackMixin` callbacks when the state changes.
 
-*Controllers* are thin mutation façades over a manager. `ProjectController` exposes named, typed mutation methods (`set_title`, `add_sample`, …) and emits a finer-grained callback per mutation kind (`on_info_changed`, `on_samples_changed`, …). This lets the UI respond precisely to what changed.
+*Controllers* are thin mutation façades over a manager. `ProjectController` exposes named, typed mutation methods (`set_title`, `add_sample`, …) and emits a finer-grained callback per mutation kind (`on_info_changed`, `on_samples_changed`, …). This lets the UI respond precisely to what changed. `ProjectController.batch()` widens that grain to a whole gesture: each mutation still applies the moment it is made, while the callbacks it raises wait for the scope to close and then arrive once each, so a gesture writing hundreds of rows rebuilds its subscribers once.
 
 *Logic objects* (e.g. `ConverterLogic`) orchestrate multi-step workflows within a feature area. They subscribe to services and translate service results into view model updates.
 
@@ -292,7 +292,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 
 There are two coordinator kinds:
 
-*Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations) or `PlaybackRouter` (the single transport over the shared output device, acting on the active tab's source or the engaged one — see `docs/development/playback.md`).
+*Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations), `PlaybackRouter` (the single transport over the shared output device, acting on the active tab's source or the engaged one — see `docs/development/playback.md`), or `EditRouter` (the single edit surface behind the menu bar's Edit menu, which shows the actions of the grid holding the cursor — see `docs/development/sequencer-blocks.md`).
 
 *Tab coordinators* own everything for one tab: they instantiate its panels, logic objects, and tab-scoped services, wire their callbacks together, and provide `create_tab()` — the single method that builds the DPG widget tree for that tab. Tab coordinators present a narrow public API of intent-level methods (`set_input_path`, `display_reconstruction`, …) and keep their panels and logic objects private.
 

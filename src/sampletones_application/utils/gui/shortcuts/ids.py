@@ -95,6 +95,23 @@ class ShortcutId(Enum):
     ORDER_NEXT_CHANNEL = ("OrderNextChannel", ShortcutCategory.ORDER)
     ORDER_FIRST_POSITION = ("OrderFirstPosition", ShortcutCategory.ORDER)
     ORDER_LAST_POSITION = ("OrderLastPosition", ShortcutCategory.ORDER)
+    ORDER_EXTEND_SELECTION_UP = ("OrderExtendSelectionUp", ShortcutCategory.ORDER)
+    ORDER_EXTEND_SELECTION_DOWN = ("OrderExtendSelectionDown", ShortcutCategory.ORDER)
+    ORDER_EXTEND_SELECTION_LEFT = ("OrderExtendSelectionLeft", ShortcutCategory.ORDER)
+    ORDER_EXTEND_SELECTION_RIGHT = ("OrderExtendSelectionRight", ShortcutCategory.ORDER)
+    ORDER_EXTEND_SELECTION_TO_FIRST_POSITION = (
+        "OrderExtendSelectionToFirstPosition",
+        ShortcutCategory.ORDER,
+    )
+    ORDER_EXTEND_SELECTION_TO_LAST_POSITION = (
+        "OrderExtendSelectionToLastPosition",
+        ShortcutCategory.ORDER,
+    )
+    ORDER_SELECT_ALL = ("OrderSelectAll", ShortcutCategory.ORDER)
+    ORDER_SELECT_ROW = ("OrderSelectRow", ShortcutCategory.ORDER)
+    ORDER_COPY_BLOCK = ("OrderCopyBlock", ShortcutCategory.ORDER)
+    ORDER_CUT_BLOCK = ("OrderCutBlock", ShortcutCategory.ORDER)
+    ORDER_PASTE_BLOCK = ("OrderPasteBlock", ShortcutCategory.ORDER)
     ORDER_MOVE_FRAME_LEFT = ("OrderMoveFrameLeft", ShortcutCategory.ORDER)
     ORDER_MOVE_FRAME_RIGHT = ("OrderMoveFrameRight", ShortcutCategory.ORDER)
     ORDER_MOVE_FRAME_TO_START = ("OrderMoveFrameToStart", ShortcutCategory.ORDER)
@@ -103,6 +120,7 @@ class ShortcutId(Enum):
     ORDER_INSERT_FRAME = ("OrderInsertFrame", ShortcutCategory.ORDER)
     ORDER_REMOVE_FRAME = ("OrderRemoveFrame", ShortcutCategory.ORDER)
     ORDER_DUPLICATE_FRAME = ("OrderDuplicateFrame", ShortcutCategory.ORDER)
+    ORDER_CLONE_FRAME = ("OrderCloneFrame", ShortcutCategory.ORDER)
     ORDER_CLEAR_FRAME = ("OrderClearFrame", ShortcutCategory.ORDER)
     ORDER_CLEAR_CELL = ("OrderClearCell", ShortcutCategory.ORDER)
     ORDER_CLEAR_PREVIOUS_CELL = ("OrderClearPreviousCell", ShortcutCategory.ORDER)
@@ -116,6 +134,32 @@ class ShortcutId(Enum):
     TRACKER_NEXT_COLUMN = ("TrackerNextColumn", ShortcutCategory.TRACKER)
     TRACKER_FIRST_ROW = ("TrackerFirstRow", ShortcutCategory.TRACKER)
     TRACKER_LAST_ROW = ("TrackerLastRow", ShortcutCategory.TRACKER)
+    TRACKER_EXTEND_SELECTION_UP = ("TrackerExtendSelectionUp", ShortcutCategory.TRACKER)
+    TRACKER_EXTEND_SELECTION_DOWN = ("TrackerExtendSelectionDown", ShortcutCategory.TRACKER)
+    TRACKER_EXTEND_SELECTION_LEFT = ("TrackerExtendSelectionLeft", ShortcutCategory.TRACKER)
+    TRACKER_EXTEND_SELECTION_RIGHT = ("TrackerExtendSelectionRight", ShortcutCategory.TRACKER)
+    TRACKER_EXTEND_SELECTION_TO_FIRST_ROW = (
+        "TrackerExtendSelectionToFirstRow",
+        ShortcutCategory.TRACKER,
+    )
+    TRACKER_EXTEND_SELECTION_TO_LAST_ROW = (
+        "TrackerExtendSelectionToLastRow",
+        ShortcutCategory.TRACKER,
+    )
+    TRACKER_SELECT_ALL = ("TrackerSelectAll", ShortcutCategory.TRACKER)
+    TRACKER_SELECT_COLUMN = ("TrackerSelectColumn", ShortcutCategory.TRACKER)
+    TRACKER_SELECT_SUBCOLUMN = ("TrackerSelectSubcolumn", ShortcutCategory.TRACKER)
+    TRACKER_COPY_BLOCK = ("TrackerCopyBlock", ShortcutCategory.TRACKER)
+    TRACKER_CUT_BLOCK = ("TrackerCutBlock", ShortcutCategory.TRACKER)
+    TRACKER_PASTE_BLOCK = ("TrackerPasteBlock", ShortcutCategory.TRACKER)
+    TRACKER_TRANSPOSE_UP = ("TrackerTransposeUp", ShortcutCategory.TRACKER)
+    TRACKER_TRANSPOSE_DOWN = ("TrackerTransposeDown", ShortcutCategory.TRACKER)
+    TRACKER_TRANSPOSE_OCTAVE_UP = ("TrackerTransposeOctaveUp", ShortcutCategory.TRACKER)
+    TRACKER_TRANSPOSE_OCTAVE_DOWN = ("TrackerTransposeOctaveDown", ShortcutCategory.TRACKER)
+    TRACKER_VOLUME_UP = ("TrackerVolumeUp", ShortcutCategory.TRACKER)
+    TRACKER_VOLUME_DOWN = ("TrackerVolumeDown", ShortcutCategory.TRACKER)
+    TRACKER_VOLUME_UP_COARSE = ("TrackerVolumeUpCoarse", ShortcutCategory.TRACKER)
+    TRACKER_VOLUME_DOWN_COARSE = ("TrackerVolumeDownCoarse", ShortcutCategory.TRACKER)
     TRACKER_PAGE_UP = ("TrackerPageUp", ShortcutCategory.TRACKER)
     TRACKER_PAGE_DOWN = ("TrackerPageDown", ShortcutCategory.TRACKER)
     TRACKER_CLEAR_ROW = ("TrackerClearRow", ShortcutCategory.TRACKER)

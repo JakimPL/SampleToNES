@@ -18,7 +18,7 @@ class InstructionsTabParameters:
     """Everything the Instructions tab coordinator needs, shaped for the coordinator.
 
     The stacked-graph geometry — the vertical baseline, the per-graph base height, and the
-    ceiling the stack grows to — is flattened alongside the shared column geometry because it
+    ceiling each graph grows to — is flattened alongside the shared column geometry because it
     feeds the ``stacked_graph_height`` pure-int sink; the choice panel's slice of the general
     layout is narrowed to a ``PitchStepperStyle`` so the whole ``GeneralLayout`` never reaches
     a panel.
@@ -26,7 +26,7 @@ class InstructionsTabParameters:
 
     geometry: TabGeometry
     baseline_viewport_height: int
-    max_stack_height: int
+    max_graph_height: int
     base_graph_height: int
     right_column_width: int
     right_column_height: int
@@ -44,7 +44,7 @@ class InstructionsTabParameters:
         return cls(
             geometry=TabGeometry.from_config(config),
             baseline_viewport_height=general.responsive.baseline_viewport_height,
-            max_stack_height=general.responsive.max_stack_height,
+            max_graph_height=general.responsive.max_graph_height,
             base_graph_height=config.graphs.dimensions.height,
             right_column_width=config.tabs.instructions.right_column.width,
             right_column_height=config.tabs.instructions.right_column.height,
