@@ -11,7 +11,7 @@ class TestInstructionsTabParametersFromConfig:
         params = InstructionsTabParameters.from_config(layout_config)
 
         assert params.baseline_viewport_height == layout_config.general.responsive.baseline_viewport_height
-        assert params.max_stack_height == layout_config.general.responsive.max_stack_height
+        assert params.max_graph_height == layout_config.general.responsive.max_graph_height
         assert params.base_graph_height == layout_config.graphs.dimensions.height
         assert params.right_column_width == layout_config.tabs.instructions.right_column.width
         assert params.right_column_height == layout_config.tabs.instructions.right_column.height

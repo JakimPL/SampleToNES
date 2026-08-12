@@ -114,7 +114,7 @@ class InstructionsTabCoordinator:
         self._side_panel_count: int
         self._baseline_viewport_height = layout.baseline_viewport_height
         self._base_graph_height = layout.base_graph_height
-        self._max_stack_height = layout.max_stack_height
+        self._max_graph_height = layout.max_graph_height
         self._details_width = layout.right_column_width
         self._right_height = layout.right_column_height
         self._ttl_generation_status = language_manager["instructions.library.title.generation_status_dialog"]
@@ -377,13 +377,13 @@ class InstructionsTabCoordinator:
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _sync_graph_heights(self) -> None:
-        """Grows the stacked graphs to share the viewport's vertical surplus equally, filling the centre column."""
+        """Grows the stacked graphs to share the viewport's vertical surplus equally, up to their ceiling."""
         height = stacked_graph_height(
             self._base_graph_height,
             dpg.get_viewport_client_height(),
             self._baseline_viewport_height,
             len(self._graph_panels),
-            self._max_stack_height,
+            self._max_graph_height,
         )
         for panel in self._graph_panels:
             panel.set_display_height(height)
