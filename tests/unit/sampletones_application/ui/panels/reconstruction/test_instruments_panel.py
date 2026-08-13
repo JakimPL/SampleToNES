@@ -1,4 +1,5 @@
-from typing import Final, List
+from dataclasses import dataclass
+from typing import Dict, Final, List, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,22 +17,48 @@ from sampletones_application.paths import (
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_WARNING,
+    TAG_GLOBAL_THEME_INSTRUMENT_TABS,
+    TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
 )
+from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
-from sampletones_application.ui.panels.reconstruction.instruments.instruments import (
-    GUIReconstructionInstrumentsPanel,
-)
+from sampletones_application.ui.panels.reconstruction.instruments import instruments as instruments_module
+from sampletones_application.ui.panels.reconstruction.instruments.instruments import GUIReconstructionInstrumentsPanel
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
+from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.formats.famitracker.specification.sequences import (
-    MAX_SEQUENCE_ITEMS,
-)
+from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
+from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_sequence"
+
+LARGEST_PULSE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=9, sequence_bytes=768)
+LARGEST_TRIANGLE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=7, sequence_bytes=512)
+SILENT_INSTRUMENT: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=3, sequence_bytes=0)
+
+NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
+    reconstruction_loaded=False,
+    playing_generators=frozenset(),
+    footprint=None,
+)
+
+
+def build_view_model(
+    channel_footprints: Dict[GeneratorName, InstrumentFootprint],
+) -> ReconstructionInstrumentsViewModel:
+    """A loaded reconstruction playing the given channels, each measured as given."""
+    return ReconstructionInstrumentsViewModel(
+        reconstruction_loaded=True,
+        playing_generators=frozenset(channel_footprints),
+        footprint=SampleFootprintViewModel.from_footprints(channel_footprints),
+    )
 
 
 @pytest.fixture
@@ -51,12 +78,36 @@ def registered_themes(layout_config: LayoutConfig) -> None:
     )
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def bound_themes(monkeypatch: pytest.MonkeyPatch) -> List[str]:
-    """Records the theme tags bound to items, standing in for the DPG binding."""
+    """Records the theme tags bound to items, standing in for the DPG binding.
+
+    The panel binds a theme wherever it marks an item, so every test stands in for the
+    binding and the ones asserting on it read the record.
+    """
     tags: List[str] = []
     monkeypatch.setattr(Theme, "bind_to_item", lambda self, item: tags.append(self.tag))
     return tags
+
+
+@pytest.fixture(autouse=True)
+def written(monkeypatch: pytest.MonkeyPatch) -> Dict[str, str]:
+    """Records the texts written to items, standing in for the DPG values."""
+    values: Dict[str, str] = {}
+    monkeypatch.setattr(instruments_module, "dpg_set_value", values.__setitem__)
+    return values
+
+
+@pytest.fixture(autouse=True)
+def shown(monkeypatch: pytest.MonkeyPatch) -> Dict[str, bool]:
+    """Records which items the panel shows, standing in for the DPG configuration."""
+    flags: Dict[str, bool] = {}
+
+    def configure(tag: str, *, show: bool) -> None:
+        flags[tag] = show
+
+    monkeypatch.setattr(instruments_module, "dpg_configure_item", configure)
+    return flags
 
 
 @pytest.fixture
@@ -179,3 +230,150 @@ class TestSequenceStatusMessage:
         message = panel._sequence_status_message(GeneratorName.PULSE1, FeatureKey.VOLUME)
         assert "300" in message
         assert str(MAX_SEQUENCE_ITEMS) in message
+
+
+class TestSizeFields(BaseTestSuite):
+    """The two read-only byte figures: the sample's above the tabs, each channel's inside its tab."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        channel_footprints: Dict[GeneratorName, InstrumentFootprint]
+        expected: str
+
+    test_cases = (
+        TestCase(
+            label="a single channel spends what its instrument does",
+            channel_footprints={GeneratorName.PULSE1: LARGEST_PULSE},
+            expected="777 B",
+        ),
+        TestCase(
+            label="three channels spend their instruments together",
+            channel_footprints={
+                GeneratorName.PULSE1: LARGEST_PULSE,
+                GeneratorName.TRIANGLE: LARGEST_TRIANGLE,
+                GeneratorName.NOISE: LARGEST_PULSE,
+            },
+            expected="2073 B",
+        ),
+        TestCase(
+            label="a silent channel spends the instrument definition alone",
+            channel_footprints={GeneratorName.TRIANGLE: SILENT_INSTRUMENT},
+            expected="3 B",
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_sample_size_sums_its_channels(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        written: Dict[str, str],
+        test_case: TestCase,
+    ) -> None:
+        panel.update_view(build_view_model(test_case.channel_footprints))
+        assert written[panel.sample_size_tag] == test_case.expected
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_each_channel_states_its_own_size(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        written: Dict[str, str],
+        test_case: TestCase,
+    ) -> None:
+        panel.update_view(build_view_model(test_case.channel_footprints))
+        assert {
+            generator_name: written[panel._get_instrument_size_tag(generator_name)]
+            for generator_name in test_case.channel_footprints
+        } == {
+            generator_name: f"{footprint.total_bytes} B"
+            for generator_name, footprint in test_case.channel_footprints.items()
+        }
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_channel_standing_by_costs_nothing(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        written: Dict[str, str],
+        test_case: TestCase,
+    ) -> None:
+        """A channel that describes no frame is written by no export, so its tab states what that costs."""
+        panel.update_view(build_view_model(test_case.channel_footprints))
+        assert {
+            generator_name: written[panel._get_instrument_size_tag(generator_name)]
+            for generator_name in GeneratorName.items()
+            if generator_name not in test_case.channel_footprints
+        } == {
+            generator_name: "0 B"
+            for generator_name in GeneratorName.items()
+            if generator_name not in test_case.channel_footprints
+        }
+
+
+class TestPlayingChannels:
+    """Every channel keeps a tab; a muted label and a withheld export mark the ones standing by.
+
+    ``update_view`` marks each channel once in channel order, so the recorded bindings read as
+    one theme per channel.
+    """
+
+    def test_every_channel_keeps_its_tab(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+    ) -> None:
+        panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
+        assert {
+            generator_name: shown[panel._get_generator_tab_tag(generator_name)]
+            for generator_name in GeneratorName.items()
+        } == {generator_name: True for generator_name in GeneratorName.items()}
+
+    def test_a_channel_standing_by_reads_muted(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        bound_themes: List[str],
+    ) -> None:
+        panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
+        assert dict(zip(GeneratorName.items(), bound_themes)) == {
+            GeneratorName.PULSE1: TAG_GLOBAL_THEME_INSTRUMENT_TABS,
+            GeneratorName.PULSE2: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
+            GeneratorName.TRIANGLE: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
+            GeneratorName.NOISE: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
+        }
+
+    def test_only_a_playing_channel_offers_its_export(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        buttons = {generator_name: MagicMock() for generator_name in GeneratorName.items()}
+        panel._export_buttons.update(cast(Dict[GeneratorName, GUIButton], buttons))
+
+        panel.update_view(build_view_model({GeneratorName.TRIANGLE: LARGEST_TRIANGLE}))
+
+        assert {generator_name: button.set_enabled.call_args.args[0] for generator_name, button in buttons.items()} == {
+            generator_name: generator_name is GeneratorName.TRIANGLE for generator_name in GeneratorName.items()
+        }
+
+
+class TestSizeVisibility:
+    def test_a_loaded_reconstruction_shows_the_sample_size(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+    ) -> None:
+        panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
+        assert shown[panel.sample_size_group_tag] is True
+
+    def test_no_reconstruction_hides_the_sample_size(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+    ) -> None:
+        panel.update_view(NOT_LOADED)
+        assert shown[panel.sample_size_group_tag] is False
+
+    def test_no_reconstruction_states_no_figures(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        written: Dict[str, str],
+    ) -> None:
+        panel.update_view(NOT_LOADED)
+        assert written == {}

@@ -3,14 +3,25 @@ from __future__ import annotations
 import struct
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, Final, List, Mapping, Optional, Self, Sequence
+from typing import (
+    Any,
+    Dict,
+    Final,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Self,
+    Sequence,
+    Tuple,
+)
 from uuid import uuid4
 
 import numpy as np
 from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.data import DataModel, Metadata, MetadataContract
 from sampletones_core.exporters import (
     GENERATOR_NAME_TO_EXPORTER_MAP,
@@ -88,36 +99,79 @@ class Reconstruction(DataModel):
         return {item.generator_name: item.approximation for item in self.approximations_data}
 
     @cached_property
+    def streams(self) -> Dict[GeneratorName, InstructionsItem]:
+        """The instruction stream each channel carries, in channel order.
+
+        This is where the channel set is made whole: a channel the stored data names a stream
+        for keeps it, and one it names none for rests, which is what a channel standing by
+        carries. Every per-channel view reads from here, so each of them covers the four
+        channels however a reconstruction reached memory.
+        """
+        stored = {item.generator_name: item for item in self.instructions_data}
+        return {
+            generator_name: stored.get(generator_name, InstructionsItem.resting(generator_name))
+            for generator_name in GeneratorName.items()
+        }
+
+    @cached_property
     def instructions(self) -> Dict[GeneratorName, List[InstructionUnion]]:
         return {
-            item.generator_name: [instruction.instruction for instruction in item.instructions]
-            for item in self.instructions_data
+            generator_name: [instruction.instruction for instruction in item.instructions]
+            for generator_name, item in self.streams.items()
         }
 
     @cached_property
     def initial_pitches(self) -> Dict[GeneratorName, int]:
         """The reference pitch each generator's arpeggio envelope is measured against."""
-        return {item.generator_name: item.initial_pitch for item in self.instructions_data}
+        return {generator_name: item.initial_pitch for generator_name, item in self.streams.items()}
+
+    @cached_property
+    def held_features(self) -> Dict[GeneratorName, Tuple[FeatureKey, ...]]:
+        """The dimensions each generator leaves to the channel.
+
+        An instruction states every dimension of its frame, so which of them the instrument
+        itself writes is stated here: the rest are the channel's, and an export leaves their
+        envelopes empty for the player to fill from the value it holds.
+        """
+        return {generator_name: tuple(item.held_features) for generator_name, item in self.streams.items()}
+
+    @cached_property
+    def playing_generators(self) -> Tuple[GeneratorName, ...]:
+        """The channels whose instruction stream describes a frame.
+
+        A reconstruction holds a stream for every channel, so this is what says which of them
+        play: the rest stand by, exporting nothing and costing nothing, while describing a
+        frame is what puts one in play.
+        """
+        return tuple(generator_name for generator_name, item in self.streams.items() if item.instructions)
 
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
         return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
 
     @classmethod
-    def _derive_initial_pitch(
+    def _exporter_class(
         cls,
         generator_name: GeneratorName,
         instructions: List[InstructionUnion],
-    ) -> int:
-        """Chooses the reference pitch a channel's arpeggio envelope is measured against.
+    ) -> ExporterTypeUnion:
+        """The exporter a channel's stream is read through.
 
-        The instruction type selects the exporter, matching how `export` resolves one. A
-        channel carrying no instructions takes the exporter its generator name pairs with,
-        which reports that exporter's resting reference.
+        The instruction type names the exporter wherever the stream describes a frame; a
+        channel standing by takes the exporter its generator name pairs with.
         """
-        exporter_class = (
-            cls._get_exporter_class(instructions[0]) if instructions else GENERATOR_NAME_TO_EXPORTER_MAP[generator_name]
-        )
+        if not instructions:
+            return GENERATOR_NAME_TO_EXPORTER_MAP[generator_name]
+
+        return cls._get_exporter_class(instructions[0])
+
+    @classmethod
+    def _derive_initial_pitch(cls, instructions: List[InstructionUnion]) -> int:
+        """Chooses the reference pitch the arpeggio envelope of a channel in play is measured against.
+
+        The instruction type selects the exporter, matching how `export` resolves one.
+        """
+        exporter_class = cls._get_exporter_class(instructions[0])
         return exporter_class.derive_initial_pitch(instructions)  # type: ignore[arg-type]
 
     @classmethod
@@ -132,18 +186,27 @@ class Reconstruction(DataModel):
     ) -> Self:
         approximation = np.nan_to_num(approximation, nan=0.0)
         approximations_data: List[ApproximationsItem] = [
-            ApproximationsItem(generator_name=name, approximation=approximation)
-            for name, approximation in approximations.items()
+            ApproximationsItem(
+                generator_name=generator_name,
+                approximation=approximations[generator_name],
+            )
+            for generator_name in GeneratorName.items()
+            if generator_name in approximations
         ]
 
         instructions_data: List[InstructionsItem] = []
-        for generator_name, instructions_list in instructions.items():
-            channel_instructions = list(instructions_list)
+        for generator_name in GeneratorName.items():
+            channel_instructions = list(instructions.get(generator_name, ()))
+            if not channel_instructions:
+                instructions_data.append(InstructionsItem.resting(generator_name))
+                continue
+
             instructions_data.append(
                 InstructionsItem.create(
                     generator_name=generator_name,
                     instructions=channel_instructions,
-                    initial_pitch=cls._derive_initial_pitch(generator_name, channel_instructions),
+                    initial_pitch=cls._derive_initial_pitch(channel_instructions),
+                    held_features=(),
                 )
             )
 
@@ -187,35 +250,39 @@ class Reconstruction(DataModel):
         instructions: List[InstructionUnion],
         partial_approximation: np.ndarray,
         initial_pitch: int,
+        held_features: Iterable[FeatureKey],
     ) -> None:
-        """Replaces one generator's instructions, audio, and reference pitch.
+        """Replaces one generator's instructions, audio, reference pitch, and held dimensions.
 
         The reference pitch travels with the instructions it produced, so a later export
-        measures the arpeggio against the same base the edit was made from.
+        measures the arpeggio against the same base the edit was made from. The held
+        dimensions travel with them for the same reason: the frames state a value for every
+        dimension, and this is what says which of them the instrument itself wrote.
+
+        The channel keeps its place among the streams however the edit leaves it, so one
+        cleared of every frame stands by and stays editable. Its rendered audio lasts as
+        long as it carries samples, which keeps silence out of the stored waveforms.
         """
         partial_approximation = np.trim_zeros(partial_approximation, trim="b")
+        rendered = {name: audio for name, audio in self.approximations.items() if name != generator_name}
+        if partial_approximation.size:
+            rendered[generator_name] = partial_approximation
+
         max_length = max(
-            len(partial_approximation),
-            *(len(np.trim_zeros(audio, trim="b")) for audio in self.approximations.values()),
+            (len(np.trim_zeros(audio, trim="b")) for audio in rendered.values()),
+            default=0,
         )
 
-        rendered = {
-            name: partial_approximation if name == generator_name else audio
-            for name, audio in self.approximations.items()
-        }
         self.approximations_data = self._build_approximations_data(rendered, max_length)
-        self.instructions_data = [
-            (
-                InstructionsItem.create(
-                    generator_name=generator_name,
-                    instructions=instructions,
-                    initial_pitch=initial_pitch,
-                )
-                if item.generator_name == generator_name
-                else item
-            )
-            for item in self.instructions_data
-        ]
+
+        streams = dict(self.streams)
+        streams[generator_name] = InstructionsItem.create(
+            generator_name=generator_name,
+            instructions=instructions,
+            initial_pitch=initial_pitch,
+            held_features=held_features,
+        )
+        self.instructions_data = [streams[name] for name in GeneratorName.items()]
         self._invalidate_derived_caches(self)
         self.approximation = self._sum_approximations([item.approximation for item in self.approximations_data])
 
@@ -223,7 +290,7 @@ class Reconstruction(DataModel):
         self,
         generator_name: GeneratorName,
     ) -> List[InstructionUnion]:
-        return self.instructions.get(generator_name, [])
+        return self.instructions[generator_name]
 
     def detach_source(self) -> None:
         """Drops the local source-audio location so the reconstruction becomes self-contained.
@@ -253,22 +320,29 @@ class Reconstruction(DataModel):
         """Re-renders every generator's approximation from its instructions at ``config``.
 
         Each instruction spans ``config.frame_length`` samples, so re-rendering at a new frame
-        length re-times the audio. Per-generator arrays are padded to a common length and summed;
-        the mixer weight is baked into each generator's output, so a plain sum reproduces the
-        stored approximation shape. Drive is left at unity to match the regeneration path.
+        length re-times the audio. The channels describing frames are rendered, padded to a
+        common length and summed; the mixer weight is baked into each generator's output, so a
+        plain sum reproduces the stored approximation shape. Drive is left at unity to match the
+        regeneration path.
         """
         rendered: Dict[GeneratorName, np.ndarray] = {}
         for generator_name, instructions in self.instructions.items():
-            generator = GENERATOR_CLASSES[generator_name](config, generator_name.value)
-            if instructions:
-                rendered[generator_name] = np.concatenate(
-                    [generator(instruction, save=True) for instruction in instructions]  # type: ignore[arg-type]
-                )
-            else:
-                rendered[generator_name] = np.zeros(0, dtype=np.float32)
+            if not instructions:
+                continue
+
+            generator = GENERATOR_CLASSES[generator_name](
+                config,
+                generator_name.value,
+            )
+            rendered[generator_name] = np.concatenate(
+                [generator(instruction, save=True) for instruction in instructions]  # type: ignore[arg-type]
+            )
 
         max_length = max((len(audio) for audio in rendered.values()), default=0)
-        approximations_data = self._build_approximations_data(rendered, max_length)
+        approximations_data = self._build_approximations_data(
+            rendered,
+            max_length,
+        )
         approximation = self._sum_approximations([item.approximation for item in approximations_data])
 
         retuned: Reconstruction = self.model_copy(
@@ -299,24 +373,29 @@ class Reconstruction(DataModel):
         rendered: Mapping[GeneratorName, np.ndarray],
         length: int,
     ) -> List[ApproximationsItem]:
-        """Pads each generator's audio to ``length`` and pairs it with its generator name.
+        """Pads each rendered channel's audio to ``length``, in channel order.
 
-        A shared length lets the per-generator arrays stack and sum into the mixed approximation.
+        A shared length lets the per-generator arrays stack and sum into the mixed approximation,
+        and a fixed order keeps a stored reconstruction reading the same however an edit reached it.
         """
         return [
             ApproximationsItem(
-                generator_name=name,
-                approximation=pad(audio, 0, length),
+                generator_name=generator_name,
+                approximation=pad(rendered[generator_name], 0, length),
             )
-            for name, audio in rendered.items()
+            for generator_name in GeneratorName.items()
+            if generator_name in rendered
         ]
 
     @staticmethod
     def _invalidate_derived_caches(reconstruction: Reconstruction) -> None:
         """Drops the memoized per-generator views so they recompute from their backing data."""
         reconstruction.__dict__.pop("approximations", None)
+        reconstruction.__dict__.pop("streams", None)
         reconstruction.__dict__.pop("instructions", None)
         reconstruction.__dict__.pop("initial_pitches", None)
+        reconstruction.__dict__.pop("held_features", None)
+        reconstruction.__dict__.pop("playing_generators", None)
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
@@ -355,7 +434,10 @@ class Reconstruction(DataModel):
         if not isinstance(metadata, Metadata):
             return
 
-        RECONSTRUCTION_DATA_CONTRACT.validate(metadata, metadata.reconstruction_data_version)
+        RECONSTRUCTION_DATA_CONTRACT.validate(
+            metadata,
+            metadata.reconstruction_data_version,
+        )
 
     def _validate_instructions(
         self,
@@ -376,19 +458,27 @@ class Reconstruction(DataModel):
                 )
 
     def export(self) -> Dict[GeneratorName, Features]:
-        features: Dict[GeneratorName, Features] = {}
-        for name, instructions in self.instructions.items():
-            if not instructions:
-                continue
+        """The envelopes each channel exports, one entry per channel the reconstruction holds.
 
-            exporter_class = self._get_exporter_class(instructions[0])
+        A channel standing by describes no frame, so its envelopes come back empty and every
+        reader tells it from a channel that plays by :attr:`Features.has_frames`.
+
+        Returns:
+            Dict[GeneratorName, Features]: The envelope representation of each channel.
+        """
+        features: Dict[GeneratorName, Features] = {}
+        for name in GeneratorName.items():
+            instructions = self.instructions[name]
+            exporter_class = self._exporter_class(name, instructions)
             exporter: ExporterUnion = exporter_class()
-            self._validate_instructions(exporter, instructions)
-            feature: Features = exporter.to_features(
+            if instructions:
+                self._validate_instructions(exporter, instructions)
+
+            features[name] = exporter.to_features(
                 instructions,  # type: ignore[arg-type]
                 self.initial_pitches[name],
+                self.held_features[name],
             )
-            features[name] = feature
 
         return features
 

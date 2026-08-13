@@ -2,15 +2,10 @@ from typing import Any, Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import (
-    TAG_GLOBAL_THEME_CHANNEL_NOISE,
-    TAG_GLOBAL_THEME_CHANNEL_PULSE1,
-    TAG_GLOBAL_THEME_CHANNEL_PULSE2,
-    TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
-)
 from sampletones_application.tags.reconstructions import (
     PRE_RECONSTRUCTION_GENERATOR,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
@@ -23,6 +18,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -33,13 +29,6 @@ from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback
-
-_GENERATOR_THEME_TAGS = {
-    GeneratorName.PULSE1: TAG_GLOBAL_THEME_CHANNEL_PULSE1,
-    GeneratorName.PULSE2: TAG_GLOBAL_THEME_CHANNEL_PULSE2,
-    GeneratorName.TRIANGLE: TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
-    GeneratorName.NOISE: TAG_GLOBAL_THEME_CHANNEL_NOISE,
-}
 
 
 class GUIReconstructionPlotPanel(GUIPanel):
@@ -86,17 +75,23 @@ class GUIReconstructionPlotPanel(GUIPanel):
             self._create_tooltips()
 
     def update_view(self, view_model: ReconstructionViewModel) -> None:
+        """Offers a checkbox for each channel that plays, ticked where the reader keeps it on.
+
+        The channels an edit puts in play arrive already selected and one switched off by hand
+        arrives as it was left, so the boxes report what plays without overruling a choice.
+        """
         for generator_name in GeneratorName:
             tag = self._get_generator_checkbox_tag(generator_name)
-            is_available = generator_name in view_model.available_generators
+            is_playing = generator_name in view_model.playing_generators
+            is_selected = generator_name in view_model.selected_generators
             dpg_configure_item(
                 tag,
-                enabled=is_available,
-                default_value=is_available,
+                enabled=is_playing,
+                default_value=is_selected,
             )
-            dpg_set_value(tag, is_available)
-            if is_available:
-                ThemeRegistry.get(_GENERATOR_THEME_TAGS[generator_name]).bind_to_item(tag)
+            dpg_set_value(tag, is_selected)
+            if is_playing:
+                ThemeRegistry.get(CHANNEL_THEME_TAGS[generator_name]).bind_to_item(tag)
             else:
                 dpg.bind_item_theme(tag, 0)
 
@@ -161,10 +156,8 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
     def _create_generator_checkboxes(self) -> None:
         generator_labels = {
-            GeneratorName.PULSE1: self._language_manager["global.context.label.pulse_1"],
-            GeneratorName.PULSE2: self._language_manager["global.context.label.pulse_2"],
-            GeneratorName.TRIANGLE: self._language_manager["global.context.label.triangle"],
-            GeneratorName.NOISE: self._language_manager["global.context.label.noise"],
+            generator_name: channel_label(self._language_manager, generator_name)
+            for generator_name in GeneratorName.items()
         }
 
         with dpg.group(

@@ -1,6 +1,6 @@
 import threading
 from types import SimpleNamespace
-from typing import Any, Callable, Dict, Final, Iterator, List, TypeAlias, cast
+from typing import Any, Callable, Dict, Final, Iterator, List, Tuple, TypeAlias, cast
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -14,6 +14,8 @@ from sampletones_application.services.result import (
 )
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
+from sampletones_core.reconstructions import Reconstruction
+from tests.conftest import ReconstructionFactory
 
 REFERENCE_PITCH: Final[int] = 60
 
@@ -26,12 +28,17 @@ class FakeFeatures(Dict[Any, Any]):
     """Stands in for ``Features``: records the edited dimension and carries a reference pitch.
 
     Assigning ``FeatureKey.INITIAL_PITCH`` moves the reference pitch, matching the real model,
-    so the pitch stepper's edit is observable through ``initial_pitch``.
+    so the pitch stepper's edit is observable through ``initial_pitch``. The dimensions left to
+    the channel are read the same way the real model reports them: those whose envelope is empty.
     """
 
     def __init__(self, initial_pitch: int) -> None:
         super().__init__()
         self.initial_pitch = initial_pitch
+
+    @property
+    def held_features(self) -> Tuple[FeatureKey, ...]:
+        return tuple(key for key, value in self.items() if isinstance(value, np.ndarray) and value.size == 0)
 
     def __setitem__(self, feature_key: Any, value: Any) -> None:
         if feature_key == FeatureKey.INITIAL_PITCH:
@@ -359,6 +366,83 @@ class TestRegenerationServiceRun:
             )
 
         reconstruction.update_generator_data.assert_not_called()
+
+
+class TestClearingEveryEnvelope:
+    """An instrument left with no envelope at all describes no frame, so its channel stands by.
+
+    This is the edit the instruments panel offers on the last dimension an instrument writes, and
+    it runs the whole way through the service: the exporter produces no instruction, the render
+    produces no audio, and the reconstruction that comes back holds the channel without playing it.
+    """
+
+    @staticmethod
+    def _regenerated(reconstruction: Reconstruction) -> Reconstruction:
+        """The reconstruction the service returns once every dimension is left to the channel."""
+        features = reconstruction.export()[GeneratorName.PULSE1]
+        features.leave_to_channel([FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE])
+        service = RegenerationService()
+        results: List[Any] = []
+        service.subscribe(results.append)
+
+        service._run(
+            reconstruction,
+            GeneratorName.PULSE1,
+            features,
+            FeatureKey.VOLUME,
+            np.array([], dtype=np.int8),
+        )
+
+        assert isinstance(results[0], ServiceSuccess)
+        regenerated: Reconstruction = results[0].value.reconstruction
+        return regenerated
+
+    def test_a_cleared_instrument_takes_its_channel_out_of_play(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+
+        regenerated = self._regenerated(reconstruction)
+
+        assert regenerated.instructions[GeneratorName.PULSE1] == []
+        assert regenerated.playing_generators == ()
+
+    def test_a_cleared_instrument_sounds_as_an_empty_waveform(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+
+        regenerated = self._regenerated(reconstruction)
+
+        assert regenerated.approximations == {}
+        assert regenerated.approximation.size == 0
+
+    def test_the_cleared_channel_records_every_dimension_as_the_channels(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+
+        regenerated = self._regenerated(reconstruction)
+
+        assert regenerated.held_features[GeneratorName.PULSE1] == (
+            FeatureKey.VOLUME,
+            FeatureKey.ARPEGGIO,
+            FeatureKey.DUTY_CYCLE,
+        )
+        assert not regenerated.export()[GeneratorName.PULSE1].has_frames
+
+    def test_the_reconstruction_the_edit_was_made_from_keeps_playing(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+
+        self._regenerated(reconstruction)
+
+        assert reconstruction.playing_generators == (GeneratorName.PULSE1,)
 
 
 class TestRegenerationServiceCancellationConstraints:

@@ -7,3 +7,6 @@ components:
       - type: color
         key: ChildBg
         value: .recess
+      - type: color
+        key: Text
+        value: .text

@@ -162,6 +162,22 @@ sequencer distinguishes a history restore from a document transition. And the mu
 listening session, so opening, creating, or closing a document starts a fresh one with every channel
 audible.
 
+## What the channel holds
+
+A sample states every dimension of every frame, and its reconstruction names which of those
+dimensions the instrument itself wrote. The rest are the channel's: each channel carries a value per
+dimension — volume, arpeggio, timbre — and an instrument leaving one empty sounds it at the value the
+channel holds. That is what clearing an envelope in the instruments panel means once the sample is
+played in a song, and it is the same rule a FamiTracker instrument follows with a sequence left out.
+
+The value moves as the song plays. Every frame an instrument writes hands its value to the channel,
+so the channel keeps the last one written and an instrument that leaves the dimension empty picks it
+up. A silent frame states its level alone, leaving pitch and timbre where the channel holds them.
+
+A pass through the song begins on the values a channel holds from the start — full volume, no
+arpeggio offset, the first timbre — so starting the song and looping back to its first row both
+sound the same. Seeking within a running song keeps the values, since the channel has reached them.
+
 ## Rendering the song to a file
 
 A render writes the whole song to an audio file through the kernel that plays it. `RowSynthesizer`
@@ -231,6 +247,8 @@ terminating would reclaim.
 | Where the playhead stands, and both grids' marks for it | `SequencerTabCoordinator` (`coordinators/tabs/sequencer.py`) |
 | Marking and revealing the sounding row in the tracker | `GUISequencerTrackerPanel` (`ui/panels/sequencer/tracker.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
+| Filling in the dimensions a channel governs, frame by frame | `SampleVoice` (`logic/sequencer/playback/synthesizer/voice.py`) |
+| The values a channel holds between frames | `ChannelState` (`logic/sequencer/playback/synthesizer/state.py`) |
 | The channel generators and the rates they are built at | `ChannelBank` (`logic/sequencer/playback/synthesizer/bank.py`) |
 | How long each row of a pattern lasts | `Groove` (`sampletones_core/timing/`), indexed by row while rendering |
 | How many samples one of that row's ticks spans | `TickClock` (`sampletones_core/timing/`), followed by `EngineRates` |

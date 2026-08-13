@@ -2,7 +2,9 @@ from typing import Callable, Dict, FrozenSet, Optional
 
 import numpy as np
 
-from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.instruments import (
@@ -11,8 +13,10 @@ from sampletones_application.view_model.reconstruction.instruments import (
 from sampletones_application.view_model.reconstruction.update import (
     ReconstructionUpdate,
 )
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
+from sampletones_core.formats.famitracker.footprint import features_footprint
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -39,27 +43,61 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
 
     def update_display(self) -> None:
-        feature_data = self.reconstruction_manager.current_features
-        if feature_data is None:
-            self.call(
-                self.on_view_changed,
-                ReconstructionInstrumentsViewModel(
-                    reconstruction_loaded=False,
-                    available_generators=frozenset(),
-                ),
-            )
-            self.call(self.on_feature_data_changed, None)
-            return
+        generators = self._current_generators()
+        self.call(self.on_view_changed, self._build_view_model(generators))
+        self.call(self.on_feature_data_changed, generators)
 
-        available_generators: FrozenSet[GeneratorName] = frozenset(feature_data.generators.keys())
-        self.call(
-            self.on_view_changed,
-            ReconstructionInstrumentsViewModel(
-                reconstruction_loaded=True,
-                available_generators=available_generators,
-            ),
+    def refresh_view(self) -> None:
+        """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
+
+        A regeneration replaces what an instrument exports, so the byte figures and the standing-by
+        channels settle on it. The envelopes themselves are left to the edit that started the
+        regeneration, so a field the user is still typing in keeps what they wrote.
+        """
+        self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
+
+    def _current_generators(self) -> Optional[Dict[GeneratorName, Features]]:
+        feature_data = self.reconstruction_manager.current_features
+        return None if feature_data is None else feature_data.generators
+
+    def _build_view_model(
+        self,
+        generators: Optional[Dict[GeneratorName, Features]],
+    ) -> ReconstructionInstrumentsViewModel:
+        if generators is None:
+            return ReconstructionInstrumentsViewModel(
+                reconstruction_loaded=False,
+                playing_generators=frozenset(),
+                footprint=None,
+            )
+
+        playing_generators: FrozenSet[GeneratorName] = frozenset(
+            generator_name for generator_name, features in generators.items() if features.has_frames
         )
-        self.call(self.on_feature_data_changed, feature_data.generators)
+        return ReconstructionInstrumentsViewModel(
+            reconstruction_loaded=True,
+            playing_generators=playing_generators,
+            footprint=self._build_footprint(generators),
+        )
+
+    def _build_footprint(
+        self,
+        generators: Dict[GeneratorName, Features],
+    ) -> SampleFootprintViewModel:
+        """Measures each playing channel's instrument as the size its own export writes.
+
+        A reconstruction has no loop flag of its own — that belongs to a sample placed in a
+        project — so each instrument is measured playing its envelopes once, matching what
+        **Export instrument...** produces. A channel standing by is written nowhere, so it is
+        measured nowhere and the sample's total names what the export costs.
+        """
+        return SampleFootprintViewModel.from_footprints(
+            {
+                generator_name: features_footprint(features, loop=False)
+                for generator_name, features in generators.items()
+                if features.has_frames
+            }
+        )
 
     def handle_pitch_value_changed(
         self,
@@ -80,6 +118,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
+        self._report_edited_size(generator_name, feature_key, data)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
                 generator_name,
@@ -94,6 +133,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
+        self._report_edited_size(generator_name, feature_key, data)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
                 generator_name,
@@ -101,6 +141,46 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                 data,
             )
         )
+
+    def _report_edited_size(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        data: np.ndarray,
+    ) -> None:
+        """Reports what the edited envelope costs as the edit arrives, ahead of its regeneration.
+
+        Measuring the envelope the user just wrote keeps the figures answering what is on screen
+        while the reconstruction is still being rebuilt. The regenerated instruments report again
+        once they land, so the figures settle on the exported form.
+        """
+        generators = self._current_generators()
+        if generators is None:
+            return
+
+        self.call(
+            self.on_view_changed,
+            self._build_view_model(
+                self._with_edit(
+                    generators,
+                    generator_name,
+                    feature_key,
+                    data,
+                )
+            ),
+        )
+
+    def _with_edit(
+        self,
+        generators: Dict[GeneratorName, Features],
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        data: np.ndarray,
+    ) -> Dict[GeneratorName, Features]:
+        """The loaded channels with one envelope replaced, leaving the loaded ones as they are."""
+        edited = generators[generator_name].model_copy(deep=True)
+        edited[feature_key] = data
+        return {**generators, generator_name: edited}
 
     def _schedule_reconstruction_update(
         self,
@@ -138,6 +218,4 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         current_features = self.reconstruction_manager.current_features
         assert current_features is not None, "Current features should not be None"
 
-        features = current_features.get_generator_features(generator_name)
-        assert features is not None, f"Features for generator {generator_name} should not be None"
-        return features
+        return current_features[generator_name]

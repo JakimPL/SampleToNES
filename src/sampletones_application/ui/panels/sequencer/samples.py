@@ -3,9 +3,11 @@ from typing import Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.context import context_label
+from sampletones_application.categories.context import channel_label, context_label, context_text
 from sampletones_application.categories.elements.global_ import ContextElements
-from sampletones_application.categories.elements.sequencer import SequencerInstrumentsElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerInstrumentsElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
@@ -19,6 +21,7 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
 from sampletones_application.ui.elements.context_menu import (
+    add_detail_items,
     add_play_menu_item,
     context_menu,
 )
@@ -36,13 +39,16 @@ from sampletones_application.utils.gui.keyboard import (
 )
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
     SampleSelection,
     SequencerSamplesViewModel,
 )
-from sampletones_core.utils.display import display_id, display_sample_label
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.utils.display import display_id
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback
 
@@ -89,6 +95,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         self,
         *,
         layout: SequencerLayout,
+        detail_color: BaseColor,
         language_manager: LanguageManager,
         key_router: KeyRouter,
         tab_active: ActivePredicate,
@@ -97,6 +104,7 @@ class GUISequencerSamplesPanel(GUIPanel):
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
+        self._detail_color = detail_color
         self._router = key_router
         self._tab_active = tab_active
         self._shortcuts = shortcut_source
@@ -106,6 +114,10 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_row: Optional[int] = None
         self._editing_sample_id: Optional[str] = None
         self._entries: Tuple[SampleEntryViewModel, ...] = ()
+        self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
+        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
+        self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
+        self.sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]] = None
         self.on_sample_selected: Optional[StringCallback] = None
         self.on_sample_edit_requested: Optional[StringCallback] = None
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
@@ -175,17 +187,26 @@ class GUISequencerSamplesPanel(GUIPanel):
             ),
         ):
             dpg.add_table_column(
-                label=self._label(self._language_manager, SequencerInstrumentsElements.COLUMN_ID),
+                label=self._label(
+                    self._language_manager,
+                    SequencerInstrumentsElements.COLUMN_ID,
+                ),
                 width_fixed=True,
                 init_width_or_weight=self._layout.table_cells.instrument.id,
             )
             dpg.add_table_column(
-                label=self._label(self._language_manager, SequencerInstrumentsElements.COLUMN_NAME),
+                label=self._label(
+                    self._language_manager,
+                    SequencerInstrumentsElements.COLUMN_NAME,
+                ),
                 width_stretch=True,
                 init_width_or_weight=self._layout.table_cells.instrument.name,
             )
             dpg.add_table_column(
-                label=self._label(self._language_manager, SequencerInstrumentsElements.COLUMN_LOOP),
+                label=self._label(
+                    self._language_manager,
+                    SequencerInstrumentsElements.COLUMN_LOOP,
+                ),
                 width_fixed=True,
                 init_width_or_weight=self._layout.table_cells.instrument.loop,
             )
@@ -211,7 +232,11 @@ class GUISequencerSamplesPanel(GUIPanel):
         if self._selected_row is None:
             self._selected_sample_id = None
 
-    def _build_sample_row(self, position: int, entry: SampleEntryViewModel) -> None:
+    def _build_sample_row(
+        self,
+        position: int,
+        entry: SampleEntryViewModel,
+    ) -> None:
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE)
         self._build_id_cell(row_id, position, entry)
         self._build_name_cell(row_id, position, entry)
@@ -530,6 +555,11 @@ class GUISequencerSamplesPanel(GUIPanel):
         with context_menu():
             header = dpg.add_text(target.label)
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
+            add_detail_items(
+                self._footprint_items(sample_id),
+                color=self._detail_color,
+                tooltip=self._tip_size_bytes,
+            )
             dpg.add_separator()
             add_play_menu_item(
                 context_label(self._language_manager, ContextElements.PLAY),
@@ -540,6 +570,33 @@ class GUISequencerSamplesPanel(GUIPanel):
             )
             dpg.add_separator()
             self.add_action_items(target)
+
+    def _footprint_items(self, sample_id: str) -> List[Tuple[str, str]]:
+        """The byte figures the menu prints for a sample: its total, then each channel that plays.
+
+        The figures are asked for as the menu opens, so they name what the sample occupies at the
+        moment a reader looks. A channel standing by is written by no export, so it costs nothing
+        and the menu names the channels that do.
+        """
+        footprint = self.query(self.sample_footprint, sample_id, default=None)
+        if footprint is None:
+            return []
+
+        items = [(self._lbl_sample_size, self._format_size(footprint.total_bytes))]
+        for generator_name in GeneratorName.items():
+            instrument_bytes = footprint.bytes_for(generator_name)
+            if instrument_bytes is not None:
+                items.append(
+                    (
+                        channel_label(self._language_manager, generator_name),
+                        self._format_size(instrument_bytes),
+                    )
+                )
+
+        return items
+
+    def _format_size(self, byte_count: int) -> str:
+        return self._tpl_size_bytes.format(bytes=byte_count)
 
     def owns_edit_actions(self) -> bool:
         """Whether the Edit menu states this panel's actions, which it does while it holds a sample.
@@ -563,21 +620,33 @@ class GUISequencerSamplesPanel(GUIPanel):
         selection holds. An action added here reaches both, printing the key it answers to.
         """
         dpg.add_menu_item(
-            label=self._label(self._language_manager, SequencerInstrumentsElements.CONTEXT_EDIT),
+            label=self._label(
+                self._language_manager,
+                SequencerInstrumentsElements.CONTEXT_EDIT,
+            ),
             callback=lambda: self.call(self.on_sample_edit_requested, target.sample_id),
         )
         dpg.add_menu_item(
-            label=self._label(self._language_manager, SequencerInstrumentsElements.CONTEXT_RENAME),
+            label=self._label(
+                self._language_manager,
+                SequencerInstrumentsElements.CONTEXT_RENAME,
+            ),
             shortcut=self._shortcuts.display(ShortcutId.SAMPLES_RENAME_SAMPLE),
             callback=lambda: self._start_rename(target.sample_id),
         )
         dpg.add_menu_item(
-            label=self._label(self._language_manager, SequencerInstrumentsElements.CONTEXT_DUPLICATE),
+            label=self._label(
+                self._language_manager,
+                SequencerInstrumentsElements.CONTEXT_DUPLICATE,
+            ),
             callback=lambda: self.call(self.on_duplicate_requested, target.sample_id),
         )
         dpg.add_separator()
         dpg.add_menu_item(
-            label=self._label(self._language_manager, SequencerInstrumentsElements.CONTEXT_REMOVE),
+            label=self._label(
+                self._language_manager,
+                SequencerInstrumentsElements.CONTEXT_REMOVE,
+            ),
             shortcut=self._shortcuts.display(ShortcutId.SAMPLES_REMOVE_SAMPLE),
             callback=lambda: self.call(self.on_remove_requested, target.sample_id),
         )
@@ -596,7 +665,11 @@ class GUISequencerSamplesPanel(GUIPanel):
             label=self._label(self._language_manager, move.element),
             shortcut=self._shortcuts.display(move.shortcut),
             enabled=position is not None,
-            callback=lambda: self.call(self.on_move_requested, target.sample_id, position),
+            callback=lambda: self.call(
+                self.on_move_requested,
+                target.sample_id,
+                position,
+            ),
         )
 
     @staticmethod

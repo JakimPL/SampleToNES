@@ -70,6 +70,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._tracker_backends = tracker_backends
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
+        self._playing_generators: FrozenSet[GeneratorName] = frozenset()
         self._selected_generators: List[GeneratorName] = []
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
@@ -90,18 +91,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             return
 
-        available_generators: FrozenSet[GeneratorName] = frozenset(
-            reconstruction_data.reconstruction.instructions.keys()
-        )
-        self._selected_generators = list(available_generators)
+        self._playing_generators = frozenset(reconstruction_data.reconstruction.playing_generators)
+        self._selected_generators = self._in_channel_order(self._playing_generators)
 
-        reconstruction_file, original_audio = self._build_path_view_models(reconstruction_data)
-        view_model = ReconstructionViewModel(
-            reconstruction_loaded=True,
-            available_generators=available_generators,
-            reconstruction_file=reconstruction_file,
-            original_audio=original_audio,
-        )
+        view_model = self._build_view_model(reconstruction_data)
         if not view_model.audio_source_enabled:
             self._current_audio_source = AudioSourceType.RECONSTRUCTION
 
@@ -119,6 +112,9 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             return
 
+        self._adopt_playing_generators(frozenset(reconstruction_data.reconstruction.playing_generators))
+
+        self.call(self.on_view_changed, self._build_view_model(reconstruction_data))
         self.call(
             self.on_waveform_update_changed,
             reconstruction_data.waveform_data(),
@@ -127,8 +123,42 @@ class ReconstructionPanelLogic(CallbackMixin):
         if self._current_audio_source != AudioSourceType.ORIGINAL:
             self._emit_audio_data()
 
+    def _adopt_playing_generators(
+        self,
+        playing_generators: FrozenSet[GeneratorName],
+    ) -> None:
+        """Carries the reader's choice of channels across an edit.
+
+        An edit puts a channel in play or takes it out. A channel that keeps playing keeps
+        whatever the reader chose for it, and one gaining its first frame joins the waveform,
+        so the checkboxes report what plays while a deliberate choice survives.
+        """
+        selected = (set(self._selected_generators) & playing_generators) | (
+            playing_generators - self._playing_generators
+        )
+        self._playing_generators = playing_generators
+        self._selected_generators = self._in_channel_order(frozenset(selected))
+
+    @staticmethod
+    def _in_channel_order(generators: FrozenSet[GeneratorName]) -> List[GeneratorName]:
+        return [generator_name for generator_name in GeneratorName.items() if generator_name in generators]
+
+    def _build_view_model(
+        self,
+        reconstruction_data: ReconstructionData,
+    ) -> ReconstructionViewModel:
+        reconstruction_file, original_audio = self._build_path_view_models(reconstruction_data)
+        return ReconstructionViewModel(
+            reconstruction_loaded=True,
+            playing_generators=self._playing_generators,
+            selected_generators=frozenset(self._selected_generators),
+            reconstruction_file=reconstruction_file,
+            original_audio=original_audio,
+        )
+
     def close_reconstruction(self) -> None:
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
+        self._playing_generators = frozenset()
         self._selected_generators = []
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
@@ -140,7 +170,8 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.on_view_changed,
             ReconstructionViewModel(
                 reconstruction_loaded=False,
-                available_generators=frozenset(),
+                playing_generators=frozenset(),
+                selected_generators=frozenset(),
                 reconstruction_file=empty_path,
                 original_audio=empty_path,
             ),
@@ -182,8 +213,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting an instrument")
 
-        feature_data = reconstruction_data.feature_data
-        if generator_name not in feature_data.generators:
+        if generator_name not in reconstruction_data.reconstruction.playing_generators:
             return
 
         instrument_name = self._get_instrument_name(generator_name)
@@ -267,11 +297,12 @@ class ReconstructionPanelLogic(CallbackMixin):
         destination: Path,
         tracker_format: TrackerFormat,
     ) -> None:
-        """Writes every generator slice of the loaded reconstruction to ``destination``.
+        """Writes the slice of every playing channel of the loaded reconstruction to ``destination``.
 
         The destination names the batch: each slice takes its generator suffix from the stem,
         so a format gathering the whole reconstruction into one document writes it there while
-        one keeping an instrument per file writes its slices beside it.
+        one keeping an instrument per file writes its slices beside it. A channel standing by
+        describes no frame and is written nowhere.
 
         Args:
             destination: The file the export was confirmed with.
@@ -292,6 +323,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                     instrument_slice_name(base_name, generator_name),
                 )
                 for generator_name, feature in reconstruction_data.feature_data.generators.items()
+                if feature.has_frames
             ),
             nes_frequency=self._nes_frequency(),
         )

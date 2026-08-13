@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Final, List, Sequence
+from typing import Any, Callable, Dict, Final, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exporters import (
     ExporterTypeUnion,
     Features,
@@ -38,6 +39,37 @@ def _read_pitch(instruction: Any) -> int:
 def _read_period(instruction: Any) -> int:
     period: int = instruction.period
     return period
+
+
+def _read_volume(instruction: Any) -> int:
+    volume: int = instruction.volume
+    return volume
+
+
+def _read_duty_cycle(instruction: Any) -> int:
+    duty_cycle: int = instruction.duty_cycle
+    return duty_cycle
+
+
+def _read_short(instruction: Any) -> int:
+    return int(instruction.short)
+
+
+def _features(
+    *,
+    initial_pitch: int,
+    volume: Tuple[int, ...],
+    arpeggio: Tuple[int, ...],
+    duty_cycle: Optional[Tuple[int, ...]],
+) -> Features:
+    return Features(
+        initial_pitch=initial_pitch,
+        volume=np.array(volume, dtype=np.int8),
+        arpeggio=np.array(arpeggio, dtype=np.int8),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=None if duty_cycle is None else np.array(duty_cycle, dtype=np.int8),
+    )
 
 
 def _pulse_line(pitch: int) -> List[PulseInstruction]:
@@ -103,7 +135,11 @@ class TestArpeggioReferenceStability(BaseTestSuite):
 
     @staticmethod
     def _export(test_case: TestCase, instructions: Sequence[InstructionUnion]) -> Features:
-        return test_case.exporter().to_features(list(instructions), test_case.expected)
+        return test_case.exporter().to_features(
+            list(instructions),
+            test_case.expected,
+            (),
+        )
 
     @classmethod
     def _edited(cls, test_case: TestCase) -> List[InstructionUnion]:
@@ -263,3 +299,251 @@ class TestAbsentArpeggioEnvelope(BaseTestSuite):
 
         assert instructions[0].on is True
         assert instructions[-1].on is False
+
+
+class TestChannelHeldDimensions(BaseTestSuite):
+    """A dimension left to the channel sounds at the value a channel holds from a song's start.
+
+    An instruction states every dimension of its frame, so rebuilding a sequence from envelopes
+    that leave one out still has to state it. The value stated is the channel's own — full volume,
+    no arpeggio offset, the first timbre — which is what the instrument sounds like played alone.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        exporter: ExporterTypeUnion
+        features: Features
+        read_value: Callable[[Any], int]
+        expected: int
+
+    test_cases = (
+        TestCase(
+            label="pulse_volume",
+            exporter=PulseExporter,
+            features=_features(
+                initial_pitch=REFERENCE_PITCH,
+                volume=(),
+                arpeggio=(0, 0, 0),
+                duty_cycle=(1,),
+            ),
+            read_value=_read_volume,
+            expected=MAX_VOLUME,
+        ),
+        TestCase(
+            label="pulse_duty_cycle",
+            exporter=PulseExporter,
+            features=_features(
+                initial_pitch=REFERENCE_PITCH,
+                volume=(PULSE_VOLUME, PULSE_VOLUME, 0),
+                arpeggio=(0,),
+                duty_cycle=(),
+            ),
+            read_value=_read_duty_cycle,
+            expected=0,
+        ),
+        TestCase(
+            label="noise_volume",
+            exporter=NoiseExporter,
+            features=_features(
+                initial_pitch=REFERENCE_PERIOD,
+                volume=(),
+                arpeggio=(0, 0, 0),
+                duty_cycle=(0,),
+            ),
+            read_value=_read_volume,
+            expected=MAX_VOLUME,
+        ),
+        TestCase(
+            label="noise_mode",
+            exporter=NoiseExporter,
+            features=_features(
+                initial_pitch=REFERENCE_PERIOD,
+                volume=(NOISE_VOLUME, NOISE_VOLUME, 0),
+                arpeggio=(0,),
+                duty_cycle=(),
+            ),
+            read_value=_read_short,
+            expected=0,
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_every_frame_states_the_value_the_channel_holds(self, test_case: TestCase) -> None:
+        instructions = test_case.exporter.from_features(test_case.features)
+
+        assert [test_case.read_value(instruction) for instruction in instructions] == [test_case.expected] * len(
+            instructions
+        )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_written_dimensions_set_the_frame_count(self, test_case: TestCase) -> None:
+        instructions = test_case.exporter.from_features(test_case.features)
+
+        assert len(instructions) == test_case.features.frame_count
+
+
+class TestHeldDimensionRoundTrip:
+    """A dimension the channel governs comes back empty, telling it apart from one holding a zero."""
+
+    def test_a_held_dimension_comes_back_empty(self) -> None:
+        features = _features(
+            initial_pitch=REFERENCE_PITCH,
+            volume=(PULSE_VOLUME, PULSE_VOLUME, 0),
+            arpeggio=(),
+            duty_cycle=(1,),
+        )
+        instructions = PulseExporter.from_features(features)
+
+        exported = PulseExporter().to_features(
+            instructions,
+            REFERENCE_PITCH,
+            features.held_features,
+        )
+
+        assert exported.arpeggio.size == 0
+        assert exported.held_features == (FeatureKey.ARPEGGIO,)
+
+    def test_a_written_dimension_comes_back_with_its_items(self) -> None:
+        features = _features(
+            initial_pitch=REFERENCE_PITCH,
+            volume=(PULSE_VOLUME, PULSE_VOLUME, 0),
+            arpeggio=(),
+            duty_cycle=(1,),
+        )
+        instructions = PulseExporter.from_features(features)
+
+        exported = PulseExporter().to_features(
+            instructions,
+            REFERENCE_PITCH,
+            features.held_features,
+        )
+
+        assert exported.volume.tolist() == [PULSE_VOLUME, PULSE_VOLUME, 0]
+        assert exported.duty_cycle is not None
+        assert exported.duty_cycle.tolist() == [1]
+
+    def test_an_instrument_holding_every_dimension_describes_no_frame(self) -> None:
+        features = _features(
+            initial_pitch=REFERENCE_PITCH,
+            volume=(),
+            arpeggio=(),
+            duty_cycle=(),
+        )
+
+        assert PulseExporter.from_features(features) == []
+
+
+class TestSingleFrameReading(BaseTestSuite):
+    """One frame reads into envelope values and back, which is what a player works a tick in.
+
+    A song plays a sample frame by frame and fills in the dimensions its instrument leaves to
+    the channel, so the two directions `to_features` and `from_features` run over a whole
+    sequence are needed over a single frame as well.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        exporter: ExporterTypeUnion
+        instruction: InstructionUnion
+        silent: InstructionUnion
+        reference: int
+        expected: Dict[FeatureKey, int]
+
+    test_cases = (
+        TestCase(
+            label="pulse",
+            exporter=PulseExporter,
+            instruction=PulseInstruction(
+                on=True,
+                pitch=REFERENCE_PITCH + OCTAVE,
+                volume=PULSE_VOLUME,
+                duty_cycle=1,
+            ),
+            silent=PulseInstruction.null_instruction(),
+            reference=REFERENCE_PITCH,
+            expected={
+                FeatureKey.VOLUME: PULSE_VOLUME,
+                FeatureKey.ARPEGGIO: OCTAVE,
+                FeatureKey.DUTY_CYCLE: 1,
+            },
+        ),
+        TestCase(
+            label="triangle",
+            exporter=TriangleExporter,
+            instruction=TriangleInstruction(on=True, pitch=REFERENCE_PITCH - OCTAVE),
+            silent=TriangleInstruction.null_instruction(),
+            reference=REFERENCE_PITCH,
+            expected={
+                FeatureKey.VOLUME: MAX_VOLUME,
+                FeatureKey.ARPEGGIO: -OCTAVE,
+            },
+        ),
+        TestCase(
+            label="noise",
+            exporter=NoiseExporter,
+            instruction=NoiseInstruction(
+                on=True,
+                period=REFERENCE_PERIOD + PERIOD_STEP,
+                volume=NOISE_VOLUME,
+                short=True,
+            ),
+            silent=NoiseInstruction.null_instruction(),
+            reference=REFERENCE_PERIOD,
+            expected={
+                FeatureKey.VOLUME: NOISE_VOLUME,
+                FeatureKey.ARPEGGIO: PERIOD_STEP,
+                FeatureKey.DUTY_CYCLE: 1,
+            },
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_sounding_frame_states_every_dimension(self, test_case: TestCase) -> None:
+        values = test_case.exporter.feature_values(test_case.instruction, test_case.reference)
+
+        assert values == test_case.expected
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_silent_frame_states_its_level_alone(self, test_case: TestCase) -> None:
+        """The rest is the channel's, which is how a sequence holds its pitch across a rest."""
+        values = test_case.exporter.feature_values(test_case.silent, test_case.reference)
+
+        assert values == {FeatureKey.VOLUME: 0}
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_values_a_frame_states_sound_it_back(self, test_case: TestCase) -> None:
+        values = test_case.exporter.feature_values(test_case.instruction, test_case.reference)
+
+        assert test_case.exporter.instruction_from_values(values, test_case.reference) == test_case.instruction
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_dimension_the_channel_reads_nothing_from_is_passed_over(self, test_case: TestCase) -> None:
+        """One set of channel values serves every channel, so each takes the dimensions it reads."""
+        values = dict(test_case.expected)
+        values[FeatureKey.HI_PITCH] = 3
+
+        assert test_case.exporter.instruction_from_values(values, test_case.reference) == test_case.instruction

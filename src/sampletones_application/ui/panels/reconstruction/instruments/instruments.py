@@ -4,8 +4,11 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones_application.categories.context import channel_label, context_label, context_text
+from sampletones_application.categories.elements.global_ import ContextElements
+from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.pitch import build_pitch_tooltip
+from sampletones_application.categories.pitch import PitchTooltips
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
@@ -14,10 +17,12 @@ from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
     SUF_TEXT,
+    SUF_TOOLTIP,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_INVALID,
     TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
+    TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
     TAG_GLOBAL_THEME_PANEL_INSTRUMENT,
 )
 from sampletones_application.tags.graphs import (
@@ -25,13 +30,16 @@ from sampletones_application.tags.graphs import (
     SUF_GRAPH_RAW_DATA,
 )
 from sampletones_application.tags.reconstructions import (
+    SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
@@ -54,17 +62,19 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_value,
 )
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import (
     FeatureKey,
     GeneratorName,
     LibraryGeneratorName,
 )
-from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.exporters import Features
-from sampletones_core.features import GENERATOR_KIND, supported_features
+from sampletones_core.features import GENERATOR_KIND, resting_reference, supported_features
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
@@ -99,10 +109,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
         self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
+        self._export_buttons: Dict[GeneratorName, GUIButton] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
         self.no_data_message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE)
         self.mouse_item_handler_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL, SUF_HANDLER_REGISTRY)
+        self.sample_size_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE
+        self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
 
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._sequence_lengths: Dict[Tuple[GeneratorName, FeatureKey], int] = {}
@@ -126,22 +139,16 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
-        tooltip_template = language_manager["reconstructions.instruments.template.initial_pitch_tooltip_template"]
-        self._pitch_tooltip = build_pitch_tooltip(
+        self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
+        self._lbl_instrument_size = context_label(language_manager, ContextElements.INSTRUMENT_SIZE)
+        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
+        self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
+        self._pitch_tooltips = PitchTooltips.build(
             language_manager,
-            PITCH_VALUE_KIND,
-            tooltip_template,
-        )
-        self._period_tooltip = build_pitch_tooltip(
-            language_manager,
-            PERIOD_VALUE_KIND,
-            tooltip_template,
+            language_manager["reconstructions.instruments.template.initial_pitch_tooltip_template"],
         )
         self._generator_labels: Dict[GeneratorName, str] = {
-            GeneratorName.PULSE1: language_manager["global.context.label.pulse_1"],
-            GeneratorName.PULSE2: language_manager["global.context.label.pulse_2"],
-            GeneratorName.TRIANGLE: language_manager["global.context.label.triangle"],
-            GeneratorName.NOISE: language_manager["global.context.label.noise"],
+            generator_name: channel_label(language_manager, generator_name) for generator_name in GeneratorName.items()
         }
 
         super().__init__(
@@ -179,6 +186,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             show=True,
         )
 
+        with dpg.group(
+            tag=self.sample_size_group_tag,
+            parent=self._body_container,
+            show=False,
+        ):
+            self._create_size_field(
+                self._lbl_sample_size,
+                self.sample_size_tag,
+                self.sample_size_group_tag,
+            )
+
         with dpg.tab_bar(
             tag=self.tab_bar_tag,
             parent=self._body_container,
@@ -186,8 +204,43 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         ):
             self._create_tabs_for_generators()
 
+    def _create_size_field(
+        self,
+        label: str,
+        value_tag: str,
+        parent: str,
+    ) -> None:
+        """Draws a read-only byte figure, styled as the pitch stepper's readout is.
+
+        The figure names how much of the NES data area an export spends, so it reads as
+        information beside the fields that change: the label column aligns with the stepper
+        below it, and the value carries the stepper's own read-only colour and font. A tooltip
+        names the export the figure measures, since the formats spend differently.
+        """
+        with labeled_field(
+            label,
+            self._pitch_stepper_style.dimensions.label_width,
+            parent=parent,
+        ):
+            dpg.add_text(tag=value_tag, default_value="")
+            dpg_set_palette_color(value_tag, self._pitch_stepper_style.value_color)
+            FontRegistry.bind_to_item(value_tag, Font.MONO)
+
+        show_tooltip(
+            value_tag,
+            self._tip_size_bytes,
+            tag=compose_tag(value_tag, SUF_TOOLTIP),
+        )
+
     def _get_generator_tab_tag(self, generator_name: GeneratorName) -> str:
         return compose_tag(self.tab_bar_tag, generator_name)
+
+    def _get_instrument_size_tag(self, generator_name: GeneratorName) -> str:
+        return compose_tag(
+            self.tab_bar_tag,
+            generator_name,
+            SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
+        )
 
     def _get_window_tag(self, tab_tag: str) -> str:
         return compose_tag(tab_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW)
@@ -257,7 +310,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         ):
             self.generator_plots[generator_name] = {}
             button_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT, tab_tag)
-            GUIButton(
+            self._export_buttons[generator_name] = GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
                 label=self._language_manager["reconstructions.instruments.label.export_instrument_button"],
@@ -288,11 +341,16 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         window_tag: str,
     ) -> None:
         initial_pitch = self._default_initial_pitch(generator_name)
+        self._create_size_field(
+            self._lbl_instrument_size,
+            self._get_instrument_size_tag(generator_name),
+            window_tag,
+        )
         self._create_pitch_stepper(generator_name, initial_pitch, window_tag)
         self._create_generator_feature_displays(generator_name, window_tag)
 
     def _default_initial_pitch(self, generator_name: GeneratorName) -> int:
-        return MAX_PERIOD if generator_name == GeneratorName.NOISE else MIN_PITCH
+        return resting_reference(generator_name)
 
     def _create_generator_feature_displays(
         self,
@@ -381,14 +439,64 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self,
         view_model: ReconstructionInstrumentsViewModel,
     ) -> None:
+        """Shows a tab per channel, marking the ones standing by.
+
+        Every channel is editable for as long as a reconstruction is open, so writing an
+        envelope into a channel standing by is what puts it in play. A muted tab label and a
+        withheld export say which channels are there.
+        """
         is_loaded = view_model.reconstruction_loaded
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
+        dpg_configure_item(self.sample_size_group_tag, show=is_loaded)
+        self._update_sizes(view_model.footprint)
 
         for generator_name in GeneratorName.items():
             tab_tag = self._get_generator_tab_tag(generator_name)
-            is_available = generator_name in view_model.available_generators
-            dpg_configure_item(tab_tag, show=is_available)
+            dpg_configure_item(tab_tag, show=is_loaded)
+            self._apply_playing_state(
+                generator_name,
+                generator_name in view_model.playing_generators,
+            )
+
+    def _apply_playing_state(
+        self,
+        generator_name: GeneratorName,
+        is_playing: bool,
+    ) -> None:
+        """Marks one channel's tab as playing or standing by.
+
+        The muted theme reaches the tab label alone; the tab's body carries its own text colour,
+        so a channel standing by stays as readable to edit as one that plays.
+        """
+        theme_tag = TAG_GLOBAL_THEME_INSTRUMENT_TABS if is_playing else TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED
+        ThemeRegistry.get(theme_tag).bind_to_item(self._get_generator_tab_tag(generator_name))
+
+        export_button = self._export_buttons.get(generator_name)
+        if export_button is not None:
+            export_button.set_enabled(is_playing)
+
+    def _update_sizes(
+        self,
+        footprint: Optional[SampleFootprintViewModel],
+    ) -> None:
+        """Writes the byte figures the loaded reconstruction occupies, the sample's and each channel's.
+
+        A channel standing by is written by no export, so it reads as the nothing it costs.
+        """
+        if footprint is None:
+            return
+
+        dpg_set_value(self.sample_size_tag, self._format_size(footprint.total_bytes))
+        for generator_name in GeneratorName.items():
+            instrument_bytes = footprint.bytes_for(generator_name)
+            dpg_set_value(
+                self._get_instrument_size_tag(generator_name),
+                self._format_size(instrument_bytes if instrument_bytes is not None else 0),
+            )
+
+    def _format_size(self, byte_count: int) -> str:
+        return self._tpl_size_bytes.format(bytes=byte_count)
 
     def update_feature_data(
         self,
@@ -463,7 +571,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 if is_noise
                 else self._language_manager["reconstructions.instruments.label.initial_pitch"]
             ),
-            tooltip=self._period_tooltip if is_noise else self._pitch_tooltip,
+            tooltip=self._pitch_tooltips.for_kind(kind),
             status_message=(
                 self._language_manager["reconstructions.instruments.message.status_input_period"]
                 if is_noise

@@ -59,10 +59,10 @@ class SampleSlice:
 def iterate_sample_slices(project: Project) -> Iterator[SampleSlice]:
     """Walks every generator slice of every sample in instrument-table order.
 
-    A sample contributes one slice per channel its reconstruction covers, so it yields
-    one to four. Slices are numbered in sample order, then channel order, which fixes
-    the instrument numbering every tracker format builds on. Each sample's features are
-    exported once, so a caller reads a reconstruction's envelopes at a single cost.
+    A sample contributes one slice per channel that plays, so it yields one to four. Slices
+    are numbered in sample order, then channel order, which fixes the instrument numbering
+    every tracker format builds on. Each sample's features are exported once, so a caller
+    reads a reconstruction's envelopes at a single cost.
 
     Args:
         project: The project whose samples are exported.
@@ -74,8 +74,8 @@ def iterate_sample_slices(project: Project) -> Iterator[SampleSlice]:
     for sample in project.samples:
         features_by_generator = sample.reconstruction.export()
         for generator in GeneratorName.items():
-            features = features_by_generator.get(generator)
-            if features is None:
+            features = features_by_generator[generator]
+            if not features.has_frames:
                 continue
 
             yield SampleSlice(

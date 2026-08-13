@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -15,9 +15,11 @@ class Features(BaseModel):
 
     Each field is the frame-by-frame envelope for one dimension — volume, arpeggio,
     pitch, hi-pitch, and duty cycle — alongside the ``initial_pitch`` the arpeggio
-    envelope is relative to. An optional dimension is absent when the channel does not
-    use it. The mapping interface (subscript, ``get``, ``keys``/``items``/``values``,
-    ``in``) exposes the envelopes keyed by :class:`FeatureKey`, passing over absent ones.
+    envelope is relative to. A dimension the channel offers is an array, ``None`` for
+    one it lacks; an array of no items marks a dimension the instrument leaves to the
+    channel, which keeps the value it holds. The mapping interface (subscript, ``get``,
+    ``keys``/``items``/``values``, ``in``) exposes the envelopes keyed by
+    :class:`FeatureKey`, listing the dimensions the channel offers.
 
     Attributes:
         initial_pitch: Reference pitch the arpeggio envelope is measured against.
@@ -106,3 +108,36 @@ class Features(BaseModel):
         """The frame count the envelopes describe, taken from the longest populated dimension."""
         arrays = (self.volume, self.arpeggio, self.pitch, self.hi_pitch, self.duty_cycle)
         return max((len(array) for array in arrays if array is not None), default=0)
+
+    @property
+    def has_frames(self) -> bool:
+        """Whether the envelopes describe a frame, which is what a channel plays.
+
+        Every dimension left to the channel leaves an instrument describing nothing, so this
+        is what tells a channel that sounds from one that stands by: an export writes the
+        instruments that have frames, and the driver stores only those.
+        """
+        return self.frame_count > 0
+
+    @property
+    def held_features(self) -> Tuple[FeatureKey, ...]:
+        """The dimensions the channel governs, whose envelopes carry no item.
+
+        An instrument writes the dimensions it describes and leaves the rest to the channel,
+        which keeps the value it already holds for as long as the instrument sounds. These
+        are the dimensions it leaves, listed in the order the model declares them.
+        """
+        return tuple(key for key, value in self.items() if isinstance(value, np.ndarray) and value.size == 0)
+
+    def leave_to_channel(self, feature_keys: Iterable[FeatureKey]) -> None:
+        """Empties the envelope of each named dimension the channel offers, so the channel governs it.
+
+        The dimensions a channel offers are the ones it can hold a value for, so the record acts
+        on those and leaves the shape of the features as the channel defines it.
+
+        Args:
+            feature_keys: The dimensions the instrument leaves to the channel.
+        """
+        for feature_key in feature_keys:
+            if feature_key in self:
+                self[feature_key] = np.array([], dtype=np.int8)

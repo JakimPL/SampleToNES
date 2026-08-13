@@ -49,6 +49,9 @@ class ContextElements(AbstractElement):
     PULSE_1 = "pulse_1"
     PULSE_2 = "pulse_2"
     NOISE = "noise"
+    SAMPLE_SIZE = "sample_size"
+    INSTRUMENT_SIZE = "instrument_size"
+    SIZE_BYTES = "size_bytes"
 
 
 class NodeDetailElements(AbstractElement):

@@ -7,9 +7,12 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
+from tests.suite.sequencer import sample_reconstruction
 
 
 def _logic() -> Tuple[ProjectController, SequencerSamplesLogic]:
@@ -161,6 +164,69 @@ class TestBuildSamples:
             "first",
             "second",
         ]
+
+
+class TestBuildSampleFootprint:
+    """The samples menu prints what a sample occupies, measured the way the sample is placed."""
+
+    def test_it_names_each_playing_channel(self) -> None:
+        controller, logic = _logic()
+        generators = (GeneratorName.PULSE1, GeneratorName.TRIANGLE)
+        sample = controller.add_sample(sample_reconstruction(generators), name="bell")
+
+        footprint = logic.build_sample_footprint(sample.id)
+
+        assert footprint is not None
+        assert [instrument.generator for instrument in footprint.instruments] == list(generators)
+
+    def test_it_measures_the_sample_under_its_own_loop_flag(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        controller.set_sample_loop(sample.id, True)
+
+        footprint = logic.build_sample_footprint(sample.id)
+
+        assert footprint == SampleFootprintViewModel.from_footprints(
+            reconstruction_footprints(sample.reconstruction, loop=True)
+        )
+
+    def test_a_looping_sample_costs_less_than_a_one_shot(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        """A looping instrument shares the shortest dimension's length, so it stores fewer items."""
+        controller, logic = _logic()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        one_shot = logic.build_sample_footprint(sample.id)
+
+        controller.set_sample_loop(sample.id, True)
+        looping = logic.build_sample_footprint(sample.id)
+
+        assert one_shot is not None and looping is not None
+        assert looping.total_bytes < one_shot.total_bytes
+
+    def test_each_channel_is_measured_as_the_instrument_it_sounds(self) -> None:
+        """A channel's figure is the cost of its own instrument, and the channels differ.
+
+        The triangle states a pitch alone where the pulse states a level and a waveform too, so
+        the same frame written on each costs the triangle the less.
+        """
+        controller, logic = _logic()
+        generators = (GeneratorName.PULSE1, GeneratorName.TRIANGLE)
+        sample = controller.add_sample(sample_reconstruction(generators), name="bell")
+
+        footprint = logic.build_sample_footprint(sample.id)
+
+        assert footprint is not None
+        assert footprint.bytes_for(GeneratorName.TRIANGLE) < footprint.bytes_for(GeneratorName.PULSE1)
+
+    def test_a_sample_the_pool_has_dropped_is_measured_nowhere(self) -> None:
+        _, logic = _logic()
+
+        assert logic.build_sample_footprint("missing") is None
 
 
 class TestPlaySample:

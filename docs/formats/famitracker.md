@@ -146,19 +146,32 @@ sequence, so its envelopes repeat from the start while the note is held; a one-s
 instrument leaves every loop point at `-1`. A sample's `loop` flag drives this when
 the sample is exported into a module.
 
-**Equal lengths.** FamiTracker advances each sequence on its own per-tick counter, so
-every populated sequence of an instrument carries the same item count and the
-dimensions stay in step. The volume envelope arrives one item longer than the others,
-carrying a trailing zero that releases the note. A looping instrument therefore keeps
-the shortest length, dropping that trailing item so the loop sustains; a one-shot
-keeps the longest, each shorter dimension holding its final value through the release
-tick. That shared length stays within the 252 items a FamiTracker sequence holds, so a
-reconstruction longer than 252 frames — 8.4 s at the default 30 fps — exports its opening
-252 frames and logs the shortening. The instruments panel colours a sequence input warning
-orange once it passes that length, so the limit is visible before an export.
+**Lengths.** FamiTracker advances each sequence on its own per-tick counter. A sequence
+that reaches its last item halts and leaves the value it wrote applied, which the driver
+holds for as long as the note sounds (`CSeqInstHandler::UpdateInstrument`). A one-shot
+instrument therefore carries every dimension at the length it was written: a two-item
+volume envelope beside a one-item duty envelope plays exactly as a padded pair would, and
+costs the padding less. A looping instrument brings its populated dimensions to the
+shortest length instead, so the envelopes repeat in step and the trailing zero that
+releases the note is dropped from the cycle.
+
+Every length stays within the 252 items a FamiTracker sequence holds, so a reconstruction
+longer than 252 frames — 8.4 s at the default 30 fps — exports its opening 252 frames and
+logs the shortening. The instruments panel colours a sequence input warning orange once it
+passes that length, so the limit is visible before an export.
+
+An empty dimension is written as a disabled sequence, which is a different instrument from
+one carrying a single zero: the disabled slot leaves that dimension to the channel, while a
+one-item sequence sets the value once and holds it. A dimension arrives empty when the
+reconstruction records it as one the channel governs — the state clearing the envelope in the
+instruments panel puts it in (see [Reconstructions](reconstructions.md)).
 
 **How _SampleToNES_ fills an instrument.** Each generator slice of a sample's
 reconstruction becomes one instrument, so a sample yields one to four instruments.
+A reconstruction holds a stream for every channel, and one describing no frame is a
+channel standing by (see [Reconstructions](reconstructions.md#contents)): it takes no
+place in the instrument table, so the instruments an export writes are the channels
+that play.
 The arpeggio sequence carries the reconstruction's pitch contour as signed offsets,
 and triggering the instrument at `initial_pitch` replays that contour. Volume, duty
 (or noise mode) and any pitch sequences carry across directly. The DPCM
@@ -202,3 +215,50 @@ for order slots the song leaves unset; a channel that already fills indices up t
 127 leaves no room for it, which the exporter reports rather than emitting a corrupt
 order. When the domain model grows to enforce these limits, the editor can prevent
 reaching a state the exporter would reject.
+
+## D. Driver memory footprint
+
+Compiling a module into an NSF lays each instrument out across two regions of the driver's
+data, and an instrument's sequences size both of them. `footprint.py` measures the two, and
+`specification/memory.py` names every field the measurement counts. The instruments panel and
+the samples context menu display the result, so the cost of a sample is readable before an
+export.
+
+The **instrument region** holds the instrument list — one pointer per instrument — followed by
+each instrument's body: a sequence-enable bitmask, then one pointer per populated sequence. The
+**sequence region** holds one chunk per sequence: a four-field header followed by the items.
+
+| Field | Bytes | Region |
+| --- | --- | --- |
+| instrument list entry | 2 | instrument |
+| sequence-enable bitmask | 1 | instrument |
+| sequence pointer, per populated sequence | 2 | instrument |
+| item count · loop point · release point · setting | 1 each | sequence |
+| item, per tick | 1 | sequence |
+
+An instrument with `n` populated sequences carrying `s₁ … sₙ` items therefore occupies
+`3 + 2n` bytes of the instrument region and `Σ (4 + sᵢ)` of the sequence region. A dimension the
+channel leaves unused is written as a disabled slot, and the populated sequences alone are
+charged: `n` is 3 on the pulse and noise channels (volume, arpeggio, duty) and 2 on triangle.
+Each sequence is charged at its own length (section B), so shortening any one dimension shows
+in the figure, and an instrument tops out at 777 bytes — three sequences at the 252-item limit.
+
+These two figures are the ones FamiTracker itself prints while creating an NSF —
+`Instruments used: N (X bytes)` and `Sequences used: M (Y bytes)` — which is how a measurement
+is held against the tracker.
+
+**Version.** The figures are vanilla FamiTracker 0.4.6, the target section A names. The 0CC and
+Dn-FamiTracker forks open each instrument body with a channel-type byte, so an instrument costs
+one byte more there.
+
+**Pooling narrows a module's total.** The `SEQUENCES` block stores each distinct sequence once
+(section A.2), so a module holding two instruments with the same volume envelope pays for that
+chunk once. A per-instrument or per-sample figure states that instrument's own cost, and a
+module total is therefore at most the sum of them. Within one instrument each kind appears
+once, so its own sequences are charged once each.
+
+**Looping levels the sequences.** A looping instrument brings its populated dimensions to the
+shortest length, while a one-shot keeps each dimension as written (section B), so the two forms
+of one set of envelopes cost differently. A sample carries the flag that decides which applies;
+a reconstruction standing on its own is measured as a one-shot, matching the instrument its
+**Export instrument** writes.
