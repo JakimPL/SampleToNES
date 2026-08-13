@@ -50,3 +50,10 @@ class TestHeldFeatures:
         assert features.volume.size == 0
         assert features.duty_cycle is not None and features.duty_cycle.size == 0
         assert features.held_features == (FeatureKey.VOLUME, FeatureKey.DUTY_CYCLE)
+
+    def test_leaving_a_dimension_the_channel_lacks_keeps_it_absent(self) -> None:
+        """A record naming a duty cycle on the triangle channel leaves the channel's shape intact."""
+        features = build_features(8)
+        features.leave_to_channel((FeatureKey.VOLUME, FeatureKey.DUTY_CYCLE))
+        assert features.duty_cycle is None
+        assert features.held_features == (FeatureKey.VOLUME,)

@@ -42,13 +42,15 @@ A `.stn` file holds:
 * **per-channel held dimensions** — the envelopes each channel leaves to the
   player. An instruction states a value for every dimension of its frame, so this
   is what says which of them the instrument itself writes; the rest are the
-  channel's, and the player keeps the value it already holds for them. A freshly
-  built reconstruction writes them all, and clearing an envelope in the
+  channel's, and the player keeps the value it already holds for them. A channel
+  in play writes them all as it is built, and clearing an envelope in the
   instruments panel adds that dimension here.
 
 A channel standing by rests at a reference pitch of its own, so the first envelope
-written into it sounds on a mid-range note. A file naming a stream for the channels
-it plays alone reads as the whole four, with the rest coming back standing by.
+written into it sounds on a mid-range note, and it leaves every dimension it offers
+to the player, which is the record a channel edited down to empty envelopes reaches
+as well. A file naming a stream for the channels it plays alone reads as the whole
+four, with the rest coming back standing by.
 
 ## Detached reconstructions
 

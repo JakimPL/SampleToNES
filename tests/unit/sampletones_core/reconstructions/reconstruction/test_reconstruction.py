@@ -12,6 +12,7 @@ from sampletones_core.data import Metadata
 from sampletones_core.features import resting_reference
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_shared.application import (
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
@@ -334,6 +335,54 @@ class TestHeldFeatures:
         features = reconstruction.export()[GeneratorName.PULSE1]
         assert features.duty_cycle is not None
         assert features.duty_cycle.size > 0
+
+    def test_the_record_reads_back_off_the_exported_envelopes(self) -> None:
+        """What a reconstruction says it holds is what its export shows, on every channel.
+
+        The record is the only place an empty envelope's meaning is kept, so a channel in play
+        and one standing by both have to state the dimensions their export leaves empty.
+        """
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
+
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [_pulse(_BASE_PITCH)] * 3,
+            np.ones(_AUDIO_LENGTH, dtype=np.float32),
+            _BASE_PITCH,
+            (FeatureKey.ARPEGGIO,),
+        )
+
+        exported = reconstruction.export()
+        assert reconstruction.held_features == {
+            generator_name: features.held_features for generator_name, features in exported.items()
+        }
+
+    def test_a_channel_standing_by_leaves_every_dimension_it_offers(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        assert reconstruction.held_features[GeneratorName.TRIANGLE] == (
+            FeatureKey.VOLUME,
+            FeatureKey.ARPEGGIO,
+        )
+        assert reconstruction.held_features[GeneratorName.NOISE] == (
+            FeatureKey.VOLUME,
+            FeatureKey.ARPEGGIO,
+            FeatureKey.DUTY_CYCLE,
+        )
+
+    def test_clearing_the_last_frame_records_what_standing_by_records(self) -> None:
+        """A channel edited out of play reads the same as one that never played."""
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
+
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [],
+            np.zeros(0, dtype=np.float32),
+            resting_reference(GeneratorName.PULSE1),
+            (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+        )
+
+        assert reconstruction.streams[GeneratorName.PULSE1] == InstructionsItem.resting(GeneratorName.PULSE1)
 
     def test_held_dimensions_survive_a_save_load_round_trip(self, tmp_path: Path) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)

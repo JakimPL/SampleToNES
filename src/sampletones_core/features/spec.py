@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, Tuple
+from typing import Dict, Final, List, Tuple
 
 from sampletones_core.constants.enums import FeatureKey, GeneratorName, LibraryGeneratorName
 from sampletones_core.constants.general import (
@@ -87,12 +87,35 @@ def resting_reference(generator_name: GeneratorName) -> int:
             return RESTING_REFERENCE_PITCH
 
 
-def supported_features(kind: LibraryGeneratorName) -> list[FeatureKey]:
+def resting_held_features(
+    generator_name: GeneratorName,
+) -> Tuple[FeatureKey, ...]:
+    """The dimensions a channel governs while it describes no frame.
+
+    A stream with no frames writes no dimension, so every dimension the channel offers is the
+    channel's to hold. Recording them makes a channel that has always stood by read the same as
+    one edited down to empty envelopes.
+
+    Args:
+        generator_name: The channel whose resting record is read.
+
+    Returns:
+        Tuple[FeatureKey, ...]: The dimensions the channel offers, in dimension order.
+    """
+    return tuple(supported_features(GENERATOR_KIND[generator_name]))
+
+
+def supported_features(
+    kind: LibraryGeneratorName,
+) -> List[FeatureKey]:
     ranges = GENERATOR_FEATURE_RANGES[kind]
     return [feature for feature in FEATURE_DIMENSION_ORDER if feature in ranges]
 
 
-def feature_range(kind: LibraryGeneratorName, feature: FeatureKey) -> FeatureRange:
+def feature_range(
+    kind: LibraryGeneratorName,
+    feature: FeatureKey,
+) -> FeatureRange:
     return GENERATOR_FEATURE_RANGES[kind][feature]
 
 

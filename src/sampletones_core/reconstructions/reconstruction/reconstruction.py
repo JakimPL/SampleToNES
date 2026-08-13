@@ -30,7 +30,6 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
-from sampletones_core.features import resting_reference
 from sampletones_core.generators.maps import GENERATOR_CLASSES
 from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
@@ -167,19 +166,11 @@ class Reconstruction(DataModel):
         return cls._get_exporter_class(instructions[0])
 
     @classmethod
-    def _derive_initial_pitch(
-        cls,
-        generator_name: GeneratorName,
-        instructions: List[InstructionUnion],
-    ) -> int:
-        """Chooses the reference pitch a channel's arpeggio envelope is measured against.
+    def _derive_initial_pitch(cls, instructions: List[InstructionUnion]) -> int:
+        """Chooses the reference pitch the arpeggio envelope of a channel in play is measured against.
 
-        The instruction type selects the exporter, matching how `export` resolves one. A
-        channel describing no frame rests at the reference its first envelope will sound at.
+        The instruction type selects the exporter, matching how `export` resolves one.
         """
-        if not instructions:
-            return resting_reference(generator_name)
-
         exporter_class = cls._get_exporter_class(instructions[0])
         return exporter_class.derive_initial_pitch(instructions)  # type: ignore[arg-type]
 
@@ -195,21 +186,26 @@ class Reconstruction(DataModel):
     ) -> Self:
         approximation = np.nan_to_num(approximation, nan=0.0)
         approximations_data: List[ApproximationsItem] = [
-            ApproximationsItem(generator_name=name, approximation=approximation)
-            for name, approximation in approximations.items()
+            ApproximationsItem(
+                generator_name=generator_name,
+                approximation=approximations[generator_name],
+            )
+            for generator_name in GeneratorName.items()
+            if generator_name in approximations
         ]
 
         instructions_data: List[InstructionsItem] = []
         for generator_name in GeneratorName.items():
             channel_instructions = list(instructions.get(generator_name, ()))
+            if not channel_instructions:
+                instructions_data.append(InstructionsItem.resting(generator_name))
+                continue
+
             instructions_data.append(
                 InstructionsItem.create(
                     generator_name=generator_name,
                     instructions=channel_instructions,
-                    initial_pitch=cls._derive_initial_pitch(
-                        generator_name,
-                        channel_instructions,
-                    ),
+                    initial_pitch=cls._derive_initial_pitch(channel_instructions),
                     held_features=(),
                 )
             )

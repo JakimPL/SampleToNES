@@ -130,10 +130,14 @@ class Features(BaseModel):
         return tuple(key for key, value in self.items() if isinstance(value, np.ndarray) and value.size == 0)
 
     def leave_to_channel(self, feature_keys: Iterable[FeatureKey]) -> None:
-        """Empties the given dimensions' envelopes, so the channel governs them.
+        """Empties the envelope of each named dimension the channel offers, so the channel governs it.
+
+        The dimensions a channel offers are the ones it can hold a value for, so the record acts
+        on those and leaves the shape of the features as the channel defines it.
 
         Args:
             feature_keys: The dimensions the instrument leaves to the channel.
         """
         for feature_key in feature_keys:
-            self[feature_key] = np.array([], dtype=np.int8)
+            if feature_key in self:
+                self[feature_key] = np.array([], dtype=np.int8)

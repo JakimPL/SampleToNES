@@ -6,7 +6,7 @@ from pydantic import ConfigDict, Field
 
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.data import DataModel
-from sampletones_core.features import resting_reference
+from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import InstructionData, InstructionUnion
 
 
@@ -57,7 +57,9 @@ class InstructionsItem(DataModel):
 
         A reconstruction holds one stream per channel, so a channel it leaves silent is
         present and editable: it rests at the reference its first envelope will sound at,
-        and describing a frame is what puts it back in play.
+        and describing a frame is what puts it back in play. Writing no frame leaves every
+        dimension the channel offers to the channel, which is what an edit clearing the last
+        frame records and what an export of this stream reads back.
 
         Args:
             generator_name: The channel the resting stream belongs to.
@@ -69,5 +71,5 @@ class InstructionsItem(DataModel):
             generator_name=generator_name,
             instructions=[],
             initial_pitch=resting_reference(generator_name),
-            held_features=(),
+            held_features=resting_held_features(generator_name),
         )
