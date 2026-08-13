@@ -53,43 +53,43 @@ def build_features(
 
 class TestFeaturesFootprint(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
-    class FootprintCase(BaseRegularTestCase):
+    class TestCase(BaseRegularTestCase):
         features: Features
         loop: bool
         expected: InstrumentFootprint
 
     test_cases = (
-        FootprintCase(
+        TestCase(
             features=build_features([15, 12, 9, 0], [0, 2, 4], [1, 1, 2]),
             loop=False,
             expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=22),
             label="pulse_one_shot",
         ),
-        FootprintCase(
+        TestCase(
             features=build_features([15, 12, 9, 0], [0, 2, 4], [1, 1, 2]),
             loop=True,
             expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=21),
             label="pulse_loop",
         ),
-        FootprintCase(
+        TestCase(
             features=build_features([15, 0], [0], [0]),
             loop=False,
             expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=16),
             label="dimensions_of_differing_lengths",
         ),
-        FootprintCase(
+        TestCase(
             features=build_features([15, 12, 0], [0, 1], None),
             loop=False,
             expected=InstrumentFootprint(instrument_bytes=7, sequence_bytes=13),
             label="triangle",
         ),
-        FootprintCase(
+        TestCase(
             features=build_features([], [], None),
             loop=False,
             expected=InstrumentFootprint(instrument_bytes=3, sequence_bytes=0),
             label="silent",
         ),
-        FootprintCase(
+        TestCase(
             features=build_features(
                 list(range(OVER_LONG_LENGTH)),
                 [0] * OVER_LONG_LENGTH,
@@ -99,7 +99,7 @@ class TestFeaturesFootprint(BaseTestSuite):
             expected=InstrumentFootprint(instrument_bytes=7, sequence_bytes=512),
             label="capped_at_the_sequence_limit",
         ),
-        FootprintCase(
+        TestCase(
             features=build_features(
                 [0] * MAX_SEQUENCE_ITEMS,
                 [0] * MAX_SEQUENCE_ITEMS,
@@ -111,23 +111,23 @@ class TestFeaturesFootprint(BaseTestSuite):
         ),
     )
 
-    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_both_regions_are_measured_from_the_populated_sequences(
         self,
-        case: FootprintCase,
+        test_case: TestCase,
     ) -> None:
-        assert features_footprint(case.features, loop=case.loop) == case.expected
+        assert features_footprint(test_case.features, loop=test_case.loop) == test_case.expected
 
-    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
-    def test_the_built_instrument_measures_the_same(self, case: FootprintCase) -> None:
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_built_instrument_measures_the_same(self, test_case: TestCase) -> None:
         """Both entry points measure one export, so a slice reads the same either way."""
-        instrument = build_instrument(0, case.label, case.features, loop=case.loop)
-        assert instrument_footprint(instrument) == case.expected
+        instrument = build_instrument(0, test_case.label, test_case.features, loop=test_case.loop)
+        assert instrument_footprint(instrument) == test_case.expected
 
-    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
-    def test_the_total_sums_both_regions(self, case: FootprintCase) -> None:
-        footprint = features_footprint(case.features, loop=case.loop)
-        assert footprint.total_bytes == case.expected.instrument_bytes + case.expected.sequence_bytes
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_total_sums_both_regions(self, test_case: TestCase) -> None:
+        footprint = features_footprint(test_case.features, loop=test_case.loop)
+        assert footprint.total_bytes == test_case.expected.instrument_bytes + test_case.expected.sequence_bytes
 
 
 class TestSequenceFootprint:

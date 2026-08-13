@@ -12,7 +12,12 @@ from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.instructions import PulseInstruction
+from sampletones_core.instructions import (
+    InstructionUnion,
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import NoteCommand
@@ -26,6 +31,10 @@ from sampletones_core.utils.display import (
 from sampletones_shared.constants.symbols import MINUS, MIXED, PLUS
 
 SAMPLE_LENGTH: Final[int] = 64
+SAMPLE_PITCH: Final[int] = 60
+SAMPLE_VOLUME: Final[int] = 8
+SAMPLE_PERIOD: Final[int] = 4
+SAMPLE_DUTY_CYCLE: Final[int] = 0
 COLUMN_SEPARATOR: Final[str] = "|"
 UNKNOWN_SAMPLE: Final[str] = "!!"
 UNKNOWN_SAMPLE_ID: Final[str] = "a-sample-no-project-holds"
@@ -37,18 +46,12 @@ def sample_reconstruction(generators: Sequence[GeneratorName]) -> Reconstruction
     The channels a reconstruction covers are what a sample governs in the sequencer, so this is
     the knob a sequencer test turns: the audio itself is silent, since what is under test is which
     channels a sample reaches and not how it sounds.
+
+    Each channel carries the instruction its own generator sounds, since the instruction type is
+    what names the exporter a channel is read through — so a reading taken off this reconstruction
+    is the reading the channel gives.
     """
-    instructions = {
-        generator: [
-            PulseInstruction(
-                on=True,
-                pitch=60,
-                volume=8,
-                duty_cycle=0,
-            )
-        ]
-        for generator in generators
-    }
+    instructions = {generator: [_instruction(generator)] for generator in generators}
     approximations = {generator: np.zeros(SAMPLE_LENGTH, dtype=np.float32) for generator in generators}
     return Reconstruction.create(
         approximation=np.zeros(SAMPLE_LENGTH, dtype=np.float32),
@@ -255,6 +258,34 @@ def parse_volume(token: str) -> Optional[int]:
         return None
 
     return int(token, 16)
+
+
+def _instruction(generator: GeneratorName) -> InstructionUnion:
+    """The instruction a channel sounds, which is the type its generator and exporter pair with.
+
+    The two pulse channels share the pulse instruction; the triangle and the noise each take their
+    own.
+    """
+    match generator:
+        case GeneratorName.TRIANGLE:
+            return TriangleInstruction(
+                on=True,
+                pitch=SAMPLE_PITCH,
+            )
+        case GeneratorName.NOISE:
+            return NoiseInstruction(
+                on=True,
+                period=SAMPLE_PERIOD,
+                volume=SAMPLE_VOLUME,
+                short=False,
+            )
+        case _:
+            return PulseInstruction(
+                on=True,
+                pitch=SAMPLE_PITCH,
+                volume=SAMPLE_VOLUME,
+                duty_cycle=SAMPLE_DUTY_CYCLE,
+            )
 
 
 def _fill_cell(

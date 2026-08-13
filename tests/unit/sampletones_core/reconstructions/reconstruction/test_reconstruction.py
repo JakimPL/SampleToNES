@@ -549,6 +549,37 @@ class TestWithNesFrequency:
         assert reconstruction.config.nes_frequency == original_frequency
         assert len(reconstruction.approximation) == original_length
 
+    def test_a_channel_standing_by_stays_standing_by(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """A channel describing no frame renders nothing, so a retuned copy holds audio for the rest."""
+        reconstruction = reconstruction_factory()
+
+        retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
+
+        assert set(retuned.approximations) == {GeneratorName.PULSE1}
+        assert set(retuned.instructions) == set(GeneratorName.items())
+        assert retuned.playing_generators == (GeneratorName.PULSE1,)
+
+    def test_a_reconstruction_of_channels_standing_by_retunes_to_silence(self) -> None:
+        """Every channel standing by leaves nothing to render, and the retuned copy says so."""
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            [],
+            np.zeros(0, dtype=np.float32),
+            _BASE_PITCH,
+            (),
+        )
+
+        retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
+
+        assert retuned.config.nes_frequency == _RETUNED_FREQUENCY
+        assert retuned.approximations == {}
+        assert retuned.approximation.size == 0
+        assert retuned.playing_generators == ()
+
     def test_matching_rate_returns_self(self, reconstruction_factory: ReconstructionFactory) -> None:
         reconstruction = reconstruction_factory()
 

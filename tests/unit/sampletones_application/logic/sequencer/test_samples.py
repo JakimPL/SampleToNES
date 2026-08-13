@@ -208,6 +208,21 @@ class TestBuildSampleFootprint:
         assert one_shot is not None and looping is not None
         assert looping.total_bytes < one_shot.total_bytes
 
+    def test_each_channel_is_measured_as_the_instrument_it_sounds(self) -> None:
+        """A channel's figure is the cost of its own instrument, and the channels differ.
+
+        The triangle states a pitch alone where the pulse states a level and a waveform too, so
+        the same frame written on each costs the triangle the less.
+        """
+        controller, logic = _logic()
+        generators = (GeneratorName.PULSE1, GeneratorName.TRIANGLE)
+        sample = controller.add_sample(sample_reconstruction(generators), name="bell")
+
+        footprint = logic.build_sample_footprint(sample.id)
+
+        assert footprint is not None
+        assert footprint.bytes_for(GeneratorName.TRIANGLE) < footprint.bytes_for(GeneratorName.PULSE1)
+
     def test_a_sample_the_pool_has_dropped_is_measured_nowhere(self) -> None:
         _, logic = _logic()
 

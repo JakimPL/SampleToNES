@@ -90,7 +90,7 @@ def bound_themes(monkeypatch: pytest.MonkeyPatch) -> List[str]:
     return tags
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def written(monkeypatch: pytest.MonkeyPatch) -> Dict[str, str]:
     """Records the texts written to items, standing in for the DPG values."""
     values: Dict[str, str] = {}
@@ -98,7 +98,7 @@ def written(monkeypatch: pytest.MonkeyPatch) -> Dict[str, str]:
     return values
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def shown(monkeypatch: pytest.MonkeyPatch) -> Dict[str, bool]:
     """Records which items the panel shows, standing in for the DPG configuration."""
     flags: Dict[str, bool] = {}
@@ -236,17 +236,17 @@ class TestSizeFields(BaseTestSuite):
     """The two read-only byte figures: the sample's above the tabs, each channel's inside its tab."""
 
     @dataclass(frozen=True, kw_only=True)
-    class SizeCase(BaseRegularTestCase):
+    class TestCase(BaseRegularTestCase):
         channel_footprints: Dict[GeneratorName, InstrumentFootprint]
         expected: str
 
     test_cases = (
-        SizeCase(
+        TestCase(
             label="a single channel spends what its instrument does",
             channel_footprints={GeneratorName.PULSE1: LARGEST_PULSE},
             expected="777 B",
         ),
-        SizeCase(
+        TestCase(
             label="three channels spend their instruments together",
             channel_footprints={
                 GeneratorName.PULSE1: LARGEST_PULSE,
@@ -255,59 +255,56 @@ class TestSizeFields(BaseTestSuite):
             },
             expected="2073 B",
         ),
-        SizeCase(
+        TestCase(
             label="a silent channel spends the instrument definition alone",
             channel_footprints={GeneratorName.TRIANGLE: SILENT_INSTRUMENT},
             expected="3 B",
         ),
     )
 
-    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_sample_size_sums_its_channels(
         self,
         panel: GUIReconstructionInstrumentsPanel,
         written: Dict[str, str],
-        shown: Dict[str, bool],
-        case: SizeCase,
+        test_case: TestCase,
     ) -> None:
-        panel.update_view(build_view_model(case.channel_footprints))
-        assert written[panel.sample_size_tag] == case.expected
+        panel.update_view(build_view_model(test_case.channel_footprints))
+        assert written[panel.sample_size_tag] == test_case.expected
 
-    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_each_channel_states_its_own_size(
         self,
         panel: GUIReconstructionInstrumentsPanel,
         written: Dict[str, str],
-        shown: Dict[str, bool],
-        case: SizeCase,
+        test_case: TestCase,
     ) -> None:
-        panel.update_view(build_view_model(case.channel_footprints))
+        panel.update_view(build_view_model(test_case.channel_footprints))
         assert {
             generator_name: written[panel._get_instrument_size_tag(generator_name)]
-            for generator_name in case.channel_footprints
+            for generator_name in test_case.channel_footprints
         } == {
             generator_name: f"{footprint.total_bytes} B"
-            for generator_name, footprint in case.channel_footprints.items()
+            for generator_name, footprint in test_case.channel_footprints.items()
         }
 
-    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_a_channel_standing_by_costs_nothing(
         self,
         panel: GUIReconstructionInstrumentsPanel,
         written: Dict[str, str],
-        shown: Dict[str, bool],
-        case: SizeCase,
+        test_case: TestCase,
     ) -> None:
         """A channel that describes no frame is written by no export, so its tab states what that costs."""
-        panel.update_view(build_view_model(case.channel_footprints))
+        panel.update_view(build_view_model(test_case.channel_footprints))
         assert {
             generator_name: written[panel._get_instrument_size_tag(generator_name)]
             for generator_name in GeneratorName.items()
-            if generator_name not in case.channel_footprints
+            if generator_name not in test_case.channel_footprints
         } == {
             generator_name: "0 B"
             for generator_name in GeneratorName.items()
-            if generator_name not in case.channel_footprints
+            if generator_name not in test_case.channel_footprints
         }
 
 
@@ -321,7 +318,6 @@ class TestPlayingChannels:
     def test_every_channel_keeps_its_tab(
         self,
         panel: GUIReconstructionInstrumentsPanel,
-        written: Dict[str, str],
         shown: Dict[str, bool],
     ) -> None:
         panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
@@ -333,8 +329,6 @@ class TestPlayingChannels:
     def test_a_channel_standing_by_reads_muted(
         self,
         panel: GUIReconstructionInstrumentsPanel,
-        written: Dict[str, str],
-        shown: Dict[str, bool],
         bound_themes: List[str],
     ) -> None:
         panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
@@ -348,8 +342,6 @@ class TestPlayingChannels:
     def test_only_a_playing_channel_offers_its_export(
         self,
         panel: GUIReconstructionInstrumentsPanel,
-        written: Dict[str, str],
-        shown: Dict[str, bool],
     ) -> None:
         buttons = {generator_name: MagicMock() for generator_name in GeneratorName.items()}
         panel._export_buttons.update(cast(Dict[GeneratorName, GUIButton], buttons))
@@ -365,7 +357,6 @@ class TestSizeVisibility:
     def test_a_loaded_reconstruction_shows_the_sample_size(
         self,
         panel: GUIReconstructionInstrumentsPanel,
-        written: Dict[str, str],
         shown: Dict[str, bool],
     ) -> None:
         panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
@@ -374,7 +365,6 @@ class TestSizeVisibility:
     def test_no_reconstruction_hides_the_sample_size(
         self,
         panel: GUIReconstructionInstrumentsPanel,
-        written: Dict[str, str],
         shown: Dict[str, bool],
     ) -> None:
         panel.update_view(NOT_LOADED)
@@ -384,7 +374,6 @@ class TestSizeVisibility:
         self,
         panel: GUIReconstructionInstrumentsPanel,
         written: Dict[str, str],
-        shown: Dict[str, bool],
     ) -> None:
         panel.update_view(NOT_LOADED)
         assert written == {}

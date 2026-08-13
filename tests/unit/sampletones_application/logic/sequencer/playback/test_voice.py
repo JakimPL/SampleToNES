@@ -25,6 +25,9 @@ REFERENCE_PITCH: Final[int] = 60
 REFERENCE_PERIOD: Final[int] = 4
 SAMPLE_VOLUME: Final[int] = 9
 CHANNEL_VOLUME: Final[int] = 4
+CHANNEL_ARPEGGIO: Final[int] = 7
+CHANNEL_DUTY_CYCLE: Final[int] = 1
+CHANNEL_LONG_MODE: Final[int] = 0
 DUTY_CYCLE: Final[int] = 2
 
 
@@ -129,8 +132,14 @@ class TestAFrameSoundsAsTheInstrumentWroteIt(BaseTestSuite):
         assert values[FeatureKey.VOLUME] == (MAX_VOLUME if test_case.label == "triangle" else SAMPLE_VOLUME)
 
 
-class TestAHeldDimensionSoundsAtTheChannelsValue:
-    """A dimension the instrument leaves empty is the channel's, so it sounds at the value it holds."""
+class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
+    """A dimension the instrument leaves empty is the channel's, so it sounds at the value it holds.
+
+    Each channel offers its own dimensions and spells them in its own terms — an arpeggio is a
+    pitch on pulse and triangle and a period on noise, and a duty cycle is a waveform on pulse and
+    the noise mode on noise — so every dimension a channel offers is held here in the terms that
+    channel reads it in.
+    """
 
     _INSTRUCTION = PulseInstruction(
         on=True,
@@ -139,29 +148,125 @@ class TestAHeldDimensionSoundsAtTheChannelsValue:
         duty_cycle=DUTY_CYCLE,
     )
 
-    def test_the_channels_level_carries_over_the_frame(self) -> None:
-        voice = _voice(GeneratorName.PULSE1, [self._INSTRUCTION], (FeatureKey.VOLUME,))
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        generator_name: GeneratorName
+        instruction: InstructionUnion
+        held_feature: FeatureKey
+        channel_value: int
+        expected: InstructionUnion
+
+    test_cases = (
+        TestCase(
+            label="pulse volume",
+            generator_name=GeneratorName.PULSE1,
+            instruction=_INSTRUCTION,
+            held_feature=FeatureKey.VOLUME,
+            channel_value=CHANNEL_VOLUME,
+            expected=PulseInstruction(
+                on=True,
+                pitch=REFERENCE_PITCH,
+                volume=CHANNEL_VOLUME,
+                duty_cycle=DUTY_CYCLE,
+            ),
+        ),
+        TestCase(
+            label="pulse arpeggio",
+            generator_name=GeneratorName.PULSE1,
+            instruction=_INSTRUCTION,
+            held_feature=FeatureKey.ARPEGGIO,
+            channel_value=CHANNEL_ARPEGGIO,
+            expected=PulseInstruction(
+                on=True,
+                pitch=REFERENCE_PITCH + CHANNEL_ARPEGGIO,
+                volume=SAMPLE_VOLUME,
+                duty_cycle=DUTY_CYCLE,
+            ),
+        ),
+        TestCase(
+            label="pulse duty cycle",
+            generator_name=GeneratorName.PULSE1,
+            instruction=_INSTRUCTION,
+            held_feature=FeatureKey.DUTY_CYCLE,
+            channel_value=CHANNEL_DUTY_CYCLE,
+            expected=PulseInstruction(
+                on=True,
+                pitch=REFERENCE_PITCH,
+                volume=SAMPLE_VOLUME,
+                duty_cycle=CHANNEL_DUTY_CYCLE,
+            ),
+        ),
+        TestCase(
+            label="triangle arpeggio",
+            generator_name=GeneratorName.TRIANGLE,
+            instruction=TriangleInstruction(on=True, pitch=REFERENCE_PITCH),
+            held_feature=FeatureKey.ARPEGGIO,
+            channel_value=CHANNEL_ARPEGGIO,
+            expected=TriangleInstruction(on=True, pitch=REFERENCE_PITCH + CHANNEL_ARPEGGIO),
+        ),
+        TestCase(
+            label="noise period",
+            generator_name=GeneratorName.NOISE,
+            instruction=NoiseInstruction(
+                on=True,
+                period=REFERENCE_PERIOD,
+                volume=SAMPLE_VOLUME,
+                short=True,
+            ),
+            held_feature=FeatureKey.ARPEGGIO,
+            channel_value=CHANNEL_ARPEGGIO,
+            expected=NoiseInstruction(
+                on=True,
+                period=REFERENCE_PERIOD + CHANNEL_ARPEGGIO,
+                volume=SAMPLE_VOLUME,
+                short=True,
+            ),
+        ),
+        TestCase(
+            label="noise mode",
+            generator_name=GeneratorName.NOISE,
+            instruction=NoiseInstruction(
+                on=True,
+                period=REFERENCE_PERIOD,
+                volume=SAMPLE_VOLUME,
+                short=True,
+            ),
+            held_feature=FeatureKey.DUTY_CYCLE,
+            channel_value=CHANNEL_LONG_MODE,
+            expected=NoiseInstruction(
+                on=True,
+                period=REFERENCE_PERIOD,
+                volume=SAMPLE_VOLUME,
+                short=False,
+            ),
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_frame_sounds_the_channels_value_and_the_instruments_rest(self, test_case: TestCase) -> None:
+        voice = _voice(test_case.generator_name, [test_case.instruction], (test_case.held_feature,))
         values = _channel_values()
-        values[FeatureKey.VOLUME] = CHANNEL_VOLUME
+        values[test_case.held_feature] = test_case.channel_value
 
-        assert voice.sound(self._INSTRUCTION, values).volume == CHANNEL_VOLUME
+        assert voice.sound(test_case.instruction, values) == test_case.expected
 
-    def test_a_held_dimension_leaves_the_channels_value_where_it_stands(self) -> None:
-        voice = _voice(GeneratorName.PULSE1, [self._INSTRUCTION], (FeatureKey.VOLUME,))
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_held_dimension_leaves_the_channels_value_where_it_stands(self, test_case: TestCase) -> None:
+        voice = _voice(test_case.generator_name, [test_case.instruction], (test_case.held_feature,))
         values = _channel_values()
-        values[FeatureKey.VOLUME] = CHANNEL_VOLUME
+        values[test_case.held_feature] = test_case.channel_value
 
-        voice.sound(self._INSTRUCTION, values)
+        voice.sound(test_case.instruction, values)
 
-        assert values[FeatureKey.VOLUME] == CHANNEL_VOLUME
-
-    def test_the_dimensions_the_instrument_writes_still_sound_its_own(self) -> None:
-        voice = _voice(GeneratorName.PULSE1, [self._INSTRUCTION], (FeatureKey.VOLUME,))
-
-        sounded = voice.sound(self._INSTRUCTION, _channel_values())
-
-        assert sounded.pitch == REFERENCE_PITCH
-        assert sounded.duty_cycle == DUTY_CYCLE
+        assert values[test_case.held_feature] == test_case.channel_value
 
     def test_a_level_one_instrument_wrote_is_what_the_next_one_holds(self) -> None:
         """The channel carries a value across samples, which is what makes an empty envelope mean this."""
