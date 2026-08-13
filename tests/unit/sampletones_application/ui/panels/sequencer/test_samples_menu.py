@@ -13,11 +13,9 @@ from sampletones_application.ui.panels.sequencer.samples import SAMPLE_MOVES, GU
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_application.view_model.sequencer.samples import SampleEntryViewModel
-from sampletones_application.view_model.shared.footprint import (
-    InstrumentSizeViewModel,
-    SampleFootprintViewModel,
-)
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.utils.display import display_sample_label
 from tests.suite.shortcuts import shipped_source
 
@@ -34,13 +32,15 @@ SAMPLE_SIZE_LABEL = "Sample size"
 SIZE_TEMPLATE = "{bytes} B"
 DETAIL_COLOR = LiteralColor((0, 0, 0, 255))
 
-PULSE_1_BYTES = 41
-NOISE_BYTES = 19
-FOOTPRINT = SampleFootprintViewModel(
-    instruments=(
-        InstrumentSizeViewModel(generator=GeneratorName.PULSE1, total_bytes=PULSE_1_BYTES),
-        InstrumentSizeViewModel(generator=GeneratorName.NOISE, total_bytes=NOISE_BYTES),
-    ),
+PULSE_1_FOOTPRINT = InstrumentFootprint(instrument_bytes=9, sequence_bytes=32)
+NOISE_FOOTPRINT = InstrumentFootprint(instrument_bytes=7, sequence_bytes=12)
+PULSE_1_BYTES = PULSE_1_FOOTPRINT.total_bytes
+NOISE_BYTES = NOISE_FOOTPRINT.total_bytes
+FOOTPRINT = SampleFootprintViewModel.from_footprints(
+    {
+        GeneratorName.PULSE1: PULSE_1_FOOTPRINT,
+        GeneratorName.NOISE: NOISE_FOOTPRINT,
+    }
 )
 
 EDIT_ITEM = 0

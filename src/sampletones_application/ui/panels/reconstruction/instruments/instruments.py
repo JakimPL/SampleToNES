@@ -4,8 +4,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.pitch import build_pitch_tooltip
+from sampletones_application.categories.pitch import PitchTooltips
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
@@ -137,22 +138,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._lbl_sample_size = language_manager["global.context.label.sample_size"]
         self._lbl_instrument_size = language_manager["global.context.label.instrument_size"]
         self._tpl_size_bytes = language_manager["global.context.template.size_bytes"]
-        tooltip_template = language_manager["reconstructions.instruments.template.initial_pitch_tooltip_template"]
-        self._pitch_tooltip = build_pitch_tooltip(
+        self._pitch_tooltips = PitchTooltips.build(
             language_manager,
-            PITCH_VALUE_KIND,
-            tooltip_template,
-        )
-        self._period_tooltip = build_pitch_tooltip(
-            language_manager,
-            PERIOD_VALUE_KIND,
-            tooltip_template,
+            language_manager["reconstructions.instruments.template.initial_pitch_tooltip_template"],
         )
         self._generator_labels: Dict[GeneratorName, str] = {
-            GeneratorName.PULSE1: language_manager["global.context.label.pulse_1"],
-            GeneratorName.PULSE2: language_manager["global.context.label.pulse_2"],
-            GeneratorName.TRIANGLE: language_manager["global.context.label.triangle"],
-            GeneratorName.NOISE: language_manager["global.context.label.noise"],
+            generator_name: channel_label(language_manager, generator_name) for generator_name in GeneratorName.items()
         }
 
         super().__init__(
@@ -568,7 +559,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 if is_noise
                 else self._language_manager["reconstructions.instruments.label.initial_pitch"]
             ),
-            tooltip=self._period_tooltip if is_noise else self._pitch_tooltip,
+            tooltip=self._pitch_tooltips.for_kind(kind),
             status_message=(
                 self._language_manager["reconstructions.instruments.message.status_input_period"]
                 if is_noise

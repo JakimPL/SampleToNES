@@ -3,14 +3,26 @@ from typing import Dict, Optional, Self, Tuple
 from pydantic import BaseModel
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
+from sampletones_core.formats.famitracker.footprint import (
+    InstrumentFootprint,
+    total_footprint,
+)
 
 
 class InstrumentSizeViewModel(BaseModel, frozen=True):
-    """The bytes one channel's instrument occupies once a tracker compiles it."""
+    """The bytes one channel's instrument occupies once a tracker compiles it.
+
+    The measurement is carried as it was taken, both regions intact, so a display naming the
+    whole and one naming a region read the same figure.
+    """
 
     generator: GeneratorName
-    total_bytes: int
+    footprint: InstrumentFootprint
+
+    @property
+    def total_bytes(self) -> int:
+        """The bytes this channel's instrument occupies, its two regions together."""
+        return self.footprint.total_bytes
 
 
 class SampleFootprintViewModel(BaseModel, frozen=True):
@@ -34,7 +46,7 @@ class SampleFootprintViewModel(BaseModel, frozen=True):
             instruments=tuple(
                 InstrumentSizeViewModel(
                     generator=generator_name,
-                    total_bytes=footprints[generator_name].total_bytes,
+                    footprint=footprints[generator_name],
                 )
                 for generator_name in GeneratorName.items()
                 if generator_name in footprints
@@ -43,8 +55,12 @@ class SampleFootprintViewModel(BaseModel, frozen=True):
 
     @property
     def total_bytes(self) -> int:
-        """The bytes the whole sample occupies, its instruments summed."""
-        return sum(instrument.total_bytes for instrument in self.instruments)
+        """The bytes the whole sample occupies, its instruments summed region by region.
+
+        The sum is the measurement's own, so a sample's figure and a channel's are arrived at
+        the same way.
+        """
+        return total_footprint(instrument.footprint for instrument in self.instruments).total_bytes
 
     def bytes_for(self, generator: GeneratorName) -> Optional[int]:
         """The bytes one channel's instrument occupies, where the sample covers that channel."""

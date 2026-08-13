@@ -31,7 +31,7 @@ These rules govern the Python in this repository. They complement
 1. An `__init__` exposes only names from within its own tree hierarchy.
 1. Give each module a single area of responsibility.
 1. If a module contains many class and function definitions, split into a subpackage divided by a single concern.
-1. If a private function serves only a class in the module it lives, move it to the class as a static/class method or isolate helper functions into a separate utility module.
+1. If a private function (or public that does not have any external consumers) serves only a class in the module it lives, move it to the class as a static/class method or isolate helper functions into a separate utility module.
 1. Prefer subpackages over a flat directory structure.
 1. Isolate platform-, desktop-, or external-tool-specific behaviour behind a `Protocol` with one implementation per target, selected by a runtime factory that probes availability and environment. Callers depend only on the `Protocol` and stay platform-agnostic.
 1. Wrap a third-party library or OS tool whose behaviour differs across platforms behind our own typed interface, and encode each quirk inside the matching implementation. A comment naming the third-party behaviour is warranted there.
