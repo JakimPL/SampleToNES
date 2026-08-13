@@ -3,7 +3,7 @@ from typing import Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.context import channel_label, context_label
+from sampletones_application.categories.context import channel_label, context_label, context_text
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import (
     SequencerInstrumentsElements,
@@ -114,8 +114,9 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_row: Optional[int] = None
         self._editing_sample_id: Optional[str] = None
         self._entries: Tuple[SampleEntryViewModel, ...] = ()
-        self._lbl_sample_size = language_manager["global.context.label.sample_size"]
-        self._tpl_size_bytes = language_manager["global.context.template.size_bytes"]
+        self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
+        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
+        self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
         self.sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]] = None
         self.on_sample_selected: Optional[StringCallback] = None
         self.on_sample_edit_requested: Optional[StringCallback] = None
@@ -557,6 +558,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             add_detail_items(
                 self._footprint_items(sample_id),
                 color=self._detail_color,
+                tooltip=self._tip_size_bytes,
             )
             dpg.add_separator()
             add_play_menu_item(

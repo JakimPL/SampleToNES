@@ -1,11 +1,12 @@
 import contextlib
-from typing import Iterator, Sequence, Tuple
+from typing import Iterator, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_shared.types.callback import VoidCallback
 
@@ -53,6 +54,7 @@ def add_detail_items(
     items: Sequence[Tuple[str, str]],
     *,
     color: BaseColor,
+    tooltip: Optional[str] = None,
 ) -> None:
     """Add a block of read-only ``label: value`` lines to the context menu being built.
 
@@ -64,6 +66,7 @@ def add_detail_items(
     Args:
         items: The label and value of each line, in the order the menu prints them.
         color: The tint the lines take, which marks them as facts rather than actions.
+        tooltip: An explanation the whole block shares, reached by hovering any of its lines.
     """
     if not items:
         return
@@ -73,3 +76,5 @@ def add_detail_items(
         detail_text = dpg.add_text(f"{label}: {value}")
         dpg_set_palette_color(detail_text, color)
         FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
+        if tooltip is not None:
+            show_tooltip(detail_text, tooltip)

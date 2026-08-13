@@ -54,10 +54,11 @@ instrument — its pitch, volume, arpeggio, and duty sequences — which you can
 by dragging the bars or typing values. Clearing a sequence hands that dimension to
 the channel, so an instrument with no volume sequence plays at whatever level its
 channel carries. Beside each channel is the room its instrument takes on the NES,
-with the whole sample's above them, so you can see what an edit costs.
-**Export instrument...** writes the channel
-on show, for whichever tracker the save dialog's file type names — see
-[where your files live](files.md#exported-files).
+with the whole sample's above them, so you can see what an edit costs. The figures
+are in bytes, and they count what a FamiTracker export saves, so clearing a
+sequence brings them down. **Export instrument...** writes the channel on show, for
+whichever tracker the save dialog's file type names — see [where your files
+live](files.md#exported-files).
 
 ## Instructions
 

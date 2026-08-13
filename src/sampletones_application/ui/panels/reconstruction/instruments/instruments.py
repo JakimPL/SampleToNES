@@ -4,7 +4,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones_application.categories.context import channel_label
+from sampletones_application.categories.context import channel_label, context_label, context_text
+from sampletones_application.categories.elements.global_ import ContextElements
+from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import PitchTooltips
 from sampletones_application.layout.general.colors.feature import FeatureColors
@@ -15,6 +17,7 @@ from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
     SUF_TEXT,
+    SUF_TOOLTIP,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_INVALID,
     TAG_GLOBAL_THEME_INPUT_WARNING,
@@ -60,6 +63,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_set_value,
 )
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
@@ -135,9 +139,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
-        self._lbl_sample_size = language_manager["global.context.label.sample_size"]
-        self._lbl_instrument_size = language_manager["global.context.label.instrument_size"]
-        self._tpl_size_bytes = language_manager["global.context.template.size_bytes"]
+        self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
+        self._lbl_instrument_size = context_label(language_manager, ContextElements.INSTRUMENT_SIZE)
+        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
+        self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
         self._pitch_tooltips = PitchTooltips.build(
             language_manager,
             language_manager["reconstructions.instruments.template.initial_pitch_tooltip_template"],
@@ -209,7 +214,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         The figure names how much of the NES data area an export spends, so it reads as
         information beside the fields that change: the label column aligns with the stepper
-        below it, and the value carries the stepper's own read-only colour and font.
+        below it, and the value carries the stepper's own read-only colour and font. A tooltip
+        names the export the figure measures, since the formats spend differently.
         """
         with labeled_field(
             label,
@@ -219,6 +225,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             dpg.add_text(tag=value_tag, default_value="")
             dpg_set_palette_color(value_tag, self._pitch_stepper_style.value_color)
             FontRegistry.bind_to_item(value_tag, Font.MONO)
+
+        show_tooltip(
+            value_tag,
+            self._tip_size_bytes,
+            tag=compose_tag(value_tag, SUF_TOOLTIP),
+        )
 
     def _get_generator_tab_tag(self, generator_name: GeneratorName) -> str:
         return compose_tag(self.tab_bar_tag, generator_name)

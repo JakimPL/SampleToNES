@@ -21,7 +21,8 @@ Manage the imported samples in the **Samples** list on the right: right-click on
 to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it, and toggle its
 **Loop** flag. The **Edit** menu carries the same actions for the sample you have
 picked. The right-click menu also names how much room the sample takes on the NES —
-its total, then each channel it plays — measured as its **Loop** flag has it.
+its total, then each channel it plays — measured as its **Loop** flag has it. The
+figures are in bytes, and they count what a FamiTracker export saves.
 Removing a sample that patterns still use asks **Remove sample** first, because it
 clears every row that references it.
 

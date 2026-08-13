@@ -13,6 +13,33 @@ CHANNEL_ELEMENTS: Final[Dict[GeneratorName, ContextElements]] = {
 }
 
 
+def context_text(
+    language_manager: LanguageManager,
+    text_type: TextType,
+    element: ContextElements,
+) -> str:
+    """Resolves one reading of a context element: its label, the template it fills or its tooltip.
+
+    A context element is stated once and read in several voices — the byte figures name a size
+    with a label, print it through a template and explain it in a tooltip — so every voice of an
+    element comes from the same place.
+
+    Args:
+        language_manager: The catalogue the words are read from.
+        text_type: The voice the element is read in.
+        element: The context element being read.
+
+    Returns:
+        str: The words the catalogue holds for that element in that voice.
+    """
+    return language_manager[
+        Page.GLOBAL,
+        Panel.CONTEXT,
+        text_type,
+        element,
+    ]
+
+
 def context_label(
     language_manager: LanguageManager,
     element: ContextElements,
@@ -23,12 +50,7 @@ def context_label(
     sequencer grids, the file trees and the menu bar read them from one entry. A reader then
     meets the same word for the same action, and a translation reaches all of them at once.
     """
-    return language_manager[
-        Page.GLOBAL,
-        Panel.CONTEXT,
-        TextType.LABEL,
-        element,
-    ]
+    return context_text(language_manager, TextType.LABEL, element)
 
 
 def channel_label(

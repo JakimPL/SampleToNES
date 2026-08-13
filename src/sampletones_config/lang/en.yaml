@@ -160,6 +160,7 @@ global.context.label.detail_configuration: "Configuration"
 global.context.label.instrument_size: "Instrument size"
 global.context.label.sample_size: "Sample size"
 global.context.template.size_bytes: "{bytes} B"
+global.context.tooltip.size_bytes: "How many bytes this takes as a FamiTracker instrument."
 
 # =============================================================================
 # Global — Menu

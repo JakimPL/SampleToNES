@@ -30,6 +30,7 @@ SELECTED_ROW = 1
 
 SAMPLE_SIZE_LABEL = "Sample size"
 SIZE_TEMPLATE = "{bytes} B"
+SIZE_TOOLTIP = "Bytes a FamiTracker export spends."
 DETAIL_COLOR = LiteralColor((0, 0, 0, 255))
 
 PULSE_1_FOOTPRINT = InstrumentFootprint(instrument_bytes=9, sequence_bytes=32)
@@ -129,6 +130,7 @@ def _panel(
     panel._detail_color = DETAIL_COLOR
     panel._lbl_sample_size = SAMPLE_SIZE_LABEL
     panel._tpl_size_bytes = SIZE_TEMPLATE
+    panel._tip_size_bytes = SIZE_TOOLTIP
     panel.sample_footprint = (lambda _sample_id: footprint) if footprint_wired else None
 
     requests = Requests()
@@ -160,9 +162,14 @@ class _MenuBuildRecorder:
 
     def __init__(self) -> None:
         self.widgets: List[MenuWidget] = []
+        self.tooltips: List[str] = []
 
     def add_text(self, text: str, **_kwargs: Any) -> int:
         self.widgets.append(MenuWidget(kind="text", text=text))
+        return 0
+
+    def add_tooltip(self, _parent: int, message: str, **_kwargs: Any) -> int:
+        self.tooltips.append(message)
         return 0
 
     def add_separator(self, **_kwargs: Any) -> int:
@@ -198,6 +205,7 @@ def build_recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuBuildRecorder:
     monkeypatch.setattr(samples_module.dpg, "add_menu_item", recorded.add_menu_item)
     monkeypatch.setattr(samples_module, "context_menu", _null_menu)
     monkeypatch.setattr(context_menu_module, "dpg_set_palette_color", lambda _item, _color: None)
+    monkeypatch.setattr(context_menu_module, "show_tooltip", recorded.add_tooltip)
     monkeypatch.setattr(FontRegistry, "bind_to_item", lambda _item, _font: None)
     return recorded
 
@@ -336,6 +344,16 @@ class TestMenuComposition:
             f"{ContextElements.PULSE_1.value}: {PULSE_1_BYTES} B",
             f"{ContextElements.NOISE.value}: {NOISE_BYTES} B",
         ]
+
+    def test_every_figure_names_the_export_it_measures(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        build_recorder: _MenuBuildRecorder,
+    ) -> None:
+        """A byte count means one export, so each line a reader hovers says which one it counts."""
+        _panel(monkeypatch).panel._show_context_menu(SELECTED_ROW, SELECTED_ID)
+
+        assert build_recorder.tooltips == [SIZE_TOOLTIP] * 3
 
     def test_a_menu_with_no_figures_reads_as_it_always_has(
         self,
