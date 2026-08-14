@@ -43,6 +43,7 @@ from sampletones_application.utils.gui.shortcuts.ids import (
     FOLLOW_MODE_SHORTCUT_IDS,
     PROJECT_EXPORT_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
+    TAB_SHORTCUT_IDS,
     ShortcutId,
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
@@ -106,6 +107,7 @@ class ShortcutBindings:
     about: Callback
     next_tab: Callback
     previous_tab: Callback
+    select_tab: Callable[[Tab], None]
 
 
 class ApplicationShell:
@@ -251,6 +253,7 @@ class ApplicationShell:
             **ApplicationShell._export_callbacks(bindings),
             **ApplicationShell._follow_mode_callbacks(bindings),
             **ApplicationShell._channel_callbacks(bindings),
+            **ApplicationShell._tab_callbacks(bindings),
         }
 
     @staticmethod
@@ -301,6 +304,15 @@ class ApplicationShell:
             **channels,
             ShortcutId.UNMUTE_ALL_CHANNELS: bindings.unmute_all_channels,
         }
+
+    @staticmethod
+    def _tab_callbacks(bindings: ShortcutBindings) -> Dict[ShortcutId, Callback]:
+        """One action per tab, each carrying the tab it brings to the front.
+
+        A tab is reached by naming it as well as by stepping to the next one, so a reader moves
+        across the whole window in one press.
+        """
+        return {shortcut_id: partial(bindings.select_tab, tab) for tab, shortcut_id in TAB_SHORTCUT_IDS.items()}
 
     def _setup_handlers(self) -> None:
         self._key_router.bind()

@@ -623,6 +623,7 @@ class Application:
             about=self._open_about_dialog,
             next_tab=self._next_tab,
             previous_tab=self._previous_tab,
+            select_tab=self._set_current_tab,
         )
 
     def _setup_shell(self, bindings: ShortcutBindings) -> None:

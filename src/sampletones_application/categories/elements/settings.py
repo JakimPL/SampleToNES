@@ -82,6 +82,10 @@ class KeybindingActionElements(AbstractElement):
     ABOUT_DIALOG = "about_dialog"
     NEXT_TAB = "next_tab"
     PREVIOUS_TAB = "previous_tab"
+    SELECT_TAB_MAIN = "select_tab_main"
+    SELECT_TAB_RECONSTRUCTIONS = "select_tab_reconstructions"
+    SELECT_TAB_SEQUENCER = "select_tab_sequencer"
+    SELECT_TAB_INSTRUCTIONS = "select_tab_instructions"
 
     ORDER_PREVIOUS_POSITION = "order_previous_position"
     ORDER_NEXT_POSITION = "order_next_position"

@@ -43,10 +43,10 @@ bindings:
   FollowPatterns: {combination: "Cmd+Shift+F"}
   FollowOff: {combination: "Cmd+Alt+F"}
   ToggleLoopSong: {combination: "Cmd+L"}
-  ToggleChannelPulse1: {combination: "F1"}
-  ToggleChannelPulse2: {combination: "F2"}
-  ToggleChannelTriangle: {combination: "F3"}
-  ToggleChannelNoise: {combination: "F4"}
+  ToggleChannelPulse1: {combination: "1"}
+  ToggleChannelPulse2: {combination: "2"}
+  ToggleChannelTriangle: {combination: "3"}
+  ToggleChannelNoise: {combination: "4"}
   UnmuteAllChannels: {combination: ~}
 
   # view
@@ -58,6 +58,10 @@ bindings:
   AboutDialog: {combination: ~}
   NextTab: {combination: "Cmd+Alt+Right", aliases: ["Cmd+PgDn"], field_transparent: true}
   PreviousTab: {combination: "Cmd+Alt+Left", aliases: ["Cmd+PgUp"], field_transparent: true}
+  SelectTabMain: {combination: "F1", field_transparent: true}
+  SelectTabReconstructions: {combination: "F2", field_transparent: true}
+  SelectTabSequencer: {combination: "F3", field_transparent: true}
+  SelectTabInstructions: {combination: "F4", field_transparent: true}
 
   # order table
   OrderPreviousPosition: {combination: "Left"}

@@ -99,9 +99,15 @@ device, sample rate, and buffer size; these change what you hear, while the
 **Sample rate** and **NES frequency** on the **Main** tab change how audio is
 reconstructed.
 
-`F1` to `F4` toggle the four NES channels on the tab in front of you: the
+`F1` to `F4` bring up the four tabs in order — **Main**, **Reconstruction**,
+**Sequencer**, and **Instructions** — and work while you are typing, so any tab is
+one key away.
+
+`1` to `4` toggle the four NES channels on the tab in front of you: the
 generators on **Main**, the channels drawn on **Reconstructions**, and the song's
-mix on the **Sequencer**.
+mix on the **Sequencer**. In the sequencer's grids the digits type values into the
+cell you are on, so use the channel names or the **Playback ▸ Channels** menu to
+mute there.
 
 ### Keyboard shortcuts
 

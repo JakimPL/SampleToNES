@@ -1,6 +1,7 @@
 from enum import Enum, StrEnum
 from typing import Dict, Final, Self, Tuple
 
+from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.constants.playback import FollowMode
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.trackers.format import TrackerFormat
@@ -88,6 +89,10 @@ class ShortcutId(Enum):
     ABOUT_DIALOG = ("AboutDialog", ShortcutCategory.APPLICATION)
     NEXT_TAB = ("NextTab", ShortcutCategory.APPLICATION)
     PREVIOUS_TAB = ("PreviousTab", ShortcutCategory.APPLICATION)
+    SELECT_TAB_MAIN = ("SelectTabMain", ShortcutCategory.APPLICATION)
+    SELECT_TAB_RECONSTRUCTIONS = ("SelectTabReconstructions", ShortcutCategory.APPLICATION)
+    SELECT_TAB_SEQUENCER = ("SelectTabSequencer", ShortcutCategory.APPLICATION)
+    SELECT_TAB_INSTRUCTIONS = ("SelectTabInstructions", ShortcutCategory.APPLICATION)
 
     ORDER_PREVIOUS_POSITION = ("OrderPreviousPosition", ShortcutCategory.ORDER)
     ORDER_NEXT_POSITION = ("OrderNextPosition", ShortcutCategory.ORDER)
@@ -191,6 +196,13 @@ FOLLOW_MODE_SHORTCUT_IDS: Final[Dict[FollowMode, ShortcutId]] = {
     FollowMode.ROWS: ShortcutId.FOLLOW_ROWS,
     FollowMode.PATTERNS: ShortcutId.FOLLOW_PATTERNS,
     FollowMode.OFF: ShortcutId.FOLLOW_OFF,
+}
+
+TAB_SHORTCUT_IDS: Final[Dict[Tab, ShortcutId]] = {
+    Tab.MAIN: ShortcutId.SELECT_TAB_MAIN,
+    Tab.RECONSTRUCTIONS: ShortcutId.SELECT_TAB_RECONSTRUCTIONS,
+    Tab.SEQUENCER: ShortcutId.SELECT_TAB_SEQUENCER,
+    Tab.INSTRUCTIONS: ShortcutId.SELECT_TAB_INSTRUCTIONS,
 }
 
 CHANNEL_SHORTCUT_IDS: Final[Dict[GeneratorName, ShortcutId]] = {

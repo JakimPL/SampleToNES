@@ -13,9 +13,9 @@ from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
-from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
+    TAB_SHORTCUT_IDS,
     ShortcutId,
 )
 from sampletones_application.utils.parallelization.background import (
@@ -331,6 +331,13 @@ class TestAddOpenReconstructionToSequencer:
         assert not app._editing_project_sample()
 
 
+def _press_shortcut(app: Application, shortcut_id: ShortcutId) -> None:
+    """Routes the press the scheme in place gives an action, so a rebind carries the case with it."""
+    combination = app._shortcut_source.shortcut(shortcut_id).combination
+    assert combination is not None
+    app.key_router.route(KeyEvent(key=combination.key, modifiers=combination.modifiers))
+
+
 class TestChannelKeys:
     """One key per channel, reaching the switch of the tab in front of the reader.
 
@@ -340,40 +347,55 @@ class TestChannelKeys:
     """
 
     @staticmethod
-    def _press(app: Application, key: int, tab: Tab) -> None:
+    def _press(app: Application, generator: GeneratorName, tab: Tab) -> None:
         with patch.object(app._shell, "get_current_tab", return_value=tab):
-            app.key_router.route(KeyEvent(key=key, modifiers=NO_MODIFIERS))
-
-    def test_each_channel_reads_under_the_function_key_it_answers(self, app: Application) -> None:
-        displayed = [app._shortcut_source.display(shortcut_id) for shortcut_id in CHANNEL_SHORTCUT_IDS.values()]
-
-        assert displayed == ["F1", "F2", "F3", "F4"]
+            _press_shortcut(app, CHANNEL_SHORTCUT_IDS[generator])
 
     def test_the_main_tab_switches_the_generator_a_reconstruction_is_built_from(self, app: Application) -> None:
         selected = frozenset(app.config_manager.config.generation.generators)
 
-        self._press(app, dpg.mvKey_F3, Tab.MAIN)
+        self._press(app, GeneratorName.TRIANGLE, Tab.MAIN)
 
         assert frozenset(app.config_manager.config.generation.generators) == selected ^ {GeneratorName.TRIANGLE}
 
     def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
-        self._press(app, dpg.mvKey_F4, Tab.SEQUENCER)
+        self._press(app, GeneratorName.NOISE, Tab.SEQUENCER)
 
         assert app._sequencer_tab.channels.is_muted(GeneratorName.NOISE)
 
     def test_a_second_press_returns_the_mix_it_started_from(self, app: Application) -> None:
-        self._press(app, dpg.mvKey_F1, Tab.SEQUENCER)
-        self._press(app, dpg.mvKey_F1, Tab.SEQUENCER)
+        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
+        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
 
         assert not app._sequencer_tab.channels.any_muted
 
     def test_the_reconstructions_tab_holding_nothing_leaves_the_mix_alone(self, app: Application) -> None:
         """With no reconstruction loaded every slice reads as unavailable, so the key rests there."""
-        self._press(app, dpg.mvKey_F2, Tab.RECONSTRUCTIONS)
+        self._press(app, GeneratorName.PULSE2, Tab.RECONSTRUCTIONS)
 
         assert not app._sequencer_tab.channels.any_muted
 
     def test_the_main_tab_leaves_the_sequencer_mix_alone(self, app: Application) -> None:
-        self._press(app, dpg.mvKey_F1, Tab.MAIN)
+        self._press(app, GeneratorName.PULSE1, Tab.MAIN)
 
         assert not app._sequencer_tab.channels.any_muted
+
+
+class TestTabKeys:
+    """One key per tab, bringing it to the front from wherever the reader stands.
+
+    The whole application answers here, so a press travels the way it does at runtime: the router
+    hands it to the dispatcher, the scheme names the action, and the shell puts the tab on screen.
+    """
+
+    @pytest.mark.parametrize("tab", tuple(TAB_SHORTCUT_IDS), ids=lambda tab: str(tab))
+    def test_the_key_puts_its_tab_on_screen(self, app: Application, tab: Tab) -> None:
+        with patch.object(app._shell, "set_current_tab") as set_current_tab:
+            _press_shortcut(app, TAB_SHORTCUT_IDS[tab])
+
+        set_current_tab.assert_called_once_with(tab)
+
+    @pytest.mark.parametrize("tab", tuple(TAB_SHORTCUT_IDS), ids=lambda tab: str(tab))
+    def test_the_key_answers_while_a_field_is_edited(self, app: Application, tab: Tab) -> None:
+        """Naming a tab reaches it the way stepping to the next one does, typing included."""
+        assert app._shortcut_source.shortcut(TAB_SHORTCUT_IDS[tab]).field_transparent
