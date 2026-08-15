@@ -61,13 +61,12 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
-        reconstructions_label: str,
         refresh_button_label: str,
         refresh_status_message: str,
         initial_collapsed: bool = False,
     ) -> None:
         self._language_manager = language_manager
-        self._reconstructions_label = reconstructions_label
+        self._browser_label = language_manager["global.browser.label.browser"]
         self._refresh_button_label = refresh_button_label
         self._refresh_status_message = refresh_status_message
         self.on_refresh_tree: Optional[VoidCallback] = None
@@ -100,7 +99,7 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
                 border=False,
             ),
             self._collapsible_section(
-                self._reconstructions_label,
+                self._browser_label,
                 glyph=self._glyphs.headers.reconstruction,
             ),
         ):
@@ -157,7 +156,7 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
             ),
             dpg.group(tag=self._group_tree_tag),
             dpg.tree_node(
-                label=self._reconstructions_label,
+                label=self._browser_label,
                 tag=self.tree_tag,
                 default_open=True,
             ),

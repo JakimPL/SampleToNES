@@ -54,7 +54,6 @@ class GUIBrowserPanel(GUIReconstructionBrowserPanel):
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
-            reconstructions_label=language_manager["reconstructions.browser.label.reconstructions_tree"],
             refresh_button_label=language_manager["reconstructions.browser.label.refresh_button"],
             refresh_status_message=language_manager["reconstructions.browser.message.status_refresh"],
             initial_collapsed=initial_collapsed,

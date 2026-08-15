@@ -13,10 +13,20 @@ HASH_A = "6edf7c948606917a78b45d153c7ca7e0"
 HASH_B = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
 
 
-def directory_nodes(browser_manager: BrowserManager) -> Dict[str, FileSystemNode]:
+def reconstructions_node(browser_manager: BrowserManager) -> TreeNode:
     root = browser_manager.tree.get_root()
     assert root is not None
-    return directory_children(root)
+    return group_children(root)["Reconstructions"]
+
+
+def samples_node(browser_manager: BrowserManager) -> TreeNode:
+    root = browser_manager.tree.get_root()
+    assert root is not None
+    return group_children(root)["Samples"]
+
+
+def directory_nodes(browser_manager: BrowserManager) -> Dict[str, FileSystemNode]:
+    return directory_children(reconstructions_node(browser_manager))
 
 
 def directory_children(node: TreeNode) -> Dict[str, FileSystemNode]:
@@ -24,6 +34,14 @@ def directory_children(node: TreeNode) -> Dict[str, FileSystemNode]:
         child.name: child
         for child in node.children
         if isinstance(child, FileSystemNode) and child.node_type == NodeType.DIRECTORY
+    }
+
+
+def file_children(node: TreeNode) -> Dict[str, FileSystemNode]:
+    return {
+        child.name: child
+        for child in node.children
+        if isinstance(child, FileSystemNode) and child.node_type == NodeType.FILE
     }
 
 
@@ -42,10 +60,18 @@ def config_manager(tmp_path: Path) -> MagicMock:
     return mock
 
 
+BROWSER_LABELS = {
+    "global.browser.label.root": "Root",
+    "global.browser.label.browser": "Browser",
+    "global.browser.label.reconstructions": "Reconstructions",
+    "global.browser.label.samples": "Samples",
+}
+
+
 @pytest.fixture
 def language_manager() -> MagicMock:
     mock = MagicMock()
-    mock.__getitem__ = MagicMock(return_value="Reconstructions")
+    mock.__getitem__ = MagicMock(side_effect=BROWSER_LABELS.__getitem__)
     return mock
 
 
@@ -140,10 +166,8 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
-        root = browser_manager.tree.get_root()
-        assert root is not None
-
-        frequencies = group_children(root)
+        reconstructions = reconstructions_node(browser_manager)
+        frequencies = group_children(reconstructions)
         assert set(frequencies) == {"44.1 kHz·30 Hz"}
 
         methods = group_children(frequencies["44.1 kHz·30 Hz"])
@@ -163,9 +187,8 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
-        root = browser_manager.tree.get_root()
-        assert root is not None
-        methods = group_children(group_children(root)["44.1 kHz·30 Hz"])
+        reconstructions = reconstructions_node(browser_manager)
+        methods = group_children(group_children(reconstructions)["44.1 kHz·30 Hz"])
         assert set(directory_children(methods["FFT·γ0"])) == {
             f"PpT·#{HASH_A[:7]}",
             f"PpT·#{HASH_B[:7]}",
@@ -183,9 +206,7 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
-        root = browser_manager.tree.get_root()
-        assert root is not None
-        assert set(group_children(root)) == {"44.1 kHz·30 Hz", "48 kHz·60 Hz"}
+        assert set(group_children(reconstructions_node(browser_manager))) == {"44.1 kHz·30 Hz", "48 kHz·60 Hz"}
 
     def test_distinct_methods_form_separate_groups(
         self,
@@ -199,9 +220,7 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
-        root = browser_manager.tree.get_root()
-        assert root is not None
-        methods = group_children(group_children(root)["44.1 kHz·30 Hz"])
+        methods = group_children(group_children(reconstructions_node(browser_manager))["44.1 kHz·30 Hz"])
         assert set(methods) == {"FFT·γ0", "CQT·γ0"}
 
     def test_distinct_generators_share_method_group_without_hash(
@@ -216,9 +235,7 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
-        root = browser_manager.tree.get_root()
-        assert root is not None
-        methods = group_children(group_children(root)["44.1 kHz·30 Hz"])
+        methods = group_children(group_children(reconstructions_node(browser_manager))["44.1 kHz·30 Hz"])
         assert set(directory_children(methods["FFT·γ0"])) == {"PTN", "TN"}
 
     def test_non_config_directory_keeps_raw_name(
@@ -232,6 +249,92 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
+        assert "my_songs" in directory_nodes(browser_manager)
+
+
+class TestBrowserManagerSamplesView:
+    def test_samples_are_grouped_by_source_directory_and_audio(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        config_dir = tmp_path / f"sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_{HASH_A}"
+        audio_dir = config_dir / "Amen Breaks" / "Amen Breaks vol.1"
+        audio_dir.mkdir(parents=True)
+        (audio_dir / "cw_amen02_165.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        samples = samples_node(browser_manager)
+        amen_breaks = group_children(samples)["Amen Breaks"]
+        amen_breaks_vol1 = group_children(amen_breaks)["Amen Breaks vol.1"]
+        audio = group_children(amen_breaks_vol1)["cw_amen02_165"]
+        variant = file_children(audio)["44.1 kHz·30 Hz·FFT·γ0·PTN"]
+        assert variant.filepath == audio_dir / "cw_amen02_165.stn"
+
+    def test_one_audio_lists_each_config_variant(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        for spectrum_method in ("fft", "cqt"):
+            config_dir = tmp_path / f"sr_44100_nf_30_sm_{spectrum_method}_tg_0_gn_PTN_ch_{HASH_A}"
+            config_dir.mkdir()
+            (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        audio = group_children(samples_node(browser_manager))["song"]
+        assert set(file_children(audio)) == {
+            "44.1 kHz·30 Hz·FFT·γ0·PTN",
+            "44.1 kHz·30 Hz·CQT·γ0·PTN",
+        }
+
+    def test_colliding_variants_of_one_audio_get_hash_suffix(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        for config_hash in (HASH_A, HASH_B):
+            config_dir = tmp_path / f"sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_{config_hash}"
+            config_dir.mkdir()
+            (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        audio = group_children(samples_node(browser_manager))["song"]
+        assert set(file_children(audio)) == {
+            f"44.1 kHz·30 Hz·FFT·γ0·PTN·#{HASH_A[:7]}",
+            f"44.1 kHz·30 Hz·FFT·γ0·PTN·#{HASH_B[:7]}",
+        }
+
+    def test_single_file_conversion_appears_at_samples_root(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        config_dir = tmp_path / f"sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_{HASH_A}"
+        config_dir.mkdir()
+        (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        samples = samples_node(browser_manager)
+        assert set(group_children(samples)) == {"song"}
+        assert set(file_children(group_children(samples)["song"])) == {"44.1 kHz·30 Hz·FFT·γ0·PTN"}
+
+    def test_non_config_directory_is_excluded_from_samples(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        plain = tmp_path / "my_songs"
+        plain.mkdir()
+        (plain / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        assert group_children(samples_node(browser_manager)) == {}
         assert "my_songs" in directory_nodes(browser_manager)
 
 

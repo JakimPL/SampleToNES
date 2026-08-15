@@ -45,7 +45,6 @@ class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
-            reconstructions_label=language_manager["sequencer.browser.label.reconstructions_tree"],
             refresh_button_label=language_manager["sequencer.browser.label.refresh_button"],
             refresh_status_message=language_manager["sequencer.browser.message.status_refresh"],
             initial_collapsed=initial_collapsed,

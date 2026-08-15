@@ -126,6 +126,9 @@ global.traceback.label.hide: "Hide traceback"
 # Global — Tree
 # =============================================================================
 global.browser.label.root: "Root"
+global.browser.label.browser: "Browser"
+global.browser.label.reconstructions: "Reconstructions"
+global.browser.label.samples: "Samples"
 global.browser.label.search: "Search"
 global.browser.label.filter: "Filter"
 global.browser.label.clear_search: "Clear"
@@ -359,7 +362,6 @@ main.advanced.message.status_select_output: "Choose the directory for reconstruc
 # Reconstructions tab — Browser
 # =============================================================================
 reconstructions.browser.label.refresh_button: "Refresh reconstructions"
-reconstructions.browser.label.reconstructions_tree: "Reconstructions"
 reconstructions.browser.label.context_load_reconstruction: "Load reconstruction"
 reconstructions.browser.label.context_remove_reconstruction: "Remove reconstruction"
 reconstructions.browser.label.context_remove_directory: "Remove directory"
@@ -433,7 +435,6 @@ reconstructions.instruments.template.initial_pitch_tooltip_template: "Enter the 
 # Sequencer tab — Browser
 # =============================================================================
 sequencer.browser.label.refresh_button: "Refresh reconstructions"
-sequencer.browser.label.reconstructions_tree: "Reconstructions"
 sequencer.browser.message.status_refresh: "Rescan for available reconstructions."
 
 # =============================================================================

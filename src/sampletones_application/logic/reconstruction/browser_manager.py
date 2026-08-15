@@ -47,10 +47,22 @@ class BrowserManager:
             name=self._language_manager["global.browser.label.root"],
             node_type=NodeType.ROOT,
         )
-        for path in sorted(self.reconstructions_directory.iterdir()):
-            self._build_tree(path, parent=container_root)
+        reconstructions_node = TreeNode(
+            name=self._language_manager["global.browser.label.reconstructions"],
+            node_type=NodeType.GROUP,
+            parent=container_root,
+        )
+        samples_node = TreeNode(
+            name=self._language_manager["global.browser.label.samples"],
+            node_type=NodeType.GROUP,
+            parent=container_root,
+        )
 
-        self._organize_top_level_config_directories(container_root)
+        for path in sorted(self.reconstructions_directory.iterdir()):
+            self._build_tree(path, parent=reconstructions_node)
+
+        self._organize_top_level_config_directories(reconstructions_node)
+        self._build_samples_children(samples_node)
         self.tree.set_root(container_root)
 
     def _build_tree(
@@ -90,7 +102,7 @@ class BrowserManager:
 
     def _organize_top_level_config_directories(
         self,
-        container_root: TreeNode,
+        reconstructions_node: TreeNode,
     ) -> None:
         """Groups top-level config directories under frequencies/method nodes, leaving other folders flat.
 
@@ -98,7 +110,7 @@ class BrowserManager:
         renamed to its generator abbreviation, while any other top-level folder keeps the existing
         flat friendly naming for the config directories nested inside it.
         """
-        for child in list(container_root.children):
+        for child in list(reconstructions_node.children):
             if not isinstance(child, FileSystemNode) or child.node_type != NodeType.DIRECTORY:
                 continue
 
@@ -110,16 +122,16 @@ class BrowserManager:
             self._attach_config_directory_under_groups(
                 child,
                 fields,
-                container_root,
+                reconstructions_node,
             )
 
-        self._disambiguate_generator_siblings(container_root)
+        self._disambiguate_generator_siblings(reconstructions_node)
 
     def _attach_config_directory_under_groups(
         self,
         directory_node: FileSystemNode,
         fields: ConfigDirectoryFields,
-        container_root: TreeNode,
+        reconstructions_node: TreeNode,
     ) -> None:
         frequencies_name = DISPLAY_SEPARATOR.join(
             [
@@ -135,7 +147,7 @@ class BrowserManager:
         )
         frequencies_node = self._find_or_create_group_node(
             frequencies_name,
-            container_root,
+            reconstructions_node,
         )
         method_node = self._find_or_create_group_node(
             method_name,
@@ -208,10 +220,55 @@ class BrowserManager:
             for directory_node, fields in members:
                 directory_node.name = disambiguated_display_name(display_name, fields.ch)
 
+    def _build_samples_children(self, samples_node: TreeNode) -> None:
+        """Populates the transposed Samples branch: source-audio directories ▶ audio ▶ config variants."""
+        variants_by_audio: Dict[Tuple[Tuple[str, ...], str], List[Tuple[ConfigDirectoryFields, Path]]] = {}
+
+        for config_directory in sorted(self.reconstructions_directory.iterdir()):
+            if not config_directory.is_dir():
+                continue
+
+            fields = ConfigDirectoryFields.from_directory_name(config_directory.name)
+            if fields is None:
+                continue
+
+            for reconstruction_path in sorted(config_directory.rglob(f"*{EXT_FILE_RECONSTRUCTION}")):
+                relative = reconstruction_path.relative_to(config_directory)
+                audio_key = (relative.parent.parts, relative.stem)
+                variants_by_audio.setdefault(audio_key, []).append((fields, reconstruction_path))
+
+        for audio_key in sorted(variants_by_audio):
+            directory_parts, audio_name = audio_key
+            parent = samples_node
+            for part in directory_parts:
+                parent = self._find_or_create_group_node(part, parent)
+
+            audio_node = self._find_or_create_group_node(audio_name, parent)
+            self._append_config_variants(audio_node, variants_by_audio[audio_key])
+
+    def _append_config_variants(
+        self,
+        audio_node: TreeNode,
+        variants: List[Tuple[ConfigDirectoryFields, Path]],
+    ) -> None:
+        variants_by_display_name: Dict[str, List[Tuple[ConfigDirectoryFields, Path]]] = {}
+        for fields, reconstruction_path in variants:
+            variants_by_display_name.setdefault(fields.display_name, []).append((fields, reconstruction_path))
+
+        for display_name, members in variants_by_display_name.items():
+            for fields, reconstruction_path in members:
+                label = display_name if len(members) == 1 else disambiguated_display_name(display_name, fields.ch)
+                FileSystemNode(
+                    label,
+                    filepath=reconstruction_path,
+                    node_type=NodeType.FILE,
+                    parent=audio_node,
+                )
+
     def get_all_reconstruction_files(self) -> List[Path]:
-        file_nodes = [
-            node
+        file_paths = {
+            node.filepath
             for node in self.tree.collect_leaves()
             if isinstance(node, FileSystemNode) and node.node_type == NodeType.FILE
-        ]
-        return [node.filepath for node in file_nodes]
+        }
+        return sorted(file_paths)
