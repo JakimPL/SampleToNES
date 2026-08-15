@@ -8,6 +8,7 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
 from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.tags.reconstructions import (
@@ -112,6 +113,10 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _setup_handlers(self) -> None:
         self._node_handlers = {
+            NodeType.GROUP: NodeHandler(
+                tag=self._get_node_handler_tag(NodeType.GROUP),
+                node_type=NodeType.GROUP,
+            ),
             NodeType.DIRECTORY: NodeHandler(
                 tag=self._get_node_handler_tag(NodeType.DIRECTORY),
                 node_type=NodeType.DIRECTORY,
@@ -187,6 +192,16 @@ class GUIBrowserPanel(GUITreePanel):
         if node.node_type == NodeType.ROOT:
             return
 
+        if node.node_type == NodeType.GROUP:
+            self._append_spec(
+                node=node,
+                node_tag=node_tag,
+                parent=state.parent,
+                should_expand=self._should_expand_node(node),
+            )
+            state.parent = node_tag
+            return
+
         if not isinstance(node, FileSystemNode):
             return
 
@@ -211,6 +226,12 @@ class GUIBrowserPanel(GUITreePanel):
             )
 
         state.parent = node_tag
+
+    def _resolve_other_theme_tag(self, node: TreeNode) -> str:
+        if node.node_type == NodeType.GROUP:
+            return TAG_GLOBAL_THEME_DEFAULT
+
+        return super()._resolve_other_theme_tag(node)
 
     def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(

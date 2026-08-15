@@ -1,6 +1,7 @@
 from typing import Dict, Final
 
 from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_shared.constants.symbols import HASH
 
 DISPLAY_SEPARATOR: Final[str] = "·"
 GAMMA_PREFIX: Final[str] = "γ"
@@ -39,3 +40,8 @@ def format_spectrum_method(method: SpectrumMethod) -> str:
 
 def short_hash(config_hash: str) -> str:
     return config_hash[:DISPLAY_HASH_LENGTH]
+
+
+def disambiguated_display_name(name: str, config_hash: str) -> str:
+    """Appends the short config hash, marked with ``#``, so colliding names stay distinct."""
+    return f"{name}{DISPLAY_SEPARATOR}{HASH}{short_hash(config_hash)}"

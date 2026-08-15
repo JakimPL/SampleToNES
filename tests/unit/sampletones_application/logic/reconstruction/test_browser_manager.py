@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
-from sampletones_core.structures.tree import FileSystemNode, NodeType
+from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
 
 HASH_A = "6edf7c948606917a78b45d153c7ca7e0"
 HASH_B = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
@@ -16,10 +16,22 @@ HASH_B = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
 def directory_nodes(browser_manager: BrowserManager) -> Dict[str, FileSystemNode]:
     root = browser_manager.tree.get_root()
     assert root is not None
+    return directory_children(root)
+
+
+def directory_children(node: TreeNode) -> Dict[str, FileSystemNode]:
     return {
         child.name: child
-        for child in root.children
+        for child in node.children
         if isinstance(child, FileSystemNode) and child.node_type == NodeType.DIRECTORY
+    }
+
+
+def group_children(node: TreeNode) -> Dict[str, TreeNode]:
+    return {
+        child.name: child
+        for child in node.children
+        if isinstance(child, TreeNode) and child.node_type == NodeType.GROUP
     }
 
 
@@ -117,7 +129,7 @@ class TestBrowserManagerRefreshTree:
 
 
 class TestBrowserManagerFriendlyNames:
-    def test_config_directory_gets_friendly_name(
+    def test_config_directory_groups_by_frequency_method_generators(
         self,
         browser_manager: BrowserManager,
         tmp_path: Path,
@@ -128,7 +140,16 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
-        assert "44.1 kHz·30 Hz·FFT·γ0·PpT" in directory_nodes(browser_manager)
+        root = browser_manager.tree.get_root()
+        assert root is not None
+
+        frequencies = group_children(root)
+        assert set(frequencies) == {"44.1 kHz·30 Hz"}
+
+        methods = group_children(frequencies["44.1 kHz·30 Hz"])
+        assert set(methods) == {"FFT·γ0"}
+
+        assert set(directory_children(methods["FFT·γ0"])) == {"PpT"}
 
     def test_colliding_config_directories_get_hash_suffix(
         self,
@@ -142,11 +163,63 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
-        names = set(directory_nodes(browser_manager))
-        assert names == {
-            f"44.1 kHz·30 Hz·FFT·γ0·PpT·#{HASH_A[:7]}",
-            f"44.1 kHz·30 Hz·FFT·γ0·PpT·#{HASH_B[:7]}",
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        methods = group_children(group_children(root)["44.1 kHz·30 Hz"])
+        assert set(directory_children(methods["FFT·γ0"])) == {
+            f"PpT·#{HASH_A[:7]}",
+            f"PpT·#{HASH_B[:7]}",
         }
+
+    def test_distinct_frequencies_form_separate_groups(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        for sample_rate, nes_frequency in ((44100, 30), (48000, 60)):
+            config_dir = tmp_path / f"sr_{sample_rate}_nf_{nes_frequency}_sm_fft_tg_0_gn_PTN_ch_{HASH_A}"
+            config_dir.mkdir()
+            (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        assert set(group_children(root)) == {"44.1 kHz·30 Hz", "48 kHz·60 Hz"}
+
+    def test_distinct_methods_form_separate_groups(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        for spectrum_method in ("fft", "cqt"):
+            config_dir = tmp_path / f"sr_44100_nf_30_sm_{spectrum_method}_tg_0_gn_PTN_ch_{HASH_A}"
+            config_dir.mkdir()
+            (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        methods = group_children(group_children(root)["44.1 kHz·30 Hz"])
+        assert set(methods) == {"FFT·γ0", "CQT·γ0"}
+
+    def test_distinct_generators_share_method_group_without_hash(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        for generators in ("PTN", "TN"):
+            config_dir = tmp_path / f"sr_44100_nf_30_sm_fft_tg_0_gn_{generators}_ch_{HASH_A}"
+            config_dir.mkdir()
+            (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        methods = group_children(group_children(root)["44.1 kHz·30 Hz"])
+        assert set(directory_children(methods["FFT·γ0"])) == {"PTN", "TN"}
 
     def test_non_config_directory_keeps_raw_name(
         self,
