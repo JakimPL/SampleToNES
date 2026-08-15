@@ -155,11 +155,7 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
                 horizontal_scrollbar=True,
             ),
             dpg.group(tag=self._group_tree_tag),
-            dpg.tree_node(
-                label=self._browser_label,
-                tag=self.tree_tag,
-                default_open=True,
-            ),
+            dpg.group(tag=self.tree_tag),
         ):
             pass
 
