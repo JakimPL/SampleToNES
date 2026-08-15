@@ -5,8 +5,8 @@ from typing import Any, Dict, Final, Iterator, List, Optional
 import pytest
 
 from sampletones_application.ui.elements.tree import tree as tree_module
-from sampletones_application.ui.panels.sequencer import browser as browser_module
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
+from sampletones_application.ui.panels.shared import browser as shared_browser_module
 from sampletones_core.structures.tree.node import FileSystemNode, NodeType
 from tests.suite.language import FakeLanguageManager
 
@@ -167,7 +167,7 @@ class TestReconstructionMenuComposition:
         def _menu() -> Iterator[None]:
             yield
 
-        monkeypatch.setattr(browser_module, "context_menu", _menu)
+        monkeypatch.setattr(shared_browser_module, "context_menu", _menu)
 
         panel._show_reconstruction_context_menu(_node(), "node-tag")
 
@@ -196,7 +196,7 @@ class TestReconstructionMenuComposition:
         def _menu() -> Iterator[None]:
             yield
 
-        monkeypatch.setattr(browser_module, "context_menu", _menu)
+        monkeypatch.setattr(shared_browser_module, "context_menu", _menu)
 
         panel._show_directory_context_menu(_node(NodeType.DIRECTORY))
 
