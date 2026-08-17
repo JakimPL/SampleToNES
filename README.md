@@ -4,6 +4,10 @@
 [![Python](https://img.shields.io/pypi/pyversions/sampletones.svg)](https://pypi.org/project/sampletones/)
 [![License](https://img.shields.io/pypi/l/sampletones.svg)](https://github.com/JakimPL/SampleToNES/blob/main/LICENSE)
 
+<div style="text-align: center">
+    <img src="src/sampletones_assets/icons/sampletones.svg" alt="SampleToNES" width="64">
+</div>
+
 ## Overview
 
 _SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/).
