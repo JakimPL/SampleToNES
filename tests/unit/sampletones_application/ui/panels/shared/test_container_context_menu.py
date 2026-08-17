@@ -48,6 +48,7 @@ def _panel() -> GUISequencerBrowserPanel:
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = PANEL_TAG
+    panel._expanded_rows = set()
     panel._language_manager = FakeLanguageManager(TEXTS)
     panel._colors = TreeColors(
         favorite=TEXT_COLOR,
@@ -285,6 +286,41 @@ class TestExpansionItems:
             (compose_node_tag(group, panel_tag=PANEL_TAG), False),
             (compose_node_tag(sample, panel_tag=PANEL_TAG), False),
         ]
+
+    def test_the_browser_remembers_the_shape_the_item_left(
+        self,
+        recorder: _MenuItemRecorder,
+        expanded: List[Tuple[str, bool]],
+    ) -> None:
+        """A rebuild brings the subtree back the way the item left it, so what it set is recorded."""
+        panel = _panel()
+        group, sample, _ = _sample_tree()
+        rows = {
+            compose_node_tag(group, panel_tag=PANEL_TAG),
+            compose_node_tag(sample, panel_tag=PANEL_TAG),
+        }
+
+        panel._add_context_menu_expansion_items(group)
+        recorder.item(EXPAND_LABEL)["callback"]()
+
+        assert panel._expanded_rows == rows
+
+    def test_the_browser_forgets_the_shape_the_item_folded(
+        self,
+        recorder: _MenuItemRecorder,
+        expanded: List[Tuple[str, bool]],
+    ) -> None:
+        panel = _panel()
+        group, sample, _ = _sample_tree()
+        panel._expanded_rows = {
+            compose_node_tag(group, panel_tag=PANEL_TAG),
+            compose_node_tag(sample, panel_tag=PANEL_TAG),
+        }
+
+        panel._add_context_menu_expansion_items(group)
+        recorder.item(COLLAPSE_LABEL)["callback"]()
+
+        assert panel._expanded_rows == set()
 
     def test_leaf_rows_are_left_alone(
         self,

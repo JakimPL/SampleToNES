@@ -39,11 +39,13 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
     its refresh control, and adds the items its context menus offer.
 
     Reconstructions carry favorites, so this browser offers the control showing them alone and opens
-    in the mode the session left it in.
+    in the mode the session left it in. It holds the shape the reader unfolded as well, so a rebuild
+    — a refresh, a change of mode — brings the rows back standing as they were left.
     """
 
     _MONOSPACE_CONFIG_NODES: bool = True
     _OFFERS_FAVORITES_FILTER: bool = True
+    _REMEMBERS_EXPANSION: bool = True
 
     def __init__(
         self,
@@ -266,12 +268,14 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
     def _set_subtree_expanded(self, node: TreeNode, *, expanded: bool) -> None:
         """Folds or unfolds the row together with every row below it holding something.
 
-        Whether a row stands open is a fact of the widget alone, so each row is reached by the tag it
-        was built under and set directly.
+        Each row is reached by the tag it was built under and set directly, and the browser is told
+        what it now stands as, so a rebuild brings the whole subtree back the way this left it.
         """
         for container in (node, *node.descendants):
             if container.children:
-                dpg_set_value(self._generate_node_tag(container), expanded)
+                node_tag = self._generate_node_tag(container)
+                dpg_set_value(node_tag, expanded)
+                self._set_row_expanded(node_tag, expanded)
 
     def _add_context_menu_copy_name_item(self, node: TreeNode) -> None:
         """Offers the label the tree reads the row by, which for a folded chain names every level."""

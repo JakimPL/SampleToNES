@@ -9,7 +9,6 @@ from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.filter import TreeFilter
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.spec import NodeSpec
-from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.utils.palette.colors.literal import LiteralColor
@@ -274,6 +273,7 @@ def build_browser_panel(
     *,
     favorites_only: bool,
     query: str = "",
+    panel_tag: str = PANEL_TAG,
 ) -> GUISequencerBrowserPanel:
     """Builds a browser panel showing the corpus under a filter, with the favorites its logic answers.
 
@@ -281,7 +281,8 @@ def build_browser_panel(
     and the control stands where a browser that has yet to build one leaves it.
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
-    panel.tag = PANEL_TAG
+    panel.tag = panel_tag
+    panel._expanded_rows = set()
     panel.tree_tag = TREE_TAG
     panel.tree = corpus.tree
     panel._logic = FakeTreeLogic(favorites)  # type: ignore[assignment]
@@ -309,15 +310,10 @@ def _state_detail_labels(panel: GUITreePanel) -> None:
 
 def collect_specs(panel: GUITreePanel) -> List[NodeSpec]:
     """Collects the rows a rebuild would emit, which is the pass running off the main thread."""
-    panel._pending_specs = []
     panel._node_handlers = {
         node_type: NodeHandler(tag=f"handler.{node_type.value}", node_type=node_type) for node_type in NodeType
     }
-
-    root = panel.tree.get_root()
-    assert root is not None
-    panel._build_tree_node(root, TreeNodeState(parent=panel.tree_tag))
-    return panel._pending_specs
+    return panel._collect_specs(panel.tree_tag)
 
 
 def render_view(panel: GUITreePanel) -> str:
@@ -376,6 +372,34 @@ def nodes_at(corpus: BrowserCorpus, key: str) -> Tuple[FileSystemNode, ...]:
     """Every row standing for one path, which is what a favorite reaches across the two views."""
     path = corpus.paths[key]
     return corpus.tree.find_nodes(FileSystemNode, lambda node: node.filepath == path)
+
+
+def row_named(corpus: BrowserCorpus, label: str) -> TreeNode:
+    """The row reading under this label, which is how a test names a heading the browser wrote."""
+    rows = corpus.tree.find_nodes(TreeNode, lambda node: str(node.name) == label)
+    assert len(rows) == 1
+    return rows[0]
+
+
+def set_row_expanded(
+    panel: GUITreePanel,
+    node: TreeNode,
+    *,
+    expanded: bool,
+) -> None:
+    """Leaves a row standing the way the reader would leave it, which the browser then remembers."""
+    panel._set_row_expanded(panel._generate_node_tag(node), expanded)
+
+
+def set_filter(
+    panel: GUITreePanel,
+    *,
+    favorites_only: bool,
+    query: str = "",
+) -> None:
+    """States what the browser is now asked to show, as a change of the control or the search box."""
+    panel._filter = TreeFilter(query=query, favorites_only=favorites_only)
+    panel._resolve_filter()
 
 
 def view(

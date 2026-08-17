@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -101,6 +101,7 @@ class GUITreePanel(GUIPanel, ABC):
     _NAME_FONT: Font = Font.REGULAR_SMALL
     _CONFIG_FONT: Font = Font.MONO_SMALL
     _MONOSPACE_CONFIG_NODES: bool = False
+    _REMEMBERS_EXPANSION: bool = False
 
     def __init__(
         self,
@@ -125,6 +126,7 @@ class GUITreePanel(GUIPanel, ABC):
         self.tree_tag = tree_tag
 
         self._pending_specs: List[NodeSpec] = []
+        self._expanded_rows: Set[str] = set()
         self._emitter = TreeEmitter(scheduling=scheduling)
 
         self._filter: TreeFilter = NO_FILTER
@@ -227,7 +229,20 @@ class GUITreePanel(GUIPanel, ABC):
         if root is not None:
             self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
 
+        self._forget_rows_the_model_dropped()
         return self._pending_specs
+
+    def _forget_rows_the_model_dropped(self) -> None:
+        """Holds the memory of open rows to the rows a pass over the whole tree found.
+
+        A pass showing everything states which rows exist, so a row it left out belongs to a folder
+        the disk no longer holds and its place in the memory goes with it. A pass narrowed to the
+        favorites speaks for those rows alone, and leaves the memory of the rest as it stands.
+        """
+        if not self._REMEMBERS_EXPANSION or self._filter.favorites_only:
+            return
+
+        self._expanded_rows &= {spec.node_tag for spec in self._pending_specs}
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = compose_tag(self.tag, SUF_INPUT_SEARCH)
@@ -366,6 +381,11 @@ class GUITreePanel(GUIPanel, ABC):
             has_favorite_ancestor=has_favorite_ancestor,
             is_node_expanded=is_node_expanded,
         )
+        stands_open = self._stands_open(
+            node,
+            node_tag,
+            should_expand=should_expand,
+        )
         self._pending_specs.append(
             NodeSpec(
                 node=node,
@@ -376,11 +396,39 @@ class GUITreePanel(GUIPanel, ABC):
                 leaf=leaf,
                 open_on_arrow=open_on_arrow,
                 open_on_double_click=open_on_double_click,
-                should_expand=should_expand,
+                should_expand=stands_open,
                 theme_tag=theme_tag,
                 handler_tag=self._node_handlers[node.node_type].tag,
             )
         )
+
+    def _stands_open(
+        self,
+        node: TreeNode,
+        node_tag: str,
+        *,
+        should_expand: bool,
+    ) -> bool:
+        """Whether the row is created standing open: the filter points at it, or the memory holds it.
+
+        The shape the reader built is theirs to keep, so a row they opened comes back open and the
+        filter adds the way down to what it names. Recording the answer here is what carries that
+        shape into the pass after this one.
+        """
+        if not self._REMEMBERS_EXPANSION:
+            return should_expand
+
+        stands_open = should_expand or node_tag in self._expanded_rows
+        self._set_row_expanded(node_tag, stands_open and bool(node.children))
+        return stands_open
+
+    def _set_row_expanded(self, node_tag: str, expanded: bool) -> None:
+        """Holds whether a row stands open, which is what a later pass brings it back by."""
+        if expanded:
+            self._expanded_rows.add(node_tag)
+            return
+
+        self._expanded_rows.discard(node_tag)
 
     def _finish_emit(
         self,
@@ -496,6 +544,7 @@ class GUITreePanel(GUIPanel, ABC):
             app_data: Tuple[int, int],
         ) -> None:
             user_data = dpg.get_item_user_data(app_data[1])
+            self._remember_clicked_row(user_data)
             if item_click_callback is not None:
                 item_click_callback(sender, app_data, user_data=user_data)
 
@@ -521,6 +570,34 @@ class GUITreePanel(GUIPanel, ABC):
                 )
 
         return double_click_callback
+
+    def _remember_clicked_row(self, user_data: Any) -> None:
+        """Follows a click through to what it left the row standing as, a frame after it landed.
+
+        A click on a row the reader can open is how that row folds and unfolds, and the row states
+        its own answer once the frame carrying the click has drawn. Reading it the frame after
+        therefore reports what the reader did, whichever button they pressed, and a row holding
+        nothing has nothing to remember.
+        """
+        if not self._REMEMBERS_EXPANSION or not isinstance(user_data, tuple):
+            return
+
+        node, node_tag = user_data
+        if not node.children:
+            return
+
+        CallbackQueue.add(
+            self._read_row_expansion,
+            node_tag,
+            delay=1,
+        )
+
+    def _read_row_expansion(self, node_tag: str) -> None:
+        """Takes the state a row stands in into the memory, on the main thread that owns the row."""
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        self._set_row_expanded(node_tag, bool(dpg_get_value(node_tag)))
 
     def _setup_handlers(self) -> None:
         for handler in self._node_handlers.values():
