@@ -69,6 +69,7 @@ from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
@@ -142,7 +143,7 @@ class InstructionsTabCoordinator:
         )
         self._library_panel.set_collapse_handler(self._on_library_collapse_changed)
         self._library_tree_logic.on_lock_state_changed = self._library_panel.set_tree_enabled
-        self._library_tree_logic.on_favorite_changed = self._library_panel.update_favorite_indicator
+        self._library_tree_logic.on_favorite_changed = self._repaint_library_favorites
         self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
 
         self._library_logic.configure_lock(
@@ -351,6 +352,10 @@ class InstructionsTabCoordinator:
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists a centre-column card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
+
+    def _repaint_library_favorites(self, node: FileSystemNode) -> None:
+        """Repaints the row whose star was toggled: the catalogue lists a library once, so it is one row."""
+        self._library_panel.update_favorite_indicators((node,))
 
     def _on_library_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists the library panel's collapse, then docks or restores the width of the column it fills."""

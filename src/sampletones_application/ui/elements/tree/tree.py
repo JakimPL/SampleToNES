@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -869,21 +869,19 @@ class GUITreePanel(GUIPanel, ABC):
 
         self._logic.toggle_favorite(node)
 
-    def update_favorite_indicator(self, node: FileSystemNode) -> None:
-        """Repaints every row standing for the toggled path, and what each of them holds.
+    def update_favorite_indicators(self, nodes: Sequence[FileSystemNode]) -> None:
+        """Repaints the rows a favorite change reaches, and what each of them holds.
 
-        A path reaches the panel as many rows as the views offer it — a reconstruction is listed
-        both by its configuration and by the sample it came from — and the star belongs to the path,
-        so each of those rows takes the new theme.
+        A path reaches the panel as many rows as the views offer it — a reconstruction is listed both
+        by its configuration and by the sample it came from — and the star belongs to the path, so
+        the caller names every row standing for it and each of them takes the new theme with the
+        ancestry its own path carries.
         """
-        for twin in self._nodes_at(node.filepath):
+        for node in nodes:
             self._reapply_theme_recursively(
-                twin,
-                self._logic.has_favorite_ancestor(twin),
+                node,
+                self._logic.has_favorite_ancestor(node),
             )
-
-    def _nodes_at(self, filepath: Path) -> Tuple[FileSystemNode, ...]:
-        return self.tree.find_nodes(FileSystemNode, lambda node: node.filepath == filepath)
 
     @abstractmethod
     def set_tree_enabled(self, enabled: bool) -> None: ...

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec, Tuple, Union
+from typing import Callable, Optional, ParamSpec, Sequence, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -950,8 +950,8 @@ class SequencerTabCoordinator:
     def refresh_browser(self) -> None:
         self._sequencer_browser_panel.refresh()
 
-    def repaint_browser_favorites(self, node: FileSystemNode) -> None:
-        self._sequencer_browser_panel.update_favorite_indicator(node)
+    def repaint_browser_favorites(self, nodes: Sequence[FileSystemNode]) -> None:
+        self._sequencer_browser_panel.update_favorite_indicators(nodes)
 
     def _on_song_changed(self) -> None:
         self._sequencer_tracker_logic.push_settings()

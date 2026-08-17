@@ -9,6 +9,7 @@ from sampletones_core.configs.display import (
     format_frequencies,
     format_transformation,
 )
+from sampletones_core.structures.tree import NodeType
 
 from .conftest import (
     CONFIGURATION_BRANCH_KEY,
@@ -182,6 +183,47 @@ class TestBranchShape:
             first.display_name,
             second.display_name,
         ]
+
+
+class TestNodesAt:
+    def test_a_reconstruction_is_answered_once_per_view(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """Both views hold the reconstruction, so a favorite change reaches a row in each of them."""
+        path = write_reconstruction(config_directory(tmp_path, config_fields()), "song")
+
+        browser_manager.refresh_tree()
+
+        nodes = browser_manager.nodes_at(path)
+        assert [node.node_type for node in nodes] == [NodeType.FILE, NodeType.FILE]
+        assert all(node.filepath == path for node in nodes)
+
+    def test_a_directory_is_answered_where_it_is_listed(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """The configuration branch mirrors the disk, and it is the branch that lists folders."""
+        directory = config_directory(tmp_path, config_fields())
+        write_reconstruction(directory, "first")
+        write_reconstruction(directory, "second")
+
+        browser_manager.refresh_tree()
+
+        assert [node.filepath for node in browser_manager.nodes_at(directory)] == [directory]
+
+    def test_a_path_the_tree_holds_nowhere_is_answered_by_nothing(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        write_reconstruction(config_directory(tmp_path, config_fields()), "song")
+
+        browser_manager.refresh_tree()
+
+        assert browser_manager.nodes_at(tmp_path / "elsewhere.stn") == ()
 
 
 class TestSetReconstructionsDirectory:

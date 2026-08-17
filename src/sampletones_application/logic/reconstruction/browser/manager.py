@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -22,7 +22,7 @@ from sampletones_application.logic.reconstruction.browser.tree.samples.branch im
 from sampletones_application.logic.reconstruction.browser.tree.scan import (
     scan_reconstructions,
 )
-from sampletones_core.structures.tree import NodeType, Tree, TreeNode
+from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
 
 
 class BrowserManager:
@@ -82,3 +82,12 @@ class BrowserManager:
 
     def get_all_reconstruction_files(self) -> List[Path]:
         return sorted({entry.path for entry in self._scan.reconstructions})
+
+    def nodes_at(self, filepath: Path) -> Tuple[FileSystemNode, ...]:
+        """Answers every row the browser offers for a path, across both views.
+
+        A reconstruction is listed by its configuration and again by the sample it came from, so a
+        caller acting on the file rather than on one row — repainting a favorite star, for instance —
+        asks here once and hands the rows to each browser tab.
+        """
+        return self.tree.find_nodes(FileSystemNode, lambda node: node.filepath == filepath)

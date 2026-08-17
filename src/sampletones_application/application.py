@@ -390,12 +390,9 @@ class Application:
             export_service=self.export_service,
             tracker_backends=self.tracker_backends,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
-            on_reconstruct_file=self._reconstruct_file_dialog,
-            on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
-            is_operation_active=self._is_operation_active,
             original_audio_locator=self._original_audio_locator,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -934,11 +931,12 @@ class Application:
     def _repaint_reconstruction_favorites(self, node: FileSystemNode) -> None:
         """Repaints the toggled path in both browsers, whichever tab the star was clicked in.
 
-        The two browsers render one tree and read one set of favorites, so each of them holds a row
-        for the path that just changed.
+        The two browsers render one tree and read one set of favorites, so the rows standing for the
+        toggled path are read once here and handed to each of them.
         """
-        self._reconstructions_tab.repaint_browser_favorites(node)
-        self._sequencer_tab.repaint_browser_favorites(node)
+        nodes = self.browser_manager.nodes_at(node.filepath)
+        self._reconstructions_tab.repaint_browser_favorites(nodes)
+        self._sequencer_tab.repaint_browser_favorites(nodes)
 
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)

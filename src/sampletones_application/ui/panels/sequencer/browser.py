@@ -1,3 +1,5 @@
+from typing import Final
+
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
@@ -13,19 +15,24 @@ from sampletones_application.tags.sequencer import (
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
+from sampletones_application.ui.elements.tree.tags import FileBrowserTags
 from sampletones_application.ui.panels.shared.browser import (
     GUIReconstructionBrowserPanel,
 )
 from sampletones_core.structures.tree import FileSystemNode, Tree
 
+_TAGS: Final[FileBrowserTags] = FileBrowserTags(
+    panel=TAG_SEQUENCER_BROWSER_PANEL,
+    tree=TAG_SEQUENCER_BROWSER_TREE,
+    window_tree=TAG_SEQUENCER_BROWSER_WINDOW_TREE,
+    group_tree=TAG_SEQUENCER_BROWSER_GROUP_TREE,
+    group_controls=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS,
+    button_refresh=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+)
+
 
 class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
-    _panel_tag = TAG_SEQUENCER_BROWSER_PANEL
-    _tree_tag = TAG_SEQUENCER_BROWSER_TREE
-    _button_refresh_tag = TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS
-    _group_controls_tag = TAG_SEQUENCER_BROWSER_GROUP_CONTROLS
-    _group_tree_tag = TAG_SEQUENCER_BROWSER_GROUP_TREE
-    _window_tree_tag = TAG_SEQUENCER_BROWSER_WINDOW_TREE
+    """The Sequencer tab's browser, whose reconstructions become the song's samples."""
 
     def __init__(
         self,
@@ -36,22 +43,30 @@ class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
-        initial_collapsed: bool = False,
+        initial_collapsed: bool,
     ) -> None:
+        self._language_manager = language_manager
+
         super().__init__(
             tree=tree,
             tree_logic=tree_logic,
+            tags=_TAGS,
             scheduling=scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
-            refresh_button_label=language_manager["sequencer.browser.label.refresh_button"],
-            refresh_status_message=language_manager["sequencer.browser.message.status_refresh"],
             initial_collapsed=initial_collapsed,
         )
 
+    @property
+    def refresh_button_label(self) -> str:
+        return self._language_manager["sequencer.browser.label.refresh_button"]
+
+    @property
+    def refresh_status_message(self) -> str:
+        return self._language_manager["sequencer.browser.message.status_refresh"]
+
     def _open_reconstruction(self, node: FileSystemNode) -> None:
-        self._logic.cancel_autoplay()
         self.call(self.on_add_to_sequencer, node.filepath)
 
     def _add_reconstruction_context_menu_items(self, node: FileSystemNode) -> None:

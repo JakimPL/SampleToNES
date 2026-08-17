@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -59,7 +59,9 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.reconstruction.audio import (
     GUIReconstructionAudioPanel,
 )
-from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
+from sampletones_application.ui.panels.reconstruction.browser import (
+    GUIReconstructionsBrowserPanel,
+)
 from sampletones_application.ui.panels.reconstruction.instruments.instruments import (
     GUIReconstructionInstrumentsPanel,
 )
@@ -111,12 +113,9 @@ class ReconstructionTabCoordinator:
         export_service: ExportService,
         tracker_backends: Dict[TrackerFormat, TrackerBackend],
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
-        on_reconstruct_file: VoidCallback,
-        on_reconstruct_directory: VoidCallback,
         on_change_audio_state: VoidCallback,
         on_favorite_changed: Callable[[FileSystemNode], None],
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
-        is_operation_active: Callable[[], bool],
         original_audio_locator: OriginalAudioLocator,
         *,
         layout: ReconstructionTabParameters,
@@ -158,14 +157,13 @@ class ReconstructionTabCoordinator:
             audio_device_manager,
             scheduling=layout.scheduling,
         )
-        self._browser_panel: GUIBrowserPanel = GUIBrowserPanel(
+        self._browser_panel: GUIReconstructionsBrowserPanel = GUIReconstructionsBrowserPanel(
             self._browser_logic.tree,
             self._browser_tree_logic,
             scheduling=layout.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
             colors=layout.tree_colors,
-            is_operation_active=is_operation_active,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
@@ -220,8 +218,6 @@ class ReconstructionTabCoordinator:
         )
 
         self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
-        self._browser_panel.on_reconstruct_file = on_reconstruct_file
-        self._browser_panel.on_reconstruct_directory = on_reconstruct_directory
         self._browser_panel.on_load_reconstruction = on_load_reconstruction_with_confirmation
         self._browser_panel.on_reconstruction_remove_requested = self._request_remove_reconstruction
         self._browser_panel.on_directory_remove_requested = self._request_remove_directory
@@ -551,8 +547,8 @@ class ReconstructionTabCoordinator:
     def refresh_browser(self) -> None:
         self._browser_panel.refresh()
 
-    def repaint_browser_favorites(self, node: FileSystemNode) -> None:
-        self._browser_panel.update_favorite_indicator(node)
+    def repaint_browser_favorites(self, nodes: Sequence[FileSystemNode]) -> None:
+        self._browser_panel.update_favorite_indicators(nodes)
 
     def display_reconstruction(self) -> None:
         self._reconstruction_panel_logic.display_reconstruction()

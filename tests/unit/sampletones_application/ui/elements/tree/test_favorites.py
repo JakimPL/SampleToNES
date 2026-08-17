@@ -87,8 +87,9 @@ def build_panel(
     return panel
 
 
-def node_at(tree: Tree, filepath: Path) -> FileSystemNode:
-    return tree.find_nodes(FileSystemNode, lambda node: node.filepath == filepath)[0]
+def rows_at(tree: Tree, filepath: Path) -> Tuple[FileSystemNode, ...]:
+    """Answers the rows the tree holds for a path, as the browser's owner hands them to the panel."""
+    return tree.find_nodes(FileSystemNode, lambda node: node.filepath == filepath)
 
 
 def build_specs(
@@ -116,7 +117,7 @@ def theme_of(specs: List[NodeSpec], label: str) -> str:
     return next(spec.theme_tag for spec in specs if spec.label == label)
 
 
-class TestTwinRepaint:
+class TestRowRepaint:
     def test_every_row_standing_for_the_path_repaints(
         self,
         repaints: Repaints,
@@ -125,7 +126,7 @@ class TestTwinRepaint:
         tree = browser_tree()
         panel = build_panel(tree, {SONG_PATH}, repaints, monkeypatch)
 
-        panel.update_favorite_indicator(node_at(tree, SONG_PATH))
+        panel.update_favorite_indicators(rows_at(tree, SONG_PATH))
 
         assert [node.name for node, _ in repaints] == ["song", "44.1 kHz·30 Hz"]
 
@@ -137,7 +138,7 @@ class TestTwinRepaint:
         tree = browser_tree()
         panel = build_panel(tree, {OTHER_PATH}, repaints, monkeypatch)
 
-        panel.update_favorite_indicator(node_at(tree, OTHER_PATH))
+        panel.update_favorite_indicators(rows_at(tree, OTHER_PATH))
 
         assert [node.name for node, _ in repaints] == ["other"]
 
@@ -148,13 +149,8 @@ class TestTwinRepaint:
     ) -> None:
         tree = browser_tree()
         panel = build_panel(tree, set(), repaints, monkeypatch)
-        elsewhere = FileSystemNode(
-            "elsewhere",
-            node_type=NodeType.FILE,
-            filepath=Path("/elsewhere/song.stn"),
-        )
 
-        panel.update_favorite_indicator(elsewhere)
+        panel.update_favorite_indicators(rows_at(tree, Path("/elsewhere/song.stn")))
 
         assert repaints == []
 
@@ -166,7 +162,7 @@ class TestTwinRepaint:
         tree = browser_tree()
         panel = build_panel(tree, {CONFIG_DIRECTORY}, repaints, monkeypatch)
 
-        panel.update_favorite_indicator(node_at(tree, CONFIG_DIRECTORY))
+        panel.update_favorite_indicators(rows_at(tree, CONFIG_DIRECTORY))
 
         assert [node.name for node, _ in repaints] == ["PTN"]
 
@@ -181,7 +177,7 @@ class TestFavoriteAncestry:
         tree = browser_tree()
         panel = build_panel(tree, {CONFIG_DIRECTORY}, repaints, monkeypatch)
 
-        panel.update_favorite_indicator(node_at(tree, SONG_PATH))
+        panel.update_favorite_indicators(rows_at(tree, SONG_PATH))
 
         assert [has_favorite_ancestor for _, has_favorite_ancestor in repaints] == [True, True]
 
@@ -193,7 +189,7 @@ class TestFavoriteAncestry:
         tree = browser_tree()
         panel = build_panel(tree, {SONG_PATH}, repaints, monkeypatch)
 
-        panel.update_favorite_indicator(node_at(tree, SONG_PATH))
+        panel.update_favorite_indicators(rows_at(tree, SONG_PATH))
 
         assert [has_favorite_ancestor for _, has_favorite_ancestor in repaints] == [False, False]
 

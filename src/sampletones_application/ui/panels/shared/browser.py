@@ -10,20 +10,15 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_FILE_WAVE,
-    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
-from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
-from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.tree.browser import GUIFileBrowserPanel
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
-from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.parallelization.thread import concurrent
+from sampletones_application.ui.elements.tree.tags import FileBrowserTags
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
@@ -36,80 +31,53 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
 
-class GUIReconstructionBrowserPanel(GUITreePanel):
+class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
     """Shared skeleton of the reconstructions browser in the Sequencer and Reconstruction tabs.
 
-    Builds the refresh button and the searchable tree, resolves every node into a spec, and routes
-    node clicks to the subclass through :meth:`_open_reconstruction`. The subclass supplies its DPG
-    tags, its displayed labels, and the extra items each context menu offers.
+    Reads the tree both tabs share into rows, colours the ones the browser invents, and routes node
+    clicks to the subclass through :meth:`_open_reconstruction`. The subclass names its widgets and
+    its refresh control, and adds the items its context menus offer.
     """
 
     _MONOSPACE_CONFIG_NODES: bool = True
-
-    _panel_tag: str
-    _tree_tag: str
-    _button_refresh_tag: str
-    _group_controls_tag: str
-    _group_tree_tag: str
-    _window_tree_tag: str
 
     def __init__(
         self,
         tree: Tree,
         tree_logic: TreeLogicProtocol,
         *,
+        tags: FileBrowserTags,
         scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
-        refresh_button_label: str,
-        refresh_status_message: str,
-        initial_collapsed: bool = False,
+        initial_collapsed: bool,
     ) -> None:
         self._language_manager = language_manager
-        self._browser_label = language_manager["global.browser.label.browser"]
-        self._refresh_button_label = refresh_button_label
-        self._refresh_status_message = refresh_status_message
         self.on_refresh_tree: Optional[VoidCallback] = None
 
         super().__init__(
             tree=tree,
-            tag=self._panel_tag,
-            tree_tag=self._tree_tag,
             tree_logic=tree_logic,
+            tags=tags,
             scheduling=scheduling,
             search_label=language_manager["global.browser.label.search"],
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
-        )
-
-        self._enable_horizontal_collapse(
             initial_collapsed=initial_collapsed,
-            side=CollapseAxis.HORIZONTAL_LEFT,
         )
 
-    def create_panel(self, parent: str) -> None:
-        self._setup_handlers()
-        with (
-            dpg.child_window(
-                tag=self.tag,
-                width=self.width,
-                height=self.height,
-                parent=parent,
-                border=False,
-            ),
-            self._collapsible_section(
-                self._browser_label,
-                glyph=self._glyphs.headers.reconstruction,
-            ),
-        ):
-            self._create_buttons()
-            dpg.add_separator()
-            self._create_tree_window()
+    @property
+    def section_label(self) -> str:
+        return self._language_manager["global.browser.label.browser"]
 
-        self._create_detail_tooltip(self._window_tree_tag)
-        self.rebuild_tree()
+    @property
+    def section_glyph(self) -> str:
+        return self._glyphs.headers.reconstruction
+
+    def _refresh_model(self) -> None:
+        self.call(self.on_refresh_tree)
 
     def _setup_handlers(self) -> None:
         self._node_handlers = {
@@ -138,43 +106,6 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
         }
 
         super()._setup_handlers()
-
-    def _create_buttons(self) -> None:
-        with dpg.group(tag=self._group_controls_tag):
-            GUIButton(
-                tag=self._button_refresh_tag,
-                label=self._refresh_button_label,
-                width=-1,
-                callback=self.rebuild_tree,
-                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
-            )
-        self._status_bar.bind_to_item(
-            self._button_refresh_tag,
-            self._refresh_status_message,
-        )
-
-    def _create_tree_window(self) -> None:
-        self.create_search(self._body_container)
-        with (
-            dpg.child_window(
-                tag=self._window_tree_tag,
-                horizontal_scrollbar=True,
-            ),
-            dpg.group(tag=self._group_tree_tag),
-            dpg.group(tag=self.tree_tag),
-        ):
-            pass
-
-    def refresh(self) -> None:
-        self.rebuild_tree()
-
-    @concurrent(wait=False, method_bound=True)
-    def rebuild_tree(self) -> None:
-        self._launch_rebuild(
-            lambda: self.call(self.on_refresh_tree),
-            lambda: self._collect_specs(self.tree_tag),
-            root_tag=self.tree_tag,
-        )
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:
@@ -241,10 +172,6 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
 
         return super()._resolve_other_theme_tag(node)
 
-    def set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(self._group_tree_tag, enabled=enabled)
-        dpg_configure_item(self._group_controls_tag, enabled=enabled)
-
     def _on_directory_node_clicked(
         self,
         _sender: Sender,
@@ -276,9 +203,15 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
         app_data: Tuple[int, int],
         user_data: Tuple[FileSystemNode, str],
     ) -> None:
+        """Opens the double-clicked reconstruction, dropping the preview the click before it queued.
+
+        A single click queues an autoplay preview, and the second click of a double click means the
+        reader wants the file itself, so the preview is dropped before the subclass opens it.
+        """
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
+            self._logic.cancel_autoplay()
             self._open_reconstruction(node)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:

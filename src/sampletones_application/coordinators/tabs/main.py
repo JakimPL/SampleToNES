@@ -62,6 +62,7 @@ from sampletones_application.view_model.main.reconstructor import (
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
@@ -145,7 +146,7 @@ class MainTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_EXPLORER_PANEL),
         )
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
-        self._explorer_tree_logic.on_favorite_changed = self._explorer_panel.update_favorite_indicator
+        self._explorer_tree_logic.on_favorite_changed = self._repaint_explorer_favorites
         self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
         self._explorer_tree_logic.on_autoplay_error = self._on_explorer_autoplay_error
 
@@ -251,6 +252,10 @@ class MainTabCoordinator:
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
         self._converter_panel.on_cancel_requested = self._request_cancel_confirmation
+
+    def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
+        """Repaints the row whose star was toggled: the explorer mirrors the disk, so a path is one row."""
+        self._explorer_panel.update_favorite_indicators((node,))
 
     def _on_explorer_autoplay_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
