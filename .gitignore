@@ -18,9 +18,6 @@ sampletones
 !src/sampletones
 !tests/sampletones
 
-src/sampletones_assets/icons/sampletones.ico
-src/sampletones_assets/icons/sampletones.png
-
 *.pyc
 *.pyo
 *.coverage

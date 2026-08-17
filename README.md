@@ -4,15 +4,15 @@
 [![Python](https://img.shields.io/pypi/pyversions/sampletones.svg)](https://pypi.org/project/sampletones/)
 [![License](https://img.shields.io/pypi/l/sampletones.svg)](https://github.com/JakimPL/SampleToNES/blob/main/LICENSE)
 
-<div style="text-align: center">
-    <img src="src/sampletones_assets/icons/sampletones.svg" alt="SampleToNES" width="64">
+<div align="center">
+    <img src="https://raw.githubusercontent.com/JakimPL/SampleToNES/main/src/sampletones_assets/icons/sampletones.svg" alt="SampleToNES" width="64">
 </div>
 
 ## Overview
 
 _SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/).
 
-<img src="docs/images/sampletones.png" alt="SampleToNES" width="640">
+<img src="https://raw.githubusercontent.com/JakimPL/SampleToNES/main/docs/images/sampletones.png" alt="SampleToNES" width="640">
 
 The core idea is to approximate an audio sample using only the chip's basic oscillators — two pulse channels, a triangle, and noise — **without any DPCM samples**.
 

@@ -97,12 +97,6 @@ build-backend = "hatchling.build"
 [tool.uv]
 conflicts = [[{ extra = "gpu" }, { extra = "gpu-cuda11" }]]
 
-[tool.hatch.build]
-artifacts = [
-    "src/sampletones_assets/icons/sampletones.png",
-    "src/sampletones_assets/icons/sampletones.ico",
-]
-
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/sampletones",

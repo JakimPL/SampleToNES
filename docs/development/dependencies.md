@@ -59,9 +59,12 @@ settings, validated as a `Mark`, and `template.svg` is the vector the rendered g
 package writes the whole suite — the vector `sampletones.svg` and the rasters the application
 ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `scripts/assets/icons.py`
 points it at the directory the icons are shipped from. Rasterization uses Pillow, declared in the
-`assets` dependency group. The vector is committed, so the mark reads as a picture in a browser or
-an editor, and the rasters are produced where they are consumed: `make setup` writes them before
-packaging the wheel, and the bundle scripts write them before PyInstaller embeds them.
+`assets` dependency group.
+
+The whole suite is committed, so a plain checkout carries the icons the application opens its window
+with, and every wheel, bundle and test run finds them without a generation step. `make icons` writes
+them again from the mark, and CI regenerates them on each change to confirm the committed files are
+the ones the mark describes.
 
 Pillow is a build-time tool, and the bundle scripts pass `--exclude-module PIL` to hold it to that:
 `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is
