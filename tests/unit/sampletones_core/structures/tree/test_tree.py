@@ -1,12 +1,15 @@
 from dataclasses import dataclass
-from typing import List
+from pathlib import Path
+from typing import Final, List
 
 import pytest
 
-from sampletones_core.structures.tree.node import TreeNode
+from sampletones_core.structures.tree.node import FileSystemNode, TreeNode
 from sampletones_core.structures.tree.tree import Tree
 from sampletones_core.structures.tree.type import NodeType
 from tests.suite.case import BaseTestCase
+
+SONG_PATH: Final[Path] = Path("/reconstructions/song.stn")
 
 
 def name_predicate(node: TreeNode, query: str) -> bool:
@@ -171,3 +174,34 @@ class TestTreeCollectLeaves:
         leaves = tree.collect_leaves()
         assert len(leaves) == 1
         assert leaves[0].name == "leaf_ba"
+
+
+class TestTreeFindNodes:
+    @staticmethod
+    def _tree_with_twins() -> Tree:
+        root = TreeNode("root", NodeType.ROOT)
+        by_configuration = TreeNode("by_configuration", NodeType.GROUP, parent=root)
+        by_sample = TreeNode("by_sample", NodeType.GROUP, parent=root)
+        FileSystemNode("song", NodeType.FILE, SONG_PATH, parent=by_configuration)
+        FileSystemNode("44.1 kHz", NodeType.FILE, SONG_PATH, parent=by_sample)
+        FileSystemNode("other", NodeType.FILE, Path("/reconstructions/other.stn"), parent=by_sample)
+        return Tree(root=root)
+
+    def test_empty_tree_answers_nothing(self) -> None:
+        assert Tree().find_nodes(TreeNode, lambda node: True) == ()
+
+    def test_every_node_standing_for_one_path_is_answered(self) -> None:
+        tree = self._tree_with_twins()
+        twins = tree.find_nodes(FileSystemNode, lambda node: node.filepath == SONG_PATH)
+        assert [twin.name for twin in twins] == ["song", "44.1 kHz"]
+
+    def test_nodes_of_other_classes_stay_out(self) -> None:
+        tree = self._tree_with_twins()
+        assert all(isinstance(node, FileSystemNode) for node in tree.find_nodes(FileSystemNode, lambda node: True))
+
+    def test_the_answer_reads_in_tree_order(self, tree: Tree) -> None:
+        found = tree.find_nodes(TreeNode, lambda node: node.node_type == NodeType.FILE)
+        assert [node.name for node in found] == ["leaf_aa", "leaf_ab", "leaf_ba"]
+
+    def test_a_predicate_nothing_answers_gives_nothing(self, tree: Tree) -> None:
+        assert tree.find_nodes(FileSystemNode, lambda node: True) == ()

@@ -144,6 +144,7 @@ from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
@@ -392,6 +393,7 @@ class Application:
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
+            on_favorite_changed=self._repaint_reconstruction_favorites,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
             is_operation_active=self._is_operation_active,
             original_audio_locator=self._original_audio_locator,
@@ -457,6 +459,7 @@ class Application:
             dialogs=self.dialogs,
             status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
+            on_favorite_changed=self._repaint_reconstruction_favorites,
             on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
@@ -927,6 +930,15 @@ class Application:
     def _refresh_reconstruction_trees(self) -> None:
         self._reconstructions_tab.refresh_browser()
         self._sequencer_tab.refresh_browser()
+
+    def _repaint_reconstruction_favorites(self, node: FileSystemNode) -> None:
+        """Repaints the toggled path in both browsers, whichever tab the star was clicked in.
+
+        The two browsers render one tree and read one set of favorites, so each of them holds a row
+        for the path that just changed.
+        """
+        self._reconstructions_tab.repaint_browser_favorites(node)
+        self._sequencer_tab.repaint_browser_favorites(node)
 
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)

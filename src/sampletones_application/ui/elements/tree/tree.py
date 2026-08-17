@@ -870,8 +870,20 @@ class GUITreePanel(GUIPanel, ABC):
         self._logic.toggle_favorite(node)
 
     def update_favorite_indicator(self, node: FileSystemNode) -> None:
-        has_favorite_ancestor = self._logic.has_favorite_ancestor(node)
-        self._reapply_theme_recursively(node, has_favorite_ancestor)
+        """Repaints every row standing for the toggled path, and what each of them holds.
+
+        A path reaches the panel as many rows as the views offer it — a reconstruction is listed
+        both by its configuration and by the sample it came from — and the star belongs to the path,
+        so each of those rows takes the new theme.
+        """
+        for twin in self._nodes_at(node.filepath):
+            self._reapply_theme_recursively(
+                twin,
+                self._logic.has_favorite_ancestor(twin),
+            )
+
+    def _nodes_at(self, filepath: Path) -> Tuple[FileSystemNode, ...]:
+        return self.tree.find_nodes(FileSystemNode, lambda node: node.filepath == filepath)
 
     @abstractmethod
     def set_tree_enabled(self, enabled: bool) -> None: ...

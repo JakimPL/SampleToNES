@@ -127,6 +127,7 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback, VoidCallback
@@ -157,6 +158,7 @@ class SequencerTabCoordinator:
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
         on_edit_sample_requested: StringCallback,
+        on_favorite_changed: Callable[[FileSystemNode], None],
         on_sample_reconstruction_replaced: Callable[[str, Reconstruction], None],
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
@@ -167,6 +169,7 @@ class SequencerTabCoordinator:
         self._history = history
         self._original_audio_locator = original_audio_locator
         self._on_edit_sample_requested = on_edit_sample_requested
+        self._on_favorite_changed = on_favorite_changed
         self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
@@ -633,7 +636,7 @@ class SequencerTabCoordinator:
         self._sequencer_browser_panel.on_locate_original_audio = self._original_audio_locator.locate
         self._sequencer_browser_panel.on_refresh_tree = self._sequencer_browser_logic.refresh_tree
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
-        self._sequencer_tree_logic.on_favorite_changed = self._sequencer_browser_panel.update_favorite_indicator
+        self._sequencer_tree_logic.on_favorite_changed = self._on_favorite_changed
         self._sequencer_tree_logic.on_search_update_needed = self._sequencer_browser_panel.update_tree_visibility
         self._sequencer_tree_logic.on_autoplay_error = self._on_preview_error
 
@@ -946,6 +949,9 @@ class SequencerTabCoordinator:
 
     def refresh_browser(self) -> None:
         self._sequencer_browser_panel.refresh()
+
+    def repaint_browser_favorites(self, node: FileSystemNode) -> None:
+        self._sequencer_browser_panel.update_favorite_indicator(node)
 
     def _on_song_changed(self) -> None:
         self._sequencer_tracker_logic.push_settings()

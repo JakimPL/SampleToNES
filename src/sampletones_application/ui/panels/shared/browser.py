@@ -206,8 +206,7 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self._logic.is_node_favorite(node)
-        state.has_favorite_ancestor |= is_favorite
+        state.has_favorite_ancestor |= self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(node)
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
             self._append_spec(

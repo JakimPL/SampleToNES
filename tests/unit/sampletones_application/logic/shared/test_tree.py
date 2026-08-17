@@ -262,6 +262,48 @@ class TestTreeLogicFavorites:
         child.parent = parent
         assert tree.has_favorite_ancestor(child) is True
 
+    def test_has_favorite_ancestor_reads_the_path_rather_than_the_rows_above(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A view may list a file under invented rows, and the favorite directory is still its own."""
+        directory_path = tmp_path / "config"
+        session_manager = MagicMock()
+        session_manager.favorites = {directory_path}
+        tree = _tree(session_manager=session_manager)
+        node = _file_node(directory_path / "song.stn")
+        node.parent = TreeNode("cw_amen02_165", NodeType.SAMPLE)
+        assert tree.has_favorite_ancestor(node) is True
+
+    def test_has_favorite_ancestor_reaches_any_depth(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        session_manager = MagicMock()
+        session_manager.favorites = {tmp_path}
+        tree = _tree(session_manager=session_manager)
+        node = _file_node(tmp_path / "config" / "album" / "song.stn")
+        assert tree.has_favorite_ancestor(node) is True
+
+    def test_has_favorite_ancestor_returns_false_for_a_favorite_sibling(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        session_manager = MagicMock()
+        session_manager.favorites = {tmp_path / "other.wav"}
+        tree = _tree(session_manager=session_manager)
+        assert tree.has_favorite_ancestor(_file_node(tmp_path / "audio.wav")) is False
+
+    def test_has_favorite_ancestor_returns_false_for_the_node_itself(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        filepath = tmp_path / "audio.wav"
+        session_manager = MagicMock()
+        session_manager.favorites = {filepath}
+        tree = _tree(session_manager=session_manager)
+        assert tree.has_favorite_ancestor(_file_node(filepath)) is False
+
     def test_toggle_favorite_delegates_to_session(
         self,
         tmp_path: Path,

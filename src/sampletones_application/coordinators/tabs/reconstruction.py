@@ -80,6 +80,7 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.paths import EXT_FILE_WAVE
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.scope import ExportScope
@@ -113,6 +114,7 @@ class ReconstructionTabCoordinator:
         on_reconstruct_file: VoidCallback,
         on_reconstruct_directory: VoidCallback,
         on_change_audio_state: VoidCallback,
+        on_favorite_changed: Callable[[FileSystemNode], None],
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
         is_operation_active: Callable[[], bool],
         original_audio_locator: OriginalAudioLocator,
@@ -167,7 +169,7 @@ class ReconstructionTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
-        self._browser_tree_logic.on_favorite_changed = self._browser_panel.update_favorite_indicator
+        self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
         self._browser_tree_logic.on_autoplay_error = self._on_browser_autoplay_error
         self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
@@ -548,6 +550,9 @@ class ReconstructionTabCoordinator:
 
     def refresh_browser(self) -> None:
         self._browser_panel.refresh()
+
+    def repaint_browser_favorites(self, node: FileSystemNode) -> None:
+        self._browser_panel.update_favorite_indicator(node)
 
     def display_reconstruction(self) -> None:
         self._reconstruction_panel_logic.display_reconstruction()

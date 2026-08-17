@@ -236,12 +236,11 @@ class GUIExplorerPanel(GUITreePanel):
         self._pending_specs = []
         if self._explorer_logic.is_directory_expanded(node.filepath):
             for child in node.children:
-                has_favorite_ancestor = self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(child)
                 self._build_tree_node(
                     child,
                     TreeNodeState(
                         parent=node_tag,
-                        has_favorite_ancestor=has_favorite_ancestor,
+                        has_favorite_ancestor=self._logic.has_favorite_ancestor(child),
                     ),
                 )
 
@@ -261,8 +260,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self._logic.is_node_favorite(node)
-        state.has_favorite_ancestor |= is_favorite
+        state.has_favorite_ancestor |= self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(node)
 
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self._explorer_logic.is_directory_expanded(node.filepath)

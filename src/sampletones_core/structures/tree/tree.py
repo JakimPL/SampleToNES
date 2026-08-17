@@ -1,8 +1,10 @@
-from typing import Callable, Dict, Optional, Sequence
+from typing import Callable, Dict, Optional, Sequence, Tuple, Type, TypeVar
 
 from anytree import PreOrderIter
 
 from .node import TreeNode
+
+TreeNodeT = TypeVar("TreeNodeT", bound=TreeNode)
 
 
 class Tree:
@@ -63,6 +65,31 @@ class Tree:
             return True
 
         return self._node_visibility.get(node, False)
+
+    def find_nodes(
+        self,
+        node_class: Type[TreeNodeT],
+        predicate: Callable[[TreeNodeT], bool],
+    ) -> Tuple[TreeNodeT, ...]:
+        """Answers every node of ``node_class`` the predicate accepts, in reading order.
+
+        One thing can stand in several places in a tree — a file listed by its configuration and
+        again by the sample it came from — so a caller acting on a thing rather than on a row asks
+        for all of its nodes at once. Naming the node class keeps the answer typed, so the caller
+        reads the fields that class carries.
+        """
+        if self.root is None:
+            return ()
+
+        return tuple(
+            node
+            for node in PreOrderIter(self.root)
+            if isinstance(
+                node,
+                node_class,
+            )
+            and predicate(node)
+        )
 
     def collect_leaves(self) -> Sequence[TreeNode]:
         if not self.root:

@@ -147,17 +147,14 @@ class TreeLogic(CallbackMixin):
         return node.filepath in self._session_manager.favorites
 
     def has_favorite_ancestor(self, node: FileSystemNode) -> bool:
-        current_node = node.parent
-        while current_node is not None:
-            if not isinstance(current_node, FileSystemNode):
-                break
+        """Whether a favorite directory holds this path, at any depth above it.
 
-            if self.is_node_favorite(current_node):
-                return True
-
-            current_node = current_node.parent
-
-        return False
+        The answer reads the path rather than the rows above it, so it holds wherever a view puts
+        the node: a reconstruction listed under the sample it came from sits below groups the
+        browser invented, and the directory that makes it a favorite child is still on its path.
+        """
+        favorites = self._session_manager.favorites
+        return any(directory in favorites for directory in node.filepath.parents)
 
     def toggle_favorite(self, node: FileSystemNode) -> None:
         self._session_manager.toggle_favorite(node.filepath)
