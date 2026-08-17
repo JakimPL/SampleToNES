@@ -308,12 +308,6 @@ TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY = TagName(
     Widget.THEME,
     "file_not_expanded_directory",
 )
-TAG_GLOBAL_THEME_CHECKBOX_MUTED = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.THEME,
-    "checkbox_muted",
-)
 TAG_GLOBAL_THEME_INPUT_INVALID = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -18,7 +18,6 @@ from sampletones_application.tags.general import (
     SUF_INPUT_SEARCH,
     SUF_TEXT_FAVORITES,
     SUF_TOOLTIP_DETAIL,
-    TAG_GLOBAL_THEME_CHECKBOX_MUTED,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_FAVORITE,
     TAG_GLOBAL_THEME_FAVORITE_CHILD,
@@ -260,7 +259,9 @@ class GUITreePanel(GUIPanel, ABC):
         """Builds the control showing the favorites alone, as a row of its own under the search box.
 
         The checkbox carries the label, so the words are part of what the reader clicks, and the star
-        beside it reads in the colour the mode it stands for is drawn in.
+        beside it reads in the colour the mode it stands for is drawn in. The label reads in the pair
+        every checkbox reads — the text colour while the control is live, the muted one while a
+        rebuild holds it — so the shade states whether the control can be acted on.
         """
         self._favorites_checkbox_tag = compose_tag(self.tag, SUF_CHECKBOX_FAVORITES)
         self._favorites_glyph_tag = compose_tag(self.tag, SUF_TEXT_FAVORITES)
@@ -277,7 +278,6 @@ class GUITreePanel(GUIPanel, ABC):
                 tag=self._favorites_glyph_tag,
             )
 
-        ThemeRegistry.get(TAG_GLOBAL_THEME_CHECKBOX_MUTED).bind_to_item(self._favorites_checkbox_tag)
         FontRegistry.bind_to_item(self._favorites_glyph_tag, Font.ICON)
         self._apply_favorites_glyph_color()
         self._status_bar.bind_to_item(

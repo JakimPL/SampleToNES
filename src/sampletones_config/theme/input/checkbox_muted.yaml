@@ -1,9 +1,0 @@
-name: input_checkbox_muted
-tag: global.theme.checkbox_muted
-
-components:
-  - item_type: Checkbox
-    entries:
-      - type: color
-        key: Text
-        value: .text_inactive
