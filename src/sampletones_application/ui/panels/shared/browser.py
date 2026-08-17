@@ -37,9 +37,13 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
     Reads the tree both tabs share into rows, colours the ones the browser invents, and routes node
     clicks to the subclass through :meth:`_open_reconstruction`. The subclass names its widgets and
     its refresh control, and adds the items its context menus offer.
+
+    Reconstructions carry favorites, so this browser offers the control showing them alone and opens
+    in the mode the session left it in.
     """
 
     _MONOSPACE_CONFIG_NODES: bool = True
+    _OFFERS_FAVORITES_FILTER: bool = True
 
     def __init__(
         self,
@@ -51,6 +55,7 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         status_bar: GUIStatusBar,
         colors: TreeColors,
         initial_collapsed: bool,
+        initial_favorites_only: bool,
     ) -> None:
         self._language_manager = language_manager
         self.on_refresh_tree: Optional[VoidCallback] = None
@@ -65,6 +70,8 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
             colors=colors,
             initial_collapsed=initial_collapsed,
         )
+
+        self._restore_favorites_only(initial_favorites_only)
 
     @property
     def section_label(self) -> str:

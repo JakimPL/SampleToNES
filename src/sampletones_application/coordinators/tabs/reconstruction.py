@@ -165,12 +165,14 @@ class ReconstructionTabCoordinator:
             status_bar=status_bar,
             colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
+            initial_favorites_only=session_manager.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
         self._browser_tree_logic.on_autoplay_error = self._on_browser_autoplay_error
         self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
+        self._browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._reconstruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_change_audio_state,
@@ -493,6 +495,14 @@ class ReconstructionTabCoordinator:
         """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_browser_width()
+
+    def _on_browser_favorites_filter_changed(
+        self,
+        panel_tag: str,
+        favorites_only: bool,
+    ) -> None:
+        """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
+        self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
 
     def _on_instruments_collapse_changed(
         self,

@@ -12,10 +12,13 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_SEARCH,
+    SUF_CHECKBOX_FAVORITES,
     SUF_HANDLER_DETAIL_TOOLTIP,
     SUF_HANDLER_NODE,
     SUF_INPUT_SEARCH,
+    SUF_TEXT_FAVORITES,
     SUF_TOOLTIP_DETAIL,
+    TAG_GLOBAL_THEME_CHECKBOX_MUTED,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_FAVORITE,
     TAG_GLOBAL_THEME_FAVORITE_CHILD,
@@ -132,6 +135,8 @@ class GUITreePanel(GUIPanel, ABC):
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
+        self._favorites_checkbox_tag: Optional[str] = None
+        self._favorites_glyph_tag: Optional[str] = None
 
         self._detail_tooltip_tag = compose_tag(tag, SUF_TOOLTIP_DETAIL)
         self._detail_tooltip_handler_tag = compose_tag(tag, SUF_HANDLER_DETAIL_TOOLTIP)
@@ -151,6 +156,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._lbl_detail_generators = language_manager["global.context.label.detail_generators"]
         self._lbl_detail_configuration = language_manager["global.context.label.detail_configuration"]
 
+        self.on_favorites_filter_changed: Optional[Callable[[str, bool], None]] = None
         self.on_add_to_sequencer: Optional[PathCallback] = None
         self.can_add_to_sequencer: Optional[Callable[[], bool]] = None
         self.on_replace_in_sequencer: Optional[PathCallback] = None
@@ -249,6 +255,79 @@ class GUITreePanel(GUIPanel, ABC):
             self._search_button_tag,
             self._language_manager["global.status.message.clear_search"],
         )
+
+    def create_favorites_filter(self, parent: str) -> None:
+        """Builds the control showing the favorites alone, as a row of its own under the search box.
+
+        The checkbox carries the label, so the words are part of what the reader clicks, and the star
+        beside it reads in the colour the mode it stands for is drawn in.
+        """
+        self._favorites_checkbox_tag = compose_tag(self.tag, SUF_CHECKBOX_FAVORITES)
+        self._favorites_glyph_tag = compose_tag(self.tag, SUF_TEXT_FAVORITES)
+
+        with dpg.group(horizontal=True, parent=parent):
+            dpg.add_checkbox(
+                tag=self._favorites_checkbox_tag,
+                label=self._language_manager["global.browser.label.favorites_only"],
+                default_value=self._filter.favorites_only,
+                callback=self._on_favorites_only_changed,
+            )
+            dpg.add_text(
+                self._glyphs.common.favorite,
+                tag=self._favorites_glyph_tag,
+            )
+
+        ThemeRegistry.get(TAG_GLOBAL_THEME_CHECKBOX_MUTED).bind_to_item(self._favorites_checkbox_tag)
+        FontRegistry.bind_to_item(self._favorites_glyph_tag, Font.ICON)
+        self._apply_favorites_glyph_color()
+        self._status_bar.bind_to_item(
+            self._favorites_checkbox_tag,
+            self._language_manager["global.status.message.favorites_only"],
+        )
+
+    def _on_favorites_only_changed(
+        self,
+        _sender: Sender,
+        favorites_only: bool,
+    ) -> None:
+        """Takes the mode the control now reads, and draws the rows that mode names.
+
+        The rebuild resolves the filter against the model as it collects the rows, so the mode is
+        stated here and answered there, and turning it on walks the model once.
+        """
+        self._filter = self._filter.with_favorites_only(favorites_only)
+        self._apply_favorites_glyph_color()
+        self.call(
+            self.on_favorites_filter_changed,
+            self.tag,
+            favorites_only,
+        )
+        self.redraw_tree()
+
+    def _apply_favorites_glyph_color(self) -> None:
+        """Colours the star by the mode the control reads, wherever the browser offers one."""
+        if self._favorites_glyph_tag is None:
+            return
+
+        dpg_set_palette_color(self._favorites_glyph_tag, self._favorites_glyph_color())
+
+    def _favorites_glyph_color(self) -> BaseColor:
+        """The colour the star takes: the favorite colour while the mode is on, muted while it is off."""
+        if self._filter.favorites_only:
+            return self._colors.favorite
+
+        return self._colors.muted
+
+    def set_favorites_filter_enabled(self, enabled: bool) -> None:
+        """Follows the tree's lock through to the control, which asks for a rebuild of that tree."""
+        if self._favorites_checkbox_tag is None:
+            return
+
+        dpg_configure_item(self._favorites_checkbox_tag, enabled=enabled)
+
+    def _restore_favorites_only(self, favorites_only: bool) -> None:
+        """Takes the mode a session left the browser in, which its first rebuild then draws by."""
+        self._filter = self._filter.with_favorites_only(favorites_only)
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
         return compose_tag(self.tag, node_type.value, SUF_HANDLER_NODE)
@@ -747,20 +826,23 @@ class GUITreePanel(GUIPanel, ABC):
         self.call(self.on_replace_in_sequencer, user_data.filepath)
 
     def _on_search_changed(self, _sender: Sender, query: str) -> None:
-        self._set_filter(self._filter.with_query(query))
-        self._logic.schedule_search_update(query)
+        self._set_query(query)
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
             dpg.set_value(self._search_input_tag, "")
 
-        self._set_filter(self._filter.with_query(""))
-        self._logic.schedule_search_update("")
+        self._set_query("")
 
-    def _set_filter(self, tree_filter: TreeFilter) -> None:
-        """Take the filter the browser is now asked to show, and resolve what it leaves on screen."""
-        self._filter = tree_filter
-        self._resolve_filter()
+    def _set_query(self, query: str) -> None:
+        """Take the query the browser is now asked to show, and resolve the rows it names.
+
+        The rows already drawn are the favorites mode's to state, so a keystroke resolves the search
+        alone and the tree on screen answers the one after it.
+        """
+        self._filter = self._filter.with_query(query)
+        self._search_visibility = self._resolve_search_visibility()
+        self._logic.schedule_search_update(query)
 
     def _resolve_filter(self) -> None:
         """Resolve the filter against the model as it stands, which a rebuild does once per pass.

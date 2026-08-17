@@ -207,6 +207,7 @@ class SequencerTabCoordinator:
             status_bar=status_bar,
             colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL),
+            initial_favorites_only=session_manager.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL),
         )
         self._sequencer_tracker_logic: SequencerTrackerLogic = SequencerTrackerLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
@@ -629,6 +630,7 @@ class SequencerTabCoordinator:
 
     def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
+        self._sequencer_browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.on_replace_in_sequencer = self.replace_reconstruction
@@ -661,6 +663,10 @@ class SequencerTabCoordinator:
         """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_browser_width()
+
+    def _on_browser_favorites_filter_changed(self, panel_tag: str, favorites_only: bool) -> None:
+        """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
+        self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
 
     def sync_responsive_layout(self) -> None:
         """Refits this tab's side column to the current viewport, the entry the resize handler calls."""

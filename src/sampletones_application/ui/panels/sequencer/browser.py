@@ -42,6 +42,7 @@ class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
         status_bar: GUIStatusBar,
         colors: TreeColors,
         initial_collapsed: bool,
+        initial_favorites_only: bool,
     ) -> None:
         self._language_manager = language_manager
 
@@ -53,6 +54,7 @@ class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
             status_bar=status_bar,
             colors=colors,
             initial_collapsed=initial_collapsed,
+            initial_favorites_only=initial_favorites_only,
         )
 
     @property

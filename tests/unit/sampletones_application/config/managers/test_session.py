@@ -5,6 +5,7 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
+from sampletones_application.tags.sequencer import TAG_SEQUENCER_BROWSER_PANEL
 
 
 @pytest.fixture
@@ -149,3 +150,10 @@ class TestSessionManagerFavorites:
 
     def test_favorites_returns_set(self, session: SessionManager) -> None:
         assert isinstance(session.favorites, set)
+
+    def test_a_browser_reads_the_favorites_filter_it_was_given(self, session: SessionManager) -> None:
+        session.set_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL, True)
+        assert session.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL) is True
+
+    def test_a_browser_a_first_run_finds_shows_the_whole_tree(self, session: SessionManager) -> None:
+        assert session.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL) is False

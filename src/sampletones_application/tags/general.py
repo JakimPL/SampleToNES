@@ -308,6 +308,12 @@ TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY = TagName(
     Widget.THEME,
     "file_not_expanded_directory",
 )
+TAG_GLOBAL_THEME_CHECKBOX_MUTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "checkbox_muted",
+)
 TAG_GLOBAL_THEME_INPUT_INVALID = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -690,9 +696,11 @@ SUF_HANDLER_DRAG = compose_tag("handler", "drag")
 SUF_LABEL = "label"
 SUF_PATH = "path"
 SUF_TEXT = "text"
+SUF_TEXT_FAVORITES = compose_tag(SUF_TEXT, "favorites")
 SUF_INPUT = "input"
 SUF_INPUT_SEARCH = compose_tag(SUF_INPUT, "search")
 SUF_CHECKBOX = "checkbox"
+SUF_CHECKBOX_FAVORITES = compose_tag(SUF_CHECKBOX, "favorites")
 SUF_TABLE = "table"
 SUF_TOOLTIP = "tooltip"
 SUF_TOOLTIP_DETAIL = compose_tag(SUF_TOOLTIP, "detail")

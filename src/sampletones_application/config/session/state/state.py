@@ -20,6 +20,10 @@ class ApplicationState(BaseModel):
         default_factory=dict,
         description="Collapsed state of each card, keyed by the card's tag.",
     )
+    favorites_filters: Dict[str, bool] = Field(
+        default_factory=dict,
+        description="Whether each browser shows its favorites alone, keyed by the panel's tag.",
+    )
     current: Current = Field(
         default_factory=Current,
         description="The current state of application elements, e.g. selected tab.",

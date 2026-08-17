@@ -94,6 +94,12 @@ class ApplicationStateManager:
     def set_card_collapsed(self, card_tag: str, collapsed: bool) -> None:
         self.state.collapsed_cards[card_tag] = collapsed
 
+    def is_favorites_filter_active(self, panel_tag: str) -> bool:
+        return self.state.favorites_filters.get(panel_tag, False)
+
+    def set_favorites_filter_active(self, panel_tag: str, active: bool) -> None:
+        self.state.favorites_filters[panel_tag] = active
+
     def load_current_tab(self) -> Tab:
         return self.state.current.tab
 

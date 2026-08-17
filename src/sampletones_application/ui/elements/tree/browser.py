@@ -32,9 +32,13 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
     whole card as the tree locks and unlocks. A subclass declares its widgets as a
     :class:`FileBrowserTags`, states what its card and its refresh control read, answers what
     refreshing the model means, and shapes each row.
+
+    A browser whose rows carry favorites states ``_OFFERS_FAVORITES_FILTER``, which adds the control
+    showing those favorites alone to the card.
     """
 
     _REBUILD_ON_CREATE: bool = True
+    _OFFERS_FAVORITES_FILTER: bool = False
 
     def __init__(
         self,
@@ -141,6 +145,9 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)
+        if self._OFFERS_FAVORITES_FILTER:
+            self.create_favorites_filter(self._body_container)
+
         with (
             dpg.child_window(
                 tag=self._tags.window_tree,
@@ -234,3 +241,4 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
     def set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(self._tags.group_tree, enabled=enabled)
         dpg_configure_item(self._tags.group_controls, enabled=enabled)
+        self.set_favorites_filter_enabled(enabled)

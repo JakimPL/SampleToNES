@@ -1,18 +1,31 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, FrozenSet, List, Set
+from typing import Any, Dict, Final, FrozenSet, List, Set, Tuple
 
 import pytest
 
+from sampletones_application.ui.elements.tree import tree as tree_module
+from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.filter import TreeFilter
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
+from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
 from tests.suite.language import FakeLanguageManager
 
 PANEL_TAG: Final[str] = "sequencer.browser"
+CHECKBOX_TAG: Final[str] = "sequencer.browser.checkbox.favorites"
+GLYPH_TAG: Final[str] = "sequencer.browser.text.favorites"
+
+TREE_COLORS: Final[TreeColors] = TreeColors(
+    favorite=LiteralColor((240, 200, 80, 255)),
+    node=LiteralColor((200, 200, 200, 255)),
+    muted=LiteralColor((120, 120, 120, 255)),
+    accent=LiteralColor((80, 160, 240, 255)),
+)
 
 CONFIG_DIRECTORY: Final[Path] = Path("/reconstructions/sr_44100_nf_30")
 STARRED_PATH: Final[Path] = CONFIG_DIRECTORY / "starred.stn"
@@ -120,13 +133,18 @@ def build_panel(
 ) -> GUISequencerBrowserPanel:
     """Builds a browser panel showing the tree under a filter, with the favorites its logic answers.
 
-    Resolving the filter reads the model alone, so the panel needs neither widgets nor a search box.
+    Resolving the filter reads the model alone, so the panel needs neither widgets nor a search box,
+    and the control stands where a browser that has yet to build one leaves it.
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = PANEL_TAG
     panel.tree = browser.tree
     panel._logic = FakeTreeLogic(favorites)
     panel._language_manager = FakeLanguageManager()
+    panel._colors = TREE_COLORS
+    panel._favorites_checkbox_tag = None
+    panel._favorites_glyph_tag = None
+    panel.on_favorites_filter_changed = None
     panel._filter = TreeFilter(query=query, favorites_only=favorites_only)
     panel._resolve_filter()
     return panel
@@ -242,6 +260,143 @@ class TestEmptyAnswer:
     def test_a_query_finding_nothing_names_the_results(self, browser: BrowserTree) -> None:
         panel = build_panel(browser, set(), favorites_only=False, query="nothing")
         assert panel._empty_filter_message() == "global.dialog.message.tree_no_results"
+
+
+class TestControl:
+    """What the checkbox beside the search box answers for: the mode, the memory of it, the rows."""
+
+    def test_the_mode_the_control_reads_reaches_the_filter(
+        self,
+        browser: BrowserTree,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        monkeypatch.setattr(panel, "redraw_tree", lambda: None, raising=False)
+
+        panel._on_favorites_only_changed(None, True)
+
+        assert panel._filter.favorites_only
+
+    def test_a_change_is_handed_to_the_hook_remembering_it(
+        self,
+        browser: BrowserTree,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        remembered: List[Tuple[str, bool]] = []
+        panel.on_favorites_filter_changed = lambda panel_tag, favorites_only: remembered.append(
+            (panel_tag, favorites_only)
+        )
+        monkeypatch.setattr(panel, "redraw_tree", lambda: None, raising=False)
+
+        panel._on_favorites_only_changed(None, True)
+
+        assert remembered == [(PANEL_TAG, True)]
+
+    def test_a_change_draws_the_rows_the_new_mode_names(
+        self,
+        browser: BrowserTree,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        redraws: List[bool] = []
+        monkeypatch.setattr(panel, "redraw_tree", lambda: redraws.append(True), raising=False)
+
+        panel._on_favorites_only_changed(None, True)
+
+        assert redraws == [True]
+
+    def test_the_mode_a_session_left_on_stands_before_the_first_rebuild(
+        self,
+        browser: BrowserTree,
+    ) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+
+        panel._restore_favorites_only(True)
+
+        assert panel._filter.favorites_only
+
+    def test_a_query_typed_earlier_survives_a_change_of_mode(
+        self,
+        browser: BrowserTree,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False, query="starred")
+        monkeypatch.setattr(panel, "redraw_tree", lambda: None, raising=False)
+
+        panel._on_favorites_only_changed(None, True)
+
+        assert panel._filter.query == "starred"
+
+
+class TestStarColor:
+    """The star beside the label reads in the colour of the mode it stands for."""
+
+    def test_the_star_reads_favorite_while_the_mode_is_on(self, browser: BrowserTree) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
+        assert panel._favorites_glyph_color() == TREE_COLORS.favorite
+
+    def test_the_star_reads_muted_while_the_mode_is_off(self, browser: BrowserTree) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        assert panel._favorites_glyph_color() == TREE_COLORS.muted
+
+    def test_the_star_is_coloured_with_the_token_the_mode_names(
+        self,
+        browser: BrowserTree,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The colour reaches the star as a token, so the star follows a palette swapped in place."""
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
+        panel._favorites_glyph_tag = GLYPH_TAG
+        coloured: List[Tuple[str, BaseColor]] = []
+        monkeypatch.setattr(
+            tree_module,
+            "dpg_set_palette_color",
+            lambda item, color: coloured.append((item, color)),
+        )
+
+        panel._apply_favorites_glyph_color()
+
+        assert coloured == [(GLYPH_TAG, TREE_COLORS.favorite)]
+
+
+class TestControlLock:
+    """A rebuild is what the control asks for, so the tree's lock reaches it."""
+
+    def test_the_lock_reaches_the_control(
+        self,
+        browser: BrowserTree,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
+        panel._favorites_checkbox_tag = CHECKBOX_TAG
+        configured: List[Tuple[str, Any]] = []
+        monkeypatch.setattr(
+            tree_module,
+            "dpg_configure_item",
+            lambda tag, **kwargs: configured.append((tag, kwargs["enabled"])),
+        )
+
+        panel.set_favorites_filter_enabled(False)
+
+        assert configured == [(CHECKBOX_TAG, False)]
+
+    def test_a_browser_offering_no_control_answers_the_lock_as_it_stands(
+        self,
+        browser: BrowserTree,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        configured: List[Tuple[str, Any]] = []
+        monkeypatch.setattr(
+            tree_module,
+            "dpg_configure_item",
+            lambda tag, **kwargs: configured.append((tag, kwargs["enabled"])),
+        )
+
+        panel.set_favorites_filter_enabled(False)
+
+        assert configured == []
 
 
 class TestFavoriteChange:

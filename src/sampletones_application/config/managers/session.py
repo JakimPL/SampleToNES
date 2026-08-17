@@ -53,6 +53,12 @@ class SessionManager:
     def set_card_collapsed(self, card_tag: str, collapsed: bool) -> None:
         self._state_manager.set_card_collapsed(card_tag, collapsed)
 
+    def is_favorites_filter_active(self, panel_tag: str) -> bool:
+        return self._state_manager.is_favorites_filter_active(panel_tag)
+
+    def set_favorites_filter_active(self, panel_tag: str, active: bool) -> None:
+        self._state_manager.set_favorites_filter_active(panel_tag, active)
+
     def toggle_autoplay(self) -> bool:
         return self._config_manager.toggle_autoplay()
 

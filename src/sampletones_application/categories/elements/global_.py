@@ -29,6 +29,7 @@ class TreeElements(AbstractElement):
     SEARCH = "search"
     FILTER = "filter"
     CLEAR_SEARCH = "clear_search"
+    FAVORITES_ONLY = "favorites_only"
 
 
 class ContextElements(AbstractElement):
@@ -129,6 +130,7 @@ class StatusElements(AbstractElement):
     NODE_LIBRARY = "node_library"
     TREE_SEARCH = "tree_search"
     CLEAR_SEARCH = "clear_search"
+    FAVORITES_ONLY = "favorites_only"
     INPUT = "input"
     COMBO = "combo"
     NODE_DIRECTORY = "node_directory"
