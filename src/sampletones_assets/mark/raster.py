@@ -1,6 +1,6 @@
 from typing import Final, Tuple
 
-from PIL import Image, ImageDraw  # TODO: update THIRD-PARTY-* files, revise LICENSE if still holds
+from PIL import Image, ImageDraw
 
 from sampletones_assets.mark.geometry import sine_points, square_rectangles
 from sampletones_assets.mark.specification import Mark

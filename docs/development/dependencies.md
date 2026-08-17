@@ -63,6 +63,12 @@ points it at the directory the icons are shipped from. Rasterization uses Pillow
 an editor, and the rasters are produced where they are consumed: `make setup` writes them before
 packaging the wheel, and the bundle scripts write them before PyInstaller embeds them.
 
+Pillow is a build-time tool, and the bundle scripts pass `--exclude-module PIL` to hold it to that:
+`pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is
+installed, and PyInstaller follows that import into the bundle. The application reads its icons as
+files, so the exclusion spares every bundle Pillow's extension modules and the imaging libraries
+that come with them. `scripts/ci/checks/bundle.py` holds the release bundles to it.
+
 ## Linux (standalone executable)
 
 Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. Install them with `make system-deps` (or run `scripts/linux/build/dependencies.sh`), which holds the full list.

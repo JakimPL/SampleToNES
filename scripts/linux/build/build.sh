@@ -45,6 +45,7 @@ echo "Building executable..."
     --add-data "src/sampletones_assets/fonts:assets/fonts" \
     --add-data "src/sampletones_config:config" \
     --copy-metadata sampletones \
+    --exclude-module PIL \
     "${RELEASE_HOOK_ARGS[@]}" \
     "src/sampletones/__main__.py"
 
