@@ -39,6 +39,34 @@ def format_spectrum_method(method: SpectrumMethod) -> str:
     return SPECTRUM_METHOD_LABELS[method]
 
 
+def format_transformation_gamma(transformation_gamma: int) -> str:
+    """Marks a transformation gamma with ``γ`` (e.g. ``γ0``)."""
+    return f"{GAMMA_PREFIX}{transformation_gamma}"
+
+
+def format_frequencies(sample_rate: int, nes_frequency: int) -> str:
+    """Renders the rates a reconstruction runs at, audio before frame (e.g. ``44.1 kHz·30 Hz``)."""
+    return DISPLAY_SEPARATOR.join(
+        [
+            format_sample_rate(sample_rate),
+            format_nes_frequency(nes_frequency),
+        ],
+    )
+
+
+def format_transformation(
+    spectrum_method: SpectrumMethod,
+    transformation_gamma: int,
+) -> str:
+    """Renders the spectrum a library was built from, method before gamma (e.g. ``FFT·γ0``)."""
+    return DISPLAY_SEPARATOR.join(
+        [
+            format_spectrum_method(spectrum_method),
+            format_transformation_gamma(transformation_gamma),
+        ],
+    )
+
+
 def short_hash(config_hash: str) -> str:
     return config_hash[:DISPLAY_HASH_LENGTH]
 

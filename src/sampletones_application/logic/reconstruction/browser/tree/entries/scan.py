@@ -1,14 +1,13 @@
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple, TypeAlias, Union
+from typing import List, Sequence, Tuple
 
 from sampletones_application.logic.reconstruction.browser.tree.entries.directory import (
     DirectoryEntry,
+    ScanEntry,
 )
 from sampletones_application.logic.reconstruction.browser.tree.entries.reconstruction import (
     ReconstructionEntry,
 )
-
-ScanEntry: TypeAlias = Union[DirectoryEntry, ReconstructionEntry]
 
 
 @dataclass(frozen=True)

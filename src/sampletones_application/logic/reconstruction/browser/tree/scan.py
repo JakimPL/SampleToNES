@@ -3,13 +3,13 @@ from typing import List, Optional, Tuple
 
 from sampletones_application.logic.reconstruction.browser.tree.entries.directory import (
     DirectoryEntry,
+    ScanEntry,
 )
 from sampletones_application.logic.reconstruction.browser.tree.entries.reconstruction import (
     ReconstructionEntry,
 )
 from sampletones_application.logic.reconstruction.browser.tree.entries.scan import (
     ReconstructionScan,
-    ScanEntry,
 )
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields

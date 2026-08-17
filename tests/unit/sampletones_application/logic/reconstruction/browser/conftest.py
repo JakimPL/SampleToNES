@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final
+from typing import Dict, Final, List
 from unittest.mock import MagicMock
 
 import pytest
@@ -7,13 +7,13 @@ import pytest
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.browser.tree.entries.directory import (
     DirectoryEntry,
+    ScanEntry,
 )
 from sampletones_application.logic.reconstruction.browser.tree.entries.reconstruction import (
     ReconstructionEntry,
 )
 from sampletones_application.logic.reconstruction.browser.tree.entries.scan import (
     ReconstructionScan,
-    ScanEntry,
 )
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
@@ -27,8 +27,8 @@ HASH_B: Final[str] = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
 RECONSTRUCTIONS: Final[Path] = Path("/reconstructions")
 BRANCH_NAME: Final[str] = "branch"
 
-CONFIGURATION_BRANCH_KEY: Final[str] = "global.browser.label.reconstructions"
-SAMPLE_BRANCH_KEY: Final[str] = "global.browser.label.samples"
+CONFIGURATION_BRANCH_KEY: Final[str] = "global.browser.label.by_configuration"
+SAMPLE_BRANCH_KEY: Final[str] = "global.browser.label.by_sample"
 
 
 def config_fields(
@@ -86,6 +86,40 @@ def write_reconstruction(directory: Path, *relative_parts: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.touch()
     return path
+
+
+def container_root() -> TreeNode:
+    return TreeNode("Root", node_type=NodeType.ROOT)
+
+
+def group_node(name: str, parent: TreeNode) -> TreeNode:
+    return TreeNode(name, node_type=NodeType.GROUP, parent=parent)
+
+
+def sample_node(name: str, parent: TreeNode) -> TreeNode:
+    return TreeNode(name, node_type=NodeType.SAMPLE, parent=parent)
+
+
+def directory_node(name: str, parent: TreeNode) -> FileSystemNode:
+    return FileSystemNode(
+        name,
+        node_type=NodeType.DIRECTORY,
+        filepath=RECONSTRUCTIONS / name,
+        parent=parent,
+    )
+
+
+def file_node(name: str, parent: TreeNode) -> FileSystemNode:
+    return FileSystemNode(
+        name,
+        node_type=NodeType.FILE,
+        filepath=(RECONSTRUCTIONS / name).with_suffix(EXT_FILE_RECONSTRUCTION),
+        parent=parent,
+    )
+
+
+def child_names(node: TreeNode) -> List[str]:
+    return [str(child.name) for child in node.children]
 
 
 def directory_children(node: TreeNode) -> Dict[str, FileSystemNode]:

@@ -1,4 +1,13 @@
+from typing import Final, FrozenSet
+
 from sampletones_core.structures.tree import NodeType, TreeNode
+
+ARTIFICIAL_CONTAINERS: Final[FrozenSet[NodeType]] = frozenset(
+    {
+        NodeType.GROUP,
+        NodeType.SAMPLE,
+    }
+)
 
 
 def find_or_create_group(name: str, *, parent: TreeNode) -> TreeNode:

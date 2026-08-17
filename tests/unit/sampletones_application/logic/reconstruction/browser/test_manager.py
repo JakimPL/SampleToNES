@@ -11,6 +11,7 @@ from .conftest import (
     config_directory,
     config_fields,
     configuration_branch,
+    directory_children,
     file_children,
     group_children,
     sample_branch,
@@ -29,12 +30,43 @@ class TestRefreshTree:
         browser_manager.refresh_tree()
         assert browser_manager.tree.root is None
 
-    def test_root_holds_both_branches(self, browser_manager: BrowserManager) -> None:
+    def test_root_holds_both_branches(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        write_reconstruction(config_directory(tmp_path, config_fields()), "song")
+
         browser_manager.refresh_tree()
 
         root = browser_manager.tree.get_root()
         assert root is not None
         assert list(group_children(root)) == [CONFIGURATION_BRANCH_KEY, SAMPLE_BRANCH_KEY]
+
+    def test_directory_holding_nothing_to_show_leaves_no_branches(
+        self,
+        browser_manager: BrowserManager,
+    ) -> None:
+        """Both views are headings over reconstructions, so neither is offered where there are none."""
+        browser_manager.refresh_tree()
+
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        assert root.children == ()
+
+    def test_the_configuration_branch_still_lists_a_folder_holding_no_reconstruction(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "empty").mkdir()
+
+        browser_manager.refresh_tree()
+
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        assert list(group_children(root)) == [CONFIGURATION_BRANCH_KEY]
+        assert set(directory_children(configuration_branch(browser_manager))) == {"empty"}
 
     def test_reconstruction_is_reachable_from_both_branches(
         self,

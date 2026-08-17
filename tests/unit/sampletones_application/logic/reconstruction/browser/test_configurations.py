@@ -1,18 +1,15 @@
 from typing import Dict
 
-from sampletones_application.logic.reconstruction.browser.tree.configurations import (
+from sampletones_application.logic.reconstruction.browser.tree.configurations.branch import (
     build_configuration_branch,
 )
 from sampletones_application.logic.reconstruction.browser.tree.entries.scan import (
     ReconstructionScan,
 )
 from sampletones_core.configs.display import (
-    DISPLAY_SEPARATOR,
-    GAMMA_PREFIX,
     disambiguated_display_name,
-    format_nes_frequency,
-    format_sample_rate,
-    format_spectrum_method,
+    format_frequencies,
+    format_transformation,
 )
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
@@ -48,30 +45,33 @@ def build_branch(scan: ReconstructionScan) -> TreeNode:
 
 
 def frequencies_name(fields: ConfigDirectoryFields) -> str:
-    return DISPLAY_SEPARATOR.join([format_sample_rate(fields.sr), format_nes_frequency(fields.nf)])
+    return format_frequencies(fields.sr, fields.nf)
 
 
-def method_name(fields: ConfigDirectoryFields) -> str:
-    return DISPLAY_SEPARATOR.join([format_spectrum_method(fields.sm), f"{GAMMA_PREFIX}{fields.tg}"])
+def transformation_name(fields: ConfigDirectoryFields) -> str:
+    return format_transformation(fields.sm, fields.tg)
 
 
-def generator_directories(branch: TreeNode, fields: ConfigDirectoryFields) -> Dict[str, FileSystemNode]:
+def generator_directories(
+    branch: TreeNode,
+    fields: ConfigDirectoryFields,
+) -> Dict[str, FileSystemNode]:
     frequencies_node = group_children(branch)[frequencies_name(fields)]
-    return directory_children(group_children(frequencies_node)[method_name(fields)])
+    return directory_children(group_children(frequencies_node)[transformation_name(fields)])
 
 
 class TestTopLevelConfigDirectories:
-    def test_config_directory_groups_by_frequency_then_method(self) -> None:
+    def test_config_directory_groups_by_frequencies_then_transformation(self) -> None:
         fields = config_fields(generators="PpT")
         branch = build_branch(scan_of(config_entry(fields, "song")))
 
         frequencies = group_children(branch)
         assert set(frequencies) == {frequencies_name(fields)}
 
-        methods = group_children(frequencies[frequencies_name(fields)])
-        assert set(methods) == {method_name(fields)}
+        transformations = group_children(frequencies[frequencies_name(fields)])
+        assert set(transformations) == {transformation_name(fields)}
 
-        assert set(directory_children(methods[method_name(fields)])) == {fields.gn}
+        assert set(directory_children(transformations[transformation_name(fields)])) == {fields.gn}
 
     def test_config_directory_keeps_its_reconstructions(self) -> None:
         fields = config_fields()
@@ -99,7 +99,7 @@ class TestTopLevelConfigDirectories:
             disambiguated_display_name(second.gn, HASH_B),
         }
 
-    def test_distinct_generators_share_a_method_group_under_their_own_names(self) -> None:
+    def test_distinct_generators_share_a_transformation_group_under_their_own_names(self) -> None:
         first = config_fields(generators="PTN")
         second = config_fields(generators="TN")
         branch = build_branch(scan_of(config_entry(first, "song"), config_entry(second, "song")))
@@ -113,13 +113,13 @@ class TestTopLevelConfigDirectories:
 
         assert set(group_children(branch)) == {frequencies_name(first), frequencies_name(second)}
 
-    def test_distinct_methods_form_separate_groups(self) -> None:
+    def test_distinct_transformations_form_separate_groups(self) -> None:
         first = config_fields(spectrum_method=SpectrumMethod.FFT)
         second = config_fields(spectrum_method=SpectrumMethod.CQT)
         branch = build_branch(scan_of(config_entry(first, "song"), config_entry(second, "song")))
 
-        methods = group_children(group_children(branch)[frequencies_name(first)])
-        assert set(methods) == {method_name(first), method_name(second)}
+        transformations = group_children(group_children(branch)[frequencies_name(first)])
+        assert set(transformations) == {transformation_name(first), transformation_name(second)}
 
 
 class TestPlainFolders:

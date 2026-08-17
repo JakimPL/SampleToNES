@@ -6,11 +6,15 @@ from sampletones_core.configs.display import (
     DISPLAY_HASH_LENGTH,
     DISPLAY_SEPARATOR,
     disambiguated_display_name,
+    format_frequencies,
     format_nes_frequency,
     format_sample_rate,
+    format_transformation,
+    format_transformation_gamma,
     short_hash,
     unique_display_names,
 )
+from sampletones_core.constants.enums import SpectrumMethod
 
 
 class TestFormatSampleRate:
@@ -31,6 +35,21 @@ class TestFormatSampleRate:
 class TestFormatNesFrequency:
     def test_appends_hertz_unit(self) -> None:
         assert format_nes_frequency(30) == "30 Hz"
+
+
+class TestFormatTransformationGamma:
+    def test_marks_the_gamma(self) -> None:
+        assert format_transformation_gamma(0) == "γ0"
+
+
+class TestFormatFrequencies:
+    def test_reads_audio_rate_then_frame_rate(self) -> None:
+        assert format_frequencies(44100, 30) == "44.1 kHz·30 Hz"
+
+
+class TestFormatTransformation:
+    def test_reads_method_then_gamma(self) -> None:
+        assert format_transformation(SpectrumMethod.FFT, 2) == "FFT·γ2"
 
 
 class TestShortHash:

@@ -5,10 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
-    GAMMA_PREFIX,
-    format_nes_frequency,
-    format_sample_rate,
-    format_spectrum_method,
+    format_frequencies,
+    format_transformation,
 )
 from sampletones_core.constants.enums import (
     GENERATOR_ABBREVIATION_PATTERN,
@@ -93,10 +91,8 @@ class ConfigDirectoryFields(BaseModel):
     def display_name(self) -> str:
         return DISPLAY_SEPARATOR.join(
             [
-                format_sample_rate(self.sr),
-                format_nes_frequency(self.nf),
-                format_spectrum_method(self.sm),
-                f"{GAMMA_PREFIX}{self.tg}",
+                format_frequencies(self.sr, self.nf),
+                format_transformation(self.sm, self.tg),
                 self.gn,
             ]
         )

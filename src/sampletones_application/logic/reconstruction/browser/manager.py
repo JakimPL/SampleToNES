@@ -3,11 +3,15 @@ from typing import List
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
-from sampletones_application.logic.reconstruction.browser.tree.configurations import (
+from sampletones_application.logic.reconstruction.browser.tree.configurations.branch import (
     build_configuration_branch,
 )
 from sampletones_application.logic.reconstruction.browser.tree.entries.scan import (
     ReconstructionScan,
+)
+from sampletones_application.logic.reconstruction.browser.tree.order import order_children
+from sampletones_application.logic.reconstruction.browser.tree.prune import (
+    prune_empty_containers,
 )
 from sampletones_application.logic.reconstruction.browser.tree.samples.branch import (
     build_sample_branch,
@@ -22,7 +26,8 @@ class BrowserManager:
     """Owns the reconstruction browser tree, rebuilt from one reading of the reconstructions directory.
 
     A refresh scans the directory, builds the configuration branch and the sample branch from that
-    one reading, and publishes the result as the tree both browser tabs render.
+    one reading, shapes what came out — empty headings pruned, siblings ordered — and publishes the
+    result as the tree both browser tabs render.
     """
 
     def __init__(
@@ -58,15 +63,17 @@ class BrowserManager:
         )
         build_configuration_branch(
             scan,
-            name=self._language_manager["global.browser.label.reconstructions"],
+            name=self._language_manager["global.browser.label.by_configuration"],
             parent=container_root,
         )
         build_sample_branch(
             scan,
-            name=self._language_manager["global.browser.label.samples"],
+            name=self._language_manager["global.browser.label.by_sample"],
             parent=container_root,
         )
 
+        prune_empty_containers(container_root)
+        order_children(container_root)
         return container_root
 
     def get_all_reconstruction_files(self) -> List[Path]:
