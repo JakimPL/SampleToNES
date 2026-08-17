@@ -138,7 +138,7 @@ class GUIExplorerPanel(GUITreePanel):
                 tag=self._get_node_handler_tag(NodeType.DIRECTORY),
                 node_type=NodeType.DIRECTORY,
                 item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_directory_node(),
+                status_bar_callback=self._create_status_bar_message_function_for_expandable_node(),
             ),
             NodeType.FILE: NodeHandler(
                 tag=self._get_node_handler_tag(NodeType.FILE),

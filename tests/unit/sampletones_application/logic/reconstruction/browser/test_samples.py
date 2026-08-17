@@ -22,6 +22,7 @@ from .conftest import (
     group_children,
     plain_entry,
     reconstruction_entry,
+    sample_children,
     scan_of,
 )
 
@@ -47,42 +48,85 @@ class TestSampleGrouping:
 
         amen_breaks = group_children(branch)["Amen Breaks"]
         volume = group_children(amen_breaks)["vol.1"]
-        audio_node = group_children(volume)["cw_amen02_165"]
+        audio_node = sample_children(volume)["cw_amen02_165"]
         assert file_children(audio_node)[fields.display_name].filepath == entry.entries[0].path
 
     def test_audio_at_the_root_of_a_config_directory_appears_at_the_branch_root(self) -> None:
         fields = config_fields()
         branch = build_branch(scan_of(config_entry(fields, "song")))
 
-        assert set(group_children(branch)) == {"song"}
-        assert set(file_children(group_children(branch)["song"])) == {fields.display_name}
+        assert set(sample_children(branch)) == {"song"}
+        assert set(file_children(sample_children(branch)["song"])) == {fields.display_name}
 
     def test_one_audio_lists_every_configuration_that_reconstructed_it(self) -> None:
         first = config_fields(spectrum_method=SpectrumMethod.FFT)
         second = config_fields(spectrum_method=SpectrumMethod.CQT)
         branch = build_branch(scan_of(config_entry(first, "song"), config_entry(second, "song")))
 
-        audio_node = group_children(branch)["song"]
+        audio_node = sample_children(branch)["song"]
         assert set(file_children(audio_node)) == {first.display_name, second.display_name}
 
     def test_each_audio_gathers_only_its_own_variants(self) -> None:
         fields = config_fields()
         branch = build_branch(scan_of(config_entry(fields, "first", "second")))
 
-        assert set(group_children(branch)) == {"first", "second"}
+        assert set(sample_children(branch)) == {"first", "second"}
         for audio_name in ("first", "second"):
-            assert set(file_children(group_children(branch)[audio_name])) == {fields.display_name}
+            assert set(file_children(sample_children(branch)[audio_name])) == {fields.display_name}
 
     def test_colliding_variants_of_one_audio_get_a_hash_suffix(self) -> None:
         first = config_fields(config_hash=HASH_A)
         second = config_fields(config_hash=HASH_B)
         branch = build_branch(scan_of(config_entry(first, "song"), config_entry(second, "song")))
 
-        audio_node = group_children(branch)["song"]
+        audio_node = sample_children(branch)["song"]
         assert set(file_children(audio_node)) == {
             disambiguated_display_name(first.display_name, HASH_A),
             disambiguated_display_name(second.display_name, HASH_B),
         }
+
+
+class TestSampleNodeTypes:
+    def test_audio_is_a_sample_and_the_folder_above_it_is_a_group(self) -> None:
+        fields = config_fields()
+        directory = RECONSTRUCTIONS / fields.directory_name
+        entry = DirectoryEntry(
+            path=directory,
+            config=fields,
+            entries=(reconstruction_entry(directory, "Amen Breaks", "cw_amen02_165"),),
+        )
+        branch = build_branch(scan_of(entry))
+
+        folder_node = group_children(branch)["Amen Breaks"]
+        assert folder_node.node_type == NodeType.GROUP
+        assert sample_children(folder_node)["cw_amen02_165"].node_type == NodeType.SAMPLE
+
+    def test_a_folder_and_the_audio_beside_it_stay_two_rows(self) -> None:
+        """A configuration directory holding ``song.stn`` beside ``song/inner.stn`` lists both.
+
+        The folder gathers what it holds while the audio gathers its variants, each row found among
+        the siblings of its own kind.
+        """
+        fields = config_fields()
+        directory = RECONSTRUCTIONS / fields.directory_name
+        entry = DirectoryEntry(
+            path=directory,
+            config=fields,
+            entries=(
+                DirectoryEntry(
+                    path=directory / "song",
+                    config=None,
+                    entries=(reconstruction_entry(directory, "song", "inner"),),
+                ),
+                reconstruction_entry(directory, "song"),
+            ),
+        )
+        branch = build_branch(scan_of(entry))
+
+        assert set(group_children(branch)) == {"song"}
+        assert set(sample_children(branch)) == {"song"}
+        assert set(sample_children(group_children(branch)["song"])) == {"inner"}
+        assert set(file_children(sample_children(branch)["song"])) == {fields.display_name}
 
 
 class TestSampleVariants:
@@ -95,7 +139,7 @@ class TestSampleVariants:
         fields = config_fields()
         branch = build_branch(scan_of(config_entry(fields, "song")))
 
-        variant = next(iter(file_children(group_children(branch)["song"]).values()))
+        variant = next(iter(file_children(sample_children(branch)["song"]).values()))
         assert isinstance(variant, ConfigNode)
         assert variant.config == fields
 

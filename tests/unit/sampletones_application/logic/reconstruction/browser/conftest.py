@@ -108,6 +108,10 @@ def group_children(node: TreeNode) -> Dict[str, TreeNode]:
     return {child.name: child for child in node.children if child.node_type == NodeType.GROUP}
 
 
+def sample_children(node: TreeNode) -> Dict[str, TreeNode]:
+    return {child.name: child for child in node.children if child.node_type == NodeType.SAMPLE}
+
+
 def branch_of(browser_manager: BrowserManager, key: str) -> TreeNode:
     root = browser_manager.tree.get_root()
     assert root is not None

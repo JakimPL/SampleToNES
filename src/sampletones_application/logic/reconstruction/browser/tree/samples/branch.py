@@ -1,8 +1,9 @@
+from sampletones_application.logic.reconstruction.browser.tree.containers import (
+    find_or_create_group,
+    find_or_create_sample,
+)
 from sampletones_application.logic.reconstruction.browser.tree.entries.scan import (
     ReconstructionScan,
-)
-from sampletones_application.logic.reconstruction.browser.tree.group import (
-    find_or_create_group,
 )
 from sampletones_application.logic.reconstruction.browser.tree.samples.variants import (
     append_variants,
@@ -29,7 +30,7 @@ def build_sample_branch(
         for part in source.directory_parts:
             source_node = find_or_create_group(part, parent=source_node)
 
-        audio_node = find_or_create_group(source.name, parent=source_node)
+        audio_node = find_or_create_sample(source.name, parent=source_node)
         append_variants(audio_node, variants_by_source[source])
 
     return branch

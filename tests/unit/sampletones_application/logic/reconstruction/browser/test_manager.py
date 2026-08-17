@@ -14,6 +14,7 @@ from .conftest import (
     file_children,
     group_children,
     sample_branch,
+    sample_children,
     write_reconstruction,
 )
 
@@ -52,7 +53,7 @@ class TestRefreshTree:
         assert file_children(generators)["song"].filepath == path
 
         samples = sample_branch(browser_manager)
-        assert file_children(group_children(samples)["song"])[fields.display_name].filepath == path
+        assert file_children(sample_children(samples)["song"])[fields.display_name].filepath == path
 
     def test_reads_every_folder_once(
         self,

@@ -9,6 +9,7 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 )
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
+    TAG_GLOBAL_THEME_FILE_WAVE,
     TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.ui.elements.button import GUIButton
@@ -116,11 +117,16 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
                 tag=self._get_node_handler_tag(NodeType.GROUP),
                 node_type=NodeType.GROUP,
             ),
+            NodeType.SAMPLE: NodeHandler(
+                tag=self._get_node_handler_tag(NodeType.SAMPLE),
+                node_type=NodeType.SAMPLE,
+                status_bar_callback=self._create_status_bar_message_function_for_expandable_node(),
+            ),
             NodeType.DIRECTORY: NodeHandler(
                 tag=self._get_node_handler_tag(NodeType.DIRECTORY),
                 node_type=NodeType.DIRECTORY,
                 item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_directory_node(),
+                status_bar_callback=self._create_status_bar_message_function_for_expandable_node(),
             ),
             NodeType.FILE: NodeHandler(
                 tag=self._get_node_handler_tag(NodeType.FILE),
@@ -184,18 +190,18 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
         **kwargs: Any,
     ) -> None:
         node_tag = self._generate_node_tag(node)
-        if node.node_type == NodeType.ROOT:
-            return
-
-        if node.node_type == NodeType.GROUP:
-            self._append_spec(
-                node=node,
-                node_tag=node_tag,
-                parent=state.parent,
-                should_expand=self._should_expand_node(node),
-            )
-            state.parent = node_tag
-            return
+        match node.node_type:
+            case NodeType.ROOT:
+                return
+            case NodeType.GROUP | NodeType.SAMPLE:
+                self._append_spec(
+                    node=node,
+                    node_tag=node_tag,
+                    parent=state.parent,
+                    should_expand=self._should_expand_node(node),
+                )
+                state.parent = node_tag
+                return
 
         if not isinstance(node, FileSystemNode):
             return
@@ -223,8 +229,16 @@ class GUIReconstructionBrowserPanel(GUITreePanel):
         state.parent = node_tag
 
     def _resolve_other_theme_tag(self, node: TreeNode) -> str:
-        if node.node_type == NodeType.GROUP:
-            return TAG_GLOBAL_THEME_DEFAULT
+        """Selects the colour of a row the browser invents: a plain group, or a sample in wave colour.
+
+        A sample row names the audio a set of reconstructions was made from, so it reads in the
+        colour audio files carry elsewhere in the application.
+        """
+        match node.node_type:
+            case NodeType.GROUP:
+                return TAG_GLOBAL_THEME_DEFAULT
+            case NodeType.SAMPLE:
+                return TAG_GLOBAL_THEME_FILE_WAVE
 
         return super()._resolve_other_theme_tag(node)
 

@@ -237,6 +237,7 @@ global.status.message.clear_search: "Clear the search filter."
 global.status.message.input: "Ctrl + click to type value."
 global.status.message.combo: "Click to select a value from the list."
 global.status.message.node_directory: "Click to {expand_or_collapse}. Right-click to open context menu."
+global.status.message.node_sample: "Click to {expand_or_collapse} the reconstructions of this sample."
 global.status.message.retuning_samples: "Retuning samples..."
 
 # =============================================================================

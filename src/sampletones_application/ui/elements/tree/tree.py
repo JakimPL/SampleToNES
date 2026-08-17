@@ -47,6 +47,7 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
+from sampletones_application.ui.elements.tree.tag import compose_node_tag
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import (
@@ -473,29 +474,37 @@ class GUITreePanel(GUIPanel, ABC):
     ) -> MessageCallback:
         return self._create_status_bar_message_function(self._language_manager["global.status.message.node_library"])
 
-    def _create_status_bar_message_function_for_directory_node(
+    def _create_status_bar_message_function_for_expandable_node(
         self,
     ) -> MessageCallback:
+        """Builds the hover message of a row the reader opens, naming what that row holds.
+
+        A folder and a sample are both opened the same way and hold different things, so the message
+        follows the node it is asked about: the sample names the reconstructions it gathers.
+        """
+
         def message_function(
             *_args: Any,
-            user_data: Tuple[FileSystemNode, str],
+            user_data: Tuple[TreeNode, str],
             **_kwargs: Any,
         ) -> str:
-            _, node_tag = user_data
+            node, node_tag = user_data
             expand_or_collapse = (
                 self._language_manager["global.dialog.template.collapse"]
                 if dpg_get_value(node_tag)
                 else self._language_manager["global.dialog.template.expand"]
             )
-            return self._language_manager["global.status.message.node_directory"].format(
-                expand_or_collapse=expand_or_collapse
+            message = (
+                self._language_manager["global.status.message.node_sample"]
+                if node.node_type == NodeType.SAMPLE
+                else self._language_manager["global.status.message.node_directory"]
             )
+            return message.format(expand_or_collapse=expand_or_collapse)
 
         return self._create_status_bar_message_function(message_function)
 
     def _generate_node_tag(self, node: TreeNode) -> str:
-        path_parts = [ancestor.name for ancestor in node.path]
-        return compose_tag(self.tag, f"node_{'_'.join(path_parts)}")
+        return compose_node_tag(node, panel_tag=self.tag)
 
     def _context_menu_header_name(self, node: TreeNode) -> str:
         """Returns the raw on-disk identifier, complementing the friendly label shown in the tree."""

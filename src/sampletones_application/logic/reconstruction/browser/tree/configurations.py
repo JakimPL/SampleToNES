@@ -1,5 +1,8 @@
 from typing import List, Sequence, Tuple
 
+from sampletones_application.logic.reconstruction.browser.tree.containers import (
+    find_or_create_group,
+)
 from sampletones_application.logic.reconstruction.browser.tree.entries.directory import (
     DirectoryEntry,
 )
@@ -9,9 +12,6 @@ from sampletones_application.logic.reconstruction.browser.tree.entries.reconstru
 from sampletones_application.logic.reconstruction.browser.tree.entries.scan import (
     ReconstructionScan,
     ScanEntry,
-)
-from sampletones_application.logic.reconstruction.browser.tree.group import (
-    find_or_create_group,
 )
 from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
