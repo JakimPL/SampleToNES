@@ -62,9 +62,9 @@ points it at the directory the icons are shipped from. Rasterization uses Pillow
 `assets` dependency group.
 
 The whole suite is committed, so a plain checkout carries the icons the application opens its window
-with, and every wheel, bundle and test run finds them without a generation step. `make icons` writes
-them again from the mark, and CI regenerates them on each change to confirm the committed files are
-the ones the mark describes.
+with, and every wheel, bundle and test run finds them where they lie. `make icons` writes them again
+from the mark, and the `icons` pre-push hook writes them for a push that touches either directory,
+holding the committed files to what the mark describes. CI runs that same hook.
 
 Pillow is a build-time tool, and the bundle scripts pass `--exclude-module PIL` to hold it to that:
 `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is
