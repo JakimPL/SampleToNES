@@ -51,6 +51,7 @@ def build_panel(
     panel._filter = NO_FILTER
     panel._search_visibility = None
     panel._favorites_visibility = None
+    panel._favorites_anchors = None
     return panel
 
 

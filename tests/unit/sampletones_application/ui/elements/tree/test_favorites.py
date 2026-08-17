@@ -81,6 +81,7 @@ def build_panel(
     panel._filter = NO_FILTER
     panel._search_visibility = None
     panel._favorites_visibility = None
+    panel._favorites_anchors = None
     monkeypatch.setattr(panel, "_logic", FakeTreeLogic(favorites), raising=False)
     monkeypatch.setattr(
         panel,

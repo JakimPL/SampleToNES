@@ -52,6 +52,59 @@ HIDDEN_MARKER: Final[str] = "  [hidden]"
 INDENT: Final[str] = "  "
 
 
+def as_view(text: str) -> str:
+    """Reads a view written as an indented block in a test, so the expected rows read as they draw."""
+    return dedent(text).strip("\n")
+
+
+WHOLE_TREE: Final[str] = as_view("""
+    > By configuration
+      > 8 kHz·60 Hz·CQT·γ2·P
+        - sweep
+      > 44.1 kHz·30 Hz
+        > CQT·γ0·PTN
+          - beat
+          - solo
+        > FFT·γ0
+          > PT
+            > takes
+              - alt
+            - beat
+          > PTN·#aaaaaaa
+            > drums
+              - kick
+              - snare
+            - beat
+            - melody
+          > PTN·#bbbbbbb
+            > drums
+              - kick
+            - beat
+            - melody
+      > archive
+        > 48 kHz·50 Hz·LogFFT·γ1·TN
+          - song
+      - stray
+    > By sample
+      > beat
+        - 44.1 kHz·30 Hz·CQT·γ0·PTN
+        - 44.1 kHz·30 Hz·FFT·γ0·PT
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      > drums
+        > kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+        - snare·44.1 kHz·30 Hz·FFT·γ0·PTN
+      > melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      - solo·44.1 kHz·30 Hz·CQT·γ0·PTN
+      - sweep·8 kHz·60 Hz·CQT·γ2·P
+      - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
+    """)
+
+
 def config_fields(
     *,
     sample_rate: int,
@@ -319,9 +372,10 @@ def _row_state(panel: GUITreePanel, spec: NodeSpec) -> str:
     return "" if panel._is_node_visible(spec.node) else HIDDEN_MARKER
 
 
-def as_view(text: str) -> str:
-    """Reads a view written as an indented block in a test, so the expected rows read as they draw."""
-    return dedent(text).strip("\n")
+def nodes_at(corpus: BrowserCorpus, key: str) -> Tuple[FileSystemNode, ...]:
+    """Every row standing for one path, which is what a favorite reaches across the two views."""
+    path = corpus.paths[key]
+    return corpus.tree.find_nodes(FileSystemNode, lambda node: node.filepath == path)
 
 
 def view(

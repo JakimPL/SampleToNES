@@ -1,264 +1,339 @@
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Final, FrozenSet, List, Set, Tuple
+from typing import Any, Final, List, Tuple
 
 import pytest
 
 from sampletones_application.ui.elements.tree import tree as tree_module
-from sampletones_application.ui.elements.tree.colors import TreeColors
-from sampletones_application.ui.elements.tree.filter import TreeFilter
-from sampletones_application.ui.elements.tree.handler import NodeHandler
-from sampletones_application.ui.elements.tree.spec import NodeSpec
-from sampletones_application.ui.elements.tree.state import TreeNodeState
-from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.utils.palette.colors.base import BaseColor
-from sampletones_application.utils.palette.colors.literal import LiteralColor
-from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
-from tests.suite.language import FakeLanguageManager
+from sampletones_core.structures.tree import TreeNode
+from tests.suite.browser import (
+    PANEL_TAG,
+    TREE_COLORS,
+    WHOLE_TREE,
+    BrowserCorpus,
+    as_view,
+    build_browser_panel,
+    nodes_at,
+    view,
+)
 
-PANEL_TAG: Final[str] = "sequencer.browser"
 CHECKBOX_TAG: Final[str] = "sequencer.browser.checkbox.favorites"
 GLYPH_TAG: Final[str] = "sequencer.browser.text.favorites"
 
-TREE_COLORS: Final[TreeColors] = TreeColors(
-    favorite=LiteralColor((240, 200, 80, 255)),
-    node=LiteralColor((200, 200, 200, 255)),
-    muted=LiteralColor((120, 120, 120, 255)),
-    accent=LiteralColor((80, 160, 240, 255)),
-)
-
-CONFIG_DIRECTORY: Final[Path] = Path("/reconstructions/sr_44100_nf_30")
-STARRED_PATH: Final[Path] = CONFIG_DIRECTORY / "starred.stn"
-PLAIN_PATH: Final[Path] = CONFIG_DIRECTORY / "plain.stn"
-VARIANT_LABEL: Final[str] = "44.1 kHz·30 Hz"
-
-STARRED_ROWS: Final[FrozenSet[str]] = frozenset(
-    {
-        "configurations",
-        "directory",
-        "starred",
-        "samples",
-        "starred_sample",
-        "starred_variant",
-    }
-)
-SAMPLE_VIEW_ROWS: Final[FrozenSet[str]] = frozenset(
-    {
-        "samples",
-        "starred_sample",
-        "starred_variant",
-        "plain_sample",
-        "plain_variant",
-    }
-)
-
-
-class FakeTreeLogic:
-    """Answers the favorite questions a browser asks of its logic while it collects its rows."""
-
-    def __init__(self, favorites: Set[Path]) -> None:
-        self._favorites = favorites
-
-    def is_node_favorite(self, node: TreeNode) -> bool:
-        return isinstance(node, FileSystemNode) and node.filepath in self._favorites
-
-    def has_favorite_ancestor(self, node: FileSystemNode) -> bool:
-        return any(directory in self._favorites for directory in node.filepath.parents)
-
-
-@dataclass(frozen=True)
-class BrowserTree:
-    """The shape both browser views give one configuration directory, with a handle on every row."""
-
-    tree: Tree
-    rows: Dict[str, TreeNode]
-
-
-@pytest.fixture
-def browser() -> BrowserTree:
-    """Two reconstructions of one configuration, listed by that configuration and by their samples.
-
-    A sample row carries the name of the reconstruction it gathers, the way the builder names it, so
-    each row is held by a key of its own rather than by the label it reads under.
-    """
-    root = TreeNode("Root", node_type=NodeType.ROOT)
-    configurations = TreeNode("By configuration", node_type=NodeType.GROUP, parent=root)
-    directory = FileSystemNode(
-        "PTN",
-        node_type=NodeType.DIRECTORY,
-        filepath=CONFIG_DIRECTORY,
-        parent=configurations,
-    )
-    starred = FileSystemNode("starred", node_type=NodeType.FILE, filepath=STARRED_PATH, parent=directory)
-    plain = FileSystemNode("plain", node_type=NodeType.FILE, filepath=PLAIN_PATH, parent=directory)
-
-    samples = TreeNode("By sample", node_type=NodeType.GROUP, parent=root)
-    starred_sample = TreeNode("starred", node_type=NodeType.SAMPLE, parent=samples)
-    starred_variant = FileSystemNode(
-        VARIANT_LABEL,
-        node_type=NodeType.FILE,
-        filepath=STARRED_PATH,
-        parent=starred_sample,
-    )
-    plain_sample = TreeNode("plain", node_type=NodeType.SAMPLE, parent=samples)
-    plain_variant = FileSystemNode(
-        VARIANT_LABEL,
-        node_type=NodeType.FILE,
-        filepath=PLAIN_PATH,
-        parent=plain_sample,
-    )
-
-    return BrowserTree(
-        tree=Tree(root=root),
-        rows={
-            "configurations": configurations,
-            "directory": directory,
-            "starred": starred,
-            "plain": plain,
-            "samples": samples,
-            "starred_sample": starred_sample,
-            "starred_variant": starred_variant,
-            "plain_sample": plain_sample,
-            "plain_variant": plain_variant,
-        },
-    )
-
-
-def build_panel(
-    browser: BrowserTree,
-    favorites: Set[Path],
-    *,
-    favorites_only: bool,
-    query: str = "",
-) -> GUISequencerBrowserPanel:
-    """Builds a browser panel showing the tree under a filter, with the favorites its logic answers.
-
-    Resolving the filter reads the model alone, so the panel needs neither widgets nor a search box,
-    and the control stands where a browser that has yet to build one leaves it.
-    """
-    panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
-    panel.tag = PANEL_TAG
-    panel.tree = browser.tree
-    panel._logic = FakeTreeLogic(favorites)
-    panel._language_manager = FakeLanguageManager()
-    panel._colors = TREE_COLORS
-    panel._favorites_checkbox_tag = None
-    panel._favorites_glyph_tag = None
-    panel.on_favorites_filter_changed = None
-    panel._filter = TreeFilter(query=query, favorites_only=favorites_only)
-    panel._resolve_filter()
-    return panel
-
-
-def collect_specs(panel: GUISequencerBrowserPanel) -> List[NodeSpec]:
-    """Collects the rows a rebuild would emit, which is the pass running off the main thread."""
-    panel._pending_specs = []
-    panel._node_handlers = {
-        node_type: NodeHandler(tag=f"handler.{node_type.value}", node_type=node_type) for node_type in NodeType
-    }
-
-    root = panel.tree.get_root()
-    assert root is not None
-    panel._build_tree_node(root, TreeNodeState(parent="tree"))
-    return panel._pending_specs
-
-
-def drawn_keys(
-    browser: BrowserTree,
-    specs: List[NodeSpec],
-) -> Set[str]:
-    drawn = {spec.node for spec in specs}
-    return {key for key, node in browser.rows.items() if node in drawn}
-
-
-def open_keys(
-    browser: BrowserTree,
-    specs: List[NodeSpec],
-) -> Set[str]:
-    standing_open = {spec.node for spec in specs if spec.should_expand}
-    return {key for key, node in browser.rows.items() if node in standing_open}
+STARRED_RECONSTRUCTION: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          v PTN·#aaaaaaa
+            - beat
+    v By sample
+      v beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+    """)
+STARRED_LONE_AUDIO: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v CQT·γ0·PTN
+          - solo
+    v By sample
+      - solo·44.1 kHz·30 Hz·CQT·γ0·PTN
+    """)
+STARRED_IN_SUBFOLDER: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          v PTN·#aaaaaaa
+            v drums
+              - kick
+    v By sample
+      v drums
+        v kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+    """)
+STARRED_CONFIGURATION: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          v PT
+            > takes
+              - alt
+            - beat
+    v By sample
+      v beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PT
+      - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
+    """)
+STARRED_PLAIN_FOLDER: Final[str] = as_view("""
+    v By configuration
+      v archive
+        > 48 kHz·50 Hz·LogFFT·γ1·TN
+          - song
+    """)
+STARRED_FOLDER_AND_WHAT_IT_HOLDS: Final[str] = as_view("""
+    v By configuration
+      v archive
+        v 48 kHz·50 Hz·LogFFT·γ1·TN
+          - song
+    """)
+STARRED_STRAY: Final[str] = as_view("""
+    v By configuration
+      - stray
+    """)
+STARRED_OF_TWO_ALIKE: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          v PTN·#aaaaaaa
+            > drums
+              - kick
+              - snare
+            - beat
+            - melody
+    v By sample
+      v beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+      v drums
+        v kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+        - snare·44.1 kHz·30 Hz·FFT·γ0·PTN
+      v melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+    """)
+STARRED_FOLDED_CONFIGURATION: Final[str] = as_view("""
+    v By configuration
+      v 8 kHz·60 Hz·CQT·γ2·P
+        - sweep
+    v By sample
+      - sweep·8 kHz·60 Hz·CQT·γ2·P
+    """)
+STARRED_CONFIGURATION_B: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          v PTN·#bbbbbbb
+            > drums
+              - kick
+            - beat
+            - melody
+    v By sample
+      v beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      v drums
+        v kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      v melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+    """)
+STARRED_FOLDER_HOLDING_A_STAR: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          v PTN·#bbbbbbb
+            v drums
+              - kick
+            - beat
+            - melody
+    v By sample
+      v beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      v drums
+        v kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      v melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+    """)
+QUERY_INSIDE_THE_MODE: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          v PTN·#bbbbbbb
+            > drums  [hidden]
+              - kick  [hidden]
+            - beat  [hidden]
+            - melody
+    v By sample
+      v beat  [hidden]
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb  [hidden]
+      v drums  [hidden]
+        v kick  [hidden]
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb  [hidden]
+      v melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+    """)
+QUERY_PAST_THE_MODE: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          v PTN·#aaaaaaa
+            - beat  [hidden]
+    v By sample
+      v beat  [hidden]
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa  [hidden]
+    """)
+QUERY_ALONE: Final[str] = as_view("""
+    v By configuration
+      > 8 kHz·60 Hz·CQT·γ2·P  [hidden]
+        - sweep  [hidden]
+      v 44.1 kHz·30 Hz
+        > CQT·γ0·PTN  [hidden]
+          - beat  [hidden]
+          - solo  [hidden]
+        v FFT·γ0
+          > PT  [hidden]
+            > takes  [hidden]
+              - alt  [hidden]
+            - beat  [hidden]
+          v PTN·#aaaaaaa
+            v drums
+              - kick
+              - snare  [hidden]
+            - beat  [hidden]
+            - melody  [hidden]
+          v PTN·#bbbbbbb
+            v drums
+              - kick
+            - beat  [hidden]
+            - melody  [hidden]
+      > archive  [hidden]
+        > 48 kHz·50 Hz·LogFFT·γ1·TN  [hidden]
+          - song  [hidden]
+      - stray  [hidden]
+    v By sample
+      > beat  [hidden]
+        - 44.1 kHz·30 Hz·CQT·γ0·PTN  [hidden]
+        - 44.1 kHz·30 Hz·FFT·γ0·PT  [hidden]
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa  [hidden]
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb  [hidden]
+      v drums
+        v kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+        - snare·44.1 kHz·30 Hz·FFT·γ0·PTN  [hidden]
+      > melody  [hidden]
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa  [hidden]
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb  [hidden]
+      - solo·44.1 kHz·30 Hz·CQT·γ0·PTN  [hidden]
+      - sweep·8 kHz·60 Hz·CQT·γ2·P  [hidden]
+      - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT  [hidden]
+    """)
 
 
 class TestDrawnRows:
-    def test_a_starred_reconstruction_is_drawn_under_the_rows_holding_it_in_both_views(
-        self,
-        browser: BrowserTree,
-    ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
-        assert drawn_keys(browser, collect_specs(panel)) == STARRED_ROWS
+    """Which rows the mode draws: what the star reaches, and the rows leading down to it."""
 
-    def test_a_starred_directory_brings_the_reconstructions_it_holds(
-        self,
-        browser: BrowserTree,
-    ) -> None:
-        panel = build_panel(browser, {CONFIG_DIRECTORY}, favorites_only=True)
-        assert {"directory", "starred", "plain"} <= drawn_keys(browser, collect_specs(panel))
+    def test_a_starred_reconstruction_is_drawn_in_both_views(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["A/beat"]}, favorites_only=True) == STARRED_RECONSTRUCTION
 
-    def test_a_starred_directory_reaches_the_view_holding_no_row_for_it(
-        self,
-        browser: BrowserTree,
-    ) -> None:
-        """The sample view lists reconstructions under their samples, and no row stands for a folder.
+    def test_a_starred_reconstruction_of_an_audio_one_configuration_holds(self, corpus: BrowserCorpus) -> None:
+        """A sample of a single variant folded into that variant, and the fold carries the star."""
+        assert view(corpus, {corpus.paths["D/solo"]}, favorites_only=True) == STARRED_LONE_AUDIO
 
-        Being held by a starred folder is read from the path, so each variant answers for itself and
-        the sample gathering it comes along.
-        """
-        panel = build_panel(browser, {CONFIG_DIRECTORY}, favorites_only=True)
-        assert SAMPLE_VIEW_ROWS <= drawn_keys(browser, collect_specs(panel))
+    def test_a_starred_reconstruction_in_a_mirrored_subfolder(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["A/drums/kick"]}, favorites_only=True) == STARRED_IN_SUBFOLDER
 
-    def test_nothing_starred_draws_no_row(self, browser: BrowserTree) -> None:
-        panel = build_panel(browser, set(), favorites_only=True)
-        assert collect_specs(panel) == []
+    def test_a_starred_configuration_directory_brings_what_it_holds(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["C"]}, favorites_only=True) == STARRED_CONFIGURATION
 
-    def test_the_mode_off_draws_every_row(self, browser: BrowserTree) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
-        assert drawn_keys(browser, collect_specs(panel)) == set(browser.rows)
+    def test_a_starred_plain_folder_reaches_the_configuration_nested_in_it(self, corpus: BrowserCorpus) -> None:
+        """The sample branch reads the top-level configurations, so a nested one stands there alone."""
+        assert view(corpus, {corpus.paths["archive"]}, favorites_only=True) == STARRED_PLAIN_FOLDER
+
+    def test_a_starred_reconstruction_outside_every_configuration(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["stray"]}, favorites_only=True) == STARRED_STRAY
+
+    def test_a_star_on_one_of_two_configurations_reading_alike(self, corpus: BrowserCorpus) -> None:
+        """The star belongs to a path, so the sibling marked with the other hash stays out."""
+        assert view(corpus, {corpus.paths["A"]}, favorites_only=True) == STARRED_OF_TWO_ALIKE
+
+    def test_a_starred_configuration_whose_chain_folded_into_one_row(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["E"]}, favorites_only=True) == STARRED_FOLDED_CONFIGURATION
+
+    def test_nothing_starred_draws_no_row(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, set(), favorites_only=True) == ""
+
+    def test_the_mode_off_draws_every_row(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["A/beat"]}, favorites_only=False) == WHOLE_TREE
 
 
 class TestOpenRows:
-    def test_the_rows_leading_to_a_favorite_stand_open(self, browser: BrowserTree) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
-        assert open_keys(browser, collect_specs(panel)) == {
-            "configurations",
-            "directory",
-            "samples",
-            "starred_sample",
-        }
+    """Which rows stand open: the way down to a star, and a starred folder showing what it holds."""
 
-    def test_the_mode_off_leaves_every_row_as_it_stands(self, browser: BrowserTree) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
-        assert open_keys(browser, collect_specs(panel)) == set()
+    def test_a_starred_folder_opens_and_a_subfolder_holding_no_star_stays_closed(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        assert view(corpus, {corpus.paths["C"]}, favorites_only=True) == STARRED_CONFIGURATION
+
+    def test_a_starred_folder_opens_one_level(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["A"]}, favorites_only=True) == STARRED_OF_TWO_ALIKE
+
+    def test_a_star_inside_a_starred_folder_opens_the_way_down_to_itself(self, corpus: BrowserCorpus) -> None:
+        favorites = {corpus.paths["B"], corpus.paths["B/drums/kick"]}
+        assert view(corpus, favorites, favorites_only=True) == STARRED_FOLDER_HOLDING_A_STAR
+
+    def test_a_starred_folder_inside_a_starred_folder_opens(self, corpus: BrowserCorpus) -> None:
+        favorites = {corpus.paths["archive"], corpus.paths["archive/F"]}
+        assert view(corpus, favorites, favorites_only=True) == STARRED_FOLDER_AND_WHAT_IT_HOLDS
+
+    def test_the_rows_above_a_starred_reconstruction_open(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["A/beat"]}, favorites_only=True) == STARRED_RECONSTRUCTION
+
+    def test_the_sample_branch_opens_the_way_to_the_variants_a_starred_folder_holds(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        """No row stands for the folder there, so the variants are where the star arrives."""
+        assert view(corpus, {corpus.paths["B"]}, favorites_only=True) == STARRED_CONFIGURATION_B
 
 
 class TestSearchInsideTheMode:
-    def test_the_mode_states_the_drawn_rows_while_the_query_states_the_shown_ones(
-        self,
-        browser: BrowserTree,
-    ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True, query="starred")
-        specs = collect_specs(panel)
+    """The mode states which rows are drawn, and the query states which of them are shown."""
 
-        assert drawn_keys(browser, specs) == STARRED_ROWS
-        assert panel._is_node_visible(browser.rows["starred"])
-        assert not panel._is_node_visible(browser.rows["plain"])
+    def test_a_query_hides_the_drawn_rows_it_leaves_out(self, corpus: BrowserCorpus) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["B"]},
+                favorites_only=True,
+                query="melody",
+            )
+            == QUERY_INSIDE_THE_MODE
+        )
 
-    def test_a_query_naming_a_row_the_mode_leaves_out_shows_nothing_of_it(
-        self,
-        browser: BrowserTree,
-    ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True, query="plain")
-        assert "plain" not in drawn_keys(browser, collect_specs(panel))
+    def test_a_query_naming_a_row_the_mode_leaves_out_shows_nothing_of_it(self, corpus: BrowserCorpus) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["A/beat"]},
+                favorites_only=True,
+                query="melody",
+            )
+            == QUERY_PAST_THE_MODE
+        )
+
+    def test_a_query_cleared_shows_the_rows_the_mode_draws(self, corpus: BrowserCorpus) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["B"]},
+                favorites_only=True,
+                query="",
+            )
+            == STARRED_CONFIGURATION_B
+        )
+
+    def test_a_query_alone_draws_every_row_and_shows_the_matches(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, set(), favorites_only=False, query="kick") == QUERY_ALONE
 
 
 class TestEmptyAnswer:
     """A rebuild drawing no row names the filter that answered so, where the rows would be."""
 
-    def test_the_mode_finding_no_favorite_names_the_favorites(self, browser: BrowserTree) -> None:
-        panel = build_panel(browser, set(), favorites_only=True)
+    def test_the_mode_finding_no_favorite_names_the_favorites(self, corpus: BrowserCorpus) -> None:
+        panel = build_browser_panel(corpus, set(), favorites_only=True)
         assert panel._empty_filter_message() == "global.dialog.message.tree_no_favorites"
 
-    def test_a_query_finding_nothing_names_the_results(self, browser: BrowserTree) -> None:
-        panel = build_panel(browser, set(), favorites_only=False, query="nothing")
+    def test_a_query_finding_nothing_names_the_results(self, corpus: BrowserCorpus) -> None:
+        panel = build_browser_panel(corpus, set(), favorites_only=False, query="nothing")
         assert panel._empty_filter_message() == "global.dialog.message.tree_no_results"
 
 
@@ -267,10 +342,10 @@ class TestControl:
 
     def test_the_mode_the_control_reads_reaches_the_filter(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False)
         monkeypatch.setattr(panel, "redraw_tree", lambda: None, raising=False)
 
         panel._on_favorites_only_changed(None, True)
@@ -279,10 +354,10 @@ class TestControl:
 
     def test_a_change_is_handed_to_the_hook_remembering_it(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False)
         remembered: List[Tuple[str, bool]] = []
         panel.on_favorites_filter_changed = lambda panel_tag, favorites_only: remembered.append(
             (panel_tag, favorites_only)
@@ -295,10 +370,10 @@ class TestControl:
 
     def test_a_change_draws_the_rows_the_new_mode_names(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False)
         redraws: List[bool] = []
         monkeypatch.setattr(panel, "redraw_tree", lambda: redraws.append(True), raising=False)
 
@@ -306,11 +381,8 @@ class TestControl:
 
         assert redraws == [True]
 
-    def test_the_mode_a_session_left_on_stands_before_the_first_rebuild(
-        self,
-        browser: BrowserTree,
-    ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+    def test_the_mode_a_session_left_on_stands_before_the_first_rebuild(self, corpus: BrowserCorpus) -> None:
+        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False)
 
         panel._restore_favorites_only(True)
 
@@ -318,35 +390,35 @@ class TestControl:
 
     def test_a_query_typed_earlier_survives_a_change_of_mode(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False, query="starred")
+        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False, query="beat")
         monkeypatch.setattr(panel, "redraw_tree", lambda: None, raising=False)
 
         panel._on_favorites_only_changed(None, True)
 
-        assert panel._filter.query == "starred"
+        assert panel._filter.query == "beat"
 
 
 class TestStarColor:
     """The star beside the label reads in the colour of the mode it stands for."""
 
-    def test_the_star_reads_favorite_while_the_mode_is_on(self, browser: BrowserTree) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
+    def test_the_star_reads_favorite_while_the_mode_is_on(self, corpus: BrowserCorpus) -> None:
+        panel = build_browser_panel(corpus, set(), favorites_only=True)
         assert panel._favorites_glyph_color() == TREE_COLORS.favorite
 
-    def test_the_star_reads_muted_while_the_mode_is_off(self, browser: BrowserTree) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+    def test_the_star_reads_muted_while_the_mode_is_off(self, corpus: BrowserCorpus) -> None:
+        panel = build_browser_panel(corpus, set(), favorites_only=False)
         assert panel._favorites_glyph_color() == TREE_COLORS.muted
 
     def test_the_star_is_coloured_with_the_token_the_mode_names(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The colour reaches the star as a token, so the star follows a palette swapped in place."""
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
+        panel = build_browser_panel(corpus, set(), favorites_only=True)
         panel._favorites_glyph_tag = GLYPH_TAG
         coloured: List[Tuple[str, BaseColor]] = []
         monkeypatch.setattr(
@@ -365,10 +437,10 @@ class TestControlLock:
 
     def test_the_lock_reaches_the_control(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
+        panel = build_browser_panel(corpus, set(), favorites_only=True)
         panel._favorites_checkbox_tag = CHECKBOX_TAG
         configured: List[Tuple[str, Any]] = []
         monkeypatch.setattr(
@@ -383,10 +455,10 @@ class TestControlLock:
 
     def test_a_browser_offering_no_control_answers_the_lock_as_it_stands(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        panel = build_browser_panel(corpus, set(), favorites_only=False)
         configured: List[Tuple[str, Any]] = []
         monkeypatch.setattr(
             tree_module,
@@ -402,10 +474,10 @@ class TestControlLock:
 class TestFavoriteChange:
     def test_a_change_draws_the_tree_again_while_the_mode_is_on(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=True)
+        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=True)
         redraws: List[bool] = []
         repaints: List[TreeNode] = []
         monkeypatch.setattr(panel, "redraw_tree", lambda: redraws.append(True), raising=False)
@@ -416,17 +488,18 @@ class TestFavoriteChange:
             raising=False,
         )
 
-        panel.update_favorite_indicators([browser.rows["starred"]])
+        panel.update_favorite_indicators(nodes_at(corpus, "A/beat"))
 
         assert redraws == [True]
         assert repaints == []
 
-    def test_a_change_repaints_the_rows_while_the_mode_is_off(
+    def test_a_change_repaints_every_row_standing_for_the_path_while_the_mode_is_off(
         self,
-        browser: BrowserTree,
+        corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        panel = build_panel(browser, {STARRED_PATH}, favorites_only=False)
+        """One path reaches the panel as a row in each view, and each takes its own ancestry."""
+        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False)
         redraws: List[bool] = []
         repaints: List[TreeNode] = []
         monkeypatch.setattr(panel, "redraw_tree", lambda: redraws.append(True), raising=False)
@@ -436,8 +509,9 @@ class TestFavoriteChange:
             lambda node, has_favorite_ancestor=False: repaints.append(node),
             raising=False,
         )
+        rows = nodes_at(corpus, "A/beat")
 
-        panel.update_favorite_indicators([browser.rows["starred"], browser.rows["starred_variant"]])
+        panel.update_favorite_indicators(rows)
 
         assert redraws == []
-        assert repaints == [browser.rows["starred"], browser.rows["starred_variant"]]
+        assert repaints == list(rows)

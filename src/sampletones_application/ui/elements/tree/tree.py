@@ -130,6 +130,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._filter: TreeFilter = NO_FILTER
         self._search_visibility: Optional[TreeVisibility] = None
         self._favorites_visibility: Optional[TreeVisibility] = None
+        self._favorites_anchors: Optional[TreeVisibility] = None
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
@@ -561,14 +562,16 @@ class GUITreePanel(GUIPanel, ABC):
     def _has_relevant_content(self, node: TreeNode) -> bool: ...
 
     def _should_expand_node(self, node: TreeNode) -> bool:
-        """Whether the row is emitted standing open, which a row leading to a match is.
+        """Whether the row is emitted standing open, which a row leading to a named row is.
 
-        A search result and a favorite are both matches the reader is looking for, so the way down to
-        either one opens and the filter's answer reads at a glance.
+        A search result and a favorite are both what the reader is looking for, so the way down to
+        either one opens and the filter's answer reads at a glance. What each criterion names is the
+        row the reader is pointed at rather than everything that row brings along, so a folder opens
+        to show what it holds while the rows inside it stand as they are.
         """
         return any(
             visibility.should_expand(node)
-            for visibility in (self._search_visibility, self._favorites_visibility)
+            for visibility in (self._search_visibility, self._favorites_anchors)
             if visibility is not None
         )
 
@@ -851,7 +854,10 @@ class GUITreePanel(GUIPanel, ABC):
         keeps a filter typed before a refresh answering for the rows that refresh brings.
         """
         self._search_visibility = self._resolve_search_visibility()
-        self._favorites_visibility = self._resolve_favorites_visibility()
+        (
+            self._favorites_visibility,
+            self._favorites_anchors,
+        ) = self._resolve_favorites()
 
     def _resolve_search_visibility(self) -> Optional[TreeVisibility]:
         """The rows the search query names, and nothing to narrow by while no query is typed."""
@@ -866,16 +872,24 @@ class GUITreePanel(GUIPanel, ABC):
             )
         )
 
-    def _resolve_favorites_visibility(self) -> Optional[TreeVisibility]:
-        """The rows the favorites mode names, and nothing to narrow by while the whole tree shows.
+    def _resolve_favorites(
+        self,
+    ) -> Tuple[Optional[TreeVisibility], Optional[TreeVisibility]]:
+        """The rows the favorites mode keeps, and the rows it points the reader at.
 
-        One walk of the model answers the whole mode, and what it keeps is the starred rows together
-        with the rows above them, so a corpus of any size resolves into a pair of sets.
+        The two answer different questions — which rows the browser draws, and which of them stand
+        open — so each is resolved from a set of its own, the second being a part of the first. One
+        walk of the model finds the rows the star reaches, and the anchors are read out of that
+        answer, so a corpus of any size resolves into a walk and a pair of sets.
         """
         if not self._filter.favorites_only:
-            return None
+            return None, None
 
-        return resolve_visibility(self.tree.find_nodes(TreeNode, self._is_node_starred))
+        reached = self.tree.find_nodes(TreeNode, self._is_node_starred)
+        return (
+            resolve_visibility(reached),
+            resolve_visibility([node for node in reached if self._is_node_anchored(node)]),
+        )
 
     def _is_node_starred(self, node: TreeNode) -> bool:
         """Whether the favorites mode names the row: it carries a star, or a starred folder holds it.
@@ -887,6 +901,23 @@ class GUITreePanel(GUIPanel, ABC):
             return True
 
         return isinstance(node, FileSystemNode) and self._logic.has_favorite_ancestor(node)
+
+    def _is_node_anchored(self, node: TreeNode) -> bool:
+        """Whether the mode points the reader at the row, which is what opens the way down to it.
+
+        A star sits on a row the reader marked, so the way to that row opens wherever it sits —
+        inside another starred folder among the rest. A row a starred folder merely holds is where
+        the star first reaches only while no row above it is reached, which is how the sample branch
+        answers: its headings carry no path, so the variants are where the star arrives.
+
+        Asked of the rows the star reaches, so a row it declines stands under a row it named, and
+        the reader is pointed at the folder rather than at everything inside it.
+        """
+        if self._logic.is_node_favorite(node):
+            return True
+
+        parent = node.parent
+        return parent is None or not self._is_node_starred(parent)
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
