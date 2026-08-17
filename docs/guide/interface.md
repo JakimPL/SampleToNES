@@ -37,8 +37,11 @@ reveals. [Configuration](configuration.md) explains each one.
 The **Reconstructions** tab is where you audition a reconstruction against the
 original, fine-tune it, and export it.
 
-Open a saved reconstruction from the list on the left; if the current one has
-unsaved edits, you are asked whether to save it first. You can play it back and
+Open a saved reconstruction from the **Browser** on the left, which offers the
+same files two ways: **By configuration** groups them by the settings they were
+made with, and **By sample** gathers every version of one source audio together.
+If the current reconstruction has unsaved edits, you are asked whether to save it
+first. You can play it back and
 switch **Play audio source:** between **Reconstruction** and **Original audio** to
 compare the two, and **Locate original audio** re-links the source file if it has
 moved.

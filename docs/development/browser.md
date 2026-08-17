@@ -1,0 +1,144 @@
+# The Reconstruction Browser
+
+This document governs the tree of reconstructions the **Reconstructions** and **Sequencer** tabs
+share: how a reconstructions directory becomes rows, what a row stands for, and what it answers.
+Consult it when changing what the browser lists, how a row reads, or what a click on one does. It
+complements `docs/development/architecture.md` (layering and ownership) and
+`docs/development/guidelines.md` (coding rules).
+
+---
+
+## Principles
+
+1. **One reading of the disk feeds every view.** A refresh walks the reconstructions directory once
+   into a `ReconstructionScan`, and every branch is built from that record. The views therefore agree
+   about what exists by construction, and a folder name is parsed into its configuration fields once
+   per refresh.
+2. **The model carries the shape; the panel carries the widgets.** Which rows exist, what they are
+   called, which of them fold together and in what order they sit are decided on the tree. Both tabs
+   render one model, so they show one shape, and each rule is exercised without a window.
+3. **A row's identity is its path; its name is a label.** Favorites, the context menus, copy-path,
+   playback and opening a reconstruction all key on `filepath`. That is what frees a name to be
+   rewritten — a configuration directory renamed to its generator abbreviation, a chain of headings
+   joined into one row, a colliding label marked with its configuration hash.
+4. **The browser writes the headings the disk states rather than holds.** A frequency pair, a
+   transformation, a source folder, one source audio: each becomes a row that carries no path of its
+   own. What such a row offers follows from the subtree beneath it.
+5. **One thing may stand in several places.** A reconstruction is listed by the configuration that
+   produced it and again by the audio it was made from, so an action on the thing rather than on the
+   row asks for every row standing for it (`Tree.find_nodes`, `BrowserManager.nodes_at`) and hands
+   them to both tabs.
+6. **Per-row work happens off the main thread.** A rebuild resolves each row into a `NodeSpec` on the
+   background worker — tag, label, font, theme, handler, open state — and the main thread creates the
+   widgets from those specs, spread across frames.
+
+---
+
+## The pipeline
+
+`BrowserManager` (`logic/reconstruction/browser/manager.py`) owns the tree and runs a refresh in four
+steps: **scan** the directory, **build** each branch from that one scan, **shape** what came out, and
+**publish** it through `Tree.set_root`. `BrowserLogic` sits above it as the surface the coordinators
+drive, and `get_all_reconstruction_files` reads the scan.
+
+| Stage | Module | What it does |
+|---|---|---|
+| Scan | `tree/scan.py` | `scan_reconstructions` walks the directory once, recording each folder with the configuration its name states and each `.stn` file beneath it |
+| Records | `tree/entries/` | `DirectoryEntry`, `ReconstructionEntry`, `ReconstructionScan` — frozen, path-only, no widgets and no tree |
+| Configuration branch | `tree/configurations/` | `branch.py` lays the scanned folders out as they sit; `grouping.py` lifts a top-level configuration directory under frequency ▶ transformation groups and names it by its generators; `naming.py` gives the remaining configuration directories friendly names, unique among their siblings |
+| Sample branch | `tree/samples/` | `variants.py` regroups every top-level configuration directory's reconstructions by the audio they mirror (`SampleSource` → `SampleVariant`); `branch.py` rebuilds the mirrored folders as groups and gathers each audio's variants under one sample row, each labelled by its configuration |
+| Shaping | `tree/prune.py`, `tree/collapse.py`, `tree/order.py` | Run in that order over each branch, deepest rows first |
+| Containers | `tree/containers.py` | `find_or_create_group` and `find_or_create_sample` extend the heading of that name a parent already holds; each node type is looked up among the siblings of its own kind, so a folder and an audio sharing a name stay two rows |
+
+The policy the two branches share: a configuration directory sitting at the top level of the
+reconstructions directory is the one lifted under groups and transposed into the sample view. A
+configuration directory nested inside a plain folder keeps its friendly name where it sits, and a
+reconstruction outside every configuration directory appears in the configuration branch, that being
+the branch which follows the disk.
+
+## The node vocabulary
+
+`sampletones_core/structures/tree/` holds the nodes, all anytree-backed:
+
+* `TreeNode(name, node_type)` — a row and its kind. `NodeType.ROOT` for the container both branches
+  hang from, `GROUP` and `SAMPLE` for the headings the browser writes, `DIRECTORY` and `FILE` for what
+  the disk holds.
+* `FileSystemNode(filepath)` — a row standing for a path. Favorites, playability, themes and the path
+  items all test for this class.
+* `ConfigNode(config)` — a filesystem row belonging to a reconstruction configuration, carrying the
+  parsed `ConfigDirectoryFields`. It subclasses `FileSystemNode` so every reader of a path keeps
+  working, and the fields travel with the row, which is what lets a label, a tooltip and a font state
+  the configuration from the node already in hand.
+
+`create_directory_node` chooses between the last two from the fields the scan read. Which row carries
+the configuration follows the branch: in the configuration branch it is the directory that names it,
+and in the sample branch it is the variant leaf, since there the configuration is what distinguishes
+one row from the next.
+
+## The shaping rules
+
+* **Prune** (`prune_empty_containers`) — a heading the browser wrote that gathers nothing leaves,
+  deepest first, so a whole chain of them goes at once and a reconstructions directory with nothing to
+  show stays silent. A folder the disk holds stays, since the configuration branch mirrors the disk.
+* **Collapse** (`collapse_single_child_containers`) — a heading standing above a single row folds into
+  that row, which takes the joined name (`DISPLAY_SEPARATOR` between levels) and rises into its place.
+  The surviving row keeps its node type, path, configuration and children, so its click behaviour,
+  theme, context menu and favorite star carry over. A fold that would repeat a name already beside it
+  stays open instead, and the branch roots stay in place. With a single configuration present the
+  configuration branch reads as one row per reconstruction, and it grows back into groups as soon as a
+  second configuration arrives.
+* **Order** (`order_children`) — containers ahead of leaves, then `natural_sort_key` over the label, so
+  a row sits where its displayed name puts it and `8 kHz` precedes `44.1 kHz`. The pass runs once every
+  label is final; the branches directly under the container root keep the order the builder states them
+  in.
+* **Unique sibling labels** (`unique_display_names`, `sampletones_core/configs/display.py`) — where
+  siblings would read alike, every member of that label takes its short configuration hash. One rule
+  serves the generator directories under a transformation group, the nested configuration directories,
+  and the variants under a sample.
+
+## The panels
+
+The browsers form one line of inheritance, each level owning what it shares:
+
+* `GUITreePanel` (`ui/elements/tree/tree.py`) — a tree of rows: the search box, the rebuild handshake,
+  spec collection, themes and fonts per row, the detail tooltip, the status-bar messages, and the
+  context-menu items every browser can offer.
+* `GUIFileBrowserPanel` (`ui/elements/tree/browser.py`) — a browser of files as a collapsible card: the
+  refresh control, the tree window, the folder-and-file handler pair, and enabling the card as the tree
+  locks and unlocks. A subclass declares its widgets as a `FileBrowserTags` class attribute and states
+  what its card and refresh control read.
+* `GUIReconstructionBrowserPanel` (`ui/panels/shared/browser.py`) — the reconstruction browser: the
+  rows the two branches hold, the colour a group and a sample read in, and the context menus. The
+  Reconstructions and Sequencer panels below it name their widgets, their refresh control, and what
+  opening a reconstruction means in that tab.
+
+The Main tab's filesystem explorer and the Instructions tab's library catalogue sit on
+`GUIFileBrowserPanel` as well, so the card, the search and the rebuild machinery are shared with them.
+
+**A rebuild** starts on the tree worker: `_launch_rebuild` takes the tree lock, brings the model up to
+date, collects the rows into specs, and hands them to `TreeEmitter`, which clears the old rows and
+stages the new ones in budget-sized batches so interactive callbacks run between slices. The
+completion callback shows the empty state where one is called for, runs the panel's hook, and releases
+the lock. Because a browser is asked to rebuild from either tab and from several places in the
+application, exactly one rebuild is in flight at a time.
+
+**A row's tag** (`compose_node_tag`, `ui/elements/tree/tag.py`) joins the names above it, which reads
+the row back to whoever inspects the widget tree, and appends a digest over the exact path of
+`(node_type, name)` pairs. Rows the names alone spell alike — a folder and the audio beside it, two
+labels differing only in spacing or case — therefore keep tags of their own. A tag is composed rather
+than stored, so any holder of a node can address its row: this is how expanding a subtree, repainting a
+star and applying a filter reach the widgets.
+
+**What a row answers** follows its kind. A reconstruction plays on a click, opens on a double click,
+and offers its path items, the tab's own actions and the favorite mark. A directory offers its path
+items and the favorite mark. A group or a sample stands for no path, so its menu reads the subtree: how
+many reconstructions it gathers, expanding and collapsing everything below it, the label the tree shows
+it by, and — on a sample — the audio its reconstructions were made from, answered through any one of
+them.
+
+**Favorites are paths.** `TreeLogic.is_node_favorite` tests the row's path against the session's set,
+and `has_favorite_ancestor` tests the path's parents, so a reconstruction reads as part of a favorite
+folder wherever a view puts it — including the sample branch, whose headings carry no path. Since one
+path reaches the panel as several rows, `application.py` resolves the toggled path into every row
+standing for it and hands them to both tabs, and each row repaints with the ancestry its own path
+carries.

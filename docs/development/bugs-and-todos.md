@@ -4,7 +4,6 @@
 
 * Interface scale
 * Tree navigation using keys
-* Transposed topology of Reconstruction browser view into sample breakdown
 * Waveform LOD for zooming
 * Alt for scrolling graphs
 * Drag and drop
