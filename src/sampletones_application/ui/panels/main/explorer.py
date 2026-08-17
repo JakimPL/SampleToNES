@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, List, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -7,7 +7,6 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
     TAG_MAIN_EXPLORER_BUTTON_REFRESH,
@@ -19,16 +18,13 @@ from sampletones_application.tags.main import (
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
-from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.tree.browser import GUIFileBrowserPanel
 from sampletones_application.ui.elements.tree.colors import TreeColors
-from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
-from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_application.ui.elements.tree.tags import FileBrowserTags
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -66,7 +62,18 @@ class ExplorerLogicProtocol(Protocol):
     def has_relevant_content(self, filepath: Path) -> bool: ...
 
 
-class GUIExplorerPanel(GUITreePanel):
+class GUIExplorerPanel(GUIFileBrowserPanel):
+    """The Main tab's browser of the filesystem, whose rows are the folders and files on disk."""
+
+    _tags: FileBrowserTags = FileBrowserTags(
+        panel=TAG_MAIN_EXPLORER_PANEL,
+        tree=TAG_MAIN_EXPLORER_TREE,
+        window_tree=TAG_MAIN_EXPLORER_WINDOW_TREE,
+        group_tree=TAG_MAIN_EXPLORER_GROUP_TREE,
+        group_controls=TAG_MAIN_EXPLORER_GROUP_CONTROLS,
+        button_refresh=TAG_MAIN_EXPLORER_BUTTON_REFRESH,
+    )
+
     def __init__(
         self,
         explorer_logic: ExplorerLogicProtocol,
@@ -76,13 +83,10 @@ class GUIExplorerPanel(GUITreePanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
-        initial_collapsed: bool = False,
+        initial_collapsed: bool,
     ) -> None:
         self._language_manager = language_manager
         self._explorer_logic = explorer_logic
-
-        self._lbl_section = language_manager["main.explorer.label.section"]
-        self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
         self.on_directory_clicked: Optional[PathCallback] = None
@@ -94,104 +98,64 @@ class GUIExplorerPanel(GUITreePanel):
         self.on_set_as_library_directory: Optional[PathCallback] = None
 
         super().__init__(
-            tree=self._explorer_logic.tree,
-            tag=TAG_MAIN_EXPLORER_PANEL,
-            tree_tag=TAG_MAIN_EXPLORER_TREE,
+            tree=explorer_logic.tree,
             tree_logic=tree_logic,
             scheduling=scheduling,
             search_label=language_manager["global.browser.label.filter"],
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
-        )
-
-        self._enable_horizontal_collapse(
             initial_collapsed=initial_collapsed,
-            side=CollapseAxis.HORIZONTAL_LEFT,
         )
 
-    def create_panel(self, parent: str) -> None:
-        self._setup_handlers()
-        with (
-            dpg.child_window(
-                tag=self.tag,
-                width=self.width,
-                height=self.height,
-                parent=parent,
-                border=False,
-            ),
-            self._collapsible_section(
-                self._lbl_section,
-                glyph=self._glyphs.headers.filesystem,
-            ),
-        ):
-            self._create_buttons()
-            dpg.add_separator()
-            self._create_tree_window()
+    @property
+    def section_label(self) -> str:
+        return self._language_manager["main.explorer.label.section"]
 
-        self._create_detail_tooltip(TAG_MAIN_EXPLORER_WINDOW_TREE)
-        self.rebuild_tree()
+    @property
+    def section_glyph(self) -> str:
+        return self._glyphs.headers.filesystem
+
+    @property
+    def refresh_button_label(self) -> str:
+        return self._language_manager["main.explorer.label.refresh_button"]
+
+    @property
+    def refresh_status_message(self) -> str:
+        return self._language_manager["main.explorer.message.status_refresh"]
 
     def _setup_handlers(self) -> None:
-        self._node_handlers = {
-            NodeType.DIRECTORY: NodeHandler(
-                tag=self._get_node_handler_tag(NodeType.DIRECTORY),
-                node_type=NodeType.DIRECTORY,
-                item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_expandable_node(),
-            ),
-            NodeType.FILE: NodeHandler(
-                tag=self._get_node_handler_tag(NodeType.FILE),
-                node_type=NodeType.FILE,
-                item_click_callback=self._on_file_node_clicked,
-                item_double_click_callback=self._on_file_node_double_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_file_node(),
-            ),
-        }
+        self._node_handlers = self._create_file_system_handlers(
+            on_directory_clicked=self._on_directory_node_clicked,
+            on_file_clicked=self._on_file_node_clicked,
+            on_file_double_clicked=self._on_file_node_double_clicked,
+            file_status_message=self._create_status_bar_message_function_for_file_node(),
+        )
 
         super()._setup_handlers()
 
-    def _create_buttons(self) -> None:
-        with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_CONTROLS):
-            GUIButton(
-                tag=TAG_MAIN_EXPLORER_BUTTON_REFRESH,
-                label=self._language_manager["main.explorer.label.refresh_button"],
-                parent=self._body_container,
-                width=-1,
-                callback=self.refresh,
-                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
-            )
+    def _create_controls(self) -> None:
+        """Offers the refresh control and, beside it, the one folding every folder away at once."""
+        with dpg.group(tag=self._tags.group_controls):
+            self._create_refresh_button()
             GUIButton(
                 tag=TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
                 label=self._language_manager["main.explorer.label.collapse_all_button"],
-                parent=self._body_container,
                 width=-1,
                 callback=self.collapse_all,
             )
-        self._status_bar.bind_to_item(
-            TAG_MAIN_EXPLORER_BUTTON_REFRESH,
-            self._language_manager["main.explorer.message.status_refresh"],
-        )
+
+        self._bind_refresh_message()
         self._status_bar.bind_to_item(
             TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
             self._language_manager["main.explorer.message.status_collapse_all"],
         )
 
-    def _create_tree_window(self) -> None:
-        self.create_search(self._body_container)
-        with (
-            dpg.child_window(
-                tag=TAG_MAIN_EXPLORER_WINDOW_TREE,
-                horizontal_scrollbar=True,
-            ),
-            dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE),
-            dpg.tree_node(
-                label=self._lbl_section,
-                tag=self.tree_tag,
-                default_open=True,
-            ),
-        ):
-            pass
+    def _create_tree_root(self) -> None:
+        self._create_tree_root_heading(self.section_label)
+
+    def _refresh_model(self) -> None:
+        self._explorer_logic.refresh_tree()
 
     def collapse_all(
         self,
@@ -204,17 +168,6 @@ class GUIExplorerPanel(GUITreePanel):
         assert children is not None, "Explorer tree has no children."
         for node_tag in children:
             dpg.set_value(node_tag, False)
-
-    def refresh(self) -> None:
-        self.rebuild_tree()
-
-    @concurrent(wait=False, method_bound=True)
-    def rebuild_tree(self) -> None:
-        self._launch_rebuild(
-            self._explorer_logic.refresh_tree,
-            lambda: self._collect_specs(self.tree_tag),
-            root_tag=self.tree_tag,
-        )
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_node_subtree(
@@ -260,7 +213,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        state.has_favorite_ancestor |= self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(node)
+        self._mark_favorite_ancestry(node, state)
 
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self._explorer_logic.is_directory_expanded(node.filepath)
@@ -418,10 +371,6 @@ class GUIExplorerPanel(GUITreePanel):
             return self._explorer_logic.has_relevant_content(node.filepath)
 
         return True
-
-    def set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(TAG_MAIN_EXPLORER_GROUP_TREE, enabled=enabled)
-        dpg_configure_item(TAG_MAIN_EXPLORER_GROUP_CONTROLS, enabled=enabled)
 
     def _reconstruct_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:

@@ -7,8 +7,8 @@ class FileBrowserTags:
 
     Every browser builds the same arrangement — a panel card holding a controls group with a refresh
     button, and a window holding the group the tree attaches to — so the tags naming those widgets
-    travel as one value the panel is constructed with. Stating them together makes each browser
-    declare a complete set at one place, checked where it is written.
+    are one value the panel declares beside its class. Stating them together makes each browser name
+    a complete set at one place, checked where it is written.
     """
 
     panel: str

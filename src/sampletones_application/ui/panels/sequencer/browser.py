@@ -1,5 +1,3 @@
-from typing import Final
-
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
@@ -21,18 +19,18 @@ from sampletones_application.ui.panels.shared.browser import (
 )
 from sampletones_core.structures.tree import FileSystemNode, Tree
 
-_TAGS: Final[FileBrowserTags] = FileBrowserTags(
-    panel=TAG_SEQUENCER_BROWSER_PANEL,
-    tree=TAG_SEQUENCER_BROWSER_TREE,
-    window_tree=TAG_SEQUENCER_BROWSER_WINDOW_TREE,
-    group_tree=TAG_SEQUENCER_BROWSER_GROUP_TREE,
-    group_controls=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS,
-    button_refresh=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
-)
-
 
 class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
     """The Sequencer tab's browser, whose reconstructions become the song's samples."""
+
+    _tags: FileBrowserTags = FileBrowserTags(
+        panel=TAG_SEQUENCER_BROWSER_PANEL,
+        tree=TAG_SEQUENCER_BROWSER_TREE,
+        window_tree=TAG_SEQUENCER_BROWSER_WINDOW_TREE,
+        group_tree=TAG_SEQUENCER_BROWSER_GROUP_TREE,
+        group_controls=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS,
+        button_refresh=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+    )
 
     def __init__(
         self,
@@ -50,7 +48,6 @@ class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
         super().__init__(
             tree=tree,
             tree_logic=tree_logic,
-            tags=_TAGS,
             scheduling=scheduling,
             language_manager=language_manager,
             status_bar=status_bar,

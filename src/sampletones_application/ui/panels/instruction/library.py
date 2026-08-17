@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Protocol, Tuple
+from typing import Any, Callable, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -7,10 +7,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
-from sampletones_application.tags.general import (
-    TAG_GLOBAL_THEME_PRIMARY_BUTTON,
-    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
-)
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_PRIMARY_BUTTON
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
@@ -31,17 +28,16 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.tree.browser import GUIFileBrowserPanel
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
-from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.elements.tree.tags import FileBrowserTags
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
-from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey
@@ -81,9 +77,20 @@ class LibraryLogicProtocol(Protocol):
     def get_path(self, key: InstructionLibraryKey) -> Path: ...
 
 
-class GUIInstructionsLibraryPanel(GUITreePanel):
+class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
+    """The Instructions tab's catalogue of instruction libraries and the generators inside them."""
+
     _NAME_FONT: Font = Font.REGULAR_SMALL
     _MONOSPACE_CONFIG_NODES: bool = True
+    _REBUILD_ON_CREATE: bool = False
+    _tags: FileBrowserTags = FileBrowserTags(
+        panel=TAG_INSTRUCTIONS_LIBRARY_PANEL,
+        tree=TAG_INSTRUCTIONS_LIBRARY_TREE,
+        window_tree=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
+        group_tree=TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
+        group_controls=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS,
+        button_refresh=TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
+    )
 
     def __init__(
         self,
@@ -91,7 +98,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         tree_logic: TreeLogicProtocol,
         *,
         scheduling: SchedulingBehavior,
-        initial_collapsed: bool = False,
+        initial_collapsed: bool,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
@@ -109,24 +116,32 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, LibraryGeneratorName], None]] = None
         self.on_library_remove_requested: Optional[Callable[[InstructionLibraryKey], None]] = None
 
-        self._node_handlers: Dict[NodeType, NodeHandler]
-
         super().__init__(
-            self._library_logic.tree,
-            tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
-            tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
+            tree=library_logic.tree,
             tree_logic=tree_logic,
             scheduling=scheduling,
             search_label=language_manager["global.browser.label.search"],
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
+            initial_collapsed=initial_collapsed,
         )
 
-        self._enable_horizontal_collapse(
-            initial_collapsed=initial_collapsed,
-            side=CollapseAxis.HORIZONTAL_LEFT,
-        )
+    @property
+    def section_label(self) -> str:
+        return self._language_manager["instructions.library.label.libraries_text"]
+
+    @property
+    def section_glyph(self) -> str:
+        return self._glyphs.headers.instruction_data
+
+    @property
+    def refresh_button_label(self) -> str:
+        return self._language_manager["instructions.library.label.refresh_libraries_button"]
+
+    @property
+    def refresh_status_message(self) -> str:
+        return self._language_manager["instructions.library.message.status_refresh"]
 
     def _setup_handlers(self) -> None:
         self._node_handlers = {
@@ -146,41 +161,16 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         super()._setup_handlers()
 
-    def create_panel(self, parent: str) -> None:
-        self._setup_handlers()
-        with (
-            dpg.child_window(
-                tag=self.tag,
-                width=self.width,
-                height=self.height,
-                parent=parent,
-                border=False,
-            ),
-            self._collapsible_section(
-                self._language_manager["instructions.library.label.libraries_text"],
-                glyph=self._glyphs.headers.instruction_data,
-            ),
-        ):
-            self._create_library_status()
-            self._create_library_controls()
-            self._create_library_tree()
+    def _create_controls(self) -> None:
+        """Reads out what the catalogue holds, and offers what can be done to it.
 
-        self._create_detail_tooltip(TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE)
-
-    def _create_library_status(self) -> None:
-        text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
-        FontRegistry.bind_to_item(text, Font.MONO_SMALL)
-
-    def _create_library_controls(self) -> None:
-        with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS):
+        The controls come in two sets: the ones a reader picks from while the catalogue sits still,
+        and the progress bar and cancel button a generation replaces them with.
+        """
+        self._create_library_status()
+        with dpg.group(tag=self._tags.group_controls):
             with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS_IDLE):
-                GUIButton(
-                    tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
-                    label=self._language_manager["instructions.library.label.refresh_libraries_button"],
-                    width=-1,
-                    callback=self._on_refresh_clicked,
-                    theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
-                )
+                self._create_refresh_button()
                 with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE):
                     GUIButton(
                         tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
@@ -214,10 +204,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     width=-1,
                     callback=self._on_cancel_clicked,
                 )
-        self._status_bar.bind_to_item(
-            TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
-            self._language_manager["instructions.library.message.status_refresh"],
-        )
+        self._bind_refresh_message()
         self._status_bar.bind_to_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
             self._language_manager["instructions.library.message.status_generate"],
@@ -227,26 +214,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._language_manager["instructions.library.message.status_cancel_generation"],
         )
 
-    def _create_library_tree(self) -> None:
-        dpg.add_separator()
-        self.create_search(self._body_container)
-        with (
-            dpg.child_window(
-                tag=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
-                width=-1,
-                height=-1,
-                horizontal_scrollbar=True,
-            ),
-            dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE),
-            dpg.tree_node(
-                label=self._language_manager["instructions.library.label.available_libraries_text"],
-                tag=self.tree_tag,
-                default_open=True,
-            ),
-        ):
-            pass
+    def _create_library_status(self) -> None:
+        text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
+        FontRegistry.bind_to_item(text, Font.MONO_SMALL)
+
+    def _create_tree_root(self) -> None:
+        self._create_tree_root_heading(self._language_manager["instructions.library.label.available_libraries_text"])
 
     def _on_refresh_clicked(self) -> None:
+        """Answers the refresh control by reading the libraries again, which rebuilds the tree."""
         self.call(self.on_refresh_requested)
 
     def _on_generate_clicked(self) -> None:
@@ -282,12 +258,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         )
 
     def set_tree_enabled(self, enabled: bool) -> None:
+        """Locks the tree and the control reading it again, leaving a running generation cancellable."""
         dpg_configure_item(
-            TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
+            self._tags.group_tree,
             enabled=enabled,
         )
         dpg_configure_item(
-            TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
+            self._tags.button_refresh,
             enabled=enabled,
         )
         self._apply_action_button_states()
@@ -312,14 +289,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             show=operation_active,
         )
 
-    @concurrent(wait=False, method_bound=True)
-    def rebuild_tree(self) -> None:
-        self._launch_rebuild(
-            self._library_logic.rebuild_tree,
-            lambda: self._collect_specs(self.tree_tag),
-            root_tag=self.tree_tag,
-            on_finished=self._library_logic.update_status,
-        )
+    def _refresh_model(self) -> None:
+        self._library_logic.rebuild_tree()
+
+    def _on_rebuild_finished(self) -> None:
+        self._library_logic.update_status()
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         return True

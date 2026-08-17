@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -26,18 +26,18 @@ from sampletones_core.structures.tree import FileSystemNode, Tree
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import PathCallback
 
-_TAGS: Final[FileBrowserTags] = FileBrowserTags(
-    panel=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
-    tree=TAG_RECONSTRUCTIONS_BROWSER_TREE,
-    window_tree=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
-    group_tree=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE,
-    group_controls=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
-    button_refresh=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
-)
-
 
 class GUIReconstructionsBrowserPanel(GUIReconstructionBrowserPanel):
     """The Reconstructions tab's browser, whose reconstructions open in the tab beside it."""
+
+    _tags: FileBrowserTags = FileBrowserTags(
+        panel=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
+        tree=TAG_RECONSTRUCTIONS_BROWSER_TREE,
+        window_tree=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
+        group_tree=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE,
+        group_controls=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
+        button_refresh=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+    )
 
     def __init__(
         self,
@@ -55,7 +55,6 @@ class GUIReconstructionsBrowserPanel(GUIReconstructionBrowserPanel):
         super().__init__(
             tree=tree,
             tree_logic=tree_logic,
-            tags=_TAGS,
             scheduling=scheduling,
             language_manager=language_manager,
             status_bar=status_bar,

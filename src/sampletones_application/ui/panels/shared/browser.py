@@ -18,7 +18,6 @@ from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
-from sampletones_application.ui.elements.tree.tags import FileBrowserTags
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
@@ -46,7 +45,6 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         tree: Tree,
         tree_logic: TreeLogicProtocol,
         *,
-        tags: FileBrowserTags,
         scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -59,7 +57,6 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         super().__init__(
             tree=tree,
             tree_logic=tree_logic,
-            tags=tags,
             scheduling=scheduling,
             search_label=language_manager["global.browser.label.search"],
             language_manager=language_manager,
@@ -90,18 +87,11 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
                 node_type=NodeType.SAMPLE,
                 status_bar_callback=self._create_status_bar_message_function_for_expandable_node(),
             ),
-            NodeType.DIRECTORY: NodeHandler(
-                tag=self._get_node_handler_tag(NodeType.DIRECTORY),
-                node_type=NodeType.DIRECTORY,
-                item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_expandable_node(),
-            ),
-            NodeType.FILE: NodeHandler(
-                tag=self._get_node_handler_tag(NodeType.FILE),
-                node_type=NodeType.FILE,
-                item_click_callback=self._on_reconstruction_node_clicked,
-                item_double_click_callback=self._on_reconstruction_node_double_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_reconstruction_node(),
+            **self._create_file_system_handlers(
+                on_directory_clicked=self._on_directory_node_clicked,
+                on_file_clicked=self._on_reconstruction_node_clicked,
+                on_file_double_clicked=self._on_reconstruction_node_double_clicked,
+                file_status_message=self._create_status_bar_message_function_for_reconstruction_node(),
             ),
         }
 
@@ -137,7 +127,7 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        state.has_favorite_ancestor |= self._logic.is_node_favorite(node) or self._logic.has_favorite_ancestor(node)
+        self._mark_favorite_ancestry(node, state)
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
             self._append_spec(
