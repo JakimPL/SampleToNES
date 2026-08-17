@@ -13,6 +13,7 @@ from sampletones_core.structures.tree import (
     NodeType,
     Tree,
     TreeNode,
+    create_directory_node,
 )
 from sampletones_shared.utils.system.system import System
 
@@ -56,10 +57,9 @@ class ExplorerManager:
         directory_path: Path,
         parent: Optional[TreeNode] = None,
     ) -> FileSystemNode:
-        node = FileSystemNode(
+        node = create_directory_node(
+            directory_path,
             name=directory_path.name or str(directory_path),
-            filepath=directory_path,
-            node_type=NodeType.DIRECTORY,
             parent=parent,
         )
 
@@ -93,10 +93,9 @@ class ExplorerManager:
                     if entry_path.name.startswith("."):
                         continue
 
-                    child_node = FileSystemNode(
+                    child_node = create_directory_node(
+                        entry_path,
                         name=entry_path.name,
-                        filepath=entry_path,
-                        node_type=NodeType.DIRECTORY,
                         parent=directory_node,
                     )
                     if level < self.depth:

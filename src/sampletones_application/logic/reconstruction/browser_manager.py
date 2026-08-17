@@ -14,10 +14,12 @@ from sampletones_core.configs.display import (
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
+    ConfigNode,
     FileSystemNode,
     NodeType,
     Tree,
     TreeNode,
+    create_directory_node,
 )
 
 
@@ -89,10 +91,9 @@ class BrowserManager:
             if child_node is not None:
                 children_nodes.append(child_node)
 
-        directory_node = FileSystemNode(
-            path.name,
-            filepath=path,
-            node_type=NodeType.DIRECTORY,
+        directory_node = create_directory_node(
+            path,
+            name=path.name,
             parent=parent,
         )
         for child_node in children_nodes:
@@ -111,28 +112,23 @@ class BrowserManager:
         flat friendly naming for the config directories nested inside it.
         """
         for child in list(reconstructions_node.children):
-            if not isinstance(child, FileSystemNode) or child.node_type != NodeType.DIRECTORY:
-                continue
-
-            fields = ConfigDirectoryFields.from_directory_name(child.filepath.name)
-            if fields is None:
-                self._assign_directory_display_names(child)
-                continue
-
-            self._attach_config_directory_under_groups(
-                child,
-                fields,
-                reconstructions_node,
-            )
+            match child:
+                case ConfigNode() if child.node_type == NodeType.DIRECTORY:
+                    self._attach_config_directory_under_groups(
+                        child,
+                        reconstructions_node,
+                    )
+                case FileSystemNode() if child.node_type == NodeType.DIRECTORY:
+                    self._assign_directory_display_names(child)
 
         self._disambiguate_generator_siblings(reconstructions_node)
 
     def _attach_config_directory_under_groups(
         self,
-        directory_node: FileSystemNode,
-        fields: ConfigDirectoryFields,
+        directory_node: ConfigNode,
         reconstructions_node: TreeNode,
     ) -> None:
+        fields = directory_node.config
         frequencies_name = DISPLAY_SEPARATOR.join(
             [
                 format_sample_rate(fields.sr),
@@ -171,9 +167,9 @@ class BrowserManager:
     def _disambiguate_generator_siblings(self, node: TreeNode) -> None:
         """Appends a short config hash to generator leaves that share a name under one method group."""
         if node.node_type == NodeType.GROUP:
-            by_name: Dict[str, List[FileSystemNode]] = {}
+            by_name: Dict[str, List[ConfigNode]] = {}
             for child in node.children:
-                if isinstance(child, FileSystemNode) and child.node_type == NodeType.DIRECTORY:
+                if isinstance(child, ConfigNode) and child.node_type == NodeType.DIRECTORY:
                     by_name.setdefault(child.name, []).append(child)
 
             for name, members in by_name.items():
@@ -181,9 +177,7 @@ class BrowserManager:
                     continue
 
                 for directory_node in members:
-                    fields = ConfigDirectoryFields.from_directory_name(directory_node.filepath.name)
-                    if fields is not None:
-                        directory_node.name = disambiguated_display_name(name, fields.ch)
+                    directory_node.name = disambiguated_display_name(name, directory_node.config.ch)
 
         for child in node.children:
             self._disambiguate_generator_siblings(child)
@@ -200,25 +194,20 @@ class BrowserManager:
             self._assign_directory_display_names(child)
 
     def _rename_config_directory_children(self, node: TreeNode) -> None:
-        groups: Dict[str, List[Tuple[FileSystemNode, ConfigDirectoryFields]]] = {}
+        groups: Dict[str, List[ConfigNode]] = {}
         for child in node.children:
-            if not isinstance(child, FileSystemNode) or child.node_type != NodeType.DIRECTORY:
+            if not isinstance(child, ConfigNode) or child.node_type != NodeType.DIRECTORY:
                 continue
 
-            fields = ConfigDirectoryFields.from_directory_name(child.filepath.name)
-            if fields is None:
-                continue
-
-            groups.setdefault(fields.display_name, []).append((child, fields))
+            groups.setdefault(child.config.display_name, []).append(child)
 
         for display_name, members in groups.items():
             if len(members) == 1:
-                directory_node, _ = members[0]
-                directory_node.name = display_name
+                members[0].name = display_name
                 continue
 
-            for directory_node, fields in members:
-                directory_node.name = disambiguated_display_name(display_name, fields.ch)
+            for directory_node in members:
+                directory_node.name = disambiguated_display_name(display_name, directory_node.config.ch)
 
     def _build_samples_children(self, samples_node: TreeNode) -> None:
         """Populates the transposed Samples branch: source-audio directories ▶ audio ▶ config variants."""
@@ -258,10 +247,11 @@ class BrowserManager:
         for display_name, members in variants_by_display_name.items():
             for fields, reconstruction_path in members:
                 label = display_name if len(members) == 1 else disambiguated_display_name(display_name, fields.ch)
-                FileSystemNode(
+                ConfigNode(
                     label,
-                    filepath=reconstruction_path,
                     node_type=NodeType.FILE,
+                    filepath=reconstruction_path,
+                    config=fields,
                     parent=audio_node,
                 )
 

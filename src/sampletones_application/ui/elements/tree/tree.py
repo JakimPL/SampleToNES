@@ -74,6 +74,7 @@ from sampletones_core.configs.display import (
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
+    ConfigNode,
     FileSystemNode,
     LibraryNode,
     NodeType,
@@ -545,8 +546,8 @@ class GUITreePanel(GUIPanel, ABC):
         match node:
             case LibraryNode():
                 return self._library_detail_items(node.library_key)
-            case FileSystemNode() if node.node_type == NodeType.DIRECTORY:
-                return self._reconstruction_detail_items(node.filepath.name)
+            case ConfigNode():
+                return self._reconstruction_detail_items(node.config)
 
         return []
 
@@ -561,11 +562,7 @@ class GUITreePanel(GUIPanel, ABC):
             (self._lbl_detail_configuration, short_hash(key.config_hash)),
         ]
 
-    def _reconstruction_detail_items(self, directory_name: str) -> List[Tuple[str, str]]:
-        fields = ConfigDirectoryFields.from_directory_name(directory_name)
-        if fields is None:
-            return []
-
+    def _reconstruction_detail_items(self, fields: ConfigDirectoryFields) -> List[Tuple[str, str]]:
         generators = ", ".join(generator.capitalized for generator in fields.generators)
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(fields.sr)),

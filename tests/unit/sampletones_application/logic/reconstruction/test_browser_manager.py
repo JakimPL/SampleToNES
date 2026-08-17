@@ -7,7 +7,13 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
-from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
+from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
+from sampletones_core.structures.tree import (
+    ConfigNode,
+    FileSystemNode,
+    NodeType,
+    TreeNode,
+)
 
 HASH_A = "6edf7c948606917a78b45d153c7ca7e0"
 HASH_B = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
@@ -336,6 +342,60 @@ class TestBrowserManagerSamplesView:
 
         assert group_children(samples_node(browser_manager)) == {}
         assert "my_songs" in directory_nodes(browser_manager)
+
+
+class TestBrowserManagerConfigNodes:
+    def test_config_directory_carries_its_parsed_configuration(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        directory_name = f"sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_{HASH_A}"
+        config_dir = tmp_path / directory_name
+        config_dir.mkdir()
+        (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        methods = group_children(group_children(reconstructions_node(browser_manager))["44.1 kHz·30 Hz"])
+        directory_node = directory_children(methods["FFT·γ0"])["PTN"]
+        assert isinstance(directory_node, ConfigNode)
+        assert directory_node.config == ConfigDirectoryFields.from_directory_name(directory_name)
+
+    def test_sample_variant_carries_the_configuration_of_its_directory(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """A leaf in the sample view states the configuration its directory names.
+
+        Its own filename is the audio name, so the configuration reaches the tooltip and the
+        configuration font from the node rather than from the path.
+        """
+        directory_name = f"sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_{HASH_A}"
+        config_dir = tmp_path / directory_name
+        config_dir.mkdir()
+        (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        audio = group_children(samples_node(browser_manager))["song"]
+        variant = next(iter(file_children(audio).values()))
+        assert isinstance(variant, ConfigNode)
+        assert variant.config == ConfigDirectoryFields.from_directory_name(directory_name)
+
+    def test_plain_directory_carries_no_configuration(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        plain = tmp_path / "my_songs"
+        plain.mkdir()
+        (plain / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        assert not isinstance(directory_nodes(browser_manager)["my_songs"], ConfigNode)
 
 
 class TestBrowserManagerSetDirectory:
