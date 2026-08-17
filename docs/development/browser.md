@@ -31,6 +31,9 @@ complements `docs/development/architecture.md` (layering and ownership) and
 6. **Per-row work happens off the main thread.** A rebuild resolves each row into a `NodeSpec` on the
    background worker — tag, label, font, theme, handler, open state — and the main thread creates the
    widgets from those specs, spread across frames.
+7. **What a browser narrows to is its own.** Both tabs render one model, so which rows a browser shows
+   is decided by the panel showing it: a search typed in one tab leaves the other reading as it was,
+   and each browser opens in the mode a session left it in.
 
 ---
 
@@ -100,9 +103,9 @@ one row from the next.
 
 The browsers form one line of inheritance, each level owning what it shares:
 
-* `GUITreePanel` (`ui/elements/tree/tree.py`) — a tree of rows: the search box, the rebuild handshake,
-  spec collection, themes and fonts per row, the detail tooltip, the status-bar messages, and the
-  context-menu items every browser can offer.
+* `GUITreePanel` (`ui/elements/tree/tree.py`) — a tree of rows: the controls it narrows by and the filter
+  they compose, the rebuild handshake, spec collection, themes and fonts per row, the detail tooltip, the
+  status-bar messages, and the context-menu items every browser can offer.
 * `GUIFileBrowserPanel` (`ui/elements/tree/browser.py`) — a browser of files as a collapsible card: the
   refresh control, the tree window, the folder-and-file handler pair, and enabling the card as the tree
   locks and unlocks. A subclass declares its widgets as a `FileBrowserTags` class attribute and states
@@ -142,3 +145,49 @@ folder wherever a view puts it — including the sample branch, whose headings c
 path reaches the panel as several rows, `application.py` resolves the toggled path into every row
 standing for it and hands them to both tabs, and each row repaints with the ancestry its own path
 carries.
+
+## Filtering
+
+`TreeFilter` (`ui/elements/tree/filter.py`) holds what a browser is currently asked to show, and the
+panel showing it owns the filter. It is stated whole and replaced whole — `with_query`,
+`with_favorites_only` — so one place resolves what the browser shows, and `NO_FILTER` is the filter a
+browser showing its whole tree holds.
+
+The two criteria answer different questions, so each lands in a different place:
+
+| Criterion | What it decides | Where it lands | What a change costs |
+|---|---|---|---|
+| `favorites_only` | which rows the browser **draws** | `_append_spec` records the rows the mode shows, so `TreeEmitter` creates widgets for those alone | `redraw_tree` collects the rows again from the model in hand, on the tree worker |
+| `query` | which of the drawn rows are **shown** | `update_tree_visibility` flips `show` over the rows already on screen, once the typing settles | a resolution of the query, debounced |
+
+One rule serves both. `TreeVisibility` (`sampletones_core/structures/tree/visibility.py`) takes the
+rows a criterion named and answers which rows stay: a named row, a row leading down to one, and a row
+one holds. `resolve_visibility` keeps the named rows and the rows above them, so what a pass holds in
+memory follows the size of what was found, and a row beneath a match is answered from its own path
+upwards. The same two sets state which rows stand open, which is what makes a filter legible: the
+starred rows come up with their headings open.
+
+**A row the favorites mode holds back holds nothing it would show.** A row it shows either stands on
+the way to a starred row or sits beneath one, and each of those facts holds for every row above it — so
+declining a row declines its subtree, and one decision covers it while the traversal walks on.
+
+**What the mode costs.** Resolving it walks the model once per rebuild, on the tree worker, testing
+each row with `is_node_favorite` and `has_favorite_ancestor` — set lookups over `filepath.parents`.
+What it materialises is the starred rows and the rows above them, and what reaches DearPyGui is the
+drawn rows alone: on a directory holding hundreds of thousands of reconstructions, a favorites-only
+browser creates widgets for the starred ones and their headings. A keystroke resolves the query alone,
+the drawn rows being the mode's to state. A favorite toggled while the mode is on redraws the browser,
+so starring a row brings it in and unstarring one takes it out along with what it held.
+
+A rebuild that drew no row fills the cleared tree with the message naming the criterion that came back
+empty (`global.dialog.message.tree_no_favorites`, `global.dialog.message.tree_no_results`), so the
+filter's answer reads where the rows would be.
+
+**The control** is a checkbox under the search box carrying the favorite glyph, which reads in the
+favorite colour while the mode is on and muted while it is off. `_OFFERS_FAVORITES_FILTER` states
+which cards hold it: the reconstruction browsers, whose rows stand for the paths a session stars. It
+follows the tree's lock, a rebuild being what it asks for.
+
+Each browser opens in the mode it was left in. The panel raises `on_favorites_filter_changed` with its
+own tag, and the tab coordinator writes it to `ApplicationState.favorites_filters` under that tag,
+which is how a collapsed card is remembered too.

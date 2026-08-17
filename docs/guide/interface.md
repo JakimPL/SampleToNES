@@ -46,6 +46,11 @@ switch **Play audio source:** between **Reconstruction** and **Original audio** 
 compare the two, and **Locate original audio** re-links the source file if it has
 moved.
 
+To keep the reconstructions you return to within reach, right-click one — or a
+whole folder — and choose **Mark as favorite**, which highlights it in both views.
+Tick **Favorites only** under the search box to narrow the browser to your
+favorites and everything inside them.
+
 To get your results out, use the **Reconstruction** menu. **Export instruments ▸
 FamiTracker instruments...** writes one `.fti` per channel, **Bitphase
 presets...** writes the same as `.json`, and **Export to WAV...** renders the
