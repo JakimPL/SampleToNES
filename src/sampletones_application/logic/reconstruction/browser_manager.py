@@ -1,15 +1,15 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
     GAMMA_PREFIX,
-    disambiguated_display_name,
     format_nes_frequency,
     format_sample_rate,
     format_spectrum_method,
+    unique_display_names,
 )
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
@@ -165,19 +165,11 @@ class BrowserManager:
         return TreeNode(name, node_type=NodeType.GROUP, parent=parent)
 
     def _disambiguate_generator_siblings(self, node: TreeNode) -> None:
-        """Appends a short config hash to generator leaves that share a name under one method group."""
+        """Appends a short config hash to generator directories sharing a name under one method group."""
         if node.node_type == NodeType.GROUP:
-            by_name: Dict[str, List[ConfigNode]] = {}
-            for child in node.children:
-                if isinstance(child, ConfigNode) and child.node_type == NodeType.DIRECTORY:
-                    by_name.setdefault(child.name, []).append(child)
-
-            for name, members in by_name.items():
-                if len(members) <= 1:
-                    continue
-
-                for directory_node in members:
-                    directory_node.name = disambiguated_display_name(name, directory_node.config.ch)
+            self._rename_config_directories(
+                [(directory_node, directory_node.config.gn) for directory_node in self._config_directory_children(node)]
+            )
 
         for child in node.children:
             self._disambiguate_generator_siblings(child)
@@ -194,20 +186,25 @@ class BrowserManager:
             self._assign_directory_display_names(child)
 
     def _rename_config_directory_children(self, node: TreeNode) -> None:
-        groups: Dict[str, List[ConfigNode]] = {}
-        for child in node.children:
-            if not isinstance(child, ConfigNode) or child.node_type != NodeType.DIRECTORY:
-                continue
+        self._rename_config_directories(
+            [
+                (directory_node, directory_node.config.display_name)
+                for directory_node in self._config_directory_children(node)
+            ]
+        )
 
-            groups.setdefault(child.config.display_name, []).append(child)
+    @staticmethod
+    def _config_directory_children(node: TreeNode) -> List[ConfigNode]:
+        return [
+            child for child in node.children if isinstance(child, ConfigNode) and child.node_type == NodeType.DIRECTORY
+        ]
 
-        for display_name, members in groups.items():
-            if len(members) == 1:
-                members[0].name = display_name
-                continue
-
-            for directory_node in members:
-                directory_node.name = disambiguated_display_name(display_name, directory_node.config.ch)
+    @staticmethod
+    def _rename_config_directories(entries: Sequence[Tuple[ConfigNode, str]]) -> None:
+        """Names each configuration directory, marking those a sibling would otherwise shadow."""
+        labels = unique_display_names([(name, directory_node.config.ch) for directory_node, name in entries])
+        for (directory_node, _), label in zip(entries, labels):
+            directory_node.name = label
 
     def _build_samples_children(self, samples_node: TreeNode) -> None:
         """Populates the transposed Samples branch: source-audio directories ▶ audio ▶ config variants."""
@@ -240,20 +237,15 @@ class BrowserManager:
         audio_node: TreeNode,
         variants: List[Tuple[ConfigDirectoryFields, Path]],
     ) -> None:
-        variants_by_display_name: Dict[str, List[Tuple[ConfigDirectoryFields, Path]]] = {}
-        for fields, reconstruction_path in variants:
-            variants_by_display_name.setdefault(fields.display_name, []).append((fields, reconstruction_path))
-
-        for display_name, members in variants_by_display_name.items():
-            for fields, reconstruction_path in members:
-                label = display_name if len(members) == 1 else disambiguated_display_name(display_name, fields.ch)
-                ConfigNode(
-                    label,
-                    node_type=NodeType.FILE,
-                    filepath=reconstruction_path,
-                    config=fields,
-                    parent=audio_node,
-                )
+        labels = unique_display_names([(fields.display_name, fields.ch) for fields, _ in variants])
+        for (fields, reconstruction_path), label in zip(variants, labels):
+            ConfigNode(
+                label,
+                node_type=NodeType.FILE,
+                filepath=reconstruction_path,
+                config=fields,
+                parent=audio_node,
+            )
 
     def get_all_reconstruction_files(self) -> List[Path]:
         file_paths = {

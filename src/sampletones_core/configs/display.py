@@ -1,4 +1,5 @@
-from typing import Dict, Final
+from collections import Counter
+from typing import Dict, Final, Sequence, Tuple
 
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_shared.constants.symbols import HASH
@@ -45,3 +46,17 @@ def short_hash(config_hash: str) -> str:
 def disambiguated_display_name(name: str, config_hash: str) -> str:
     """Appends the short config hash, marked with ``#``, so colliding names stay distinct."""
     return f"{name}{DISPLAY_SEPARATOR}{HASH}{short_hash(config_hash)}"
+
+
+def unique_display_names(entries: Sequence[Tuple[str, str]]) -> Tuple[str, ...]:
+    """Answers labels that tell one group of siblings apart, given ``(name, config hash)`` pairs.
+
+    A name held by a single entry stands as it is. A name shared by several entries takes the short
+    config hash on every one of them, so each sibling states the configuration that distinguishes
+    it. The answer is index-aligned with ``entries``.
+    """
+    occurrences = Counter(name for name, _ in entries)
+    return tuple(
+        name if occurrences[name] == 1 else disambiguated_display_name(name, config_hash)
+        for name, config_hash in entries
+    )
