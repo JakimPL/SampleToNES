@@ -36,7 +36,9 @@
 * Respecting FamiTracker limitations
 * Per-tab undo routing
 * In-application console
+* Improve performance of browser favorite scan of the entire tree per click
 
 ## Bugs
 
 * No refreshing after library generation
+* Misaligned dialog boxes sizes at initialization

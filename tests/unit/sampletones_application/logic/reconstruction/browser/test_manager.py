@@ -4,9 +4,15 @@ from typing import Iterator, List
 import pytest
 
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
+from sampletones_core.configs.display import (
+    DISPLAY_SEPARATOR,
+    format_frequencies,
+    format_transformation,
+)
 
 from .conftest import (
     CONFIGURATION_BRANCH_KEY,
+    HASH_B,
     SAMPLE_BRANCH_KEY,
     config_directory,
     config_fields,
@@ -14,6 +20,7 @@ from .conftest import (
     directory_children,
     file_children,
     group_children,
+    reconstruction_paths,
     sample_branch,
     sample_children,
     write_reconstruction,
@@ -73,19 +80,12 @@ class TestRefreshTree:
         browser_manager: BrowserManager,
         tmp_path: Path,
     ) -> None:
-        fields = config_fields()
-        path = write_reconstruction(config_directory(tmp_path, fields), "song")
+        path = write_reconstruction(config_directory(tmp_path, config_fields()), "song")
 
         browser_manager.refresh_tree()
 
-        configurations = configuration_branch(browser_manager)
-        frequencies = next(iter(group_children(configurations).values()))
-        methods = next(iter(group_children(frequencies).values()))
-        generators = next(iter(methods.children))
-        assert file_children(generators)["song"].filepath == path
-
-        samples = sample_branch(browser_manager)
-        assert file_children(sample_children(samples)["song"])[fields.display_name].filepath == path
+        assert reconstruction_paths(configuration_branch(browser_manager)) == [path]
+        assert reconstruction_paths(sample_branch(browser_manager)) == [path]
 
     def test_reads_every_folder_once(
         self,
@@ -109,6 +109,79 @@ class TestRefreshTree:
 
         assert tmp_path in listed
         assert sorted(listed) == sorted(set(listed))
+
+
+class TestBranchShape:
+    def test_a_lone_configuration_reads_as_one_row(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """One configuration needs no headings to be told apart, so its row carries the whole label."""
+        fields = config_fields()
+        write_reconstruction(config_directory(tmp_path, fields), "song")
+
+        browser_manager.refresh_tree()
+
+        configurations = configuration_branch(browser_manager)
+        folded = directory_children(configurations)[fields.display_name]
+
+        assert list(directory_children(configurations)) == [fields.display_name]
+        assert list(file_children(folded)) == ["song"]
+
+    def test_the_heading_telling_two_configurations_apart_stays(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """Two configurations sharing their rates are gathered by rate and read apart by spectrum."""
+        first = config_fields()
+        second = config_fields(transformation_gamma=1, config_hash=HASH_B)
+        write_reconstruction(config_directory(tmp_path, first), "song")
+        write_reconstruction(config_directory(tmp_path, second), "song")
+
+        browser_manager.refresh_tree()
+
+        configurations = configuration_branch(browser_manager)
+        frequencies = group_children(configurations)[format_frequencies(first.sr, first.nf)]
+
+        assert list(directory_children(frequencies)) == [
+            DISPLAY_SEPARATOR.join([format_transformation(first.sm, first.tg), first.gn]),
+            DISPLAY_SEPARATOR.join([format_transformation(second.sm, second.tg), second.gn]),
+        ]
+
+    def test_a_sample_reconstructed_once_reads_as_one_row(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        fields = config_fields()
+        write_reconstruction(config_directory(tmp_path, fields), "song")
+
+        browser_manager.refresh_tree()
+
+        samples = sample_branch(browser_manager)
+
+        assert list(file_children(samples)) == [DISPLAY_SEPARATOR.join(["song", fields.display_name])]
+
+    def test_a_sample_reconstructed_twice_keeps_its_row(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        first = config_fields()
+        second = config_fields(transformation_gamma=1, config_hash=HASH_B)
+        write_reconstruction(config_directory(tmp_path, first), "song")
+        write_reconstruction(config_directory(tmp_path, second), "song")
+
+        browser_manager.refresh_tree()
+
+        samples = sample_branch(browser_manager)
+
+        assert list(file_children(sample_children(samples)["song"])) == [
+            first.display_name,
+            second.display_name,
+        ]
 
 
 class TestSetReconstructionsDirectory:

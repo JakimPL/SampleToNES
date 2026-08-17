@@ -3,6 +3,9 @@ from typing import List
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.logic.reconstruction.browser.tree.collapse import (
+    collapse_single_child_containers,
+)
 from sampletones_application.logic.reconstruction.browser.tree.configurations.branch import (
     build_configuration_branch,
 )
@@ -26,8 +29,8 @@ class BrowserManager:
     """Owns the reconstruction browser tree, rebuilt from one reading of the reconstructions directory.
 
     A refresh scans the directory, builds the configuration branch and the sample branch from that
-    one reading, shapes what came out — empty headings pruned, siblings ordered — and publishes the
-    result as the tree both browser tabs render.
+    one reading, shapes what came out — empty headings pruned, lone headings folded into the row they
+    lead to, siblings ordered — and publishes the result as the tree both browser tabs render.
     """
 
     def __init__(
@@ -73,6 +76,7 @@ class BrowserManager:
         )
 
         prune_empty_containers(container_root)
+        collapse_single_child_containers(container_root)
         order_children(container_root)
         return container_root
 

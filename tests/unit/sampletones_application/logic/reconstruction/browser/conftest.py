@@ -122,6 +122,15 @@ def child_names(node: TreeNode) -> List[str]:
     return [str(child.name) for child in node.children]
 
 
+def reconstruction_paths(node: TreeNode) -> List[Path]:
+    """Answers the reconstructions a branch offers, wherever the rows of that branch put them."""
+    return sorted(
+        descendant.filepath
+        for descendant in node.descendants
+        if isinstance(descendant, FileSystemNode) and descendant.node_type == NodeType.FILE
+    )
+
+
 def directory_children(node: TreeNode) -> Dict[str, FileSystemNode]:
     return {
         child.name: child
