@@ -43,6 +43,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.emitter import TreeEmitter
+from sampletones_application.ui.elements.tree.filter import NO_FILTER, TreeFilter
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.spec import NodeSpec
@@ -80,6 +81,8 @@ from sampletones_core.structures.tree import (
     NodeType,
     Tree,
     TreeNode,
+    TreeVisibility,
+    resolve_visibility,
 )
 from sampletones_shared.paths import extensions
 from sampletones_shared.types.application import Sender
@@ -121,6 +124,9 @@ class GUITreePanel(GUIPanel, ABC):
 
         self._pending_specs: List[NodeSpec] = []
         self._emitter = TreeEmitter(scheduling=scheduling)
+
+        self._filter: TreeFilter = NO_FILTER
+        self._search_visibility: Optional[TreeVisibility] = None
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
@@ -170,9 +176,9 @@ class GUITreePanel(GUIPanel, ABC):
 
         1. A rebuild already in flight holds the lock, so return and let it finish.
         2. Acquire the lock; responsibility for releasing it passes to the emit pipeline.
-        3. ``refresh`` updates the model, then ``collect`` resolves it into a flat
-           :class:`NodeSpec` list -- every per-node decision, including the filesystem
-           content check, happens here on the worker.
+        3. ``refresh`` updates the model and the filter is resolved against it, then
+           ``collect`` resolves it into a flat :class:`NodeSpec` list -- every per-node
+           decision, including the filesystem content check, happens here on the worker.
         4. Post the specs to :class:`TreeEmitter` through the queue. This crosses back to
            the main thread, where the emitter clears the old tree and stages the new nodes
            across frames.
@@ -188,12 +194,18 @@ class GUITreePanel(GUIPanel, ABC):
         handed_off = False
         try:
             refresh()
+            self._resolve_filter()
             specs = collect()
             CallbackQueue.add(
                 self._emitter.emit,
                 tuple(specs),
                 root_tag,
-                partial(self._finish_emit, root_tag, on_finished),
+                partial(
+                    self._finish_emit,
+                    root_tag,
+                    on_finished,
+                    len(specs),
+                ),
                 priority=self._scheduling.emit.priority,
             )
             handed_off = True
@@ -286,15 +298,16 @@ class GUITreePanel(GUIPanel, ABC):
         self,
         root_tag: str,
         on_finished: Optional[VoidCallback],
+        drawn_rows: int,
     ) -> None:
         """Complete a rebuild on the main thread: show the empty state, run the hook, unlock.
 
-        The emitter runs this once its last batch has attached. When a filtered tree
-        resolved to an empty model, the no-results message fills the cleared tree so the
-        filter outcome is visible. Applying the filter here lets late-emitted nodes honour
+        The emitter runs this once its last batch has attached. A filtered rebuild that drew no
+        row fills the cleared tree with the no-results message, so the filter's outcome is
+        legible where the rows would be. Applying the filter here lets late-emitted nodes honour
         an active search, and releasing the lock hands control back to interactive rebuilds.
         """
-        if root_tag == self.tree_tag and self.tree.is_filtered() and self.tree.get_root() is None:
+        if root_tag == self.tree_tag and self._filter.is_active and not drawn_rows:
             dpg.add_text(
                 self._language_manager["global.dialog.message.tree_no_results"],
                 parent=root_tag,
@@ -303,7 +316,7 @@ class GUITreePanel(GUIPanel, ABC):
         if on_finished is not None:
             on_finished()
 
-        if self.tree.is_filtered():
+        if self._filter.is_active:
             self.update_tree_visibility()
 
         self.unlock()
@@ -451,14 +464,11 @@ class GUITreePanel(GUIPanel, ABC):
     def _has_relevant_content(self, node: TreeNode) -> bool: ...
 
     def _should_expand_node(self, node: TreeNode) -> bool:
-        if not self.tree.is_filtered():
+        """Whether the row is emitted standing open, which the rows leading to a search result are."""
+        if self._search_visibility is None:
             return False
 
-        for descendant in node.descendants:
-            if self.tree.is_node_visible(descendant):
-                return True
-
-        return False
+        return self._search_visibility.should_expand(node)
 
     def _create_status_bar_message_function(
         self,
@@ -714,20 +724,41 @@ class GUITreePanel(GUIPanel, ABC):
         self.call(self.on_replace_in_sequencer, user_data.filepath)
 
     def _on_search_changed(self, _sender: Sender, query: str) -> None:
-        if query:
-            self.apply_filter(query, self._default_search_predicate)
-        else:
-            self.clear_filter()
-
+        self._set_filter(self._filter.with_query(query))
         self._logic.schedule_search_update(query)
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
             dpg.set_value(self._search_input_tag, "")
 
-        self.clear_filter()
-
+        self._set_filter(self._filter.with_query(""))
         self._logic.schedule_search_update("")
+
+    def _set_filter(self, tree_filter: TreeFilter) -> None:
+        """Take the filter the browser is now asked to show, and resolve what it leaves on screen."""
+        self._filter = tree_filter
+        self._resolve_filter()
+
+    def _resolve_filter(self) -> None:
+        """Resolve the filter against the model as it stands, which a rebuild does once per pass.
+
+        Reading the model rather than the rows lets the resolution run on the rebuild worker, and
+        keeps a filter typed before a refresh answering for the rows that refresh brings.
+        """
+        self._search_visibility = self._resolve_search_visibility()
+
+    def _resolve_search_visibility(self) -> Optional[TreeVisibility]:
+        """The rows the search query names, and nothing to narrow by while no query is typed."""
+        query = self._filter.query
+        if not query:
+            return None
+
+        return resolve_visibility(
+            self.tree.find_nodes(
+                TreeNode,
+                lambda node: self._default_search_predicate(node, query),
+            )
+        )
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
@@ -736,6 +767,11 @@ class GUITreePanel(GUIPanel, ABC):
     def rebuild_tree(self) -> None: ...
 
     def update_tree_visibility(self) -> None:
+        """Show the rows the search names and hide the rest, over the rows already on screen.
+
+        Runs on the main thread once the typing settles, so a query narrows what is drawn in place
+        of asking for a rebuild.
+        """
         root = self.tree.get_root()
         if root is None:
             return
@@ -748,21 +784,17 @@ class GUITreePanel(GUIPanel, ABC):
         if not dpg.does_item_exist(node_tag):
             return
 
-        is_visible = self.tree.is_node_visible(node)
-        dpg.configure_item(node_tag, show=is_visible)
+        dpg.configure_item(node_tag, show=self._is_node_visible(node))
 
         for child in node.children:
             self._update_node_visibility_recursive(child)
 
-    def apply_filter(
-        self,
-        query: str,
-        predicate: Callable[[TreeNode, str], bool],
-    ) -> None:
-        self.tree.apply_filter(query, predicate)
+    def _is_node_visible(self, node: TreeNode) -> bool:
+        """Whether the search shows the row, which every row on screen reads as while none is typed."""
+        if self._search_visibility is None:
+            return True
 
-    def clear_filter(self) -> None:
-        self.tree.clear_filter()
+        return self._search_visibility.is_visible(node)
 
     def _apply_node_theme(
         self,

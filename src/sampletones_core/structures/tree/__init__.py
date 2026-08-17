@@ -4,6 +4,7 @@ from .node import ConfigNode, FileSystemNode, GeneratorNode, LibraryNode, TreeNo
 from .traversal import TreeTraversal, traverse
 from .tree import Tree
 from .type import NodeType
+from .visibility import TreeVisibility, resolve_visibility
 
 __all__ = [
     "Arguments",
@@ -15,6 +16,8 @@ __all__ = [
     "Tree",
     "TreeNode",
     "TreeTraversal",
+    "TreeVisibility",
     "create_directory_node",
+    "resolve_visibility",
     "traverse",
 ]
