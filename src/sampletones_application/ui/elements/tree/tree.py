@@ -282,7 +282,11 @@ class GUITreePanel(GUIPanel, ABC):
             )
         )
 
-    def _finish_emit(self, root_tag: str, on_finished: Optional[VoidCallback]) -> None:
+    def _finish_emit(
+        self,
+        root_tag: str,
+        on_finished: Optional[VoidCallback],
+    ) -> None:
         """Complete a rebuild on the main thread: show the empty state, run the hook, unlock.
 
         The emitter runs this once its last batch has attached. When a filtered tree
@@ -291,7 +295,10 @@ class GUITreePanel(GUIPanel, ABC):
         an active search, and releasing the lock hands control back to interactive rebuilds.
         """
         if root_tag == self.tree_tag and self.tree.is_filtered() and self.tree.get_root() is None:
-            dpg.add_text(self._language_manager["global.dialog.message.tree_no_results"], parent=root_tag)
+            dpg.add_text(
+                self._language_manager["global.dialog.message.tree_no_results"],
+                parent=root_tag,
+            )
 
         if on_finished is not None:
             on_finished()
@@ -380,6 +387,7 @@ class GUITreePanel(GUIPanel, ABC):
             user_data = dpg.get_item_user_data(app_data[1])
             if item_click_callback is not None:
                 item_click_callback(sender, app_data, user_data=user_data)
+
             if status_bar_callback is not None:
                 self._status_bar.set(status_bar_callback, user_data=user_data)
 
@@ -479,8 +487,8 @@ class GUITreePanel(GUIPanel, ABC):
     ) -> MessageCallback:
         """Builds the hover message of a row the reader opens, naming what that row holds.
 
-        A folder and a sample are both opened the same way and hold different things, so the message
-        follows the node it is asked about: the sample names the reconstructions it gathers.
+        A folder, a group and a sample are all opened the same way and hold different things, so the
+        message follows the node it is asked about: the sample names the reconstructions it gathers.
         """
 
         def message_function(
@@ -494,14 +502,18 @@ class GUITreePanel(GUIPanel, ABC):
                 if dpg_get_value(node_tag)
                 else self._language_manager["global.dialog.template.expand"]
             )
-            message = (
-                self._language_manager["global.status.message.node_sample"]
-                if node.node_type == NodeType.SAMPLE
-                else self._language_manager["global.status.message.node_directory"]
-            )
-            return message.format(expand_or_collapse=expand_or_collapse)
+            return self._expandable_node_message(node).format(expand_or_collapse=expand_or_collapse)
 
         return self._create_status_bar_message_function(message_function)
+
+    def _expandable_node_message(self, node: TreeNode) -> str:
+        match node.node_type:
+            case NodeType.SAMPLE:
+                return self._language_manager["global.status.message.node_sample"]
+            case NodeType.GROUP:
+                return self._language_manager["global.status.message.node_group"]
+
+        return self._language_manager["global.status.message.node_directory"]
 
     def _generate_node_tag(self, node: TreeNode) -> str:
         return compose_node_tag(node, panel_tag=self.tag)
@@ -560,7 +572,10 @@ class GUITreePanel(GUIPanel, ABC):
 
         return []
 
-    def _library_detail_items(self, key: InstructionLibraryKey) -> List[Tuple[str, str]]:
+    def _library_detail_items(
+        self,
+        key: InstructionLibraryKey,
+    ) -> List[Tuple[str, str]]:
         nes_frequency = round(key.sample_rate / key.frame_length)
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(key.sample_rate)),
@@ -571,8 +586,13 @@ class GUITreePanel(GUIPanel, ABC):
             (self._lbl_detail_configuration, short_hash(key.config_hash)),
         ]
 
-    def _reconstruction_detail_items(self, fields: ConfigDirectoryFields) -> List[Tuple[str, str]]:
-        generators = ", ".join(generator.capitalized for generator in fields.generators)
+    def _reconstruction_detail_items(
+        self,
+        fields: ConfigDirectoryFields,
+    ) -> List[Tuple[str, str]]:
+        generators = ", ".join(
+            generator.capitalized for generator in fields.generators
+        )  # TODO: operation deserves a helper function
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(fields.sr)),
             (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
@@ -583,7 +603,10 @@ class GUITreePanel(GUIPanel, ABC):
         ]
 
     def _add_context_menu_details(self, node: TreeNode) -> None:
-        add_detail_items(self._node_detail_items(node), color=self._colors.muted)
+        add_detail_items(
+            self._node_detail_items(node),
+            color=self._colors.muted,
+        )
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:
         if not self._logic.is_playable_file(node):
@@ -869,7 +892,10 @@ class GUITreePanel(GUIPanel, ABC):
 
         self._logic.toggle_favorite(node)
 
-    def update_favorite_indicators(self, nodes: Sequence[FileSystemNode]) -> None:
+    def update_favorite_indicators(
+        self,
+        nodes: Sequence[FileSystemNode],
+    ) -> None:
         """Repaints the rows a favorite change reaches, and what each of them holds.
 
         A path reaches the panel as many rows as the views offer it — a reconstruction is listed both
