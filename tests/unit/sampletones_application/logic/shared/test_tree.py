@@ -10,9 +10,9 @@ from sampletones_application.layout.behavior.scheduling.priorities import Schedu
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.tree import TreeLogic
-from sampletones_core import paths
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
 from sampletones_shared.exceptions import InvalidReconstructionError
+from sampletones_shared.paths import extensions
 
 
 def _tree(
@@ -360,7 +360,7 @@ class TestReconstructionAutoplayFailure:
         audio_device_manager = MagicMock()
         tree = _tree(audio_device_manager=audio_device_manager)
         tree.on_autoplay_error = MagicMock()
-        node = _file_node(tmp_path / f"sample{paths.EXT_FILE_RECONSTRUCTION}")
+        node = _file_node(tmp_path / f"sample{extensions.EXT_FILE_RECONSTRUCTION}")
 
         with patch(
             "sampletones_application.logic.shared.tree.Reconstruction.load",
@@ -374,7 +374,7 @@ class TestReconstructionAutoplayFailure:
     def test_unexpected_failure_propagates(self, tmp_path: Path) -> None:
         tree = _tree()
         tree.on_autoplay_error = MagicMock()
-        node = _file_node(tmp_path / f"sample{paths.EXT_FILE_RECONSTRUCTION}")
+        node = _file_node(tmp_path / f"sample{extensions.EXT_FILE_RECONSTRUCTION}")
 
         with (
             patch(

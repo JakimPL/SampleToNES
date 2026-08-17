@@ -4,7 +4,7 @@ from typing import Dict, Final, List
 import pytest
 
 from sampletones_shared.meta.source.modules import SourceModule, source_paths
-from sampletones_shared.paths import SOURCE_ROOT
+from sampletones_shared.paths.source import SOURCE_ROOT
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source
 

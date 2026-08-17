@@ -11,8 +11,8 @@ from sampletones_application.logic.reconstruction.browser.tree.entries.reconstru
 from sampletones_application.logic.reconstruction.browser.tree.entries.scan import (
     ReconstructionScan,
 )
-from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 
 
 def scan_reconstructions(directory: Path) -> ReconstructionScan:

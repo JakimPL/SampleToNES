@@ -111,6 +111,21 @@ class TestMissingNotices:
         assert check_bundle.missing_notices(bundle) == ["LICENSE"]
 
 
+class TestCarriedBuildTools:
+    def test_an_application_bundle_holds_to_its_notices(self, bundle: Path) -> None:
+        assert check_bundle.carried_build_tools(bundle) == []
+
+    def test_a_build_tool_beside_the_application_is_reported(self, bundle: Path) -> None:
+        (bundle / check_bundle.INTERNAL_DIRECTORY / "PIL").mkdir(parents=True)
+
+        assert check_bundle.carried_build_tools(bundle) == ["PIL"]
+
+    def test_a_build_tool_beside_the_launcher_is_reported(self, bundle: Path) -> None:
+        (bundle / "PIL").mkdir()
+
+        assert check_bundle.carried_build_tools(bundle) == ["PIL"]
+
+
 class TestMain:
     def test_a_complete_bundle_passes(
         self,
@@ -136,6 +151,20 @@ class TestMain:
         output = capsys.readouterr().out
         assert output.startswith("::error::")
         assert "THIRD-PARTY-NOTICES.md" in output
+
+    def test_bundled_build_tooling_is_annotated_as_an_error(
+        self,
+        bundle: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _install_launcher(bundle)
+        (bundle / check_bundle.INTERNAL_DIRECTORY / "PIL").mkdir(parents=True)
+
+        assert check_bundle.main([str(bundle)]) == 1
+
+        output = capsys.readouterr().out
+        assert output.startswith("::error::")
+        assert "PIL" in output
 
     def test_a_missing_launcher_is_annotated_as_an_error(
         self,

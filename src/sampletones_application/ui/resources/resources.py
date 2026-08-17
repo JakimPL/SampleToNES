@@ -3,7 +3,7 @@ from sampletones_application.ui.resources.items import (
     IconResource,
 )
 from sampletones_application.ui.resources.loader import ResourceLoader
-from sampletones_core.paths import FONT_DIRECTORY, ICON_DIRECTORY
+from sampletones_shared.paths.resources import FONT_DIRECTORY, ICON_DIRECTORY
 
 icon_loader = ResourceLoader(ICON_DIRECTORY)
 font_loader = ResourceLoader(FONT_DIRECTORY)

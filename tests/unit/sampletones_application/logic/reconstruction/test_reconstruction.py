@@ -19,15 +19,15 @@ from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.instructions import TriangleInstruction
-from sampletones_core.paths import (
+from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.trackers.registry import build_tracker_backends
+from sampletones_shared.paths.extensions import (
     EXT_FILE_BITPHASE,
     EXT_FILE_INSTRUMENT,
     EXT_FILE_JSON,
     EXT_FILE_MODULE,
 )
-from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.registry import build_tracker_backends
 from tests.suite.case import BaseRegularTestCase
 
 NO_EXTENSION: Final[str] = ""

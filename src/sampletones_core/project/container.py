@@ -4,7 +4,6 @@ from typing import Dict
 
 from pydantic import ValidationError
 
-from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.project.document import ProjectDocument
 from sampletones_core.project.instruments.record import SampleRecord
 from sampletones_core.project.instruments.sample import Sample
@@ -27,6 +26,7 @@ from sampletones_shared.exceptions import (
     NotAValidArchiveError,
     UnhandledProjectError,
 )
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import JSON_INDENT
 from sampletones_shared.utils.system.paths import get_filename

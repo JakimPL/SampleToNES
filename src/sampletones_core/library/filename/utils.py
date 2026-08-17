@@ -7,7 +7,7 @@ from sampletones_core.configs.display import (
 )
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.library.key import InstructionLibraryKey
-from sampletones_core.paths import EXT_FILE_LIBRARY
+from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.system.paths import get_filename
 

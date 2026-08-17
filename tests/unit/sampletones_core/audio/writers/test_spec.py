@@ -15,7 +15,7 @@ from sampletones_core.audio.writers import (
     mp3_bitrates,
 )
 from sampletones_core.constants.audio import SAMPLE_RATES
-from sampletones_core.paths import EXT_FILE_MP3, EXT_FILE_WAVE
+from sampletones_shared.paths.extensions import EXT_FILE_MP3, EXT_FILE_WAVE
 from tests.suite.base import BaseTestSuite
 
 MPEG_1_RATE: Final[int] = 44100

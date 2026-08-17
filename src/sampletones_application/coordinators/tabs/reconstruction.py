@@ -81,7 +81,6 @@ from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.paths import EXT_FILE_WAVE
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
@@ -95,6 +94,7 @@ from sampletones_shared.exceptions import (
     LoadReconstructionError,
 )
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_WAVE
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 _LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_RECONSTRUCTION, SUF_PANEL_LEFT)

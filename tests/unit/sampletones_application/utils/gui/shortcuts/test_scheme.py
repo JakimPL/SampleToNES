@@ -12,7 +12,7 @@ from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIF
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_application.utils.gui.shortcuts.written import WrittenShortcut
-from sampletones_core.paths import EXT_FILE_YAML
+from sampletones_shared.paths.extensions import EXT_FILE_YAML
 from tests.unit.sampletones_application.utils.gui.shortcuts.conftest import (
     PROBE_SCHEME_NAME,
     RebindScheme,

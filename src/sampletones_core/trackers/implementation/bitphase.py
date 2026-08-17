@@ -8,11 +8,11 @@ from sampletones_core.formats.bitphase.builder import (
     sample_to_bitphase,
 )
 from sampletones_core.formats.bitphase.preset import instrument_to_preset, write_preset
-from sampletones_core.paths import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from sampletones_core.trackers.artifact import ExportArtifact
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import InstrumentExport, ProjectExport, SampleExport
 from sampletones_core.trackers.scope import ExportScope
+from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from sampletones_shared.utils.system.paths import get_filename
 
 DOCUMENT_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)

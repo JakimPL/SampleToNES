@@ -2,12 +2,12 @@ from pathlib import Path
 from typing import List, Tuple
 
 from sampletones_core.configs import Config
-from sampletones_core.paths import (
-    EXT_FILE_RECONSTRUCTION,
-    EXT_FILES_AUDIO,
-)
 from sampletones_core.reconstructions.converter.paths.fields import (
     ConfigDirectoryFields,
+)
+from sampletones_shared.paths.extensions import (
+    EXT_FILE_RECONSTRUCTION,
+    EXT_FILES_AUDIO,
 )
 from sampletones_shared.utils.system.paths import to_path
 

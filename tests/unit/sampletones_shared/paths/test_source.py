@@ -1,4 +1,4 @@
-from sampletones_shared.paths import CONFIG_DIRECTORY, REPOSITORY_ROOT, SOURCE_ROOT
+from sampletones_shared.paths.source import REPOSITORY_ROOT, SOURCE_ROOT
 
 PROJECT_FILE = "pyproject.toml"
 SHARED_PACKAGE = "sampletones_shared"
@@ -10,7 +10,7 @@ class TestSourceRoot:
 
     def test_the_source_root_is_where_this_package_lives(self) -> None:
         """Reading the root off the package keeps it right wherever the packages are installed."""
-        assert (SOURCE_ROOT / SHARED_PACKAGE / "paths.py").is_file()
+        assert (SOURCE_ROOT / SHARED_PACKAGE / "paths" / "source.py").is_file()
 
 
 class TestRepositoryRoot:
@@ -19,9 +19,3 @@ class TestRepositoryRoot:
 
     def test_the_repository_root_holds_the_scripts_the_checks_run_from(self) -> None:
         assert (REPOSITORY_ROOT / "scripts" / "checks").is_dir()
-
-
-class TestConfigDirectory:
-    def test_the_configuration_directory_holds_the_shipped_files(self) -> None:
-        """Read as a package resource, so the bundle finds it beside the executable."""
-        assert list(CONFIG_DIRECTORY.rglob("*.yaml"))

@@ -16,9 +16,9 @@ from sampletones_application.logic.reconstruction.browser.tree.entries.scan impo
     ReconstructionScan,
 )
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from tests.suite.language import FakeLanguageManager
 
 HASH_A: Final[str] = "6edf7c948606917a78b45d153c7ca7e0"

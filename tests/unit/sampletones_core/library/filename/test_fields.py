@@ -7,7 +7,7 @@ from sampletones_core.library.filename.fields import (
     FILENAME_SEPARATOR,
     InstructionsFilenameFields,
 )
-from sampletones_core.paths import EXT_FILE_LIBRARY
+from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error

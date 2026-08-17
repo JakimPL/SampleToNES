@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from sampletones_core.paths import EXT_FILES_AUDIO
+from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 
 if TYPE_CHECKING:
     from sampletones_core.configs import Config
@@ -119,7 +119,7 @@ def main() -> None:
     config_path = Path(args.config) if args.config else None
     output_path = Path(args.output) if args.output else None
 
-    from sampletones_core.paths import (
+    from sampletones_shared.paths.extensions import (
         EXT_FILE_LIBRARY,
         EXT_FILE_PROJECT,
         EXT_FILE_RECONSTRUCTION,

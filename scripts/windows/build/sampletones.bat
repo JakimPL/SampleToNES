@@ -22,7 +22,7 @@ echo Installing dependencies...
 "%VENV_PY%" -m pip install --upgrade pip
 
 echo Installing with extras: !EXTRAS!
-"%VENV_PY%" -m pip install ".[!EXTRAS!]" || exit /b 1
+"%VENV_PY%" -m pip install ".[!EXTRAS!]" --group assets || exit /b 1
 
 echo sampletones Python package installed successfully.
 exit /b 0

@@ -91,6 +91,16 @@ repos:
         require_serial: true
         exclude: ^(tests/)
 
+      - id: icons
+        name: icons
+        entry: uv run python scripts/assets/icons.py
+        language: system
+        files: ^src/sampletones_assets/(icons|mark)/
+        pass_filenames: false
+        verbose: true
+        stages:
+          - pre-push
+
       - id: pytest
         name: pytest
         entry: make test

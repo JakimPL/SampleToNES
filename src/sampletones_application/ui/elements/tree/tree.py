@@ -65,7 +65,6 @@ from sampletones_application.utils.parallelization.thread import (
     BackgroundWorkCancelled,
     SingleThreadExecutor,
 )
-from sampletones_core import paths
 from sampletones_core.configs.display import (
     format_nes_frequency,
     format_sample_rate,
@@ -82,6 +81,7 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
+from sampletones_shared.paths import extensions
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import (
     Callback,
@@ -812,11 +812,11 @@ class GUITreePanel(GUIPanel, ABC):
             return TAG_GLOBAL_THEME_FAVORITE
 
         match node.filepath.suffix.lower():
-            case paths.EXT_FILE_RECONSTRUCTION:
+            case extensions.EXT_FILE_RECONSTRUCTION:
                 return TAG_GLOBAL_THEME_FILE_RECONSTRUCTION
-            case paths.EXT_FILE_LIBRARY:
+            case extensions.EXT_FILE_LIBRARY:
                 return TAG_GLOBAL_THEME_FILE_LIBRARY
-            case suffix if suffix in paths.EXT_FILES_AUDIO:
+            case suffix if suffix in extensions.EXT_FILES_AUDIO:
                 return TAG_GLOBAL_THEME_FILE_WAVE
             case _:
                 if has_favorite_ancestor:
