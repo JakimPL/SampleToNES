@@ -14,6 +14,7 @@ ASSETS_DIRECTORY: Final[str] = "assets"
 ICON_DIRECTORY: Final[str] = "icons"
 ICON_WIN_FILENAME: Final[str] = "sampletones.ico"
 ICON_UNIX_FILENAME: Final[str] = "sampletones.png"
+ICON_VECTOR_FILENAME: Final[str] = "sampletones.svg"
 
 FONT_DIRECTORY: Final[str] = "fonts"
 FONT_SANS_REGULAR: Final[str] = "SourceSans3-Regular.ttf"

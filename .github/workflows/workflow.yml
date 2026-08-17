@@ -37,8 +37,11 @@ jobs:
             --tag "$GITHUB_REF_NAME" \
             --project-version "$(uv version --short)"
 
+      - name: Install PortAudio
+        run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
+
       - name: Generate the icon suite
-        run: uv run --only-group assets python scripts/assets/icons.py
+        run: uv run --group assets python scripts/assets/icons.py
 
       - name: Build sdist and wheel
         run: uv build

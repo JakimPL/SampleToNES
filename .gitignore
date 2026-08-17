@@ -4,15 +4,15 @@ __pycache__/
 .ipynb_checkpoints/
 .mypy_cache/
 .pytest_cache/
+.ruff_cache/
 .venv/
 .venv-build/
 .vscode/
 
-bin/
-build/
 dist/
 wheels/
-!scripts/**/build/
+/bin/
+/build/
 
 sampletones
 !src/sampletones
@@ -20,11 +20,6 @@ sampletones
 
 src/sampletones_assets/icons/sampletones.ico
 src/sampletones_assets/icons/sampletones.png
-
-**/*.idea
-**/*.vscode/**
-**/*.ipynb_checkpoints/**
-**/*__pycache__/**
 
 *.pyc
 *.pyo

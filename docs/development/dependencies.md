@@ -53,12 +53,15 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 
 ## Application icon
 
-The icon suite in `src/sampletones_assets/icons` is generated: `scripts/assets/icons.py` holds the
-mark's geometry and writes the vector `sampletones.svg` together with the rasters the application
-ships, `sampletones.png` and the multi-resolution `sampletones.ico`. Rasterization uses Pillow,
-declared in the `assets` dependency group. The SVG is committed as the design source, and the
-rasters are produced where they are consumed: `make setup` writes them before packaging the wheel,
-and the bundle scripts write them before PyInstaller embeds them.
+The icon suite in `src/sampletones_assets/icons` is generated from the mark declared beside it in
+`src/sampletones_assets/mark`: `mark.yaml` carries the geometry, colours and rasterization
+settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The
+package writes the whole suite — the vector `sampletones.svg` and the rasters the application
+ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `scripts/assets/icons.py`
+points it at the directory the icons are shipped from. Rasterization uses Pillow, declared in the
+`assets` dependency group. The vector is committed, so the mark reads as a picture in a browser or
+an editor, and the rasters are produced where they are consumed: `make setup` writes them before
+packaging the wheel, and the bundle scripts write them before PyInstaller embeds them.
 
 ## Linux (standalone executable)
 
