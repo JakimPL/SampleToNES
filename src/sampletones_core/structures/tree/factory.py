@@ -11,16 +11,17 @@ def create_directory_node(
     directory: Path,
     *,
     name: str,
+    config: Optional[ConfigDirectoryFields],
     parent: Optional[TreeNode],
 ) -> FileSystemNode:
-    """Builds the directory node that fits the folder, reading its configuration where it names one.
+    """Builds the directory node that fits the folder, given the configuration its name states.
 
-    A folder whose name parses as a reconstruction configuration directory becomes a
-    :class:`ConfigNode` carrying those fields; every other folder becomes a plain
-    :class:`FileSystemNode`. Routing every directory through here keeps the decision of which node
-    class carries a configuration in one place.
+    A folder stating a reconstruction configuration becomes a :class:`ConfigNode` carrying those
+    fields; a folder stating none becomes a plain :class:`FileSystemNode`. The caller states the
+    fields it read with :meth:`ConfigDirectoryFields.from_directory_name`, so a caller that already
+    read them — a scan of a reconstructions directory — reads each folder name once, and the choice
+    of node class stays here.
     """
-    config = ConfigDirectoryFields.from_directory_name(directory.name)
     if config is None:
         return FileSystemNode(
             name,

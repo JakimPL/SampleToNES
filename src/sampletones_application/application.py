@@ -46,7 +46,7 @@ from sampletones_application.logic.project.title.document import (
     ReconstructionTitlePart,
     document_title,
 )
-from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.render import SongRenderLogic
 from sampletones_application.parameters import (

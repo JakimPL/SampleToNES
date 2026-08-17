@@ -8,6 +8,7 @@ from sampletones_core.paths import (
     EXT_FILE_RECONSTRUCTION,
     EXT_FILES_AUDIO,
 )
+from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
@@ -60,6 +61,7 @@ class ExplorerManager:
         node = create_directory_node(
             directory_path,
             name=directory_path.name or str(directory_path),
+            config=ConfigDirectoryFields.from_directory_name(directory_path.name),
             parent=parent,
         )
 
@@ -96,6 +98,7 @@ class ExplorerManager:
                     child_node = create_directory_node(
                         entry_path,
                         name=entry_path.name,
+                        config=ConfigDirectoryFields.from_directory_name(entry_path.name),
                         parent=directory_node,
                     )
                     if level < self.depth:

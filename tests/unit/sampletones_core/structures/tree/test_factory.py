@@ -11,21 +11,36 @@ RECONSTRUCTIONS_DIRECTORY = Path("/reconstructions")
 
 
 class TestCreateDirectoryNode:
-    def test_config_directory_becomes_a_config_node(self) -> None:
+    def test_stated_configuration_becomes_a_config_node(self) -> None:
         directory = RECONSTRUCTIONS_DIRECTORY / CONFIG_FIELDS.directory_name
-        node = create_directory_node(directory, name=directory.name, parent=None)
+        node = create_directory_node(
+            directory,
+            name=directory.name,
+            config=CONFIG_FIELDS,
+            parent=None,
+        )
         assert isinstance(node, ConfigNode)
         assert node.config == CONFIG_FIELDS
 
-    def test_plain_directory_becomes_a_file_system_node(self) -> None:
+    def test_folder_stating_no_configuration_becomes_a_file_system_node(self) -> None:
         directory = RECONSTRUCTIONS_DIRECTORY / "my_songs"
-        node = create_directory_node(directory, name=directory.name, parent=None)
+        node = create_directory_node(
+            directory,
+            name=directory.name,
+            config=None,
+            parent=None,
+        )
         assert isinstance(node, FileSystemNode)
         assert not isinstance(node, ConfigNode)
 
     def test_node_carries_the_given_name_and_path(self) -> None:
         directory = RECONSTRUCTIONS_DIRECTORY / CONFIG_FIELDS.directory_name
-        node = create_directory_node(directory, name="friendly", parent=None)
+        node = create_directory_node(
+            directory,
+            name="friendly",
+            config=CONFIG_FIELDS,
+            parent=None,
+        )
         assert node.name == "friendly"
         assert node.filepath == directory
         assert node.node_type == NodeType.DIRECTORY
@@ -35,6 +50,7 @@ class TestCreateDirectoryNode:
         node = create_directory_node(
             RECONSTRUCTIONS_DIRECTORY / "my_songs",
             name="my_songs",
+            config=None,
             parent=parent,
         )
         assert node.parent is parent
