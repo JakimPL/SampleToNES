@@ -1,0 +1,342 @@
+from collections import defaultdict
+from dataclasses import dataclass
+from pathlib import Path
+from textwrap import dedent
+from typing import Dict, Final, List, Mapping, Sequence, Set, Tuple
+
+from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
+from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.elements.tree.filter import TreeFilter
+from sampletones_application.ui.elements.tree.handler import NodeHandler
+from sampletones_application.ui.elements.tree.spec import NodeSpec
+from sampletones_application.ui.elements.tree.state import TreeNodeState
+from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
+from sampletones_application.utils.palette.colors.literal import LiteralColor
+from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
+from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
+from tests.suite.language import FakeLanguageManager
+
+PANEL_TAG: Final[str] = "sequencer.browser"
+TREE_TAG: Final[str] = "sequencer.browser.tree"
+
+HASH_A: Final[str] = "aaaaaaaa11111111aaaaaaaa11111111"
+HASH_B: Final[str] = "bbbbbbbb22222222bbbbbbbb22222222"
+HASH_C: Final[str] = "cccccccc33333333cccccccc33333333"
+HASH_D: Final[str] = "dddddddd44444444dddddddd44444444"
+HASH_E: Final[str] = "eeeeeeee55555555eeeeeeee55555555"
+HASH_F: Final[str] = "ffffffff66666666ffffffff66666666"
+
+ARCHIVE: Final[str] = "archive"
+STRAY: Final[str] = "stray"
+
+BROWSER_TEXTS: Final[Mapping[str, str]] = {
+    "global.browser.label.root": "Root",
+    "global.browser.label.by_configuration": "By configuration",
+    "global.browser.label.by_sample": "By sample",
+}
+
+TREE_COLORS: Final[TreeColors] = TreeColors(
+    favorite=LiteralColor((240, 200, 80, 255)),
+    node=LiteralColor((200, 200, 200, 255)),
+    muted=LiteralColor((120, 120, 120, 255)),
+    accent=LiteralColor((80, 160, 240, 255)),
+)
+
+OPEN_MARKER: Final[str] = "v"
+CLOSED_MARKER: Final[str] = ">"
+LEAF_MARKER: Final[str] = "-"
+HIDDEN_MARKER: Final[str] = "  [hidden]"
+INDENT: Final[str] = "  "
+
+
+def config_fields(
+    *,
+    sample_rate: int,
+    nes_frequency: int,
+    spectrum_method: SpectrumMethod,
+    transformation_gamma: int,
+    generators: str,
+    config_hash: str,
+) -> ConfigDirectoryFields:
+    return ConfigDirectoryFields(
+        sr=sample_rate,
+        nf=nes_frequency,
+        sm=spectrum_method,
+        tg=transformation_gamma,
+        gn=generators,
+        ch=config_hash,
+    )
+
+
+CONFIG_A: Final[ConfigDirectoryFields] = config_fields(
+    sample_rate=44100,
+    nes_frequency=30,
+    spectrum_method=SpectrumMethod.FFT,
+    transformation_gamma=0,
+    generators="PTN",
+    config_hash=HASH_A,
+)
+CONFIG_B: Final[ConfigDirectoryFields] = config_fields(
+    sample_rate=44100,
+    nes_frequency=30,
+    spectrum_method=SpectrumMethod.FFT,
+    transformation_gamma=0,
+    generators="PTN",
+    config_hash=HASH_B,
+)
+CONFIG_C: Final[ConfigDirectoryFields] = config_fields(
+    sample_rate=44100,
+    nes_frequency=30,
+    spectrum_method=SpectrumMethod.FFT,
+    transformation_gamma=0,
+    generators="PT",
+    config_hash=HASH_C,
+)
+CONFIG_D: Final[ConfigDirectoryFields] = config_fields(
+    sample_rate=44100,
+    nes_frequency=30,
+    spectrum_method=SpectrumMethod.CQT,
+    transformation_gamma=0,
+    generators="PTN",
+    config_hash=HASH_D,
+)
+CONFIG_E: Final[ConfigDirectoryFields] = config_fields(
+    sample_rate=8000,
+    nes_frequency=60,
+    spectrum_method=SpectrumMethod.CQT,
+    transformation_gamma=2,
+    generators="P",
+    config_hash=HASH_E,
+)
+CONFIG_F: Final[ConfigDirectoryFields] = config_fields(
+    sample_rate=48000,
+    nes_frequency=50,
+    spectrum_method=SpectrumMethod.LOG_SPACED_FFT,
+    transformation_gamma=1,
+    generators="TN",
+    config_hash=HASH_F,
+)
+
+TOP_LEVEL_CONFIGURATIONS: Final[Mapping[str, ConfigDirectoryFields]] = {
+    "A": CONFIG_A,
+    "B": CONFIG_B,
+    "C": CONFIG_C,
+    "D": CONFIG_D,
+    "E": CONFIG_E,
+}
+RECONSTRUCTIONS: Final[Mapping[str, Tuple[str, ...]]] = {
+    "A": ("beat", "melody", "drums/kick", "drums/snare"),
+    "B": ("beat", "melody", "drums/kick"),
+    "C": ("beat", "takes/alt"),
+    "D": ("beat", "solo"),
+    "E": ("sweep",),
+}
+
+
+class FakeConfigManager:
+    """Answers the one thing the browser manager asks of the configuration: where to read."""
+
+    def __init__(self, reconstructions_directory: Path) -> None:
+        self._reconstructions_directory = reconstructions_directory
+
+    def get_reconstructions_directory(self) -> Path:
+        return self._reconstructions_directory
+
+
+class FakeTreeLogic:
+    """Answers the favorite questions a browser asks of its logic while it collects its rows."""
+
+    def __init__(self, favorites: Set[Path]) -> None:
+        self._favorites = favorites
+
+    def is_node_favorite(self, node: TreeNode) -> bool:
+        return isinstance(node, FileSystemNode) and node.filepath in self._favorites
+
+    def has_favorite_ancestor(self, node: FileSystemNode) -> bool:
+        return any(directory in self._favorites for directory in node.filepath.parents)
+
+
+@dataclass(frozen=True)
+class BrowserCorpus:
+    """A reconstructions directory read into the tree both browser views render.
+
+    ``paths`` names every place a test can star: a configuration directory by its key, a
+    reconstruction by ``"<key>/<relative name>"``, and the folders standing beside them.
+    """
+
+    tree: Tree
+    paths: Mapping[str, Path]
+
+
+def write_corpus(root: Path) -> Dict[str, Path]:
+    """Writes the corpus the browser tests read, and answers where each part of it landed.
+
+    The layout carries what the browser has to tell apart: two configurations differing by hash
+    alone, a frequency holding several methods beside one holding a single chain, audio shared by
+    every configuration and audio held by one, a configuration directory nested in a plain folder,
+    and a reconstruction sitting outside every configuration directory.
+    """
+    paths: Dict[str, Path] = {}
+    for key, fields in TOP_LEVEL_CONFIGURATIONS.items():
+        directory = root / fields.directory_name
+        paths[key] = directory
+        for relative in RECONSTRUCTIONS[key]:
+            paths[f"{key}/{relative}"] = _write_reconstruction(directory / relative)
+
+    archive = root / ARCHIVE
+    paths[ARCHIVE] = archive
+    paths[f"{ARCHIVE}/F"] = archive / CONFIG_F.directory_name
+    paths[f"{ARCHIVE}/F/song"] = _write_reconstruction(paths[f"{ARCHIVE}/F"] / "song")
+    paths[STRAY] = _write_reconstruction(root / STRAY)
+    return paths
+
+
+def _write_reconstruction(path: Path) -> Path:
+    reconstruction = path.with_suffix(EXT_FILE_RECONSTRUCTION)
+    reconstruction.parent.mkdir(parents=True, exist_ok=True)
+    reconstruction.touch()
+    return reconstruction
+
+
+def build_corpus(root: Path) -> BrowserCorpus:
+    """Writes the corpus and reads it through the real pipeline, so the labels are the real ones."""
+    paths = write_corpus(root)
+    manager = BrowserManager(
+        FakeConfigManager(root),  # type: ignore[arg-type]
+        language_manager=FakeLanguageManager(texts=dict(BROWSER_TEXTS)),
+    )
+    manager.refresh_tree()
+    return BrowserCorpus(
+        tree=manager.tree,
+        paths=paths,
+    )
+
+
+def build_browser_panel(
+    corpus: BrowserCorpus,
+    favorites: Set[Path],
+    *,
+    favorites_only: bool,
+    query: str = "",
+) -> GUISequencerBrowserPanel:
+    """Builds a browser panel showing the corpus under a filter, with the favorites its logic answers.
+
+    Resolving the filter reads the model alone, so the panel needs neither widgets nor a search box,
+    and the control stands where a browser that has yet to build one leaves it.
+    """
+    panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
+    panel.tag = PANEL_TAG
+    panel.tree_tag = TREE_TAG
+    panel.tree = corpus.tree
+    panel._logic = FakeTreeLogic(favorites)  # type: ignore[assignment]
+    panel._language_manager = FakeLanguageManager()
+    panel._colors = TREE_COLORS
+    _state_detail_labels(panel)
+    panel._favorites_checkbox_tag = None
+    panel._favorites_glyph_tag = None
+    panel.on_favorites_filter_changed = None
+    panel._filter = TreeFilter(query=query, favorites_only=favorites_only)
+    panel._resolve_filter()
+    return panel
+
+
+def _state_detail_labels(panel: GUITreePanel) -> None:
+    """States the labels a row's details read under, which a configuration row asks for by name."""
+    panel._lbl_detail_sample_rate = "sample_rate"
+    panel._lbl_detail_nes_frequency = "nes_frequency"
+    panel._lbl_detail_spectrum_method = "spectrum_method"
+    panel._lbl_detail_transformation_gamma = "transformation_gamma"
+    panel._lbl_detail_window_size = "window_size"
+    panel._lbl_detail_generators = "generators"
+    panel._lbl_detail_configuration = "configuration"
+
+
+def collect_specs(panel: GUITreePanel) -> List[NodeSpec]:
+    """Collects the rows a rebuild would emit, which is the pass running off the main thread."""
+    panel._pending_specs = []
+    panel._node_handlers = {
+        node_type: NodeHandler(tag=f"handler.{node_type.value}", node_type=node_type) for node_type in NodeType
+    }
+
+    root = panel.tree.get_root()
+    assert root is not None
+    panel._build_tree_node(root, TreeNodeState(parent=panel.tree_tag))
+    return panel._pending_specs
+
+
+def render_view(panel: GUITreePanel) -> str:
+    """Renders the view a rebuild would leave on screen: the rows, their nesting and their state.
+
+    Each row reads as its marker and its label, indented under the row holding it: ``v`` a container
+    standing open, ``>`` one standing closed, ``-`` a leaf. A row the search hides is marked, since
+    its widget stands there either way, and a row under a closed container is rendered where it is.
+    """
+    children: Dict[str, List[NodeSpec]] = defaultdict(list)
+    for spec in collect_specs(panel):
+        children[spec.parent_tag].append(spec)
+
+    lines: List[str] = []
+    _render_rows(
+        panel,
+        children,
+        parent_tag=panel.tree_tag,
+        depth=0,
+        lines=lines,
+    )
+    return "\n".join(lines)
+
+
+def _render_rows(
+    panel: GUITreePanel,
+    children: Mapping[str, Sequence[NodeSpec]],
+    *,
+    parent_tag: str,
+    depth: int,
+    lines: List[str],
+) -> None:
+    for spec in children.get(parent_tag, ()):
+        lines.append(f"{INDENT * depth}{_row_marker(spec)} {spec.label}{_row_state(panel, spec)}")
+        _render_rows(
+            panel,
+            children,
+            parent_tag=spec.node_tag,
+            depth=depth + 1,
+            lines=lines,
+        )
+
+
+def _row_marker(spec: NodeSpec) -> str:
+    if spec.leaf:
+        return LEAF_MARKER
+
+    return OPEN_MARKER if spec.should_expand else CLOSED_MARKER
+
+
+def _row_state(panel: GUITreePanel, spec: NodeSpec) -> str:
+    return "" if panel._is_node_visible(spec.node) else HIDDEN_MARKER
+
+
+def as_view(text: str) -> str:
+    """Reads a view written as an indented block in a test, so the expected rows read as they draw."""
+    return dedent(text).strip("\n")
+
+
+def view(
+    corpus: BrowserCorpus,
+    favorites: Set[Path],
+    *,
+    favorites_only: bool,
+    query: str = "",
+) -> str:
+    """The view a browser showing the corpus under this filter leaves on screen."""
+    return render_view(
+        build_browser_panel(
+            corpus,
+            favorites,
+            favorites_only=favorites_only,
+            query=query,
+        )
+    )
