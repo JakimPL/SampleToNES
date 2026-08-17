@@ -28,6 +28,7 @@ else
 fi
 
 bash "$SCRIPT_DIR/preflight.sh" "$@"
+bash "$SCRIPT_DIR/icons.sh"
 
 if [[ -e "${PROJECT_DIR}/bin/sampletones" ]]; then
     echo "Removing the previous artifact: ./bin/sampletones"

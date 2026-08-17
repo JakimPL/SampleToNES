@@ -1,5 +1,5 @@
 .PHONY: help setup install build release system-deps run clean pre-commit test \
-	ftm-samples check-import-boundary check-tag-names check-unused-tags \
+	ftm-samples icons check-import-boundary check-tag-names check-unused-tags \
 	check-language-keys check-palette-colors calibration lint pylint mypy format
 
 ifeq ($(OS),Windows_NT)
@@ -70,6 +70,7 @@ help:
 	@echo $(Q)  make release     - Compile standalone executable with the release deployment config$(Q)
 	@echo $(Q)  make test        - Run unit tests with coverage$(Q)
 	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
+	@echo $(Q)  make icons       - Generate the icon suite into src/sampletones_assets/icons$(Q)
 	@echo $(Q)  make calibration - Score the reconstruction corpus; the report lands in Documents/SampleToNES/calibration$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run linting (pylint, mypy)$(Q)
@@ -78,6 +79,7 @@ help:
 
 setup:
 	$(SETUP_ENV) uv sync --group dev $(if $(GPU_EXTRA),--extra $(GPU_EXTRA),)
+	$(MAKE) icons
 	$(SETUP_ENV) uv tool install --force $(if $(GPU_EXTRA),".[$(GPU_EXTRA)]",.)
 
 install:
@@ -108,6 +110,9 @@ test:
 ftm-samples: export SAMPLETONES_FTM_OUTPUT_DIR := build/ftm
 ftm-samples:
 	uv run python -m pytest tests/integration/famitracker
+
+icons:
+	uv run --group assets python scripts/assets/icons.py
 
 check-import-boundary:
 	uv run scripts/checks/import_boundary.py --all

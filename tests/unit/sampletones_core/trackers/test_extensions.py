@@ -3,17 +3,17 @@ from typing import Dict, Final, List, Optional
 
 import pytest
 
-from sampletones_core.paths import (
-    EXT_FILE_BITPHASE,
-    EXT_FILE_INSTRUMENT,
-    EXT_FILE_JSON,
-    EXT_FILE_MODULE,
-)
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.extensions import format_for_extension
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
 from sampletones_core.trackers.scope import ExportScope
+from sampletones_shared.paths.extensions import (
+    EXT_FILE_BITPHASE,
+    EXT_FILE_INSTRUMENT,
+    EXT_FILE_JSON,
+    EXT_FILE_MODULE,
+)
 
 UNKNOWN_EXTENSION: Final[str] = ".xm"
 NO_EXTENSION: Final[str] = ""

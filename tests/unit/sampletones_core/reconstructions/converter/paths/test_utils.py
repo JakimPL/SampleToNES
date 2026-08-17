@@ -4,13 +4,13 @@ from typing import List
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import (
     filter_files,
     get_audio_files,
     get_output_path,
     get_relative_path,
 )
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 
 
 @pytest.fixture(scope="module")

@@ -3,11 +3,6 @@ from typing import Dict, List, Optional
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
-from sampletones_core.paths import (
-    EXT_FILE_LIBRARY,
-    EXT_FILE_RECONSTRUCTION,
-    EXT_FILES_AUDIO,
-)
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -15,6 +10,11 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
     create_directory_node,
+)
+from sampletones_shared.paths.extensions import (
+    EXT_FILE_LIBRARY,
+    EXT_FILE_RECONSTRUCTION,
+    EXT_FILES_AUDIO,
 )
 from sampletones_shared.utils.system.system import System
 

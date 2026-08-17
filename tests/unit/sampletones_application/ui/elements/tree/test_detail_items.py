@@ -7,10 +7,10 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import format_sample_rate, short_hash
-from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree.node import ConfigNode, FileSystemNode, TreeNode
 from sampletones_core.structures.tree.type import NodeType
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from tests.suite.language import FakeLanguageManager
 
 CONFIG_FIELDS: Final[ConfigDirectoryFields] = ConfigDirectoryFields.from_config(Config())

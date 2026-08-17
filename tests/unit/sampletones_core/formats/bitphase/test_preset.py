@@ -19,7 +19,7 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     MIN_TONE_ADD,
     NO_TONE_OFFSET,
 )
-from sampletones_core.paths import EXT_FILE_JSON
+from sampletones_shared.paths.extensions import EXT_FILE_JSON
 
 from .conftest import REFERENCE_PITCH, build_features, build_instrument
 

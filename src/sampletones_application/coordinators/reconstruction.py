@@ -30,10 +30,10 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
-from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from sampletones_shared.types.callback import Callback, VoidCallback
 from sampletones_shared.utils.system.paths import get_filename
 

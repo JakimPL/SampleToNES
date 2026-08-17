@@ -23,6 +23,6 @@ echo "Installing dependencies..."
 
 EXTRAS_STR=$(IFS=,; echo "${EXTRAS[*]}")
 echo "Installing with extras: $EXTRAS_STR"
-"$VENV_PY" -m pip install ".[$EXTRAS_STR]"
+"$VENV_PY" -m pip install ".[$EXTRAS_STR]" --group assets
 
 echo "sampletones Python package installed successfully."

@@ -30,7 +30,6 @@ from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.parallelization.thread import concurrent
-from sampletones_core import paths
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
@@ -39,6 +38,7 @@ from sampletones_core.structures.tree import (
     TreeTraversal,
     traverse,
 )
+from sampletones_shared.paths import extensions
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
 
@@ -300,19 +300,19 @@ class GUIExplorerPanel(GUITreePanel):
             node, _ = user_data
             suffix = node.filepath.suffix.lower()
             match suffix:
-                case paths.EXT_FILE_RECONSTRUCTION:
+                case extensions.EXT_FILE_RECONSTRUCTION:
                     return reconstruction_message_function(
                         *args,
                         user_data=user_data,
                         **kwargs,
                     )
-                case paths.EXT_FILE_LIBRARY:
+                case extensions.EXT_FILE_LIBRARY:
                     return library_message_function(
                         *args,
                         user_data=user_data,
                         **kwargs,
                     )
-                case suffix if suffix in paths.EXT_FILES_AUDIO:
+                case suffix if suffix in extensions.EXT_FILES_AUDIO:
                     return audio_message_function(
                         *args,
                         user_data=user_data,
@@ -333,9 +333,9 @@ class GUIExplorerPanel(GUITreePanel):
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
             match node.filepath.suffix.lower():
-                case paths.EXT_FILE_RECONSTRUCTION:
+                case extensions.EXT_FILE_RECONSTRUCTION:
                     return self._logic.request_autoplay(node)
-                case suffix if suffix in paths.EXT_FILES_AUDIO:
+                case suffix if suffix in extensions.EXT_FILES_AUDIO:
                     self.call(self.on_wave_file_clicked, node.filepath)
                     return self._logic.request_autoplay(node)
 
@@ -354,12 +354,12 @@ class GUIExplorerPanel(GUITreePanel):
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
             match node.filepath.suffix.lower():
-                case paths.EXT_FILE_RECONSTRUCTION:
+                case extensions.EXT_FILE_RECONSTRUCTION:
                     self._load_reconstruction(node)
-                case suffix if suffix in paths.EXT_FILES_AUDIO:
+                case suffix if suffix in extensions.EXT_FILES_AUDIO:
                     self._logic.cancel_autoplay()
                     return self._reconstruct_file(node)
-                case paths.EXT_FILE_LIBRARY:
+                case extensions.EXT_FILE_LIBRARY:
                     return self._load_library(node)
 
         return None
@@ -452,17 +452,17 @@ class GUIExplorerPanel(GUITreePanel):
         dpg.add_separator()
         suffix = node.filepath.suffix.lower()
         match suffix:
-            case paths.EXT_FILE_RECONSTRUCTION:
+            case extensions.EXT_FILE_RECONSTRUCTION:
                 dpg.add_menu_item(
                     label=self._language_manager["main.explorer.label.context_load_reconstruction"],
                     callback=lambda: self._load_reconstruction(node),
                 )
-            case paths.EXT_FILE_LIBRARY:
+            case extensions.EXT_FILE_LIBRARY:
                 dpg.add_menu_item(
                     label=self._language_manager["main.explorer.label.context_load_library"],
                     callback=lambda: self._load_library(node),
                 )
-            case suffix if suffix in paths.EXT_FILES_AUDIO:
+            case suffix if suffix in extensions.EXT_FILES_AUDIO:
                 dpg.add_menu_item(
                     label=self._language_manager["main.explorer.label.context_reconstruct_file"],
                     callback=lambda: self._context_reconstruct_file(node),

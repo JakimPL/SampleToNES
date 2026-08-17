@@ -37,6 +37,9 @@ jobs:
             --tag "$GITHUB_REF_NAME" \
             --project-version "$(uv version --short)"
 
+      - name: Generate the icon suite
+        run: uv run --only-group assets python scripts/assets/icons.py
+
       - name: Build sdist and wheel
         run: uv build
 
@@ -126,7 +129,7 @@ jobs:
             venv_python=.venv-build/bin/python
           fi
           "$venv_python" -m pip install --upgrade pip
-          "$venv_python" -m pip install ".[build]"
+          "$venv_python" -m pip install ".[build]" --group assets
 
       - name: Build the bundle (Linux)
         if: runner.os == 'Linux'

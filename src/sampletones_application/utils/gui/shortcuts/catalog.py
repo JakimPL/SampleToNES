@@ -6,8 +6,8 @@ from typing import Dict, Tuple
 
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
-from sampletones_core.paths import EXT_FILE_YAML
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_YAML
 
 
 @dataclass(frozen=True)

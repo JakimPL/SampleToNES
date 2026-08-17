@@ -30,6 +30,7 @@ if "%RELEASE%"=="1" (
 )
 
 call "%SCRIPT_DIR%preflight.bat" %* || exit /b 1
+call "%SCRIPT_DIR%icons.bat" || exit /b 1
 
 if exist "bin\sampletones.exe" (
     echo Removing the previous artifact: bin\sampletones.exe

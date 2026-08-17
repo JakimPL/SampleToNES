@@ -15,8 +15,8 @@ from sampletones_core.constants.enums import (
     GeneratorName,
     SpectrumMethod,
 )
-from sampletones_core.paths import USER_PATH_DOCUMENTS
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 
 DEFAULT_OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "calibration"
 DEFAULT_METHODS: Final[str] = f"{SpectrumMethod.FFT.value},{SpectrumMethod.CQT.value}"

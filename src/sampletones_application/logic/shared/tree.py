@@ -5,12 +5,12 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
+from sampletones_shared.paths import extensions
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -103,7 +103,7 @@ class TreeLogic(CallbackMixin):
             return False
 
         suffix = node.filepath.suffix.lower()
-        return suffix == paths.EXT_FILE_RECONSTRUCTION or suffix in paths.EXT_FILES_AUDIO
+        return suffix == extensions.EXT_FILE_RECONSTRUCTION or suffix in extensions.EXT_FILES_AUDIO
 
     def _execute_autoplay(self) -> None:
         if self._pending_autoplay_node is not None:
@@ -119,7 +119,7 @@ class TreeLogic(CallbackMixin):
             return
 
         match node.filepath.suffix.lower():
-            case paths.EXT_FILE_RECONSTRUCTION:
+            case extensions.EXT_FILE_RECONSTRUCTION:
                 try:
                     reconstruction = Reconstruction.load(node.filepath)
                     self._audio_device_manager.play(
@@ -133,7 +133,7 @@ class TreeLogic(CallbackMixin):
                         f"Failed to play reconstruction file: {node.filepath}",
                     )
                     self.call(self.on_autoplay_error, exception)
-            case suffix if suffix in paths.EXT_FILES_AUDIO:
+            case suffix if suffix in extensions.EXT_FILES_AUDIO:
                 self._audio_device_manager.play_file(
                     node.filepath,
                     update=False,

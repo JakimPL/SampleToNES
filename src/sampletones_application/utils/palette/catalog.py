@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Dict, Final, Tuple
 
 from sampletones_application.utils.palette.palette import Palette
-from sampletones_core.paths import EXT_FILE_YAML
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_YAML
 
 DEFAULT_PALETTE_NAME: Final[str] = "studio"
 

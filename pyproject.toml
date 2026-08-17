@@ -75,6 +75,7 @@ gpu-cuda11 = [
 ]
 
 [dependency-groups]
+assets = ["pillow>=11,<13"]
 dev = [
     "black==26.5.1",
     "isort==8.0.1",

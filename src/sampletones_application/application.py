@@ -141,7 +141,6 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
-from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
@@ -156,6 +155,7 @@ from sampletones_shared.application import (
 )
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.types.application import Sender
 
 SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"

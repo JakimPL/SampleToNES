@@ -51,6 +51,15 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 
 `jeepney` is declared for Linux alone, so the modules that speak to the portal are imported where it is installed: the application probes for it before reaching them, and the root `conftest.py` keeps them out of collection elsewhere, leaving the Linux runs of the suite to cover them.
 
+## Application icon
+
+The icon suite in `src/sampletones_assets/icons` is generated: `scripts/assets/icons.py` holds the
+mark's geometry and writes the vector `sampletones.svg` together with the rasters the application
+ships, `sampletones.png` and the multi-resolution `sampletones.ico`. Rasterization uses Pillow,
+declared in the `assets` dependency group. The SVG is committed as the design source, and the
+rasters are produced where they are consumed: `make setup` writes them before packaging the wheel,
+and the bundle scripts write them before PyInstaller embeds them.
+
 ## Linux (standalone executable)
 
 Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. Install them with `make system-deps` (or run `scripts/linux/build/dependencies.sh`), which holds the full list.

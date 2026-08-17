@@ -10,11 +10,11 @@ from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
-from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.implementation.famitracker import FamiTrackerBackend
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
 from sampletones_core.trackers.scope import ExportScope
+from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 
 NES_FREQUENCY: Final[int] = 60
 

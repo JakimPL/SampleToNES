@@ -18,7 +18,6 @@ from sampletones_core.library import (
 from sampletones_core.library.creator import InstructionsLibraryCreator
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.parallelization import TaskProgress, TaskStatus
-from sampletones_core.paths import EXT_FILE_LIBRARY
 from sampletones_core.structures.tree import (
     GeneratorNode,
     LibraryNode,
@@ -27,6 +26,7 @@ from sampletones_core.structures.tree import (
     TreeNode,
 )
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
