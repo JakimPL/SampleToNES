@@ -21,7 +21,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree
-from sampletones_shared.types.callback import Callback, MessageCallback
+from sampletones_shared.types.callback import Callback, MessageCallback, VoidCallback
 
 
 class GUIFileBrowserPanel(GUITreePanel, ABC):
@@ -206,8 +206,16 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
 
     @concurrent(wait=False, method_bound=True)
     def rebuild_tree(self) -> None:
+        self._launch_tree_rebuild(self._refresh_model)
+
+    @concurrent(wait=False, method_bound=True)
+    def redraw_tree(self) -> None:
+        self._launch_tree_rebuild(self._keep_model)
+
+    def _launch_tree_rebuild(self, refresh: VoidCallback) -> None:
+        """Fills the whole tree from the model ``refresh`` leaves behind, off the main thread."""
         self._launch_rebuild(
-            self._refresh_model,
+            refresh,
             lambda: self._collect_specs(self.tree_tag),
             root_tag=self.tree_tag,
             on_finished=self._on_rebuild_finished,
@@ -216,6 +224,9 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
     @abstractmethod
     def _refresh_model(self) -> None:
         """Brings the model the tree renders up to date, on the background rebuild worker."""
+
+    def _keep_model(self) -> None:
+        """Leaves the model as the last refresh brought it, which is what a redraw reads."""
 
     def _on_rebuild_finished(self) -> None:
         """Runs on the main thread with the rows on screen, where a browser reads something out."""

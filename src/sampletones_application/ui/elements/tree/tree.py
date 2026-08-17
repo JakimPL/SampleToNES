@@ -127,6 +127,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         self._filter: TreeFilter = NO_FILTER
         self._search_visibility: Optional[TreeVisibility] = None
+        self._favorites_visibility: Optional[TreeVisibility] = None
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
@@ -269,9 +270,16 @@ class GUITreePanel(GUIPanel, ABC):
         Runs on the background traversal worker, so the theme and handler tags — including the
         directory content check that touches the filesystem — are chosen here, off the main
         thread. A shutdown request raises to unwind the traversal promptly.
+
+        Which rows are recorded is the favorites mode's to state, and it shows a row together with
+        every row above it: a row it holds back therefore stands above rows it holds back too, so one
+        decision covers the whole subtree and the traversal walks on.
         """
         if SingleThreadExecutor.is_shutting_down():
             raise BackgroundWorkCancelled
+
+        if not self._is_node_drawn(node):
+            return
 
         theme_tag = self._resolve_node_theme_tag(
             node,
@@ -303,23 +311,33 @@ class GUITreePanel(GUIPanel, ABC):
         """Complete a rebuild on the main thread: show the empty state, run the hook, unlock.
 
         The emitter runs this once its last batch has attached. A filtered rebuild that drew no
-        row fills the cleared tree with the no-results message, so the filter's outcome is
+        row fills the cleared tree with the message naming that outcome, so the filter's answer is
         legible where the rows would be. Applying the filter here lets late-emitted nodes honour
         an active search, and releasing the lock hands control back to interactive rebuilds.
         """
         if root_tag == self.tree_tag and self._filter.is_active and not drawn_rows:
             dpg.add_text(
-                self._language_manager["global.dialog.message.tree_no_results"],
+                self._empty_filter_message(),
                 parent=root_tag,
             )
 
         if on_finished is not None:
             on_finished()
 
-        if self._filter.is_active:
+        if self._filter.query:
             self.update_tree_visibility()
 
         self.unlock()
+
+    def _empty_filter_message(self) -> str:
+        """Names the filter a rebuild came back empty from: the favorites mode, or the search."""
+        return self._language_manager[
+            (
+                "global.dialog.message.tree_no_favorites"
+                if self._filter.favorites_only
+                else "global.dialog.message.tree_no_results"
+            )
+        ]
 
     def _create_hover_callback(
         self,
@@ -464,11 +482,16 @@ class GUITreePanel(GUIPanel, ABC):
     def _has_relevant_content(self, node: TreeNode) -> bool: ...
 
     def _should_expand_node(self, node: TreeNode) -> bool:
-        """Whether the row is emitted standing open, which the rows leading to a search result are."""
-        if self._search_visibility is None:
-            return False
+        """Whether the row is emitted standing open, which a row leading to a match is.
 
-        return self._search_visibility.should_expand(node)
+        A search result and a favorite are both matches the reader is looking for, so the way down to
+        either one opens and the filter's answer reads at a glance.
+        """
+        return any(
+            visibility.should_expand(node)
+            for visibility in (self._search_visibility, self._favorites_visibility)
+            if visibility is not None
+        )
 
     def _create_status_bar_message_function(
         self,
@@ -746,6 +769,7 @@ class GUITreePanel(GUIPanel, ABC):
         keeps a filter typed before a refresh answering for the rows that refresh brings.
         """
         self._search_visibility = self._resolve_search_visibility()
+        self._favorites_visibility = self._resolve_favorites_visibility()
 
     def _resolve_search_visibility(self) -> Optional[TreeVisibility]:
         """The rows the search query names, and nothing to narrow by while no query is typed."""
@@ -760,11 +784,37 @@ class GUITreePanel(GUIPanel, ABC):
             )
         )
 
+    def _resolve_favorites_visibility(self) -> Optional[TreeVisibility]:
+        """The rows the favorites mode names, and nothing to narrow by while the whole tree shows.
+
+        One walk of the model answers the whole mode, and what it keeps is the starred rows together
+        with the rows above them, so a corpus of any size resolves into a pair of sets.
+        """
+        if not self._filter.favorites_only:
+            return None
+
+        return resolve_visibility(self.tree.find_nodes(TreeNode, self._is_node_starred))
+
+    def _is_node_starred(self, node: TreeNode) -> bool:
+        """Whether the favorites mode names the row: it carries a star, or a starred folder holds it.
+
+        Being held by a starred folder is a fact about the path, so a reconstruction listed under the
+        sample it came from answers the same as the row standing for it beside its configuration.
+        """
+        if self._logic.is_node_favorite(node):
+            return True
+
+        return isinstance(node, FileSystemNode) and self._logic.has_favorite_ancestor(node)
+
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
 
     @abstractmethod
     def rebuild_tree(self) -> None: ...
+
+    @abstractmethod
+    def redraw_tree(self) -> None:
+        """Draws the rows again from the model in hand, which a change of filter asks for."""
 
     def update_tree_visibility(self) -> None:
         """Show the rows the search names and hide the rest, over the rows already on screen.
@@ -795,6 +845,13 @@ class GUITreePanel(GUIPanel, ABC):
             return True
 
         return self._search_visibility.is_visible(node)
+
+    def _is_node_drawn(self, node: TreeNode) -> bool:
+        """Whether the favorites mode draws the row, which it does for every row while it is off."""
+        if self._favorites_visibility is None:
+            return True
+
+        return self._favorites_visibility.is_visible(node)
 
     def _apply_node_theme(
         self,
@@ -928,13 +985,21 @@ class GUITreePanel(GUIPanel, ABC):
         self,
         nodes: Sequence[FileSystemNode],
     ) -> None:
-        """Repaints the rows a favorite change reaches, and what each of them holds.
+        """Follows a favorite change through the rows it reaches, and what each of them holds.
 
         A path reaches the panel as many rows as the views offer it — a reconstruction is listed both
         by its configuration and by the sample it came from — and the star belongs to the path, so
         the caller names every row standing for it and each of them takes the new theme with the
         ancestry its own path carries.
+
+        While the mode shows the favorites alone the star decides which rows exist, so the change is
+        answered by drawing the tree again from the model in hand: starring a row brings it in, and
+        unstarring one takes it out along with what it held.
         """
+        if self._filter.favorites_only:
+            self.redraw_tree()
+            return
+
         for node in nodes:
             self._reapply_theme_recursively(
                 node,

@@ -80,6 +80,7 @@ def build_panel(
     panel.tree = tree
     panel._filter = NO_FILTER
     panel._search_visibility = None
+    panel._favorites_visibility = None
     monkeypatch.setattr(panel, "_logic", FakeTreeLogic(favorites), raising=False)
     monkeypatch.setattr(
         panel,

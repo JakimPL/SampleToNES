@@ -50,6 +50,7 @@ def build_panel(
     panel._search_input_tag = None
     panel._filter = NO_FILTER
     panel._search_visibility = None
+    panel._favorites_visibility = None
     return panel
 
 
@@ -67,10 +68,20 @@ class TestFilterComposition:
     def test_dropping_the_query_leaves_the_filter_narrowing_nothing(self) -> None:
         assert not NO_FILTER.with_query("song").with_query("").is_active
 
+    def test_a_filter_showing_the_favorites_alone_narrows(self) -> None:
+        assert NO_FILTER.with_favorites_only(True).is_active
+
+    def test_the_query_and_the_favorites_mode_are_stated_side_by_side(self) -> None:
+        tree_filter = NO_FILTER.with_query("song").with_favorites_only(True)
+        assert tree_filter.query == "song"
+        assert tree_filter.favorites_only
+
     def test_the_filter_a_new_one_was_taken_from_reads_as_it_did(self) -> None:
-        original = TreeFilter(query="song")
+        original = TreeFilter(query="song", favorites_only=False)
         original.with_query("other")
+        original.with_favorites_only(True)
         assert original.query == "song"
+        assert not original.favorites_only
 
 
 class TestPanelOwnedFilter:

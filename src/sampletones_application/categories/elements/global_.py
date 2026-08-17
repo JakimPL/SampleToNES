@@ -160,6 +160,7 @@ class GraphElements(AbstractElement):
 
 class GlobalMessageElements(AbstractElement):
     TREE_NO_RESULTS = "tree_no_results"
+    TREE_NO_FAVORITES = "tree_no_favorites"
     INVALID_METADATA_ERROR = "invalid_metadata_error"
     RECONSTRUCTION_NO_DATA = "reconstruction_no_data"
     RECONSTRUCTION_SAVED_SUCCESSFULLY = "reconstruction_saved_successfully"

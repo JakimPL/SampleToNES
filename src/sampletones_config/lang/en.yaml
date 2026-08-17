@@ -59,6 +59,7 @@ global.dialog.filter.mp3: "MP3 audio"
 
 # Global — Dialog messages
 global.dialog.message.tree_no_results: "No results found."
+global.dialog.message.tree_no_favorites: "No favorites found."
 global.dialog.message.invalid_metadata_error: "Invalid file metadata."
 global.dialog.message.reconstruction_no_data: "No reconstruction loaded."
 global.dialog.message.reconstruction_saved_successfully: "Reconstruction saved successfully."
