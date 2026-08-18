@@ -182,8 +182,8 @@ folder arrives at.
 
 **A criterion is read the way that criterion means.** A search shows what a matching row gathers, so a
 match opens along with the rows above it (`TreeVisibility.should_expand`). The favorites mode points
-the reader at a star, so the rows above it open and the star's own row stands where the reader left it
-(`TreeVisibility.leads_to`) — a starred folder is revealed rather than unfolded. A starred
+the reader at a star, so what opens is the rows above it (`_way_down_to`, over the anchors' ancestors)
+while the star's own row stands where the reader left it — a starred folder is revealed. A starred
 reconstruction inside a starred folder anchors on its own, which is what opens the folder above it.
 
 **Which stars are followed is the reader's.** The mode decides what is drawn; whether it also unfolds

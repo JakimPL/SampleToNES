@@ -28,14 +28,6 @@ class TreeVisibility:
         """Whether the row stands open, which a named row does and so does every row above one."""
         return node in self.matches or node in self.ancestors
 
-    def leads_to(self, node: TreeNode) -> bool:
-        """Whether the row stands on the way down to a named row, being none of the named rows itself.
-
-        Answers the reader who is pointed at what was named rather than at what it holds, so opening
-        by this leaves a named row standing as it was while the rows above it show where it sits.
-        """
-        return node in self.ancestors
-
 
 def resolve_visibility(matches: Iterable[TreeNode]) -> TreeVisibility:
     """The visibility a set of named rows resolves to, read once per pass over the tree.

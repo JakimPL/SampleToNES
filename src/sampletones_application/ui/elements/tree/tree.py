@@ -148,7 +148,6 @@ class GUITreePanel(GUIPanel, ABC):
         self._filter: TreeFilter = NO_FILTER
         self._search_visibility: Optional[TreeVisibility] = None
         self._favorites_visibility: Optional[TreeVisibility] = None
-        self._favorites_anchors: Optional[TreeVisibility] = None
         self._auto_expand_pending: bool = False
 
         self._selected_node_tag: Optional[Union[str, int]] = None
@@ -462,7 +461,6 @@ class GUITreePanel(GUIPanel, ABC):
             has_favorite_ancestor=has_favorite_ancestor,
         )
         stands_open = self._stands_open(
-            node,
             node_tag,
             should_expand=should_expand,
         )
@@ -484,7 +482,6 @@ class GUITreePanel(GUIPanel, ABC):
 
     def _stands_open(
         self,
-        node: TreeNode,
         node_tag: str,
         *,
         should_expand: bool,
@@ -493,24 +490,14 @@ class GUITreePanel(GUIPanel, ABC):
 
         Two memories answer, each holding what one hand opened. The reader's holds the rows they opened
         themselves and is what a session writes down. The mode's holds the way down it opened on the
-        pass the reader asked for, which stands for as long as the mode does and folds once it goes,
-        apart from the rows the reader's own have come to stand on.
+        pass the reader asked for, noted as that pass resolved the filter, which stands for as long as
+        the mode does and folds once it goes, apart from the rows the reader's own have come to stand
+        on.
         """
         if not self._REMEMBERS_EXPANSION:
             return should_expand
 
-        if self._opened_by_the_mode(node):
-            self._mode_expanded_rows.add(node_tag)
-
         return should_expand or node_tag in self._expanded_rows or node_tag in self._mode_expanded_rows
-
-    def _opened_by_the_mode(self, node: TreeNode) -> bool:
-        """Whether the favorites mode is opening the way down through this row on this pass.
-
-        The anchors are resolved from the stars the reader asked to be pointed at, which is the pass
-        their switch started, so a pass of its own accord opens the way down through nothing.
-        """
-        return self._favorites_anchors is not None and self._favorites_anchors.leads_to(node)
 
     @property
     def expanded_rows(self) -> Set[str]:
@@ -751,16 +738,13 @@ class GUITreePanel(GUIPanel, ABC):
     def _has_relevant_content(self, node: TreeNode) -> bool: ...
 
     def _should_expand_node(self, node: TreeNode) -> bool:
-        """Whether the row is emitted standing open, which a row leading to a named row is.
+        """Whether the search points at the row, which a match and every row above one is.
 
-        A search names the rows whose label matched and shows what each of them gathers, so a folder
-        it named opens. The favorites mode points the reader at a star and opens the way down to it
-        alone, which leaves the starred row standing as the reader left it.
+        A search names the rows whose label matched and shows what each of them gathers, so a folder it
+        named opens, for as long as the query stands. What the favorites mode opens is its memory to
+        answer, read as each row is created.
         """
-        if self._search_visibility is not None and self._search_visibility.should_expand(node):
-            return True
-
-        return self._favorites_anchors is not None and self._favorites_anchors.leads_to(node)
+        return self._search_visibility is not None and self._search_visibility.should_expand(node)
 
     def _create_status_bar_message_function(
         self,
@@ -1037,14 +1021,17 @@ class GUITreePanel(GUIPanel, ABC):
     def _resolve_filter(self) -> None:
         """Resolve the filter against the model as it stands, which a rebuild does once per pass.
 
-        Reading the model rather than the rows lets the resolution run on the rebuild worker, and
-        keeps a filter typed before a refresh answering for the rows that refresh brings.
+        The model is what the whole answer is read from, so the resolution runs on the rebuild worker
+        and a filter stated before a refresh answers for the rows that refresh brings. The way down
+        the favorites mode opens is read out of the anchors here as well, which notes it the once for
+        the pass.
         """
         self._search_visibility = self._resolve_search_visibility()
         (
             self._favorites_visibility,
-            self._favorites_anchors,
+            way_down,
         ) = self._resolve_favorites()
+        self._mode_expanded_rows |= way_down
         self._auto_expand_pending = False
 
     def _resolve_search_visibility(self) -> Optional[TreeVisibility]:
@@ -1060,24 +1047,37 @@ class GUITreePanel(GUIPanel, ABC):
             )
         )
 
-    def _resolve_favorites(
-        self,
-    ) -> Tuple[Optional[TreeVisibility], Optional[TreeVisibility]]:
-        """The rows the favorites mode keeps, and the rows it opens the way down to.
+    def _resolve_favorites(self) -> Tuple[Optional[TreeVisibility], Set[str]]:
+        """The rows the favorites mode keeps, and the rows it opens the way down through.
 
         The two answer different questions — which rows the browser draws, and which of them stand
-        open — so each is resolved from a set of its own, the second being a part of the first. One
-        walk of the model finds the rows the star reaches, and the anchors are read out of that
-        answer, so a corpus of any size resolves into a walk and a pair of sets.
+        open — so each is read out of one walk of the model: the rows a star reaches state what is
+        drawn, and the rows above the anchors among them state the way down. A corpus of any size
+        therefore resolves into a walk and a pair of sets.
         """
         if not self._filter.favorites_only:
-            return None, None
+            return None, set()
 
         reached = self.tree.find_nodes(TreeNode, self._is_node_starred)
         return (
             resolve_visibility(reached),
-            resolve_visibility(self._auto_expanded_anchors(reached)),
+            self._way_down_to(self._auto_expanded_anchors(reached)),
         )
+
+    def _way_down_to(self, anchors: Sequence[TreeNode]) -> Set[str]:
+        """The tags of the rows standing above the anchors, which is the way down the mode opens.
+
+        An anchor is a row the reader asked to be pointed at, so what opens is the rows above it while
+        the anchor's own row stands as the reader left it. The container both branches hang from is a
+        row on no screen, and stays out of the answer.
+        """
+        root = self.tree.get_root()
+        return {
+            self._generate_node_tag(ancestor)
+            for anchor in anchors
+            for ancestor in anchor.ancestors
+            if ancestor is not root
+        }
 
     def _auto_expanded_anchors(
         self,
