@@ -14,6 +14,7 @@ from sampletones_core.configs.display import (
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
+    ConfigGroupNode,
     ConfigNode,
     FileSystemNode,
     NodeType,
@@ -72,6 +73,23 @@ class TestTopLevelConfigDirectories:
         assert set(transformations) == {transformation_name(fields)}
 
         assert set(directory_children(transformations[transformation_name(fields)])) == {fields.gn}
+
+    def test_both_headings_state_the_configuration_they_gather(self) -> None:
+        """The headings name a stretch of the display name, so they read as configuration text."""
+        fields = config_fields()
+        branch = build_branch(scan_of(config_entry(fields, "song")))
+
+        frequencies_node = group_children(branch)[frequencies_name(fields)]
+        transformation_node = group_children(frequencies_node)[transformation_name(fields)]
+
+        assert isinstance(frequencies_node, ConfigGroupNode)
+        assert isinstance(transformation_node, ConfigGroupNode)
+
+    def test_the_branch_root_is_a_heading_of_its_own(self) -> None:
+        fields = config_fields()
+        branch = build_branch(scan_of(config_entry(fields, "song")))
+
+        assert not isinstance(branch, ConfigGroupNode)
 
     def test_config_directory_keeps_its_reconstructions(self) -> None:
         fields = config_fields()

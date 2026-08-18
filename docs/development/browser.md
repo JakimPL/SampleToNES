@@ -54,10 +54,10 @@ drive, and `get_all_reconstruction_files` reads the scan.
 |---|---|---|
 | Scan | `tree/scan.py` | `scan_reconstructions` walks the directory once, recording each folder with the configuration its name states and each `.stn` file beneath it |
 | Records | `tree/entries/` | `DirectoryEntry`, `ReconstructionEntry`, `ReconstructionScan` — frozen, path-only, no widgets and no tree |
-| Configuration branch | `tree/configurations/` | `branch.py` lays the scanned folders out as they sit; `grouping.py` lifts a top-level configuration directory under frequency ▶ transformation groups and names it by its generators; `naming.py` gives the remaining configuration directories friendly names, unique among their siblings |
+| Configuration branch | `tree/configurations/` | `branch.py` lays the scanned folders out as they sit; `grouping.py` lifts a top-level configuration directory under frequency ▶ transformation configuration headings and names it by its generators, so the rows leading to it spell its display name; `naming.py` gives the remaining configuration directories friendly names, unique among their siblings |
 | Sample branch | `tree/samples/` | `variants.py` regroups every top-level configuration directory's reconstructions by the audio they mirror (`SampleSource` → `SampleVariant`); `branch.py` rebuilds the mirrored folders as groups and gathers each audio's variants under one sample row, each labelled by its configuration |
 | Shaping | `tree/prune.py`, `tree/collapse.py`, `tree/order.py` | Run in that order over each branch, deepest rows first |
-| Containers | `tree/containers.py` | `find_or_create_group` and `find_or_create_sample` extend the heading of that name a parent already holds; each node type is looked up among the siblings of its own kind, so a folder and an audio sharing a name stay two rows |
+| Containers | `tree/containers.py` | `find_or_create_group`, `find_or_create_config_group` and `find_or_create_sample` extend the heading of that name a parent already holds; each heading is looked up among the siblings of its own kind and class, so a folder and an audio sharing a name stay two rows |
 
 The policy the two branches share: a configuration directory sitting at the top level of the
 reconstructions directory is the one lifted under groups and transposed into the sample view. A
@@ -78,11 +78,15 @@ the branch which follows the disk.
   parsed `ConfigDirectoryFields`. It subclasses `FileSystemNode` so every reader of a path keeps
   working, and the fields travel with the row, which is what lets a label, a tooltip and a font state
   the configuration from the node already in hand.
+* `ConfigGroupNode` — a heading gathering the configurations that share a stretch of their display
+  name: the rates they run at, the spectrum they were built from. It keeps `NodeType.GROUP`, so it
+  folds, prunes, sorts and behaves as any heading does, and it names the rows whose labels are
+  configuration text rather than words, which is what the configuration font reads.
 
-`create_directory_node` chooses between the last two from the fields the scan read. Which row carries
-the configuration follows the branch: in the configuration branch it is the directory that names it,
-and in the sample branch it is the variant leaf, since there the configuration is what distinguishes
-one row from the next.
+`create_directory_node` chooses between `FileSystemNode` and `ConfigNode` from the fields the scan
+read. Which row carries the configuration follows the branch: in the configuration branch it is the
+directory that names it, and in the sample branch it is the variant leaf, since there the
+configuration is what distinguishes one row from the next.
 
 ## The shaping rules
 

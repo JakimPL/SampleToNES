@@ -6,9 +6,14 @@ import pytest
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_core.configs import Config
-from sampletones_core.configs.display import format_sample_rate, short_hash
+from sampletones_core.configs.display import format_frequencies, format_sample_rate, short_hash
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
-from sampletones_core.structures.tree.node import ConfigNode, FileSystemNode, TreeNode
+from sampletones_core.structures.tree.node import (
+    ConfigGroupNode,
+    ConfigNode,
+    FileSystemNode,
+    TreeNode,
+)
 from sampletones_core.structures.tree.type import NodeType
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from tests.suite.language import FakeLanguageManager
@@ -53,6 +58,21 @@ def config_directory_node() -> ConfigNode:
     )
 
 
+def config_group_node() -> ConfigGroupNode:
+    return ConfigGroupNode(
+        format_frequencies(CONFIG_FIELDS.sr, CONFIG_FIELDS.nf),
+        node_type=NodeType.GROUP,
+    )
+
+
+def plain_directory_node() -> FileSystemNode:
+    return FileSystemNode(
+        "my_songs",
+        node_type=NodeType.DIRECTORY,
+        filepath=Path("/reconstructions/my_songs"),
+    )
+
+
 def config_variant_node() -> ConfigNode:
     return ConfigNode(
         CONFIG_FIELDS.display_name,
@@ -82,26 +102,49 @@ class TestConfigDetailItems:
         """
         assert panel._node_detail_items(config_variant_node()) == panel._node_detail_items(config_directory_node())
 
-    def test_config_variant_leaf_reads_in_the_configuration_font(
-        self,
-        panel: GUISequencerBrowserPanel,
-    ) -> None:
-        assert panel._resolve_node_name_font(config_variant_node()) == Font.MONO_SMALL
-
     def test_plain_directory_states_nothing(
         self,
         panel: GUISequencerBrowserPanel,
     ) -> None:
-        node = FileSystemNode(
-            "my_songs",
-            node_type=NodeType.DIRECTORY,
-            filepath=Path("/reconstructions/my_songs"),
-        )
-        assert panel._node_detail_items(node) == []
-        assert panel._resolve_node_name_font(node) == Font.REGULAR_SMALL
+        assert panel._node_detail_items(plain_directory_node()) == []
 
     def test_group_states_nothing(
         self,
         panel: GUISequencerBrowserPanel,
     ) -> None:
         assert panel._node_detail_items(TreeNode("Samples", NodeType.GROUP)) == []
+
+
+class TestConfigurationFont:
+    """Every row whose label is configuration text reads in one font, whatever kind of row it is."""
+
+    def test_config_directory_reads_in_the_configuration_font(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        assert panel._resolve_node_name_font(config_directory_node()) == Font.MONO_SMALL
+
+    def test_config_variant_leaf_reads_in_the_configuration_font(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        assert panel._resolve_node_name_font(config_variant_node()) == Font.MONO_SMALL
+
+    def test_configuration_heading_reads_in_the_configuration_font(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        """A heading gathers a stretch of the configuration, so it reads as the rows below it do."""
+        assert panel._resolve_node_name_font(config_group_node()) == Font.MONO_SMALL
+
+    def test_plain_directory_reads_in_the_name_font(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        assert panel._resolve_node_name_font(plain_directory_node()) == Font.REGULAR_SMALL
+
+    def test_heading_the_disk_names_reads_in_the_name_font(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        assert panel._resolve_node_name_font(TreeNode("Amen Breaks", NodeType.GROUP)) == Font.REGULAR_SMALL
