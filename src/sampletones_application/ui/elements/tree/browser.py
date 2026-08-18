@@ -174,8 +174,8 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
     def _on_collapse_all_clicked(self) -> None:
         """Folds every row of the tree away, leaving the reader the level the tree opens at.
 
-        The rows are reached through the model rather than the widget tree, so one pass covers a
-        branch however deep it runs, and the browser is told what each row now stands as.
+        The rows are reached through the model, so one pass covers a branch however deep it runs,
+        and the browser is told what each row now stands as.
         """
         root = self.tree.get_root()
         if root is None:

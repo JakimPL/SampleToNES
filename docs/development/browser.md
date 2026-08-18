@@ -109,8 +109,8 @@ one row from the next.
 
 The browsers form one line of inheritance, each level owning what it shares:
 
-* `GUITreePanel` (`ui/elements/tree/tree.py`) — a tree of rows: the controls it narrows by and the filter
-  they compose, the shape it holds across rebuilds — kept for it by `RowExpansionMemory`
+* `GUITreePanel` (`ui/elements/tree/tree.py`) — a tree of rows: the controls it narrows by and the
+  filter they compose, the shape it holds across rebuilds — kept for it by `RowExpansionMemory`
   (`ui/elements/tree/expansion.py`) — the rebuild handshake, spec collection, themes and fonts per row,
   the detail tooltip, the status-bar messages, and the context-menu items every browser can offer.
 * `GUIFileBrowserPanel` (`ui/elements/tree/browser.py`) — a browser of files as a collapsible card: the
@@ -230,10 +230,12 @@ is followed through to the memory, and a browser that keeps none leaves it empty
 A search unfolds by the same rule from the other end: its matches and the rows above them open for as
 long as the query stands, resolved afresh on each pass, and clearing the query folds them back.
 
-The shape outlives the run as well. A browser is handed the rows it stands open as it is built
-(`initial_expanded_rows`), and `_persist_application_state` asks each tab for its shape and writes it to
-`ApplicationState.expanded_rows` under the panel's tag. Reading it the once at exit keeps the session
-free of a write per row per pass, a pass running on the tree worker.
+The shape outlives the run as well. A browser is handed the mode and the rows it opens with as it is
+built (`initial_favorites_only`, `initial_expanded_rows`). A change of mode is written where it happens,
+through `on_favorites_filter_changed`, and the shape is asked for the once, at exit:
+`_persist_application_state` takes each tab's rows into `ApplicationState.expanded_rows` under the
+panel's tag, so a pass holds what it opened in memory, on the tree worker, and the session file reads it
+from there.
 
 **The Main tab's explorer remembers folders, not rows.** Its rows are the folders on disk, read a level
 at a time as the reader opens one, so `ExplorerManager` holds two facts about a folder: whether its
@@ -243,14 +245,14 @@ folded away is loaded and closed — and the open one is the shape a session wri
 `_expand_path_to`, reading every folder it needs once, and the folders that are no longer directories
 are dropped as the manager is built.
 
-**What the mode costs.** Resolving it walks the model once per rebuild, on the tree worker, testing
-each row with `is_node_favorite` and `has_favorite_ancestor` — set lookups over `filepath.parents` —
-and the anchors the preference follows are read out of that one answer. What it materialises is the starred rows and the rows
-above them, and what reaches DearPyGui is the drawn rows alone: on a directory holding hundreds of
-thousands of reconstructions, a favorites-only browser creates widgets for the starred ones and their
-headings. A keystroke resolves the query alone, the drawn rows being the mode's to state. A favorite
-toggled while the mode is on redraws the browser, so starring a row brings it in and unstarring one
-takes it out along with what it held.
+**What the mode costs.** Resolving it walks the model once per rebuild, on the tree worker, testing each
+row with `is_node_favorite` and `has_favorite_ancestor` — set lookups over `filepath.parents` — and the
+anchors the preference follows are read out of that one answer. What it materialises is the starred rows
+and the rows above them, and what reaches DearPyGui is the drawn rows alone: on a directory holding
+hundreds of thousands of reconstructions, a favorites-only browser creates widgets for the starred ones
+and their headings. A keystroke resolves the query alone, the drawn rows being the mode's to state. A
+favorite toggled while the mode is on redraws the browser, so starring a row brings it in and unstarring
+one takes it out along with what it held.
 
 A rebuild that drew no row fills the cleared tree with the message naming the criterion that came back
 empty (`global.dialog.message.tree_no_favorites`, `global.dialog.message.tree_no_results`), so the

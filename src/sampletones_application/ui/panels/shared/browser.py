@@ -232,10 +232,9 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
     def _show_container_context_menu(self, node: TreeNode) -> None:
         """Offers what a row the browser invents can answer: what it gathers, and how it folds.
 
-        A group or a sample stands for a facet of the reconstructions below it rather than for a path
-        on disk, so its menu reads the subtree — how many reconstructions it gathers, the rows folding
-        under it, the label the tree shows it by, and for a sample the audio its reconstructions were
-        made from.
+        A group or a sample stands for a facet of the reconstructions below it, so its menu reads the
+        subtree — how many reconstructions it gathers, the rows folding under it, the label the tree
+        shows it by, and for a sample the audio its reconstructions were made from.
         """
         if node.node_type not in (NodeType.GROUP, NodeType.SAMPLE):
             return

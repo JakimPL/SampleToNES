@@ -55,7 +55,7 @@ while it narrows, so switching the tick on and off leaves the tree as you left i
 If you would rather it opened its way down to each favorite for you, turn that on
 under **View ▸ Auto-expand favorites**, which answers for reconstructions and for
 folders separately. It opens the way down each time you tick **Favorites only**,
-and the rows it opened fold back as soon as you untick it.
+and unticking folds those rows back.
 
 **Collapse all**, beside the refresh button, folds the whole tree away in one
 click. Whatever you leave open is remembered, so the tree comes back the way you

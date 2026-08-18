@@ -252,8 +252,8 @@ class GUITreePanel(GUIPanel, ABC):
     def _forget_rows_the_model_dropped(self) -> None:
         """Holds the memory of open rows to the rows the model states, read afresh on every pass.
 
-        A row the memory holds that the model no longer states belongs to a folder the disk has lost, so
-        its place goes with it. The model is what the answer is read from, so a browser opening in the
+        A row the memory holds beyond the rows the model states belongs to a folder the disk has lost,
+        so its place goes with it. The model is what the answer is read from, so a browser opening in the
         favorites mode — or opening on a session written before the reconstructions directory moved —
         drops what is gone.
         """
@@ -1053,8 +1053,8 @@ class GUITreePanel(GUIPanel, ABC):
         row above it is reached, which is how the sample branch answers: its headings carry no path,
         so the variants are where the star arrives.
 
-        Asked of the rows the star reaches, so a row it declines stands under a row it named, and
-        the reader is pointed at the folder rather than at everything inside it.
+        Asked of the rows the star reaches, so a row it declines stands under a row it named: the
+        reader is pointed at the folder, and the rows inside it stand as they were.
         """
         if self._logic.is_node_favorite(node):
             return True

@@ -46,8 +46,9 @@ class ExplorerManager:
     def refresh_tree(self) -> None:
         """Reads the filesystem afresh, down to every folder the tree has to show a row for.
 
-        A refresh builds the tree from nothing, so each folder it needs is read once into it: reading a
-        folder twice would replace the rows below it, and with them the folders already read under it.
+        A refresh builds the tree from nothing, so ``_loaded_directories`` starts empty and each folder
+        it needs is read into it once: the rows a read places under a folder stand as the walk carries
+        on deeper.
         """
         self._loaded_directories.clear()
         container_root = TreeNode(
