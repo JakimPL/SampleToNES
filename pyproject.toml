@@ -75,7 +75,9 @@ gpu-cuda11 = [
 ]
 
 [dependency-groups]
+assets = ["pillow>=11,<13"]
 dev = [
+    { include-group = "assets" },
     "black==26.5.1",
     "isort==8.0.1",
     "mypy==2.1.0",
@@ -129,6 +131,7 @@ addopts = "--import-mode=importlib"
 [tool.coverage.run]
 source = [
     "sampletones_application",
+    "sampletones_assets",
     "sampletones_core",
     "sampletones_shared",
     "sampletones_synthesis",
@@ -143,6 +146,7 @@ python_version = "3.12"
 files = [
     "src/sampletones",
     "src/sampletones_application",
+    "src/sampletones_assets",
     "src/sampletones_core",
     "src/sampletones_shared",
     "src/sampletones_synthesis",

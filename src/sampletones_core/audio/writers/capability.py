@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Final, Mapping, Tuple
 
 from sampletones_core.constants.audio import SAMPLE_RATES
-from sampletones_core.paths import EXT_FILE_MP3, EXT_FILE_WAVE
+from sampletones_shared.paths.extensions import EXT_FILE_MP3, EXT_FILE_WAVE
 
 from .bitrate import MP3_SAMPLE_RATES
 from .format import AUDIO_DEPTHS, AudioDepth, AudioFormat

@@ -3,7 +3,7 @@ from typing import Dict, Final, List, Optional
 
 import yaml
 
-from sampletones_shared.paths import REPOSITORY_ROOT
+from sampletones_shared.paths.source import REPOSITORY_ROOT
 
 PRE_COMMIT_CONFIG: Final[Path] = REPOSITORY_ROOT / ".pre-commit-config.yaml"
 MAKEFILE: Final[Path] = REPOSITORY_ROOT / "Makefile"

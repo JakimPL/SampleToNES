@@ -12,6 +12,7 @@
 * Improved Sequencer module playback.
 * Added song export to WAV/MP3.
 * Added tracker selection operations.
+* Added a _SampleToNES_ logo.
 
 ## v0.3.0 [2026-07-31]
 

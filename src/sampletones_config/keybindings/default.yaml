@@ -55,6 +55,8 @@ bindings:
   KeyboardSettings: {combination: "Ctrl+K"}
   ToggleAdvancedSettings: {combination: "Ctrl+Alt+T"}
   ToggleFullscreen: {combination: "F11"}
+  ToggleAutoExpandFavoriteReconstructions: {combination: ~}
+  ToggleAutoExpandFavoriteDirectories: {combination: ~}
   AboutDialog: {combination: ~}
   NextTab: {combination: "Ctrl+PgDn", field_transparent: true}
   PreviousTab: {combination: "Ctrl+PgUp", field_transparent: true}

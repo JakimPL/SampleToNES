@@ -1,4 +1,5 @@
-from typing import Dict
+from pathlib import Path
+from typing import Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -19,6 +20,18 @@ class ApplicationState(BaseModel):
     collapsed_cards: Dict[str, bool] = Field(
         default_factory=dict,
         description="Collapsed state of each card, keyed by the card's tag.",
+    )
+    favorites_filters: Dict[str, bool] = Field(
+        default_factory=dict,
+        description="Whether each browser shows its favorites alone, keyed by the panel's tag.",
+    )
+    expanded_rows: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="The rows each browser stands open, keyed by the panel's tag.",
+    )
+    expanded_directories: List[Path] = Field(
+        default_factory=list,
+        description="The folders the Main tab's explorer stands open.",
     )
     current: Current = Field(
         default_factory=Current,

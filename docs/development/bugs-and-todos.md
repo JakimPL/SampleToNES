@@ -5,8 +5,10 @@
 * Interface scale
 * Tree navigation using keys
 * Waveform LOD for zooming
+* Alt for scrolling graphs
 * Drag and drop
 * Multiple Reconstruction views
+* In-project sample selection in Reconstruction view
 * Playing a fragment by clicking on a waveform
 * Note pitch shown as a transpose offset rather than a note name
 
@@ -17,7 +19,8 @@
 ### Workflow
 
 * Waveform construction preview for single-file conversion
-* Selection and trimming for a reconstruction (reconstruction editing)
+* Selection operations on a reconstruction
+* Reconstruction trimming
 
 ### Features
 
@@ -27,13 +30,14 @@
 ### Technical
 
 * API documentation
-* Code documentation (docstrings)
+* Code documentation
 * Backward compatibility: library/reconstruction upgrade scheme
 * Respecting FamiTracker limitations
-* Carrying the project comment into a Bitphase document, once the format holds it
 * Per-tab undo routing
-* Delete duplicated HistoryAction enumeration
+* In-application console
+* Improve performance of browser favorite scan of the entire tree per click
 
 ## Bugs
 
 * No refreshing after library generation
+* Misaligned dialog boxes sizes at initialization

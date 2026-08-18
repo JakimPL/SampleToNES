@@ -110,7 +110,6 @@ colors:
   file_wave: "#4fa6ff"
   file_library: "#89d185"
   file_reconstruction: "#dcdcaa"
-  file_muted: "#a8a8ae"
 
   favorite: "#ffd76e"
   favorite_child: "#ddd2ac"

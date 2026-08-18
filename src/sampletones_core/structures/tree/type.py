@@ -7,5 +7,6 @@ class NodeType(StrEnum):
     FILE = "file"
     LIBRARY = "library"
     GROUP = "group"
+    SAMPLE = "sample"
     GENERATOR = "generator"
     INSTRUCTION = "instruction"

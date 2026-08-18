@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $grid $grid">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="$background_top"/>
+      <stop offset="1" stop-color="$background_bottom"/>
+    </linearGradient>
+  </defs>
+  <rect width="$grid" height="$grid" rx="$corner_radius" fill="url(#background)"/>
+  <path d="$sine_path" fill="none" stroke="$sine_color" stroke-width="$wave_width" stroke-linecap="round"/>
+  <path d="$square_path" fill="none" stroke="$square_color" stroke-width="$wave_width"/>
+  <rect x="$rim_inset" y="$rim_inset" width="$rim_extent" height="$rim_extent" rx="$rim_radius" fill="none" stroke="$rim_color" stroke-opacity="$rim_opacity" stroke-width="$rim_width"/>
+</svg>

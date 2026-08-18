@@ -1,0 +1,315 @@
+from pathlib import Path
+from typing import Iterator, List
+
+import pytest
+
+from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
+from sampletones_core.configs.display import (
+    DISPLAY_SEPARATOR,
+    format_frequencies,
+    format_transformation,
+)
+from sampletones_core.structures.tree import NodeType
+
+from .conftest import (
+    CONFIGURATION_BRANCH_KEY,
+    HASH_B,
+    SAMPLE_BRANCH_KEY,
+    config_directory,
+    config_fields,
+    configuration_branch,
+    directory_children,
+    file_children,
+    group_children,
+    reconstruction_paths,
+    sample_branch,
+    sample_children,
+    write_reconstruction,
+)
+
+
+class TestRefreshTree:
+    def test_missing_directory_leaves_no_root(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        browser_manager.reconstructions_directory = tmp_path / "does_not_exist"
+        browser_manager.refresh_tree()
+        assert browser_manager.tree.root is None
+
+    def test_root_holds_both_branches(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        write_reconstruction(config_directory(tmp_path, config_fields()), "song")
+
+        browser_manager.refresh_tree()
+
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        assert list(group_children(root)) == [CONFIGURATION_BRANCH_KEY, SAMPLE_BRANCH_KEY]
+
+    def test_directory_holding_nothing_to_show_leaves_no_branches(
+        self,
+        browser_manager: BrowserManager,
+    ) -> None:
+        """Both views are headings over reconstructions, so neither is offered where there are none."""
+        browser_manager.refresh_tree()
+
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        assert root.children == ()
+
+    def test_the_configuration_branch_still_lists_a_folder_holding_no_reconstruction(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "empty").mkdir()
+
+        browser_manager.refresh_tree()
+
+        root = browser_manager.tree.get_root()
+        assert root is not None
+        assert list(group_children(root)) == [CONFIGURATION_BRANCH_KEY]
+        assert set(directory_children(configuration_branch(browser_manager))) == {"empty"}
+
+    def test_reconstruction_is_reachable_from_both_branches(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        path = write_reconstruction(config_directory(tmp_path, config_fields()), "song")
+
+        browser_manager.refresh_tree()
+
+        assert reconstruction_paths(configuration_branch(browser_manager)) == [path]
+        assert reconstruction_paths(sample_branch(browser_manager)) == [path]
+
+    def test_reads_every_folder_once(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Both branches are built from one reading, so no folder is listed twice per refresh."""
+        directory = config_directory(tmp_path, config_fields())
+        write_reconstruction(directory, "Amen Breaks", "cw_amen02_165")
+
+        listed: List[Path] = []
+        original_iterdir = Path.iterdir
+
+        def counting_iterdir(directory_path: Path) -> Iterator[Path]:
+            listed.append(directory_path)
+            return original_iterdir(directory_path)
+
+        monkeypatch.setattr(Path, "iterdir", counting_iterdir)
+        browser_manager.refresh_tree()
+
+        assert tmp_path in listed
+        assert sorted(listed) == sorted(set(listed))
+
+
+class TestBranchShape:
+    def test_a_lone_configuration_reads_as_one_row(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """One configuration needs no headings to be told apart, so its row carries the whole label."""
+        fields = config_fields()
+        write_reconstruction(config_directory(tmp_path, fields), "song")
+
+        browser_manager.refresh_tree()
+
+        configurations = configuration_branch(browser_manager)
+        folded = directory_children(configurations)[fields.display_name]
+
+        assert list(directory_children(configurations)) == [fields.display_name]
+        assert list(file_children(folded)) == ["song"]
+
+    def test_the_heading_telling_two_configurations_apart_stays(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """Two configurations sharing their rates are gathered by rate and read apart by spectrum."""
+        first = config_fields()
+        second = config_fields(transformation_gamma=1, config_hash=HASH_B)
+        write_reconstruction(config_directory(tmp_path, first), "song")
+        write_reconstruction(config_directory(tmp_path, second), "song")
+
+        browser_manager.refresh_tree()
+
+        configurations = configuration_branch(browser_manager)
+        frequencies = group_children(configurations)[format_frequencies(first.sr, first.nf)]
+
+        assert list(directory_children(frequencies)) == [
+            DISPLAY_SEPARATOR.join([format_transformation(first.sm, first.tg), first.gn]),
+            DISPLAY_SEPARATOR.join([format_transformation(second.sm, second.tg), second.gn]),
+        ]
+
+    def test_a_sample_reconstructed_once_reads_as_one_row(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        fields = config_fields()
+        write_reconstruction(config_directory(tmp_path, fields), "song")
+
+        browser_manager.refresh_tree()
+
+        samples = sample_branch(browser_manager)
+
+        assert list(file_children(samples)) == [DISPLAY_SEPARATOR.join(["song", fields.display_name])]
+
+    def test_a_sample_reconstructed_twice_keeps_its_row(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        first = config_fields()
+        second = config_fields(transformation_gamma=1, config_hash=HASH_B)
+        write_reconstruction(config_directory(tmp_path, first), "song")
+        write_reconstruction(config_directory(tmp_path, second), "song")
+
+        browser_manager.refresh_tree()
+
+        samples = sample_branch(browser_manager)
+
+        assert list(file_children(sample_children(samples)["song"])) == [
+            first.display_name,
+            second.display_name,
+        ]
+
+
+class TestNodesAt:
+    def test_a_reconstruction_is_answered_once_per_view(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """Both views hold the reconstruction, so a favorite change reaches a row in each of them."""
+        path = write_reconstruction(config_directory(tmp_path, config_fields()), "song")
+
+        browser_manager.refresh_tree()
+
+        nodes = browser_manager.nodes_at(path)
+        assert [node.node_type for node in nodes] == [NodeType.FILE, NodeType.FILE]
+        assert all(node.filepath == path for node in nodes)
+
+    def test_a_directory_is_answered_where_it_is_listed(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        """The configuration branch mirrors the disk, and it is the branch that lists folders."""
+        directory = config_directory(tmp_path, config_fields())
+        write_reconstruction(directory, "first")
+        write_reconstruction(directory, "second")
+
+        browser_manager.refresh_tree()
+
+        assert [node.filepath for node in browser_manager.nodes_at(directory)] == [directory]
+
+    def test_a_path_the_tree_holds_nowhere_is_answered_by_nothing(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        write_reconstruction(config_directory(tmp_path, config_fields()), "song")
+
+        browser_manager.refresh_tree()
+
+        assert browser_manager.nodes_at(tmp_path / "elsewhere.stn") == ()
+
+
+class TestSetReconstructionsDirectory:
+    def test_directory_is_taken_over(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        directory = tmp_path / "new"
+        directory.mkdir()
+        browser_manager.set_reconstructions_directory(directory)
+        assert browser_manager.reconstructions_directory == directory
+
+    def test_directory_change_refreshes_the_tree(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        directory = tmp_path / "populated"
+        directory.mkdir()
+        write_reconstruction(directory, "track")
+
+        browser_manager.set_reconstructions_directory(directory)
+
+        assert len(browser_manager.get_all_reconstruction_files()) == 1
+
+
+class TestGetAllReconstructionFiles:
+    def test_empty_directory_holds_no_reconstructions(self, browser_manager: BrowserManager) -> None:
+        browser_manager.refresh_tree()
+        assert browser_manager.get_all_reconstruction_files() == []
+
+    def test_missing_directory_holds_no_reconstructions(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        browser_manager.reconstructions_directory = tmp_path / "does_not_exist"
+        browser_manager.refresh_tree()
+        assert browser_manager.get_all_reconstruction_files() == []
+
+    def test_reconstructions_are_answered_in_path_order(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        root_path = write_reconstruction(tmp_path, "a")
+        nested_path = write_reconstruction(tmp_path / "sub", "b")
+
+        browser_manager.refresh_tree()
+
+        assert browser_manager.get_all_reconstruction_files() == sorted([root_path, nested_path])
+
+    def test_other_files_stay_out(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "audio.wav").touch()
+        path = write_reconstruction(tmp_path, "song")
+
+        browser_manager.refresh_tree()
+
+        assert browser_manager.get_all_reconstruction_files() == [path]
+
+    def test_folder_without_reconstructions_contributes_nothing(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        audio_only = tmp_path / "audio_only"
+        audio_only.mkdir()
+        (audio_only / "track.wav").touch()
+        (tmp_path / "empty").mkdir()
+
+        browser_manager.refresh_tree()
+
+        assert browser_manager.get_all_reconstruction_files() == []
+
+    def test_reconstruction_in_both_branches_is_answered_once(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        path = write_reconstruction(config_directory(tmp_path, config_fields()), "song")
+
+        browser_manager.refresh_tree()
+
+        assert browser_manager.get_all_reconstruction_files() == [path]

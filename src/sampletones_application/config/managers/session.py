@@ -53,8 +53,33 @@ class SessionManager:
     def set_card_collapsed(self, card_tag: str, collapsed: bool) -> None:
         self._state_manager.set_card_collapsed(card_tag, collapsed)
 
+    def is_favorites_filter_active(self, panel_tag: str) -> bool:
+        return self._state_manager.is_favorites_filter_active(panel_tag)
+
+    def set_favorites_filter_active(self, panel_tag: str, active: bool) -> None:
+        self._state_manager.set_favorites_filter_active(panel_tag, active)
+
+    def expanded_rows(self, panel_tag: str) -> Set[str]:
+        return self._state_manager.expanded_rows(panel_tag)
+
+    def set_expanded_rows(self, panel_tag: str, rows: Set[str]) -> None:
+        self._state_manager.set_expanded_rows(panel_tag, rows)
+
+    @property
+    def expanded_directories(self) -> Set[Path]:
+        return self._state_manager.expanded_directories
+
+    def set_expanded_directories(self, directories: Set[Path]) -> None:
+        self._state_manager.set_expanded_directories(directories)
+
     def toggle_autoplay(self) -> bool:
         return self._config_manager.toggle_autoplay()
+
+    def set_auto_expand_favorite_reconstructions(self, value: bool) -> None:
+        self._config_manager.set_auto_expand_favorite_reconstructions(value)
+
+    def set_auto_expand_favorite_directories(self, value: bool) -> None:
+        self._config_manager.set_auto_expand_favorite_directories(value)
 
     def set_follow_mode(self, value: FollowMode) -> None:
         self._config_manager.set_follow_mode(value)
@@ -225,6 +250,14 @@ class SessionManager:
     @property
     def autoplay(self) -> bool:
         return self._config_manager.autoplay
+
+    @property
+    def auto_expand_favorite_reconstructions(self) -> bool:
+        return self._config_manager.auto_expand_favorite_reconstructions
+
+    @property
+    def auto_expand_favorite_directories(self) -> bool:
+        return self._config_manager.auto_expand_favorite_directories
 
     @property
     def follow_mode(self) -> FollowMode:

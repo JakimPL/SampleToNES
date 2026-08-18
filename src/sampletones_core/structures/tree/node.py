@@ -7,6 +7,7 @@ from anytree import Node
 
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 
 from .type import NodeType
 
@@ -41,6 +42,41 @@ class FileSystemNode(TreeNode):
             self.name,
             filepath=self.filepath,
             node_type=self.node_type,
+            parent=parent,
+        )
+
+
+class ConfigNode(FileSystemNode):
+    """A filesystem node belonging to a reconstruction configuration, carrying the parsed fields.
+
+    A configuration directory encodes its fields in its name, and both the directory itself and the
+    reconstructions inside it are read as belonging to that configuration. Holding the parsed
+    :class:`ConfigDirectoryFields` on the node lets every reader — labels, tooltips, fonts — state
+    the configuration from the node it already has, whatever the node's own filename says.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        node_type: NodeType,
+        filepath: Path,
+        config: ConfigDirectoryFields,
+        parent: Optional[TreeNode] = None,
+    ) -> None:
+        super().__init__(
+            name,
+            node_type=node_type,
+            filepath=filepath,
+            parent=parent,
+        )
+        self.config = config
+
+    def copy(self, parent: Optional[TreeNode] = None) -> ConfigNode:
+        return ConfigNode(
+            self.name,
+            node_type=self.node_type,
+            filepath=self.filepath,
+            config=self.config,
             parent=parent,
         )
 

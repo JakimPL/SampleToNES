@@ -27,6 +27,8 @@ class MenuBarViewModel(BaseModel, frozen=True):
     loop_song: bool
     fullscreen: bool
     advanced_settings: bool
+    auto_expand_favorite_reconstructions: bool
+    auto_expand_favorite_directories: bool
 
     @property
     def undo_enabled(self) -> bool:

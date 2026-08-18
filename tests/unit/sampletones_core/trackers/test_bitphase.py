@@ -9,7 +9,6 @@ import pytest
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters import Features
-from sampletones_core.paths import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.trackers.format import TrackerFormat
@@ -23,6 +22,7 @@ from sampletones_core.trackers.request import (
     SampleExport,
 )
 from sampletones_core.trackers.scope import ExportScope
+from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
 
 NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60

@@ -5,7 +5,7 @@ from pytest import fixture
 
 from sampletones_application.paths import PALETTES_DIRECTORY
 from sampletones_shared.meta.source.modules import SourceModule, source_paths
-from sampletones_shared.paths import CONFIG_DIRECTORY
+from sampletones_shared.paths.resources import CONFIG_DIRECTORY
 from scripts.checks.palette_colors import dpg_module_helper
 from tests.suite.scripts import load_script
 from tests.suite.source import parse_source

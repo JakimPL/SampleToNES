@@ -7,7 +7,7 @@ import pytest
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key.tag import TagName
 from sampletones_shared.meta.source.modules import SourceModule, source_paths
-from sampletones_shared.paths import SOURCE_ROOT
+from sampletones_shared.paths.source import SOURCE_ROOT
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script

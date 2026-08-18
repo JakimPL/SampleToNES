@@ -11,6 +11,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
+    TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+    TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
 )
 from sampletones_application.ui import menu as menu_module
 from sampletones_application.ui.menu import MenuBar
@@ -119,6 +121,8 @@ def _state(
     *,
     reconstruction_loaded: bool = False,
     follow_mode: FollowMode = FollowMode.OFF,
+    auto_expand_favorite_reconstructions: bool = False,
+    auto_expand_favorite_directories: bool = False,
 ) -> MenuBarViewModel:
     return MenuBarViewModel(
         project_open=True,
@@ -143,6 +147,8 @@ def _state(
         channels=SequencerChannelsViewModel(muted=muted),
         fullscreen=False,
         advanced_settings=False,
+        auto_expand_favorite_reconstructions=auto_expand_favorite_reconstructions,
+        auto_expand_favorite_directories=auto_expand_favorite_directories,
     )
 
 
@@ -418,6 +424,73 @@ def _edit_bar(build_edit_actions: Callable[[], bool]) -> MenuBar:
     instance._edit_actions_frame = None
     instance._edit_action_items = ()
     return instance
+
+
+class TestAutoExpandFavoritesMenu:
+    """Each kind of favorite is answered on its own, so the submenu offers one item per kind."""
+
+    def test_both_kinds_are_offered(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_auto_expand_favorites_menu()
+
+        assert shortcuts.labels == ["Reconstructions", "Directories"]
+
+    def test_each_kind_carries_its_own_action(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_auto_expand_favorites_menu()
+
+        assert [item["shortcut_id"] for item in shortcuts.items] == [
+            ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
+            ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+        ]
+
+    def test_each_kind_is_offered_as_a_check(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_auto_expand_favorites_menu()
+
+        assert all(item["check"] for item in shortcuts.items)
+
+    def test_the_submenu_is_named_by_what_it_governs(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_auto_expand_favorites_menu()
+
+        assert [entry["label"] for entry in framework.menus] == ["Auto-expand favorites"]
+
+
+class TestAutoExpandFavoritesUpdate:
+    @pytest.mark.parametrize("reconstructions", [True, False])
+    @pytest.mark.parametrize("directories", [True, False])
+    def test_each_check_reads_the_preference_in_place(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+        reconstructions: bool,
+        directories: bool,
+    ) -> None:
+        menu_bar._update_auto_expand_favorites(
+            _state(
+                frozenset(),
+                auto_expand_favorite_reconstructions=reconstructions,
+                auto_expand_favorite_directories=directories,
+            )
+        )
+
+        assert framework.values == {
+            TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS: reconstructions,
+            TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES: directories,
+        }
 
 
 class TestEditActionsSection:

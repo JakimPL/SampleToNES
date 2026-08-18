@@ -8,6 +8,8 @@ import yaml
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.state import ApplicationStateManager
 from sampletones_application.config.session.state.state import ApplicationState
+from sampletones_application.tags.reconstructions import TAG_RECONSTRUCTIONS_BROWSER_PANEL
+from sampletones_application.tags.sequencer import TAG_SEQUENCER_BROWSER_PANEL
 
 
 @pytest.fixture
@@ -89,6 +91,63 @@ class TestApplicationStateManagerTabAndAdvanced:
         result = manager.toggle_show_advanced_settings()
         assert result == (not initial)
         assert manager.advanced_settings == (not initial)
+
+
+class TestApplicationStateManagerCardsAndFilters:
+    """The per-panel state a card keeps: whether it is collapsed, and what its browser narrows to."""
+
+    def test_a_card_no_run_has_touched_reads_expanded(self, manager: ApplicationStateManager) -> None:
+        assert manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL) is False
+
+    def test_a_card_reads_the_collapse_it_was_given(self, manager: ApplicationStateManager) -> None:
+        manager.set_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL, True)
+        assert manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL) is True
+
+    def test_a_browser_no_run_has_touched_shows_the_whole_tree(self, manager: ApplicationStateManager) -> None:
+        assert manager.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL) is False
+
+    def test_a_browser_reads_the_filter_it_was_given(self, manager: ApplicationStateManager) -> None:
+        manager.set_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL, True)
+        assert manager.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL) is True
+
+    def test_each_browser_keeps_the_filter_of_its_own_panel(self, manager: ApplicationStateManager) -> None:
+        manager.set_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL, True)
+
+        assert manager.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL) is False
+
+    def test_the_filter_and_the_collapse_of_one_panel_stand_apart(self, manager: ApplicationStateManager) -> None:
+        manager.set_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL, True)
+
+        assert manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL) is False
+
+    def test_a_browser_no_run_has_touched_stands_open_nowhere(self, manager: ApplicationStateManager) -> None:
+        assert manager.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL) == set()
+
+    def test_a_browser_reads_the_rows_it_was_given(self, manager: ApplicationStateManager) -> None:
+        manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.a", "row.b"})
+        assert manager.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL) == {"row.a", "row.b"}
+
+    def test_each_browser_keeps_the_rows_of_its_own_panel(self, manager: ApplicationStateManager) -> None:
+        manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.a"})
+
+        assert manager.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL) == set()
+
+    def test_an_explorer_no_run_has_touched_stands_open_nowhere(self, manager: ApplicationStateManager) -> None:
+        assert manager.expanded_directories == set()
+
+    def test_the_explorer_reads_the_folders_it_was_given(
+        self,
+        manager: ApplicationStateManager,
+        tmp_path: Path,
+    ) -> None:
+        manager.set_expanded_directories({tmp_path})
+        assert manager.expanded_directories == {tmp_path}
+
+    def test_the_rows_are_written_in_a_settled_order(self, manager: ApplicationStateManager) -> None:
+        """The file reads the same twice, whichever order the browser answered its rows in."""
+        manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.b", "row.a"})
+
+        assert manager.state.expanded_rows[TAG_SEQUENCER_BROWSER_PANEL] == ["row.a", "row.b"]
 
 
 class TestApplicationStateManagerCurrentPaths:
@@ -206,6 +265,41 @@ class TestApplicationStateManagerSave:
         reloaded = ApplicationStateManager(path)
 
         assert reloaded.advanced_settings == manager.advanced_settings
+
+    def test_save_and_reload_preserves_each_browser_filter(self, tmp_path: Path) -> None:
+        """The mode a browser was left in returns on the next launch, for that browser alone."""
+        path = tmp_path / "state.yaml"
+        manager = ApplicationStateManager(path)
+        manager.set_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL, True)
+        manager.save()
+
+        reloaded = ApplicationStateManager(path)
+
+        assert reloaded.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL) is True
+
+    def test_save_and_reload_preserves_the_rows_each_browser_stands_open(self, tmp_path: Path) -> None:
+        """The shape the reader unfolded returns on the next launch, for that browser alone."""
+        path = tmp_path / "state.yaml"
+        manager = ApplicationStateManager(path)
+        manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.a", "row.b"})
+        manager.save()
+
+        reloaded = ApplicationStateManager(path)
+
+        assert reloaded.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL) == {"row.a", "row.b"}
+        assert reloaded.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL) == set()
+
+    def test_save_and_reload_preserves_the_folders_the_explorer_stands_open(self, tmp_path: Path) -> None:
+        """The folders the reader walked into return on the next launch, read down to as they were."""
+        path = tmp_path / "state.yaml"
+        manager = ApplicationStateManager(path)
+        manager.set_expanded_directories({tmp_path / "music", tmp_path / "notes"})
+        manager.save()
+
+        reloaded = ApplicationStateManager(path)
+
+        assert reloaded.expanded_directories == {tmp_path / "music", tmp_path / "notes"}
+        assert reloaded.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL) is False
 
     @pytest.mark.parametrize("exception_type", [PermissionError, IsADirectoryError, OSError])
     def test_save_recovers_from_file_error(self, tmp_path: Path, exception_type: Type[OSError]) -> None:

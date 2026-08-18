@@ -109,3 +109,18 @@ The published bundles are **CPU-only**: CuPy, the CUDA runtime and the NVIDIA li
 are proprietary, and their EULA reserves redistribution to NVIDIA. GPU acceleration comes
 from installing _SampleToNES_ from PyPI with the `gpu` extra, which fetches CuPy and the
 CUDA components from their publishers straight to your machine.
+
+## Build-time tooling
+
+The application icons are drawn by `sampletones_assets.mark` and rasterized with
+[Pillow](https://pypi.org/project/Pillow/), which is under the
+[MIT-CMU license](https://github.com/python-pillow/Pillow/blob/main/LICENSE). Pillow belongs
+to the `assets` dependency group alone, so `pip`/`uv` installs it on the machine that
+generates the icons: it stays out of the wheel's dependency set, and PyInstaller is told to
+leave it out of the bundles. Both distributions carry the finished icon files, so Pillow's
+attribution clause — a condition on redistributing Pillow itself — rests with the build
+environment.
+
+The icons (`sampletones.svg`, `sampletones.png` and the multi-resolution `sampletones.ico`)
+are original _SampleToNES_ artwork and fall under the MIT License together with the rest of
+the source.

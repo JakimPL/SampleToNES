@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec, Tuple, Union
+from typing import Callable, Optional, ParamSpec, Sequence, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -19,7 +19,7 @@ from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.transaction import CoalesceKey
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
 from sampletones_application.logic.sequencer.clipboard import (
@@ -127,6 +127,7 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback, VoidCallback
@@ -157,6 +158,7 @@ class SequencerTabCoordinator:
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
         on_edit_sample_requested: StringCallback,
+        on_favorite_changed: Callable[[FileSystemNode], None],
         on_sample_reconstruction_replaced: Callable[[str, Reconstruction], None],
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
@@ -167,6 +169,7 @@ class SequencerTabCoordinator:
         self._history = history
         self._original_audio_locator = original_audio_locator
         self._on_edit_sample_requested = on_edit_sample_requested
+        self._on_favorite_changed = on_favorite_changed
         self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
@@ -204,6 +207,8 @@ class SequencerTabCoordinator:
             status_bar=status_bar,
             colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL),
+            initial_favorites_only=session_manager.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL),
+            initial_expanded_rows=session_manager.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL),
         )
         self._sequencer_tracker_logic: SequencerTrackerLogic = SequencerTrackerLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
@@ -626,6 +631,7 @@ class SequencerTabCoordinator:
 
     def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
+        self._sequencer_browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.on_replace_in_sequencer = self.replace_reconstruction
@@ -633,7 +639,7 @@ class SequencerTabCoordinator:
         self._sequencer_browser_panel.on_locate_original_audio = self._original_audio_locator.locate
         self._sequencer_browser_panel.on_refresh_tree = self._sequencer_browser_logic.refresh_tree
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
-        self._sequencer_tree_logic.on_favorite_changed = self._sequencer_browser_panel.update_favorite_indicator
+        self._sequencer_tree_logic.on_favorite_changed = self._on_favorite_changed
         self._sequencer_tree_logic.on_search_update_needed = self._sequencer_browser_panel.update_tree_visibility
         self._sequencer_tree_logic.on_autoplay_error = self._on_preview_error
 
@@ -658,6 +664,10 @@ class SequencerTabCoordinator:
         """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_browser_width()
+
+    def _on_browser_favorites_filter_changed(self, panel_tag: str, favorites_only: bool) -> None:
+        """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
+        self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
 
     def sync_responsive_layout(self) -> None:
         """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
@@ -946,6 +956,16 @@ class SequencerTabCoordinator:
 
     def refresh_browser(self) -> None:
         self._sequencer_browser_panel.refresh()
+
+    def save_browser_shape(self) -> None:
+        """Writes down the rows the browser stands open, so a later run brings them back."""
+        self._session_manager.set_expanded_rows(
+            self._sequencer_browser_panel.tag,
+            self._sequencer_browser_panel.expanded_rows,
+        )
+
+    def repaint_browser_favorites(self, nodes: Sequence[FileSystemNode]) -> None:
+        self._sequencer_browser_panel.update_favorite_indicators(nodes)
 
     def _on_song_changed(self) -> None:
         self._sequencer_tracker_logic.push_settings()

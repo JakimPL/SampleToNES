@@ -1,7 +1,7 @@
 import pytest
 
 from sampletones_shared.meta.source.packages import package_directory
-from sampletones_shared.paths import SOURCE_ROOT
+from sampletones_shared.paths.source import SOURCE_ROOT
 
 SHARED_PACKAGE = "sampletones_shared"
 APPLICATION_PACKAGE = "sampletones_application"

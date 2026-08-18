@@ -51,6 +51,27 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 
 `jeepney` is declared for Linux alone, so the modules that speak to the portal are imported where it is installed: the application probes for it before reaching them, and the root `conftest.py` keeps them out of collection elsewhere, leaving the Linux runs of the suite to cover them.
 
+## Application icon
+
+The icon suite in `src/sampletones_assets/icons` is generated from the mark declared beside it in
+`src/sampletones_assets/mark`: `mark.yaml` carries the geometry, colours and rasterization
+settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The
+package writes the whole suite — the vector `sampletones.svg` and the rasters the application
+ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `scripts/assets/icons.py`
+points it at the directory the icons are shipped from. Rasterization uses Pillow, declared in the
+`assets` dependency group.
+
+The whole suite is committed, so a plain checkout carries the icons the application opens its window
+with, and every wheel, bundle and test run finds them where they lie. `make icons` writes them again
+from the mark, and the `icons` pre-push hook writes them for a push that touches either directory,
+holding the committed files to what the mark describes. CI runs that same hook.
+
+Pillow is a build-time tool, and the bundle scripts pass `--exclude-module PIL` to hold it to that:
+`pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is
+installed, and PyInstaller follows that import into the bundle. The application reads its icons as
+files, so the exclusion spares every bundle Pillow's extension modules and the imaging libraries
+that come with them. `scripts/ci/checks/bundle.py` holds the release bundles to it.
+
 ## Linux (standalone executable)
 
 Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. Install them with `make system-deps` (or run `scripts/linux/build/dependencies.sh`), which holds the full list.

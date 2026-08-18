@@ -39,7 +39,7 @@ from sampletones_shared.meta.source.lookups import LookupSite, tree_lookups
 from sampletones_shared.meta.source.modules import discover_modules, module_name
 from sampletones_shared.meta.source.packages import package_directory
 from sampletones_shared.meta.source.values import EnumMembers, EnumTable
-from sampletones_shared.paths import SOURCE_ROOT
+from sampletones_shared.paths.source import SOURCE_ROOT
 
 EnumPredicate = Callable[[object], bool]
 

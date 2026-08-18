@@ -2,7 +2,7 @@ from pathlib import Path
 
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.paths import APPLICATION_STATE_PATH
-from sampletones_core.paths import APPLICATION_CONFIG_PATH
+from sampletones_shared.paths.user import APPLICATION_CONFIG_PATH
 
 
 class TestUserProfile:

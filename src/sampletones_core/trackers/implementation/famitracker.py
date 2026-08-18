@@ -11,7 +11,6 @@ from sampletones_core.formats.famitracker.specification.instruments import (
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
-from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_core.trackers.artifact import ExportArtifact
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.request import (
@@ -20,6 +19,7 @@ from sampletones_core.trackers.request import (
     SampleExport,
 )
 from sampletones_core.trackers.scope import ExportScope
+from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_shared.utils.system.paths import get_filename
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)

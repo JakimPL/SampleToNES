@@ -85,6 +85,14 @@ class ShortcutId(Enum):
     DISPLAY_SETTINGS = ("DisplaySettings", ShortcutCategory.APPLICATION)
     KEYBOARD_SETTINGS = ("KeyboardSettings", ShortcutCategory.APPLICATION)
     TOGGLE_ADVANCED_SETTINGS = ("ToggleAdvancedSettings", ShortcutCategory.APPLICATION)
+    TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS = (
+        "ToggleAutoExpandFavoriteReconstructions",
+        ShortcutCategory.APPLICATION,
+    )
+    TOGGLE_AUTO_EXPAND_FAVORITE_DIRECTORIES = (
+        "ToggleAutoExpandFavoriteDirectories",
+        ShortcutCategory.APPLICATION,
+    )
     TOGGLE_FULLSCREEN = ("ToggleFullscreen", ShortcutCategory.APPLICATION)
     ABOUT_DIALOG = ("AboutDialog", ShortcutCategory.APPLICATION)
     NEXT_TAB = ("NextTab", ShortcutCategory.APPLICATION)

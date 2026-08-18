@@ -28,6 +28,7 @@ else
 fi
 
 bash "$SCRIPT_DIR/preflight.sh" "$@"
+bash "$SCRIPT_DIR/icons.sh"
 
 if [[ -e "${PROJECT_DIR}/bin/sampletones" ]]; then
     echo "Removing the previous artifact: ./bin/sampletones"
@@ -44,6 +45,7 @@ echo "Building executable..."
     --add-data "src/sampletones_assets/fonts:assets/fonts" \
     --add-data "src/sampletones_config:config" \
     --copy-metadata sampletones \
+    --exclude-module PIL \
     "${RELEASE_HOOK_ARGS[@]}" \
     "src/sampletones/__main__.py"
 

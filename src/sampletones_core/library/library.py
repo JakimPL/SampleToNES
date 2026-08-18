@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.configs import Config
 from sampletones_core.fft import Window
-from sampletones_core.paths import LIBRARY_DIRECTORY
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 
 from .data import InstructionLibraryData
 from .key import InstructionLibraryKey

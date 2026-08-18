@@ -29,6 +29,7 @@ class TreeElements(AbstractElement):
     SEARCH = "search"
     FILTER = "filter"
     CLEAR_SEARCH = "clear_search"
+    FAVORITES_ONLY = "favorites_only"
 
 
 class ContextElements(AbstractElement):
@@ -112,6 +113,9 @@ class MenuElements(AbstractElement):
     GROUP_VIEW = "group_view"
     ITEM_VIEW_SHOW_ADVANCED_SETTINGS = "item_view_show_advanced_settings"
     ITEM_VIEW_FULLSCREEN = "item_view_fullscreen"
+    GROUP_VIEW_AUTO_EXPAND_FAVORITES = "group_view_auto_expand_favorites"
+    ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS = "item_view_auto_expand_favorite_reconstructions"
+    ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES = "item_view_auto_expand_favorite_directories"
     ITEM_VIEW_DISPLAY_SETTINGS = "item_view_display_settings"
     ITEM_VIEW_KEYBOARD_SETTINGS = "item_view_keyboard_settings"
     GROUP_HELP = "group_help"
@@ -129,6 +133,7 @@ class StatusElements(AbstractElement):
     NODE_LIBRARY = "node_library"
     TREE_SEARCH = "tree_search"
     CLEAR_SEARCH = "clear_search"
+    FAVORITES_ONLY = "favorites_only"
     INPUT = "input"
     COMBO = "combo"
     NODE_DIRECTORY = "node_directory"
@@ -160,6 +165,7 @@ class GraphElements(AbstractElement):
 
 class GlobalMessageElements(AbstractElement):
     TREE_NO_RESULTS = "tree_no_results"
+    TREE_NO_FAVORITES = "tree_no_favorites"
     INVALID_METADATA_ERROR = "invalid_metadata_error"
     RECONSTRUCTION_NO_DATA = "reconstruction_no_data"
     RECONSTRUCTION_SAVED_SUCCESSFULLY = "reconstruction_saved_successfully"

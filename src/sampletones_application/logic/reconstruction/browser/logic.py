@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from sampletones_application.config.managers.config import ConfigManager
-from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_core.structures.tree import Tree
 from sampletones_shared.utils.system.filesystem import remove_path
 

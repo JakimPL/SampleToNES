@@ -133,6 +133,20 @@ class ApplicationConfigManager:
         return self.config.playback.autoplay
 
     @property
+    def auto_expand_favorite_reconstructions(self) -> bool:
+        return self.config.browser.auto_expand_favorite_reconstructions
+
+    def set_auto_expand_favorite_reconstructions(self, value: bool) -> None:
+        self.config.browser.auto_expand_favorite_reconstructions = value
+
+    @property
+    def auto_expand_favorite_directories(self) -> bool:
+        return self.config.browser.auto_expand_favorite_directories
+
+    def set_auto_expand_favorite_directories(self, value: bool) -> None:
+        self.config.browser.auto_expand_favorite_directories = value
+
+    @property
     def follow_mode(self) -> FollowMode:
         return self.config.playback.follow_mode
 

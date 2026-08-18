@@ -1,14 +1,11 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import AbstractSet, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
-)
-from sampletones_application.tags.general import (
-    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
 )
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
@@ -18,32 +15,29 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_TREE,
     TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
 )
-from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.context_menu import context_menu
-from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
-from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
-from sampletones_application.ui.elements.tree.state import TreeNodeState
-from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.parallelization.thread import concurrent
-from sampletones_core.structures.tree import (
-    FileSystemNode,
-    NodeType,
-    Tree,
-    TreeNode,
-    TreeTraversal,
-    traverse,
+from sampletones_application.ui.elements.tree.tags import FileBrowserTags
+from sampletones_application.ui.panels.shared.browser import (
+    GUIReconstructionBrowserPanel,
 )
+from sampletones_core.structures.tree import FileSystemNode, Tree
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import PathCallback, VoidCallback
+from sampletones_shared.types.callback import PathCallback
 
 
-class GUIBrowserPanel(GUITreePanel):
-    _MONOSPACE_CONFIG_NODES: bool = True
+class GUIReconstructionsBrowserPanel(GUIReconstructionBrowserPanel):
+    """The Reconstructions tab's browser, whose reconstructions open in the tab beside it."""
+
+    _tags: FileBrowserTags = FileBrowserTags(
+        panel=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
+        tree=TAG_RECONSTRUCTIONS_BROWSER_TREE,
+        window_tree=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
+        group_tree=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE,
+        group_controls=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
+        button_refresh=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+    )
 
     def __init__(
         self,
@@ -54,247 +48,46 @@ class GUIBrowserPanel(GUITreePanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
-        is_operation_active: Callable[[], bool],
-        initial_collapsed: bool = False,
+        initial_collapsed: bool,
+        initial_favorites_only: bool,
+        initial_expanded_rows: AbstractSet[str],
     ) -> None:
         self._language_manager = language_manager
-        self.on_refresh_tree: Optional[VoidCallback] = None
-        self.on_reconstruct_file: Optional[VoidCallback] = None
-        self.on_reconstruct_directory: Optional[VoidCallback] = None
+
+        super().__init__(
+            tree=tree,
+            tree_logic=tree_logic,
+            scheduling=scheduling,
+            language_manager=language_manager,
+            status_bar=status_bar,
+            colors=colors,
+            initial_collapsed=initial_collapsed,
+            initial_favorites_only=initial_favorites_only,
+            initial_expanded_rows=initial_expanded_rows,
+        )
+
         self.on_load_reconstruction: Optional[PathCallback] = None
         self.on_reconstruction_remove_requested: Optional[PathCallback] = None
         self.on_directory_remove_requested: Optional[PathCallback] = None
 
-        self._is_operation_active = is_operation_active
+    @property
+    def refresh_button_label(self) -> str:
+        return self._language_manager["reconstructions.browser.label.refresh_button"]
 
-        self._lbl_reconstructions = language_manager["reconstructions.browser.label.reconstructions_tree"]
+    @property
+    def refresh_status_message(self) -> str:
+        return self._language_manager["reconstructions.browser.message.status_refresh"]
 
-        self._node_handlers: Dict[NodeType, NodeHandler]
+    def _open_reconstruction(self, node: FileSystemNode) -> None:
+        self._load_reconstruction(node)
 
-        super().__init__(
-            tree=tree,
-            tag=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
-            tree_tag=TAG_RECONSTRUCTIONS_BROWSER_TREE,
-            tree_logic=tree_logic,
-            scheduling=scheduling,
-            search_label=language_manager["global.browser.label.search"],
-            language_manager=language_manager,
-            status_bar=status_bar,
-            colors=colors,
-        )
+    def _add_directory_context_menu_items(self, node: FileSystemNode) -> None:
+        self._add_context_menu_remove_directory_item(node)
 
-        self._enable_horizontal_collapse(
-            initial_collapsed=initial_collapsed,
-            side=CollapseAxis.HORIZONTAL_LEFT,
-        )
-
-    def create_panel(self, parent: str) -> None:
-        self._setup_handlers()
-        with (
-            dpg.child_window(
-                tag=self.tag,
-                width=self.width,
-                height=self.height,
-                parent=parent,
-                border=False,
-            ),
-            self._collapsible_section(
-                self._lbl_reconstructions,
-                glyph=self._glyphs.headers.reconstruction,
-            ),
-        ):
-            self._create_buttons()
-            dpg.add_separator()
-            self._create_tree_window()
-
-        self._create_detail_tooltip(TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE)
-        self.rebuild_tree()
-
-    def _setup_handlers(self) -> None:
-        self._node_handlers = {
-            NodeType.DIRECTORY: NodeHandler(
-                tag=self._get_node_handler_tag(NodeType.DIRECTORY),
-                node_type=NodeType.DIRECTORY,
-                item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_directory_node(),
-            ),
-            NodeType.FILE: NodeHandler(
-                tag=self._get_node_handler_tag(NodeType.FILE),
-                node_type=NodeType.FILE,
-                item_click_callback=self._on_reconstruction_node_clicked,
-                item_double_click_callback=self._on_reconstruction_node_double_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_reconstruction_node(),
-            ),
-        }
-
-        super()._setup_handlers()
-
-    def _create_buttons(self) -> None:
-        with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS):
-            GUIButton(
-                tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
-                label=self._language_manager["reconstructions.browser.label.refresh_button"],
-                width=-1,
-                callback=self.rebuild_tree,
-                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
-            )
-        self._status_bar.bind_to_item(
-            TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
-            self._language_manager["reconstructions.browser.message.status_refresh"],
-        )
-
-    def _create_tree_window(self) -> None:
-        self.create_search(self._body_container)
-        with (
-            dpg.child_window(
-                tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
-                horizontal_scrollbar=True,
-            ),
-            dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE),
-            dpg.tree_node(
-                label=self._lbl_reconstructions,
-                tag=self.tree_tag,
-                default_open=True,
-            ),
-        ):
-            pass
-
-    def refresh(self) -> None:
-        self.rebuild_tree()
-
-    @concurrent(wait=False, method_bound=True)
-    def rebuild_tree(self) -> None:
-        self._launch_rebuild(
-            lambda: self.call(self.on_refresh_tree),
-            lambda: self._collect_specs(self.tree_tag),
-            root_tag=self.tree_tag,
-        )
-
-    def _has_relevant_content(self, node: TreeNode) -> bool:
-        if node.node_type == NodeType.FILE:
-            return True
-
-        return bool(node.children)
-
-    @traverse(TreeTraversal.BFS)
-    def _build_tree_node(
-        self,
-        node: TreeNode,
-        state: TreeNodeState,
-        **kwargs: Any,
-    ) -> None:
-        node_tag = self._generate_node_tag(node)
-        if node.node_type == NodeType.ROOT:
-            return
-
-        if not isinstance(node, FileSystemNode):
-            return
-
-        is_favorite = self._logic.is_node_favorite(node)
-        state.has_favorite_ancestor |= is_favorite
-        if node.node_type == NodeType.DIRECTORY:
-            should_expand = self._should_expand_node(node)
-            self._append_spec(
-                node=node,
-                node_tag=node_tag,
-                parent=state.parent,
-                should_expand=should_expand,
-                has_favorite_ancestor=state.has_favorite_ancestor,
-            )
-        else:
-            self._append_spec(
-                node=node,
-                node_tag=node_tag,
-                parent=state.parent,
-                leaf=True,
-                has_favorite_ancestor=state.has_favorite_ancestor,
-            )
-
-        state.parent = node_tag
-
-    def set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(
-            TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE,
-            enabled=enabled,
-        )
-        dpg_configure_item(
-            TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
-            enabled=enabled,
-        )
-
-    def _reconstruct_file(self) -> None:
-        self.call(self.on_reconstruct_file)
-
-    def _reconstruct_directory(self) -> None:
-        self.call(self.on_reconstruct_directory)
-
-    def _on_directory_node_clicked(
-        self,
-        _sender: Sender,
-        app_data: Tuple[int, int],
-        user_data: Tuple[FileSystemNode, str],
-    ) -> None:
-        mouse_button, _ = app_data
-        node, _ = user_data
-        if mouse_button == dpg.mvMouseButton_Right:
-            return self._show_directory_context_menu(node)
-
-        return None
-
-    def _on_reconstruction_node_clicked(
-        self,
-        _sender: Sender,
-        app_data: Tuple[int, int],
-        user_data: Tuple[FileSystemNode, str],
-    ) -> None:
-        mouse_button, _ = app_data
-        node, node_tag = user_data
-        if mouse_button == dpg.mvMouseButton_Left:
-            self._logic.request_autoplay(node)
-
-        if mouse_button == dpg.mvMouseButton_Right:
-            self._show_reconstruction_context_menu(node, node_tag)
-
-    def _on_reconstruction_node_double_clicked(
-        self,
-        _sender: Sender,
-        app_data: Tuple[int, int],
-        user_data: Tuple[FileSystemNode, str],
-    ) -> None:
-        mouse_button, _ = app_data
-        node, _ = user_data
-        if mouse_button == dpg.mvMouseButton_Left:
-            self._logic.cancel_autoplay()
-            self._load_reconstruction(node)
-
-    def _show_directory_context_menu(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
-            return
-
-        with context_menu():
-            self._add_context_menu_text(node)
-            self._add_context_menu_details(node)
-            self._add_context_menu_path_items(node.filepath)
-            self._add_context_menu_remove_directory_item(node)
-            self._add_context_menu_favorite_item(node)
-
-    def _show_reconstruction_context_menu(
-        self,
-        node: FileSystemNode,
-        _node_tag: str,
-    ) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
-            return
-
-        with context_menu():
-            self._add_context_menu_text(node)
-            self._add_context_menu_play_item(node)
-            self._add_context_menu_load_reconstruction_item(node)
-            self._add_context_menu_remove_reconstruction_item(node)
-            self._add_context_menu_sequencer_items(node)
-            self._add_context_menu_path_items(node.filepath)
-            self._add_context_menu_locate_audio_item(node)
-            self._add_context_menu_favorite_item(node)
+    def _add_reconstruction_context_menu_items(self, node: FileSystemNode) -> None:
+        self._add_context_menu_load_reconstruction_item(node)
+        self._add_context_menu_remove_reconstruction_item(node)
+        self._add_context_menu_sequencer_items(node)
 
     def _add_context_menu_load_reconstruction_item(
         self,

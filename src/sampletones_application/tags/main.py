@@ -61,12 +61,6 @@ TAG_MAIN_EXPLORER_BUTTON_REFRESH = TagName(
     Widget.BUTTON,
     "refresh",
 )
-TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL = TagName(
-    Page.MAIN,
-    Panel.EXPLORER,
-    Widget.BUTTON,
-    "collapse_all",
-)
 TAG_MAIN_CONFIG_PANEL = TagName(
     Page.MAIN,
     Panel.CONFIG,

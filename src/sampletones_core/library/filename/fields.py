@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.field_aliases import ALIASES
-from sampletones_core.paths import EXT_FILE_LIBRARY
+from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import HASH_PATTERN
 from sampletones_shared.utils.system.paths import get_filename

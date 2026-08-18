@@ -46,7 +46,7 @@ from sampletones_application.logic.project.title.document import (
     ReconstructionTitlePart,
     document_title,
 )
-from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.render import SongRenderLogic
 from sampletones_application.parameters import (
@@ -81,6 +81,7 @@ from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_ABOUT,
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+    TAG_GLOBAL_TEXTURE_LOGO,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
     TAG_GLOBAL_THEME_PLAYER_BUTTON,
@@ -141,9 +142,9 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
-from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
@@ -155,6 +156,7 @@ from sampletones_shared.application import (
 )
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.types.application import Sender
 
 SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"
@@ -389,11 +391,9 @@ class Application:
             export_service=self.export_service,
             tracker_backends=self.tracker_backends,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
-            on_reconstruct_file=self._reconstruct_file_dialog,
-            on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
+            on_favorite_changed=self._repaint_reconstruction_favorites,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
-            is_operation_active=self._is_operation_active,
             original_audio_locator=self._original_audio_locator,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -457,6 +457,7 @@ class Application:
             dialogs=self.dialogs,
             status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
+            on_favorite_changed=self._repaint_reconstruction_favorites,
             on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
@@ -619,6 +620,8 @@ class Application:
             display_settings=self._display_coordinator.open,
             keyboard_settings=self._keybindings_coordinator.open,
             toggle_advanced_settings=self._toggle_advanced_settings,
+            toggle_auto_expand_favorite_reconstructions=self._toggle_auto_expand_favorite_reconstructions,
+            toggle_auto_expand_favorite_directories=self._toggle_auto_expand_favorite_directories,
             toggle_fullscreen=self._shell.toggle_fullscreen,
             about=self._open_about_dialog,
             next_tab=self._next_tab,
@@ -715,6 +718,8 @@ class Application:
             channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
+            auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
+            auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
 
     def _is_sequencer_tab_current(self) -> bool:
@@ -754,6 +759,8 @@ class Application:
             channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
+            auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
+            auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
 
     def _on_history_changed(self) -> None:
@@ -804,6 +811,18 @@ class Application:
         _user_data: Optional[Any] = None,
     ) -> None:
         self._main_tab.toggle_advanced_settings()
+        self._update_menu()
+
+    def _toggle_auto_expand_favorite_reconstructions(self) -> None:
+        self.session_manager.set_auto_expand_favorite_reconstructions(
+            not self.session_manager.auto_expand_favorite_reconstructions
+        )
+        self._update_menu()
+
+    def _toggle_auto_expand_favorite_directories(self) -> None:
+        self.session_manager.set_auto_expand_favorite_directories(
+            not self.session_manager.auto_expand_favorite_directories
+        )
         self._update_menu()
 
     def _reconstruct_file_dialog(self) -> None:
@@ -927,6 +946,16 @@ class Application:
     def _refresh_reconstruction_trees(self) -> None:
         self._reconstructions_tab.refresh_browser()
         self._sequencer_tab.refresh_browser()
+
+    def _repaint_reconstruction_favorites(self, node: FileSystemNode) -> None:
+        """Repaints the toggled path in both browsers, whichever tab the star was clicked in.
+
+        The two browsers render one tree and read one set of favorites, so the rows standing for the
+        toggled path are read once here and handed to each of them.
+        """
+        nodes = self.browser_manager.nodes_at(node.filepath)
+        self._reconstructions_tab.repaint_browser_favorites(nodes)
+        self._sequencer_tab.repaint_browser_favorites(nodes)
 
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)
@@ -1144,7 +1173,8 @@ class Application:
         )
 
     def _open_about_dialog(self) -> None:
-        """Presents the application name, version, description, and authorship in a modal notice."""
+        """Presents the application's mark beside its name, version, description, and authorship."""
+        about = self.layout.general.dialogs.about
         description = self.language_manager["global.dialog.message.about_description"]
         author_line = self.language_manager["global.dialog.template.about_author"].format(
             author=SAMPLETONES_AUTHOR,
@@ -1152,21 +1182,26 @@ class Application:
         )
 
         def content(parent: str) -> None:
-            name_text = dpg.add_text(SAMPLETONES_NAME_VERSION, parent=parent)
-            dpg.add_separator(parent=parent)
-            FontRegistry.bind_to_item(name_text, Font.BOLD_LARGE)
-            dpg.add_text(
-                description,
-                parent=parent,
-                wrap=self.dialogs.default_wrap,
-            )
-            author_text = dpg.add_text(author_line, parent=parent)
-            FontRegistry.bind_to_item(author_text, Font.ITALIC)
+            with dpg.group(horizontal=True, parent=parent):
+                dpg.add_image(
+                    TAG_GLOBAL_TEXTURE_LOGO,
+                    width=about.logo,
+                    height=about.logo,
+                )
+                with dpg.group():
+                    name_text = dpg.add_text(SAMPLETONES_NAME_VERSION)
+                    FontRegistry.bind_to_item(name_text, Font.BOLD_TITLE)
+                    dpg.add_separator()
+                    dpg.add_text(description, wrap=about.text_wrap)
+                    author_text = dpg.add_text(author_line)
+                    FontRegistry.bind_to_item(author_text, Font.ITALIC)
 
         self.dialogs.show_modal(
             get_dialog_tag(TAG_GLOBAL_DIALOG_ABOUT),
             self.language_manager["global.dialog.title.about"],
             content,
+            width=about.width,
+            height=about.height,
         )
 
     def _refresh_audio_devices(self) -> None:
@@ -1326,9 +1361,21 @@ class Application:
     def _persist_application_state(self) -> None:
         self.session_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
+        self._save_browser_shapes()
         current_tab = self._shell.get_current_tab()
         self.session_manager.set_current_tab(current_tab)
         self.session_manager.save_config()
+
+    def _save_browser_shapes(self) -> None:
+        """Asks every tab holding a tree to write down which of its rows stand open.
+
+        The shape belongs to the browser showing it, and it is read the once here rather than followed
+        row by row, a pass over the rows running on the tree worker.
+        """
+        self._main_tab.save_browser_shape()
+        self._reconstructions_tab.save_browser_shape()
+        self._sequencer_tab.save_browser_shape()
+        self._instructions_tab.save_browser_shape()
 
     def _build_edit_actions(self) -> bool:
         """States the actions of the grid holding the cursor into the Edit menu being built."""

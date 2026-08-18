@@ -1,7 +1,7 @@
 import importlib.util
 from types import ModuleType
 
-from sampletones_shared.paths import REPOSITORY_ROOT
+from sampletones_shared.paths.source import REPOSITORY_ROOT
 
 
 def load_script(relative_path: str) -> ModuleType:

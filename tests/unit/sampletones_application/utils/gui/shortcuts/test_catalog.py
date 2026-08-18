@@ -6,7 +6,7 @@ from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.paths import KEYBINDINGS_DIRECTORY
 from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_core.paths import EXT_FILE_YAML
+from sampletones_shared.paths.extensions import EXT_FILE_YAML
 
 SHIPPED_FILE = KEYBINDINGS_DIRECTORY / f"{DEFAULT_SCHEME_NAME}{EXT_FILE_YAML}"
 SHIPPED_SCHEME_NAMES = ShortcutCatalog.load(KEYBINDINGS_DIRECTORY).names

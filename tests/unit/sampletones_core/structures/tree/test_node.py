@@ -3,7 +3,9 @@ from pathlib import Path
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree.node import (
+    ConfigNode,
     FileSystemNode,
     GeneratorNode,
     LibraryNode,
@@ -12,6 +14,7 @@ from sampletones_core.structures.tree.node import (
 from sampletones_core.structures.tree.type import NodeType
 
 LIBRARY_KEY = InstructionLibraryKey.from_config(Config())
+CONFIG_FIELDS = ConfigDirectoryFields.from_config(Config())
 
 
 class TestTreeNode:
@@ -59,6 +62,43 @@ class TestFileSystemNode:
         copied = node.copy()
         assert copied.filepath == path
         assert copied.node_type == NodeType.FILE
+
+
+class TestConfigNode:
+    def test_config_is_stored(self) -> None:
+        node = ConfigNode(
+            "config",
+            NodeType.DIRECTORY,
+            filepath=Path("/reconstructions") / CONFIG_FIELDS.directory_name,
+            config=CONFIG_FIELDS,
+        )
+        assert node.config == CONFIG_FIELDS
+
+    def test_config_survives_a_filename_of_its_own(self) -> None:
+        node = ConfigNode(
+            "variant",
+            NodeType.FILE,
+            filepath=Path("/reconstructions") / CONFIG_FIELDS.directory_name / "song.stn",
+            config=CONFIG_FIELDS,
+        )
+        assert node.config == CONFIG_FIELDS
+
+    def test_copy_preserves_config_filepath_and_type(self) -> None:
+        path = Path("/reconstructions") / CONFIG_FIELDS.directory_name
+        node = ConfigNode("config", NodeType.DIRECTORY, filepath=path, config=CONFIG_FIELDS)
+        copied = node.copy()
+        assert copied.config == CONFIG_FIELDS
+        assert copied.filepath == path
+        assert copied.node_type == NodeType.DIRECTORY
+
+    def test_node_is_a_file_system_node(self) -> None:
+        node = ConfigNode(
+            "config",
+            NodeType.DIRECTORY,
+            filepath=Path("/reconstructions") / CONFIG_FIELDS.directory_name,
+            config=CONFIG_FIELDS,
+        )
+        assert isinstance(node, FileSystemNode)
 
 
 class TestLibraryNode:

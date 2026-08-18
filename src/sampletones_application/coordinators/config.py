@@ -26,9 +26,9 @@ from sampletones_application.utils.file_dialogs.api import (
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_core.paths import EXT_FILE_JSON
 from sampletones_shared.application import SAMPLETONES_VERSION
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_JSON
 from sampletones_shared.utils.validation import flatten_location
 
 _LOAD_FAILURE_MESSAGES: Dict[ConfigLoadFailureReason, GlobalMessageElements] = {

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from sampletones_core.audio.io import write_wave
-from sampletones_core.paths import EXT_FILE_WAVE
+from sampletones_shared.paths.extensions import EXT_FILE_WAVE
 from sampletones_shared.utils.system.paths import get_filename
 
 from .item import CorpusItem

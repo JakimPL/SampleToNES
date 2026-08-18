@@ -28,7 +28,7 @@ from sampletones_shared.logger import logger
 from sampletones_shared.meta.source.modules import SourceModule, discover_modules
 from sampletones_shared.meta.source.nodes import terminal_name
 from sampletones_shared.meta.source.packages import package_directory
-from sampletones_shared.paths import CONFIG_DIRECTORY
+from sampletones_shared.paths.resources import CONFIG_DIRECTORY
 
 APPLICATION_PACKAGE: Final[Path] = package_directory("sampletones_application")
 

@@ -10,7 +10,7 @@ from sampletones_core.constants.algorithm import (
 )
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
 from sampletones_core.data import DataModel
-from sampletones_core.paths import LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
+from sampletones_shared.paths.user import LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 
 
 class GeneralConfig(DataModel):

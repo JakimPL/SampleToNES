@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sampletones_shared.paths import SOURCE_ROOT
+from sampletones_shared.paths.source import SOURCE_ROOT
 
 
 def package_directory(name: str, *parts: str) -> Path:

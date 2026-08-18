@@ -58,6 +58,7 @@ The [**development**](development/) section is for contributors.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
 - [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
 - [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
+- [Reconstruction browser](development/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
 - [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
 - [Dependencies](development/dependencies.md) — the libraries _SampleToNES_ builds on.

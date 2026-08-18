@@ -83,6 +83,8 @@ class TestUndoRedoEnablement(BaseTestSuite):
             channels=EVERY_CHANNEL_AUDIBLE,
             fullscreen=False,
             advanced_settings=False,
+            auto_expand_favorite_reconstructions=False,
+            auto_expand_favorite_directories=False,
         )
 
         assert view_model.undo_enabled is case.undo_enabled
@@ -120,6 +122,8 @@ class TestSaveEnablementIndependentOfLoaded:
             channels=EVERY_CHANNEL_AUDIBLE,
             fullscreen=False,
             advanced_settings=False,
+            auto_expand_favorite_reconstructions=False,
+            auto_expand_favorite_directories=False,
         )
 
         assert view_model.reconstruction_saveable is reconstruction_saveable

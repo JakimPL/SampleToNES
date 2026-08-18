@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Final
 
-from sampletones_core.paths import USER_PATH_CONFIG
-from sampletones_shared.paths import CONFIG_DIRECTORY
+from sampletones_shared.paths.resources import CONFIG_DIRECTORY
+from sampletones_shared.paths.user import USER_PATH_CONFIG
 
 APPLICATION_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "application"
 BEHAVIOR_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "behavior"

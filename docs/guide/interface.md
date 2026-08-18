@@ -16,7 +16,8 @@ begin.
 
 Pick an audio file — or a whole folder — in the **Filesystem** browser on the
 left, set up how the reconstruction is done in the centre, and click **Convert
-sample** (or **Convert directory** for a folder). The
+sample** (or **Convert directory** for a folder). The browser opens the folders you
+were last working in, and **Collapse all** folds them away again. The
 [instruction library](../concepts/instruction-library.md) for your settings is
 built automatically the first time it is needed, so you can convert straight away.
 While it runs, the panel names the file going in and where the result is going, and
@@ -37,11 +38,28 @@ reveals. [Configuration](configuration.md) explains each one.
 The **Reconstructions** tab is where you audition a reconstruction against the
 original, fine-tune it, and export it.
 
-Open a saved reconstruction from the list on the left; if the current one has
-unsaved edits, you are asked whether to save it first. You can play it back and
+Open a saved reconstruction from the **Browser** on the left, which offers the
+same files two ways: **By configuration** groups them by the settings they were
+made with, and **By sample** gathers every version of one source audio together.
+If the current reconstruction has unsaved edits, you are asked whether to save it
+first. You can play it back and
 switch **Play audio source:** between **Reconstruction** and **Original audio** to
 compare the two, and **Locate original audio** re-links the source file if it has
 moved.
+
+To keep the reconstructions you return to within reach, right-click one — or a
+whole folder — and choose **Mark as favorite**, which highlights it in both views.
+Tick **Favorites only** under the search box to narrow the browser to your
+favorites and everything inside them. The browser keeps the folders you had open
+while it narrows, so switching the tick on and off leaves the tree as you left it.
+If you would rather it opened its way down to each favorite for you, turn that on
+under **View ▸ Auto-expand favorites**, which answers for reconstructions and for
+folders separately. It opens the way down each time you tick **Favorites only**,
+and unticking folds those rows back.
+
+**Collapse all**, beside the refresh button, folds the whole tree away in one
+click. Whatever you leave open is remembered, so the tree comes back the way you
+left it the next time you start the application.
 
 To get your results out, use the **Reconstruction** menu. **Export instruments ▸
 FamiTracker instruments...** writes one `.fti` per channel, **Bitphase
