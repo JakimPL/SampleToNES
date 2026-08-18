@@ -48,7 +48,7 @@ def _panel() -> GUISequencerBrowserPanel:
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = PANEL_TAG
-    panel._expanded_rows = set()
+    panel._state_expansion_memory(set())
     panel._language_manager = FakeLanguageManager(TEXTS)
     panel._colors = TreeColors(
         favorite=TEXT_COLOR,

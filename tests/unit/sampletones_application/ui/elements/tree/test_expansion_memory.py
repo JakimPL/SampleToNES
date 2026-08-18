@@ -10,11 +10,12 @@ from tests.suite.browser import (
     as_view,
     build_browser_panel,
     build_corpus,
+    deselect_favorites,
     nodes_at,
     render_view,
+    resolve_pass,
     row_named,
     select_favorites,
-    set_filter,
     set_row_expanded,
 )
 
@@ -42,6 +43,52 @@ SUBFOLDER_THE_READER_OPENED: Final[str] = as_view("""
     > By sample
       > beat
         - 44.1 kHz·30 Hz·FFT·γ0·PT
+      - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
+    """)
+THE_WAY_DOWN_TO_THE_READERS_ROW: Final[str] = as_view("""
+    v By configuration
+      > 8 kHz·60 Hz·CQT·γ2·P
+        - sweep
+      v 44.1 kHz·30 Hz
+        > CQT·γ0·PTN
+          - beat
+          - solo
+        v FFT·γ0
+          > PT
+            > takes
+              - alt
+            - beat
+          > PTN·#aaaaaaa
+            > drums
+              - kick
+              - snare
+            - beat
+            - melody
+          v PTN·#bbbbbbb
+            > drums
+              - kick
+            - beat
+            - melody
+      > archive
+        > 48 kHz·50 Hz·LogFFT·γ1·TN
+          - song
+      - stray
+    > By sample
+      > beat
+        - 44.1 kHz·30 Hz·CQT·γ0·PTN
+        - 44.1 kHz·30 Hz·FFT·γ0·PT
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      > drums
+        > kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+        - snare·44.1 kHz·30 Hz·FFT·γ0·PTN
+      > melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      - solo·44.1 kHz·30 Hz·CQT·γ0·PTN
+      - sweep·8 kHz·60 Hz·CQT·γ2·P
       - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
     """)
 WHOLE_TREE_WITHOUT_THE_ARCHIVE: Final[str] = as_view("""
@@ -120,9 +167,70 @@ class TestTheReadersShape:
         select_favorites(panel)
         render_view(panel)
 
-        set_filter(panel, favorites_only=False)
+        deselect_favorites(panel)
 
         assert render_view(panel) == WHOLE_TREE
+
+    def test_the_way_down_to_a_row_the_reader_opened_stands_once_the_mode_goes_off(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        """A row of the reader's below one the mode opened makes that row part of the view they built.
+
+        Handing back a row the reader's own stands on would take theirs off the screen with it, so the
+        way down to it stays open while the rows holding nothing of theirs fold.
+        """
+        panel = build_browser_panel(
+            corpus,
+            {corpus.paths["A/beat"]},
+            favorites_only=False,
+            auto_expand_reconstructions=True,
+        )
+        for label in ("By configuration", "44.1 kHz·30 Hz", "FFT·γ0", "PTN·#bbbbbbb"):
+            set_row_expanded(panel, row_named(corpus, label), expanded=True)
+
+        set_row_expanded(panel, row_named(corpus, "FFT·γ0"), expanded=False)
+        select_favorites(panel)
+        render_view(panel)
+        deselect_favorites(panel)
+
+        assert render_view(panel) == THE_WAY_DOWN_TO_THE_READERS_ROW
+
+    def test_the_way_down_the_mode_hands_over_is_written_down_with_the_readers_rows(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        """A row the reader's own came to stand on is theirs from then on, so a session brings it back."""
+        panel = build_browser_panel(
+            corpus,
+            {corpus.paths["A/beat"]},
+            favorites_only=False,
+            auto_expand_reconstructions=True,
+        )
+        heading = row_named(corpus, "FFT·γ0")
+        set_row_expanded(panel, row_named(corpus, "PTN·#bbbbbbb"), expanded=True)
+        select_favorites(panel)
+        render_view(panel)
+
+        deselect_favorites(panel)
+
+        assert panel._generate_node_tag(heading) in panel.expanded_rows
+
+    def test_a_row_the_reader_folds_while_the_mode_is_on_stays_folded(self, corpus: BrowserCorpus) -> None:
+        """A row is the reader's to fold whichever hand opened it, so the mode lets go of its claim."""
+        panel = build_browser_panel(
+            corpus,
+            {corpus.paths["A/beat"]},
+            favorites_only=False,
+            auto_expand_reconstructions=True,
+        )
+        select_favorites(panel)
+        render_view(panel)
+
+        set_row_expanded(panel, row_named(corpus, "FFT·γ0"), expanded=False)
+        resolve_pass(panel)
+
+        assert "> FFT·γ0" in render_view(panel)
 
     def test_the_rows_the_mode_opened_are_no_part_of_what_a_save_writes(self, corpus: BrowserCorpus) -> None:
         panel = build_browser_panel(
@@ -141,9 +249,9 @@ class TestTheReadersShape:
         set_row_expanded(panel, row_named(corpus, "archive"), expanded=True)
         render_view(panel)
 
-        set_filter(panel, favorites_only=True)
+        select_favorites(panel)
         render_view(panel)
-        set_filter(panel, favorites_only=False)
+        deselect_favorites(panel)
 
         assert "v archive" in render_view(panel)
 
@@ -200,7 +308,7 @@ class TestTheReadersShape:
         render_view(panel)
 
         archive.parent = None
-        set_filter(panel, favorites_only=True)
+        select_favorites(panel)
         render_view(panel)
 
         assert panel._expanded_rows == set()

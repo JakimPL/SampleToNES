@@ -82,7 +82,7 @@ def build_panel(
     panel._search_visibility = None
     panel._favorites_visibility = None
     panel._favorites_anchors = None
-    panel._expanded_rows = set()
+    panel._state_expansion_memory(set())
     monkeypatch.setattr(panel, "_logic", FakeTreeLogic(favorites), raising=False)
     monkeypatch.setattr(
         panel,

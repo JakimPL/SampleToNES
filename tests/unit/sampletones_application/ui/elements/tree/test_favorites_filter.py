@@ -12,6 +12,7 @@ from tests.suite.browser import (
     TREE_COLORS,
     WHOLE_TREE,
     BrowserCorpus,
+    FakeTreeLogic,
     as_view,
     build_browser_panel,
     nodes_at,
@@ -574,8 +575,8 @@ class TestOpenRows:
             == STARRED_RECONSTRUCTION
         )
 
-    def test_a_pass_after_the_one_the_reader_asked_for_opens_nothing(self, corpus: BrowserCorpus) -> None:
-        """The way down is opened the once, so a refresh leaves the rows standing as they now are."""
+    def test_the_way_down_stands_open_for_as_long_as_the_mode_does(self, corpus: BrowserCorpus) -> None:
+        """A refresh while the mode is on leaves the reader looking at the way down to their stars."""
         panel = build_browser_panel(
             corpus,
             {corpus.paths["A/beat"]},
@@ -584,6 +585,25 @@ class TestOpenRows:
         )
         select_favorites(panel)
         assert render_view(panel) == STARRED_RECONSTRUCTION_OPENED
+
+        resolve_pass(panel)
+
+        assert render_view(panel) == STARRED_RECONSTRUCTION_OPENED
+
+    def test_a_star_gained_while_the_mode_is_on_opens_no_way_of_its_own(self, corpus: BrowserCorpus) -> None:
+        """The reader asked to be pointed at the stars they had, so a star gained since points nowhere."""
+        panel = build_browser_panel(
+            corpus,
+            set(),
+            favorites_only=False,
+            auto_expand_reconstructions=True,
+        )
+        select_favorites(panel)
+        panel._logic = FakeTreeLogic(  # type: ignore[assignment]
+            {corpus.paths["A/beat"]},
+            auto_expand_reconstructions=True,
+            auto_expand_directories=False,
+        )
 
         resolve_pass(panel)
 

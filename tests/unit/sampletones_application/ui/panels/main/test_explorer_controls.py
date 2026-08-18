@@ -82,7 +82,7 @@ def build_panel(tree: Tree) -> GUIExplorerPanel:
     panel = GUIExplorerPanel.__new__(GUIExplorerPanel)
     panel.tag = PANEL_TAG
     panel.tree = tree
-    panel._expanded_rows = set()
+    panel._state_expansion_memory(set())
     panel._explorer_logic = FakeExplorerLogic(tree)  # type: ignore[assignment]
     return panel
 

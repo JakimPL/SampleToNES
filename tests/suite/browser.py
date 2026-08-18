@@ -304,7 +304,7 @@ def build_browser_panel(
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = panel_tag
-    panel._expanded_rows = set() if expanded_rows is None else set(expanded_rows)
+    panel._state_expansion_memory(set() if expanded_rows is None else expanded_rows)
     panel.tree_tag = TREE_TAG
     panel.tree = corpus.tree
     panel._logic = FakeTreeLogic(  # type: ignore[assignment]
@@ -436,6 +436,16 @@ def select_favorites(panel: GUITreePanel) -> None:
     opened row is read through this rather than through a mode stated any other way.
     """
     panel._state_favorites_only(True)
+    panel._resolve_filter()
+
+
+def deselect_favorites(panel: GUITreePanel) -> None:
+    """Switches the favorites mode off the way the reader's click does, and resolves the pass it starts.
+
+    Switching the mode off is what hands back the rows it opened, so a view showing them folded is read
+    through this.
+    """
+    panel._state_favorites_only(False)
     panel._resolve_filter()
 
 

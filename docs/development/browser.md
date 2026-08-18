@@ -37,8 +37,9 @@ complements `docs/development/architecture.md` (layering and ownership) and
 8. **The reader's shape is theirs to keep.** Which rows stand open is what the reader made of the
    tree, so a browser records it and brings it back: a refresh, a change of filter and a repaint leave
    the tree standing as it was, and so does the next run of the application. What a filter unfolds on
-   top of that shape is the reader's to ask for, and it is drawn for as long as the filter names the
-   row rather than recorded.
+   top of that shape is remembered as the filter's own, held for as long as the filter is, and handed
+   back when it goes — apart from a row the reader's own has come to stand on, which stays open so the
+   view they built stays on the screen.
 
 ---
 
@@ -192,27 +193,39 @@ folder, and everything it brings in where no row stands for it, reads the direct
 off by default, so turning the mode on narrows the tree and leaves every row standing as it was. The
 panel reads the pair through `TreeLogicProtocol`, once per resolution.
 
-**The way down opens on the pass the reader asked for.** Switching the mode on is the reader asking to
-be shown their favorites, so the pass that switch starts is the one that opens the way down to them:
-`_state_favorites_only` records the request and `_resolve_filter` spends it. A pass after that — a
-refresh, a query, a star gained or lost — draws the rows standing where the reader has them, and
-switching the mode off asks for nothing to be opened. A change of preference asks for nothing either;
-it is answered the next time the reader asks for the mode, which keeps a menu click from moving the
-tree the reader is working in.
+**The way down opens on the pass the reader asked for, and stands for as long as the mode does.**
+Switching the mode on is the reader asking to be shown their favorites, so the pass that switch starts
+is the one that follows a star: `_state_favorites_only` records the request and `_resolve_filter` spends
+it, and the rows it opens are noted in the mode's own memory. Later passes read that memory, so a
+refresh, a query or a star gained meanwhile leaves the reader looking at their favorites, while the
+stars followed stay the ones the switch asked about. Switching the mode off lets the memory go and those
+rows fold back. A change of preference asks for nothing; it is answered the next time the reader asks
+for the mode, which keeps a menu click from moving the tree the reader is working in.
+
+**The way down becomes the reader's once their own rows stand on it.** A reader looking at their
+favorites opens rows of their own below the way the mode opened, and folding that way would take theirs
+off the screen with it. `_release_the_rows_the_mode_opened` therefore reads the model as the mode goes
+off and hands the reader every row of the mode's that holds one of theirs somewhere below it, which
+writes the way down into the shape a session keeps. What is left held the mode's opening alone, and
+folds with it.
 
 **A row the favorites mode holds back holds nothing it would show.** A row it shows either stands on
 the way to a starred row or sits beneath one, and each of those facts holds for every row above it — so
 declining a row declines its subtree, and one decision covers it while the traversal walks on.
 
-**The shape the reader built is theirs to keep.** A browser holding `_REMEMBERS_EXPANSION` records
-the rows standing open, by the tag those rows are addressed under, and a later pass creates them open
-again: the filter adds the way down to what it names, and everything else comes back as it was left.
-What the reader did is what is recorded — a click, read a frame later once the row has answered it, and
-the expansion items and the collapse control, which record what they set. A row the filter opened is
-drawn open on top of that shape and folds back once the filter stops naming it, so a narrowed browser
-hands the tree back the way the reader had it. The memory is held to the rows the model states, read
-afresh on every pass, so a row a moved reconstructions directory left behind leaves the memory with
-it.
+**Two memories, each holding what one hand opened.** A browser holding `_REMEMBERS_EXPANSION` records
+the rows standing open by the tag those rows are addressed under, and a later pass creates them open
+again. The reader's memory holds what the reader did — a click, read a frame later once the row has
+answered it, and the expansion items and the collapse control, which record what they set — and it is
+what a session writes down. The mode's memory holds the way down it opened, and goes when the mode does,
+so a narrowed browser hands the tree back the way the reader had it, keeping the rows theirs now stand
+on. Folding a row is the reader's word
+on it whichever hand opened it, so `_set_row_expanded` releases the mode's claim along with the reader's
+and the row stays folded. Both memories are held to the rows the model states, read afresh on every
+pass, so a row a moved reconstructions directory left behind leaves them with it.
+
+A search unfolds by the same rule from the other end: its matches and the rows above them open for as
+long as the query stands, resolved afresh on each pass, and clearing the query folds them back.
 
 The shape outlives the run as well. A browser is handed the rows it stands open as it is built
 (`initial_expanded_rows`), and `_persist_application_state` asks each tab for its shape and writes it to
