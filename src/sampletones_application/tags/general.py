@@ -302,12 +302,6 @@ TAG_GLOBAL_THEME_FILE_WAVE = TagName(
     Widget.THEME,
     "file_wave",
 )
-TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY = TagName(
-    Page.GLOBAL,
-    Panel.IMPLICIT,
-    Widget.THEME,
-    "file_not_expanded_directory",
-)
 TAG_GLOBAL_THEME_INPUT_INVALID = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

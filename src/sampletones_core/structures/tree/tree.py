@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Sequence, Tuple, Type, TypeVar
+from typing import Callable, Optional, Tuple, Type, TypeVar
 
 from anytree import PreOrderIter
 
@@ -48,9 +48,3 @@ class Tree:
             )
             and predicate(node)
         )
-
-    def collect_leaves(self) -> Sequence[TreeNode]:
-        if not self.root:
-            return []
-
-        return [node for node in PreOrderIter(self.root) if node.is_leaf]

@@ -36,7 +36,6 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_FAVORITE_CHILD,
     TAG_GLOBAL_THEME_FILE_LIBRARY,
     TAG_GLOBAL_THEME_FILE_NO_CONTENT,
-    TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY,
     TAG_GLOBAL_THEME_FILE_RECONSTRUCTION,
     TAG_GLOBAL_THEME_FILE_WAVE,
     TAG_GLOBAL_THEME_TREE_WINDOW,
@@ -380,7 +379,6 @@ class GUITreePanel(GUIPanel, ABC):
         open_on_double_click: bool = False,
         should_expand: bool = False,
         has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
     ) -> None:
         """Resolve a node into a :class:`NodeSpec` and record it for emission.
 
@@ -401,7 +399,6 @@ class GUITreePanel(GUIPanel, ABC):
         theme_tag = self._resolve_node_theme_tag(
             node,
             has_favorite_ancestor=has_favorite_ancestor,
-            is_node_expanded=is_node_expanded,
         )
         stands_open = self._stands_open(
             node,
@@ -1113,13 +1110,11 @@ class GUITreePanel(GUIPanel, ABC):
         node_tag: str,
         node: TreeNode,
         has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
     ) -> None:
         FontRegistry.bind_to_item(node_tag, self._resolve_node_name_font(node))
         theme_tag = self._resolve_node_theme_tag(
             node,
             has_favorite_ancestor=has_favorite_ancestor,
-            is_node_expanded=is_node_expanded,
         )
         ThemeRegistry.get(theme_tag).bind_to_item(node_tag)
 
@@ -1128,7 +1123,6 @@ class GUITreePanel(GUIPanel, ABC):
         node: TreeNode,
         *,
         has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
     ) -> str:
         """Select the theme tag for a node from its type, favorite state, and content.
 
@@ -1146,7 +1140,6 @@ class GUITreePanel(GUIPanel, ABC):
                     return self._resolve_file_theme_tag(
                         node,
                         has_favorite_ancestor=has_favorite_ancestor,
-                        is_not_expanded=is_node_expanded,
                     )
 
         return self._resolve_other_theme_tag(node)
@@ -1173,7 +1166,6 @@ class GUITreePanel(GUIPanel, ABC):
         node: FileSystemNode,
         *,
         has_favorite_ancestor: bool = False,
-        is_not_expanded: bool = False,
     ) -> str:
         if self._logic.is_node_favorite(node):
             return TAG_GLOBAL_THEME_FAVORITE
@@ -1188,8 +1180,6 @@ class GUITreePanel(GUIPanel, ABC):
             case _:
                 if has_favorite_ancestor:
                     return TAG_GLOBAL_THEME_FAVORITE_CHILD
-                if is_not_expanded:
-                    return TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY
                 return TAG_GLOBAL_THEME_DEFAULT
 
     def _resolve_other_theme_tag(self, node: TreeNode) -> str:

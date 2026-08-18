@@ -48,22 +48,6 @@ class TestTreeRootManagement:
         assert tree.get_root() is replacement
 
 
-class TestTreeCollectLeaves:
-    def test_returns_empty_for_empty_tree(self) -> None:
-        assert Tree().collect_leaves() == []
-
-    def test_singleton_root_is_its_own_leaf(self) -> None:
-        root = TreeNode("root", NodeType.ROOT)
-        t = Tree(root=root)
-        leaves = t.collect_leaves()
-        assert len(leaves) == 1
-        assert leaves[0] is root
-
-    def test_every_leaf_the_shape_holds_is_answered(self, tree: Tree) -> None:
-        leaf_names = {leaf.name for leaf in tree.collect_leaves()}
-        assert leaf_names == {"leaf_aa", "leaf_ab", "leaf_ba"}
-
-
 class TestTreeFindNodes:
     @staticmethod
     def _tree_with_twins() -> Tree:

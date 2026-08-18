@@ -167,11 +167,6 @@ class DialogsRenderer:
         self._lbl_cancel = language_manager["global.dialog.label.cancel"]
         self._lbl_traceback_show = language_manager["global.traceback.label.show"]
 
-    @property
-    def default_wrap(self) -> int:
-        """Text wrap width matching the default dialog width, for caller-built content."""
-        return self._default_wrap
-
     def show_modal(
         self,
         tag: str,

@@ -16,7 +16,8 @@ begin.
 
 Pick an audio file — or a whole folder — in the **Filesystem** browser on the
 left, set up how the reconstruction is done in the centre, and click **Convert
-sample** (or **Convert directory** for a folder). The
+sample** (or **Convert directory** for a folder). The browser opens the folders you
+were last working in, and **Collapse all** folds them away again. The
 [instruction library](../concepts/instruction-library.md) for your settings is
 built automatically the first time it is needed, so you can convert straight away.
 While it runs, the panel names the file going in and where the result is going, and
@@ -49,7 +50,15 @@ moved.
 To keep the reconstructions you return to within reach, right-click one — or a
 whole folder — and choose **Mark as favorite**, which highlights it in both views.
 Tick **Favorites only** under the search box to narrow the browser to your
-favorites and everything inside them.
+favorites and everything inside them. The browser keeps the folders you had open
+while it narrows, so switching the tick on and off leaves the tree as you left it.
+If you would rather it opened its way down to each favorite for you, turn that on
+under **View ▸ Auto-expand favorites**, which answers for reconstructions and for
+folders separately.
+
+**Collapse all**, beside the refresh button, folds the whole tree away in one
+click. Whatever you leave open is remembered, so the tree comes back the way you
+left it the next time you start the application.
 
 To get your results out, use the **Reconstruction** menu. **Export instruments ▸
 FamiTracker instruments...** writes one `.fti` per channel, **Bitphase
