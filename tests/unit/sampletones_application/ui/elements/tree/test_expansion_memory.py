@@ -18,28 +18,28 @@ from tests.suite.browser import (
 )
 
 STARRED_CONFIGURATION: Final[str] = as_view("""
-    v By configuration
-      v 44.1 kHz·30 Hz
-        v FFT·γ0
-          v PT
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > FFT·γ0
+          > PT
             > takes
               - alt
             - beat
-    v By sample
-      v beat
+    > By sample
+      > beat
         - 44.1 kHz·30 Hz·FFT·γ0·PT
       - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
     """)
 SUBFOLDER_THE_READER_OPENED: Final[str] = as_view("""
-    v By configuration
-      v 44.1 kHz·30 Hz
-        v FFT·γ0
-          v PT
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > FFT·γ0
+          > PT
             v takes
               - alt
             - beat
-    v By sample
-      v beat
+    > By sample
+      > beat
         - 44.1 kHz·30 Hz·FFT·γ0·PT
       - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
     """)
@@ -157,7 +157,12 @@ class TestTheReadersShape:
 
     def test_the_rows_the_mode_opened_stand_open_once_it_goes_off(self, corpus: BrowserCorpus) -> None:
         """What the browser unfolded to show a favorite is part of the shape the reader is left with."""
-        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=True)
+        panel = build_browser_panel(
+            corpus,
+            {corpus.paths["A/beat"]},
+            favorites_only=True,
+            auto_expand_reconstructions=True,
+        )
         render_view(panel)
 
         set_filter(panel, favorites_only=False)

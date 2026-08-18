@@ -619,6 +619,8 @@ class Application:
             display_settings=self._display_coordinator.open,
             keyboard_settings=self._keybindings_coordinator.open,
             toggle_advanced_settings=self._toggle_advanced_settings,
+            toggle_auto_expand_favorite_reconstructions=self._toggle_auto_expand_favorite_reconstructions,
+            toggle_auto_expand_favorite_directories=self._toggle_auto_expand_favorite_directories,
             toggle_fullscreen=self._shell.toggle_fullscreen,
             about=self._open_about_dialog,
             next_tab=self._next_tab,
@@ -715,6 +717,8 @@ class Application:
             channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
+            auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
+            auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
 
     def _is_sequencer_tab_current(self) -> bool:
@@ -754,6 +758,8 @@ class Application:
             channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
+            auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
+            auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
 
     def _on_history_changed(self) -> None:
@@ -805,6 +811,28 @@ class Application:
     ) -> None:
         self._main_tab.toggle_advanced_settings()
         self._update_menu()
+
+    def _toggle_auto_expand_favorite_reconstructions(self) -> None:
+        self.session_manager.set_auto_expand_favorite_reconstructions(
+            not self.session_manager.auto_expand_favorite_reconstructions
+        )
+        self._redraw_browsers()
+
+    def _toggle_auto_expand_favorite_directories(self) -> None:
+        self.session_manager.set_auto_expand_favorite_directories(
+            not self.session_manager.auto_expand_favorite_directories
+        )
+        self._redraw_browsers()
+
+    def _redraw_browsers(self) -> None:
+        """Marks the choice in the menu and draws both browsers again from the model each holds.
+
+        What the favorites mode opens is decided as a rebuild collects the rows, so a change of the
+        preference is answered by collecting them again rather than by reaching into the tree.
+        """
+        self._update_menu()
+        self._reconstructions_tab.redraw_browser()
+        self._sequencer_tab.redraw_browser()
 
     def _reconstruct_file_dialog(self) -> None:
         if self._is_operation_active():

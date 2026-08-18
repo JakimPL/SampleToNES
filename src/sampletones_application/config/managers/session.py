@@ -62,6 +62,12 @@ class SessionManager:
     def toggle_autoplay(self) -> bool:
         return self._config_manager.toggle_autoplay()
 
+    def set_auto_expand_favorite_reconstructions(self, value: bool) -> None:
+        self._config_manager.set_auto_expand_favorite_reconstructions(value)
+
+    def set_auto_expand_favorite_directories(self, value: bool) -> None:
+        self._config_manager.set_auto_expand_favorite_directories(value)
+
     def set_follow_mode(self, value: FollowMode) -> None:
         self._config_manager.set_follow_mode(value)
 
@@ -231,6 +237,14 @@ class SessionManager:
     @property
     def autoplay(self) -> bool:
         return self._config_manager.autoplay
+
+    @property
+    def auto_expand_favorite_reconstructions(self) -> bool:
+        return self._config_manager.auto_expand_favorite_reconstructions
+
+    @property
+    def auto_expand_favorite_directories(self) -> bool:
+        return self._config_manager.auto_expand_favorite_directories
 
     @property
     def follow_mode(self) -> FollowMode:

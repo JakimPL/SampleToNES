@@ -201,14 +201,30 @@ class FakeConfigManager:
 class FakeTreeLogic:
     """Answers the favorite questions a browser asks of its logic while it collects its rows."""
 
-    def __init__(self, favorites: Set[Path]) -> None:
+    def __init__(
+        self,
+        favorites: Set[Path],
+        *,
+        auto_expand_reconstructions: bool,
+        auto_expand_directories: bool,
+    ) -> None:
         self._favorites = favorites
+        self._auto_expand_reconstructions = auto_expand_reconstructions
+        self._auto_expand_directories = auto_expand_directories
 
     def is_node_favorite(self, node: TreeNode) -> bool:
         return isinstance(node, FileSystemNode) and node.filepath in self._favorites
 
     def has_favorite_ancestor(self, node: FileSystemNode) -> bool:
         return any(directory in self._favorites for directory in node.filepath.parents)
+
+    @property
+    def auto_expand_favorite_reconstructions(self) -> bool:
+        return self._auto_expand_reconstructions
+
+    @property
+    def auto_expand_favorite_directories(self) -> bool:
+        return self._auto_expand_directories
 
 
 @dataclass(frozen=True)
@@ -274,18 +290,26 @@ def build_browser_panel(
     favorites_only: bool,
     query: str = "",
     panel_tag: str = PANEL_TAG,
+    auto_expand_reconstructions: bool = False,
+    auto_expand_directories: bool = False,
 ) -> GUISequencerBrowserPanel:
     """Builds a browser panel showing the corpus under a filter, with the favorites its logic answers.
 
     Resolving the filter reads the model alone, so the panel needs neither widgets nor a search box,
-    and the control stands where a browser that has yet to build one leaves it.
+    and the control stands where a browser that has yet to build one leaves it. The pair of
+    auto-expand answers states which stars the mode opens the way down to, as the reader's preference
+    does.
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = panel_tag
     panel._expanded_rows = set()
     panel.tree_tag = TREE_TAG
     panel.tree = corpus.tree
-    panel._logic = FakeTreeLogic(favorites)  # type: ignore[assignment]
+    panel._logic = FakeTreeLogic(  # type: ignore[assignment]
+        favorites,
+        auto_expand_reconstructions=auto_expand_reconstructions,
+        auto_expand_directories=auto_expand_directories,
+    )
     panel._language_manager = FakeLanguageManager()
     panel._colors = TREE_COLORS
     _state_detail_labels(panel)
@@ -408,6 +432,8 @@ def view(
     *,
     favorites_only: bool,
     query: str = "",
+    auto_expand_reconstructions: bool = False,
+    auto_expand_directories: bool = False,
 ) -> str:
     """The view a browser showing the corpus under this filter leaves on screen."""
     return render_view(
@@ -416,5 +442,7 @@ def view(
             favorites,
             favorites_only=favorites_only,
             query=query,
+            auto_expand_reconstructions=auto_expand_reconstructions,
+            auto_expand_directories=auto_expand_directories,
         )
     )

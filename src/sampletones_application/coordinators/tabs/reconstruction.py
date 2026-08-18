@@ -557,6 +557,10 @@ class ReconstructionTabCoordinator:
     def refresh_browser(self) -> None:
         self._browser_panel.refresh()
 
+    def redraw_browser(self) -> None:
+        """Draws the browser again from the model it holds, which a change of filter asks for."""
+        self._browser_panel.redraw_tree()
+
     def repaint_browser_favorites(self, nodes: Sequence[FileSystemNode]) -> None:
         self._browser_panel.update_favorite_indicators(nodes)
 

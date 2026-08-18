@@ -107,6 +107,28 @@ class TestOpenRows:
         assert not any(visibility.should_expand(node) for node in nodes.values())
 
 
+class TestTheWayDownToARow:
+    """What ``leads_to`` answers: the rows above a named row, and none of the named rows."""
+
+    def test_every_row_above_a_match_leads_to_it(self, nodes: Dict[str, TreeNode]) -> None:
+        visibility = visibility_of(nodes, ["leaf_ba"])
+        names = {name for name, node in nodes.items() if visibility.leads_to(node)}
+        assert names == {"root", "child_b"}
+
+    def test_a_match_leads_to_nothing_of_its_own(self, nodes: Dict[str, TreeNode]) -> None:
+        """The reader is pointed at the match, so opening by this leaves it standing as it was."""
+        visibility = visibility_of(nodes, ["child_a"])
+        assert not visibility.leads_to(nodes["child_a"])
+
+    def test_a_match_above_another_leads_to_the_one_below_it(self, nodes: Dict[str, TreeNode]) -> None:
+        visibility = visibility_of(nodes, ["child_a", "leaf_aa"])
+        assert visibility.leads_to(nodes["child_a"])
+
+    def test_nothing_named_leads_nowhere(self, nodes: Dict[str, TreeNode]) -> None:
+        visibility = visibility_of(nodes, [])
+        assert not any(visibility.leads_to(node) for node in nodes.values())
+
+
 class TestResolvedSets:
     def test_the_named_rows_are_held_as_they_were_given(self, nodes: Dict[str, TreeNode]) -> None:
         visibility = visibility_of(nodes, ["leaf_aa", "leaf_ab"])

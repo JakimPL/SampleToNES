@@ -654,16 +654,14 @@ class GUITreePanel(GUIPanel, ABC):
     def _should_expand_node(self, node: TreeNode) -> bool:
         """Whether the row is emitted standing open, which a row leading to a named row is.
 
-        A search result and a favorite are both what the reader is looking for, so the way down to
-        either one opens and the filter's answer reads at a glance. What each criterion names is the
-        row the reader is pointed at rather than everything that row brings along, so a folder opens
-        to show what it holds while the rows inside it stand as they are.
+        A search names the rows whose label matched and shows what each of them gathers, so a folder
+        it named opens. The favorites mode points the reader at a star and opens the way down to it
+        alone, which leaves the starred row standing as the reader left it.
         """
-        return any(
-            visibility.should_expand(node)
-            for visibility in (self._search_visibility, self._favorites_anchors)
-            if visibility is not None
-        )
+        if self._search_visibility is not None and self._search_visibility.should_expand(node):
+            return True
+
+        return self._favorites_anchors is not None and self._favorites_anchors.leads_to(node)
 
     def _create_status_bar_message_function(
         self,
@@ -965,7 +963,7 @@ class GUITreePanel(GUIPanel, ABC):
     def _resolve_favorites(
         self,
     ) -> Tuple[Optional[TreeVisibility], Optional[TreeVisibility]]:
-        """The rows the favorites mode keeps, and the rows it points the reader at.
+        """The rows the favorites mode keeps, and the rows it opens the way down to.
 
         The two answer different questions — which rows the browser draws, and which of them stand
         open — so each is resolved from a set of its own, the second being a part of the first. One
@@ -978,8 +976,35 @@ class GUITreePanel(GUIPanel, ABC):
         reached = self.tree.find_nodes(TreeNode, self._is_node_starred)
         return (
             resolve_visibility(reached),
-            resolve_visibility([node for node in reached if self._is_node_anchored(node)]),
+            resolve_visibility(self._auto_expanded_anchors(reached)),
         )
+
+    def _auto_expanded_anchors(
+        self,
+        reached: Sequence[TreeNode],
+    ) -> List[TreeNode]:
+        """The anchors whose star the reader asked the browser to open the way down to.
+
+        Which stars are followed is a preference stated per kind and read once per pass: a starred
+        reconstruction answers for itself, and a starred folder answers for itself together with the
+        rows it brings in where no row stands for the folder.
+        """
+        reconstructions = self._logic.auto_expand_favorite_reconstructions
+        directories = self._logic.auto_expand_favorite_directories
+        return [
+            node
+            for node in reached
+            if self._is_node_anchored(node)
+            and (reconstructions if self._is_starred_reconstruction(node) else directories)
+        ]
+
+    def _is_starred_reconstruction(self, node: TreeNode) -> bool:
+        """Whether the star the mode reaches this row through sits on a reconstruction.
+
+        A row the reader starred answers by its own kind. A row a starred folder brings in answers by
+        that folder, a folder being the only thing that holds another row.
+        """
+        return node.node_type == NodeType.FILE and self._logic.is_node_favorite(node)
 
     def _is_node_starred(self, node: TreeNode) -> bool:
         """Whether the favorites mode names the row: it carries a star, or a starred folder holds it.
@@ -993,12 +1018,13 @@ class GUITreePanel(GUIPanel, ABC):
         return isinstance(node, FileSystemNode) and self._logic.has_favorite_ancestor(node)
 
     def _is_node_anchored(self, node: TreeNode) -> bool:
-        """Whether the mode points the reader at the row, which is what opens the way down to it.
+        """Whether the mode points the reader at the row, which is what the way down opens to.
 
-        A star sits on a row the reader marked, so the way to that row opens wherever it sits —
-        inside another starred folder among the rest. A row a starred folder merely holds is where
-        the star first reaches only while no row above it is reached, which is how the sample branch
-        answers: its headings carry no path, so the variants are where the star arrives.
+        A star sits on a row the reader marked, so that row is pointed at wherever it sits — inside
+        another starred folder among the rest, which is what lets an explicit favorite open the folder
+        above it. A row a starred folder merely holds is where the star first reaches only while no
+        row above it is reached, which is how the sample branch answers: its headings carry no path,
+        so the variants are where the star arrives.
 
         Asked of the rows the star reaches, so a row it declines stands under a row it named, and
         the reader is pointed at the folder rather than at everything inside it.

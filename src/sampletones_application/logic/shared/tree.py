@@ -176,3 +176,11 @@ class TreeLogic(CallbackMixin):
     @property
     def autoplay_enabled(self) -> bool:
         return self._session_manager.autoplay
+
+    @property
+    def auto_expand_favorite_reconstructions(self) -> bool:
+        return self._session_manager.auto_expand_favorite_reconstructions
+
+    @property
+    def auto_expand_favorite_directories(self) -> bool:
+        return self._session_manager.auto_expand_favorite_directories

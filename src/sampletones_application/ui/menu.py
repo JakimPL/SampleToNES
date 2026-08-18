@@ -52,6 +52,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+    TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+    TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
     TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_GLOBAL_PANEL_PLAYER,
@@ -537,6 +539,8 @@ class MenuBar:
                 check=True,
             )
             dpg.add_separator()
+            self._create_auto_expand_favorites_menu()
+            dpg.add_separator()
             self._shortcut_manager.add_menu_item(
                 ShortcutId.DISPLAY_SETTINGS,
                 label=self._label(MenuElements.ITEM_VIEW_DISPLAY_SETTINGS),
@@ -544,6 +548,26 @@ class MenuBar:
             self._shortcut_manager.add_menu_item(
                 ShortcutId.KEYBOARD_SETTINGS,
                 label=self._label(MenuElements.ITEM_VIEW_KEYBOARD_SETTINGS),
+            )
+
+    def _create_auto_expand_favorites_menu(self) -> None:
+        """Offers, per kind of favorite, whether showing the favorites alone opens the way down to one.
+
+        A browser showing its favorites alone decides which rows it draws; whether it also unfolds the
+        rows above a star is the reader's, and a reconstruction and a directory are answered apart.
+        """
+        with dpg.menu(label=self._label(MenuElements.GROUP_VIEW_AUTO_EXPAND_FAVORITES)):
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
+                tag=TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
+                label=self._label(MenuElements.ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS),
+                check=True,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+                tag=TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+                label=self._label(MenuElements.ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES),
+                check=True,
             )
 
     def _create_help_menu(self) -> None:
@@ -660,6 +684,18 @@ class MenuBar:
         dpg_set_value(
             TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
             state.advanced_settings,
+        )
+        self._update_auto_expand_favorites(state)
+
+    def _update_auto_expand_favorites(self, state: MenuBarViewModel) -> None:
+        """Shows, per kind of favorite, whether the browsers open the way down to one."""
+        dpg_set_value(
+            TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
+            state.auto_expand_favorite_reconstructions,
+        )
+        dpg_set_value(
+            TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+            state.auto_expand_favorite_directories,
         )
 
     def _update_follow_mode(self, state: MenuBarViewModel) -> None:

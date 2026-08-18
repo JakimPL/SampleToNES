@@ -560,6 +560,18 @@ TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN = TagName(
     Widget.MENU,
     "item_view_fullscreen",
 )
+TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_view_auto_expand_favorite_reconstructions",
+)
+TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_view_auto_expand_favorite_directories",
+)
 TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

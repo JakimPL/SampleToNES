@@ -78,6 +78,8 @@ class KeybindingActionElements(AbstractElement):
     DISPLAY_SETTINGS = "display_settings"
     KEYBOARD_SETTINGS = "keyboard_settings"
     TOGGLE_ADVANCED_SETTINGS = "toggle_advanced_settings"
+    TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS = "toggle_auto_expand_favorite_reconstructions"
+    TOGGLE_AUTO_EXPAND_FAVORITE_DIRECTORIES = "toggle_auto_expand_favorite_directories"
     TOGGLE_FULLSCREEN = "toggle_fullscreen"
     ABOUT_DIALOG = "about_dialog"
     NEXT_TAB = "next_tab"

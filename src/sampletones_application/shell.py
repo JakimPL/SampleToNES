@@ -103,6 +103,8 @@ class ShortcutBindings:
     display_settings: Callback
     keyboard_settings: Callback
     toggle_advanced_settings: Callback
+    toggle_auto_expand_favorite_reconstructions: Callback
+    toggle_auto_expand_favorite_directories: Callback
     toggle_fullscreen: Callback
     about: Callback
     next_tab: Callback
@@ -246,6 +248,10 @@ class ApplicationShell:
             ShortcutId.DISPLAY_SETTINGS: bindings.display_settings,
             ShortcutId.KEYBOARD_SETTINGS: bindings.keyboard_settings,
             ShortcutId.TOGGLE_ADVANCED_SETTINGS: bindings.toggle_advanced_settings,
+            ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS: (
+                bindings.toggle_auto_expand_favorite_reconstructions
+            ),
+            ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_DIRECTORIES: bindings.toggle_auto_expand_favorite_directories,
             ShortcutId.TOGGLE_FULLSCREEN: bindings.toggle_fullscreen,
             ShortcutId.ABOUT_DIALOG: bindings.about,
             ShortcutId.NEXT_TAB: bindings.next_tab,

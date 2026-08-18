@@ -6,6 +6,8 @@ from sampletones_application.ui.elements.tree import tree as tree_module
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_core.structures.tree import TreeNode
 from tests.suite.browser import (
+    CLOSED_MARKER,
+    OPEN_MARKER,
     PANEL_TAG,
     TREE_COLORS,
     WHOLE_TREE,
@@ -19,7 +21,23 @@ from tests.suite.browser import (
 CHECKBOX_TAG: Final[str] = "sequencer.browser.checkbox.favorites"
 GLYPH_TAG: Final[str] = "sequencer.browser.text.favorites"
 
+
+def rows_of(rendered: str) -> List[str]:
+    """The rows a view holds, read apart from the state each of them stands in."""
+    return [line.replace(OPEN_MARKER, CLOSED_MARKER, 1) for line in rendered.splitlines()]
+
+
 STARRED_RECONSTRUCTION: Final[str] = as_view("""
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > FFT·γ0
+          > PTN·#aaaaaaa
+            - beat
+    > By sample
+      > beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+    """)
+STARRED_RECONSTRUCTION_OPENED: Final[str] = as_view("""
     v By configuration
       v 44.1 kHz·30 Hz
         v FFT·γ0
@@ -30,6 +48,14 @@ STARRED_RECONSTRUCTION: Final[str] = as_view("""
         - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
     """)
 STARRED_LONE_AUDIO: Final[str] = as_view("""
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > CQT·γ0·PTN
+          - solo
+    > By sample
+      - solo·44.1 kHz·30 Hz·CQT·γ0·PTN
+    """)
+STARRED_LONE_AUDIO_OPENED: Final[str] = as_view("""
     v By configuration
       v 44.1 kHz·30 Hz
         v CQT·γ0·PTN
@@ -38,6 +64,18 @@ STARRED_LONE_AUDIO: Final[str] = as_view("""
       - solo·44.1 kHz·30 Hz·CQT·γ0·PTN
     """)
 STARRED_IN_SUBFOLDER: Final[str] = as_view("""
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > FFT·γ0
+          > PTN·#aaaaaaa
+            > drums
+              - kick
+    > By sample
+      > drums
+        > kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+    """)
+STARRED_IN_SUBFOLDER_OPENED: Final[str] = as_view("""
     v By configuration
       v 44.1 kHz·30 Hz
         v FFT·γ0
@@ -50,10 +88,23 @@ STARRED_IN_SUBFOLDER: Final[str] = as_view("""
           - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
     """)
 STARRED_CONFIGURATION: Final[str] = as_view("""
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > FFT·γ0
+          > PT
+            > takes
+              - alt
+            - beat
+    > By sample
+      > beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PT
+      - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
+    """)
+STARRED_CONFIGURATION_OPENED: Final[str] = as_view("""
     v By configuration
       v 44.1 kHz·30 Hz
         v FFT·γ0
-          v PT
+          > PT
             > takes
               - alt
             - beat
@@ -63,26 +114,56 @@ STARRED_CONFIGURATION: Final[str] = as_view("""
       - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
     """)
 STARRED_PLAIN_FOLDER: Final[str] = as_view("""
+    > By configuration
+      > archive
+        > 48 kHz·50 Hz·LogFFT·γ1·TN
+          - song
+    """)
+STARRED_PLAIN_FOLDER_OPENED: Final[str] = as_view("""
+    v By configuration
+      > archive
+        > 48 kHz·50 Hz·LogFFT·γ1·TN
+          - song
+    """)
+STARRED_FOLDER_IN_STARRED_FOLDER_OPENED: Final[str] = as_view("""
     v By configuration
       v archive
         > 48 kHz·50 Hz·LogFFT·γ1·TN
           - song
     """)
-STARRED_FOLDER_AND_WHAT_IT_HOLDS: Final[str] = as_view("""
-    v By configuration
-      v archive
-        v 48 kHz·50 Hz·LogFFT·γ1·TN
-          - song
-    """)
 STARRED_STRAY: Final[str] = as_view("""
+    > By configuration
+      - stray
+    """)
+STARRED_STRAY_OPENED: Final[str] = as_view("""
     v By configuration
       - stray
     """)
 STARRED_OF_TWO_ALIKE: Final[str] = as_view("""
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > FFT·γ0
+          > PTN·#aaaaaaa
+            > drums
+              - kick
+              - snare
+            - beat
+            - melody
+    > By sample
+      > beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+      > drums
+        > kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+        - snare·44.1 kHz·30 Hz·FFT·γ0·PTN
+      > melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
+    """)
+STARRED_OF_TWO_ALIKE_OPENED: Final[str] = as_view("""
     v By configuration
       v 44.1 kHz·30 Hz
         v FFT·γ0
-          v PTN·#aaaaaaa
+          > PTN·#aaaaaaa
             > drums
               - kick
               - snare
@@ -99,17 +180,42 @@ STARRED_OF_TWO_ALIKE: Final[str] = as_view("""
         - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
     """)
 STARRED_FOLDED_CONFIGURATION: Final[str] = as_view("""
+    > By configuration
+      > 8 kHz·60 Hz·CQT·γ2·P
+        - sweep
+    > By sample
+      - sweep·8 kHz·60 Hz·CQT·γ2·P
+    """)
+STARRED_FOLDED_CONFIGURATION_OPENED: Final[str] = as_view("""
     v By configuration
-      v 8 kHz·60 Hz·CQT·γ2·P
+      > 8 kHz·60 Hz·CQT·γ2·P
         - sweep
     v By sample
       - sweep·8 kHz·60 Hz·CQT·γ2·P
     """)
 STARRED_CONFIGURATION_B: Final[str] = as_view("""
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > FFT·γ0
+          > PTN·#bbbbbbb
+            > drums
+              - kick
+            - beat
+            - melody
+    > By sample
+      > beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      > drums
+        > kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      > melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+    """)
+STARRED_CONFIGURATION_B_OPENED: Final[str] = as_view("""
     v By configuration
       v 44.1 kHz·30 Hz
         v FFT·γ0
-          v PTN·#bbbbbbb
+          > PTN·#bbbbbbb
             > drums
               - kick
             - beat
@@ -123,7 +229,7 @@ STARRED_CONFIGURATION_B: Final[str] = as_view("""
       v melody
         - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
     """)
-STARRED_FOLDER_HOLDING_A_STAR: Final[str] = as_view("""
+STARRED_FOLDER_HOLDING_A_STAR_OPENED: Final[str] = as_view("""
     v By configuration
       v 44.1 kHz·30 Hz
         v FFT·γ0
@@ -133,10 +239,28 @@ STARRED_FOLDER_HOLDING_A_STAR: Final[str] = as_view("""
             - beat
             - melody
     v By sample
-      v beat
+      > beat
         - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
       v drums
         v kick
+          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      > melody
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+    """)
+STARRED_FOLDER_HOLDING_A_STAR_BY_FOLDER: Final[str] = as_view("""
+    v By configuration
+      v 44.1 kHz·30 Hz
+        v FFT·γ0
+          > PTN·#bbbbbbb
+            > drums
+              - kick
+            - beat
+            - melody
+    v By sample
+      v beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
+      > drums
+        > kick
           - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
       v melody
         - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
@@ -151,10 +275,10 @@ QUERY_INSIDE_THE_MODE: Final[str] = as_view("""
             - beat  [hidden]
             - melody
     v By sample
-      v beat  [hidden]
+      > beat  [hidden]
         - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb  [hidden]
-      v drums  [hidden]
-        v kick  [hidden]
+      > drums  [hidden]
+        > kick  [hidden]
           - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb  [hidden]
       v melody
         - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
@@ -166,7 +290,7 @@ QUERY_PAST_THE_MODE: Final[str] = as_view("""
           v PTN·#aaaaaaa
             - beat  [hidden]
     v By sample
-      v beat  [hidden]
+      > beat  [hidden]
         - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa  [hidden]
     """)
 QUERY_ALONE: Final[str] = as_view("""
@@ -218,7 +342,11 @@ QUERY_ALONE: Final[str] = as_view("""
 
 
 class TestDrawnRows:
-    """Which rows the mode draws: what the star reaches, and the rows leading down to it."""
+    """Which rows the mode draws: what the star reaches, and the rows leading down to it.
+
+    What is drawn is the star's to state and nothing else, so every row stands folded here — which is
+    what a browser opening with the preference off comes back as.
+    """
 
     def test_a_starred_reconstruction_is_drawn_in_both_views(self, corpus: BrowserCorpus) -> None:
         assert view(corpus, {corpus.paths["A/beat"]}, favorites_only=True) == STARRED_RECONSTRUCTION
@@ -253,36 +381,196 @@ class TestDrawnRows:
     def test_the_mode_off_draws_every_row(self, corpus: BrowserCorpus) -> None:
         assert view(corpus, {corpus.paths["A/beat"]}, favorites_only=False) == WHOLE_TREE
 
+    def test_the_rows_drawn_are_the_same_whichever_stars_are_followed(self, corpus: BrowserCorpus) -> None:
+        """Opening the way down to a star is a separate answer, so it moves no row in or out."""
+        favorites = {corpus.paths["B"], corpus.paths["B/drums/kick"]}
+        assert rows_of(
+            view(
+                corpus,
+                favorites,
+                favorites_only=True,
+                auto_expand_reconstructions=True,
+                auto_expand_directories=True,
+            )
+        ) == rows_of(view(corpus, favorites, favorites_only=True))
+
 
 class TestOpenRows:
-    """Which rows stand open: the way down to a star, and a starred folder showing what it holds."""
+    """Which rows stand open: the way down to a star the reader asked the browser to follow."""
 
-    def test_a_starred_folder_opens_and_a_subfolder_holding_no_star_stays_closed(
+    def test_the_preference_off_opens_nothing(self, corpus: BrowserCorpus) -> None:
+        assert view(corpus, {corpus.paths["A/beat"]}, favorites_only=True) == STARRED_RECONSTRUCTION
+
+    def test_the_rows_above_a_starred_reconstruction_open(self, corpus: BrowserCorpus) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["A/beat"]},
+                favorites_only=True,
+                auto_expand_reconstructions=True,
+            )
+            == STARRED_RECONSTRUCTION_OPENED
+        )
+
+    def test_the_sample_row_above_a_starred_reconstruction_of_a_lone_audio_opens(
         self,
         corpus: BrowserCorpus,
     ) -> None:
-        assert view(corpus, {corpus.paths["C"]}, favorites_only=True) == STARRED_CONFIGURATION
+        assert (
+            view(
+                corpus,
+                {corpus.paths["D/solo"]},
+                favorites_only=True,
+                auto_expand_reconstructions=True,
+            )
+            == STARRED_LONE_AUDIO_OPENED
+        )
 
-    def test_a_starred_folder_opens_one_level(self, corpus: BrowserCorpus) -> None:
-        assert view(corpus, {corpus.paths["A"]}, favorites_only=True) == STARRED_OF_TWO_ALIKE
+    def test_the_subfolder_above_a_starred_reconstruction_opens(self, corpus: BrowserCorpus) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["A/drums/kick"]},
+                favorites_only=True,
+                auto_expand_reconstructions=True,
+            )
+            == STARRED_IN_SUBFOLDER_OPENED
+        )
 
-    def test_a_star_inside_a_starred_folder_opens_the_way_down_to_itself(self, corpus: BrowserCorpus) -> None:
-        favorites = {corpus.paths["B"], corpus.paths["B/drums/kick"]}
-        assert view(corpus, favorites, favorites_only=True) == STARRED_FOLDER_HOLDING_A_STAR
+    def test_the_branch_above_a_starred_reconstruction_outside_every_configuration_opens(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["stray"]},
+                favorites_only=True,
+                auto_expand_reconstructions=True,
+            )
+            == STARRED_STRAY_OPENED
+        )
 
-    def test_a_starred_folder_inside_a_starred_folder_opens(self, corpus: BrowserCorpus) -> None:
+    def test_a_starred_folder_is_left_folded_while_reconstructions_alone_are_followed(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["A"]},
+                favorites_only=True,
+                auto_expand_reconstructions=True,
+            )
+            == STARRED_OF_TWO_ALIKE
+        )
+
+    def test_a_starred_reconstruction_is_left_folded_while_directories_alone_are_followed(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["A/beat"]},
+                favorites_only=True,
+                auto_expand_directories=True,
+            )
+            == STARRED_RECONSTRUCTION
+        )
+
+    def test_the_rows_above_a_starred_configuration_open_and_it_stays_folded(self, corpus: BrowserCorpus) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["C"]},
+                favorites_only=True,
+                auto_expand_directories=True,
+            )
+            == STARRED_CONFIGURATION_OPENED
+        )
+
+    def test_the_rows_above_a_starred_plain_folder_open_and_it_stays_folded(self, corpus: BrowserCorpus) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["archive"]},
+                favorites_only=True,
+                auto_expand_directories=True,
+            )
+            == STARRED_PLAIN_FOLDER_OPENED
+        )
+
+    def test_a_starred_folder_holding_a_starred_folder_opens_the_way_down_to_it(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        """The folder above stands on the way to the star below, which is what opens it."""
         favorites = {corpus.paths["archive"], corpus.paths["archive/F"]}
-        assert view(corpus, favorites, favorites_only=True) == STARRED_FOLDER_AND_WHAT_IT_HOLDS
+        assert (
+            view(
+                corpus,
+                favorites,
+                favorites_only=True,
+                auto_expand_directories=True,
+            )
+            == STARRED_FOLDER_IN_STARRED_FOLDER_OPENED
+        )
 
-    def test_the_rows_above_a_starred_reconstruction_open(self, corpus: BrowserCorpus) -> None:
-        assert view(corpus, {corpus.paths["A/beat"]}, favorites_only=True) == STARRED_RECONSTRUCTION
+    def test_a_starred_configuration_whose_chain_folded_keeps_the_folded_row_closed(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        assert (
+            view(
+                corpus,
+                {corpus.paths["E"]},
+                favorites_only=True,
+                auto_expand_directories=True,
+            )
+            == STARRED_FOLDED_CONFIGURATION_OPENED
+        )
 
     def test_the_sample_branch_opens_the_way_to_the_variants_a_starred_folder_holds(
         self,
         corpus: BrowserCorpus,
     ) -> None:
         """No row stands for the folder there, so the variants are where the star arrives."""
-        assert view(corpus, {corpus.paths["B"]}, favorites_only=True) == STARRED_CONFIGURATION_B
+        assert (
+            view(
+                corpus,
+                {corpus.paths["B"]},
+                favorites_only=True,
+                auto_expand_directories=True,
+            )
+            == STARRED_CONFIGURATION_B_OPENED
+        )
+
+    def test_a_star_inside_a_starred_folder_opens_that_folder(self, corpus: BrowserCorpus) -> None:
+        """A reconstruction answers by its own preference, so following those opens the folder above."""
+        favorites = {corpus.paths["B"], corpus.paths["B/drums/kick"]}
+        assert (
+            view(
+                corpus,
+                favorites,
+                favorites_only=True,
+                auto_expand_reconstructions=True,
+            )
+            == STARRED_FOLDER_HOLDING_A_STAR_OPENED
+        )
+
+    def test_a_star_inside_a_starred_folder_takes_its_own_preference(self, corpus: BrowserCorpus) -> None:
+        """Following folders alone opens the way to the folder, leaving the star inside it folded away."""
+        favorites = {corpus.paths["B"], corpus.paths["B/drums/kick"]}
+        assert (
+            view(
+                corpus,
+                favorites,
+                favorites_only=True,
+                auto_expand_directories=True,
+            )
+            == STARRED_FOLDER_HOLDING_A_STAR_BY_FOLDER
+        )
 
 
 class TestSearchInsideTheMode:
