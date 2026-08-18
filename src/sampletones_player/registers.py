@@ -12,8 +12,7 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-
-from .specification.registers import (
+from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
     MAX_REGISTER_VALUE,
     MAX_TIMER_HIGH,
