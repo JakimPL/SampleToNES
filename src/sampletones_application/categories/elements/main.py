@@ -4,7 +4,6 @@ from sampletones_application.categories.abstract import AbstractElement
 class ExplorerElements(AbstractElement):
     SECTION = "section"
     REFRESH_BUTTON = "refresh_button"
-    COLLAPSE_ALL_BUTTON = "collapse_all_button"
     CONTEXT_LOAD_RECONSTRUCTION = "context_load_reconstruction"
     CONTEXT_LOAD_LIBRARY = "context_load_library"
     CONTEXT_RECONSTRUCT_FILE = "context_reconstruct_file"
@@ -12,7 +11,6 @@ class ExplorerElements(AbstractElement):
     CONTEXT_SET_LIBRARY_DIRECTORY = "context_set_library_directory"
     CONTEXT_SET_OUTPUT_DIRECTORY = "context_set_output_directory"
     STATUS_REFRESH = "status_refresh"
-    STATUS_COLLAPSE_ALL = "status_collapse_all"
     STATUS_NODE_AUDIO_NO_AUTOPLAY = "status_node_audio_no_autoplay"
     STATUS_NODE_AUDIO = "status_node_audio"
     STATUS_NODE_LIBRARY = "status_node_library"

@@ -7,7 +7,11 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECONDARY_BUTTON
+from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import (
+    SUF_BUTTON_COLLAPSE_ALL,
+    TAG_GLOBAL_THEME_SECONDARY_BUTTON,
+)
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -27,11 +31,11 @@ from sampletones_shared.types.callback import Callback, MessageCallback, VoidCal
 class GUIFileBrowserPanel(GUITreePanel, ABC):
     """Shared skeleton of a panel offering a tree of files as a collapsible, searchable card.
 
-    The card holds a refresh control above the search box and the tree it filters. This base builds
-    that arrangement, rebuilds the tree off the main thread on demand, and enables or disables the
-    whole card as the tree locks and unlocks. A subclass declares its widgets as a
-    :class:`FileBrowserTags`, states what its card and its refresh control read, answers what
-    refreshing the model means, and shapes each row.
+    The card holds the controls bringing the tree up to date and folding it away, above the search box
+    and the tree it filters. This base builds that arrangement, rebuilds the tree off the main thread
+    on demand, and enables or disables the whole card as the tree locks and unlocks. A subclass
+    declares its widgets as a :class:`FileBrowserTags`, states what its card and its refresh control
+    read, answers what refreshing the model means, and shapes each row.
 
     A browser whose rows carry favorites states ``_OFFERS_FAVORITES_FILTER``, which adds the control
     showing those favorites alone to the card.
@@ -52,6 +56,9 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
         colors: TreeColors,
         initial_collapsed: bool,
     ) -> None:
+        self._lbl_collapse_all = language_manager["global.browser.label.collapse_all"]
+        self._msg_collapse_all = language_manager["global.status.message.collapse_all"]
+
         super().__init__(
             tree=tree,
             tag=self._tags.panel,
@@ -119,8 +126,10 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
             self.rebuild_tree()
 
     def _create_controls(self) -> None:
+        """Offers the two controls every browser of files carries: bring it up to date, fold it away."""
         with dpg.group(tag=self._tags.group_controls):
             self._create_refresh_button()
+            self._create_collapse_all_button()
 
         self._bind_refresh_message()
 
@@ -133,6 +142,21 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
             theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
         )
 
+    def _create_collapse_all_button(self) -> None:
+        """Offers the control folding the whole tree away, reading as the utility the refresh one does."""
+        collapse_all_tag = compose_tag(self.tag, SUF_BUTTON_COLLAPSE_ALL)
+        GUIButton(
+            tag=collapse_all_tag,
+            label=self._lbl_collapse_all,
+            width=-1,
+            callback=self._on_collapse_all_clicked,
+            theme=ThemeRegistry.get(TAG_GLOBAL_THEME_SECONDARY_BUTTON),
+        )
+        self._status_bar.bind_to_item(
+            collapse_all_tag,
+            self._msg_collapse_all,
+        )
+
     def _bind_refresh_message(self) -> None:
         self._status_bar.bind_to_item(
             self._tags.button_refresh,
@@ -142,6 +166,19 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
     def _on_refresh_clicked(self) -> None:
         """Answers the refresh control, by default with a rebuild of the tree as the model stands."""
         self.rebuild_tree()
+
+    def _on_collapse_all_clicked(self) -> None:
+        """Folds every row of the tree away, leaving the reader the level the tree opens at.
+
+        The rows are reached through the model rather than the widget tree, so one pass covers a
+        branch however deep it runs, and the browser is told what each row now stands as.
+        """
+        root = self.tree.get_root()
+        if root is None:
+            return
+
+        for child in root.children:
+            self._set_subtree_expanded(child, expanded=False)
 
     def _create_tree_window(self) -> None:
         self.create_search(self._body_container)

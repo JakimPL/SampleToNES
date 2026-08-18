@@ -8,7 +8,6 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
 from sampletones_application.tags.main import (
-    TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
     TAG_MAIN_EXPLORER_BUTTON_REFRESH,
     TAG_MAIN_EXPLORER_GROUP_CONTROLS,
     TAG_MAIN_EXPLORER_GROUP_TREE,
@@ -16,7 +15,6 @@ from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_TREE,
     TAG_MAIN_EXPLORER_WINDOW_TREE,
 )
-from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.browser import GUIFileBrowserPanel
@@ -134,40 +132,20 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
 
         super()._setup_handlers()
 
-    def _create_controls(self) -> None:
-        """Offers the refresh control and, beside it, the one folding every folder away at once."""
-        with dpg.group(tag=self._tags.group_controls):
-            self._create_refresh_button()
-            GUIButton(
-                tag=TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
-                label=self._language_manager["main.explorer.label.collapse_all_button"],
-                width=-1,
-                callback=self.collapse_all,
-            )
-
-        self._bind_refresh_message()
-        self._status_bar.bind_to_item(
-            TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
-            self._language_manager["main.explorer.message.status_collapse_all"],
-        )
-
     def _create_tree_root(self) -> None:
         self._create_tree_root_heading(self.section_label)
 
     def _refresh_model(self) -> None:
         self._explorer_logic.refresh_tree()
 
-    def collapse_all(
-        self,
-        _sender: Sender,
-        _app_data: int,
-        _user_data: Any,
-    ) -> None:
+    def _on_collapse_all_clicked(self) -> None:
+        """Folds every folder away and drops the children it had loaded, so opening one reads it again.
+
+        The rows fold while the model still states them, and the folders the model held go afterwards,
+        which is what makes a later open list the folder as it stands on disk.
+        """
+        super()._on_collapse_all_clicked()
         self._explorer_logic.collapse_all()
-        children = dpg.get_item_children(self.tree_tag, 1)
-        assert children is not None, "Explorer tree has no children."
-        for node_tag in children:
-            dpg.set_value(node_tag, False)
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_node_subtree(

@@ -118,7 +118,7 @@ def expanded(monkeypatch: pytest.MonkeyPatch) -> List[Tuple[str, bool]]:
     """Records the tag and open state of every row the expansion items reach."""
     calls: List[Tuple[str, bool]] = []
     monkeypatch.setattr(
-        shared_browser_module,
+        tree_module,
         "dpg_set_value",
         lambda tag, value: calls.append((tag, value)),
     )

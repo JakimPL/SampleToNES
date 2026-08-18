@@ -57,6 +57,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_get_value,
     dpg_is_item_hovered,
+    dpg_set_value,
 )
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import (
@@ -429,6 +430,18 @@ class GUITreePanel(GUIPanel, ABC):
             return
 
         self._expanded_rows.discard(node_tag)
+
+    def _set_subtree_expanded(self, node: TreeNode, *, expanded: bool) -> None:
+        """Folds or unfolds the row together with every row below it holding something.
+
+        Each row is reached by the tag it was built under and set directly, and the browser is told
+        what it now stands as, so a rebuild brings the whole subtree back the way this left it.
+        """
+        for container in (node, *node.descendants):
+            if container.children:
+                node_tag = self._generate_node_tag(container)
+                dpg_set_value(node_tag, expanded)
+                self._set_row_expanded(node_tag, expanded)
 
     def _finish_emit(
         self,

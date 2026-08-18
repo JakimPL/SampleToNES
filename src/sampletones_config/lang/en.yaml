@@ -134,6 +134,7 @@ global.browser.label.search: "Search"
 global.browser.label.filter: "Filter"
 global.browser.label.clear_search: "Clear"
 global.browser.label.favorites_only: "Favorites only"
+global.browser.label.collapse_all: "Collapse all"
 
 # =============================================================================
 # Global — Context menu
@@ -241,6 +242,7 @@ global.status.message.node_library: "Double-click to open instructions library. 
 global.status.message.tree_search: "Type query to filter nodes."
 global.status.message.clear_search: "Clear the search filter."
 global.status.message.favorites_only: "Show the favorites alone, or the whole tree."
+global.status.message.collapse_all: "Fold every row of the tree away."
 global.status.message.input: "Ctrl + click to type value."
 global.status.message.combo: "Click to select a value from the list."
 global.status.message.node_directory: "Click to {expand_or_collapse}. Right-click to open context menu."
@@ -278,7 +280,6 @@ global.graph.message.waveform_regenerating: "Regenerating reconstruction..."
 # =============================================================================
 main.explorer.label.section: "Filesystem"
 main.explorer.label.refresh_button: "Refresh"
-main.explorer.label.collapse_all_button: "Collapse all"
 main.explorer.label.context_load_reconstruction: "Load reconstruction"
 main.explorer.label.context_load_library: "Load instructions library"
 main.explorer.label.context_reconstruct_file: "Reconstruct file"
@@ -288,7 +289,6 @@ main.explorer.label.context_set_output_directory: "Set as output directory"
 main.explorer.message.status_node_audio_no_autoplay: "Double-click to reconstruct audio. Right-click to open context menu."
 main.explorer.message.status_node_audio: "Click to play audio. Double-click to reconstruct audio. Right-click to open context menu."
 main.explorer.message.status_refresh: "Rescan the filesystem for audio files."
-main.explorer.message.status_collapse_all: "Collapse every folder in the tree."
 main.explorer.message.converter_running_msg: "A conversion is already running. Please wait for it to complete or cancel the current operation before starting a new one."
 main.explorer.title.converter_running_dialog: "Conversion in progress"
 

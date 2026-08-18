@@ -18,7 +18,6 @@ from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
-from sampletones_application.utils.gui.dpg import dpg_set_value
 from sampletones_core.structures.tree import (
     FileSystemNode,
     NodeType,
@@ -264,18 +263,6 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
             label=self._language_manager["global.context.label.collapse_all"],
             callback=lambda: self._set_subtree_expanded(node, expanded=False),
         )
-
-    def _set_subtree_expanded(self, node: TreeNode, *, expanded: bool) -> None:
-        """Folds or unfolds the row together with every row below it holding something.
-
-        Each row is reached by the tag it was built under and set directly, and the browser is told
-        what it now stands as, so a rebuild brings the whole subtree back the way this left it.
-        """
-        for container in (node, *node.descendants):
-            if container.children:
-                node_tag = self._generate_node_tag(container)
-                dpg_set_value(node_tag, expanded)
-                self._set_row_expanded(node_tag, expanded)
 
     def _add_context_menu_copy_name_item(self, node: TreeNode) -> None:
         """Offers the label the tree reads the row by, which for a folded chain names every level."""
