@@ -1,11 +1,12 @@
 from collections import Counter
 from typing import Dict, Final, Sequence, Tuple
 
-from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
 from sampletones_shared.constants.symbols import HASH
 
 DISPLAY_SEPARATOR: Final[str] = "·"
 GAMMA_PREFIX: Final[str] = "γ"
+GENERATOR_SEPARATOR: Final[str] = ", "
 DISPLAY_HASH_LENGTH: Final[int] = 7
 
 HERTZ_UNIT: Final[str] = "Hz"
@@ -42,6 +43,11 @@ def format_spectrum_method(method: SpectrumMethod) -> str:
 def format_transformation_gamma(transformation_gamma: int) -> str:
     """Marks a transformation gamma with ``γ`` (e.g. ``γ0``)."""
     return f"{GAMMA_PREFIX}{transformation_gamma}"
+
+
+def format_generators(generators: Sequence[GeneratorName]) -> str:
+    """Renders the generators a reconstruction was built with, in the order it names them (e.g. ``Pulse 1, Noise``)."""
+    return GENERATOR_SEPARATOR.join(generator.capitalized for generator in generators)
 
 
 def format_frequencies(sample_rate: int, nes_frequency: int) -> str:

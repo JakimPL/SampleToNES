@@ -7,6 +7,7 @@ from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
     disambiguated_display_name,
     format_frequencies,
+    format_generators,
     format_nes_frequency,
     format_sample_rate,
     format_transformation,
@@ -14,7 +15,7 @@ from sampletones_core.configs.display import (
     short_hash,
     unique_display_names,
 )
-from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
 
 
 class TestFormatSampleRate:
@@ -40,6 +41,26 @@ class TestFormatNesFrequency:
 class TestFormatTransformationGamma:
     def test_marks_the_gamma(self) -> None:
         assert format_transformation_gamma(0) == "γ0"
+
+
+class TestFormatGenerators:
+    def test_reads_the_generators_in_the_order_they_are_given(self) -> None:
+        assert (
+            format_generators(
+                [
+                    GeneratorName.PULSE1,
+                    GeneratorName.TRIANGLE,
+                    GeneratorName.NOISE,
+                ],
+            )
+            == "Pulse 1, Triangle, Noise"
+        )
+
+    def test_a_lone_generator_reads_as_its_own_name(self) -> None:
+        assert format_generators([GeneratorName.PULSE2]) == "Pulse 2"
+
+    def test_no_generator_reads_as_nothing(self) -> None:
+        assert format_generators([]) == ""
 
 
 class TestFormatFrequencies:

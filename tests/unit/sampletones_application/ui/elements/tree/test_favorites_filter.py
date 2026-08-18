@@ -706,13 +706,6 @@ class TestControl:
 
         assert redraws == [True]
 
-    def test_the_mode_a_session_left_on_stands_before_the_first_rebuild(self, corpus: BrowserCorpus) -> None:
-        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False)
-
-        panel._restore_favorites_only(True)
-
-        assert panel._filter.favorites_only
-
     def test_a_query_typed_earlier_survives_a_change_of_mode(
         self,
         corpus: BrowserCorpus,

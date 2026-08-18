@@ -72,10 +72,9 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
             status_bar=status_bar,
             colors=colors,
             initial_collapsed=initial_collapsed,
+            initial_favorites_only=initial_favorites_only,
             initial_expanded_rows=initial_expanded_rows,
         )
-
-        self._restore_favorites_only(initial_favorites_only)
 
     @property
     def section_label(self) -> str:

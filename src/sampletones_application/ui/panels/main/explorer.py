@@ -23,6 +23,7 @@ from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tags import FileBrowserTags
+from sampletones_application.ui.elements.tree.tree import NO_EXPANDED_ROWS
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -108,6 +109,8 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
             status_bar=status_bar,
             colors=colors,
             initial_collapsed=initial_collapsed,
+            initial_favorites_only=False,
+            initial_expanded_rows=NO_EXPANDED_ROWS,
         )
 
     @property

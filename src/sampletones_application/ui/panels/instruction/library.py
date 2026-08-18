@@ -127,6 +127,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
             status_bar=status_bar,
             colors=colors,
             initial_collapsed=initial_collapsed,
+            initial_favorites_only=False,
             initial_expanded_rows=initial_expanded_rows,
         )
 

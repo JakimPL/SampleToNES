@@ -83,6 +83,7 @@ from sampletones_application.utils.parallelization.thread import (
     SingleThreadExecutor,
 )
 from sampletones_core.configs.display import (
+    format_generators,
     format_nes_frequency,
     format_sample_rate,
     format_spectrum_method,
@@ -125,15 +126,14 @@ class GUITreePanel(GUIPanel, ABC):
         tag: str,
         tree_tag: str,
         tree_logic: TreeLogicProtocol,
-        width: int = -1,
-        height: int = -1,
         *,
         scheduling: SchedulingBehavior,
         search_label: str,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
-        initial_expanded_rows: AbstractSet[str] = NO_EXPANDED_ROWS,
+        initial_favorites_only: bool,
+        initial_expanded_rows: AbstractSet[str],
     ) -> None:
         self._language_manager = language_manager
         self._logic = tree_logic
@@ -146,7 +146,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._expansion = RowExpansionMemory(initial_expanded_rows)
         self._emitter = TreeEmitter(scheduling=scheduling)
 
-        self._filter: TreeFilter = NO_FILTER
+        self._filter: TreeFilter = NO_FILTER.with_favorites_only(initial_favorites_only)
         self._search_visibility: Optional[TreeVisibility] = None
         self._favorites_visibility: Optional[TreeVisibility] = None
         self._auto_expand_pending: bool = False
@@ -184,8 +184,8 @@ class GUITreePanel(GUIPanel, ABC):
 
         super().__init__(
             tag=tag,
-            width=width,
-            height=height,
+            width=-1,
+            height=-1,
         )
 
     def _launch_rebuild(
@@ -387,14 +387,6 @@ class GUITreePanel(GUIPanel, ABC):
         self._expansion.release(
             self._way_down_to([node for node in root.descendants if self._generate_node_tag(node) in reader_rows]),
         )
-
-    def _restore_favorites_only(self, favorites_only: bool) -> None:
-        """Takes the mode a session left the browser in, which its first rebuild then draws by.
-
-        The rows a session left standing open come back with it, so the mode a browser opens in points
-        the reader at their favorites without opening a row.
-        """
-        self._filter = self._filter.with_favorites_only(favorites_only)
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
         return compose_tag(self.tag, node_type.value, SUF_HANDLER_NODE)
@@ -810,15 +802,12 @@ class GUITreePanel(GUIPanel, ABC):
         self,
         fields: ConfigDirectoryFields,
     ) -> List[Tuple[str, str]]:
-        generators = ", ".join(
-            generator.capitalized for generator in fields.generators
-        )  # TODO: operation deserves a helper function
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(fields.sr)),
             (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
             (self._lbl_detail_spectrum_method, format_spectrum_method(fields.sm)),
             (self._lbl_detail_transformation_gamma, str(fields.tg)),
-            (self._lbl_detail_generators, generators),
+            (self._lbl_detail_generators, format_generators(fields.generators)),
             (self._lbl_detail_configuration, short_hash(fields.ch)),
         ]
 
