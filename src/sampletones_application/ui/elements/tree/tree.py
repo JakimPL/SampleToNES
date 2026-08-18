@@ -149,6 +149,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._search_visibility: Optional[TreeVisibility] = None
         self._favorites_visibility: Optional[TreeVisibility] = None
         self._favorites_anchors: Optional[TreeVisibility] = None
+        self._auto_expand_pending: bool = False
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
@@ -332,7 +333,7 @@ class GUITreePanel(GUIPanel, ABC):
         The rebuild resolves the filter against the model as it collects the rows, so the mode is
         stated here and answered there, and turning it on walks the model once.
         """
-        self._filter = self._filter.with_favorites_only(favorites_only)
+        self._state_favorites_only(favorites_only)
         self._apply_favorites_glyph_color()
         self.call(
             self.on_favorites_filter_changed,
@@ -362,8 +363,22 @@ class GUITreePanel(GUIPanel, ABC):
 
         dpg_configure_item(self._favorites_checkbox_tag, enabled=enabled)
 
+    def _state_favorites_only(self, favorites_only: bool) -> None:
+        """Takes the mode the reader switched to, asking the pass it starts to follow the stars.
+
+        Switching the mode on is the reader asking to be shown their favorites, so that pass opens the
+        way down to them; a pass after it — a refresh, a query, a star gained or lost — draws the rows
+        standing where the reader has them. Switching the mode off asks for nothing to be opened.
+        """
+        self._filter = self._filter.with_favorites_only(favorites_only)
+        self._auto_expand_pending = favorites_only
+
     def _restore_favorites_only(self, favorites_only: bool) -> None:
-        """Takes the mode a session left the browser in, which its first rebuild then draws by."""
+        """Takes the mode a session left the browser in, which its first rebuild then draws by.
+
+        The rows a session left standing open come back with it, so the mode a browser opens in points
+        the reader at their favorites without opening a row.
+        """
         self._filter = self._filter.with_favorites_only(favorites_only)
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
@@ -401,7 +416,6 @@ class GUITreePanel(GUIPanel, ABC):
             has_favorite_ancestor=has_favorite_ancestor,
         )
         stands_open = self._stands_open(
-            node,
             node_tag,
             should_expand=should_expand,
         )
@@ -423,23 +437,21 @@ class GUITreePanel(GUIPanel, ABC):
 
     def _stands_open(
         self,
-        node: TreeNode,
         node_tag: str,
         *,
         should_expand: bool,
     ) -> bool:
         """Whether the row is created standing open: the filter points at it, or the memory holds it.
 
-        The shape the reader built is theirs to keep, so a row they opened comes back open and the
-        filter adds the way down to what it names. Recording the answer here is what carries that
-        shape into the pass after this one.
+        The shape the reader built is theirs to keep and theirs alone to change, so the memory answers
+        with the rows they opened and the filter draws the way down to what it names on top of that. A
+        row the filter opened therefore folds back once the filter stops naming it, and the tree the
+        reader comes back to is the one they left.
         """
         if not self._REMEMBERS_EXPANSION:
             return should_expand
 
-        stands_open = should_expand or node_tag in self._expanded_rows
-        self._set_row_expanded(node_tag, stands_open and bool(node.children))
-        return stands_open
+        return should_expand or node_tag in self._expanded_rows
 
     @property
     def expanded_rows(self) -> Set[str]:
@@ -969,6 +981,7 @@ class GUITreePanel(GUIPanel, ABC):
             self._favorites_visibility,
             self._favorites_anchors,
         ) = self._resolve_favorites()
+        self._auto_expand_pending = False
 
     def _resolve_search_visibility(self) -> Optional[TreeVisibility]:
         """The rows the search query names, and nothing to narrow by while no query is typed."""
@@ -1008,10 +1021,14 @@ class GUITreePanel(GUIPanel, ABC):
     ) -> List[TreeNode]:
         """The anchors whose star the reader asked the browser to open the way down to.
 
-        Which stars are followed is a preference stated per kind and read once per pass: a starred
-        reconstruction answers for itself, and a starred folder answers for itself together with the
-        rows it brings in where no row stands for the folder.
+        The pass the reader started by switching the mode on is the one that follows a star, so a pass
+        of its own accord points at nothing. Which stars are followed is a preference stated per kind
+        and read once per pass: a starred reconstruction answers for itself, and a starred folder
+        answers for itself together with the rows it brings in where no row stands for the folder.
         """
+        if not self._auto_expand_pending:
+            return []
+
         reconstructions = self._logic.auto_expand_favorite_reconstructions
         directories = self._logic.auto_expand_favorite_directories
         return [

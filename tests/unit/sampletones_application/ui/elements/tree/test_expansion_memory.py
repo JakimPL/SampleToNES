@@ -13,6 +13,7 @@ from tests.suite.browser import (
     nodes_at,
     render_view,
     row_named,
+    select_favorites,
     set_filter,
     set_row_expanded,
 )
@@ -43,53 +44,6 @@ SUBFOLDER_THE_READER_OPENED: Final[str] = as_view("""
         - 44.1 kHz·30 Hz·FFT·γ0·PT
       - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
     """)
-WHOLE_TREE_AFTER_THE_MODE: Final[str] = as_view("""
-    v By configuration
-      > 8 kHz·60 Hz·CQT·γ2·P
-        - sweep
-      v 44.1 kHz·30 Hz
-        > CQT·γ0·PTN
-          - beat
-          - solo
-        v FFT·γ0
-          > PT
-            > takes
-              - alt
-            - beat
-          v PTN·#aaaaaaa
-            > drums
-              - kick
-              - snare
-            - beat
-            - melody
-          > PTN·#bbbbbbb
-            > drums
-              - kick
-            - beat
-            - melody
-      > archive
-        > 48 kHz·50 Hz·LogFFT·γ1·TN
-          - song
-      - stray
-    v By sample
-      v beat
-        - 44.1 kHz·30 Hz·CQT·γ0·PTN
-        - 44.1 kHz·30 Hz·FFT·γ0·PT
-        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
-        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
-      > drums
-        > kick
-          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
-          - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
-        - snare·44.1 kHz·30 Hz·FFT·γ0·PTN
-      > melody
-        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#aaaaaaa
-        - 44.1 kHz·30 Hz·FFT·γ0·PTN·#bbbbbbb
-      - solo·44.1 kHz·30 Hz·CQT·γ0·PTN
-      - sweep·8 kHz·60 Hz·CQT·γ2·P
-      - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
-    """)
-
 WHOLE_TREE_WITHOUT_THE_ARCHIVE: Final[str] = as_view("""
     > By configuration
       > 8 kHz·60 Hz·CQT·γ2·P
@@ -155,19 +109,32 @@ class TestTheReadersShape:
 
         assert render_view(panel) == STARRED_CONFIGURATION
 
-    def test_the_rows_the_mode_opened_stand_open_once_it_goes_off(self, corpus: BrowserCorpus) -> None:
-        """What the browser unfolded to show a favorite is part of the shape the reader is left with."""
+    def test_the_rows_the_mode_opened_fold_back_once_it_goes_off(self, corpus: BrowserCorpus) -> None:
+        """What the browser unfolded to show a favorite is the mode's, so the shape is left untouched."""
         panel = build_browser_panel(
             corpus,
             {corpus.paths["A/beat"]},
-            favorites_only=True,
+            favorites_only=False,
             auto_expand_reconstructions=True,
         )
+        select_favorites(panel)
         render_view(panel)
 
         set_filter(panel, favorites_only=False)
 
-        assert render_view(panel) == WHOLE_TREE_AFTER_THE_MODE
+        assert render_view(panel) == WHOLE_TREE
+
+    def test_the_rows_the_mode_opened_are_no_part_of_what_a_save_writes(self, corpus: BrowserCorpus) -> None:
+        panel = build_browser_panel(
+            corpus,
+            {corpus.paths["A/beat"]},
+            favorites_only=False,
+            auto_expand_reconstructions=True,
+        )
+        select_favorites(panel)
+        render_view(panel)
+
+        assert panel.expanded_rows == set()
 
     def test_a_row_the_mode_never_drew_keeps_the_state_it_had(self, corpus: BrowserCorpus) -> None:
         panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False)

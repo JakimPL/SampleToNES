@@ -15,7 +15,11 @@ from tests.suite.browser import (
     as_view,
     build_browser_panel,
     nodes_at,
+    render_view,
+    resolve_pass,
+    select_favorites,
     view,
+    view_on_selecting_favorites,
 )
 
 CHECKBOX_TAG: Final[str] = "sequencer.browser.checkbox.favorites"
@@ -344,8 +348,8 @@ QUERY_ALONE: Final[str] = as_view("""
 class TestDrawnRows:
     """Which rows the mode draws: what the star reaches, and the rows leading down to it.
 
-    What is drawn is the star's to state and nothing else, so every row stands folded here — which is
-    what a browser opening with the preference off comes back as.
+    What is drawn is the star's to state and nothing else, so every row stands folded here: the mode
+    is stated the way a session restores it, and a mode nobody asked for opens no row.
     """
 
     def test_a_starred_reconstruction_is_drawn_in_both_views(self, corpus: BrowserCorpus) -> None:
@@ -385,10 +389,9 @@ class TestDrawnRows:
         """Opening the way down to a star is a separate answer, so it moves no row in or out."""
         favorites = {corpus.paths["B"], corpus.paths["B/drums/kick"]}
         assert rows_of(
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 favorites,
-                favorites_only=True,
                 auto_expand_reconstructions=True,
                 auto_expand_directories=True,
             )
@@ -399,14 +402,13 @@ class TestOpenRows:
     """Which rows stand open: the way down to a star the reader asked the browser to follow."""
 
     def test_the_preference_off_opens_nothing(self, corpus: BrowserCorpus) -> None:
-        assert view(corpus, {corpus.paths["A/beat"]}, favorites_only=True) == STARRED_RECONSTRUCTION
+        assert view_on_selecting_favorites(corpus, {corpus.paths["A/beat"]}) == STARRED_RECONSTRUCTION
 
     def test_the_rows_above_a_starred_reconstruction_open(self, corpus: BrowserCorpus) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["A/beat"]},
-                favorites_only=True,
                 auto_expand_reconstructions=True,
             )
             == STARRED_RECONSTRUCTION_OPENED
@@ -417,10 +419,9 @@ class TestOpenRows:
         corpus: BrowserCorpus,
     ) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["D/solo"]},
-                favorites_only=True,
                 auto_expand_reconstructions=True,
             )
             == STARRED_LONE_AUDIO_OPENED
@@ -428,10 +429,9 @@ class TestOpenRows:
 
     def test_the_subfolder_above_a_starred_reconstruction_opens(self, corpus: BrowserCorpus) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["A/drums/kick"]},
-                favorites_only=True,
                 auto_expand_reconstructions=True,
             )
             == STARRED_IN_SUBFOLDER_OPENED
@@ -442,10 +442,9 @@ class TestOpenRows:
         corpus: BrowserCorpus,
     ) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["stray"]},
-                favorites_only=True,
                 auto_expand_reconstructions=True,
             )
             == STARRED_STRAY_OPENED
@@ -456,10 +455,9 @@ class TestOpenRows:
         corpus: BrowserCorpus,
     ) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["A"]},
-                favorites_only=True,
                 auto_expand_reconstructions=True,
             )
             == STARRED_OF_TWO_ALIKE
@@ -470,10 +468,9 @@ class TestOpenRows:
         corpus: BrowserCorpus,
     ) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["A/beat"]},
-                favorites_only=True,
                 auto_expand_directories=True,
             )
             == STARRED_RECONSTRUCTION
@@ -481,10 +478,9 @@ class TestOpenRows:
 
     def test_the_rows_above_a_starred_configuration_open_and_it_stays_folded(self, corpus: BrowserCorpus) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["C"]},
-                favorites_only=True,
                 auto_expand_directories=True,
             )
             == STARRED_CONFIGURATION_OPENED
@@ -492,10 +488,9 @@ class TestOpenRows:
 
     def test_the_rows_above_a_starred_plain_folder_open_and_it_stays_folded(self, corpus: BrowserCorpus) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["archive"]},
-                favorites_only=True,
                 auto_expand_directories=True,
             )
             == STARRED_PLAIN_FOLDER_OPENED
@@ -508,10 +503,9 @@ class TestOpenRows:
         """The folder above stands on the way to the star below, which is what opens it."""
         favorites = {corpus.paths["archive"], corpus.paths["archive/F"]}
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 favorites,
-                favorites_only=True,
                 auto_expand_directories=True,
             )
             == STARRED_FOLDER_IN_STARRED_FOLDER_OPENED
@@ -522,10 +516,9 @@ class TestOpenRows:
         corpus: BrowserCorpus,
     ) -> None:
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["E"]},
-                favorites_only=True,
                 auto_expand_directories=True,
             )
             == STARRED_FOLDED_CONFIGURATION_OPENED
@@ -537,10 +530,9 @@ class TestOpenRows:
     ) -> None:
         """No row stands for the folder there, so the variants are where the star arrives."""
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 {corpus.paths["B"]},
-                favorites_only=True,
                 auto_expand_directories=True,
             )
             == STARRED_CONFIGURATION_B_OPENED
@@ -550,10 +542,9 @@ class TestOpenRows:
         """A reconstruction answers by its own preference, so following those opens the folder above."""
         favorites = {corpus.paths["B"], corpus.paths["B/drums/kick"]}
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 favorites,
-                favorites_only=True,
                 auto_expand_reconstructions=True,
             )
             == STARRED_FOLDER_HOLDING_A_STAR_OPENED
@@ -563,14 +554,40 @@ class TestOpenRows:
         """Following folders alone opens the way to the folder, leaving the star inside it folded away."""
         favorites = {corpus.paths["B"], corpus.paths["B/drums/kick"]}
         assert (
-            view(
+            view_on_selecting_favorites(
                 corpus,
                 favorites,
-                favorites_only=True,
                 auto_expand_directories=True,
             )
             == STARRED_FOLDER_HOLDING_A_STAR_BY_FOLDER
         )
+
+    def test_a_mode_a_session_restored_opens_nothing(self, corpus: BrowserCorpus) -> None:
+        """A browser opens with the rows its reader left standing, whichever stars it would follow."""
+        assert (
+            view(
+                corpus,
+                {corpus.paths["A/beat"]},
+                favorites_only=True,
+                auto_expand_reconstructions=True,
+            )
+            == STARRED_RECONSTRUCTION
+        )
+
+    def test_a_pass_after_the_one_the_reader_asked_for_opens_nothing(self, corpus: BrowserCorpus) -> None:
+        """The way down is opened the once, so a refresh leaves the rows standing as they now are."""
+        panel = build_browser_panel(
+            corpus,
+            {corpus.paths["A/beat"]},
+            favorites_only=False,
+            auto_expand_reconstructions=True,
+        )
+        select_favorites(panel)
+        assert render_view(panel) == STARRED_RECONSTRUCTION_OPENED
+
+        resolve_pass(panel)
+
+        assert render_view(panel) == STARRED_RECONSTRUCTION
 
 
 class TestSearchInsideTheMode:

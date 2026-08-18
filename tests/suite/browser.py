@@ -299,7 +299,8 @@ def build_browser_panel(
     Resolving the filter reads the model alone, so the panel needs neither widgets nor a search box,
     and the control stands where a browser that has yet to build one leaves it. The pair of
     auto-expand answers states which stars the mode opens the way down to, as the reader's preference
-    does.
+    does, and the mode is stated the way a session restores it — so the way down opens once a test
+    asks for the mode through :func:`select_favorites`.
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = panel_tag
@@ -318,6 +319,7 @@ def build_browser_panel(
     panel._favorites_glyph_tag = None
     panel.on_favorites_filter_changed = None
     panel._filter = TreeFilter(query=query, favorites_only=favorites_only)
+    panel._auto_expand_pending = False
     panel._resolve_filter()
     return panel
 
@@ -427,6 +429,21 @@ def set_filter(
     panel._resolve_filter()
 
 
+def select_favorites(panel: GUITreePanel) -> None:
+    """Switches the favorites mode on the way the reader's click does, and resolves the pass it starts.
+
+    Asking to be shown the favorites is what asks the browser to follow a star, so a view showing an
+    opened row is read through this rather than through a mode stated any other way.
+    """
+    panel._state_favorites_only(True)
+    panel._resolve_filter()
+
+
+def resolve_pass(panel: GUITreePanel) -> None:
+    """Resolves the filter afresh, which every pass of a rebuild does before it collects the rows."""
+    panel._resolve_filter()
+
+
 def view(
     corpus: BrowserCorpus,
     favorites: Set[Path],
@@ -447,3 +464,22 @@ def view(
             auto_expand_directories=auto_expand_directories,
         )
     )
+
+
+def view_on_selecting_favorites(
+    corpus: BrowserCorpus,
+    favorites: Set[Path],
+    *,
+    auto_expand_reconstructions: bool = False,
+    auto_expand_directories: bool = False,
+) -> str:
+    """The view a browser leaves once the reader switches the favorites mode on."""
+    panel = build_browser_panel(
+        corpus,
+        favorites,
+        favorites_only=False,
+        auto_expand_reconstructions=auto_expand_reconstructions,
+        auto_expand_directories=auto_expand_directories,
+    )
+    select_favorites(panel)
+    return render_view(panel)

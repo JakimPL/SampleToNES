@@ -817,23 +817,13 @@ class Application:
         self.session_manager.set_auto_expand_favorite_reconstructions(
             not self.session_manager.auto_expand_favorite_reconstructions
         )
-        self._redraw_browsers()
+        self._update_menu()
 
     def _toggle_auto_expand_favorite_directories(self) -> None:
         self.session_manager.set_auto_expand_favorite_directories(
             not self.session_manager.auto_expand_favorite_directories
         )
-        self._redraw_browsers()
-
-    def _redraw_browsers(self) -> None:
-        """Marks the choice in the menu and draws both browsers again from the model each holds.
-
-        What the favorites mode opens is decided as a rebuild collects the rows, so a change of the
-        preference is answered by collecting them again rather than by reaching into the tree.
-        """
         self._update_menu()
-        self._reconstructions_tab.redraw_browser()
-        self._sequencer_tab.redraw_browser()
 
     def _reconstruct_file_dialog(self) -> None:
         if self._is_operation_active():

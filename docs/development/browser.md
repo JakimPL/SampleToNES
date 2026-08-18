@@ -37,7 +37,8 @@ complements `docs/development/architecture.md` (layering and ownership) and
 8. **The reader's shape is theirs to keep.** Which rows stand open is what the reader made of the
    tree, so a browser records it and brings it back: a refresh, a change of filter and a repaint leave
    the tree standing as it was, and so does the next run of the application. What a filter unfolds on
-   top of that shape is the reader's to ask for.
+   top of that shape is the reader's to ask for, and it is drawn for as long as the filter names the
+   row rather than recorded.
 
 ---
 
@@ -189,8 +190,15 @@ is a preference stated per kind of favorite, held in `ApplicationConfig.browser`
 **View ▸ Auto-expand favorites**. A starred reconstruction reads the reconstructions answer; a starred
 folder, and everything it brings in where no row stands for it, reads the directories answer. Both are
 off by default, so turning the mode on narrows the tree and leaves every row standing as it was. The
-panel reads the pair through `TreeLogicProtocol`, once per resolution, and a change of preference asks
-each reconstruction browser for a redraw.
+panel reads the pair through `TreeLogicProtocol`, once per resolution.
+
+**The way down opens on the pass the reader asked for.** Switching the mode on is the reader asking to
+be shown their favorites, so the pass that switch starts is the one that opens the way down to them:
+`_state_favorites_only` records the request and `_resolve_filter` spends it. A pass after that — a
+refresh, a query, a star gained or lost — draws the rows standing where the reader has them, and
+switching the mode off asks for nothing to be opened. A change of preference asks for nothing either;
+it is answered the next time the reader asks for the mode, which keeps a menu click from moving the
+tree the reader is working in.
 
 **A row the favorites mode holds back holds nothing it would show.** A row it shows either stands on
 the way to a starred row or sits beneath one, and each of those facts holds for every row above it — so
@@ -199,10 +207,12 @@ declining a row declines its subtree, and one decision covers it while the trave
 **The shape the reader built is theirs to keep.** A browser holding `_REMEMBERS_EXPANSION` records
 the rows standing open, by the tag those rows are addressed under, and a later pass creates them open
 again: the filter adds the way down to what it names, and everything else comes back as it was left.
-A row is recorded as it is collected, so what the filter unfolded is part of that shape too; a click
-is read a frame later, once the row has answered it, and the expansion items record what they set. The
-memory is held to the rows the model states, read afresh on every pass, so a row a moved
-reconstructions directory left behind leaves the memory with it.
+What the reader did is what is recorded — a click, read a frame later once the row has answered it, and
+the expansion items and the collapse control, which record what they set. A row the filter opened is
+drawn open on top of that shape and folds back once the filter stops naming it, so a narrowed browser
+hands the tree back the way the reader had it. The memory is held to the rows the model states, read
+afresh on every pass, so a row a moved reconstructions directory left behind leaves the memory with
+it.
 
 The shape outlives the run as well. A browser is handed the rows it stands open as it is built
 (`initial_expanded_rows`), and `_persist_application_state` asks each tab for its shape and writes it to
