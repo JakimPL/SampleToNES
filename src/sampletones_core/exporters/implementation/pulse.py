@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Union
+from typing import ClassVar, Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -18,7 +18,7 @@ from ..exporter import Exporter
 
 
 class PulseExporter(Exporter[PulseInstruction]):
-    _ATTRIBUTE_MAP: Dict[FeatureKey, InstructionFields] = {
+    _ATTRIBUTE_MAP: ClassVar[Dict[FeatureKey, InstructionFields]] = {
         FeatureKey.VOLUME: "volume",
         FeatureKey.ARPEGGIO: "pitch",
         FeatureKey.DUTY_CYCLE: "duty_cycle",

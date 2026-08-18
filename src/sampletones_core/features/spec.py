@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, Tuple
+from typing import Dict, Final, List, Tuple
 
 from sampletones_core.constants.enums import FeatureKey, GeneratorName, LibraryGeneratorName
 from sampletones_core.constants.general import (
@@ -9,6 +9,7 @@ from sampletones_core.constants.general import (
     MAX_NOISE_MODE,
     MAX_PERIOD,
     MAX_VOLUME,
+    NUM_PERIODS,
 )
 
 
@@ -25,6 +26,19 @@ FEATURE_DIMENSION_ORDER: Final[Tuple[FeatureKey, ...]] = (
     FeatureKey.HI_PITCH,
     FeatureKey.DUTY_CYCLE,
 )
+
+
+CHANNEL_FEATURE_DEFAULTS: Final[Dict[FeatureKey, int]] = {
+    FeatureKey.VOLUME: MAX_VOLUME,
+    FeatureKey.ARPEGGIO: 0,
+    FeatureKey.PITCH: 0,
+    FeatureKey.HI_PITCH: 0,
+    FeatureKey.DUTY_CYCLE: 0,
+}
+
+
+RESTING_REFERENCE_PITCH: Final[int] = 60
+RESTING_REFERENCE_PERIOD: Final[int] = NUM_PERIODS // 2
 
 
 GENERATOR_FEATURE_RANGES: Final[Dict[LibraryGeneratorName, Dict[FeatureKey, FeatureRange]]] = {
@@ -53,12 +67,55 @@ GENERATOR_KIND: Final[Dict[GeneratorName, LibraryGeneratorName]] = {
 }
 
 
-def supported_features(kind: LibraryGeneratorName) -> list[FeatureKey]:
+def resting_reference(generator_name: GeneratorName) -> int:
+    """The reference an arpeggio envelope is measured against while a channel describes no frame.
+
+    A channel with no frames still carries a reference, since the first envelope given to it
+    sounds every frame at that value. Resting mid-range puts a channel added by hand on an
+    audible note, and on a noise period between the extremes.
+
+    Args:
+        generator_name: The channel whose resting reference is read.
+
+    Returns:
+        int: The pitch a tonal channel rests at, or the period the noise channel rests at.
+    """
+    match GENERATOR_KIND[generator_name]:
+        case LibraryGeneratorName.NOISE:
+            return RESTING_REFERENCE_PERIOD
+        case _:
+            return RESTING_REFERENCE_PITCH
+
+
+def resting_held_features(
+    generator_name: GeneratorName,
+) -> Tuple[FeatureKey, ...]:
+    """The dimensions a channel governs while it describes no frame.
+
+    A stream with no frames writes no dimension, so every dimension the channel offers is the
+    channel's to hold. Recording them makes a channel that has always stood by read the same as
+    one edited down to empty envelopes.
+
+    Args:
+        generator_name: The channel whose resting record is read.
+
+    Returns:
+        Tuple[FeatureKey, ...]: The dimensions the channel offers, in dimension order.
+    """
+    return tuple(supported_features(GENERATOR_KIND[generator_name]))
+
+
+def supported_features(
+    kind: LibraryGeneratorName,
+) -> List[FeatureKey]:
     ranges = GENERATOR_FEATURE_RANGES[kind]
     return [feature for feature in FEATURE_DIMENSION_ORDER if feature in ranges]
 
 
-def feature_range(kind: LibraryGeneratorName, feature: FeatureKey) -> FeatureRange:
+def feature_range(
+    kind: LibraryGeneratorName,
+    feature: FeatureKey,
+) -> FeatureRange:
     return GENERATOR_FEATURE_RANGES[kind][feature]
 
 

@@ -1,6 +1,7 @@
 from typing import Final, Tuple
 
 HEXADECIMAL: Final[str] = "0123456789ABCDEF"
+HASH: Final[str] = "#"
 DOT: Final[str] = "."
 UNDERSCORE: Final[str] = "_"
 MIXED: Final[str] = "?"

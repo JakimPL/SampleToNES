@@ -4,8 +4,10 @@ from typing import Any, Callable, Final, Optional, Tuple, Type, Union
 
 import pytest
 
-# Opening a directory for reading raises IsADirectoryError on POSIX and PermissionError on Windows.
-DIRECTORY_READ_ERRORS: Final[Tuple[Type[OSError], ...]] = (IsADirectoryError, PermissionError)
+DIRECTORY_READ_ERRORS: Final[Tuple[Type[OSError], ...]] = (
+    IsADirectoryError,
+    PermissionError,
+)
 
 
 def _invoke_with_raises(

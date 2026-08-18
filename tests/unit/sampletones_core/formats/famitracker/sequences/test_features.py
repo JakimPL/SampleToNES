@@ -1,7 +1,8 @@
 import numpy as np
-import pytest
 
-from sampletones_core.formats.famitracker.sequences.features import features_to_instrument_sequences
+from sampletones_core.formats.famitracker.sequences.features import (
+    features_to_instrument_sequences,
+)
 from sampletones_core.formats.famitracker.specification.sequences import (
     LOOP_FROM_START,
     MAX_SEQUENCE_ITEMS,
@@ -95,7 +96,7 @@ class TestFeaturesToInstrumentSequences:
         assert sequences[SequenceKind.VOLUME].loop_point == NO_LOOP_POINT
 
 
-class TestSequenceLengthsAreEqualized:
+class TestSequenceLengths:
     def test_loop_drops_the_trailing_note_off_volume_item(self) -> None:
         sequences = features_to_instrument_sequences(
             volume=np.array([15, 12, 9, 0]),
@@ -109,31 +110,31 @@ class TestSequenceLengthsAreEqualized:
         assert sequences[SequenceKind.ARPEGGIO].items == (0, 2, 4)
         assert sequences[SequenceKind.DUTY].items == (1, 1, 2)
 
-    def test_one_shot_holds_the_shorter_dimensions_final_value(self) -> None:
+    def test_one_shot_carries_each_dimension_as_written(self) -> None:
+        """A halted sequence holds its final value, so a shorter dimension governs the rest itself."""
         sequences = features_to_instrument_sequences(
             volume=np.array([15, 12, 9, 0]),
             arpeggio=np.array([0, 2, 4]),
             pitch=None,
             hi_pitch=None,
-            duty_cycle=np.array([1, 1, 2]),
+            duty_cycle=np.array([1]),
             loop=False,
         )
         assert sequences[SequenceKind.VOLUME].items == (15, 12, 9, 0)
-        assert sequences[SequenceKind.ARPEGGIO].items == (0, 2, 4, 4)
-        assert sequences[SequenceKind.DUTY].items == (1, 1, 2, 2)
+        assert sequences[SequenceKind.ARPEGGIO].items == (0, 2, 4)
+        assert sequences[SequenceKind.DUTY].items == (1,)
 
-    @pytest.mark.parametrize("loop", [False, True], ids=["one_shot", "loop"])
-    def test_every_populated_dimension_shares_one_length(self, loop: bool) -> None:
+    def test_a_loop_brings_every_populated_dimension_to_one_length(self) -> None:
         sequences = features_to_instrument_sequences(
             volume=np.array([15, 12, 9, 0]),
             arpeggio=np.array([0, 2, 4]),
             pitch=np.array([0, 1]),
             hi_pitch=None,
             duty_cycle=np.array([1, 1, 2]),
-            loop=loop,
+            loop=True,
         )
         lengths = {len(sequence.items) for sequence in sequences.values() if sequence.enabled}
-        assert len(lengths) == 1
+        assert lengths == {2}
 
     def test_disabled_dimensions_stay_empty(self) -> None:
         sequences = features_to_instrument_sequences(
@@ -146,6 +147,28 @@ class TestSequenceLengthsAreEqualized:
         )
         assert sequences[SequenceKind.ARPEGGIO].items == ()
         assert sequences[SequenceKind.PITCH].items == ()
+
+    def test_an_empty_envelope_differs_from_one_holding_a_single_zero(self) -> None:
+        """An empty dimension leaves its sequence disabled; a single zero is a value the instrument sets."""
+        cleared = features_to_instrument_sequences(
+            volume=np.array([15, 0]),
+            arpeggio=np.array([], dtype=int),
+            pitch=None,
+            hi_pitch=None,
+            duty_cycle=None,
+            loop=False,
+        )
+        zeroed = features_to_instrument_sequences(
+            volume=np.array([15, 0]),
+            arpeggio=np.array([0]),
+            pitch=None,
+            hi_pitch=None,
+            duty_cycle=None,
+            loop=False,
+        )
+        assert cleared[SequenceKind.ARPEGGIO].enabled is False
+        assert zeroed[SequenceKind.ARPEGGIO].enabled is True
+        assert zeroed[SequenceKind.ARPEGGIO].items == (0,)
 
     def test_all_dimensions_empty_stays_empty(self) -> None:
         sequences = features_to_instrument_sequences(

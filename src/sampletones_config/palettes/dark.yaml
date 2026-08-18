@@ -1,0 +1,195 @@
+name: dark
+
+colors:
+  ground: "#1b1b1d"
+  tab_strip: "#232324"
+  recess: "#252526"
+  surface: "#2d2d30"
+  surface_alt: "#37373d"
+  surface_accent: "#2a3a4a"
+  menu: "#1f1f21"
+  status_bar: "#1f1f21"
+  popup: "#252526"
+  frame: "#3c3c3c"
+  frame_hovered: "#464647"
+  frame_active: "#4a4a4b"
+  border: "#3f3f43"
+  separator: "#4d4d52"
+  plot_background: "#1e1e20"
+  well: "#212123"
+
+  table_header: "#2f3a46"
+  table_row: "#2a2a2c"
+  table_row_alt: "#323236"
+  table_border: "#4a4a50"
+
+  cool: "#569cd6"
+  cool_hover: "#6fb0e6"
+  cool_active: "#3f83bb"
+  cool_muted: "#33475c"
+
+  accent: "#4fa6ff"
+  accent_hover: "#6fb8ff"
+  accent_active: "#3585d6"
+  accent_muted: "#3a5570"
+  on_accent: "#0b1520"
+
+  primary: "#0e639c"
+  primary_hover: "#1177bb"
+  primary_active: "#0a4d7a"
+  primary_muted: "#4a5560"
+  on_primary: "#ffffff"
+
+  secondary: "#2f2f33"
+  secondary_hover: "#3a3a40"
+  secondary_active: "#46464d"
+  secondary_disabled: "#27272a"
+
+  danger: "#a1443c"
+  danger_hover: "#b85850"
+  danger_active: "#853830"
+  on_danger: "#f2f2f4"
+
+  dialog_surface: "#2c2c30"
+  dialog_title: "#333a44"
+
+  channel_pulse1: "#f09256"
+  channel_pulse2: "#f2d15f"
+  channel_triangle: "#7fc3f2"
+  channel_noise: "#b4b8c0"
+  channel_pulse1_soft: "#e0bda0"
+  channel_pulse2_soft: "#dcd3a4"
+  channel_triangle_soft: "#aecadd"
+  channel_noise_soft: "#c4c6cc"
+
+  tab: "#232325"
+  tab_hovered: "#2d2d31"
+  tab_active: "#33404e"
+
+  selection: "#264f78"
+  selection_hovered: "#2f5f8e"
+  selection_active: "#3a70a4"
+
+  scrollbar_hovered: "#4a4a52"
+
+  button: "#45454c"
+  button_hovered: "#54545d"
+  button_active: "#62626c"
+  button_disabled: "#2f2f33"
+
+  player_surface: "#232328"
+  player_border: "#4fa6ff"
+  player_button: "#313138"
+  player_button_hovered: "#3d3d45"
+  player_button_active: "#4a4a53"
+  player_button_disabled: "#282830"
+
+  text: "#e6e6e8"
+  text_muted: "#9a9aa0"
+  text_disabled: "#75757b"
+  text_trace: "#c0c0c4"
+
+  contrast: "#ffffff"
+  overlay: "#ffffff"
+  transparent: "#00000000"
+  border_strong: "#56565e"
+  input_invalid: "#c0504a64"
+  input_warning: "#c0884a64"
+
+  control: "#3c3c42"
+  control_hovered: "#48484f"
+  control_active: "#54545c"
+  control_border: "#6c6c76"
+
+  plot_zero_line: "#c8c8cc"
+  plot_grid: "#313136"
+  plot_axis_text: "#9a9aa0"
+  plot_border: "#3f3f43"
+  plot_legend_bg: "#26262a"
+
+  file_wave: "#4fa6ff"
+  file_library: "#89d185"
+  file_reconstruction: "#dcdcaa"
+
+  favorite: "#ffd76e"
+  favorite_child: "#ddd2ac"
+
+  library_generator: "#cbe6cb"
+  library_group: "#c8e4e6"
+  library_instruction: "#cccccf"
+  library_root: "#dadade"
+
+  text_default: "#d4d4d4"
+  text_inactive: "#808085"
+  text_error: "#f14c4c"
+  text_highlight: "#e2c08d"
+
+  button_flat: "#303036"
+  button_flat_active: "#50505a"
+  button_flat_hovered: "#3f3f47"
+  button_flat_light: "#38383f"
+
+  background_default: "#242426"
+  background_dark: "#1b1b1d"
+  background_light: "#2d2d30"
+  background_menu: "#2f2f33"
+  background_invalid: "#c0202064"
+
+  properties_header: "#2f3a46"
+  properties_row: "#1f1f22"
+  properties_row_alt: "#26262a"
+  properties_border: "#3f3f45"
+  properties_label: "#9cdcfe"
+  properties_value: "#cbcbd0"
+
+  path_link: "#4fa6ff"
+  path_link_hover: "#7cbcff"
+
+  header_library: "#89d185"
+  header_reconstruction: "#4fa6ff"
+
+  feature_volume: "#7ee787"
+  feature_arpeggio: "#f0a35e"
+  feature_pitch: "#6fb8ff"
+  feature_duty_cycle: "#e6c26a"
+
+  caret_fill: "#4fa6ff55"
+  caret_border: "#7cc4ffff"
+
+  graph_bar: "#4fa6ff"
+  waveform_sample: "#4fa6ff"
+  waveform_reconstruction: "#e6a34d"
+  waveform_overlay: "#ffffff22"
+  spectrum_dim: "#2a2a30"
+
+  tracker_beat_row: "#ffffff14"
+  tracker_bar_row: "#ffffff28"
+
+  block_selection: "#b98af360"
+  pattern_highlight: "#ffffff40"
+  cell_cursor: "#4fa6ffb0"
+  cursor_row: "#4fa6ff3a"
+  playback_row: "#5ec46e42"
+
+  order_label: "#2f3a46"
+  order_master: "#4fa6ff18"
+  order_master_divider: "#4fa6ff2e"
+  order_column_current: "#ffffff20"
+  order_column_playing: "#5ec46e34"
+
+  sample_column: "#4fa6ff2c"
+  sample_divider: "#4fa6ff2e"
+
+  channel_muted: "#0a0a0a18"
+
+  history_future: "#82828aff"
+  history_channel: "#6fb8ffff"
+  history_value: "#d0d0d4ff"
+  history_separator: "#6c6c74ff"
+
+  tracker_reference: "#e0c860ff"
+  tracker_transpose: "#c0c0c4ff"
+  tracker_volume: "#7ee787ff"
+  tracker_frame: "#4fa6ffff"
+  tracker_row: "#9a9aa2ff"
+  tracker_order: "#c4d0e0ff"

@@ -4,17 +4,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.layout.behavior import (
-    SchedulingBehavior,
-    SchedulingDelays,
-    SchedulingEmit,
-    SchedulingPriorities,
-)
+from sampletones_application.layout.behavior.scheduling.delays import SchedulingDelays
+from sampletones_application.layout.behavior.scheduling.emit import SchedulingEmit
+from sampletones_application.layout.behavior.scheduling.priorities import SchedulingPriorities
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.tree import TreeLogic
-from sampletones_core import paths
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
 from sampletones_shared.exceptions import InvalidReconstructionError
+from sampletones_shared.paths import extensions
 
 
 def _tree(
@@ -26,8 +24,10 @@ def _tree(
         session_manager = MagicMock()
         session_manager.autoplay = True
         session_manager.favorites = set()
+
     if audio_device_manager is None:
         audio_device_manager = MagicMock()
+
     if scheduling is None:
         scheduling = SchedulingBehavior(
             delays=SchedulingDelays(
@@ -43,7 +43,12 @@ def _tree(
             emit=SchedulingEmit(priority=0, batch_size=128),
             queue_budget_seconds=0.005,
         )
-    return TreeLogic(session_manager, audio_device_manager, scheduling=scheduling)
+
+    return TreeLogic(
+        session_manager,
+        audio_device_manager,
+        scheduling=scheduling,
+    )
 
 
 def _file_node(filepath: Path) -> FileSystemNode:
@@ -120,7 +125,10 @@ class TestTreeLogicAutoplay:
             priority=PlaybackPriority.PREVIEW,
         )
 
-    def test_autoplay_with_directory_node_is_no_op(self, tmp_path: Path) -> None:
+    def test_autoplay_with_directory_node_is_no_op(
+        self,
+        tmp_path: Path,
+    ) -> None:
         audio_device_manager = MagicMock()
         session_manager = MagicMock()
         session_manager.autoplay = True
@@ -157,7 +165,10 @@ class TestTreeLogicAutoplay:
 
 
 class TestTreeLogicPlayNode:
-    def test_play_node_uses_normal_priority_and_ignores_autoplay(self, tmp_path: Path) -> None:
+    def test_play_node_uses_normal_priority_and_ignores_autoplay(
+        self,
+        tmp_path: Path,
+    ) -> None:
         audio_device_manager = MagicMock()
         session_manager = MagicMock()
         session_manager.autoplay = False
@@ -251,6 +262,48 @@ class TestTreeLogicFavorites:
         child.parent = parent
         assert tree.has_favorite_ancestor(child) is True
 
+    def test_has_favorite_ancestor_reads_the_path_rather_than_the_rows_above(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A view may list a file under invented rows, and the favorite directory is still its own."""
+        directory_path = tmp_path / "config"
+        session_manager = MagicMock()
+        session_manager.favorites = {directory_path}
+        tree = _tree(session_manager=session_manager)
+        node = _file_node(directory_path / "song.stn")
+        node.parent = TreeNode("cw_amen02_165", NodeType.SAMPLE)
+        assert tree.has_favorite_ancestor(node) is True
+
+    def test_has_favorite_ancestor_reaches_any_depth(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        session_manager = MagicMock()
+        session_manager.favorites = {tmp_path}
+        tree = _tree(session_manager=session_manager)
+        node = _file_node(tmp_path / "config" / "album" / "song.stn")
+        assert tree.has_favorite_ancestor(node) is True
+
+    def test_has_favorite_ancestor_returns_false_for_a_favorite_sibling(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        session_manager = MagicMock()
+        session_manager.favorites = {tmp_path / "other.wav"}
+        tree = _tree(session_manager=session_manager)
+        assert tree.has_favorite_ancestor(_file_node(tmp_path / "audio.wav")) is False
+
+    def test_has_favorite_ancestor_returns_false_for_the_node_itself(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        filepath = tmp_path / "audio.wav"
+        session_manager = MagicMock()
+        session_manager.favorites = {filepath}
+        tree = _tree(session_manager=session_manager)
+        assert tree.has_favorite_ancestor(_file_node(filepath)) is False
+
     def test_toggle_favorite_delegates_to_session(
         self,
         tmp_path: Path,
@@ -299,11 +352,15 @@ class TestReconstructionAutoplayFailure:
         [InvalidReconstructionError("corrupt"), PermissionError("denied")],
         ids=["domain", "io"],
     )
-    def test_load_failure_reports_autoplay_error(self, tmp_path: Path, error: Exception) -> None:
+    def test_load_failure_reports_autoplay_error(
+        self,
+        tmp_path: Path,
+        error: Exception,
+    ) -> None:
         audio_device_manager = MagicMock()
         tree = _tree(audio_device_manager=audio_device_manager)
         tree.on_autoplay_error = MagicMock()
-        node = _file_node(tmp_path / f"sample{paths.EXT_FILE_RECONSTRUCTION}")
+        node = _file_node(tmp_path / f"sample{extensions.EXT_FILE_RECONSTRUCTION}")
 
         with patch(
             "sampletones_application.logic.shared.tree.Reconstruction.load",
@@ -317,13 +374,15 @@ class TestReconstructionAutoplayFailure:
     def test_unexpected_failure_propagates(self, tmp_path: Path) -> None:
         tree = _tree()
         tree.on_autoplay_error = MagicMock()
-        node = _file_node(tmp_path / f"sample{paths.EXT_FILE_RECONSTRUCTION}")
+        node = _file_node(tmp_path / f"sample{extensions.EXT_FILE_RECONSTRUCTION}")
 
-        with patch(
-            "sampletones_application.logic.shared.tree.Reconstruction.load",
-            side_effect=RuntimeError("bug"),
+        with (
+            patch(
+                "sampletones_application.logic.shared.tree.Reconstruction.load",
+                side_effect=RuntimeError("bug"),
+            ),
+            pytest.raises(RuntimeError),
         ):
-            with pytest.raises(RuntimeError):
-                tree.request_autoplay(node)
+            tree.request_autoplay(node)
 
         tree.on_autoplay_error.assert_not_called()

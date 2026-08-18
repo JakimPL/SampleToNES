@@ -7,9 +7,12 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
+from tests.suite.sequencer import sample_reconstruction
 
 
 def _logic() -> Tuple[ProjectController, SequencerSamplesLogic]:
@@ -23,7 +26,12 @@ def _logic() -> Tuple[ProjectController, SequencerSamplesLogic]:
     return controller, logic
 
 
-def _logic_with_mocks() -> Tuple[ProjectController, SequencerSamplesLogic, MagicMock, MagicMock]:
+def _logic_with_mocks() -> Tuple[
+    ProjectController,
+    SequencerSamplesLogic,
+    MagicMock,
+    MagicMock,
+]:
     controller = ProjectController(ProjectManager())
     session_manager = MagicMock()
     audio_device_manager = MagicMock()
@@ -36,7 +44,11 @@ def _logic_with_mocks() -> Tuple[ProjectController, SequencerSamplesLogic, Magic
     return controller, logic, session_manager, audio_device_manager
 
 
-def _place_instrument(controller: ProjectController, generator: GeneratorName, sample_id: str) -> None:
+def _place_instrument(
+    controller: ProjectController,
+    generator: GeneratorName,
+    sample_id: str,
+) -> None:
     pattern_index = controller.project.song.order[0][generator]
     controller.set_row(
         generator,
@@ -47,19 +59,28 @@ def _place_instrument(controller: ProjectController, generator: GeneratorName, s
 
 
 class TestSampleName:
-    def test_returns_the_sample_name(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_returns_the_sample_name(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         assert logic.sample_name(sample.id) == "lead"
 
 
 class TestIsSampleUsed:
-    def test_false_for_unreferenced_sample(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_false_for_unreferenced_sample(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         assert logic.is_sample_used(sample.id) is False
 
-    def test_true_after_placing_in_a_pattern(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_true_after_placing_in_a_pattern(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         _place_instrument(controller, GeneratorName.PULSE1, sample.id)
@@ -67,7 +88,10 @@ class TestIsSampleUsed:
 
 
 class TestRemoveSample:
-    def test_removes_unused_sample_from_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_removes_unused_sample_from_pool(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
 
@@ -89,36 +113,120 @@ class TestRemoveSample:
 
 
 class TestMoveSample:
-    def test_move_sample_reorders_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_move_sample_reorders_pool(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         first = controller.add_sample(reconstruction_factory(), name="first")
         controller.add_sample(reconstruction_factory(), name="second")
 
         logic.move_sample(first.id, 1)
 
-        assert [sample.name for sample in controller.project.samples] == ["second", "first"]
+        assert [sample.name for sample in controller.project.samples] == [
+            "second",
+            "first",
+        ]
 
 
 class TestDuplicateSample:
-    def test_duplicate_sample_appends_copy(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_duplicate_sample_appends_copy(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         source = controller.add_sample(reconstruction_factory(), name="lead")
 
         logic.duplicate_sample(source.id)
 
-        assert [sample.name for sample in controller.project.samples] == ["lead", "lead"]
+        assert [sample.name for sample in controller.project.samples] == [
+            "lead",
+            "lead",
+        ]
 
 
 class TestBuildSamples:
-    def test_lists_added_samples_in_insertion_order(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_lists_added_samples_in_insertion_order(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic = _logic()
         first = controller.add_sample(reconstruction_factory(), name="first")
         second = controller.add_sample(reconstruction_factory(), name="second")
 
         view_model = logic.build_samples()
 
-        assert [entry.sample_id for entry in view_model.samples] == [first.id, second.id]
-        assert [entry.name for entry in view_model.samples] == ["first", "second"]
+        assert [entry.sample_id for entry in view_model.samples] == [
+            first.id,
+            second.id,
+        ]
+        assert [entry.name for entry in view_model.samples] == [
+            "first",
+            "second",
+        ]
+
+
+class TestBuildSampleFootprint:
+    """The samples menu prints what a sample occupies, measured the way the sample is placed."""
+
+    def test_it_names_each_playing_channel(self) -> None:
+        controller, logic = _logic()
+        generators = (GeneratorName.PULSE1, GeneratorName.TRIANGLE)
+        sample = controller.add_sample(sample_reconstruction(generators), name="bell")
+
+        footprint = logic.build_sample_footprint(sample.id)
+
+        assert footprint is not None
+        assert [instrument.generator for instrument in footprint.instruments] == list(generators)
+
+    def test_it_measures_the_sample_under_its_own_loop_flag(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        controller.set_sample_loop(sample.id, True)
+
+        footprint = logic.build_sample_footprint(sample.id)
+
+        assert footprint == SampleFootprintViewModel.from_footprints(
+            reconstruction_footprints(sample.reconstruction, loop=True)
+        )
+
+    def test_a_looping_sample_costs_less_than_a_one_shot(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        """A looping instrument shares the shortest dimension's length, so it stores fewer items."""
+        controller, logic = _logic()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        one_shot = logic.build_sample_footprint(sample.id)
+
+        controller.set_sample_loop(sample.id, True)
+        looping = logic.build_sample_footprint(sample.id)
+
+        assert one_shot is not None and looping is not None
+        assert looping.total_bytes < one_shot.total_bytes
+
+    def test_each_channel_is_measured_as_the_instrument_it_sounds(self) -> None:
+        """A channel's figure is the cost of its own instrument, and the channels differ.
+
+        The triangle states a pitch alone where the pulse states a level and a waveform too, so
+        the same frame written on each costs the triangle the less.
+        """
+        controller, logic = _logic()
+        generators = (GeneratorName.PULSE1, GeneratorName.TRIANGLE)
+        sample = controller.add_sample(sample_reconstruction(generators), name="bell")
+
+        footprint = logic.build_sample_footprint(sample.id)
+
+        assert footprint is not None
+        assert footprint.bytes_for(GeneratorName.TRIANGLE) < footprint.bytes_for(GeneratorName.PULSE1)
+
+    def test_a_sample_the_pool_has_dropped_is_measured_nowhere(self) -> None:
+        _, logic = _logic()
+
+        assert logic.build_sample_footprint("missing") is None
 
 
 class TestPlaySample:
@@ -186,7 +294,10 @@ class TestAutoplay:
 
         audio_device_manager.play.assert_not_called()
 
-    def test_request_edit_cancels_pending_preview(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_request_edit_cancels_pending_preview(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
         session_manager.autoplay = True
         sample = controller.add_sample(reconstruction_factory(), name="lead")

@@ -30,6 +30,7 @@ class Widget(StrEnum):
     TABLE = "table"
     TABS = "tabs"
     TEXT = "text"
+    TEXTURE = "texture"
     THEME = "theme"
     TOOLTIP = "tooltip"
     TREE = "tree"
@@ -80,7 +81,7 @@ class Panel(StrEnum):
     RECONSTRUCTION = auto()
 
     # Sequencer tab
-    GRID = auto()
+    TRACKER = auto()
     ORDER = auto()
     MODULE = auto()
     INSTRUMENTS = auto()
@@ -92,4 +93,7 @@ class Panel(StrEnum):
 
     # Settings
     AUDIO = auto()
+    DISPLAY = auto()
+    KEYBINDINGS = auto()
     PROPERTIES = auto()
+    RENDER = auto()

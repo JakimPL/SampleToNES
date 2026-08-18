@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Callable, List
 
 import numpy as np
+import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -30,6 +31,13 @@ class TestInfoAndSettings:
         assert controller.project.settings.tempo == 128
         assert controller.project.settings.speed == 4
 
+    def test_highlight_edits_apply(self) -> None:
+        controller = _controller()
+        controller.set_first_highlight(3)
+        controller.set_second_highlight(12)
+        assert controller.project.settings.first_highlight == 3
+        assert controller.project.settings.second_highlight == 12
+
     def test_rows_per_pattern_resizes_all_patterns(self) -> None:
         controller = _controller()
         song = controller.project.song
@@ -45,7 +53,10 @@ class TestInfoAndSettings:
 
 
 class TestSamples:
-    def test_add_sample_appends_and_emits(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_add_sample_appends_and_emits(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller = _controller()
         emitted: List[str] = []
         controller.on_samples_changed = lambda: emitted.append("samples")
@@ -69,7 +80,10 @@ class TestSamples:
         assert sample.reconstruction is reconstruction
         assert sample.reconstruction.audio_filepath is None
 
-    def test_remove_sample_purges_row_references(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_remove_sample_purges_row_references(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         song = controller.project.song
@@ -101,12 +115,18 @@ class TestSamples:
             GeneratorName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(
+                sample_id=sample.id,
+                generator_name=GeneratorName.PULSE1,
+            ),
         )
 
         assert controller.is_sample_used(sample.id) is True
 
-    def test_move_sample_reorders_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_move_sample_reorders_pool(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller = _controller()
         first = controller.add_sample(reconstruction_factory(), name="first")
         controller.add_sample(reconstruction_factory(), name="second")
@@ -114,10 +134,17 @@ class TestSamples:
 
         controller.move_sample(first.id, 2)
 
-        assert [sample.name for sample in controller.project.samples] == ["second", "third", "first"]
+        assert [sample.name for sample in controller.project.samples] == [
+            "second",
+            "third",
+            "first",
+        ]
         assert controller.project.samples.get_index(first.id) == 2
 
-    def test_move_sample_preserves_row_references(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_move_sample_preserves_row_references(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         controller.add_sample(reconstruction_factory(), name="pad")
@@ -127,7 +154,10 @@ class TestSamples:
             GeneratorName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(
+                sample_id=sample.id,
+                generator_name=GeneratorName.PULSE1,
+            ),
         )
 
         controller.move_sample(sample.id, 1)
@@ -162,10 +192,16 @@ class TestSamples:
         assert clone.id != source.id
         assert clone.name == source.name
         assert clone.reconstruction is not source.reconstruction
-        assert [sample.name for sample in controller.project.samples] == ["lead", "lead"]
+        assert [sample.name for sample in controller.project.samples] == [
+            "lead",
+            "lead",
+        ]
         assert controller.project.samples.get_index(clone.id) == 1
 
-    def test_duplicate_sample_emits_samples_change(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_duplicate_sample_emits_samples_change(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller = _controller()
         source = controller.add_sample(reconstruction_factory(), name="lead")
         emitted: List[str] = []
@@ -214,10 +250,16 @@ class TestSamples:
             GeneratorName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(
+                sample_id=sample.id,
+                generator_name=GeneratorName.PULSE1,
+            ),
         )
 
-        controller.replace_sample_reconstruction(sample.id, reconstruction_factory())
+        controller.replace_sample_reconstruction(
+            sample.id,
+            reconstruction_factory(),
+        )
 
         row = song.pattern(GeneratorName.PULSE1, pattern_id).rows[0]
         assert row.command is not None
@@ -233,14 +275,20 @@ class TestSamples:
         controller.on_samples_changed = lambda: emitted.append("samples")
         controller.on_song_changed = lambda: emitted.append("song")
 
-        controller.replace_sample_reconstruction(sample.id, reconstruction_factory())
+        controller.replace_sample_reconstruction(
+            sample.id,
+            reconstruction_factory(),
+        )
 
         assert "samples" in emitted
         assert "song" in emitted
 
 
 class TestSong:
-    def test_set_row_replaces_row(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_set_row_replaces_row(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         song = controller.project.song
@@ -250,7 +298,10 @@ class TestSong:
             GeneratorName.PULSE1,
             pattern_id,
             2,
-            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(
+                sample_id=sample.id,
+                generator_name=GeneratorName.PULSE1,
+            ),
             transpose=0,
             volume=10,
         )
@@ -303,7 +354,10 @@ class TestPersistenceRoundTrip:
             GeneratorName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(
+                sample_id=sample.id,
+                generator_name=GeneratorName.PULSE1,
+            ),
             volume=12,
         )
 
@@ -325,7 +379,10 @@ class TestProperties:
         controller = _controller()
         assert controller.order_length >= 1
 
-    def test_sample_count_tracks_the_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+    def test_sample_count_tracks_the_pool(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
         controller = _controller()
         assert controller.sample_count == 0
 
@@ -415,6 +472,20 @@ class TestInfoAndSettingsCallbacks:
         controller.set_speed(6)
         assert fired == ["settings"]
 
+    def test_set_first_highlight_fires_settings_callback(self) -> None:
+        controller = _controller()
+        fired: List[str] = []
+        controller.on_settings_changed = lambda: fired.append("settings")
+        controller.set_first_highlight(3)
+        assert fired == ["settings"]
+
+    def test_set_second_highlight_fires_settings_callback(self) -> None:
+        controller = _controller()
+        fired: List[str] = []
+        controller.on_settings_changed = lambda: fired.append("settings")
+        controller.set_second_highlight(12)
+        assert fired == ["settings"]
+
     def test_set_nes_frequency_updates_settings(self) -> None:
         controller = _controller()
         fired: List[str] = []
@@ -449,10 +520,10 @@ class TestPatternManagement:
         index = controller.add_pattern(GeneratorName.PULSE1)
         assert isinstance(index, int)
 
-    def test_duplicate_pattern_creates_independent_copy(self) -> None:
+    def test_clone_pattern_creates_independent_copy(self) -> None:
         controller = _controller()
         original_index = controller.add_pattern(GeneratorName.TRIANGLE)
-        clone_index = controller.duplicate_pattern(
+        clone_index = controller.clone_pattern(
             GeneratorName.TRIANGLE,
             original_index,
         )
@@ -509,7 +580,132 @@ class TestLiveLinkedReconstruction:
             new_instructions,
             np.zeros(64, dtype=np.float32),
             72,
+            (),
         )
 
         stored = controller.project.sample(sample.id).reconstruction
         assert stored.get_generator_instructions(GeneratorName.PULSE1) == new_instructions
+
+
+class TestBatch:
+    def test_a_batch_announces_one_song_change_for_many_rows(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_song_changed = lambda: emitted.append("song")
+        pattern_index = controller.song.order[0][GeneratorName.PULSE1]
+
+        with controller.batch():
+            for row_index in range(8):
+                controller.set_row(
+                    GeneratorName.PULSE1,
+                    pattern_index,
+                    row_index,
+                    volume=15,
+                )
+
+        assert emitted == ["song"]
+
+    def test_a_mutation_applies_before_its_announcement_arrives(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            assert controller.project.settings.tempo == 150
+            assert emitted == []
+
+        assert emitted == ["settings"]
+
+    def test_each_kind_of_change_announces_once_in_the_order_it_first_arose(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+        controller.on_song_changed = lambda: emitted.append("song")
+        controller.on_info_changed = lambda: emitted.append("info")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            controller.append_frame()
+            controller.set_title("Demo")
+            controller.set_speed(4)
+            controller.append_frame()
+
+        assert emitted == ["settings", "song", "info"]
+
+    def test_the_dirty_stamp_lands_once_for_the_whole_batch(self) -> None:
+        project_manager = ProjectManager()
+        controller = ProjectController(project_manager)
+        stamps: List[str] = []
+        project_manager.session.on_state_changed = lambda: stamps.append("state")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            controller.set_speed(4)
+            assert controller.is_dirty is False
+
+        assert stamps == ["state"]
+        assert controller.is_dirty is True
+
+    def test_every_mutation_signals_the_history_as_it_lands(self) -> None:
+        controller = _controller()
+        mutations: List[str] = []
+        controller.on_mutation = lambda: mutations.append("mutation")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            controller.set_speed(4)
+            assert mutations == ["mutation", "mutation"]
+
+        assert mutations == ["mutation", "mutation"]
+
+    def test_nested_batches_announce_on_the_outermost_exit(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+
+        with controller.batch():
+            controller.set_tempo(150)
+            with controller.batch():
+                controller.set_speed(4)
+
+            assert emitted == []
+
+        assert emitted == ["settings"]
+
+    def test_a_batch_that_raises_still_announces_what_landed(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+
+        with pytest.raises(RuntimeError), controller.batch():
+            controller.set_tempo(150)
+            raise RuntimeError("boom")
+
+        assert emitted == ["settings"]
+        assert controller.project.settings.tempo == 150
+        assert controller.is_dirty is True
+
+    def test_a_batch_without_mutations_announces_nothing(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+        controller.on_song_changed = lambda: emitted.append("song")
+
+        with controller.batch():
+            pass
+
+        assert emitted == []
+        assert controller.is_dirty is False
+
+    def test_announcements_resume_immediately_after_a_batch(self) -> None:
+        controller = _controller()
+        emitted: List[str] = []
+        controller.on_settings_changed = lambda: emitted.append("settings")
+
+        with controller.batch():
+            controller.set_tempo(150)
+
+        controller.set_speed(4)
+
+        assert emitted == ["settings", "settings"]

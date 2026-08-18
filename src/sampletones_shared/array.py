@@ -43,14 +43,14 @@ try:
 except (AttributeError, ImportError, ModuleNotFoundError):
     import warnings
 
-    from sampletones_shared.exceptions import CuPyNotInstalledWarning
+    from sampletones_shared.exceptions import CuPyNotInstalledWarning  # pylint: disable=ungrouped-imports
 
     def _format_warning_no_location(
         message: Union[Warning, str],
         category: Type[Warning],
-        filename: str,
-        lineno: int,
-        line: Optional[str] = None,
+        filename: str,  # pylint: disable=unused-argument
+        lineno: int,  # pylint: disable=unused-argument
+        line: Optional[str] = None,  # pylint: disable=unused-argument
     ) -> str:
         return f"{category.__name__}: {message}\n"
 
@@ -74,8 +74,8 @@ def to_numpy(array: Union[np.ndarray, "xp.ndarray"]) -> np.ndarray:
 
 
 __all__ = [
-    "xp",
-    "xp_typing",
     "CUPY_AVAILABLE",
     "to_numpy",
+    "xp",
+    "xp_typing",
 ]

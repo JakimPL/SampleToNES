@@ -11,8 +11,13 @@ class FrameLimiter:
     """
 
     def __init__(self, max_fps: int) -> None:
-        self._frame_budget: float = 1.0 / max_fps if max_fps > 0 else 0.0
+        self._frame_budget: float = self._budget_for(max_fps)
         self._last_tick: Optional[float] = None
+
+    def set_max_fps(self, max_fps: int) -> None:
+        """Paces the following frames at ``max_fps``, timing the first of them from now."""
+        self._frame_budget = self._budget_for(max_fps)
+        self._last_tick = None
 
     def tick(self) -> None:
         if self._frame_budget <= 0.0:
@@ -26,3 +31,7 @@ class FrameLimiter:
                 now += remaining
 
         self._last_tick = now
+
+    @staticmethod
+    def _budget_for(max_fps: int) -> float:
+        return 1.0 / max_fps if max_fps > 0 else 0.0

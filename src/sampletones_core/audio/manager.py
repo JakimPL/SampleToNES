@@ -92,6 +92,7 @@ class AudioDeviceManager(CallbackMixin):
         self._stop: bool = False
 
         self._playback_thread: Optional[threading.Thread] = None
+        self._stream_owners: Dict[pyaudio.Stream, VoidCallback] = {}
         self._lock: threading.Lock = threading.Lock()
         self._resume_event: threading.Event = threading.Event()
         self._resume_event.set()
@@ -109,7 +110,13 @@ class AudioDeviceManager(CallbackMixin):
         Reinitialize the PyAudio instance.
 
         Creates a new PyAudio instance if none exists, or terminates the existing
-        instance and creates a new one. Stops any active playback before reinitializing.
+        instance and creates a new one. Active playback is stopped and every handed-out
+        output stream is released first, since terminating closes any stream still open
+        while its owner writes to it.
+
+        Raises:
+            PlaybackError: If an output stream is still held after its owner was asked to
+                release it, which leaves the running instance in place.
         """
         with _capture_stderr_to_logger():
             if self._pyaudio is None:
@@ -118,6 +125,9 @@ class AudioDeviceManager(CallbackMixin):
                 return
 
             self.stop()
+            if not self._release_output_streams():
+                raise PlaybackError("An output stream is still held; the audio backend stays as it is")
+
             self._pyaudio.terminate()
             self._pyaudio = pyaudio.PyAudio()
             logger.debug("AudioDeviceManager reinitialized")
@@ -227,7 +237,7 @@ class AudioDeviceManager(CallbackMixin):
                 device = self._devices[device_index]
                 self._device_index = device_index
                 self._sample_rate = device.default_sample_rate
-        except IOError:
+        except OSError:
             logger.warning("No default output device found")
 
     @property
@@ -419,12 +429,18 @@ class AudioDeviceManager(CallbackMixin):
         Stops any active playback and switches to the specified device and sample rate.
         If the sample rate is not supported, falls back to the first supported rate for that device.
 
+        A stream handed out to a streaming source was opened on the device and rate in force at
+        the time, so the new settings reach it only once it is wound down; the source is asked to
+        hand the output back before the switch, and playback resumes under the new settings.
+
         Args:
             device_index: Index of the device to configure.
             sample_rate: Desired sample rate in Hz.
 
         Raises:
             ValueError: If the device index is not found.
+            PlaybackError: If a handed-out stream survives its release, which leaves the device
+                and rate as they stand.
         """
         if device_index not in self._devices:
             raise ValueError(f"Device with index {device_index} not found")
@@ -438,6 +454,10 @@ class AudioDeviceManager(CallbackMixin):
             sample_rate = fallback_rate
 
         self.stop()
+        self.call(self.on_acquire_output)
+        if not self._release_output_streams():
+            raise PlaybackError("An output stream is still held; the audio device stays as it is")
+
         self.device_index = device_index
         self.sample_rate = sample_rate
         logger.info(f"Audio device configured: '{self.device_name}' (index={device_index}, sample_rate={sample_rate})")
@@ -744,16 +764,21 @@ class AudioDeviceManager(CallbackMixin):
         *,
         sample_rate: int,
         buffer_size: int,
+        release: VoidCallback,
     ) -> pyaudio.Stream:
         """Open a blocking output stream for caller-managed streaming playback.
 
-        The caller owns the stream's lifetime and must close it when done. Any buffer
-        playback owned by this manager is stopped first, since the output device allows
-        only a single open stream at a time.
+        The caller drives the stream from a thread of its own and hands it back through
+        ``close_output_stream`` once that thread finishes. Until then the manager counts the
+        stream as outstanding and calls ``release`` whenever it needs the backend free, so a
+        stream is torn down by the thread that writes to it. Any buffer playback owned by this
+        manager is stopped first, since the output device allows only a single open stream at a
+        time.
 
         Args:
             sample_rate: Sample rate in Hz.
             buffer_size: Frames per buffer (controls write granularity).
+            release: Winds the caller's writing down; returns once the stream is handed back.
 
         Raises:
             PlaybackError: If PyAudio is not initialized.
@@ -762,7 +787,7 @@ class AudioDeviceManager(CallbackMixin):
             raise PlaybackError("PyAudio not initialized; call reinitialize() first")
 
         self.stop()
-        return self._pyaudio.open(
+        stream = self._pyaudio.open(
             format=FORMAT,
             channels=CHANNELS,
             rate=sample_rate,
@@ -770,15 +795,61 @@ class AudioDeviceManager(CallbackMixin):
             output_device_index=self._device_index,
             frames_per_buffer=buffer_size,
         )
+        with self._lock:
+            self._stream_owners[stream] = release
+
+        return stream
+
+    def close_output_stream(self, stream: pyaudio.Stream) -> None:
+        """Take a handed-out stream back and close it.
+
+        Called by the owner from the thread that wrote to the stream, once that writing has
+        finished. Returning the stream is what tells the manager the backend is free again.
+        """
+        with self._lock:
+            self._stream_owners.pop(stream, None)
+
+        stream.stop_stream()
+        stream.close()
 
     def terminate(self) -> None:
         """
         Clean up and terminate the audio device manager.
 
-        Stops any active playback and terminates the PyAudio instance.
-        Should be called once you are finished with the manager.
+        Stops any active playback, releases every handed-out output stream, and terminates
+        the PyAudio instance. A stream that survives its release leaves the instance running,
+        since terminating closes any open stream and the owning thread would go on writing to
+        freed memory. Should be called once you are finished with the manager.
         """
-        if self._pyaudio is not None:
-            self.stop()
-            self._pyaudio.terminate()
-            self._pyaudio = None
+        if self._pyaudio is None:
+            return
+
+        self.stop()
+        if not self._release_output_streams():
+            logger.error("AudioDeviceManager: an output stream is still held; PyAudio left running")
+            return
+
+        self._pyaudio.terminate()
+        self._pyaudio = None
+
+    def _release_output_streams(self) -> bool:
+        """Ask each streaming owner to wind down; report whether every stream was released.
+
+        An owner writes to its stream from its own thread, so only that owner can bring the
+        writing to a stop. A release both stops the writer and hands the stream back through
+        ``close_output_stream``, which is what leaves the instance safe to terminate.
+        """
+        with self._lock:
+            releases = list(self._stream_owners.values())
+
+        for release in releases:
+            release()
+
+        with self._lock:
+            outstanding = len(self._stream_owners)
+
+        if outstanding:
+            logger.error(f"AudioDeviceManager: {outstanding} output stream(s) outlived their release")
+            return False
+
+        return True

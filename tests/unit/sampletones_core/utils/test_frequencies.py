@@ -37,7 +37,7 @@ class TestValidatePitch(BaseTestSuite):
         expected: Union[None, Type[Exception]]
         pitch: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             pitch=LIMIT_MIN_PITCH,
             expected=None,
@@ -113,7 +113,7 @@ class TestValidatePitch(BaseTestSuite):
             expected=TypeError,
             label="pitch_dict",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -133,7 +133,7 @@ class TestValidateFrequency:
         expected: Union[None, Type[Exception]]
         frequency: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             frequency=440.0,
             expected=None,
@@ -219,7 +219,7 @@ class TestValidateFrequency:
             expected=TypeError,
             label="frequency_dict",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -227,7 +227,11 @@ class TestValidateFrequency:
         ids=lambda test_case: test_case.label,
     )
     def test_validate_frequency(self, test_case: TestCase) -> None:
-        if expect_error(validate_frequency, test_case.expected, test_case.frequency):
+        if expect_error(
+            validate_frequency,
+            test_case.expected,
+            test_case.frequency,
+        ):
             return
 
         validate_frequency(test_case.frequency)
@@ -257,7 +261,7 @@ class TestValidatePeriod(BaseTestSuite):
         expected: Union[None, Type[Exception]]
         period: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             period=0,
             expected=None,
@@ -333,7 +337,7 @@ class TestValidatePeriod(BaseTestSuite):
             expected=TypeError,
             label="period_dict",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -355,7 +359,7 @@ class TestPitchToFrequency(BaseTestSuite):
         a4_frequency: Any
         a4_pitch: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             pitch=69,
             a4_frequency=440.0,
@@ -566,7 +570,7 @@ class TestPitchToFrequency(BaseTestSuite):
             expected=ValueError,
             label="a4_frequency_nan",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -583,7 +587,11 @@ class TestPitchToFrequency(BaseTestSuite):
         ):
             return
 
-        result = pitch_to_frequency(test_case.pitch, test_case.a4_frequency, test_case.a4_pitch)
+        result = pitch_to_frequency(
+            test_case.pitch,
+            test_case.a4_frequency,
+            test_case.a4_pitch,
+        )
         if isinstance(test_case.expected, float) and np.isnan(test_case.expected):
             assert np.isnan(result)
         else:
@@ -599,7 +607,7 @@ class TestFrequencyToPitch(BaseTestSuite):
         a4_frequency: Any
         a4_pitch: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             frequency=440.0,
             a4_frequency=440.0,
@@ -775,7 +783,7 @@ class TestFrequencyToPitch(BaseTestSuite):
             expected=ValueError,
             label="frequency_nan",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -792,7 +800,11 @@ class TestFrequencyToPitch(BaseTestSuite):
         ):
             return
 
-        result = frequency_to_pitch(test_case.frequency, test_case.a4_frequency, test_case.a4_pitch)
+        result = frequency_to_pitch(
+            test_case.frequency,
+            test_case.a4_frequency,
+            test_case.a4_pitch,
+        )
         assert result == test_case.expected
         assert isinstance(result, int)
 
@@ -804,7 +816,7 @@ class TestPitchToName(BaseTestSuite):
         pitch: Any
         transpose: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             pitch=60,
             transpose=0,
@@ -955,7 +967,7 @@ class TestPitchToName(BaseTestSuite):
             expected=TypeError,
             label="transpose_float",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -981,7 +993,7 @@ class TestPeriodToName(BaseTestSuite):
         expected: Union[str, Type[Exception]]
         period: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             period=0,
             expected="0-#",
@@ -1047,7 +1059,7 @@ class TestPeriodToName(BaseTestSuite):
             expected=TypeError,
             label="period_float",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1070,7 +1082,7 @@ class TestClampPitch(BaseTestSuite):
         min_pitch: Any
         max_pitch: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             pitch=60,
             min_pitch=MIN_PITCH,
@@ -1246,7 +1258,7 @@ class TestClampPitch(BaseTestSuite):
             expected=ValueError,
             label="max_pitch_out_of_bounds",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1274,7 +1286,7 @@ class TestClampPeriod(BaseTestSuite):
         expected: Union[int, Type[Exception]]
         period: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             period=5,
             expected=5,
@@ -1330,7 +1342,7 @@ class TestClampPeriod(BaseTestSuite):
             expected=5,
             label="period_float",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1356,7 +1368,7 @@ class TestSanitize(BaseTestSuite):
         expected: Union[str, Type[Exception]]
         name: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             name="  hello world  ",
             expected="HELLO WORLD",
@@ -1432,7 +1444,7 @@ class TestSanitize(BaseTestSuite):
             expected=AttributeError,
             label="name_dict",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1453,7 +1465,7 @@ class TestSanitizePitch(BaseTestSuite):
         expected: Union[str, Type[Exception]]
         name: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             name="C#4",
             expected="C#4",
@@ -1544,7 +1556,7 @@ class TestSanitizePitch(BaseTestSuite):
             expected=AttributeError,
             label="name_dict",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1565,7 +1577,7 @@ class TestSanitizePeriod(BaseTestSuite):
         expected: Union[str, Type[Exception]]
         name: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             name="0A",
             expected="0A",
@@ -1656,7 +1668,7 @@ class TestSanitizePeriod(BaseTestSuite):
             expected=AttributeError,
             label="name_dict",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

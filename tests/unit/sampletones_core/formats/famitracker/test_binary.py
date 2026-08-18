@@ -5,7 +5,10 @@ from typing import List
 import pytest
 
 from sampletones_core.formats.famitracker.binary import BinaryWriter
-from sampletones_core.formats.famitracker.specification.blocks import BLOCK_NAME_LENGTH, Block
+from sampletones_core.formats.famitracker.specification.blocks import (
+    BLOCK_NAME_LENGTH,
+    Block,
+)
 
 
 @dataclass

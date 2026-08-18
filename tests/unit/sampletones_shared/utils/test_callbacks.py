@@ -19,7 +19,10 @@ class TestableCallbackClass(CallbackMixin):
         self.on_error: Optional[Any] = None
 
 
-def assert_callbacks_match(instance: TestableCallbackClass, expected: Dict[str, Optional[Any]]) -> None:
+def assert_callbacks_match(
+    instance: TestableCallbackClass,
+    expected: Dict[str, Optional[Any]],
+) -> None:
     for attr_name in ["on_event", "on_data", "on_error"]:
         actual_callback = getattr(instance, attr_name)
         expected_callback = expected[attr_name]
@@ -40,7 +43,7 @@ class TestCall(BaseTestSuite):
         args: Tuple[Any, ...]
         kwargs: Dict[str, Any]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             callback=lambda: 42,
             args=(),
@@ -153,7 +156,7 @@ class TestCall(BaseTestSuite):
             expected=TypeError,
             label="non_callable_object",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -249,7 +252,7 @@ class TestSetCallbacks(BaseTestSuite):
         initial_callbacks: Dict[str, Optional[Any]]
         set_kwargs: Dict[str, Optional[Any]]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             initial_callbacks={
                 "on_event": None,
@@ -400,7 +403,7 @@ class TestSetCallbacks(BaseTestSuite):
             expected=AttributeError,
             label="one_valid_one_invalid_raises",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -413,7 +416,11 @@ class TestSetCallbacks(BaseTestSuite):
         instance.on_data = test_case.initial_callbacks["on_data"]
         instance.on_error = test_case.initial_callbacks["on_error"]
 
-        if expect_error(instance.set_callbacks, test_case.expected, **test_case.set_kwargs):
+        if expect_error(
+            instance.set_callbacks,
+            test_case.expected,
+            **test_case.set_kwargs,
+        ):
             return
 
         assert not isinstance(test_case.expected, type)
@@ -436,7 +443,7 @@ class TestResetCallbacks(BaseTestSuite):
         initial_callbacks: Dict[str, Optional[Any]]
         reset_names: Tuple[str, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             initial_callbacks={
                 "on_event": lambda: 1,
@@ -553,7 +560,7 @@ class TestResetCallbacks(BaseTestSuite):
             expected=AttributeError,
             label="reset_multiple_invalid_raises",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -566,7 +573,11 @@ class TestResetCallbacks(BaseTestSuite):
         instance.on_data = test_case.initial_callbacks["on_data"]
         instance.on_error = test_case.initial_callbacks["on_error"]
 
-        if expect_error(instance.reset_callbacks, test_case.expected, *test_case.reset_names):
+        if expect_error(
+            instance.reset_callbacks,
+            test_case.expected,
+            *test_case.reset_names,
+        ):
             return
 
         assert not isinstance(test_case.expected, type)

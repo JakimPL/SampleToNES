@@ -61,7 +61,10 @@ def test_a_type_names_the_extensions_it_matches(
         ((FAMITRACKER_INSTRUMENT,), FAMITRACKER_INSTRUMENT),
         (
             (FAMITRACKER_INSTRUMENT, BITPHASE_PRESET),
-            FileFilter(name="FamiTracker instrument, Bitphase preset", patterns=("*.fti", "*.json")),
+            FileFilter(
+                name="FamiTracker instrument, Bitphase preset",
+                patterns=("*.fti", "*.json"),
+            ),
         ),
     ],
 )

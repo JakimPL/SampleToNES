@@ -5,10 +5,10 @@ from .key import InstructionLibraryKey
 from .library import InstructionLibrary
 
 __all__ = [
-    "InstructionLibraryFragment",
-    "InstructionLibraryData",
-    "InstructionLibraryKey",
     "InstructionLibrary",
+    "InstructionLibraryData",
+    "InstructionLibraryFragment",
+    "InstructionLibraryKey",
     "create_key_from_filename",
     "get_display_name_from_key",
 ]

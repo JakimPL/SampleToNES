@@ -7,21 +7,34 @@ components:
       - type: style
         key: CellPadding
         x: 3
-        y: 4
+        y: 0
       - type: color
         key: HeaderHovered
-        value: .white/0.25
+        value: .overlay/0.25
       - type: color
         key: HeaderActive
         value: .transparent
       - type: color
         key: TableRowBg
-        value: .table_row_alt
+        value: .table_row
       - type: color
         key: TableRowBgAlt
         value: .table_row
+  - item_type: Selectable
+    entries:
+      - type: style
+        key: ItemSpacing
+        x: 0
+        y: 0
+      - type: style
+        key: SelectableTextAlign
+        x: 0
+        y: 0.5
+      - type: color
+        key: Header
+        value: .block_selection
   - item_type: All
     entries:
       - type: color
         key: Text
-        value: .white
+        value: .contrast

@@ -30,6 +30,7 @@ if "%RELEASE%"=="1" (
 )
 
 call "%SCRIPT_DIR%preflight.bat" %* || exit /b 1
+call "%SCRIPT_DIR%icons.bat" || exit /b 1
 
 if exist "bin\sampletones.exe" (
     echo Removing the previous artifact: bin\sampletones.exe
@@ -51,6 +52,7 @@ echo Building executable...
     --add-data "src\sampletones_assets\fonts;assets\fonts" ^
     --add-data "src\sampletones_config;config" ^
     --copy-metadata sampletones ^
+    --exclude-module PIL ^
     %RELEASE_HOOK% ^
     "src\sampletones\__main__.py" || exit /b
 

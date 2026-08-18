@@ -45,7 +45,7 @@ class TestClipAudio(BaseTestSuite):
         expected: Union[np.ndarray, Type[Exception]]
         audio: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="within_range",
             audio=np.array([0.5, -0.5, 0.0]),
@@ -106,7 +106,7 @@ class TestClipAudio(BaseTestSuite):
             audio={"audio": [1.0]},
             expected=TypeError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -127,7 +127,7 @@ class TestClipAudioInplace(BaseTestSuite):
         audio: np.ndarray
         expected: np.ndarray
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="clips_above_and_below",
             audio=np.array([1.5, -1.5, 0.5], dtype=np.float32),
@@ -143,7 +143,7 @@ class TestClipAudioInplace(BaseTestSuite):
             audio=np.array([2.0, -3.0], dtype=np.float64),
             expected=np.array([1.0, -1.0], dtype=np.float64),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -171,7 +171,7 @@ class TestStereoToMono(BaseTestSuite):
         expected: np.ndarray
         audio: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="already_mono",
             audio=np.array([1.0, 2.0, 3.0]),
@@ -207,7 +207,7 @@ class TestStereoToMono(BaseTestSuite):
             audio=np.array([[1.0], [2.0], [3.0]]),
             expected=np.array([1.0, 2.0, 3.0]),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -249,7 +249,7 @@ class TestInterpolate(BaseTestSuite):
         data: Any
         target_length: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="same_length",
             data=np.array([1.0, 2.0, 3.0, 4.0]),
@@ -358,7 +358,7 @@ class TestInterpolate(BaseTestSuite):
             target_length=5,
             expected=ValueError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -386,7 +386,7 @@ class TestMinmaxDecimate(BaseTestSuite):
         data: Any
         num_buckets: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="divisible_six_elements_three_buckets",
             data=np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
@@ -452,8 +452,42 @@ class TestMinmaxDecimate(BaseTestSuite):
             data=np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]),
             num_buckets=7,
             expected=(
-                np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0, 4.0, 4.0, 5.0, 5.0, 7.0, 7.0, 8.0, 8.0]),
-                np.array([1.0, 1.0, 2.0, 2.0, 3.0, 4.0, 5.0, 5.0, 6.0, 7.0, 8.0, 8.0, 9.0, 10.0]),
+                np.array(
+                    [
+                        0.0,
+                        0.0,
+                        1.0,
+                        1.0,
+                        2.0,
+                        2.0,
+                        4.0,
+                        4.0,
+                        5.0,
+                        5.0,
+                        7.0,
+                        7.0,
+                        8.0,
+                        8.0,
+                    ]
+                ),
+                np.array(
+                    [
+                        1.0,
+                        1.0,
+                        2.0,
+                        2.0,
+                        3.0,
+                        4.0,
+                        5.0,
+                        5.0,
+                        6.0,
+                        7.0,
+                        8.0,
+                        8.0,
+                        9.0,
+                        10.0,
+                    ]
+                ),
             ),
         ),
         TestCase(
@@ -543,7 +577,7 @@ class TestMinmaxDecimate(BaseTestSuite):
             num_buckets=5,
             expected=ValueError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -571,7 +605,7 @@ class TestNormalize(BaseTestSuite):
         expected: Union[np.ndarray, Type[Exception]]
         audio: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="normalize_half_range",
             audio=np.array([0.5, -0.5, 0.25]),
@@ -652,7 +686,7 @@ class TestNormalize(BaseTestSuite):
             audio=np.array([[1, 2], [3, 4]]),
             expected=ValueError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -675,7 +709,7 @@ class TestQuantize(BaseTestSuite):
         audio: Any
         levels: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="three_levels",
             audio=np.array([0.0, 0.6, 1.0, -0.6, -1.0]),
@@ -784,7 +818,7 @@ class TestQuantize(BaseTestSuite):
             levels=3,
             expected=ValueError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -792,7 +826,12 @@ class TestQuantize(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_quantize(self, test_case: TestCase) -> None:
-        if expect_error(quantize, test_case.expected, test_case.audio, levels=test_case.levels):
+        if expect_error(
+            quantize,
+            test_case.expected,
+            test_case.audio,
+            levels=test_case.levels,
+        ):
             return
 
         assert isinstance(test_case.expected, np.ndarray)

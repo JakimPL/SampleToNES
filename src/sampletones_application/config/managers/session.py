@@ -1,19 +1,21 @@
 from pathlib import Path
-from typing import Optional, Set
+from typing import Dict, Optional, Set
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.application import ApplicationConfigManager
 from sampletones_application.config.managers.state import ApplicationStateManager
+from sampletones_application.config.profile import UserProfile
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.state.state import ApplicationState
+from sampletones_application.constants.playback import FollowMode
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 
 
 class SessionManager:
-    def __init__(self) -> None:
-        self._config_manager = ApplicationConfigManager()
-        self._state_manager = ApplicationStateManager()
+    def __init__(self, profile: UserProfile) -> None:
+        self._config_manager = ApplicationConfigManager(profile.config)
+        self._state_manager = ApplicationStateManager(profile.state)
 
     @property
     def config(self) -> ApplicationConfig:
@@ -51,11 +53,36 @@ class SessionManager:
     def set_card_collapsed(self, card_tag: str, collapsed: bool) -> None:
         self._state_manager.set_card_collapsed(card_tag, collapsed)
 
+    def is_favorites_filter_active(self, panel_tag: str) -> bool:
+        return self._state_manager.is_favorites_filter_active(panel_tag)
+
+    def set_favorites_filter_active(self, panel_tag: str, active: bool) -> None:
+        self._state_manager.set_favorites_filter_active(panel_tag, active)
+
+    def expanded_rows(self, panel_tag: str) -> Set[str]:
+        return self._state_manager.expanded_rows(panel_tag)
+
+    def set_expanded_rows(self, panel_tag: str, rows: Set[str]) -> None:
+        self._state_manager.set_expanded_rows(panel_tag, rows)
+
+    @property
+    def expanded_directories(self) -> Set[Path]:
+        return self._state_manager.expanded_directories
+
+    def set_expanded_directories(self, directories: Set[Path]) -> None:
+        self._state_manager.set_expanded_directories(directories)
+
     def toggle_autoplay(self) -> bool:
         return self._config_manager.toggle_autoplay()
 
-    def set_follow_playback(self, value: bool) -> None:
-        self._config_manager.set_follow_playback(value)
+    def set_auto_expand_favorite_reconstructions(self, value: bool) -> None:
+        self._config_manager.set_auto_expand_favorite_reconstructions(value)
+
+    def set_auto_expand_favorite_directories(self, value: bool) -> None:
+        self._config_manager.set_auto_expand_favorite_directories(value)
+
+    def set_follow_mode(self, value: FollowMode) -> None:
+        self._config_manager.set_follow_mode(value)
 
     def set_loop_song(self, value: bool) -> None:
         self._config_manager.set_loop_song(value)
@@ -127,6 +154,27 @@ class SessionManager:
     def set_master_gain(self, value: float) -> None:
         self._config_manager.set_master_gain(value)
 
+    def set_palette_name(self, name: str) -> None:
+        self._config_manager.set_palette_name(name)
+
+    def set_vsync(self, vsync: bool) -> None:
+        self._config_manager.set_vsync(vsync)
+
+    def set_max_fps(self, max_fps: int) -> None:
+        self._config_manager.set_max_fps(max_fps)
+
+    def set_borderless(self, borderless: bool) -> None:
+        self._config_manager.set_borderless(borderless)
+
+    def set_shortcut_scheme_name(self, name: str) -> None:
+        self._config_manager.set_shortcut_scheme_name(name)
+
+    def set_shortcut_overrides(
+        self,
+        overrides: Dict[str, Optional[str]],
+    ) -> None:
+        self._config_manager.set_shortcut_overrides(overrides)
+
     def save_config(self) -> None:
         self._config_manager.save()
         self._state_manager.save()
@@ -172,6 +220,30 @@ class SessionManager:
         return self._config_manager.master_gain
 
     @property
+    def palette_name(self) -> str:
+        return self._config_manager.palette_name
+
+    @property
+    def vsync(self) -> bool:
+        return self._config_manager.vsync
+
+    @property
+    def max_fps(self) -> int:
+        return self._config_manager.max_fps
+
+    @property
+    def borderless(self) -> bool:
+        return self._config_manager.borderless
+
+    @property
+    def shortcut_scheme_name(self) -> str:
+        return self._config_manager.shortcut_scheme_name
+
+    @property
+    def shortcut_overrides(self) -> Dict[str, Optional[str]]:
+        return self._config_manager.shortcut_overrides
+
+    @property
     def advanced_settings(self) -> bool:
         return self._state_manager.advanced_settings
 
@@ -180,8 +252,16 @@ class SessionManager:
         return self._config_manager.autoplay
 
     @property
-    def follow_playback(self) -> bool:
-        return self._config_manager.follow_playback
+    def auto_expand_favorite_reconstructions(self) -> bool:
+        return self._config_manager.auto_expand_favorite_reconstructions
+
+    @property
+    def auto_expand_favorite_directories(self) -> bool:
+        return self._config_manager.auto_expand_favorite_directories
+
+    @property
+    def follow_mode(self) -> FollowMode:
+        return self._config_manager.follow_mode
 
     @property
     def loop_song(self) -> bool:

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import List
+from typing import Iterable, List
 
 from pydantic import ConfigDict, Field
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.data import DataModel
+from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import InstructionData, InstructionUnion
 
 
@@ -24,6 +25,10 @@ class InstructionsItem(DataModel):
         ...,
         description="Reference pitch the generator's arpeggio envelope is measured against",
     )
+    held_features: List[FeatureKey] = Field(
+        ...,
+        description="Dimensions the channel governs, keeping the value it holds while the generator sounds",
+    )
 
     @classmethod
     def create(
@@ -31,6 +36,7 @@ class InstructionsItem(DataModel):
         generator_name: GeneratorName,
         instructions: List[InstructionUnion],
         initial_pitch: int,
+        held_features: Iterable[FeatureKey],
     ) -> InstructionsItem:
         return InstructionsItem(
             generator_name=generator_name,
@@ -42,4 +48,28 @@ class InstructionsItem(DataModel):
                 for instruction in instructions
             ],
             initial_pitch=initial_pitch,
+            held_features=list(held_features),
+        )
+
+    @classmethod
+    def resting(cls, generator_name: GeneratorName) -> InstructionsItem:
+        """The stream a channel carries while it stands by, describing no frame.
+
+        A reconstruction holds one stream per channel, so a channel it leaves silent is
+        present and editable: it rests at the reference its first envelope will sound at,
+        and describing a frame is what puts it back in play. Writing no frame leaves every
+        dimension the channel offers to the channel, which is what an edit clearing the last
+        frame records and what an export of this stream reads back.
+
+        Args:
+            generator_name: The channel the resting stream belongs to.
+
+        Returns:
+            InstructionsItem: The stream of a channel that stands by.
+        """
+        return cls.create(
+            generator_name=generator_name,
+            instructions=[],
+            initial_pitch=resting_reference(generator_name),
+            held_features=resting_held_features(generator_name),
         )

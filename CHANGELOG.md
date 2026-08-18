@@ -4,7 +4,15 @@
 
 * Added support to [Bitphase](https://github.com/paator/bitphase).
 * Fixed arpeggio editing shifting a sample's pitch permanently.
+* Enhanced application options:
+    * Display settings
+    * Theme selector
+    * Keybinding settings
 * Bumped the reconstruction data-version to `2.1`.
+* Improved Sequencer module playback.
+* Added song export to WAV/MP3.
+* Added tracker selection operations.
+* Added a _SampleToNES_ logo.
 
 ## v0.3.0 [2026-07-31]
 

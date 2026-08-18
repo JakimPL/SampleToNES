@@ -3,7 +3,7 @@ from sampletones_application.services.retune.retune import SampleRetuneService
 from sampletones_application.services.retune.sample import RetunedSample
 
 __all__ = [
-    "RetunedSample",
     "RetuneResult",
+    "RetunedSample",
     "SampleRetuneService",
 ]

@@ -1,7 +1,9 @@
 from typing import Callable, Optional
 
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -9,7 +11,9 @@ from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
     SequencerSamplesViewModel,
 )
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import display_sample
@@ -73,12 +77,37 @@ class SequencerSamplesLogic(CallbackMixin):
     def is_sample_used(self, sample_id: str) -> bool:
         return self._controller.is_sample_used(sample_id)
 
+    def build_sample_footprint(self, sample_id: str) -> Optional[SampleFootprintViewModel]:
+        """Measures one sample's instruments as the module export writes them.
+
+        A sample carries its own loop flag, and a looping instrument is compiled to the shortest
+        length its envelopes share, so the sample is measured the way it is placed. Measuring a
+        single sample on demand keeps a pool edit clear of an export it was not asked for.
+
+        Args:
+            sample_id: The sample to measure.
+
+        Returns:
+            Optional[SampleFootprintViewModel]: The sample's byte figures, or ``None`` while the
+            pool holds no such sample.
+        """
+        sample = self._controller.project.samples.get(sample_id)
+        if sample is None:
+            return None
+
+        return SampleFootprintViewModel.from_footprints(
+            reconstruction_footprints(sample.reconstruction, loop=sample.loop)
+        )
+
     def sample_name(self, sample_id: str) -> str:
         return self._controller.project.samples[sample_id].name
 
     def sample_position(self, sample_id: str) -> str:
         """Returns the sample's hex list position, matching how the tracker labels it."""
-        return display_sample(samples=self._controller.project.samples, sample_id=sample_id)
+        return display_sample(
+            samples=self._controller.project.samples,
+            sample_id=sample_id,
+        )
 
     def remove_sample(self, sample_id: str) -> None:
         self._controller.remove_sample(sample_id)
@@ -125,7 +154,12 @@ class SequencerSamplesLogic(CallbackMixin):
         if self._session_manager.autoplay:
             self._play_sample(sample_id, priority=PlaybackPriority.PREVIEW)
 
-    def _play_sample(self, sample_id: str, *, priority: PlaybackPriority) -> None:
+    def _play_sample(
+        self,
+        sample_id: str,
+        *,
+        priority: PlaybackPriority,
+    ) -> None:
         sample = self._controller.project.samples.get(sample_id)
         if sample is None:
             return

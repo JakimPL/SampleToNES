@@ -19,7 +19,7 @@ The [**guide**](guide/) walks through the application from installation onward.
 - [Installation](guide/installation.md) — the standalone build, running from source, and GPU acceleration.
 - [Getting started](guide/getting-started.md) — your first reconstruction and your first song.
 - [The interface](guide/interface.md) — the Main, Reconstructions, and Instructions tabs, and the menus.
-- [The sequencer](guide/sequencer.md) — the tracker: arranging samples into a song and exporting a module.
+- [The sequencer](guide/sequencer.md) — the tracker: arranging samples into a song, exporting a module, and rendering it to audio.
 - [Command line](guide/command-line.md) — running without the graphical interface.
 - [Where your files live](guide/files.md) — the folders and file types _SampleToNES_ uses.
 - [Configuration](guide/configuration.md) — the settings you can change, and where.
@@ -56,7 +56,9 @@ The [**development**](development/) section is for contributors.
 
 - [Architecture](development/architecture.md) — the application's layers and the contracts between them.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
-- [Playback](development/playback.md) — the audio transport shared by every view.
+- [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
+- [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
+- [Reconstruction browser](development/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
 - [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
 - [Dependencies](development/dependencies.md) — the libraries _SampleToNES_ builds on.

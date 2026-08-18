@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import FrozenSet
+from typing import Callable, FrozenSet, Iterable
 
 import numpy as np
 import pytest
@@ -9,7 +9,8 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.instructions import (
     NoiseInstruction,
     PulseInstruction,
@@ -30,15 +31,36 @@ def all_channels() -> FrozenSet[GeneratorName]:
     return ALL_CHANNELS
 
 
+def make_synthesizer(
+    controller: ProjectController,
+    config: Config,
+    *,
+    sample_rate: int = DEFAULT_SAMPLE_RATE,
+    active_channels: Callable[[], FrozenSet[GeneratorName]] = all_channels,
+) -> RowSynthesizer:
+    """A synthesiser rendering at ``sample_rate``, standing in for the output a caller supplies."""
+    return RowSynthesizer(
+        controller,
+        config,
+        active_channels=active_channels,
+        sample_rate=lambda: sample_rate,
+    )
+
+
 def make_pulse_reconstruction(
     *,
     pitch: int = 60,
     volume: int = 15,
     count: int = 1,
+    held_features: Iterable[FeatureKey] = (),
 ) -> Reconstruction:
-    """Single-generator reconstruction with ``count`` identical PulseInstructions."""
+    """Single-generator reconstruction with ``count`` identical PulseInstructions.
+
+    ``held_features`` names the dimensions the instrument leaves to the channel, which is what
+    an envelope cleared in the instruments panel produces.
+    """
     instructions = [PulseInstruction(on=True, pitch=pitch, volume=volume, duty_cycle=0)] * count
-    return Reconstruction.create(
+    reconstruction = Reconstruction.create(
         approximation=np.zeros(64, dtype=np.float32),
         approximations={GeneratorName.PULSE1: np.zeros(64, dtype=np.float32)},
         instructions={GeneratorName.PULSE1: instructions},
@@ -46,6 +68,16 @@ def make_pulse_reconstruction(
         coefficient=1.0,
         audio_filepath=Path("/dev/null"),
     )
+    if held_features:
+        reconstruction.update_generator_data(
+            GeneratorName.PULSE1,
+            list(instructions),
+            np.zeros(64, dtype=np.float32),
+            reconstruction.initial_pitches[GeneratorName.PULSE1],
+            held_features,
+        )
+
+    return reconstruction
 
 
 def make_triangle_reconstruction(
@@ -156,4 +188,4 @@ def controller() -> ProjectController:
 
 @pytest.fixture
 def synthesizer(controller: ProjectController, config: Config) -> RowSynthesizer:
-    return RowSynthesizer(controller, config, active_channels=all_channels)
+    return make_synthesizer(controller, config)

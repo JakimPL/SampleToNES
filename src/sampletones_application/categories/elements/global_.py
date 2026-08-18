@@ -29,10 +29,15 @@ class TreeElements(AbstractElement):
     SEARCH = "search"
     FILTER = "filter"
     CLEAR_SEARCH = "clear_search"
+    FAVORITES_ONLY = "favorites_only"
 
 
 class ContextElements(AbstractElement):
     PLAY = "play"
+    CUT = "cut"
+    COPY = "copy"
+    PASTE = "paste"
+    DELETE = "delete"
     MARK_AS_FAVORITE = "mark_as_favorite"
     UNMARK_AS_FAVORITE = "unmark_as_favorite"
     COPY_FILENAME = "copy_filename"
@@ -45,6 +50,9 @@ class ContextElements(AbstractElement):
     PULSE_1 = "pulse_1"
     PULSE_2 = "pulse_2"
     NOISE = "noise"
+    SAMPLE_SIZE = "sample_size"
+    INSTRUMENT_SIZE = "instrument_size"
+    SIZE_BYTES = "size_bytes"
 
 
 class NodeDetailElements(AbstractElement):
@@ -67,6 +75,7 @@ class MenuElements(AbstractElement):
     GROUP_FILE_EXPORT = "group_file_export"
     ITEM_FILE_EXPORT_FAMITRACKER = "item_file_export_famitracker"
     ITEM_FILE_EXPORT_BITPHASE = "item_file_export_bitphase"
+    ITEM_FILE_RENDER_SONG = "item_file_render_song"
     ITEM_FILE_CLOSE_PROJECT = "item_file_close_project"
     ITEM_FILE_EXIT = "item_file_exit"
     GROUP_EDIT = "group_edit"
@@ -93,7 +102,10 @@ class MenuElements(AbstractElement):
     ITEM_PLAYBACK_PLAY_FROM_FRAME = "item_playback_play_from_frame"
     ITEM_PLAYBACK_STOP = "item_playback_stop"
     ITEM_PLAYBACK_AUTOPLAY = "item_playback_autoplay"
-    ITEM_PLAYBACK_FOLLOW_PLAYBACK = "item_playback_follow_playback"
+    GROUP_PLAYBACK_FOLLOW = "group_playback_follow"
+    ITEM_PLAYBACK_FOLLOW_ROWS = "item_playback_follow_rows"
+    ITEM_PLAYBACK_FOLLOW_PATTERNS = "item_playback_follow_patterns"
+    ITEM_PLAYBACK_FOLLOW_OFF = "item_playback_follow_off"
     ITEM_PLAYBACK_LOOP_SONG = "item_playback_loop_song"
     GROUP_PLAYBACK_CHANNELS = "group_playback_channels"
     ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS = "item_playback_unmute_all_channels"
@@ -101,6 +113,11 @@ class MenuElements(AbstractElement):
     GROUP_VIEW = "group_view"
     ITEM_VIEW_SHOW_ADVANCED_SETTINGS = "item_view_show_advanced_settings"
     ITEM_VIEW_FULLSCREEN = "item_view_fullscreen"
+    GROUP_VIEW_AUTO_EXPAND_FAVORITES = "group_view_auto_expand_favorites"
+    ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS = "item_view_auto_expand_favorite_reconstructions"
+    ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES = "item_view_auto_expand_favorite_directories"
+    ITEM_VIEW_DISPLAY_SETTINGS = "item_view_display_settings"
+    ITEM_VIEW_KEYBOARD_SETTINGS = "item_view_keyboard_settings"
     GROUP_HELP = "group_help"
     ITEM_HELP_ABOUT = "item_help_about"
     TAB_MAIN = "tab_main"
@@ -116,6 +133,7 @@ class StatusElements(AbstractElement):
     NODE_LIBRARY = "node_library"
     TREE_SEARCH = "tree_search"
     CLEAR_SEARCH = "clear_search"
+    FAVORITES_ONLY = "favorites_only"
     INPUT = "input"
     COMBO = "combo"
     NODE_DIRECTORY = "node_directory"
@@ -147,6 +165,7 @@ class GraphElements(AbstractElement):
 
 class GlobalMessageElements(AbstractElement):
     TREE_NO_RESULTS = "tree_no_results"
+    TREE_NO_FAVORITES = "tree_no_favorites"
     INVALID_METADATA_ERROR = "invalid_metadata_error"
     RECONSTRUCTION_NO_DATA = "reconstruction_no_data"
     RECONSTRUCTION_SAVED_SUCCESSFULLY = "reconstruction_saved_successfully"

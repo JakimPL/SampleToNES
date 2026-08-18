@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any, Type, Union
 
@@ -32,7 +30,7 @@ class TestIsnan(BaseTestSuite):
         expected: Union[bool, Type[Exception]]
         value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=None,
             expected=True,
@@ -263,7 +261,7 @@ class TestIsnan(BaseTestSuite):
             expected=True,
             label="matrix_float64_all_nan",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -284,7 +282,7 @@ class TestIsfinite(BaseTestSuite):
         expected: Union[bool, Type[Exception]]
         value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=None,
             expected=False,
@@ -565,7 +563,7 @@ class TestIsfinite(BaseTestSuite):
             expected=False,
             label="matrix_float64_with_nan_and_inf_not_all_finite",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -586,7 +584,7 @@ class TestCastToFloat(BaseTestSuite):
         expected: Union[Any, Type[Exception]]
         value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=True,
             expected=1.0,
@@ -802,7 +800,7 @@ class TestCastToFloat(BaseTestSuite):
             expected=TypeError,
             label="none_raises_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -822,7 +820,7 @@ class TestInferDtype(BaseTestSuite):
         value: Any
         dtype: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=None,
             dtype=np.int32,
@@ -991,7 +989,7 @@ class TestInferDtype(BaseTestSuite):
             expected=TypeError,
             label="numpy_string_object_array_raises_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1014,7 +1012,7 @@ class TestClamp(BaseTestSuite):
         min_value: Any
         max_value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             value=5,
             min_value=0,
@@ -1414,7 +1412,7 @@ class TestClamp(BaseTestSuite):
             expected=TypeError,
             label="dict_max_bound",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1444,7 +1442,7 @@ class TestPad(BaseTestSuite):
         right: Any
         value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             array=np.array([], dtype=np.int64),
             left=0,
@@ -1597,7 +1595,7 @@ class TestPad(BaseTestSuite):
             expected=ValueError,
             label="out_of_order_padding",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1625,7 +1623,7 @@ class TestTrim(BaseTestSuite):
         expected: Union[np.ndarray, Type[Exception]]
         input_array: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_array=np.array([1, 1, 2, 2, 3, 3, 3, 3]),
             expected=np.array([1, 1, 2, 2, 3]),
@@ -1676,7 +1674,7 @@ class TestTrim(BaseTestSuite):
             expected=TypeError,
             label="not_an_array",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1699,7 +1697,7 @@ class TestHold(BaseTestSuite):
         index: Any
         default: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             array=np.array([12, 5, 0]),
             index=0,
@@ -1784,7 +1782,7 @@ class TestHold(BaseTestSuite):
             expected=TypeError,
             label="list_not_array",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1815,7 +1813,7 @@ class TestInterpolateSegment(BaseTestSuite):
         start_value: Any
         end_value: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             array=np.zeros(5, dtype=np.float32),
             start_index=0,
@@ -1915,7 +1913,7 @@ class TestInterpolateSegment(BaseTestSuite):
             expected=TypeError,
             label="float_index_rejected",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1950,7 +1948,7 @@ class TestIsIncreasing(BaseTestSuite):
         expected: bool
         input_array: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_array=np.array([], dtype=np.int32),
             expected=True,
@@ -2036,7 +2034,7 @@ class TestIsIncreasing(BaseTestSuite):
             expected=False,
             label="strictly_decreasing_to_negative_int32",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

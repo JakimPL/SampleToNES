@@ -1,31 +1,50 @@
 from dataclasses import dataclass
-from typing import Final, List
+from typing import Final
 
 import pytest
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters.naming import instrument_slice_name
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 BASE_NAME: Final[str] = "Kick"
 
 
-@dataclass(frozen=True)
-class NameCase:
-    generator: GeneratorName
-    expected: str
+class TestInstrumentSliceName(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class NameCase(BaseRegularTestCase):
+        generator: GeneratorName
+        expected: str
 
+    test_cases = (
+        NameCase(
+            generator=GeneratorName.PULSE1,
+            expected="Kick (pulse1)",
+            label=GeneratorName.PULSE1.value,
+        ),
+        NameCase(
+            generator=GeneratorName.PULSE2,
+            expected="Kick (pulse2)",
+            label=GeneratorName.PULSE2.value,
+        ),
+        NameCase(
+            generator=GeneratorName.TRIANGLE,
+            expected="Kick (triangle)",
+            label=GeneratorName.TRIANGLE.value,
+        ),
+        NameCase(
+            generator=GeneratorName.NOISE,
+            expected="Kick (noise)",
+            label=GeneratorName.NOISE.value,
+        ),
+    )
 
-NAME_CASES: Final[List[NameCase]] = [
-    NameCase(generator=GeneratorName.PULSE1, expected="Kick (pulse1)"),
-    NameCase(generator=GeneratorName.PULSE2, expected="Kick (pulse2)"),
-    NameCase(generator=GeneratorName.TRIANGLE, expected="Kick (triangle)"),
-    NameCase(generator=GeneratorName.NOISE, expected="Kick (noise)"),
-]
-
-
-class TestInstrumentSliceName:
-    @pytest.mark.parametrize("case", NAME_CASES, ids=lambda case: case.generator.value)
-    def test_the_generator_follows_the_base_name_in_parentheses(self, case: NameCase) -> None:
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    def test_the_generator_follows_the_base_name_in_parentheses(
+        self,
+        case: NameCase,
+    ) -> None:
         assert instrument_slice_name(BASE_NAME, case.generator) == case.expected
 
     def test_every_generator_gets_a_distinct_name(self) -> None:

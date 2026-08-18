@@ -111,7 +111,10 @@ class TestOwnNodes:
             node for node in nested_scopes(parse_source(SCOPED_SOURCE)) if function_names([node]) == ["method"]
         )
         owned = list(own_nodes(method))
-        assert [node.arg for node in owned if isinstance(node, ast.arg)] == ["self", "key"]
+        assert [node.arg for node in owned if isinstance(node, ast.arg)] == [
+            "self",
+            "key",
+        ]
 
     def test_a_function_leaves_a_nested_function_aside(self) -> None:
         outer = next(node for node in nested_scopes(parse_source(SCOPED_SOURCE)) if function_names([node]) == ["outer"])
@@ -120,7 +123,10 @@ class TestOwnNodes:
 
 class TestNestedScopes:
     def test_a_module_opens_the_methods_of_its_classes(self) -> None:
-        assert function_names(nested_scopes(parse_source(SCOPED_SOURCE))) == ["method", "outer"]
+        assert function_names(nested_scopes(parse_source(SCOPED_SOURCE))) == [
+            "method",
+            "outer",
+        ]
 
     def test_a_function_opens_the_function_it_holds(self) -> None:
         outer = next(node for node in nested_scopes(parse_source(SCOPED_SOURCE)) if function_names([node]) == ["outer"])

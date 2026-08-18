@@ -1,18 +1,31 @@
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import Any, Callable, Final, Generator, List
-from unittest.mock import patch
+from typing import Any, Callable, Dict, Final, Generator, List
+from unittest.mock import PropertyMock, patch
 
 import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.application import Application
+from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.profile import UserProfile
+from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.utils.gui.keyboard.event import KeyEvent
+from sampletones_application.utils.gui.shortcuts.ids import (
+    CHANNEL_SHORTCUT_IDS,
+    TAB_SHORTCUT_IDS,
+    ShortcutId,
+)
 from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.reconstructions import Reconstruction
+
+REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -54,6 +67,32 @@ def _display_patches() -> List[Any]:
     return display_patches
 
 
+@contextmanager
+def _no_audio_devices() -> Generator[None, None, None]:
+    """The machine a headless run comes up on: the backend reports no output device at all."""
+    with (
+        patch("pyaudio.PyAudio.get_device_count", return_value=0),
+        patch(
+            "pyaudio.PyAudio.get_default_output_device_info",
+            side_effect=OSError,
+        ),
+    ):
+        yield
+
+
+def _profile(directory: Path) -> UserProfile:
+    """Starts the application on a profile of its own, in the state a first run finds.
+
+    The settings and the keys an application comes up on are read from its profile, so a suite
+    given the user's own answers for whatever that machine prefers. A directory per test is what
+    holds a run to the shipped defaults.
+    """
+    return UserProfile(
+        config=directory / "config.yaml",
+        state=directory / "state.yaml",
+    )
+
+
 class TestGUIStartup:
     @pytest.fixture(autouse=True)
     def dpg_context(self) -> Generator[Any, Application, Any]:
@@ -63,26 +102,95 @@ class TestGUIStartup:
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
 
-    def test_initialises_without_error(self) -> None:
+    def test_initialises_without_error(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
-            for p in _display_patches():
-                stack.enter_context(p)
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
 
-            Application()
+            Application(profile=_profile(tmp_path))
+
+    def test_initialises_where_nothing_can_play(self, tmp_path: Path) -> None:
+        """Editing a song, exporting a module and rendering to a file need no output device.
+
+        The rate the audio is rendered at is the consumer's to state, so a machine offering no
+        device to play through still opens the window and everything that writes rather than
+        sounds works on it.
+        """
+        with ExitStack() as stack:
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_no_audio_devices())
+
+            Application(profile=_profile(tmp_path))
 
 
 @pytest.fixture
-def app() -> Generator[Any, Application, Any]:
+def app(tmp_path: Path) -> Generator[Any, Application, Any]:
     dpg.create_context()
     try:
         with ExitStack() as stack:
-            for p in _display_patches():
-                stack.enter_context(p)
-            yield Application()
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
+
+            yield Application(profile=_profile(tmp_path))
     finally:
         stop_background_workers()
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
+
+
+class TestKeybindingPreferences:
+    """The application runs on the keys the session stores, which is what makes a rebind stick.
+
+    The session names the scheme it runs under, so a case reads the same keys on whichever platform
+    the suite runs; a Mac opens a fresh profile on Command.
+    """
+
+    @pytest.fixture
+    def application(self, tmp_path: Path) -> Generator[Any, Application, Any]:
+        dpg.create_context()
+        try:
+            with ExitStack() as stack:
+                for display_patch in _display_patches():
+                    stack.enter_context(display_patch)
+
+                stack.enter_context(
+                    patch.object(
+                        SessionManager,
+                        "shortcut_scheme_name",
+                        new_callable=PropertyMock,
+                        return_value=DEFAULT_SCHEME_NAME,
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        SessionManager,
+                        "shortcut_overrides",
+                        new_callable=PropertyMock,
+                        return_value=REBOUND_UNDO,
+                    )
+                )
+                yield Application(profile=_profile(tmp_path))
+        finally:
+            stop_background_workers()
+            SingleThreadExecutor.reset_shutdown()
+            dpg.destroy_context()
+
+    def test_a_stored_override_reaches_the_keys_in_place(self, application: Application) -> None:
+        assert application._shortcut_source.display(ShortcutId.UNDO) == REBOUND_UNDO["Undo"]
+
+    def test_the_actions_the_override_leaves_alone_keep_the_scheme_s_keys(
+        self,
+        application: Application,
+    ) -> None:
+        assert application._shortcut_source.display(ShortcutId.SAVE_PROJECT) == "Ctrl+S"
+
+    def test_another_scheme_hands_its_keys_to_the_dispatcher(self, application: Application) -> None:
+        """A rebind reaches what has already read a combination, which is how it takes effect live."""
+        with patch.object(application.shortcut_manager, "rebind") as rebind:
+            application._shortcut_source.activate(application._shortcut_catalog.default)
+
+        rebind.assert_called_once()
 
 
 class TestStartupRestoreDelegation:
@@ -221,3 +329,73 @@ class TestAddOpenReconstructionToSequencer:
         assert sample.reconstruction is not app.reconstruction_manager.reconstruction
         assert sample.reconstruction.audio_filepath is None
         assert not app._editing_project_sample()
+
+
+def _press_shortcut(app: Application, shortcut_id: ShortcutId) -> None:
+    """Routes the press the scheme in place gives an action, so a rebind carries the case with it."""
+    combination = app._shortcut_source.shortcut(shortcut_id).combination
+    assert combination is not None
+    app.key_router.route(KeyEvent(key=combination.key, modifiers=combination.modifiers))
+
+
+class TestChannelKeys:
+    """One key per channel, reaching the switch of the tab in front of the reader.
+
+    The whole application answers here, so a press travels the way it does at runtime: the router
+    hands it to the dispatcher, the scheme names the action, and the tab on screen decides which
+    of its controls the action reaches.
+    """
+
+    @staticmethod
+    def _press(app: Application, generator: GeneratorName, tab: Tab) -> None:
+        with patch.object(app._shell, "get_current_tab", return_value=tab):
+            _press_shortcut(app, CHANNEL_SHORTCUT_IDS[generator])
+
+    def test_the_main_tab_switches_the_generator_a_reconstruction_is_built_from(self, app: Application) -> None:
+        selected = frozenset(app.config_manager.config.generation.generators)
+
+        self._press(app, GeneratorName.TRIANGLE, Tab.MAIN)
+
+        assert frozenset(app.config_manager.config.generation.generators) == selected ^ {GeneratorName.TRIANGLE}
+
+    def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
+        self._press(app, GeneratorName.NOISE, Tab.SEQUENCER)
+
+        assert app._sequencer_tab.channels.is_muted(GeneratorName.NOISE)
+
+    def test_a_second_press_returns_the_mix_it_started_from(self, app: Application) -> None:
+        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
+        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
+
+        assert not app._sequencer_tab.channels.any_muted
+
+    def test_the_reconstructions_tab_holding_nothing_leaves_the_mix_alone(self, app: Application) -> None:
+        """With no reconstruction loaded every slice reads as unavailable, so the key rests there."""
+        self._press(app, GeneratorName.PULSE2, Tab.RECONSTRUCTIONS)
+
+        assert not app._sequencer_tab.channels.any_muted
+
+    def test_the_main_tab_leaves_the_sequencer_mix_alone(self, app: Application) -> None:
+        self._press(app, GeneratorName.PULSE1, Tab.MAIN)
+
+        assert not app._sequencer_tab.channels.any_muted
+
+
+class TestTabKeys:
+    """One key per tab, bringing it to the front from wherever the reader stands.
+
+    The whole application answers here, so a press travels the way it does at runtime: the router
+    hands it to the dispatcher, the scheme names the action, and the shell puts the tab on screen.
+    """
+
+    @pytest.mark.parametrize("tab", tuple(TAB_SHORTCUT_IDS), ids=lambda tab: str(tab))
+    def test_the_key_puts_its_tab_on_screen(self, app: Application, tab: Tab) -> None:
+        with patch.object(app._shell, "set_current_tab") as set_current_tab:
+            _press_shortcut(app, TAB_SHORTCUT_IDS[tab])
+
+        set_current_tab.assert_called_once_with(tab)
+
+    @pytest.mark.parametrize("tab", tuple(TAB_SHORTCUT_IDS), ids=lambda tab: str(tab))
+    def test_the_key_answers_while_a_field_is_edited(self, app: Application, tab: Tab) -> None:
+        """Naming a tab reaches it the way stepping to the next one does, typing included."""
+        assert app._shortcut_source.shortcut(TAB_SHORTCUT_IDS[tab]).field_transparent

@@ -12,6 +12,12 @@ from sampletones_core.reconstructions import Reconstruction
 
 @dataclass(frozen=True)
 class FeatureData:
+    """The envelopes of every channel a reconstruction holds, keyed by channel.
+
+    A reconstruction exports one entry per channel whatever it sounds, so a subscript answers
+    for any of them and :attr:`Features.has_frames` says which ones play.
+    """
+
     generators: Dict[GeneratorName, Features]
 
     def __getitem__(self, generator_name: GeneratorName) -> Features:
@@ -36,9 +42,3 @@ class FeatureData:
             generators[generator_name] = feature
 
         return cls(generators=generators)
-
-    def get_generator_features(
-        self,
-        generator_name: GeneratorName,
-    ) -> Optional[Features]:
-        return self.generators.get(generator_name)

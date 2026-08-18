@@ -7,7 +7,9 @@ import numpy as np
 
 from sampletones_core.formats.famitracker.instrument import write_fti
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
-from sampletones_core.formats.famitracker.sequences.features import features_to_instrument_sequences
+from sampletones_core.formats.famitracker.sequences.features import (
+    features_to_instrument_sequences,
+)
 
 GOLDEN_INSTRUMENT_NAME = "Test Instrument"
 GOLDEN_VOLUME = np.array([15, 12, 8, 0])
@@ -17,9 +19,9 @@ GOLDEN_DUTY_CYCLE = np.array([0, 1])
 GOLDEN_FTI_BYTES = (
     b"FTI2.4\x01\x0f\x00\x00\x00Test Instrument\x05"
     b"\x01\x04\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x0f\x0c\x08\x00"
-    b"\x01\x04\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x02\xfd\xfd"
+    b"\x01\x03\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x02\xfd"
     b"\x00\x00"
-    b"\x01\x04\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x01\x01\x01"
+    b"\x01\x02\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x01"
     b"\x00\x00\x00\x00\x00\x00\x00\x00"
 )
 
@@ -116,9 +118,9 @@ def parse_fti(data: bytes) -> ParsedFti:
 
 
 class TestWriteFtiGoldenBytes:
-    """Pins the byte output so a change in the writer is caught. Every populated
-    sequence carries the same item count, the arpeggio and duty envelopes holding
-    their final value through the volume envelope's trailing note-off item."""
+    """Pins the byte output so a change in the writer is caught. Each populated
+    sequence carries the items its own envelope was written with, the shorter
+    arpeggio and duty envelopes ending before the volume envelope does."""
 
     def test_output_matches_golden(self, tmp_path: Path) -> None:
         path = tmp_path / "golden.fti"
@@ -160,7 +162,7 @@ class TestWriteFtiRoundTrip:
         parsed = parse_fti(path.read_bytes())
         assert parsed.sequences[0].enabled is True
         assert parsed.sequences[0].items == [15, 12, 8, 0]
-        assert parsed.sequences[1].items == [0, 2, -3, -3]
+        assert parsed.sequences[1].items == [0, 2, -3]
 
     def test_missing_sequences_are_disabled(self, tmp_path: Path) -> None:
         path = tmp_path / "instrument.fti"

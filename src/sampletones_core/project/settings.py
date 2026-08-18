@@ -5,16 +5,20 @@ from sampletones_core.constants.audio import (
     MAX_SAMPLE_RATE,
     MIN_SAMPLE_RATE,
 )
-from sampletones_core.constants.general import (
+from sampletones_shared.constants.nes import (
     DEFAULT_NES_FREQUENCY,
     MAX_NES_FREQUENCY,
     MIN_NES_FREQUENCY,
 )
 from sampletones_shared.constants.project import (
+    DEFAULT_FIRST_HIGHLIGHT,
+    DEFAULT_SECOND_HIGHLIGHT,
     DEFAULT_SPEED,
     DEFAULT_TEMPO,
+    MAX_HIGHLIGHT,
     MAX_SPEED,
     MAX_TEMPO,
+    MIN_HIGHLIGHT,
     MIN_SPEED,
     MIN_TEMPO,
 )
@@ -46,4 +50,16 @@ class ProjectSettings(BaseModel):
         ge=MIN_SPEED,
         le=MAX_SPEED,
         description="Engine ticks per row.",
+    )
+    first_highlight: int = Field(
+        default=DEFAULT_FIRST_HIGHLIGHT,
+        ge=MIN_HIGHLIGHT,
+        le=MAX_HIGHLIGHT,
+        description="Rows per beat, the unit the tempo is counted in.",
+    )
+    second_highlight: int = Field(
+        default=DEFAULT_SECOND_HIGHLIGHT,
+        ge=MIN_HIGHLIGHT,
+        le=MAX_HIGHLIGHT,
+        description="Rows per bar, the unit that groups beats.",
     )

@@ -3,7 +3,7 @@ from typing import Any, Callable, List, Optional, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.pitch import build_pitch_tooltip
+from sampletones_application.categories.pitch import PitchTooltips
 from sampletones_application.layout.tabs.instructions import InstructionsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
@@ -23,7 +23,10 @@ from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper, PitchStepperStyle
+from sampletones_application.ui.elements.pitch_stepper import (
+    GUIPitchStepper,
+    PitchStepperStyle,
+)
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
@@ -70,16 +73,9 @@ class GUIInstructionChoicePanel(GUIPanel):
         self._pitch_stepper: Optional[GUIPitchStepper] = None
 
         self._msg_status_input = language_manager["global.status.message.input"]
-        tooltip_template = language_manager["instructions.details.template.pitch_tooltip_template"]
-        self._pitch_tooltip = build_pitch_tooltip(
+        self._pitch_tooltips = PitchTooltips.build(
             language_manager,
-            PITCH_VALUE_KIND,
-            tooltip_template,
-        )
-        self._period_tooltip = build_pitch_tooltip(
-            language_manager,
-            PERIOD_VALUE_KIND,
-            tooltip_template,
+            language_manager["instructions.details.template.pitch_tooltip_template"],
         )
 
         super().__init__(
@@ -167,7 +163,7 @@ class GUIInstructionChoicePanel(GUIPanel):
             kind=kind,
             initial_value=initial_value,
             label=label,
-            tooltip=self._period_tooltip if is_period else self._pitch_tooltip,
+            tooltip=self._pitch_tooltips.for_kind(kind),
             status_message=(
                 self._language_manager["instructions.details.message.status_input_period"]
                 if is_period
@@ -180,7 +176,7 @@ class GUIInstructionChoicePanel(GUIPanel):
         )
         self._pitch_stepper.on_value_changed = self._on_pitch_value_changed
 
-    def _on_pitch_value_changed(self, value: int) -> None:
+    def _on_pitch_value_changed(self, _value: int) -> None:
         self._on_instruction_changed()
 
     def _create_pulse_instruction_choice_panel(self, instruction: PulseInstruction) -> None:

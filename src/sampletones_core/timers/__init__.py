@@ -8,8 +8,8 @@ __all__ = [
     "LFSRTimer",
     "PhaseTimer",
     "Timer",
-    "get_frequency_table",
     "TimerT",
-    "TimerUnion",
     "TimerTypeUnion",
+    "TimerUnion",
+    "get_frequency_table",
 ]

@@ -13,8 +13,12 @@ from jeepney import (
 from jeepney.io.blocking import DBusConnection, open_dbus_connection, unwrap_msg
 from jeepney.low_level import Message
 
-from sampletones_application.utils.file_dialogs.backends.portal.parent import parent_window_handle
-from sampletones_application.utils.file_dialogs.backends.portal.response import ChooserResult
+from sampletones_application.utils.file_dialogs.backends.portal.parent import (
+    parent_window_handle,
+)
+from sampletones_application.utils.file_dialogs.backends.portal.response import (
+    ChooserResult,
+)
 from sampletones_application.utils.file_dialogs.backends.portal.variant import Variant
 
 SESSION_BUS: Final[str] = "SESSION"
@@ -110,16 +114,19 @@ class FileChooserClient:
             ),
         )
 
-        with open_dbus_connection(bus=SESSION_BUS) as connection:
-            with connection.filter(response_rule) as signals, connection.filter(owner_rule, queue=signals):
-                connection.send_and_get_reply(message_bus.AddMatch(response_rule))
-                connection.send_and_get_reply(message_bus.AddMatch(owner_rule))
-                (handle,) = cast(Tuple[str], unwrap_msg(connection.send_and_get_reply(request)))
-                return self._answer(
-                    connection,
-                    signals,
-                    handle,
-                )
+        with (
+            open_dbus_connection(bus=SESSION_BUS) as connection,
+            connection.filter(response_rule) as signals,
+            connection.filter(owner_rule, queue=signals),
+        ):
+            connection.send_and_get_reply(message_bus.AddMatch(response_rule))
+            connection.send_and_get_reply(message_bus.AddMatch(owner_rule))
+            (handle,) = cast(Tuple[str], unwrap_msg(connection.send_and_get_reply(request)))
+            return self._answer(
+                connection,
+                signals,
+                handle,
+            )
 
     @staticmethod
     def _response_rule() -> MatchRule:

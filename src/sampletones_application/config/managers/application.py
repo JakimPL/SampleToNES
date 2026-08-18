@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Set
+from typing import Dict, Optional, Set
 
 from sampletones_application.config.session.application.config import ApplicationConfig
+from sampletones_application.constants.playback import FollowMode
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
-from sampletones_core.paths import APPLICATION_CONFIG_PATH
+from sampletones_core.data.metadata import Metadata
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import to_path
@@ -12,22 +13,18 @@ from sampletones_shared.utils.validation import flatten_location, validate_with_
 
 
 class ApplicationConfigManager:
-    def __init__(self) -> None:
+    def __init__(self, path: Path) -> None:
+        self.path: Path = path
         self.config: ApplicationConfig = self._load()
 
     def _load(self) -> ApplicationConfig:
-        if not APPLICATION_CONFIG_PATH.exists():
-            logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' does not exist." " Loading default configuration."
-            )
+        if not self.path.exists():
+            logger.warning(f"Application config file '{self.path}' does not exist. Loading default configuration.")
             return ApplicationConfig()
 
-        raw = load_yaml(to_path(APPLICATION_CONFIG_PATH))
+        raw = load_yaml(to_path(self.path))
         if not raw or not isinstance(raw, dict):
-            logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' is empty or invalid."
-                " Loading default configuration."
-            )
+            logger.warning(f"Application config file '{self.path}' is empty or invalid. Loading default configuration.")
             return ApplicationConfig()
 
         raw.pop("state", None)
@@ -35,20 +32,26 @@ class ApplicationConfigManager:
         if recovered.dropped:
             properties = ", ".join(flatten_location(location) for location in recovered.dropped)
             logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' had incompatible settings"
+                f"Application config file '{self.path}' had incompatible settings"
                 f" that were reset to defaults: {properties}"
             )
 
         return recovered.model
 
     def save(self) -> None:
+        """Writes the configuration under the metadata of the build doing the writing.
+
+        The file records which build last wrote it, so a profile carried across an upgrade names
+        the version its settings were last saved by.
+        """
+        self.config.metadata = Metadata.default()
         try:
-            APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            save_yaml_atomic(APPLICATION_CONFIG_PATH, self.config.model_dump())
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            save_yaml_atomic(self.path, self.config.model_dump())
         except OSError as exception:
             logger.error_with_traceback(
                 exception,
-                f"File error while saving application config to {APPLICATION_CONFIG_PATH}",
+                f"File error while saving application config to {self.path}",
             )
 
     def toggle_favorite(self, path: Path) -> None:
@@ -73,6 +76,51 @@ class ApplicationConfigManager:
         self.config.audio.master_gain = value
 
     @property
+    def palette_name(self) -> str:
+        return self.config.display.palette
+
+    def set_palette_name(self, name: str) -> None:
+        self.config.display.palette = name
+
+    @property
+    def vsync(self) -> bool:
+        return self.config.display.vsync
+
+    def set_vsync(self, vsync: bool) -> None:
+        self.config.display.vsync = vsync
+
+    @property
+    def max_fps(self) -> int:
+        return self.config.display.max_fps
+
+    def set_max_fps(self, max_fps: int) -> None:
+        self.config.display.max_fps = max_fps
+
+    @property
+    def borderless(self) -> bool:
+        return self.config.display.borderless
+
+    def set_borderless(self, borderless: bool) -> None:
+        self.config.display.borderless = borderless
+
+    @property
+    def shortcut_scheme_name(self) -> str:
+        return self.config.shortcuts.scheme
+
+    def set_shortcut_scheme_name(self, name: str) -> None:
+        self.config.shortcuts.scheme = name
+
+    @property
+    def shortcut_overrides(self) -> Dict[str, Optional[str]]:
+        return self.config.shortcuts.overrides
+
+    def set_shortcut_overrides(
+        self,
+        overrides: Dict[str, Optional[str]],
+    ) -> None:
+        self.config.shortcuts.overrides = overrides
+
+    @property
     def favorites(self) -> Set[Path]:
         return self.config.favorites.paths
 
@@ -85,11 +133,25 @@ class ApplicationConfigManager:
         return self.config.playback.autoplay
 
     @property
-    def follow_playback(self) -> bool:
-        return self.config.playback.follow_playback
+    def auto_expand_favorite_reconstructions(self) -> bool:
+        return self.config.browser.auto_expand_favorite_reconstructions
 
-    def set_follow_playback(self, value: bool) -> None:
-        self.config.playback.follow_playback = value
+    def set_auto_expand_favorite_reconstructions(self, value: bool) -> None:
+        self.config.browser.auto_expand_favorite_reconstructions = value
+
+    @property
+    def auto_expand_favorite_directories(self) -> bool:
+        return self.config.browser.auto_expand_favorite_directories
+
+    def set_auto_expand_favorite_directories(self, value: bool) -> None:
+        self.config.browser.auto_expand_favorite_directories = value
+
+    @property
+    def follow_mode(self) -> FollowMode:
+        return self.config.playback.follow_mode
+
+    def set_follow_mode(self, value: FollowMode) -> None:
+        self.config.playback.follow_mode = value
 
     @property
     def loop_song(self) -> bool:

@@ -26,9 +26,9 @@ from sampletones_application.tags.compose import TAG_SEPARATOR
 from sampletones_shared.meta.source.constants import ModuleConstant, module_constants
 from sampletones_shared.meta.source.modules import SourceModule, discover_modules, parse_module
 from sampletones_shared.meta.source.nodes import terminal_name
-from sampletones_shared.paths import REPOSITORY_ROOT
+from sampletones_shared.meta.source.packages import package_directory
 
-TAGS_PACKAGE: Final[Path] = REPOSITORY_ROOT / "src" / "sampletones_application" / "tags"
+TAGS_PACKAGE: Final[Path] = package_directory("sampletones_application", "tags")
 
 TAG_PREFIX: Final[str] = "TAG"
 TAG_NAME_CLASS: Final[str] = "TagName"
@@ -37,7 +37,12 @@ PAGE_ARGUMENT: Final[str] = "page"
 PANEL_ARGUMENT: Final[str] = "panel"
 WIDGET_ARGUMENT: Final[str] = "widget"
 ELEMENT_ARGUMENT: Final[str] = "element"
-TAG_ARGUMENTS: Final[Tuple[str, ...]] = (PAGE_ARGUMENT, PANEL_ARGUMENT, WIDGET_ARGUMENT, ELEMENT_ARGUMENT)
+TAG_ARGUMENTS: Final[Tuple[str, ...]] = (
+    PAGE_ARGUMENT,
+    PANEL_ARGUMENT,
+    WIDGET_ARGUMENT,
+    ELEMENT_ARGUMENT,
+)
 
 EnumMember = TypeVar("EnumMember", bound=StrEnum)
 

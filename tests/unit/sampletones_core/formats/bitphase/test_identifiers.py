@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 import pytest
 
@@ -10,6 +9,8 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     MIN_INSTRUMENT_ID,
 )
 from sampletones_core.formats.bitphase.specification.patterns import SYMBOL_BASE
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 
 @dataclass
@@ -18,17 +19,25 @@ class IdentifierCase:
     identifier: str
 
 
-IDENTIFIER_CASES: List[IdentifierCase] = [
-    IdentifierCase(number=1, identifier="01"),
-    IdentifierCase(number=10, identifier="0A"),
-    IdentifierCase(number=35, identifier="0Z"),
-    IdentifierCase(number=36, identifier="10"),
-    IdentifierCase(number=MAX_INSTRUMENT_ID, identifier="ZZ"),
-]
+class TestFormatInstrumentId(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class IdentifierCase(BaseRegularTestCase):
+        number: int
+        identifier: str
 
+    test_cases = (
+        IdentifierCase(number=1, identifier="01", label="1"),
+        IdentifierCase(number=10, identifier="0A", label="10"),
+        IdentifierCase(number=35, identifier="0Z", label="35"),
+        IdentifierCase(number=36, identifier="10", label="36"),
+        IdentifierCase(
+            number=MAX_INSTRUMENT_ID,
+            identifier="ZZ",
+            label=str(MAX_INSTRUMENT_ID),
+        ),
+    )
 
-class TestFormatInstrumentId:
-    @pytest.mark.parametrize("case", IDENTIFIER_CASES, ids=lambda case: str(case.number))
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_a_number_renders_as_its_base36_text(self, case: IdentifierCase) -> None:
         assert format_instrument_id(case.number) == case.identifier
 
@@ -40,5 +49,11 @@ class TestFormatInstrumentId:
             assert int(format_instrument_id(number), SYMBOL_BASE) == number
 
     def test_every_identifier_fills_the_column(self) -> None:
-        widths = {len(format_instrument_id(number)) for number in range(MIN_INSTRUMENT_ID, MAX_INSTRUMENT_ID + 1)}
+        widths = {
+            len(format_instrument_id(number))
+            for number in range(
+                MIN_INSTRUMENT_ID,
+                MAX_INSTRUMENT_ID + 1,
+            )
+        }
         assert widths == {INSTRUMENT_ID_DIGITS}

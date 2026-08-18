@@ -13,7 +13,9 @@ def _retuned(sample_id: str, rate: int) -> RetunedSample:
 
 
 def _app(
-    current_rate: int, sample: Optional[MagicMock], open_reconstruction: Optional[MagicMock] = None
+    current_rate: int,
+    sample: Optional[MagicMock],
+    open_reconstruction: Optional[MagicMock] = None,
 ) -> Application:
     app = Application.__new__(Application)
     app.project_manager = MagicMock()
@@ -106,7 +108,10 @@ def _app_for_rate(
 class TestRetuneDim:
     def test_dims_the_open_reconstruction_when_it_will_be_retuned(self) -> None:
         open_sample = _sample("open", 30)
-        app = _app_for_rate([open_sample, _sample("other", 30)], open_reconstruction=open_sample.reconstruction)
+        app = _app_for_rate(
+            [open_sample, _sample("other", 30)],
+            open_reconstruction=open_sample.reconstruction,
+        )
 
         app._retune_samples_for_rate(60)
 
@@ -114,7 +119,10 @@ class TestRetuneDim:
 
     def test_does_not_dim_when_the_open_sample_already_matches(self) -> None:
         open_sample = _sample("open", 60)
-        app = _app_for_rate([open_sample, _sample("other", 30)], open_reconstruction=open_sample.reconstruction)
+        app = _app_for_rate(
+            [open_sample, _sample("other", 30)],
+            open_reconstruction=open_sample.reconstruction,
+        )
 
         app._retune_samples_for_rate(60)
 

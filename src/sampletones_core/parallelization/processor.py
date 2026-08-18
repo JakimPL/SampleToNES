@@ -285,7 +285,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
             finally:
                 self._join_pool()
 
-    def _stop_pool(self, timeout: Union[int, float] = STOP_TIMEOUT) -> None:
+    def _stop_pool(self, timeout: float = STOP_TIMEOUT) -> None:
         self._notify_progress()
         if self.pool is None:
             return

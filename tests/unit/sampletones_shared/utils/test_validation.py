@@ -62,14 +62,25 @@ class TestValidateWithRecovery(BaseTestSuite):
         raw: Dict[str, Any]
         dropped: Tuple[Location, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="valid_input_is_preserved",
             raw={
-                "branch": {"leaf": {"value": 7, "name": "x"}, "ratio": 2.0, "tags": ["a"]},
+                "branch": {
+                    "leaf": {"value": 7, "name": "x"},
+                    "ratio": 2.0,
+                    "tags": ["a"],
+                },
                 "count": 9,
             },
-            expected=Root(branch=Branch(leaf=Leaf(value=7, name="x"), ratio=2.0, tags=["a"]), count=9),
+            expected=Root(
+                branch=Branch(
+                    leaf=Leaf(value=7, name="x"),
+                    ratio=2.0,
+                    tags=["a"],
+                ),
+                count=9,
+            ),
             dropped=(),
         ),
         TestCase(
@@ -80,8 +91,18 @@ class TestValidateWithRecovery(BaseTestSuite):
         ),
         TestCase(
             label="nested_bad_leaf_keeps_its_siblings",
-            raw={"branch": {"leaf": {"value": 99, "name": "keep"}, "ratio": 3.0}},
-            expected=Root(branch=Branch(leaf=Leaf(name="keep"), ratio=3.0)),
+            raw={
+                "branch": {
+                    "leaf": {"value": 99, "name": "keep"},
+                    "ratio": 3.0,
+                }
+            },
+            expected=Root(
+                branch=Branch(
+                    leaf=Leaf(name="keep"),
+                    ratio=3.0,
+                )
+            ),
             dropped=(("branch", "leaf", "value"),),
         ),
         TestCase(
@@ -100,7 +121,11 @@ class TestValidateWithRecovery(BaseTestSuite):
             label="multiple_independent_failures_all_drop",
             raw={"branch": {"leaf": {"value": 99}, "ratio": -1.0}, "count": 0},
             expected=Root(),
-            dropped=(("branch", "leaf", "value"), ("branch", "ratio"), ("count",)),
+            dropped=(
+                ("branch", "leaf", "value"),
+                ("branch", "ratio"),
+                ("count",),
+            ),
         ),
         TestCase(
             label="bad_list_element_keeps_valid_elements",
@@ -120,7 +145,7 @@ class TestValidateWithRecovery(BaseTestSuite):
             expected=Root(),
             dropped=(),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -156,12 +181,24 @@ class TestFlattenLocation(BaseTestSuite):
         expected: str
         location: Location
 
-    test_cases = [
+    test_cases = (
         TestCase(label="single_key", location=("count",), expected="count"),
-        TestCase(label="nested_keys", location=("generation", "drive"), expected="generation.drive"),
-        TestCase(label="list_index", location=("generators", 2), expected="generators[2]"),
-        TestCase(label="nested_with_index", location=("branch", "tags", 1), expected="branch.tags[1]"),
-    ]
+        TestCase(
+            label="nested_keys",
+            location=("generation", "drive"),
+            expected="generation.drive",
+        ),
+        TestCase(
+            label="list_index",
+            location=("generators", 2),
+            expected="generators[2]",
+        ),
+        TestCase(
+            label="nested_with_index",
+            location=("branch", "tags", 1),
+            expected="branch.tags[1]",
+        ),
+    )
 
     @pytest.mark.parametrize(
         "test_case",

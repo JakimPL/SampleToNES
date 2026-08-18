@@ -26,10 +26,14 @@ from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
-from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
+from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.constants.project import (
     MAX_ROWS_PER_PATTERN,
+    MAX_SPEED,
+    MAX_TEMPO,
     MIN_ROWS_PER_PATTERN,
+    MIN_SPEED,
+    MIN_TEMPO,
 )
 from sampletones_shared.types.application import Sender
 
@@ -80,7 +84,10 @@ class GUISequencerModulePanel(GUIPanel):
     def _create_module_options(self) -> None:
         settings = self._initial_settings
         with dpg.group(tag=TAG_SEQUENCER_MODULE_GROUP_OPTIONS):
-            with labeled_field(self._language_manager["sequencer.module.label.nes_frequency"], self._label_width):
+            with labeled_field(
+                self._language_manager["sequencer.module.label.nes_frequency"],
+                self._label_width,
+            ):
                 dpg.add_input_int(
                     default_value=settings.nes_frequency,
                     tag=TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
@@ -90,7 +97,10 @@ class GUISequencerModulePanel(GUIPanel):
                     max_clamped=True,
                     width=self._input_width,
                 )
-            with labeled_field(self._language_manager["sequencer.module.label.rows"], self._label_width):
+            with labeled_field(
+                self._language_manager["sequencer.module.label.rows"],
+                self._label_width,
+            ):
                 dpg.add_input_int(
                     default_value=settings.rows_per_pattern,
                     tag=TAG_SEQUENCER_MODULE_INPUT_ROWS,
@@ -100,23 +110,29 @@ class GUISequencerModulePanel(GUIPanel):
                     max_clamped=True,
                     width=self._input_width,
                 )
-            with labeled_field(self._language_manager["sequencer.module.label.tempo"], self._label_width):
+            with labeled_field(
+                self._language_manager["sequencer.module.label.tempo"],
+                self._label_width,
+            ):
                 dpg.add_input_int(
                     default_value=settings.tempo,
                     tag=TAG_SEQUENCER_MODULE_INPUT_TEMPO,
-                    min_value=self._layout.tempo.min,
-                    max_value=self._layout.tempo.max,
+                    min_value=MIN_TEMPO,
+                    max_value=MAX_TEMPO,
                     min_clamped=True,
                     max_clamped=True,
                     width=self._input_width,
                     callback=self._on_tempo_input,
                 )
-            with labeled_field(self._language_manager["sequencer.module.label.speed"], self._label_width):
+            with labeled_field(
+                self._language_manager["sequencer.module.label.speed"],
+                self._label_width,
+            ):
                 dpg.add_input_int(
                     default_value=settings.speed,
                     tag=TAG_SEQUENCER_MODULE_INPUT_SPEED,
-                    min_value=self._layout.speed.min,
-                    max_value=self._layout.speed.max,
+                    min_value=MIN_SPEED,
+                    max_value=MAX_SPEED,
                     min_clamped=True,
                     max_clamped=True,
                     width=self._input_width,
@@ -192,25 +208,25 @@ class GUISequencerModulePanel(GUIPanel):
 
         dpg.bind_item_handler_registry(input_tag, handler_tag)
 
-    def _on_nes_frequency_input(self, sender: Sender, app_data: int) -> None:
+    def _on_nes_frequency_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(
             self.on_nes_frequency,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)),
         )
 
-    def _on_rows_per_pattern_input(self, sender: Sender, app_data: int) -> None:
+    def _on_rows_per_pattern_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(
             self.on_rows_per_pattern,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_ROWS)),
         )
 
-    def _on_tempo_input(self, sender: Sender, app_data: int) -> None:
+    def _on_tempo_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(
             self.on_tempo,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_TEMPO)),
         )
 
-    def _on_speed_input(self, sender: Sender, app_data: int) -> None:
+    def _on_speed_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(
             self.on_speed,
             int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_SPEED)),

@@ -27,7 +27,7 @@ class TestInit(BaseTestSuite):
         values: Any
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
             values=np.array([1.0, 2.0], dtype=np.float64),
@@ -255,27 +255,27 @@ class TestInit(BaseTestSuite):
             match="edges must contain only finite values",
             label="interval_unbounded_both_sides",
         ),
-    ]
+    )
 
     if CUPY_AVAILABLE:
-        test_cases.extend(
-            [
-                TestCase(
-                    edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
-                    values=xp.array([1.0, 2.0], dtype=xp.float32),
-                    expected=TypeError,
-                    match="edges and values must be of the same type",
-                    label="edges_numpy_values_cupy_type_mismatch",
-                ),
-                TestCase(
-                    edges=xp.array([0.0, 1.0, 2.0]),
-                    values=np.array([1.0, 2.0]),
-                    expected=TypeError,
-                    match="edges and values must be of the same type",
-                    label="mismatched_types_cupy_edges_numpy_values",
-                ),
-            ]
-        )
+        cupy_cases = [
+            TestCase(
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=xp.array([1.0, 2.0], dtype=xp.float32),
+                expected=TypeError,
+                match="edges and values must be of the same type",
+                label="edges_numpy_values_cupy_type_mismatch",
+            ),
+            TestCase(
+                edges=xp.array([0.0, 1.0, 2.0]),
+                values=np.array([1.0, 2.0]),
+                expected=TypeError,
+                match="edges and values must be of the same type",
+                label="mismatched_types_cupy_edges_numpy_values",
+            ),
+        ]
+
+        test_cases = (*test_cases, *cupy_cases)
 
     @pytest.mark.parametrize(
         "test_case",
@@ -306,7 +306,7 @@ class TestValidateHistogramEdges(BaseTestSuite):
         equal_edges: bool
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histograms=(
                 Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
@@ -396,49 +396,49 @@ class TestValidateHistogramEdges(BaseTestSuite):
             match="At least one histogram is required",
             label="no_histograms_raises",
         ),
-    ]
+    )
 
     if CUPY_AVAILABLE:
-        test_cases.extend(
-            [
-                TestCase(
-                    histograms=(
-                        Histogram(
-                            edges=np.array([0.0, 1.0, 2.0]),
-                            values=np.array([1.0, 2.0]),
-                        ),
-                        Histogram(
-                            edges=xp.array([0.0, 1.0, 2.0]),
-                            values=xp.array([3.0, 4.0]),
-                        ),
+        cupy_cases = [
+            TestCase(
+                histograms=(
+                    Histogram(
+                        edges=np.array([0.0, 1.0, 2.0]),
+                        values=np.array([1.0, 2.0]),
                     ),
-                    equal_edges=True,
-                    expected=TypeError,
-                    match="All histograms must be of the same array type",
-                    label="mixed_numpy_cupy_raises",
-                ),
-                TestCase(
-                    histograms=(
-                        Histogram(
-                            edges=xp.array([0.0, 1.0, 2.0]),
-                            values=xp.array([1.0, 2.0]),
-                        ),
-                        Histogram(
-                            edges=np.array([0.0, 1.0, 2.0]),
-                            values=np.array([3.0, 4.0]),
-                        ),
-                        Histogram(
-                            edges=np.array([0.0, 1.0, 2.0]),
-                            values=np.array([5.0, 6.0]),
-                        ),
+                    Histogram(
+                        edges=xp.array([0.0, 1.0, 2.0]),
+                        values=xp.array([3.0, 4.0]),
                     ),
-                    equal_edges=False,
-                    expected=TypeError,
-                    match="All histograms must be of the same array type",
-                    label="mixed_numpy_cupy_multiple_histograms_raises",
                 ),
-            ]
-        )
+                equal_edges=True,
+                expected=TypeError,
+                match="All histograms must be of the same array type",
+                label="mixed_numpy_cupy_raises",
+            ),
+            TestCase(
+                histograms=(
+                    Histogram(
+                        edges=xp.array([0.0, 1.0, 2.0]),
+                        values=xp.array([1.0, 2.0]),
+                    ),
+                    Histogram(
+                        edges=np.array([0.0, 1.0, 2.0]),
+                        values=np.array([3.0, 4.0]),
+                    ),
+                    Histogram(
+                        edges=np.array([0.0, 1.0, 2.0]),
+                        values=np.array([5.0, 6.0]),
+                    ),
+                ),
+                equal_edges=False,
+                expected=TypeError,
+                match="All histograms must be of the same array type",
+                label="mixed_numpy_cupy_multiple_histograms_raises",
+            ),
+        ]
+
+        test_cases = (*test_cases, *cupy_cases)
 
     @pytest.mark.parametrize(
         "test_case",
@@ -463,7 +463,7 @@ class TestValidateArrayLengths(BaseTestSuite):
         arrays: Tuple[Array, ...]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
             arrays=(np.array([3.0, 4.0]), np.array([5.0, 6.0])),
@@ -522,7 +522,7 @@ class TestValidateArrayLengths(BaseTestSuite):
             expected=None,
             label="matching_lengths_cupy_arrays",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -546,7 +546,7 @@ class TestValidateNegativePower(BaseTestSuite):
         exponent: Union[Numeric, Array, Histogram]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             base=2.0,
             exponent=-1.0,
@@ -675,10 +675,10 @@ class TestValidateNegativePower(BaseTestSuite):
             match="Unsupported exponent type",
             label="unsupported_exponent_type_raises",
         ),
-    ]
+    )
 
     if CUPY_AVAILABLE:
-        test_cases.append(
+        cupy_cases = [
             TestCase(
                 base=np.array([1.0, 2.0, 3.0]),
                 exponent=xp.array([1.0, 2.0, 3.0]),
@@ -686,7 +686,9 @@ class TestValidateNegativePower(BaseTestSuite):
                 match="Base and exponent must be of the same array type",
                 label="mismatched_array_modules_raises",
             )
-        )
+        ]
+
+        test_cases = (*test_cases, *cupy_cases)
 
     @pytest.mark.parametrize(
         "test_case",
@@ -709,7 +711,7 @@ class TestGetModule(BaseTestSuite):
         expected: ModuleType
         obj: Union[Histogram, Array, Numeric]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             obj=Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
             expected=np,
@@ -745,7 +747,7 @@ class TestGetModule(BaseTestSuite):
             expected=xp,
             label="histogram_cupy_returns_cupy",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -768,7 +770,7 @@ class TestImmutability(BaseTestSuite):
         def label(self) -> str:
             return f"{self.edges.dtype.name}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
             values=np.array([1.0, 2.0], dtype=np.float64),
@@ -785,7 +787,7 @@ class TestImmutability(BaseTestSuite):
             edges=np.array([42, 137, 404], dtype=np.int32),
             values=np.array([1, 2], dtype=np.int32),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -820,7 +822,7 @@ class TestInitConstantDensity(BaseTestSuite):
         def label(self) -> str:
             return f"{self.edges.dtype.name}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
             density=3.0,
@@ -857,7 +859,7 @@ class TestInitConstantDensity(BaseTestSuite):
             expected=np.array([2.0, 6.0, 4.0], dtype=np.float32),
             expected_densities=np.array([4.0, 4.0, 4.0], dtype=np.float32),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -882,7 +884,7 @@ class TestEquality(BaseTestSuite):
         def label(self) -> str:
             return self.description
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram1=Histogram(
                 edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
@@ -1027,7 +1029,7 @@ class TestEquality(BaseTestSuite):
             expected=False,
             description="histogram_vs_int",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1051,7 +1053,7 @@ class TestCopy(BaseTestSuite):
         def label(self) -> str:
             return f"{self.histogram.edges.dtype.name}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
@@ -1076,7 +1078,7 @@ class TestCopy(BaseTestSuite):
                 values=np.array([1, 2], dtype=np.int32),
             ),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1111,7 +1113,7 @@ class TestHash(BaseTestSuite):
         def label(self) -> str:
             return f"{self.histogram.edges.dtype.name}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
@@ -1136,7 +1138,7 @@ class TestHash(BaseTestSuite):
                 values=np.array([1, 2], dtype=np.int32),
             ),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1172,7 +1174,7 @@ class TestLen(BaseTestSuite):
         def label(self) -> str:
             return f"{self.histogram.edges.dtype.name}_len_{self.expected}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64),
@@ -1201,7 +1203,7 @@ class TestLen(BaseTestSuite):
             ),
             expected=2,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1229,7 +1231,7 @@ class TestInterval(BaseTestSuite):
 
             return base
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 3.0], dtype=np.float64),
@@ -1321,7 +1323,7 @@ class TestInterval(BaseTestSuite):
             expected=IndexError,
             match="out of bounds",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1354,7 +1356,7 @@ class TestWidth(BaseTestSuite):
                 return f"{dtype}_index_{self.index}_error"
             return f"{dtype}_index_{self.index}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64),
@@ -1446,7 +1448,7 @@ class TestWidth(BaseTestSuite):
             expected=IndexError,
             match="out of (range|bounds)",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1485,7 +1487,7 @@ class TestDensity(BaseTestSuite):
 
             return base
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
@@ -1577,7 +1579,7 @@ class TestDensity(BaseTestSuite):
             expected=IndexError,
             match="out of (range|bounds)",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1609,7 +1611,7 @@ class TestDensities(BaseTestSuite):
         def label(self) -> str:
             return f"{self.histogram.edges.dtype.name}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
@@ -1638,7 +1640,7 @@ class TestDensities(BaseTestSuite):
             ),
             expected=np.array([2.0, 3.0]),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1659,7 +1661,7 @@ class TestWidths(BaseTestSuite):
         def label(self) -> str:
             return f"{self.histogram.edges.dtype.name}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 4.0, 7.0], dtype=np.float64),
@@ -1688,7 +1690,7 @@ class TestWidths(BaseTestSuite):
             ),
             expected=np.array([3, 7], dtype=np.int32),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1709,7 +1711,7 @@ class TestRange(BaseTestSuite):
         def label(self) -> str:
             return f"{self.histogram.edges.dtype.name}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
@@ -1738,7 +1740,7 @@ class TestRange(BaseTestSuite):
             ),
             expected=Interval(-10, 10),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1759,7 +1761,7 @@ class TestTotal(BaseTestSuite):
         def label(self) -> str:
             return f"{self.histogram.edges.dtype.name}_{len(self.histogram.values)}bins"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([0.0, 1.0, 4.0, 7.0], dtype=np.float64),
@@ -1802,7 +1804,7 @@ class TestTotal(BaseTestSuite):
             ),
             expected=np.float32(12.25),
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1870,7 +1872,7 @@ class TestToCupy(BaseTestSuite):
         expected: Array
         histogram: Histogram
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
             expected_edges=xp.array([0.0, 1.0, 2.0]),
@@ -1892,7 +1894,7 @@ class TestToCupy(BaseTestSuite):
             expected=xp.array([2.0, 4.0, 6.0, 8.0]),
             label="larger_numpy_histogram_converts_to_cupy",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1915,7 +1917,7 @@ class TestDensityToValues(BaseTestSuite):
         density: Union[Numeric, Array]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             edges=Histogram(edges=np.array([0.0, 2.0, 5.0]), values=np.array([4.0, 9.0])),
             density=3.0,
@@ -1953,7 +1955,7 @@ class TestDensityToValues(BaseTestSuite):
             match="edges must be an Array or Histogram",
             label="invalid_edges_type_raises",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1985,7 +1987,7 @@ class TestRebin(BaseTestSuite):
         def label(self) -> str:
             return self.description
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([2.0, 3.0, 5.0, 7.0], dtype=np.float64),
@@ -2279,7 +2281,7 @@ class TestRebin(BaseTestSuite):
             description="rebin_with_histogram_float32",
             expect_warning=True,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -2319,7 +2321,7 @@ class TestStaticRebin(BaseTestSuite):
         target_bins: Union[Array, Any]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([2.0, 4.0])),
             target_bins=np.array([0.0, 2.0]),
@@ -2374,7 +2376,7 @@ class TestStaticRebin(BaseTestSuite):
             match="strictly increasing",
             label="duplicate_values_raises",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -2402,7 +2404,7 @@ class TestValidateOverlap(BaseTestSuite):
         expect_warning: bool
         expected: None = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histogram=Histogram(
                 edges=np.array([2.0, 5.0, 8.0], dtype=np.float64),
@@ -2520,7 +2522,7 @@ class TestValidateOverlap(BaseTestSuite):
             expect_warning=True,
             label="disjoint_far_above_warning",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -2546,7 +2548,7 @@ class TestRefine(BaseTestSuite):
         histograms: Tuple[Histogram, ...]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             histograms=tuple(),
             expected=ValueError,
@@ -2725,7 +2727,7 @@ class TestRefine(BaseTestSuite):
             expected=np.array([10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0]),
             label="four_histograms",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -2756,7 +2758,7 @@ class TestApply(BaseTestSuite):
         histograms: Tuple[Histogram, ...]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             function=lambda d: d**2,
             histograms=(Histogram(edges=np.array([0.0, 1.0, 4.0]), values=np.array([2.0, 6.0])),),
@@ -2859,7 +2861,7 @@ class TestApply(BaseTestSuite):
             match="same edges",
             label="mismatched_edges_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -2887,7 +2889,7 @@ class TestApplyWith(BaseTestSuite):
         other_histograms: Tuple[Histogram, ...]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             function=lambda d1, d2: d1 * d2,
             histogram=Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
@@ -2946,7 +2948,7 @@ class TestApplyWith(BaseTestSuite):
             match="same edges",
             label="mismatched_edges_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -2973,7 +2975,7 @@ class TestReduce(BaseTestSuite):
         histograms: Tuple[Histogram, ...]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             function=np.add,
             histograms=(Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),),
@@ -3079,7 +3081,7 @@ class TestReduce(BaseTestSuite):
             match="same edges",
             label="mismatched_edges_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -3107,7 +3109,7 @@ class TestReduceWith(BaseTestSuite):
         other_histograms: Tuple[Histogram, ...]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             function=np.multiply,
             histogram=Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([2.0, 4.0])),
@@ -3170,7 +3172,7 @@ class TestReduceWith(BaseTestSuite):
             match="same edges",
             label="mismatched_edges_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -3197,7 +3199,7 @@ class TestAddition(BaseTestSuite):
         right: Union[Histogram, Array, Numeric]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             left=Histogram(edges=np.array([0.0, 2.0, 7.0]), values=np.array([4.0, 15.0])),
             right=Histogram(edges=np.array([0.0, 2.0, 7.0]), values=np.array([6.0, 20.0])),
@@ -3308,7 +3310,7 @@ class TestAddition(BaseTestSuite):
             match="Unsupported type for addition",
             label="invalid_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -3336,7 +3338,7 @@ class TestSubtraction(BaseTestSuite):
         right: Union[Histogram, Array, Numeric]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             left=Histogram(edges=np.array([0.0, 2.0, 7.0]), values=np.array([10.0, 25.0])),
             right=Histogram(edges=np.array([0.0, 2.0, 7.0]), values=np.array([4.0, 10.0])),
@@ -3427,7 +3429,7 @@ class TestSubtraction(BaseTestSuite):
             expected=Histogram(edges=np.array([0.0, 2.0, 7.0]), values=np.array([6.0, 10.0])),
             label="array_minus_histogram",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -3455,7 +3457,7 @@ class TestMultiplication(BaseTestSuite):
         right: Union[Histogram, Array, Numeric]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             left=Histogram(edges=np.array([0.0, 2.0, 7.0]), values=np.array([4.0, 15.0])),
             right=Histogram(edges=np.array([0.0, 2.0, 7.0]), values=np.array([6.0, 20.0])),
@@ -3566,7 +3568,7 @@ class TestMultiplication(BaseTestSuite):
             match="Unsupported type for multiplication",
             label="invalid_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -3594,7 +3596,7 @@ class TestDivision(BaseTestSuite):
         right: Union[Histogram, Array, Numeric]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             left=Histogram(edges=np.array([0.0, 3.0, 10.0]), values=np.array([12.0, 42.0])),
             right=2.0,
@@ -3724,7 +3726,7 @@ class TestDivision(BaseTestSuite):
             match="Unsupported type for division",
             label="invalid_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -3752,7 +3754,7 @@ class TestPower(BaseTestSuite):
         right: Union[Histogram, Array, Numeric]
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             left=Histogram(edges=np.array([0.0, 3.0, 10.0]), values=np.array([6.0, 21.0])),
             right=2,
@@ -3983,7 +3985,7 @@ class TestPower(BaseTestSuite):
             match="Zero densities cannot be raised to negative powers",
             label="base_and_exponent_disjoint_ranges_zero_density",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

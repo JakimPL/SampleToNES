@@ -20,9 +20,9 @@ from sampletones_core.configs import Config
 from sampletones_core.data.metadata import Metadata
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
-from sampletones_core.paths import CONFIG_PATH, LIBRARY_DIRECTORY
 from sampletones_shared.constants.project import RECONSTRUCTIONS_DIRECTORY
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.serialization import load_json
 from sampletones_shared.utils.validation import validate_with_recovery

@@ -61,6 +61,8 @@ from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
@@ -128,6 +130,7 @@ class MainTabCoordinator:
         self._explorer_logic: ExplorerLogic = ExplorerLogic(
             config_manager,
             language_manager=language_manager,
+            open_directories=session_manager.expanded_directories,
         )
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
@@ -144,7 +147,7 @@ class MainTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_EXPLORER_PANEL),
         )
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
-        self._explorer_tree_logic.on_favorite_changed = self._explorer_panel.update_favorite_indicator
+        self._explorer_tree_logic.on_favorite_changed = self._repaint_explorer_favorites
         self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
         self._explorer_tree_logic.on_autoplay_error = self._on_explorer_autoplay_error
 
@@ -250,6 +253,10 @@ class MainTabCoordinator:
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
         self._converter_panel.on_cancel_requested = self._request_cancel_confirmation
+
+    def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
+        """Repaints the row whose star was toggled: the explorer mirrors the disk, so a path is one row."""
+        self._explorer_panel.update_favorite_indicators((node,))
 
     def _on_explorer_autoplay_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
@@ -487,8 +494,16 @@ class MainTabCoordinator:
     def set_input_path(self, path: Path, convert: bool) -> None:
         self._converter_logic.set_input_path(path, convert=convert)
 
+    def save_browser_shape(self) -> None:
+        """Writes down the folders the explorer stands open, so a later run reads down to them."""
+        self._session_manager.set_expanded_directories(self._explorer_logic.open_directories)
+
     def refresh_browser(self) -> None:
         self._explorer_panel.refresh()
+
+    def toggle_generator(self, generator: GeneratorName) -> None:
+        """Switches one generator in or out of the set a reconstruction is built from."""
+        self._reconstructor_panel.toggle_generator(generator)
 
     def toggle_advanced_settings(self) -> None:
         advanced_settings = self._session_manager.toggle_show_advanced_settings()

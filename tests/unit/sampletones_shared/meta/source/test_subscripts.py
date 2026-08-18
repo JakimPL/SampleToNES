@@ -35,7 +35,10 @@ def sites_of(name: str) -> List[SubscriptSite]:
 
 class TestFindSubscripts:
     def test_a_lookup_on_a_parameter_is_found(self) -> None:
-        assert [site.receiver for site in sites_of("__init__")] == ["language_manager", "language_manager"]
+        assert [site.receiver for site in sites_of("__init__")] == [
+            "language_manager",
+            "language_manager",
+        ]
 
     def test_a_lookup_on_an_attribute_is_found(self) -> None:
         assert [site.receiver for site in sites_of("_label")] == ["self._language_manager"]

@@ -47,8 +47,14 @@ class TestRemovePath:
         assert removed == target
         assert not target.exists()
 
-    @pytest.mark.skipif(not SYMLINKS_PERMITTED, reason="creating a symlink requires a privilege this machine withholds")
-    def test_removes_directory_symlink_without_touching_target(self, tmp_path: Path) -> None:
+    @pytest.mark.skipif(
+        not SYMLINKS_PERMITTED,
+        reason="creating a symlink requires a privilege this machine withholds",
+    )
+    def test_removes_directory_symlink_without_touching_target(
+        self,
+        tmp_path: Path,
+    ) -> None:
         target = tmp_path / "target"
         target.mkdir()
         (target / "tone.strec").write_text("data")

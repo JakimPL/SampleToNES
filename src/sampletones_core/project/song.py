@@ -91,18 +91,29 @@ class Song(BaseModel):
             reserved_indices=self._referenced_indices(generator),
         )
 
-    def duplicate_pattern(self, generator: GeneratorName, index: int) -> int:
+    def clone_pattern(self, generator: GeneratorName, index: int) -> int:
         """Clones ``generator``'s pattern at ``index`` into a free index and returns it.
 
         The clone index clears the channel's pool and every order-referenced index, so
         the copy stays independent of any slot the order already plays.
         """
-        return self.channels[generator].duplicate_pattern(
+        return self.channels[generator].clone_pattern(
             index,
             reserved_indices=self._referenced_indices(generator),
         )
 
     def duplicate_frame(self, position: int) -> None:
+        """Inserts a frame playing the same patterns directly after ``position``.
+
+        The pattern indices are copied as they stand, so both frames play one shared
+        pattern per channel and an edit to either is heard in both. The copy is a fresh
+        mapping, so assigning a channel a different pattern in one frame leaves the
+        other frame where it was. Silent slots stay silent, and an index whose pattern
+        is not yet materialised is carried across as the reference it is.
+        """
+        self.order.insert(position + 1, dict(self.order[position]))
+
+    def clone_frame(self, position: int) -> None:
         """Inserts an independent copy of the frame directly after ``position``.
 
         Each channel's referenced pattern is cloned into a fresh index within that
@@ -110,17 +121,17 @@ class Song(BaseModel):
         the other unchanged. Silent slots stay silent.
         """
         source_frame = self.order[position]
-        duplicate: Dict[GeneratorName, Optional[int]] = {}
+        clone: Dict[GeneratorName, Optional[int]] = {}
         for generator in GeneratorName.items():
             index = source_frame.get(generator)
             if index is None:
-                duplicate[generator] = None
+                clone[generator] = None
                 continue
 
             self.channels[generator].ensure_pattern(index, self.rows_per_pattern)
-            duplicate[generator] = self.duplicate_pattern(generator, index)
+            clone[generator] = self.clone_pattern(generator, index)
 
-        self.order.insert(position + 1, duplicate)
+        self.order.insert(position + 1, clone)
 
     def _referenced_indices(self, generator: GeneratorName) -> Set[int]:
         return {index for frame in self.order if (index := frame.get(generator)) is not None}

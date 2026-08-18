@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibrary
 from sampletones_core.reconstructions import Reconstructor
@@ -32,7 +33,7 @@ class CalibrationRow:
 
 def build_variants(
     base: Config,
-    methods: List[str],
+    methods: List[SpectrumMethod],
     perceptual_exponents: List[float],
     temporal_weights: List[float],
 ) -> List[CalibrationVariant]:
@@ -59,7 +60,7 @@ def build_variants(
     for method in methods:
         for exponent in perceptual_exponents:
             for temporal_weight in swept_temporal:
-                label = f"{method}-pe{exponent:g}"
+                label = f"{method.value}-pe{exponent:g}"
                 generation = base.generation.model_copy(
                     update={
                         "metric": base.generation.metric.model_copy(update={"perceptual_exponent": exponent}),
@@ -84,7 +85,12 @@ def build_variants(
                         "generation": generation,
                     }
                 )
-                variants.append(CalibrationVariant(label=label, config=config))
+                variants.append(
+                    CalibrationVariant(
+                        label=label,
+                        config=config,
+                    )
+                )
 
     return variants
 

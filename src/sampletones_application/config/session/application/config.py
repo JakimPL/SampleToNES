@@ -1,9 +1,12 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_application.config.session.application.audio import AudioConfig
+from sampletones_application.config.session.application.browser import BrowserConfig
+from sampletones_application.config.session.application.display import DisplayConfig
 from sampletones_application.config.session.application.favorites import Favorites
 from sampletones_application.config.session.application.history import HistoryConfig
 from sampletones_application.config.session.application.playback import PlaybackConfig
+from sampletones_application.config.session.application.shortcuts import ShortcutsConfig
 from sampletones_core.data import Metadata
 
 
@@ -18,6 +21,14 @@ class ApplicationConfig(BaseModel):
         default_factory=AudioConfig,
         description="The audio configuration settings.",
     )
+    browser: BrowserConfig = Field(
+        default_factory=BrowserConfig,
+        description="How the browsers of reconstructions read what they narrow to.",
+    )
+    display: DisplayConfig = Field(
+        default_factory=DisplayConfig,
+        description="The palette and frame pacing preferences.",
+    )
     favorites: Favorites = Field(
         default_factory=Favorites,
         description="The user's favorite files and recent files.",
@@ -29,4 +40,8 @@ class ApplicationConfig(BaseModel):
     playback: PlaybackConfig = Field(
         default_factory=PlaybackConfig,
         description="Playback behaviour preferences.",
+    )
+    shortcuts: ShortcutsConfig = Field(
+        default_factory=ShortcutsConfig,
+        description="The keybinding scheme and the actions rebound on it.",
     )

@@ -75,19 +75,19 @@ def __getattr__(name: str) -> Any:
 
 __all__ = [
     "Config",
-    "Window",
+    "Generator",
+    "GeneratorName",
+    "Instruction",
     "InstructionLibrary",
+    "NoiseGenerator",
+    "NoiseInstruction",
+    "PulseGenerator",
+    "PulseInstruction",
     "Reconstruction",
     "Reconstructor",
-    "Generator",
-    "PulseGenerator",
     "TriangleGenerator",
-    "NoiseGenerator",
-    "Instruction",
-    "PulseInstruction",
     "TriangleInstruction",
-    "NoiseInstruction",
-    "GeneratorName",
+    "Window",
     "__version__",
 ]
 

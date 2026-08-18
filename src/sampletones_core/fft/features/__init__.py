@@ -21,9 +21,9 @@ def get_feature_extractor(config: Config, window: Window) -> FeatureExtractor:
 
 
 __all__ = [
+    "FEATURE_EXTRACTORS",
+    "CQTFeatureExtractor",
     "FeatureExtractor",
     "WindowedFeatureExtractor",
-    "CQTFeatureExtractor",
-    "FEATURE_EXTRACTORS",
     "get_feature_extractor",
 ]

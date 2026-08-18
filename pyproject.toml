@@ -46,6 +46,7 @@ dependencies = [
     "rich>=13.0,<16",
     "scipy>=1.13,<2",
     "screeninfo>=0.8,<0.9",
+    "soundfile>=0.13,<0.14",
     "tqdm>=4.66,<5",
     "jeepney>=0.8,<1; sys_platform == 'linux'",
     "pytaskbar>=0.1.1,<0.2; platform_system == 'Windows'",
@@ -74,7 +75,9 @@ gpu-cuda11 = [
 ]
 
 [dependency-groups]
+assets = ["pillow>=11,<13"]
 dev = [
+    { include-group = "assets" },
     "black==26.5.1",
     "isort==8.0.1",
     "mypy==2.1.0",
@@ -92,12 +95,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv]
-conflicts = [
-    [
-        { extra = "gpu" },
-        { extra = "gpu-cuda11" },
-    ],
-]
+conflicts = [[{ extra = "gpu" }, { extra = "gpu-cuda11" }]]
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -133,6 +131,7 @@ addopts = "--import-mode=importlib"
 [tool.coverage.run]
 source = [
     "sampletones_application",
+    "sampletones_assets",
     "sampletones_core",
     "sampletones_shared",
     "sampletones_synthesis",
@@ -147,6 +146,7 @@ python_version = "3.12"
 files = [
     "src/sampletones",
     "src/sampletones_application",
+    "src/sampletones_assets",
     "src/sampletones_core",
     "src/sampletones_shared",
     "src/sampletones_synthesis",
@@ -155,3 +155,39 @@ exclude = ["tests"]
 disallow_subclassing_any = true
 ignore_missing_imports = true
 strict = true
+
+[tool.pylint.main]
+fail-under = 9.9
+ignore-paths = "^tests/.*$"
+load-plugins = ["pylint_pydantic"]
+
+[tool.pylint.messages_control]
+disable = [
+    "import-outside-toplevel",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-statements",
+]
+
+[tool.pylint.basic]
+bad-names = ["foo", "baz"]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.similarities]
+min-similarity-lines = 5
+
+[tool.pylint.typecheck]
+ignored-modules = ["pydantic"]

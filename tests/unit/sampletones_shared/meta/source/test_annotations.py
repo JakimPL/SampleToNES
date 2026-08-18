@@ -23,25 +23,85 @@ class TestAnnotationTypeName(BaseTestSuite):
         annotation: str
         expected: Optional[str]
 
-    test_cases = [
+    test_cases = (
         TestCase(label="plain_name", annotation="LanguageManager", expected="LanguageManager"),
-        TestCase(label="optional", annotation="Optional[LanguageManager]", expected="LanguageManager"),
-        TestCase(label="final", annotation="Final[str]", expected="str"),
-        TestCase(label="class_variable", annotation="ClassVar[Page]", expected="Page"),
-        TestCase(label="annotated", annotation="Annotated[Page, 'unit']", expected="Page"),
-        TestCase(label="qualified_wrapper", annotation="typing.Optional[LanguageManager]", expected="LanguageManager"),
-        TestCase(label="qualified_name", annotation="categories.LanguageManager", expected="LanguageManager"),
-        TestCase(label="generic_states_itself", annotation="Dict[str, int]", expected="Dict"),
-        TestCase(label="wrapped_generic", annotation="Final[Dict[Page, Panel]]", expected="Dict"),
-        TestCase(label="nested_wrappers", annotation="Final[Optional[LanguageManager]]", expected="LanguageManager"),
-        TestCase(label="quoted", annotation="'LanguageManager'", expected="LanguageManager"),
-        TestCase(label="quoted_inside_wrapper", annotation="Optional['LanguageManager']", expected="LanguageManager"),
-        TestCase(label="none", annotation="None", expected=None),
-        TestCase(label="call", annotation="build()", expected=None),
-        TestCase(label="quoted_beyond_python", annotation="'not python('", expected=None),
-    ]
+        TestCase(
+            label="optional",
+            annotation="Optional[LanguageManager]",
+            expected="LanguageManager",
+        ),
+        TestCase(
+            label="final",
+            annotation="Final[str]",
+            expected="str",
+        ),
+        TestCase(
+            label="class_variable",
+            annotation="ClassVar[Page]",
+            expected="Page",
+        ),
+        TestCase(
+            label="annotated",
+            annotation="Annotated[Page, 'unit']",
+            expected="Page",
+        ),
+        TestCase(
+            label="qualified_wrapper",
+            annotation="typing.Optional[LanguageManager]",
+            expected="LanguageManager",
+        ),
+        TestCase(
+            label="qualified_name",
+            annotation="categories.LanguageManager",
+            expected="LanguageManager",
+        ),
+        TestCase(
+            label="generic_states_itself",
+            annotation="Dict[str, int]",
+            expected="Dict",
+        ),
+        TestCase(
+            label="wrapped_generic",
+            annotation="Final[Dict[Page, Panel]]",
+            expected="Dict",
+        ),
+        TestCase(
+            label="nested_wrappers",
+            annotation="Final[Optional[LanguageManager]]",
+            expected="LanguageManager",
+        ),
+        TestCase(
+            label="quoted",
+            annotation="'LanguageManager'",
+            expected="LanguageManager",
+        ),
+        TestCase(
+            label="quoted_inside_wrapper",
+            annotation="Optional['LanguageManager']",
+            expected="LanguageManager",
+        ),
+        TestCase(
+            label="none",
+            annotation="None",
+            expected=None,
+        ),
+        TestCase(
+            label="call",
+            annotation="build()",
+            expected=None,
+        ),
+        TestCase(
+            label="quoted_beyond_python",
+            annotation="'not python('",
+            expected=None,
+        ),
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_annotation_type_name(self, test_case: TestCase) -> None:
         assert annotation_type_name(annotation(test_case.annotation)) == test_case.expected
 
@@ -55,7 +115,7 @@ class TestAnnotationItemTypes(BaseTestSuite):
         annotation: str
         expected: Tuple[str, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="mapping_states_key_then_value",
             annotation="Dict[TrackerFormat, FileFilterElements]",
@@ -66,15 +126,43 @@ class TestAnnotationItemTypes(BaseTestSuite):
             annotation="Final[Dict[TrackerFormat, FileFilterElements]]",
             expected=("TrackerFormat", "FileFilterElements"),
         ),
-        TestCase(label="homogeneous_tuple", annotation="Tuple[MenuElements, ...]", expected=("MenuElements",)),
-        TestCase(label="list", annotation="List[MenuElements]", expected=("MenuElements",)),
-        TestCase(label="optional_item", annotation="List[Optional[MenuElements]]", expected=("MenuElements",)),
-        TestCase(label="nested_mapping", annotation="Dict[str, Dict[str, MenuElements]]", expected=("str", "Dict")),
-        TestCase(label="plain_name_holds_nothing", annotation="str", expected=()),
-        TestCase(label="unwrapped_scalar_holds_nothing", annotation="Optional[MenuElements]", expected=()),
-    ]
+        TestCase(
+            label="homogeneous_tuple",
+            annotation="Tuple[MenuElements, ...]",
+            expected=("MenuElements",),
+        ),
+        TestCase(
+            label="list",
+            annotation="List[MenuElements]",
+            expected=("MenuElements",),
+        ),
+        TestCase(
+            label="optional_item",
+            annotation="List[Optional[MenuElements]]",
+            expected=("MenuElements",),
+        ),
+        TestCase(
+            label="nested_mapping",
+            annotation="Dict[str, Dict[str, MenuElements]]",
+            expected=("str", "Dict"),
+        ),
+        TestCase(
+            label="plain_name_holds_nothing",
+            annotation="str",
+            expected=(),
+        ),
+        TestCase(
+            label="unwrapped_scalar_holds_nothing",
+            annotation="Optional[MenuElements]",
+            expected=(),
+        ),
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_annotation_item_types(self, test_case: TestCase) -> None:
         assert annotation_item_types(annotation(test_case.annotation)) == test_case.expected
 

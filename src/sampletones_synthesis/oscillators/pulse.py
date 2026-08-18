@@ -21,7 +21,7 @@ class PulseOscillator(BaseModel):
         self,
         time: np.ndarray,
         *,
-        generator: np.random.Generator,
+        generator: np.random.Generator,  # pylint: disable=unused-argument
     ) -> np.ndarray:
         """
         Render the pulse over the time axis.

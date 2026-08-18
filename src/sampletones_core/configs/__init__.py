@@ -10,12 +10,12 @@ from .generation import (
 from .library import InstructionsLibraryConfig
 
 __all__ = [
+    "CalculationConfig",
     "Config",
+    "DecoderConfig",
     "GeneralConfig",
     "GenerationConfig",
     "InstructionsLibraryConfig",
-    "CalculationConfig",
-    "WeightsConfig",
     "MetricConfig",
-    "DecoderConfig",
+    "WeightsConfig",
 ]

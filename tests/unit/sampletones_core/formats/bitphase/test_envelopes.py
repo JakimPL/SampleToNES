@@ -5,10 +5,14 @@ import pytest
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import NUM_PERIODS
-from sampletones_core.formats.bitphase.envelopes import ChannelEnvelopes, features_to_envelopes
+from sampletones_core.formats.bitphase.envelopes import (
+    ChannelEnvelopes,
+    features_to_envelopes,
+)
 from sampletones_core.formats.bitphase.specification.instruments import (
     FLAT_PULSE_WIDTH,
     LOOP_FROM_START,
+    MAX_VOLUME_OR_RATE,
     NO_TABLE_OFFSET,
     NOISE_MODE_LONG,
     NOISE_MODE_SHORT,
@@ -161,6 +165,54 @@ class TestTheLoopPoint:
         )
         assert envelopes.loop < len(envelopes.rows)
         assert envelopes.loop < len(envelopes.table_rows)
+
+
+class TestASliceThatLeavesItsVolumeToTheChannel:
+    """An instrument with no volume envelope sounds at the level its channel carries, so
+    every frame it describes reaches Bitphase as a full-level row.
+    """
+
+    def test_it_holds_a_full_row_per_frame(self) -> None:
+        envelopes = features_to_envelopes(
+            build_features([], arpeggio=PITCH_CONTOUR),
+            GeneratorName.PULSE1,
+            loop=False,
+        )
+        assert [row.volume_or_rate for row in envelopes.rows] == [MAX_VOLUME_OR_RATE] * len(PITCH_CONTOUR)
+
+    def test_its_contour_still_moves_the_note(self) -> None:
+        envelopes = features_to_envelopes(
+            build_features([], arpeggio=PITCH_CONTOUR),
+            GeneratorName.PULSE1,
+            loop=False,
+        )
+        assert list(envelopes.table_rows) == PITCH_CONTOUR
+
+    def test_its_duty_envelope_still_reaches_the_rows(self) -> None:
+        duty_cycles = [0, 1, 2, 3]
+        envelopes = features_to_envelopes(
+            build_features([], duty_cycle=duty_cycles),
+            GeneratorName.PULSE1,
+            loop=False,
+        )
+        assert [row.pulse_width for row in envelopes.rows] == duty_cycles
+
+    def test_a_one_shot_rests_at_the_level_the_channel_holds(self) -> None:
+        envelopes = features_to_envelopes(
+            build_features([], arpeggio=PITCH_CONTOUR),
+            GeneratorName.PULSE1,
+            loop=False,
+        )
+        assert envelopes.rows[envelopes.loop].volume_or_rate == MAX_VOLUME_OR_RATE
+
+    def test_a_looping_slice_takes_the_length_its_contour_states(self) -> None:
+        envelopes = features_to_envelopes(
+            build_features([], arpeggio=PITCH_CONTOUR),
+            GeneratorName.PULSE1,
+            loop=True,
+        )
+        assert len(envelopes.rows) == len(PITCH_CONTOUR)
+        assert envelopes.loop == LOOP_FROM_START
 
 
 class TestAnEmptySlice:

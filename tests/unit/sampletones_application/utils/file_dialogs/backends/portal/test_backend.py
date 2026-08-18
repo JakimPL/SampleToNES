@@ -12,7 +12,9 @@ from sampletones_application.utils.file_dialogs.backends.portal.backend import (
     MINIMUM_FILE_CHOOSER_VERSION,
     PortalBackend,
 )
-from sampletones_application.utils.file_dialogs.backends.portal.response import ChooserResult
+from sampletones_application.utils.file_dialogs.backends.portal.response import (
+    ChooserResult,
+)
 from sampletones_application.utils.file_dialogs.backends.portal.variant import Variant
 from sampletones_application.utils.file_dialogs.destination import SaveDestination
 from sampletones_application.utils.file_dialogs.filter import FileFilter
@@ -93,7 +95,10 @@ class TestPortalBackendSave:
         )
 
         options = client.calls[0][2]
-        assert options[CURRENT_FILTER_OPTION] == ("(sa(us))", ("FamiTracker instrument (*.fti)", [(0, "*.fti")]))
+        assert options[CURRENT_FILTER_OPTION] == (
+            "(sa(us))",
+            ("FamiTracker instrument (*.fti)", [(0, "*.fti")]),
+        )
         assert CURRENT_NAME_OPTION not in options
         assert CURRENT_FOLDER_OPTION not in options
 

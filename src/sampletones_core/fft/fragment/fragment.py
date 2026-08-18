@@ -43,13 +43,13 @@ class Fragment:
         concatenated_windowed_audio = module.stack([fragment.windowed_audio for fragment in fragments])
         concatenated_feature = module.stack([fragment.feature.values for fragment in fragments])
 
-        dimensions = map(
-            lambda array: array.ndim,
-            [
+        dimensions = (
+            array.ndim
+            for array in [
                 concatenated_audio,
                 concatenated_windowed_audio,
                 concatenated_feature,
-            ],
+            ]
         )
         assert all(ndim == 2 for ndim in dimensions), "All concatenated arrays must be 2-dimensional"
 

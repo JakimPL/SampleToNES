@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -15,7 +15,7 @@ from sampletones_shared.types.callback import Callback
 
 
 class GUIButton:
-    _REGISTRY: Dict[Sender, GUIButton] = {}
+    _REGISTRY: ClassVar[Dict[Sender, GUIButton]] = {}
 
     def __init__(
         self,

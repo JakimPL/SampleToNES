@@ -8,9 +8,14 @@ recovery:
   width: 640
   height: 120
 confirmation:
-  height: 130
+  height: 100
 text_input:
   height: 104
 traceback:
   width: 0
   height: 400
+about:
+  width: 480
+  height: 210
+  logo: 56
+  padding: 40

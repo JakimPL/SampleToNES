@@ -11,11 +11,14 @@ from sampletones_core.formats.bitphase.specification.instruments import (
 
 
 class BitphaseTable(BaseModel):
-    """A per-tick semitone contour a pattern cell attaches to a channel.
+    """A list of one value per step, whose meaning the column or effect reading it fixes.
 
-    Playback adds ``rows[position]`` to the channel's note every tick, advancing one
-    row per tick, so a table carries the pitch movement a reconstruction's arpeggio
-    envelope describes.
+    A pattern's table column reads it as a semitone contour, adding ``rows[position]`` to
+    the channel's note and advancing a row every tick, so a table carries the pitch movement
+    a reconstruction's arpeggio envelope describes. A speed effect reads it as tick counts,
+    advancing a row every pattern line, so a table carries a song's groove.
+
+    Playback returns to ``loop`` once it runs off the end, whichever column drives it.
     """
 
     model_config = BITPHASE_MODEL_CONFIG
@@ -28,7 +31,7 @@ class BitphaseTable(BaseModel):
     )
     rows: Tuple[int, ...] = Field(
         ...,
-        description="Semitone offset applied on each tick.",
+        description="Value applied on each step.",
     )
     loop: int = Field(
         default=LOOP_FROM_START,

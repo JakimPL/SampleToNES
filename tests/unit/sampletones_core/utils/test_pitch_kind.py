@@ -3,7 +3,11 @@ from dataclasses import dataclass
 import pytest
 
 from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PITCH
-from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
+from sampletones_core.utils.pitch_kind import (
+    PERIOD_VALUE_KIND,
+    PITCH_VALUE_KIND,
+    PitchValueKind,
+)
 
 
 @dataclass(frozen=True)

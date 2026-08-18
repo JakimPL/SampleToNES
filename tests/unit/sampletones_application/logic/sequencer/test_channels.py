@@ -7,7 +7,9 @@ from sampletones_application.logic.sequencer.channels import (
     ALL_CHANNELS,
     SequencerChannelsLogic,
 )
-from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from tests.suite.case import BaseTestCase
 
@@ -118,7 +120,14 @@ GESTURE_CASES = [
     ),
     GestureCase(
         label="the master gesture becomes what the next solo returns to",
-        gestures=(toggle(PULSE1), solo(TRIANGLE), toggle_all(), toggle_all(), solo(TRIANGLE), solo(TRIANGLE)),
+        gestures=(
+            toggle(PULSE1),
+            solo(TRIANGLE),
+            toggle_all(),
+            toggle_all(),
+            solo(TRIANGLE),
+            solo(TRIANGLE),
+        ),
         expected_muted=frozenset(),
     ),
     GestureCase(
@@ -138,7 +147,13 @@ GESTURE_CASES = [
     ),
     GestureCase(
         label="muting all becomes what the next solo returns to",
-        gestures=(toggle(PULSE1), solo(TRIANGLE), mute_all(), solo(TRIANGLE), solo(TRIANGLE)),
+        gestures=(
+            toggle(PULSE1),
+            solo(TRIANGLE),
+            mute_all(),
+            solo(TRIANGLE),
+            solo(TRIANGLE),
+        ),
         expected_muted=ALL_CHANNELS,
     ),
     GestureCase(
@@ -158,7 +173,13 @@ GESTURE_CASES = [
     ),
     GestureCase(
         label="reset starts the next solo from a full mix",
-        gestures=(toggle(PULSE1), solo(TRIANGLE), reset(), solo(TRIANGLE), solo(TRIANGLE)),
+        gestures=(
+            toggle(PULSE1),
+            solo(TRIANGLE),
+            reset(),
+            solo(TRIANGLE),
+            solo(TRIANGLE),
+        ),
         expected_muted=frozenset(),
     ),
 ]
@@ -171,14 +192,20 @@ def _make_logic() -> Tuple[SequencerChannelsLogic, List[SequencerChannelsViewMod
     return logic, views
 
 
-def _perform(logic: SequencerChannelsLogic, gestures: Tuple[Gesture, ...]) -> None:
+def _perform(
+    logic: SequencerChannelsLogic,
+    gestures: Tuple[Gesture, ...],
+) -> None:
     for gesture in gestures:
         gesture(logic)
 
 
 class TestGestures:
     @pytest.mark.parametrize("case", GESTURE_CASES, ids=lambda case: case.label)
-    def test_gestures_produce_expected_mute_set(self, case: GestureCase) -> None:
+    def test_gestures_produce_expected_mute_set(
+        self,
+        case: GestureCase,
+    ) -> None:
         logic, _ = _make_logic()
 
         _perform(logic, case.gestures)
@@ -186,7 +213,10 @@ class TestGestures:
         assert logic.build_channels().muted == case.expected_muted
 
     @pytest.mark.parametrize("case", GESTURE_CASES, ids=lambda case: case.label)
-    def test_active_channels_complement_the_mute_set(self, case: GestureCase) -> None:
+    def test_active_channels_complement_the_mute_set(
+        self,
+        case: GestureCase,
+    ) -> None:
         logic, _ = _make_logic()
 
         _perform(logic, case.gestures)

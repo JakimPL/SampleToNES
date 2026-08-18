@@ -3,6 +3,7 @@ from typing import Dict, Final, FrozenSet
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.utils.gui.keyboard.focus.kind import FieldKind
+from sampletones_application.utils.gui.keyboard.keys import FUNCTION_KEYS
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier, ModifierSet
 
 EDITING_KEYS: Final[FrozenSet[int]] = frozenset(
@@ -37,23 +38,6 @@ TEXT_EDIT_CHORDS: Final[Dict[ModifierSet, FrozenSet[int]]] = {
     ),
     frozenset({Modifier.CTRL, Modifier.SHIFT}): frozenset({dpg.mvKey_Z}),
 }
-
-FUNCTION_KEYS: Final[FrozenSet[int]] = frozenset(
-    {
-        dpg.mvKey_F1,
-        dpg.mvKey_F2,
-        dpg.mvKey_F3,
-        dpg.mvKey_F4,
-        dpg.mvKey_F5,
-        dpg.mvKey_F6,
-        dpg.mvKey_F7,
-        dpg.mvKey_F8,
-        dpg.mvKey_F9,
-        dpg.mvKey_F10,
-        dpg.mvKey_F11,
-        dpg.mvKey_F12,
-    }
-)
 
 
 def field_consumes_key(kind: FieldKind, key: int, modifiers: ModifierSet) -> bool:

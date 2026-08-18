@@ -33,7 +33,10 @@ def project_coordinator() -> ProjectCoordinator:
 
 
 class TestProjectRestoreSuccess:
-    def test_loads_and_keeps_session_pointer(self, project_coordinator: ProjectCoordinator) -> None:
+    def test_loads_and_keeps_session_pointer(
+        self,
+        project_coordinator: ProjectCoordinator,
+    ) -> None:
         path = Path("song.stp")
 
         project_coordinator.load_project_safely(path)
@@ -47,12 +50,24 @@ class TestProjectRestoreAbsorbsFailures(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         failure: Exception
 
-    test_cases = [
-        TestCase(label="invalid_archive", failure=NotAValidArchiveError("corrupt"), expected=None),
-        TestCase(label="missing_file", failure=FileNotFoundError("gone"), expected=None),
-    ]
+    test_cases = (
+        TestCase(
+            label="invalid_archive",
+            failure=NotAValidArchiveError("corrupt"),
+            expected=None,
+        ),
+        TestCase(
+            label="missing_file",
+            failure=FileNotFoundError("gone"),
+            expected=None,
+        ),
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_restore_clears_session_pointer(
         self,
         test_case: TestCase,
@@ -66,7 +81,10 @@ class TestProjectRestoreAbsorbsFailures(BaseTestSuite):
 
 
 class TestProjectRestorePropagatesUnexpected:
-    def test_runtime_error_propagates(self, project_coordinator: ProjectCoordinator) -> None:
+    def test_runtime_error_propagates(
+        self,
+        project_coordinator: ProjectCoordinator,
+    ) -> None:
         project_coordinator._project_controller.load.side_effect = RuntimeError("boom")
 
         with pytest.raises(RuntimeError):
@@ -84,21 +102,45 @@ class TestProjectManualLoadSurfacesErrors(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         failure: Exception
 
-    test_cases = [
-        TestCase(label="invalid_archive", failure=NotAValidArchiveError("corrupt"), expected=None),
-        TestCase(label="incorrect_reconstruction", failure=IncorrectReconstructionDataError("bad"), expected=None),
-        TestCase(label="invalid_values", failure=InvalidProjectDataValuesError("bad", ValueError("v")), expected=None),
-        TestCase(label="missing_file", failure=MissingProjectDataFileError("missing"), expected=None),
+    test_cases = (
+        TestCase(
+            label="invalid_archive",
+            failure=NotAValidArchiveError("corrupt"),
+            expected=None,
+        ),
+        TestCase(
+            label="incorrect_reconstruction",
+            failure=IncorrectReconstructionDataError("bad"),
+            expected=None,
+        ),
+        TestCase(
+            label="invalid_values",
+            failure=InvalidProjectDataValuesError("bad", ValueError("v")),
+            expected=None,
+        ),
+        TestCase(
+            label="missing_file",
+            failure=MissingProjectDataFileError("missing"),
+            expected=None,
+        ),
         TestCase(
             label="incompatible_version",
-            failure=IncompatibleProjectVersionError("mismatch", expected_version="1.0", actual_version="9.0"),
+            failure=IncompatibleProjectVersionError(
+                "mismatch",
+                expected_version="1.0",
+                actual_version="9.0",
+            ),
             expected=None,
         ),
         TestCase(label="unhandled", failure=UnhandledProjectError("unhandled"), expected=None),
         TestCase(label="os_error", failure=OSError("io"), expected=None),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_manual_load_shows_error_dialog(
         self,
         test_case: TestCase,

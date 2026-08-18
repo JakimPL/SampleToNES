@@ -1,0 +1,7 @@
+window:
+  width: 600
+  height: 0
+master_gain:
+  slider_width: -65
+  label_color: .text_default
+  clip_color: .text_error

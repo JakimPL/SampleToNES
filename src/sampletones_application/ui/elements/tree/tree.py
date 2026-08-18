@@ -1,25 +1,41 @@
 from abc import ABC, abstractmethod
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import (
+    AbstractSet,
+    Any,
+    Callable,
+    Dict,
+    Final,
+    FrozenSet,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_SEARCH,
+    SUF_CHECKBOX_FAVORITES,
     SUF_HANDLER_DETAIL_TOOLTIP,
     SUF_HANDLER_NODE,
     SUF_INPUT_SEARCH,
+    SUF_TEXT_FAVORITES,
     SUF_TOOLTIP_DETAIL,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_FAVORITE,
     TAG_GLOBAL_THEME_FAVORITE_CHILD,
     TAG_GLOBAL_THEME_FILE_LIBRARY,
     TAG_GLOBAL_THEME_FILE_NO_CONTENT,
-    TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY,
     TAG_GLOBAL_THEME_FILE_RECONSTRUCTION,
     TAG_GLOBAL_THEME_FILE_WAVE,
     TAG_GLOBAL_THEME_TREE_WINDOW,
@@ -31,34 +47,43 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.context_menu import add_play_menu_item
+from sampletones_application.ui.elements.context_menu import (
+    add_detail_items,
+    add_play_menu_item,
+)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.emitter import TreeEmitter
+from sampletones_application.ui.elements.tree.expansion import RowExpansionMemory
+from sampletones_application.ui.elements.tree.filter import NO_FILTER, TreeFilter
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
+from sampletones_application.ui.elements.tree.tag import compose_node_tag
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_get_value,
     dpg_is_item_hovered,
+    dpg_set_value,
 )
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import (
     create_detail_tooltip,
     populate_detail_tooltip,
 )
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.parallelization.thread import (
     BackgroundWorkCancelled,
     SingleThreadExecutor,
 )
-from sampletones_core import paths
 from sampletones_core.configs.display import (
+    format_generators,
     format_nes_frequency,
     format_sample_rate,
     format_spectrum_method,
@@ -67,13 +92,17 @@ from sampletones_core.configs.display import (
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
+    ConfigNode,
     FileSystemNode,
     LibraryNode,
     NodeType,
     Tree,
     TreeNode,
+    TreeVisibility,
+    resolve_visibility,
 )
-from sampletones_shared.types.application import ColorRGBA, Sender
+from sampletones_shared.paths import extensions
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import (
     Callback,
     MessageCallback,
@@ -82,11 +111,14 @@ from sampletones_shared.types.callback import (
 )
 from sampletones_shared.utils.system.paths import open_path_in_explorer
 
+NO_EXPANDED_ROWS: Final[FrozenSet[str]] = frozenset()
+
 
 class GUITreePanel(GUIPanel, ABC):
     _NAME_FONT: Font = Font.REGULAR_SMALL
     _CONFIG_FONT: Font = Font.MONO_SMALL
     _MONOSPACE_CONFIG_NODES: bool = False
+    _REMEMBERS_EXPANSION: bool = False
 
     def __init__(
         self,
@@ -94,14 +126,14 @@ class GUITreePanel(GUIPanel, ABC):
         tag: str,
         tree_tag: str,
         tree_logic: TreeLogicProtocol,
-        width: int = -1,
-        height: int = -1,
         *,
         scheduling: SchedulingBehavior,
         search_label: str,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
+        initial_favorites_only: bool,
+        initial_expanded_rows: AbstractSet[str],
     ) -> None:
         self._language_manager = language_manager
         self._logic = tree_logic
@@ -111,11 +143,19 @@ class GUITreePanel(GUIPanel, ABC):
         self.tree_tag = tree_tag
 
         self._pending_specs: List[NodeSpec] = []
+        self._expansion = RowExpansionMemory(initial_expanded_rows)
         self._emitter = TreeEmitter(scheduling=scheduling)
+
+        self._filter: TreeFilter = NO_FILTER.with_favorites_only(initial_favorites_only)
+        self._search_visibility: Optional[TreeVisibility] = None
+        self._favorites_visibility: Optional[TreeVisibility] = None
+        self._auto_expand_pending: bool = False
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
+        self._favorites_checkbox_tag: Optional[str] = None
+        self._favorites_glyph_tag: Optional[str] = None
 
         self._detail_tooltip_tag = compose_tag(tag, SUF_TOOLTIP_DETAIL)
         self._detail_tooltip_handler_tag = compose_tag(tag, SUF_HANDLER_DETAIL_TOOLTIP)
@@ -135,6 +175,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._lbl_detail_generators = language_manager["global.context.label.detail_generators"]
         self._lbl_detail_configuration = language_manager["global.context.label.detail_configuration"]
 
+        self.on_favorites_filter_changed: Optional[Callable[[str, bool], None]] = None
         self.on_add_to_sequencer: Optional[PathCallback] = None
         self.can_add_to_sequencer: Optional[Callable[[], bool]] = None
         self.on_replace_in_sequencer: Optional[PathCallback] = None
@@ -143,8 +184,8 @@ class GUITreePanel(GUIPanel, ABC):
 
         super().__init__(
             tag=tag,
-            width=width,
-            height=height,
+            width=-1,
+            height=-1,
         )
 
     def _launch_rebuild(
@@ -161,9 +202,9 @@ class GUITreePanel(GUIPanel, ABC):
 
         1. A rebuild already in flight holds the lock, so return and let it finish.
         2. Acquire the lock; responsibility for releasing it passes to the emit pipeline.
-        3. ``refresh`` updates the model, then ``collect`` resolves it into a flat
-           :class:`NodeSpec` list -- every per-node decision, including the filesystem
-           content check, happens here on the worker.
+        3. ``refresh`` updates the model and the filter is resolved against it, then
+           ``collect`` resolves it into a flat :class:`NodeSpec` list -- every per-node
+           decision, including the filesystem content check, happens here on the worker.
         4. Post the specs to :class:`TreeEmitter` through the queue. This crosses back to
            the main thread, where the emitter clears the old tree and stages the new nodes
            across frames.
@@ -179,12 +220,18 @@ class GUITreePanel(GUIPanel, ABC):
         handed_off = False
         try:
             refresh()
+            self._resolve_filter()
             specs = collect()
             CallbackQueue.add(
                 self._emitter.emit,
                 tuple(specs),
                 root_tag,
-                partial(self._finish_emit, root_tag, on_finished),
+                partial(
+                    self._finish_emit,
+                    root_tag,
+                    on_finished,
+                    len(specs),
+                ),
                 priority=self._scheduling.emit.priority,
             )
             handed_off = True
@@ -199,7 +246,22 @@ class GUITreePanel(GUIPanel, ABC):
         if root is not None:
             self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
 
+        self._forget_rows_the_model_dropped()
         return self._pending_specs
+
+    def _forget_rows_the_model_dropped(self) -> None:
+        """Holds the memory of open rows to the rows the model states, read afresh on every pass.
+
+        A row the memory holds beyond the rows the model states belongs to a folder the disk has lost,
+        so its place goes with it. The model is what the answer is read from, so a browser opening in the
+        favorites mode — or opening on a session written before the reconstructions directory moved —
+        drops what is gone.
+        """
+        root = self.tree.get_root()
+        if root is None or not self._expansion:
+            return
+
+        self._expansion.hold_to({self._generate_node_tag(node) for node in root.descendants if node.children})
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = compose_tag(self.tag, SUF_INPUT_SEARCH)
@@ -228,6 +290,104 @@ class GUITreePanel(GUIPanel, ABC):
             self._language_manager["global.status.message.clear_search"],
         )
 
+    def create_favorites_filter(self, parent: str) -> None:
+        """Builds the control showing the favorites alone, as a row of its own under the search box.
+
+        The checkbox carries the label, so the words are part of what the reader clicks, and the star
+        beside it reads in the colour the mode it stands for is drawn in. The label reads in the pair
+        every checkbox reads — the text colour while the control is live, the muted one while a
+        rebuild holds it — so the shade states whether the control can be acted on.
+        """
+        self._favorites_checkbox_tag = compose_tag(self.tag, SUF_CHECKBOX_FAVORITES)
+        self._favorites_glyph_tag = compose_tag(self.tag, SUF_TEXT_FAVORITES)
+
+        with dpg.group(horizontal=True, parent=parent):
+            dpg.add_checkbox(
+                tag=self._favorites_checkbox_tag,
+                label=self._language_manager["global.browser.label.favorites_only"],
+                default_value=self._filter.favorites_only,
+                callback=self._on_favorites_only_changed,
+            )
+            dpg.add_text(
+                self._glyphs.common.favorite,
+                tag=self._favorites_glyph_tag,
+            )
+
+        FontRegistry.bind_to_item(self._favorites_glyph_tag, Font.ICON)
+        self._apply_favorites_glyph_color()
+        self._status_bar.bind_to_item(
+            self._favorites_checkbox_tag,
+            self._language_manager["global.status.message.favorites_only"],
+        )
+
+    def _on_favorites_only_changed(
+        self,
+        _sender: Sender,
+        favorites_only: bool,
+    ) -> None:
+        """Takes the mode the control now reads, and draws the rows that mode names.
+
+        The rebuild resolves the filter against the model as it collects the rows, so the mode is
+        stated here and answered there, and turning it on walks the model once.
+        """
+        self._state_favorites_only(favorites_only)
+        self._apply_favorites_glyph_color()
+        self.call(
+            self.on_favorites_filter_changed,
+            self.tag,
+            favorites_only,
+        )
+        self.redraw_tree()
+
+    def _apply_favorites_glyph_color(self) -> None:
+        """Colours the star by the mode the control reads, wherever the browser offers one."""
+        if self._favorites_glyph_tag is None:
+            return
+
+        dpg_set_palette_color(self._favorites_glyph_tag, self._favorites_glyph_color())
+
+    def _favorites_glyph_color(self) -> BaseColor:
+        """The colour the star takes: the favorite colour while the mode is on, muted while it is off."""
+        if self._filter.favorites_only:
+            return self._colors.favorite
+
+        return self._colors.muted
+
+    def set_favorites_filter_enabled(self, enabled: bool) -> None:
+        """Follows the tree's lock through to the control, which asks for a rebuild of that tree."""
+        if self._favorites_checkbox_tag is None:
+            return
+
+        dpg_configure_item(self._favorites_checkbox_tag, enabled=enabled)
+
+    def _state_favorites_only(self, favorites_only: bool) -> None:
+        """Takes the mode the reader switched to, asking the pass it starts to follow the stars.
+
+        Switching the mode on is the reader asking to be shown their favorites, so the pass it starts
+        opens the way down to them and notes which rows it opened. That way stands open for as long as
+        the mode does, so a refresh, a query or a star gained meanwhile leaves the reader looking at
+        their favorites. Switching the mode off is answered by the pass that follows it as well, which
+        hands those rows back.
+        """
+        self._filter = self._filter.with_favorites_only(favorites_only)
+        self._auto_expand_pending = favorites_only
+
+    def _release_mode_rows(self) -> None:
+        """Hands back the rows the favorites mode opened, which the memory holds the rule for.
+
+        The rows the reader stands open are read off the model, and the way down to each of them is what
+        the mode keeps standing however deep theirs stands. The model is read on the pass that finds the
+        mode off, on the tree worker.
+        """
+        root = self.tree.get_root()
+        if root is None or not self._expansion.follows_the_mode:
+            return
+
+        reader_rows = self._expansion.rows
+        self._expansion.release(
+            self._way_down_to([node for node in root.descendants if self._generate_node_tag(node) in reader_rows]),
+        )
+
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
         return compose_tag(self.tag, node_type.value, SUF_HANDLER_NODE)
 
@@ -241,22 +401,28 @@ class GUITreePanel(GUIPanel, ABC):
         open_on_double_click: bool = False,
         should_expand: bool = False,
         has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
     ) -> None:
         """Resolve a node into a :class:`NodeSpec` and record it for emission.
 
         Runs on the background traversal worker, so the theme and handler tags — including the
         directory content check that touches the filesystem — are chosen here, off the main
         thread. A shutdown request raises to unwind the traversal promptly.
+
+        Which rows are recorded is the favorites mode's to state, and it shows a row together with
+        every row above it: a row it holds back therefore stands above rows it holds back too, so one
+        decision covers the whole subtree and the traversal walks on.
         """
         if SingleThreadExecutor.is_shutting_down():
             raise BackgroundWorkCancelled
 
+        if not self._is_node_drawn(node):
+            return
+
         theme_tag = self._resolve_node_theme_tag(
             node,
             has_favorite_ancestor=has_favorite_ancestor,
-            is_node_expanded=is_node_expanded,
         )
+        stands_open = should_expand or self._expansion.stands_open(node_tag)
         self._pending_specs.append(
             NodeSpec(
                 node=node,
@@ -267,37 +433,71 @@ class GUITreePanel(GUIPanel, ABC):
                 leaf=leaf,
                 open_on_arrow=open_on_arrow,
                 open_on_double_click=open_on_double_click,
-                should_expand=should_expand,
+                should_expand=stands_open,
                 theme_tag=theme_tag,
                 handler_tag=self._node_handlers[node.node_type].tag,
             )
         )
 
-    def _finish_emit(self, root_tag: str, on_finished: Optional[VoidCallback]) -> None:
+    @property
+    def expanded_rows(self) -> Set[str]:
+        return self._expansion.rows
+
+    def _set_subtree_expanded(self, node: TreeNode, *, expanded: bool) -> None:
+        """Folds or unfolds the row together with every row below it holding something.
+
+        Each row is reached by the tag it was built under and set directly, and the browser is told
+        what it now stands as, so a rebuild brings the whole subtree back the way this left it.
+        """
+        for container in (node, *node.descendants):
+            if container.children:
+                node_tag = self._generate_node_tag(container)
+                dpg_set_value(node_tag, expanded)
+                self._expansion.remember(node_tag, expanded=expanded)
+
+    def _finish_emit(
+        self,
+        root_tag: str,
+        on_finished: Optional[VoidCallback],
+        drawn_rows: int,
+    ) -> None:
         """Complete a rebuild on the main thread: show the empty state, run the hook, unlock.
 
-        The emitter runs this once its last batch has attached. When a filtered tree
-        resolved to an empty model, the no-results message fills the cleared tree so the
-        filter outcome is visible. Applying the filter here lets late-emitted nodes honour
+        The emitter runs this once its last batch has attached. A filtered rebuild that drew no
+        row fills the cleared tree with the message naming that outcome, so the filter's answer is
+        legible where the rows would be. Applying the filter here lets late-emitted nodes honour
         an active search, and releasing the lock hands control back to interactive rebuilds.
         """
-        if root_tag == self.tree_tag and self.tree.is_filtered() and self.tree.get_root() is None:
-            dpg.add_text(self._language_manager["global.dialog.message.tree_no_results"], parent=root_tag)
+        if root_tag == self.tree_tag and self._filter.is_active and not drawn_rows:
+            dpg.add_text(
+                self._empty_filter_message(),
+                parent=root_tag,
+            )
 
         if on_finished is not None:
             on_finished()
 
-        if self.tree.is_filtered():
+        if self._filter.query:
             self.update_tree_visibility()
 
         self.unlock()
+
+    def _empty_filter_message(self) -> str:
+        """Names the filter a rebuild came back empty from: the favorites mode, or the search."""
+        return self._language_manager[
+            (
+                "global.dialog.message.tree_no_favorites"
+                if self._filter.favorites_only
+                else "global.dialog.message.tree_no_results"
+            )
+        ]
 
     def _create_hover_callback(
         self,
         status_bar_callback: Optional[MessageCallback],
     ) -> Callback:
         def hover_callback(
-            sender: Sender,
+            _sender: Sender,
             app_data: int,
         ) -> None:
             user_data = dpg.get_item_user_data(app_data)
@@ -347,7 +547,11 @@ class GUITreePanel(GUIPanel, ABC):
         self._detail_tooltip_owner_tag = None
         dpg_configure_item(self._detail_tooltip_tag, show=False)
 
-    def _on_detail_tooltip_mouse_move(self, sender: Sender, app_data: Any) -> None:
+    def _on_detail_tooltip_mouse_move(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+    ) -> None:
         owner_tag = self._detail_tooltip_owner_tag
         if owner_tag is None:
             return
@@ -365,8 +569,10 @@ class GUITreePanel(GUIPanel, ABC):
             app_data: Tuple[int, int],
         ) -> None:
             user_data = dpg.get_item_user_data(app_data[1])
+            self._remember_clicked_row(user_data)
             if item_click_callback is not None:
                 item_click_callback(sender, app_data, user_data=user_data)
+
             if status_bar_callback is not None:
                 self._status_bar.set(status_bar_callback, user_data=user_data)
 
@@ -382,9 +588,41 @@ class GUITreePanel(GUIPanel, ABC):
         ) -> None:
             user_data = dpg.get_item_user_data(app_data[1])
             if item_double_click_callback is not None:
-                item_double_click_callback(sender, app_data, user_data=user_data)
+                item_double_click_callback(
+                    sender,
+                    app_data,
+                    user_data=user_data,
+                )
 
         return double_click_callback
+
+    def _remember_clicked_row(self, user_data: Any) -> None:
+        """Follows a click through to what it left the row standing as, a frame after it landed.
+
+        A click on a row the reader can open is how that row folds and unfolds, and the row states
+        its own answer once the frame carrying the click has drawn. Reading it the frame after
+        therefore reports what the reader did, whichever button they pressed, and a row holding
+        nothing has nothing to remember.
+        """
+        if not self._REMEMBERS_EXPANSION or not isinstance(user_data, tuple):
+            return
+
+        node, node_tag = user_data
+        if not node.children:
+            return
+
+        CallbackQueue.add(
+            self._read_row_expansion,
+            node_tag,
+            delay=1,
+        )
+
+    def _read_row_expansion(self, node_tag: str) -> None:
+        """Takes the state a row stands in into the memory, on the main thread that owns the row."""
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        self._expansion.remember(node_tag, expanded=bool(dpg_get_value(node_tag)))
 
     def _setup_handlers(self) -> None:
         for handler in self._node_handlers.values():
@@ -426,14 +664,13 @@ class GUITreePanel(GUIPanel, ABC):
     def _has_relevant_content(self, node: TreeNode) -> bool: ...
 
     def _should_expand_node(self, node: TreeNode) -> bool:
-        if not self.tree.is_filtered():
-            return False
+        """Whether the search points at the row, which a match and every row above one is.
 
-        for descendant in node.descendants:
-            if self.tree.is_node_visible(descendant):
-                return True
-
-        return False
+        A search names the rows whose label matched and shows what each of them gathers, so a folder it
+        named opens, for as long as the query stands. What the favorites mode opens is its memory to
+        answer, read as each row is created.
+        """
+        return self._search_visibility is not None and self._search_visibility.should_expand(node)
 
     def _create_status_bar_message_function(
         self,
@@ -444,7 +681,7 @@ class GUITreePanel(GUIPanel, ABC):
     def _create_status_bar_message_function_for_reconstruction_node(
         self,
     ) -> MessageCallback:
-        def message_function(*args: Any, **kwargs: Any) -> str:
+        def message_function(*_args: Any, **_kwargs: Any) -> str:
             if self._logic.autoplay_enabled:
                 return self._language_manager["global.status.message.node_reconstruction"]
 
@@ -457,25 +694,41 @@ class GUITreePanel(GUIPanel, ABC):
     ) -> MessageCallback:
         return self._create_status_bar_message_function(self._language_manager["global.status.message.node_library"])
 
-    def _create_status_bar_message_function_for_directory_node(
+    def _create_status_bar_message_function_for_expandable_node(
         self,
     ) -> MessageCallback:
-        def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
-            _, node_tag = user_data
+        """Builds the hover message of a row the reader opens, naming what that row holds.
+
+        A folder, a group and a sample are all opened the same way and hold different things, so the
+        message follows the node it is asked about: the sample names the reconstructions it gathers.
+        """
+
+        def message_function(
+            *_args: Any,
+            user_data: Tuple[TreeNode, str],
+            **_kwargs: Any,
+        ) -> str:
+            node, node_tag = user_data
             expand_or_collapse = (
                 self._language_manager["global.dialog.template.collapse"]
                 if dpg_get_value(node_tag)
                 else self._language_manager["global.dialog.template.expand"]
             )
-            return self._language_manager["global.status.message.node_directory"].format(
-                expand_or_collapse=expand_or_collapse
-            )
+            return self._expandable_node_message(node).format(expand_or_collapse=expand_or_collapse)
 
         return self._create_status_bar_message_function(message_function)
 
+    def _expandable_node_message(self, node: TreeNode) -> str:
+        match node.node_type:
+            case NodeType.SAMPLE:
+                return self._language_manager["global.status.message.node_sample"]
+            case NodeType.GROUP:
+                return self._language_manager["global.status.message.node_group"]
+
+        return self._language_manager["global.status.message.node_directory"]
+
     def _generate_node_tag(self, node: TreeNode) -> str:
-        path_parts = [ancestor.name for ancestor in node.path]
-        return compose_tag(self.tag, f"node_{'_'.join(path_parts)}")
+        return compose_node_tag(node, panel_tag=self.tag)
 
     def _context_menu_header_name(self, node: TreeNode) -> str:
         """Returns the raw on-disk identifier, complementing the friendly label shown in the tree."""
@@ -487,7 +740,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         return str(node.name)
 
-    def _node_header_color(self, node: TreeNode) -> ColorRGBA:
+    def _node_header_color(self, node: TreeNode) -> BaseColor:
         if self._logic.is_node_favorite(node):
             return self._colors.favorite
 
@@ -514,22 +767,27 @@ class GUITreePanel(GUIPanel, ABC):
 
         with dpg.group(horizontal=True):
             if is_favorite:
-                star_text = dpg.add_text(self._glyphs.common.favorite, color=color)
+                star_text = dpg.add_text(self._glyphs.common.favorite)
+                dpg_set_palette_color(star_text, color)
                 FontRegistry.bind_to_item(star_text, Font.ICON)
 
-            text = dpg.add_text(self._context_menu_header_name(node), color=color)
+            text = dpg.add_text(self._context_menu_header_name(node))
+            dpg_set_palette_color(text, color)
             FontRegistry.bind_to_item(text, Font.BOLD)
 
     def _node_detail_items(self, node: TreeNode) -> List[Tuple[str, str]]:
         match node:
             case LibraryNode():
                 return self._library_detail_items(node.library_key)
-            case FileSystemNode() if node.node_type == NodeType.DIRECTORY:
-                return self._reconstruction_detail_items(node.filepath.name)
+            case ConfigNode():
+                return self._reconstruction_detail_items(node.config)
 
         return []
 
-    def _library_detail_items(self, key: InstructionLibraryKey) -> List[Tuple[str, str]]:
+    def _library_detail_items(
+        self,
+        key: InstructionLibraryKey,
+    ) -> List[Tuple[str, str]]:
         nes_frequency = round(key.sample_rate / key.frame_length)
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(key.sample_rate)),
@@ -540,37 +798,34 @@ class GUITreePanel(GUIPanel, ABC):
             (self._lbl_detail_configuration, short_hash(key.config_hash)),
         ]
 
-    def _reconstruction_detail_items(self, directory_name: str) -> List[Tuple[str, str]]:
-        fields = ConfigDirectoryFields.from_directory_name(directory_name)
-        if fields is None:
-            return []
-
-        generators = ", ".join(generator.capitalized for generator in fields.generators)
+    def _reconstruction_detail_items(
+        self,
+        fields: ConfigDirectoryFields,
+    ) -> List[Tuple[str, str]]:
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(fields.sr)),
             (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
             (self._lbl_detail_spectrum_method, format_spectrum_method(fields.sm)),
             (self._lbl_detail_transformation_gamma, str(fields.tg)),
-            (self._lbl_detail_generators, generators),
+            (self._lbl_detail_generators, format_generators(fields.generators)),
             (self._lbl_detail_configuration, short_hash(fields.ch)),
         ]
 
     def _add_context_menu_details(self, node: TreeNode) -> None:
-        detail_items = self._node_detail_items(node)
-        if not detail_items:
-            return
-
-        dpg.add_separator()
-        for label, value in detail_items:
-            detail_text = dpg.add_text(f"{label}: {value}", color=self._colors.muted)
-            FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
+        add_detail_items(
+            self._node_detail_items(node),
+            color=self._colors.muted,
+        )
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:
         if not self._logic.is_playable_file(node):
             return
 
         dpg.add_separator()
-        add_play_menu_item(self._language_manager["global.context.label.play"], lambda: self._logic.play_node(node))
+        add_play_menu_item(
+            self._language_manager["global.context.label.play"],
+            lambda: self._logic.play_node(node),
+        )
 
     def _add_context_menu_path_items(self, path: Path) -> None:
         dpg.add_separator()
@@ -622,7 +877,12 @@ class GUITreePanel(GUIPanel, ABC):
             user_data=node,
         )
 
-    def _on_locate_original_audio(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_locate_original_audio(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
@@ -640,33 +900,167 @@ class GUITreePanel(GUIPanel, ABC):
             callback=lambda: self._context_mark_as_favorite(node),
         )
 
-    def _on_add_to_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_add_to_sequencer(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
         self.call(self.on_add_to_sequencer, user_data.filepath)
 
-    def _on_replace_in_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+    def _on_replace_in_sequencer(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        user_data: FileSystemNode,
+    ) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
             return
 
         self.call(self.on_replace_in_sequencer, user_data.filepath)
 
-    def _on_search_changed(self, sender: Sender, query: str) -> None:
-        if query:
-            self.apply_filter(query, self._default_search_predicate)
-        else:
-            self.clear_filter()
-
-        self._logic.schedule_search_update(query)
+    def _on_search_changed(self, _sender: Sender, query: str) -> None:
+        self._set_query(query)
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
             dpg.set_value(self._search_input_tag, "")
 
-        self.clear_filter()
+        self._set_query("")
 
-        self._logic.schedule_search_update("")
+    def _set_query(self, query: str) -> None:
+        """Take the query the browser is now asked to show, and resolve the rows it names.
+
+        The rows already drawn are the favorites mode's to state, so a keystroke resolves the search
+        alone and the tree on screen answers the one after it.
+        """
+        self._filter = self._filter.with_query(query)
+        self._search_visibility = self._resolve_search_visibility()
+        self._logic.schedule_search_update(query)
+
+    def _resolve_filter(self) -> None:
+        """Resolve the filter against the model as it stands, which a rebuild does once per pass.
+
+        The model is what the whole answer is read from, so the resolution runs on the rebuild worker
+        and a filter stated before a refresh answers for the rows that refresh brings. Both of the
+        favorites mode's turns are answered here, each by the pass that follows it: the pass the reader
+        asked for notes the way down it opens, and the pass that reads the mode off hands those rows
+        back.
+        """
+        self._search_visibility = self._resolve_search_visibility()
+        (
+            self._favorites_visibility,
+            way_down,
+        ) = self._resolve_favorites()
+        if self._filter.favorites_only:
+            self._expansion.follow(way_down)
+        else:
+            self._release_mode_rows()
+
+        self._auto_expand_pending = False
+
+    def _resolve_search_visibility(self) -> Optional[TreeVisibility]:
+        """The rows the search query names, and nothing to narrow by while no query is typed."""
+        query = self._filter.query
+        if not query:
+            return None
+
+        return resolve_visibility(
+            self.tree.find_nodes(
+                TreeNode,
+                lambda node: self._default_search_predicate(node, query),
+            )
+        )
+
+    def _resolve_favorites(self) -> Tuple[Optional[TreeVisibility], Set[str]]:
+        """The rows the favorites mode keeps, and the rows it opens the way down through.
+
+        The two answer different questions — which rows the browser draws, and which of them stand
+        open — so each is read out of one walk of the model: the rows a star reaches state what is
+        drawn, and the rows above the anchors among them state the way down. A corpus of any size
+        therefore resolves into a walk and a pair of sets.
+        """
+        if not self._filter.favorites_only:
+            return None, set()
+
+        reached = self.tree.find_nodes(TreeNode, self._is_node_starred)
+        return (
+            resolve_visibility(reached),
+            self._way_down_to(self._auto_expanded_anchors(reached)),
+        )
+
+    def _way_down_to(self, rows: Sequence[TreeNode]) -> Set[str]:
+        """The tags of the rows standing above these rows, which is a way down to them.
+
+        A row given here is one the browser is pointed at, so a way down opens the rows above it while
+        its own row stands as the reader left it. The container both branches hang from is a row on no
+        screen, and stays out of the answer.
+        """
+        root = self.tree.get_root()
+        return {self._generate_node_tag(ancestor) for row in rows for ancestor in row.ancestors if ancestor is not root}
+
+    def _auto_expanded_anchors(
+        self,
+        reached: Sequence[TreeNode],
+    ) -> List[TreeNode]:
+        """The anchors whose star the reader asked the browser to open the way down to.
+
+        The pass the reader started by switching the mode on is the one that follows a star, so a pass
+        of its own accord points at nothing. Which stars are followed is a preference stated per kind
+        and read once per pass: a starred reconstruction answers for itself, and a starred folder
+        answers for itself together with the rows it brings in where no row stands for the folder.
+        """
+        if not self._auto_expand_pending:
+            return []
+
+        reconstructions = self._logic.auto_expand_favorite_reconstructions
+        directories = self._logic.auto_expand_favorite_directories
+        return [
+            node
+            for node in reached
+            if self._is_node_anchored(node)
+            and (reconstructions if self._is_starred_reconstruction(node) else directories)
+        ]
+
+    def _is_starred_reconstruction(self, node: TreeNode) -> bool:
+        """Whether the star the mode reaches this row through sits on a reconstruction.
+
+        A row the reader starred answers by its own kind. A row a starred folder brings in answers by
+        that folder, a folder being the only thing that holds another row.
+        """
+        return node.node_type == NodeType.FILE and self._logic.is_node_favorite(node)
+
+    def _is_node_starred(self, node: TreeNode) -> bool:
+        """Whether the favorites mode names the row: it carries a star, or a starred folder holds it.
+
+        Being held by a starred folder is a fact about the path, so a reconstruction listed under the
+        sample it came from answers the same as the row standing for it beside its configuration.
+        """
+        if self._logic.is_node_favorite(node):
+            return True
+
+        return isinstance(node, FileSystemNode) and self._logic.has_favorite_ancestor(node)
+
+    def _is_node_anchored(self, node: TreeNode) -> bool:
+        """Whether the mode points the reader at the row, which is what the way down opens to.
+
+        A star sits on a row the reader marked, so that row is pointed at wherever it sits — inside
+        another starred folder among the rest, which is what lets an explicit favorite open the folder
+        above it. A row a starred folder merely holds is where the star first reaches only while no
+        row above it is reached, which is how the sample branch answers: its headings carry no path,
+        so the variants are where the star arrives.
+
+        Asked of the rows the star reaches, so a row it declines stands under a row it named: the
+        reader is pointed at the folder, and the rows inside it stand as they were.
+        """
+        if self._logic.is_node_favorite(node):
+            return True
+
+        parent = node.parent
+        return parent is None or not self._is_node_starred(parent)
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
@@ -674,7 +1068,16 @@ class GUITreePanel(GUIPanel, ABC):
     @abstractmethod
     def rebuild_tree(self) -> None: ...
 
+    @abstractmethod
+    def redraw_tree(self) -> None:
+        """Draws the rows again from the model in hand, which a change of filter asks for."""
+
     def update_tree_visibility(self) -> None:
+        """Show the rows the search names and hide the rest, over the rows already on screen.
+
+        Runs on the main thread once the typing settles, so a query narrows what is drawn in place
+        of asking for a rebuild.
+        """
         root = self.tree.get_root()
         if root is None:
             return
@@ -687,30 +1090,35 @@ class GUITreePanel(GUIPanel, ABC):
         if not dpg.does_item_exist(node_tag):
             return
 
-        is_visible = self.tree.is_node_visible(node)
-        dpg.configure_item(node_tag, show=is_visible)
+        dpg.configure_item(node_tag, show=self._is_node_visible(node))
 
         for child in node.children:
             self._update_node_visibility_recursive(child)
 
-    def apply_filter(self, query: str, predicate: Callable[[TreeNode, str], bool]) -> None:
-        self.tree.apply_filter(query, predicate)
+    def _is_node_visible(self, node: TreeNode) -> bool:
+        """Whether the search shows the row, which every row on screen reads as while none is typed."""
+        if self._search_visibility is None:
+            return True
 
-    def clear_filter(self) -> None:
-        self.tree.clear_filter()
+        return self._search_visibility.is_visible(node)
+
+    def _is_node_drawn(self, node: TreeNode) -> bool:
+        """Whether the favorites mode draws the row, which it does for every row while it is off."""
+        if self._favorites_visibility is None:
+            return True
+
+        return self._favorites_visibility.is_visible(node)
 
     def _apply_node_theme(
         self,
         node_tag: str,
         node: TreeNode,
         has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
     ) -> None:
         FontRegistry.bind_to_item(node_tag, self._resolve_node_name_font(node))
         theme_tag = self._resolve_node_theme_tag(
             node,
             has_favorite_ancestor=has_favorite_ancestor,
-            is_node_expanded=is_node_expanded,
         )
         ThemeRegistry.get(theme_tag).bind_to_item(node_tag)
 
@@ -719,7 +1127,6 @@ class GUITreePanel(GUIPanel, ABC):
         node: TreeNode,
         *,
         has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
     ) -> str:
         """Select the theme tag for a node from its type, favorite state, and content.
 
@@ -729,12 +1136,14 @@ class GUITreePanel(GUIPanel, ABC):
         if isinstance(node, FileSystemNode):
             match node.node_type:
                 case NodeType.DIRECTORY:
-                    return self._resolve_directory_theme_tag(node, has_favorite_ancestor=has_favorite_ancestor)
+                    return self._resolve_directory_theme_tag(
+                        node,
+                        has_favorite_ancestor=has_favorite_ancestor,
+                    )
                 case NodeType.FILE:
                     return self._resolve_file_theme_tag(
                         node,
                         has_favorite_ancestor=has_favorite_ancestor,
-                        is_not_expanded=is_node_expanded,
                     )
 
         return self._resolve_other_theme_tag(node)
@@ -761,23 +1170,20 @@ class GUITreePanel(GUIPanel, ABC):
         node: FileSystemNode,
         *,
         has_favorite_ancestor: bool = False,
-        is_not_expanded: bool = False,
     ) -> str:
         if self._logic.is_node_favorite(node):
             return TAG_GLOBAL_THEME_FAVORITE
 
         match node.filepath.suffix.lower():
-            case paths.EXT_FILE_RECONSTRUCTION:
+            case extensions.EXT_FILE_RECONSTRUCTION:
                 return TAG_GLOBAL_THEME_FILE_RECONSTRUCTION
-            case paths.EXT_FILE_LIBRARY:
+            case extensions.EXT_FILE_LIBRARY:
                 return TAG_GLOBAL_THEME_FILE_LIBRARY
-            case suffix if suffix in paths.EXT_FILES_AUDIO:
+            case suffix if suffix in extensions.EXT_FILES_AUDIO:
                 return TAG_GLOBAL_THEME_FILE_WAVE
             case _:
                 if has_favorite_ancestor:
                     return TAG_GLOBAL_THEME_FAVORITE_CHILD
-                if is_not_expanded:
-                    return TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY
                 return TAG_GLOBAL_THEME_DEFAULT
 
     def _resolve_other_theme_tag(self, node: TreeNode) -> str:
@@ -793,7 +1199,11 @@ class GUITreePanel(GUIPanel, ABC):
             case _:
                 return TAG_GLOBAL_THEME_DEFAULT
 
-    def _reapply_theme_recursively(self, node: FileSystemNode, has_favorite_ancestor: bool = False) -> None:
+    def _reapply_theme_recursively(
+        self,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
         node_tag = self._generate_node_tag(node)
         if not dpg.does_item_exist(node_tag):
             return
@@ -820,9 +1230,30 @@ class GUITreePanel(GUIPanel, ABC):
 
         self._logic.toggle_favorite(node)
 
-    def update_favorite_indicator(self, node: FileSystemNode) -> None:
-        has_favorite_ancestor = self._logic.has_favorite_ancestor(node)
-        self._reapply_theme_recursively(node, has_favorite_ancestor)
+    def update_favorite_indicators(
+        self,
+        nodes: Sequence[FileSystemNode],
+    ) -> None:
+        """Follows a favorite change through the rows it reaches, and what each of them holds.
+
+        A path reaches the panel as many rows as the views offer it — a reconstruction is listed both
+        by its configuration and by the sample it came from — and the star belongs to the path, so
+        the caller names every row standing for it and each of them takes the new theme with the
+        ancestry its own path carries.
+
+        While the mode shows the favorites alone the star decides which rows exist, so the change is
+        answered by drawing the tree again from the model in hand: starring a row brings it in, and
+        unstarring one takes it out along with what it held.
+        """
+        if self._filter.favorites_only:
+            self.redraw_tree()
+            return
+
+        for node in nodes:
+            self._reapply_theme_recursively(
+                node,
+                self._logic.has_favorite_ancestor(node),
+            )
 
     @abstractmethod
     def set_tree_enabled(self, enabled: bool) -> None: ...

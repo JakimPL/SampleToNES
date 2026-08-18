@@ -11,6 +11,15 @@ def _resize(items: Tuple[int, ...], length: int) -> Tuple[int, ...]:
     return items[:length] + items[-1:] * (length - len(items))
 
 
+def _limited_length(length: int, limit: Optional[int]) -> int:
+    """Brings a length within what the target format stores, reporting what that drops."""
+    if limit is None or length <= limit:
+        return length
+
+    logger.warning(f"Instrument envelope of {length} items keeps its first {limit}, the most the format holds")
+    return limit
+
+
 def _common_length(lengths: List[int], loop: bool, limit: Optional[int]) -> int:
     """Chooses the length every populated dimension of an instrument shares.
 
@@ -28,12 +37,37 @@ def _common_length(lengths: List[int], loop: bool, limit: Optional[int]) -> int:
     Returns:
         int: The shared item count, at most ``limit`` where one applies.
     """
-    length = min(lengths) if loop else max(lengths)
-    if limit is None or length <= limit:
-        return length
+    return _limited_length(min(lengths) if loop else max(lengths), limit)
 
-    logger.warning(f"Instrument envelope of {length} items keeps its first {limit}, the most the format holds")
-    return limit
+
+def limit_lengths(
+    items_by_kind: Dict[EnvelopeKey, Tuple[int, ...]],
+    *,
+    limit: int,
+) -> Dict[EnvelopeKey, Tuple[int, ...]]:
+    """Keeps each dimension's opening items, as many as the target format stores.
+
+    Every dimension stands at its own length, which is what a player that sustains an
+    exhausted envelope's final value reads: the envelope describes the frames it covers
+    and the last value it wrote governs the rest.
+
+    Args:
+        items_by_kind: The per-dimension item tuples, empty for a dimension the channel
+            leaves unused.
+        limit: The most items the target format stores.
+
+    Returns:
+        Dict[EnvelopeKey, Tuple[int, ...]]: The items with every dimension within the limit.
+    """
+    return {
+        kind: items[
+            : _limited_length(
+                len(items),
+                limit,
+            )
+        ]
+        for kind, items in items_by_kind.items()
+    }
 
 
 def equalize_lengths(

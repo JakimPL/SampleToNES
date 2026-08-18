@@ -8,44 +8,49 @@ from sampletones_application.categories.elements.settings import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.project_properties import ProjectPropertiesLayout
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL,
     TAG_SETTINGS_PROPERTIES_BUTTON_OK,
     TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR,
     TAG_SETTINGS_PROPERTIES_INPUT_COMMENT,
+    TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT,
+    TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT,
     TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
     TAG_SETTINGS_PROPERTIES_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.window import GUIWindow
-from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
-from sampletones_application.utils.gui.dialog_navigation import (
-    DialogKeyboardNavigator,
-    FocusStop,
-)
+from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.shared.project_properties import (
     ProjectPropertiesViewModel,
 )
 from sampletones_shared.constants.project import (
+    DEFAULT_FIRST_HIGHLIGHT,
+    DEFAULT_SECOND_HIGHLIGHT,
+    MAX_HIGHLIGHT,
     MAX_PROJECT_AUTHOR_LENGTH,
     MAX_PROJECT_COMMENT_LENGTH,
     MAX_PROJECT_TITLE_LENGTH,
+    MIN_HIGHLIGHT,
 )
 
 
-class GUIProjectPropertiesWindow(GUIWindow):
-    """Modal form to view and edit the project's title, author, and comment.
+class GUIProjectPropertiesWindow(GUIDialogWindow):
+    """Modal form to view and edit the project's title, author, comment, and metre.
 
     Each appearance renders the view model handed to :meth:`open`, and the edited
     values reach the ``on_commit`` hook on confirmation, so the owner applies
     them as one undoable gesture. The title/author/comment feed the exported
-    ``.ftm`` INFO block.
+    ``.ftm`` INFO block, and the two metric highlights say how many rows a beat
+    and a bar span.
     """
 
     def __init__(
@@ -54,18 +59,18 @@ class GUIProjectPropertiesWindow(GUIWindow):
         layout: ProjectPropertiesLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
-        self._router = key_router
-        self._dialog_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG)
-        self._navigator: Optional[DialogKeyboardNavigator] = None
 
-        self.on_commit: Optional[Callable[[str, str, str], None]] = None
+        self.on_commit: Optional[Callable[[str, str, str, int, int], None]] = None
 
         self._title_value = ""
         self._author_value = ""
         self._comment_value = ""
+        self._first_highlight_value = DEFAULT_FIRST_HIGHLIGHT
+        self._second_highlight_value = DEFAULT_SECOND_HIGHLIGHT
         self._created_text = ""
         self._modified_text = ""
 
@@ -81,6 +86,14 @@ class GUIProjectPropertiesWindow(GUIWindow):
             language_manager,
             ProjectPropertiesElements.COMMENT,
         )
+        self._lbl_first_highlight = self._label(
+            language_manager,
+            ProjectPropertiesElements.FIRST_HIGHLIGHT,
+        )
+        self._lbl_second_highlight = self._label(
+            language_manager,
+            ProjectPropertiesElements.SECOND_HIGHLIGHT,
+        )
         self._lbl_created = self._label(
             language_manager,
             ProjectPropertiesElements.CREATED,
@@ -94,30 +107,32 @@ class GUIProjectPropertiesWindow(GUIWindow):
             tag=TAG_SETTINGS_PROPERTIES_WINDOW,
             width=layout.window.width,
             height=layout.window.height,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
         )
 
     def open(self, view_model: ProjectPropertiesViewModel) -> None:
         """Shows the dialog seeded with the given project info."""
-        self._title_value = view_model.title
-        self._author_value = view_model.author
-        self._comment_value = view_model.comment
-        self._created_text = view_model.created_text
-        self._modified_text = view_model.modified_text
+        self._seed(view_model)
         self.show()
 
     def prepare(self, *_args: Any, **_kwargs: Any) -> None:
         """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
 
+    def _seed(self, view_model: ProjectPropertiesViewModel) -> None:
+        """Holds the values the next appearance renders."""
+        self._title_value = view_model.title
+        self._author_value = view_model.author
+        self._comment_value = view_model.comment
+        self._first_highlight_value = view_model.first_highlight
+        self._second_highlight_value = view_model.second_highlight
+        self._created_text = view_model.created_text
+        self._modified_text = view_model.modified_text
+
     def create_window(self) -> None:
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._language_manager["settings.properties.title.window_title"],
-            width=self.width,
-            height=self.height,
-            no_resize=True,
-            no_collapse=True,
             on_close=self.hide,
-            modal=True,
         ):
             self._create_text_field(
                 TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
@@ -129,41 +144,34 @@ class GUIProjectPropertiesWindow(GUIWindow):
                 self._lbl_author,
                 self._author_value,
             )
+            self._create_highlight_fields()
+            dpg.add_separator()
             self._create_comment_field()
             dpg.add_separator()
             self._create_metadata()
             dpg.add_separator()
             self._create_action_buttons()
 
-        for input_tag in (
+        self._bind_dialog_theme(
             TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
             TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR,
             TAG_SETTINGS_PROPERTIES_INPUT_COMMENT,
-        ):
-            self._dialog_theme.bind_to_item(input_tag)
+            TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT,
+            TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT,
+        )
 
-        self._install_navigation()
-
-    def _install_navigation(self) -> None:
-        """Wires Tab/Enter/Escape keyboard navigation over the form's fields and buttons."""
-        self._navigator = DialogKeyboardNavigator(
-            window_tag=self.tag,
-            stops=[
+        self._install_navigation(
+            [
                 FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_TITLE),
                 FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR),
+                FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT),
+                FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT),
                 FocusStop.field(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT),
                 FocusStop.button(TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL, self.hide),
                 FocusStop.button(TAG_SETTINGS_PROPERTIES_BUTTON_OK, self._commit),
             ],
             on_escape=self.hide,
-            key_router=self._router,
         )
-        self._navigator.install()
-
-    def _teardown(self) -> None:
-        if self._navigator is not None:
-            self._navigator.dispose()
-            self._navigator = None
 
     def _create_text_field(self, tag: str, label: str, value: str) -> None:
         with labeled_field(label, self._layout.label_width):
@@ -183,6 +191,42 @@ class GUIProjectPropertiesWindow(GUIWindow):
             width=self._layout.input_width,
             height=self._layout.comment_height,
         )
+
+    def _create_highlight_fields(self) -> None:
+        """Renders the two metric highlights, the row counts a beat and a bar span."""
+        self._create_highlight_field(
+            TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT,
+            self._lbl_first_highlight,
+            self._first_highlight_value,
+            self._language_manager["settings.properties.tooltip.first_highlight"],
+        )
+        self._create_highlight_field(
+            TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT,
+            self._lbl_second_highlight,
+            self._second_highlight_value,
+            self._language_manager["settings.properties.tooltip.second_highlight"],
+        )
+
+    def _create_highlight_field(
+        self,
+        tag: str,
+        label: str,
+        value: int,
+        tooltip: str,
+    ) -> None:
+        with labeled_field(label, self._layout.label_width):
+            dpg.add_input_int(
+                tag=tag,
+                default_value=value,
+                min_value=MIN_HIGHLIGHT,
+                max_value=MAX_HIGHLIGHT,
+                min_clamped=True,
+                max_clamped=True,
+                width=self._layout.input_width,
+            )
+
+        FontRegistry.bind_to_item(tag, Font.MONO)
+        show_tooltip(tag, tooltip)
 
     def _create_metadata(self) -> None:
         self._create_metadata_row(self._lbl_created, self._created_text)
@@ -215,6 +259,8 @@ class GUIProjectPropertiesWindow(GUIWindow):
             dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_TITLE)[:MAX_PROJECT_TITLE_LENGTH],
             dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR)[:MAX_PROJECT_AUTHOR_LENGTH],
             dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT)[:MAX_PROJECT_COMMENT_LENGTH],
+            int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT)),
+            int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT)),
         )
         self.hide()
 

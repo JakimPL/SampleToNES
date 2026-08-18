@@ -23,7 +23,10 @@ class TestAnnotations:
     def test_an_annotated_parameter_names_its_type(self) -> None:
         statement = statement_of("def label(element: MenuElements) -> str:\n    return ''", ast.arg)
         assert isinstance(statement, TypeStatement)
-        assert (statement.spelling, statement.type_name) == ("element", "MenuElements")
+        assert (statement.spelling, statement.type_name) == (
+            "element",
+            "MenuElements",
+        )
 
     def test_a_parameter_without_an_annotation_states_nothing(self) -> None:
         assert statement_of("def label(element):\n    return ''", ast.arg) is None
@@ -31,12 +34,18 @@ class TestAnnotations:
     def test_an_annotated_attribute_names_its_type(self) -> None:
         statement = statement_of("self._manager: Optional[LanguageManager] = None", ast.AnnAssign)
         assert isinstance(statement, TypeStatement)
-        assert (statement.spelling, statement.type_name) == ("self._manager", "LanguageManager")
+        assert (statement.spelling, statement.type_name) == (
+            "self._manager",
+            "LanguageManager",
+        )
 
     def test_an_annotation_alone_names_its_type(self) -> None:
         statement = statement_of("manager: LanguageManager", ast.AnnAssign)
         assert isinstance(statement, TypeStatement)
-        assert (statement.spelling, statement.type_name) == ("manager", "LanguageManager")
+        assert (statement.spelling, statement.type_name) == (
+            "manager",
+            "LanguageManager",
+        )
 
     def test_an_annotated_subscript_states_nothing(self) -> None:
         assert statement_of("managers['first']: LanguageManager = build()", ast.AnnAssign) is None
@@ -46,22 +55,34 @@ class TestAssignments:
     def test_a_construction_names_the_type_it_builds(self) -> None:
         statement = statement_of("self._manager = LanguageManager(path)", ast.Assign)
         assert isinstance(statement, TypeStatement)
-        assert (statement.spelling, statement.type_name) == ("self._manager", "LanguageManager")
+        assert (statement.spelling, statement.type_name) == (
+            "self._manager",
+            "LanguageManager",
+        )
 
     def test_a_construction_through_a_module_names_the_type(self) -> None:
         statement = statement_of("manager = categories.LanguageManager(path)", ast.Assign)
         assert isinstance(statement, TypeStatement)
-        assert (statement.spelling, statement.type_name) == ("manager", "LanguageManager")
+        assert (statement.spelling, statement.type_name) == (
+            "manager",
+            "LanguageManager",
+        )
 
     def test_an_assignment_from_a_name_passes_that_name_along(self) -> None:
         statement = statement_of("self._manager = language_manager", ast.Assign)
         assert isinstance(statement, AliasStatement)
-        assert (statement.target, statement.source) == ("self._manager", "language_manager")
+        assert (statement.target, statement.source) == (
+            "self._manager",
+            "language_manager",
+        )
 
     def test_an_assignment_from_an_attribute_passes_the_chain_along(self) -> None:
         statement = statement_of("self._same = self._manager", ast.Assign)
         assert isinstance(statement, AliasStatement)
-        assert (statement.target, statement.source) == ("self._same", "self._manager")
+        assert (statement.target, statement.source) == (
+            "self._same",
+            "self._manager",
+        )
 
     def test_an_assignment_from_a_literal_states_nothing(self) -> None:
         assert statement_of("TAG_MAIN = 'main'", ast.Assign) is None
@@ -77,12 +98,18 @@ class TestLoops:
     def test_a_for_statement_binds_its_target_to_a_container(self) -> None:
         statement = statement_of("for element in FILTERS.values():\n    print(element)", ast.For)
         assert isinstance(statement, LoopStatement)
-        assert (ast.unparse(statement.target), ast.unparse(statement.iterable)) == ("element", "FILTERS.values()")
+        assert (ast.unparse(statement.target), ast.unparse(statement.iterable)) == (
+            "element",
+            "FILTERS.values()",
+        )
 
     def test_a_comprehension_binds_its_target_to_a_container(self) -> None:
         statement = statement_of("labels = [label(item) for item in FILTERS]", ast.comprehension)
         assert isinstance(statement, LoopStatement)
-        assert (ast.unparse(statement.target), ast.unparse(statement.iterable)) == ("item", "FILTERS")
+        assert (ast.unparse(statement.target), ast.unparse(statement.iterable)) == (
+            "item",
+            "FILTERS",
+        )
 
 
 class TestOtherNodes:

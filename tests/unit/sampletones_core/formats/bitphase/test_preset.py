@@ -7,7 +7,11 @@ import pytest
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
-from sampletones_core.formats.bitphase.preset import PRESET_TUNING_TABLE, instrument_to_preset, write_preset
+from sampletones_core.formats.bitphase.preset import (
+    PRESET_TUNING_TABLE,
+    instrument_to_preset,
+    write_preset,
+)
 from sampletones_core.formats.bitphase.specification.chip import CHIP_TYPE_NES
 from sampletones_core.formats.bitphase.specification.instruments import (
     LOOP_FROM_START,
@@ -15,7 +19,7 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     MIN_TONE_ADD,
     NO_TONE_OFFSET,
 )
-from sampletones_core.paths import EXT_FILE_JSON
+from sampletones_shared.paths.extensions import EXT_FILE_JSON
 
 from .conftest import REFERENCE_PITCH, build_features, build_instrument
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -15,8 +15,8 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.logic.reconstruction.browser import BrowserLogic
-from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
+from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.instruments import (
     OnReconstructionInstrumentUpdatedCallback,
     ReconstructionInstrumentsLogic,
@@ -27,7 +27,9 @@ from sampletones_application.logic.reconstruction.reconstruction import (
 )
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
-from sampletones_application.parameters.reconstruction import ReconstructionTabParameters
+from sampletones_application.parameters.reconstruction import (
+    ReconstructionTabParameters,
+)
 from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.result import ExportResult
@@ -57,7 +59,9 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.reconstruction.audio import (
     GUIReconstructionAudioPanel,
 )
-from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
+from sampletones_application.ui.panels.reconstruction.browser import (
+    GUIReconstructionsBrowserPanel,
+)
 from sampletones_application.ui.panels.reconstruction.instruments.instruments import (
     GUIReconstructionInstrumentsPanel,
 )
@@ -77,7 +81,7 @@ from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.paths import EXT_FILE_WAVE
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.scope import ExportScope
@@ -90,6 +94,7 @@ from sampletones_shared.exceptions import (
     LoadReconstructionError,
 )
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_WAVE
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 _LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_RECONSTRUCTION, SUF_PANEL_LEFT)
@@ -108,11 +113,9 @@ class ReconstructionTabCoordinator:
         export_service: ExportService,
         tracker_backends: Dict[TrackerFormat, TrackerBackend],
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
-        on_reconstruct_file: VoidCallback,
-        on_reconstruct_directory: VoidCallback,
         on_change_audio_state: VoidCallback,
+        on_favorite_changed: Callable[[FileSystemNode], None],
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
-        is_operation_active: Callable[[], bool],
         original_audio_locator: OriginalAudioLocator,
         *,
         layout: ReconstructionTabParameters,
@@ -154,21 +157,23 @@ class ReconstructionTabCoordinator:
             audio_device_manager,
             scheduling=layout.scheduling,
         )
-        self._browser_panel: GUIBrowserPanel = GUIBrowserPanel(
+        self._browser_panel: GUIReconstructionsBrowserPanel = GUIReconstructionsBrowserPanel(
             self._browser_logic.tree,
             self._browser_tree_logic,
             scheduling=layout.scheduling,
             language_manager=language_manager,
             status_bar=status_bar,
             colors=layout.tree_colors,
-            is_operation_active=is_operation_active,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
+            initial_favorites_only=session_manager.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
+            initial_expanded_rows=session_manager.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
-        self._browser_tree_logic.on_favorite_changed = self._browser_panel.update_favorite_indicator
+        self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
         self._browser_tree_logic.on_autoplay_error = self._on_browser_autoplay_error
         self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
+        self._browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._reconstruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_change_audio_state,
@@ -216,8 +221,6 @@ class ReconstructionTabCoordinator:
         )
 
         self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
-        self._browser_panel.on_reconstruct_file = on_reconstruct_file
-        self._browser_panel.on_reconstruct_directory = on_reconstruct_directory
         self._browser_panel.on_load_reconstruction = on_load_reconstruction_with_confirmation
         self._browser_panel.on_reconstruction_remove_requested = self._request_remove_reconstruction
         self._browser_panel.on_directory_remove_requested = self._request_remove_directory
@@ -494,6 +497,14 @@ class ReconstructionTabCoordinator:
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_browser_width()
 
+    def _on_browser_favorites_filter_changed(
+        self,
+        panel_tag: str,
+        favorites_only: bool,
+    ) -> None:
+        """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
+        self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
+
     def _on_instruments_collapse_changed(
         self,
         card_tag: str,
@@ -546,6 +557,16 @@ class ReconstructionTabCoordinator:
 
     def refresh_browser(self) -> None:
         self._browser_panel.refresh()
+
+    def save_browser_shape(self) -> None:
+        """Writes down the rows the browser stands open, so a later run brings them back."""
+        self._session_manager.set_expanded_rows(
+            self._browser_panel.tag,
+            self._browser_panel.expanded_rows,
+        )
+
+    def repaint_browser_favorites(self, nodes: Sequence[FileSystemNode]) -> None:
+        self._browser_panel.update_favorite_indicators(nodes)
 
     def display_reconstruction(self) -> None:
         self._reconstruction_panel_logic.display_reconstruction()
@@ -609,9 +630,14 @@ class ReconstructionTabCoordinator:
 
     def update_reconstruction(self) -> None:
         self._reconstruction_panel_logic.update_reconstruction()
+        self._reconstruction_instruments_logic.refresh_view()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
+
+    def toggle_generator(self, generator: GeneratorName) -> None:
+        """Switches one generator's slice in and out of the waveform and of what plays."""
+        self._reconstruction_plot_panel.toggle_generator(generator)
 
     @property
     def player(self) -> AudioPlayerProtocol:
@@ -660,12 +686,7 @@ class ReconstructionTabCoordinator:
                 filepath,
                 self._language_manager["reconstructions.browser.message.file_not_found"],
             )
-        except (
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ) as exception:
+        except (IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(
                 exception,
                 f"Error while loading reconstruction data from {filepath}",

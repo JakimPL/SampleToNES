@@ -46,7 +46,14 @@ class TestProgressOverlay:
 
     @pytest.mark.parametrize(
         ("progress", "overlay"),
-        [(-0.5, "0%"), (0.0, "0%"), (0.333, "33%"), (0.5, "50%"), (1.0, "100%"), (1.5, "100%")],
+        [
+            (-0.5, "0%"),
+            (0.0, "0%"),
+            (0.333, "33%"),
+            (0.5, "50%"),
+            (1.0, "100%"),
+            (1.5, "100%"),
+        ],
     )
     def test_overlay_renders_the_clamped_percentage(self, progress: float, overlay: str) -> None:
         view_model = _view_model(phase=ConversionPhase.RUNNING, progress=progress)
@@ -55,7 +62,8 @@ class TestProgressOverlay:
 
 class TestPrimaryAction:
     """The one action button cancels while a conversion holds resources and otherwise offers to
-    convert; terminal phases present the convert action as they fall back to idle on their own."""
+    convert; terminal phases present the convert action as they fall back to idle on their own.
+    """
 
     @pytest.mark.parametrize(
         ("phase", "action"),

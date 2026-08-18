@@ -3,7 +3,7 @@ from __future__ import annotations
 import heapq
 import threading
 import time
-from typing import Any, List
+from typing import Any, ClassVar, List
 
 from sampletones_application.utils.callbacks.priority import CallbackPriority
 from sampletones_application.utils.callbacks.task import CallbackTask
@@ -34,11 +34,11 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
     through its class methods.
     """
 
-    _callbacks: List[CallbackTask] = []
-    _lock: threading.Lock = threading.Lock()
-    _frame_counter: int = 0
-    _insertion_counter: int = 0
-    _stopped: bool = False
+    _callbacks: ClassVar[List[CallbackTask]] = []
+    _lock: ClassVar[threading.Lock] = threading.Lock()
+    _frame_counter: ClassVar[int] = 0
+    _insertion_counter: ClassVar[int] = 0
+    _stopped: ClassVar[bool] = False
 
     @classmethod
     def start(cls) -> None:

@@ -2,61 +2,64 @@ from dataclasses import dataclass
 
 import pytest
 
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 EVERY_CHANNEL_AUDIBLE = SequencerChannelsViewModel(muted=frozenset())
 
 
-@dataclass(frozen=True, kw_only=True)
-class EnablementCase:
-    label: str
-    project_open: bool
-    can_undo: bool
-    can_redo: bool
-    undo_enabled: bool
-    redo_enabled: bool
+class TestUndoRedoEnablement(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class EnablementCase(BaseRegularTestCase):
+        project_open: bool
+        can_undo: bool
+        can_redo: bool
+        undo_enabled: bool
+        redo_enabled: bool
 
+    test_cases = (
+        EnablementCase(
+            label="closed_project_disables_both",
+            project_open=False,
+            can_undo=True,
+            can_redo=True,
+            undo_enabled=False,
+            redo_enabled=False,
+        ),
+        EnablementCase(
+            label="baseline_history_disables_both",
+            project_open=True,
+            can_undo=False,
+            can_redo=False,
+            undo_enabled=False,
+            redo_enabled=False,
+        ),
+        EnablementCase(
+            label="undoable_edit_enables_undo",
+            project_open=True,
+            can_undo=True,
+            can_redo=False,
+            undo_enabled=True,
+            redo_enabled=False,
+        ),
+        EnablementCase(
+            label="undone_edit_enables_redo",
+            project_open=True,
+            can_undo=False,
+            can_redo=True,
+            undo_enabled=False,
+            redo_enabled=True,
+        ),
+    )
 
-ENABLEMENT_CASES = [
-    EnablementCase(
-        label="closed_project_disables_both",
-        project_open=False,
-        can_undo=True,
-        can_redo=True,
-        undo_enabled=False,
-        redo_enabled=False,
-    ),
-    EnablementCase(
-        label="baseline_history_disables_both",
-        project_open=True,
-        can_undo=False,
-        can_redo=False,
-        undo_enabled=False,
-        redo_enabled=False,
-    ),
-    EnablementCase(
-        label="undoable_edit_enables_undo",
-        project_open=True,
-        can_undo=True,
-        can_redo=False,
-        undo_enabled=True,
-        redo_enabled=False,
-    ),
-    EnablementCase(
-        label="undone_edit_enables_redo",
-        project_open=True,
-        can_undo=False,
-        can_redo=True,
-        undo_enabled=False,
-        redo_enabled=True,
-    ),
-]
-
-
-class TestUndoRedoEnablement:
-    @pytest.mark.parametrize("case", ENABLEMENT_CASES, ids=lambda case: case.label)
-    def test_enablement_follows_project_and_history_state(self, case: EnablementCase) -> None:
+    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
+    def test_enablement_follows_project_and_history_state(
+        self,
+        case: EnablementCase,
+    ) -> None:
         view_model = MenuBarViewModel(
             project_open=case.project_open,
             reconstruction_loaded=False,
@@ -64,6 +67,7 @@ class TestUndoRedoEnablement:
             reconstruction_in_project=False,
             reconstruction_file_backed=False,
             reconstruction_audio_recorded=False,
+            operation_active=False,
             can_undo=case.can_undo,
             can_redo=case.can_redo,
             play_label="Play",
@@ -74,11 +78,13 @@ class TestUndoRedoEnablement:
             player_paused=False,
             stop_enabled=False,
             autoplay=False,
-            follow_playback=False,
+            follow_mode=FollowMode.OFF,
             loop_song=False,
             channels=EVERY_CHANNEL_AUDIBLE,
             fullscreen=False,
             advanced_settings=False,
+            auto_expand_favorite_reconstructions=False,
+            auto_expand_favorite_directories=False,
         )
 
         assert view_model.undo_enabled is case.undo_enabled
@@ -100,6 +106,7 @@ class TestSaveEnablementIndependentOfLoaded:
             reconstruction_in_project=False,
             reconstruction_file_backed=False,
             reconstruction_audio_recorded=False,
+            operation_active=False,
             can_undo=False,
             can_redo=False,
             play_label="Play",
@@ -110,11 +117,13 @@ class TestSaveEnablementIndependentOfLoaded:
             player_paused=False,
             stop_enabled=False,
             autoplay=False,
-            follow_playback=False,
+            follow_mode=FollowMode.OFF,
             loop_song=False,
             channels=EVERY_CHANNEL_AUDIBLE,
             fullscreen=False,
             advanced_settings=False,
+            auto_expand_favorite_reconstructions=False,
+            auto_expand_favorite_directories=False,
         )
 
         assert view_model.reconstruction_saveable is reconstruction_saveable

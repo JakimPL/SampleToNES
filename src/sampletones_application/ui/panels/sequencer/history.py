@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Final, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.general.colors import FeatureColors
+from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_HISTORY_BUTTON_REDO,
@@ -21,6 +21,8 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.sequencer.history import (
     HistoryEntryViewModel,
     HistoryViewModel,
@@ -31,7 +33,6 @@ from sampletones_application.view_model.shared.history import (
 )
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.utils.color import RGBA
 
 EntryWindow = Tuple[HistoryEntryViewModel, ...]
 
@@ -114,28 +115,30 @@ class GUISequencerHistoryPanel(GUIPanel):
         )
 
     def _create_actions(self) -> None:
-        with dpg.group(tag=TAG_SEQUENCER_HISTORY_GROUP_ACTIONS):
-            with dpg.table(
+        with (
+            dpg.group(tag=TAG_SEQUENCER_HISTORY_GROUP_ACTIONS),
+            dpg.table(
                 header_row=False,
                 policy=dpg.mvTable_SizingStretchSame,
                 resizable=False,
                 width=-1,
-            ):
-                dpg.add_table_column()
-                dpg.add_table_column()
-                with dpg.table_row():
-                    GUIButton(
-                        tag=TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
-                        label=self._language_manager["sequencer.history.label.undo"],
-                        callback=self._on_undo_clicked,
-                        width=-1,
-                    )
-                    GUIButton(
-                        tag=TAG_SEQUENCER_HISTORY_BUTTON_REDO,
-                        label=self._language_manager["sequencer.history.label.redo"],
-                        callback=self._on_redo_clicked,
-                        width=-1,
-                    )
+            ),
+        ):
+            dpg.add_table_column()
+            dpg.add_table_column()
+            with dpg.table_row():
+                GUIButton(
+                    tag=TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
+                    label=self._language_manager["sequencer.history.label.undo"],
+                    callback=self._on_undo_clicked,
+                    width=-1,
+                )
+                GUIButton(
+                    tag=TAG_SEQUENCER_HISTORY_BUTTON_REDO,
+                    label=self._language_manager["sequencer.history.label.redo"],
+                    callback=self._on_redo_clicked,
+                    width=-1,
+                )
         self._status_bar.bind_to_item(
             TAG_SEQUENCER_HISTORY_BUTTON_UNDO,
             self._language_manager["sequencer.history.message.status_undo"],
@@ -308,19 +311,20 @@ class GUISequencerHistoryPanel(GUIPanel):
             color = self._layout.colors.history.future if entry.is_future else self._role_color(segment.role)
             self._add_text(segment.text, parent=group, color=color)
 
-    def _add_text(self, value: str, *, parent: int, color: Optional[RGBA]) -> None:
-        text = (
-            dpg.add_text(value, parent=parent)
-            if color is None
-            else dpg.add_text(
-                value,
-                parent=parent,
-                color=color,
-            )
-        )
+    def _add_text(
+        self,
+        value: str,
+        *,
+        parent: int,
+        color: Optional[BaseColor],
+    ) -> None:
+        text = dpg.add_text(value, parent=parent)
+        if color is not None:
+            dpg_set_palette_color(text, color)
+
         FontRegistry.bind_to_item(text, Font.MONO_SMALL)
 
-    def _role_color(self, role: HistoryDetailRole) -> RGBA:
+    def _role_color(self, role: HistoryDetailRole) -> BaseColor:
         colors = self._layout.colors
         roles = colors.history.roles
         text = colors.text
@@ -355,16 +359,16 @@ class GUISequencerHistoryPanel(GUIPanel):
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_HISTORY_GROUP_ACTIONS, enabled=enabled)
 
-    def _on_undo_clicked(self, sender: Sender, app_data: Any) -> None:
+    def _on_undo_clicked(self, _sender: Sender, _app_data: Any) -> None:
         self.call(self.on_undo)
 
-    def _on_redo_clicked(self, sender: Sender, app_data: Any) -> None:
+    def _on_redo_clicked(self, _sender: Sender, _app_data: Any) -> None:
         self.call(self.on_redo)
 
     def _on_entry_clicked(
         self,
-        sender: Sender,
-        app_data: Any,
+        _sender: Sender,
+        _app_data: Any,
         user_data: int,
     ) -> None:
         self.call(self.on_jump_to, user_data)

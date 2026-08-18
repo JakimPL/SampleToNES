@@ -1,18 +1,27 @@
-from typing import Dict, Final, Tuple
+from functools import partial
+from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import ContextElements, MenuElements
+from sampletones_application.categories.context import channel_label, context_label
+from sampletones_application.categories.elements.global_ import (
+    ContextElements,
+    MenuElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.trackers import (
     TRACKER_PROJECT_MENU_LABELS,
     TRACKER_SAMPLE_MENU_LABELS,
 )
-from sampletones_application.layout.glyphs import PlayerGlyphs
+from sampletones_application.constants.playback import FollowMode
+from sampletones_application.layout.glyphs.player import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
+    SUF_HANDLER_REGISTRY,
+    TAG_GLOBAL_MENU_GROUP_EDIT,
+    TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
     TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
     TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
     TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
@@ -20,11 +29,12 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_FILE_NEW_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_OPEN_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_PROJECT_PROPERTIES,
+    TAG_GLOBAL_MENU_ITEM_FILE_RENDER_SONG,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT,
     TAG_GLOBAL_MENU_ITEM_FILE_SAVE_PROJECT_AS,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS,
-    TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_FRAME,
@@ -42,6 +52,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+    TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+    TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
     TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_GLOBAL_PANEL_PLAYER,
@@ -60,12 +72,15 @@ from sampletones_application.ui.panels.player.controls import (
 )
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import (
+    dpg_append_items,
     dpg_configure_item,
+    dpg_delete_item,
     dpg_set_item_label,
     dpg_set_value,
 )
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
+    FOLLOW_MODE_SHORTCUT_IDS,
     PROJECT_EXPORT_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
     ShortcutId,
@@ -73,6 +88,7 @@ from sampletones_application.utils.gui.shortcuts.ids import (
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
 PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
@@ -88,12 +104,17 @@ RECONSTRUCTION_ITEM_TAGS: Final[Tuple[str, ...]] = (
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_WAV,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
 )
-CHANNEL_LABELS: Final[Dict[GeneratorName, ContextElements]] = {
-    GeneratorName.PULSE1: ContextElements.PULSE_1,
-    GeneratorName.PULSE2: ContextElements.PULSE_2,
-    GeneratorName.TRIANGLE: ContextElements.TRIANGLE,
-    GeneratorName.NOISE: ContextElements.NOISE,
+FOLLOW_MODE_LABELS: Final[Dict[FollowMode, MenuElements]] = {
+    FollowMode.ROWS: MenuElements.ITEM_PLAYBACK_FOLLOW_ROWS,
+    FollowMode.PATTERNS: MenuElements.ITEM_PLAYBACK_FOLLOW_PATTERNS,
+    FollowMode.OFF: MenuElements.ITEM_PLAYBACK_FOLLOW_OFF,
 }
+UNFOCUSED_CLIPBOARD_ELEMENTS: Final[Tuple[ContextElements, ...]] = (
+    ContextElements.COPY,
+    ContextElements.CUT,
+    ContextElements.PASTE,
+    ContextElements.DELETE,
+)
 
 
 class MenuBar:
@@ -107,9 +128,11 @@ class MenuBar:
         player_glyphs: PlayerGlyphs,
         player_layout: PlayerLayout,
         language_manager: LanguageManager,
+        build_edit_actions: Callable[[], bool],
         on_play_from_start: VoidCallback,
         on_pause_or_resume: VoidCallback,
         on_stop: VoidCallback,
+        on_channel_muted: Callable[[GeneratorName], None],
     ) -> None:
         self._shortcut_manager = shortcut_manager
         self._fps_theme = fps_theme
@@ -118,9 +141,11 @@ class MenuBar:
         self._player_glyphs = player_glyphs
         self._player_layout = player_layout
         self._language_manager = language_manager
+        self._build_edit_actions = build_edit_actions
         self._on_play_from_start = on_play_from_start
         self._on_pause_or_resume = on_pause_or_resume
         self._on_stop = on_stop
+        self._on_channel_muted = on_channel_muted
         self._tpl_fps = language_manager["global.dialog.template.fps"]
 
         self._play_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_PLAY)
@@ -128,6 +153,13 @@ class MenuBar:
         self._stop_button_tag = compose_tag(TAG_GLOBAL_PANEL_PLAYER, SUF_PLAYER_STOP)
         self._pause_tooltip_tag = compose_tag(self._pause_button_tag, SUF_PLAYER_TOOLTIP)
         self._lbl_pause = language_manager["global.player.label.pause"]
+
+        self._edit_actions_handler_tag = compose_tag(
+            TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
+            SUF_HANDLER_REGISTRY,
+        )
+        self._edit_actions_frame: Optional[int] = None
+        self._edit_action_items: Tuple[Sender, ...] = ()
 
     def _label(self, element: MenuElements) -> str:
         return self._language_manager[
@@ -138,13 +170,7 @@ class MenuBar:
         ]
 
     def _context_label(self, element: ContextElements) -> str:
-        """Resolves a shared context-action label reused between the tree menus and this bar."""
-        return self._language_manager[
-            Page.GLOBAL,
-            Panel.CONTEXT,
-            TextType.LABEL,
-            element,
-        ]
+        return context_label(self._language_manager, element)
 
     def create(self, state: MenuBarViewModel) -> None:
         with dpg.menu_bar():
@@ -190,6 +216,12 @@ class MenuBar:
                 enabled=state.project_open,
             )
             self._create_project_export_menu(state)
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.RENDER_SONG,
+                tag=TAG_GLOBAL_MENU_ITEM_FILE_RENDER_SONG,
+                label=self._label(MenuElements.ITEM_FILE_RENDER_SONG),
+                enabled=state.render_enabled,
+            )
             dpg.add_separator()
             self._shortcut_manager.add_menu_item(
                 ShortcutId.CLOSE_PROJECT,
@@ -222,7 +254,18 @@ class MenuBar:
                 )
 
     def _create_edit_menu(self, state: MenuBarViewModel) -> None:
-        with dpg.menu(label=self._label(MenuElements.GROUP_EDIT)):
+        """Builds the Edit menu: the history steps, then the actions of whoever holds the cursor.
+
+        The actions are stated into the menu itself and taken away again on each opening, so they
+        follow the cursor. A marker leads the menu, holding nothing and reporting the popup drawn:
+        a container standing below a menu item takes the width those items span as its own, which
+        the popup then grows to fit on every frame it stays open.
+        """
+        with dpg.menu(
+            label=self._label(MenuElements.GROUP_EDIT),
+            tag=TAG_GLOBAL_MENU_GROUP_EDIT,
+        ):
+            dpg.add_group(tag=TAG_GLOBAL_MENU_GROUP_EDIT_MARKER)
             self._shortcut_manager.add_menu_item(
                 ShortcutId.UNDO,
                 tag=TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
@@ -234,6 +277,62 @@ class MenuBar:
                 tag=TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
                 label=self._label(MenuElements.ITEM_EDIT_REDO),
                 enabled=state.redo_enabled,
+            )
+            dpg.add_separator()
+
+        with dpg.item_handler_registry(tag=self._edit_actions_handler_tag):
+            dpg.add_item_visible_handler(callback=self._on_edit_actions_drawn)
+
+        dpg.bind_item_handler_registry(
+            TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
+            self._edit_actions_handler_tag,
+        )
+        self._refresh_edit_actions()
+
+    def _on_edit_actions_drawn(
+        self,
+        _sender: Sender,
+        _app_data: Sender,
+    ) -> None:
+        """States the actions afresh each time the Edit menu is opened.
+
+        DearPyGui reports the marker drawn once a frame while the menu stands open, so a gap in
+        those reports marks a fresh opening. The actions stay standing between openings, which
+        gives the popup its full height on the frame it appears, and the rebuilt ones take over a
+        frame later — long before an item can be reached and chosen.
+        """
+        frame = dpg.get_frame_count()
+        reopened = self._edit_actions_frame is None or frame - self._edit_actions_frame > 1
+        self._edit_actions_frame = frame
+        if reopened:
+            self._refresh_edit_actions()
+
+    def _refresh_edit_actions(self) -> None:
+        """Takes the standing actions out of the Edit menu and asks the focused surface for its own.
+
+        A surface builds the same actions its own cell menu offers, so the two doors print one set
+        with the keys and the enablement each action carries. The history steps above them stand
+        where they are, since only what the last build stated is taken away.
+        """
+        for item in self._edit_action_items:
+            dpg_delete_item(item)
+
+        self._edit_action_items = dpg_append_items(
+            TAG_GLOBAL_MENU_GROUP_EDIT,
+            self._add_edit_action_items,
+        )
+
+    def _add_edit_action_items(self) -> None:
+        """States the focused surface's actions, or the clipboard four greyed out while none is."""
+        if not self._build_edit_actions():
+            self._add_unfocused_clipboard_items()
+
+    def _add_unfocused_clipboard_items(self) -> None:
+        """Names the clipboard actions greyed out, the Edit menu with no grid holding a cursor."""
+        for element in UNFOCUSED_CLIPBOARD_ELEMENTS:
+            dpg.add_menu_item(
+                label=self._context_label(element),
+                enabled=False,
             )
 
     def _create_reconstruction_menu(self, state: MenuBarViewModel) -> None:
@@ -360,12 +459,7 @@ class MenuBar:
                 label=self._label(MenuElements.ITEM_PLAYBACK_AUTOPLAY),
                 check=True,
             )
-            self._shortcut_manager.add_menu_item(
-                ShortcutId.TOGGLE_FOLLOW_PLAYBACK,
-                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
-                label=self._label(MenuElements.ITEM_PLAYBACK_FOLLOW_PLAYBACK),
-                check=True,
-            )
+            self._create_follow_menu(state)
             self._shortcut_manager.add_menu_item(
                 ShortcutId.TOGGLE_LOOP_SONG,
                 tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG,
@@ -379,12 +473,35 @@ class MenuBar:
                 label=self._label(MenuElements.ITEM_PLAYBACK_AUDIO_SETTINGS),
             )
 
+    def _create_follow_menu(self, state: MenuBarViewModel) -> None:
+        """Builds the submenu that chooses how far the sequencer view chases the playhead.
+
+        The modes stand as one choice, so the check marks the reach in place and choosing another
+        item moves it there. Each mode carries its own key, which is what lets a reader switch
+        reach mid-playback straight from the keyboard.
+        """
+        with dpg.menu(
+            tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW,
+            label=self._label(MenuElements.GROUP_PLAYBACK_FOLLOW),
+        ):
+            for mode, shortcut_id in FOLLOW_MODE_SHORTCUT_IDS.items():
+                self._shortcut_manager.add_menu_item(
+                    shortcut_id,
+                    tag=self._follow_menu_item_tag(mode),
+                    label=self._label(FOLLOW_MODE_LABELS[mode]),
+                    check=True,
+                    default_value=state.follow_mode is mode,
+                )
+
     def _create_channels_menu(self, state: MenuBarViewModel) -> None:
         """Builds the submenu that switches each tracker channel of the sequencer's song.
 
         A channel carries a check while it sounds, so the submenu reads as the mix the tracker's
         columns and the order table's rows show, and choosing one silences it. The closing item
         brings the whole mix back in one gesture, and it is offered while a channel is silenced.
+
+        The check names the sequencer's mix, so choosing an item switches that mix wherever the
+        reader stands, while the key printed beside it reaches the channels of the tab in front.
         """
         with dpg.menu(
             tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS,
@@ -393,8 +510,9 @@ class MenuBar:
             for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
                 self._shortcut_manager.add_menu_item(
                     shortcut_id,
+                    callback=partial(self._on_channel_muted, generator),
                     tag=self._channel_menu_item_tag(generator),
-                    label=self._context_label(CHANNEL_LABELS[generator]),
+                    label=channel_label(self._language_manager, generator),
                     check=True,
                     default_value=not state.channels.is_muted(generator),
                 )
@@ -418,6 +536,37 @@ class MenuBar:
                 ShortcutId.TOGGLE_FULLSCREEN,
                 tag=TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
                 label=self._label(MenuElements.ITEM_VIEW_FULLSCREEN),
+                check=True,
+            )
+            dpg.add_separator()
+            self._create_auto_expand_favorites_menu()
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.DISPLAY_SETTINGS,
+                label=self._label(MenuElements.ITEM_VIEW_DISPLAY_SETTINGS),
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.KEYBOARD_SETTINGS,
+                label=self._label(MenuElements.ITEM_VIEW_KEYBOARD_SETTINGS),
+            )
+
+    def _create_auto_expand_favorites_menu(self) -> None:
+        """Offers, per kind of favorite, whether showing the favorites alone opens the way down to one.
+
+        A browser showing its favorites alone decides which rows it draws; whether it also unfolds the
+        rows above a star is the reader's, and a reconstruction and a directory are answered apart.
+        """
+        with dpg.menu(label=self._label(MenuElements.GROUP_VIEW_AUTO_EXPAND_FAVORITES)):
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
+                tag=TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
+                label=self._label(MenuElements.ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS),
+                check=True,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+                tag=TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+                label=self._label(MenuElements.ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES),
                 check=True,
             )
 
@@ -473,6 +622,10 @@ class MenuBar:
             dpg_configure_item(project_item_tag, enabled=state.project_open)
 
         dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_FILE_RENDER_SONG,
+            enabled=state.render_enabled,
+        )
+        dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
             enabled=state.undo_enabled,
         )
@@ -524,17 +677,31 @@ class MenuBar:
         self._update_player_toolbar(state)
 
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
-        dpg_set_value(
-            TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW_PLAYBACK,
-            state.follow_playback,
-        )
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_LOOP_SONG, state.loop_song)
+        self._update_follow_mode(state)
         self._update_channels(state)
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN, state.fullscreen)
         dpg_set_value(
             TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
             state.advanced_settings,
         )
+        self._update_auto_expand_favorites(state)
+
+    def _update_auto_expand_favorites(self, state: MenuBarViewModel) -> None:
+        """Shows, per kind of favorite, whether the browsers open the way down to one."""
+        dpg_set_value(
+            TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
+            state.auto_expand_favorite_reconstructions,
+        )
+        dpg_set_value(
+            TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES,
+            state.auto_expand_favorite_directories,
+        )
+
+    def _update_follow_mode(self, state: MenuBarViewModel) -> None:
+        """Marks the reach the view follows the playhead at, the one mode carrying the check."""
+        for mode in FOLLOW_MODE_SHORTCUT_IDS:
+            dpg_set_value(self._follow_menu_item_tag(mode), state.follow_mode is mode)
 
     def _update_channels(self, state: MenuBarViewModel) -> None:
         """Shows the mute set the sequencer's tables show: a check on every channel that sounds."""
@@ -577,3 +744,8 @@ class MenuBar:
     def _channel_menu_item_tag(generator: GeneratorName) -> str:
         """The tag of the Channels submenu item that switches ``generator``."""
         return compose_tag(TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS, generator.value)
+
+    @staticmethod
+    def _follow_menu_item_tag(mode: FollowMode) -> str:
+        """The tag of the Follow playback submenu item that chooses ``mode``."""
+        return compose_tag(TAG_GLOBAL_MENU_ITEM_PLAYBACK_FOLLOW, mode.value)

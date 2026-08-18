@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, field_serializer
 
-from sampletones_core.paths import (
+from sampletones_shared.paths.user import (
     CONFIG_PATH,
     LIBRARY_DIRECTORY,
     PROJECTS_DIRECTORY,

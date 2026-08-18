@@ -242,12 +242,12 @@ reconstruction and the original can be shown and played on a common scale.
 
 ## Appendix — key parameters and where things live
 
-Default configuration (44.1 kHz, 30 Hz change rate, channels pulse 1 + triangle +
+Default configuration (44.1 kHz, 60 Hz change rate, channels pulse 1 + triangle +
 noise):
 
 | parameter                | default | notes                                              |
 |--------------------------|---------|----------------------------------------------------|
-| frame length             | 1470    | `sample_rate / nes_frequency`, ~33 ms              |
+| frame length             | 735     | `sample_rate / nes_frequency`, ~17 ms              |
 | spectrum method          | `cqt`   | `fft` / `logfft` / `cqt`                            |
 | `transformation_gamma`   | 0       | 0 = power spectrum, 100 = log                       |
 | spectral / temporal weight | 0.8 / 0.2 | criterion blend                                 |

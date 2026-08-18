@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -16,6 +14,7 @@ from sampletones_shared.utils.system.paths import (
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
     open_path_in_explorer,
+    replace_suffix,
     shorten_filename,
     shorten_path,
     to_path,
@@ -32,7 +31,7 @@ class TestToPath(BaseTestSuite):
         expected: Union[str, Type[Exception]]
         input_path: Any
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_path="/home/user/file.txt",
             expected="/home/user/file.txt",
@@ -133,7 +132,7 @@ class TestToPath(BaseTestSuite):
             expected=TypeError,
             label="dict_raises_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -160,7 +159,7 @@ class TestGetFilename(BaseTestSuite):
         extension: str
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             name="song",
             extension=".stp",
@@ -185,7 +184,7 @@ class TestGetFilename(BaseTestSuite):
             expected="song.stp.stp",
             label="appends_to_a_name_already_ending_in_the_extension",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -203,7 +202,7 @@ class TestEnsureSuffix(BaseTestSuite):
         suffix: str
         expected: str
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_path="song",
             suffix=".stp",
@@ -252,7 +251,7 @@ class TestEnsureSuffix(BaseTestSuite):
             expected="/home/user/song.stp",
             label="full_path_keeps_matching_suffix",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -266,6 +265,67 @@ class TestEnsureSuffix(BaseTestSuite):
         assert result == Path(test_case.expected)
 
 
+class TestReplaceSuffix(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        input_path: str
+        previous: str
+        suffix: str
+        expected: str
+
+    test_cases = (
+        TestCase(
+            input_path="song.wav",
+            previous=".wav",
+            suffix=".mp3",
+            expected="song.mp3",
+            label="replaces_the_previous_extension",
+        ),
+        TestCase(
+            input_path="song.WAV",
+            previous=".wav",
+            suffix=".mp3",
+            expected="song.mp3",
+            label="replaces_case_insensitively",
+        ),
+        TestCase(
+            input_path="/home/user/my song v1.2.wav",
+            previous=".wav",
+            suffix=".mp3",
+            expected="/home/user/my song v1.2.mp3",
+            label="keeps_incidental_dots_and_directory",
+        ),
+        TestCase(
+            input_path="my.mix",
+            previous=".wav",
+            suffix=".mp3",
+            expected="my.mix.mp3",
+            label="appends_where_the_name_ends_otherwise",
+        ),
+        TestCase(
+            input_path="song",
+            previous=".wav",
+            suffix=".wav",
+            expected="song.wav",
+            label="appends_where_the_name_carries_no_extension",
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_replace_suffix(self, test_case: TestCase) -> None:
+        result = replace_suffix(
+            Path(test_case.input_path),
+            test_case.previous,
+            test_case.suffix,
+        )
+
+        assert result == Path(test_case.expected)
+
+
 class TestShortenPath(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
@@ -275,7 +335,7 @@ class TestShortenPath(BaseTestSuite):
         levels: Any
         os_sep: str = "/"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_path=PurePosixPath("/home/user/file.txt"),
             resolved_path=PurePosixPath("/home/user/file.txt"),
@@ -469,7 +529,7 @@ class TestShortenPath(BaseTestSuite):
             expected=ValueError,
             label="string_levels_raises_value_error",
         ),
-    ]
+    )
 
     def _create_resolved_mock(self, resolved_path: Any) -> MagicMock:
         """Stands in for the resolved path, keeping the path flavour each case declares.
@@ -634,7 +694,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
         command_returncode: int
         should_fallback: bool
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="dolphin_kde",
             desktop_file="org.kde.dolphin.desktop",
@@ -725,7 +785,7 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
             command_returncode=1,
             should_fallback=True,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -778,7 +838,7 @@ class TestOpenPathInExplorer(BaseTestSuite):
         system: System
         is_file: bool
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="windows_file",
             system=System.WINDOWS,
@@ -803,7 +863,7 @@ class TestOpenPathInExplorer(BaseTestSuite):
             is_file=False,
             expected=["open", ""],
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

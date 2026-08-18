@@ -11,6 +11,9 @@ components:
         key: TextDisabled
         value: .text_muted
       - type: color
+        key: InputTextCursor
+        value: .text
+      - type: color
         key: WindowBg
         value: .ground
       - type: color
@@ -105,6 +108,70 @@ components:
         key: PlotBg
         category: Plots
         value: .plot_background
+      - type: color
+        key: PlotBorder
+        category: Plots
+        value: .plot_border
+      - type: color
+        key: AxisGrid
+        category: Plots
+        value: .plot_grid
+      - type: color
+        key: AxisTick
+        category: Plots
+        value: .plot_grid
+      - type: color
+        key: AxisText
+        category: Plots
+        value: .plot_axis_text
+      - type: color
+        key: AxisBg
+        category: Plots
+        value: .transparent
+      - type: color
+        key: AxisBgHovered
+        category: Plots
+        value: .overlay/0.08
+      - type: color
+        key: AxisBgActive
+        category: Plots
+        value: .overlay/0.16
+      - type: color
+        key: TitleText
+        category: Plots
+        value: .text
+      - type: color
+        key: InlayText
+        category: Plots
+        value: .text_muted
+      - type: color
+        key: LegendBg
+        category: Plots
+        value: .plot_legend_bg
+      - type: color
+        key: LegendBorder
+        category: Plots
+        value: .plot_border
+      - type: color
+        key: LegendText
+        category: Plots
+        value: .text
+      - type: color
+        key: Selection
+        category: Plots
+        value: .accent/0.35
+      - type: color
+        key: Crosshairs
+        category: Plots
+        value: .plot_axis_text
+      - type: style
+        key: PlotBorderSize
+        category: Plots
+        x: 1
+      - type: style
+        key: MinorAlpha
+        category: Plots
+        x: 0.4
       - type: style
         key: WindowPadding
         x: 8
@@ -217,20 +284,92 @@ components:
       - type: color
         key: Text
         value: .text
+      - type: color
+        key: FrameBg
+        value: .control
+      - type: color
+        key: FrameBgHovered
+        value: .control_hovered
+      - type: color
+        key: FrameBgActive
+        value: .control_active
+      - type: color
+        key: Border
+        value: .control_border
+      - type: color
+        key: CheckMark
+        value: .accent
+      - type: style
+        key: FrameBorderSize
+        x: 1
   - item_type: RadioButton
     enabled: false
     entries:
       - type: color
         key: Text
         value: .text_muted
+      - type: color
+        key: FrameBg
+        value: .button_disabled
+      - type: color
+        key: FrameBgHovered
+        value: .button_disabled
+      - type: color
+        key: FrameBgActive
+        value: .button_disabled
+      - type: color
+        key: Border
+        value: .border
+      - type: color
+        key: CheckMark
+        value: .text_disabled
+      - type: style
+        key: FrameBorderSize
+        x: 1
   - item_type: Checkbox
     entries:
       - type: color
         key: Text
         value: .text
+      - type: color
+        key: FrameBg
+        value: .control
+      - type: color
+        key: FrameBgHovered
+        value: .control_hovered
+      - type: color
+        key: FrameBgActive
+        value: .control_active
+      - type: color
+        key: Border
+        value: .control_border
+      - type: color
+        key: CheckMark
+        value: .accent
+      - type: style
+        key: FrameBorderSize
+        x: 1
   - item_type: Checkbox
     enabled: false
     entries:
       - type: color
         key: Text
         value: .text_muted
+      - type: color
+        key: FrameBg
+        value: .button_disabled
+      - type: color
+        key: FrameBgHovered
+        value: .button_disabled
+      - type: color
+        key: FrameBgActive
+        value: .button_disabled
+      - type: color
+        key: Border
+        value: .border
+      - type: color
+        key: CheckMark
+        value: .text_disabled
+      - type: style
+        key: FrameBorderSize
+        x: 1

@@ -8,10 +8,10 @@ class ResponsiveLayout(BaseModel, extra="forbid", frozen=True):
     dimensions at which the side columns sit at their configured widths and the stacked
     graphs at their configured heights. Surplus above either baseline is shared out — width
     widens the side columns (``expanded_side_width``), height grows the graph stack
-    (``stacked_graph_height``). ``max_stack_height`` caps the combined height that a
-    vertical graph stack grows to before the surplus is left free.
+    (``stacked_graph_height``). ``max_graph_height`` is the tallest a single stacked graph
+    grows to, from where the surplus is left free.
     """
 
     baseline_viewport_width: int
     baseline_viewport_height: int
-    max_stack_height: int
+    max_graph_height: int

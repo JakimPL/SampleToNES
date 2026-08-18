@@ -58,6 +58,10 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.12", "3.13"]
     steps:
+      - uses: actions/checkout@v7
+        with:
+          path: repository
+
       - uses: actions/download-artifact@v8
         with:
           name: dist
@@ -74,10 +78,8 @@ jobs:
       - name: Install PortAudio (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install portaudio
-          prefix="$(brew --prefix portaudio)"
-          echo "CFLAGS=-I${prefix}/include" >> "$GITHUB_ENV"
-          echo "LDFLAGS=-L${prefix}/lib" >> "$GITHUB_ENV"
+          bash repository/scripts/macos/build/dependencies.sh
+          bash repository/scripts/macos/build/build_env.sh >> "$GITHUB_ENV"
 
       - name: Install the wheel and check the entry point
         shell: bash
@@ -124,7 +126,7 @@ jobs:
             venv_python=.venv-build/bin/python
           fi
           "$venv_python" -m pip install --upgrade pip
-          "$venv_python" -m pip install ".[build]"
+          "$venv_python" -m pip install ".[build]" --group assets
 
       - name: Build the bundle (Linux)
         if: runner.os == 'Linux'

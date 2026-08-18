@@ -1,13 +1,8 @@
-from typing import Final, Optional, Tuple
+from typing import Final, Optional
 
-from sampletones_application.layout.tabs.sequencer.colors import ChannelColors
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_shared.types.application import ColorRGBA
-
-COLUMNS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
-SUBCOLUMNS: Final[Tuple[SubColumn, ...]] = tuple(SubColumn)
 
 _LEADING_TABLE_COLUMNS: Final[int] = 2
 SAMPLE_TABLE_COLUMN: Final[int] = _LEADING_TABLE_COLUMNS
@@ -20,17 +15,7 @@ HEADER_TABLE_ROW: Final[int] = 0
 HEADER_TABLE_ROWS: Final[int] = HEADER_TABLE_ROW + 1
 
 
-def flat_index(generator: Optional[GeneratorName], subcolumn: SubColumn) -> int:
-    return COLUMNS.index(generator) * len(SUBCOLUMNS) + SUBCOLUMNS.index(subcolumn)
-
-
-def from_flat(row: int, index: int) -> TrackerCursor:
-    index %= len(COLUMNS) * len(SUBCOLUMNS)
-    column, sub = divmod(index, len(SUBCOLUMNS))
-    return TrackerCursor(row, COLUMNS[column], SUBCOLUMNS[sub])
-
-
-def channel_color(colors: ChannelColors, generator: GeneratorName) -> ColorRGBA:
+def channel_color(colors: ChannelColors, generator: GeneratorName) -> BaseColor:
     match generator:
         case GeneratorName.PULSE1:
             return colors.pulse1
@@ -47,8 +32,8 @@ def tracker_table_column(generator: Optional[GeneratorName]) -> int:
 
     The visual divider between the sample column and the channels occupies a table
     column of its own, so the channels sit one slot further right than their
-    logical position. The divider is purely visual, so :data:`COLUMNS` covers only
-    the cursor-addressable columns.
+    logical position. The divider is purely visual, so :data:`CHANNEL_AXIS` covers
+    only the cursor-addressable columns.
     """
     if generator is None:
         return SAMPLE_TABLE_COLUMN

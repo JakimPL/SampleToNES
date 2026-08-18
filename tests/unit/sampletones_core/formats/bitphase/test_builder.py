@@ -19,9 +19,16 @@ from sampletones_core.formats.bitphase.notes import (
     note_index_to_note_cell,
     pitch_to_note_index,
 )
-from sampletones_core.formats.bitphase.specification.channels import CHANNEL_COUNT, ChannelIndex
+from sampletones_core.formats.bitphase.specification.channels import (
+    CHANNEL_COUNT,
+    ChannelIndex,
+)
 from sampletones_core.formats.bitphase.specification.chip import CHIP_TYPE_NES
-from sampletones_core.formats.bitphase.specification.instruments import MAX_TABLE_ID, MIN_INSTRUMENT_ID, MIN_TABLE_ID
+from sampletones_core.formats.bitphase.specification.instruments import (
+    MAX_TABLE_ID,
+    MIN_INSTRUMENT_ID,
+    MIN_TABLE_ID,
+)
 from sampletones_core.formats.bitphase.specification.patterns import (
     FIRST_PATTERN_ID,
     FULL_VOLUME,
@@ -33,7 +40,13 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NoteName,
 )
 
-from .conftest import NES_FREQUENCY, REFERENCE_PITCH, build_features, build_instrument, build_sample
+from .conftest import (
+    NES_FREQUENCY,
+    REFERENCE_PITCH,
+    build_features,
+    build_instrument,
+    build_sample,
+)
 
 VOLUME_ENVELOPE: Final[List[int]] = [15, 10, 5, 0]
 NOISE_PERIOD: Final[int] = 4
@@ -57,10 +70,16 @@ def project_fixture() -> BitphaseProject:
 
 class TestEverySliceBecomesAVoice:
     def test_each_slice_yields_one_instrument(self, project: BitphaseProject) -> None:
-        assert [instrument.name for instrument in project.instruments] == ["Kick (pulse1)", "Kick (noise)"]
+        assert [instrument.name for instrument in project.instruments] == [
+            "Kick (pulse1)",
+            "Kick (noise)",
+        ]
 
     def test_each_slice_yields_the_table_that_carries_its_contour(self, project: BitphaseProject) -> None:
-        assert [table.name for table in project.tables] == ["Kick (pulse1)", "Kick (noise)"]
+        assert [table.name for table in project.tables] == [
+            "Kick (pulse1)",
+            "Kick (noise)",
+        ]
 
     def test_instruments_are_numbered_from_the_first_the_column_names(self, project: BitphaseProject) -> None:
         assert [instrument.id for instrument in project.instruments] == [
@@ -69,7 +88,10 @@ class TestEverySliceBecomesAVoice:
         ]
 
     def test_tables_are_numbered_alongside_the_instruments(self, project: BitphaseProject) -> None:
-        assert [table.id for table in project.tables] == [MIN_TABLE_ID, MIN_TABLE_ID + 1]
+        assert [table.id for table in project.tables] == [
+            MIN_TABLE_ID,
+            MIN_TABLE_ID + 1,
+        ]
 
     def test_every_instrument_declares_the_chip_whose_rows_it_holds(self, project: BitphaseProject) -> None:
         """A document that leaves the chip unnamed loads as an AY instrument, so the
@@ -195,7 +217,11 @@ class TestOneSliceOnItsOwn:
         project = instrument_to_bitphase(
             build_instrument(
                 "Hat",
-                build_features(VOLUME_ENVELOPE, arpeggio=[0, -1, -2, -3], initial_pitch=NOISE_PERIOD),
+                build_features(
+                    VOLUME_ENVELOPE,
+                    arpeggio=[0, -1, -2, -3],
+                    initial_pitch=NOISE_PERIOD,
+                ),
                 generator=GeneratorName.NOISE,
             )
         )

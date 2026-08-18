@@ -7,11 +7,16 @@ from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
     create_selectable_text_theme,
 )
+from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_shared.types.application import ColorRGBA
 
-TEXT_COLOR: ColorRGBA = (220, 220, 220, 255)
-HOVERED_COLOR: ColorRGBA = (255, 255, 255, 64)
-ACTIVE_COLOR: ColorRGBA = (255, 255, 255, 102)
+TEXT_RGBA: ColorRGBA = (220, 220, 220, 255)
+HOVERED_RGBA: ColorRGBA = (255, 255, 255, 64)
+ACTIVE_RGBA: ColorRGBA = (255, 255, 255, 102)
+
+TEXT_COLOR = LiteralColor(TEXT_RGBA)
+HOVERED_COLOR = LiteralColor(HOVERED_RGBA)
+ACTIVE_COLOR = LiteralColor(ACTIVE_RGBA)
 
 ENABLED_STATES = (True, False)
 
@@ -51,13 +56,13 @@ class TestSelectableTextTheme:
         """A cell keeps the hover and selection shades of the table it sits in."""
         theme = create_selectable_text_theme(TEXT_COLOR)
 
-        assert _colors(theme, enabled_state=True) == {dpg.mvThemeCol_Text: TEXT_COLOR}
+        assert _colors(theme, enabled_state=True) == {dpg.mvThemeCol_Text: TEXT_RGBA}
 
     @pytest.mark.parametrize("enabled_state", ENABLED_STATES, ids=["enabled", "disabled"])
     def test_both_enabled_states_carry_the_colour(self, context: None, enabled_state: bool) -> None:
         theme = create_selectable_text_theme(TEXT_COLOR)
 
-        assert _colors(theme, enabled_state=enabled_state)[dpg.mvThemeCol_Text] == TEXT_COLOR
+        assert _colors(theme, enabled_state=enabled_state)[dpg.mvThemeCol_Text] == TEXT_RGBA
 
     def test_the_theme_addresses_selectables(self, context: None) -> None:
         theme = create_selectable_text_theme(TEXT_COLOR)
@@ -71,9 +76,9 @@ class TestHeaderSelectableTheme:
         theme = create_header_selectable_theme(TEXT_COLOR, HOVERED_COLOR, ACTIVE_COLOR)
 
         assert _colors(theme, enabled_state=enabled_state) == {
-            dpg.mvThemeCol_Text: TEXT_COLOR,
-            dpg.mvThemeCol_HeaderHovered: HOVERED_COLOR,
-            dpg.mvThemeCol_HeaderActive: ACTIVE_COLOR,
+            dpg.mvThemeCol_Text: TEXT_RGBA,
+            dpg.mvThemeCol_HeaderHovered: HOVERED_RGBA,
+            dpg.mvThemeCol_HeaderActive: ACTIVE_RGBA,
         }
 
     def test_the_resting_shade_stays_with_the_table(self, context: None) -> None:

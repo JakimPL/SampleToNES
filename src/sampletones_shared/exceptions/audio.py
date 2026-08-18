@@ -11,3 +11,7 @@ class UnsupportedAudioFormatError(AudioError):
 
 class PlaybackError(AudioError):
     """Base class for exceptions raised during playback."""
+
+
+class AudioWriteError(AudioError):
+    """Exception raised when audio cannot be written to a file."""

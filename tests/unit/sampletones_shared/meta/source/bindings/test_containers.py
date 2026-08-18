@@ -39,18 +39,28 @@ def typed_names(
     accessor: Optional[str],
     item_types: Tuple[str, ...],
 ) -> List[Tuple[str, str]]:
-    types = iterated_types(loop_target(f"for {target} in container: pass"), accessor, item_types)
+    types = iterated_types(
+        loop_target(f"for {target} in container: pass"),
+        accessor,
+        item_types,
+    )
     return [(ast.unparse(entry.target), entry.type_name) for entry in types]
 
 
 class TestIteratedContainer:
     def test_a_mapping_walked_directly_is_read(self) -> None:
         container = iterated_container(expression("FILTERS"))
-        assert container is not None and (container.spelling, container.accessor) == ("FILTERS", None)
+        assert container is not None and (container.spelling, container.accessor) == (
+            "FILTERS",
+            None,
+        )
 
     def test_an_accessor_travels_with_the_container(self) -> None:
         container = iterated_container(expression("self._filters.items()"))
-        assert container is not None and (container.spelling, container.accessor) == ("self._filters", "items")
+        assert container is not None and (container.spelling, container.accessor) == (
+            "self._filters",
+            "items",
+        )
 
     def test_a_call_of_another_kind_reads_no_container(self) -> None:
         assert iterated_container(expression("enumerate(FILTERS)")) is None
@@ -70,13 +80,30 @@ class TestIteratedTypes:
         assert typed_names("pair", "items", FILTER_TYPES) == []
 
     def test_walking_values_types_the_target_from_the_value_type(self) -> None:
-        assert typed_names("element", "values", FILTER_TYPES) == [("element", "FileFilterElements")]
+        assert typed_names("element", "values", FILTER_TYPES) == [
+            (
+                "element",
+                "FileFilterElements",
+            )
+        ]
 
     def test_walking_keys_types_the_target_from_the_key_type(self) -> None:
-        assert typed_names("tracker_format", "keys", FILTER_TYPES) == [("tracker_format", "TrackerFormat")]
+        assert typed_names("tracker_format", "keys", FILTER_TYPES) == [
+            (
+                "tracker_format",
+                "TrackerFormat",
+            )
+        ]
 
-    def test_walking_a_container_directly_types_the_target_from_the_key_type(self) -> None:
-        assert typed_names("tracker_format", None, FILTER_TYPES) == [("tracker_format", "TrackerFormat")]
+    def test_walking_a_container_directly_types_the_target_from_the_key_type(
+        self,
+    ) -> None:
+        assert typed_names("tracker_format", None, FILTER_TYPES) == [
+            (
+                "tracker_format",
+                "TrackerFormat",
+            )
+        ]
 
     def test_walking_a_sequence_types_the_target_from_its_item_type(self) -> None:
         assert typed_names("name", None, ("str",)) == [("name", "str")]

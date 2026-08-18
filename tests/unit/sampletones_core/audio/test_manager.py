@@ -1,12 +1,16 @@
 import threading
+from typing import Callable, Final, List
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pytest
 
 from sampletones_core.audio.manager import AudioDeviceManager
+from sampletones_shared.exceptions import PlaybackError
 
 _LOW = 0
 _HIGH = 1
+_RELEASE_TIMEOUT: Final[float] = 5.0
 
 
 def _manager() -> AudioDeviceManager:
@@ -22,9 +26,40 @@ def _manager() -> AudioDeviceManager:
     manager._resume_event = threading.Event()
     manager._playing = False
     manager._active_priority = 0
+    manager._stream_owners = {}
     manager.on_acquire_output = None
     manager.external_output_priority = None
     return manager
+
+
+def _holding_manager(release: Callable[[], None]) -> AudioDeviceManager:
+    """A manager that handed out one output stream against ``release``."""
+    manager = _manager()
+    manager.stop = MagicMock()
+    manager._stream_owners = {MagicMock(): release}
+    return manager
+
+
+class _ThreadedOwner:
+    """A stream owner that hands its stream back from the thread that was writing to it.
+
+    Mirrors the song player: the release runs on the caller's thread while the hand-back comes
+    from the writer, so the two meet only while the manager holds no lock across a release.
+    """
+
+    def __init__(self, manager: AudioDeviceManager, stream: MagicMock) -> None:
+        self._manager = manager
+        self._stream = stream
+        self.handed_back = threading.Event()
+
+    def release(self) -> None:
+        writer = threading.Thread(target=self._hand_back, daemon=True)
+        writer.start()
+        writer.join(timeout=_RELEASE_TIMEOUT)
+
+    def _hand_back(self) -> None:
+        self._manager.close_output_stream(self._stream)
+        self.handed_back.set()
 
 
 class TestSingleOutputExclusion:
@@ -34,7 +69,7 @@ class TestSingleOutputExclusion:
         manager = _manager()
         manager.stop = MagicMock()
 
-        manager.open_output_stream(sample_rate=48000, buffer_size=800)
+        manager.open_output_stream(sample_rate=48000, buffer_size=800, release=MagicMock())
 
         manager.stop.assert_called_once()
         manager._pyaudio.open.assert_called_once()
@@ -131,3 +166,68 @@ class TestOwnership:
         manager._playing = True
 
         assert manager.is_owned_by(object()) is False
+
+
+class TestBackendTeardown:
+    """The backend is torn down only once every handed-out stream has come back."""
+
+    def test_a_handed_out_stream_is_outstanding_until_it_comes_back(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        stream = manager.open_output_stream(sample_rate=48000, buffer_size=800, release=MagicMock())
+        assert stream in manager._stream_owners
+
+        manager.close_output_stream(stream)
+
+        assert manager._stream_owners == {}
+        stream.stop_stream.assert_called_once()
+        stream.close.assert_called_once()
+
+    def test_terminate_releases_a_handed_out_stream_first(self) -> None:
+        events: List[str] = []
+        manager = _manager()
+        manager.stop = MagicMock()
+        instance = manager._pyaudio
+        instance.terminate.side_effect = lambda: events.append("terminate")
+        stream = MagicMock()
+
+        def release() -> None:
+            events.append("release")
+            manager.close_output_stream(stream)
+
+        manager._stream_owners = {stream: release}
+        manager.terminate()
+
+        assert events == ["release", "terminate"]
+        assert manager._pyaudio is None
+
+    def test_terminate_keeps_the_backend_while_a_stream_outlives_its_release(self) -> None:
+        manager = _holding_manager(lambda: None)
+        instance = manager._pyaudio
+
+        manager.terminate()
+
+        instance.terminate.assert_not_called()
+        assert manager._pyaudio is instance
+
+    def test_reinitialize_refuses_while_a_stream_outlives_its_release(self) -> None:
+        manager = _holding_manager(lambda: None)
+        instance = manager._pyaudio
+
+        with pytest.raises(PlaybackError):
+            manager.reinitialize()
+
+        instance.terminate.assert_not_called()
+        assert manager._pyaudio is instance
+
+    def test_a_release_may_hand_its_stream_back_from_the_writing_thread(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        stream = MagicMock()
+        owner = _ThreadedOwner(manager, stream)
+        manager._stream_owners = {stream: owner.release}
+
+        manager.terminate()
+
+        assert owner.handed_back.is_set()
+        assert manager._pyaudio is None

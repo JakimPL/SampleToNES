@@ -3,10 +3,10 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
-    GAMMA_PREFIX,
     format_nes_frequency,
     format_sample_rate,
     format_spectrum_method,
+    format_transformation_gamma,
 )
 from sampletones_core.constants.enums import GeneratorName, abbreviate_generator_names
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
@@ -89,6 +89,6 @@ class TestConfigDirectoryFields:
         assert format_sample_rate(config.library.sample_rate) in display
         assert format_nes_frequency(config.library.nes_frequency) in display
         assert format_spectrum_method(config.library.spectrum_method) in display
-        assert f"{GAMMA_PREFIX}{config.library.transformation_gamma}" in display
+        assert format_transformation_gamma(config.library.transformation_gamma) in display
         assert abbreviate_generator_names(list(config.generation.generators)) in display
         assert DISPLAY_SEPARATOR in display

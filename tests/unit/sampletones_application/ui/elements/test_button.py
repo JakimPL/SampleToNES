@@ -39,7 +39,10 @@ class TestSetEnabled:
     ) -> None:
         _button().set_enabled(True)
 
-        assert configured == [(GROUP_TAG, {"enabled": True}), (INNER_TAG, {"enabled": True})]
+        assert configured == [
+            (GROUP_TAG, {"enabled": True}),
+            (INNER_TAG, {"enabled": True}),
+        ]
 
     def test_disabling_reaches_the_group_and_the_button(
         self,
@@ -47,7 +50,10 @@ class TestSetEnabled:
     ) -> None:
         _button().set_enabled(False)
 
-        assert configured == [(GROUP_TAG, {"enabled": False}), (INNER_TAG, {"enabled": False})]
+        assert configured == [
+            (GROUP_TAG, {"enabled": False}),
+            (INNER_TAG, {"enabled": False}),
+        ]
 
     def test_configure_item_applies_the_enabled_state_to_both(
         self,

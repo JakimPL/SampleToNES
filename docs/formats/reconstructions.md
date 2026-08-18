@@ -26,15 +26,31 @@ A `.stn` file holds:
 * **approximation** — the rendered NES audio: the sum of every channel's output,
   the closest match to the original;
 * **per-channel approximations** — the audio each channel contributes on its own,
-  one waveform per enabled channel (`pulse1`, `pulse2`, `triangle`, `noise`);
+  one waveform per channel that sounds;
 * **per-channel instructions** — the instruction stream each channel plays, one
   [instruction](../glossary.md#instruction) per frame. This is the data a
-  FamiTracker export is built from;
+  FamiTracker export is built from. A reconstruction holds a stream for every one
+  of the four channels (`pulse1`, `pulse2`, `triangle`, `noise`), and a stream of
+  no frames is a channel standing by: it is written by no export and costs
+  nothing, while staying open to edit, so writing an envelope into it puts the
+  channel in play and clearing every envelope takes it out again;
 * **per-channel reference pitch** — the note each channel's arpeggio offsets are
   measured against, chosen once when the reconstruction is built and stored with
   the instructions it describes. An export reads the offsets against this pitch,
   so editing an arpeggio moves the frames around a base that stays put (see
-  [FamiTracker export](famitracker.md)).
+  [FamiTracker export](famitracker.md));
+* **per-channel held dimensions** — the envelopes each channel leaves to the
+  player. An instruction states a value for every dimension of its frame, so this
+  is what says which of them the instrument itself writes; the rest are the
+  channel's, and the player keeps the value it already holds for them. A channel
+  in play writes them all as it is built, and clearing an envelope in the
+  instruments panel adds that dimension here.
+
+A channel standing by rests at a reference pitch of its own, so the first envelope
+written into it sounds on a mid-range note, and it leaves every dimension it offers
+to the player, which is the record a channel edited down to empty envelopes reaches
+as well. A file naming a stream for the channels it plays alone reads as the whole
+four, with the rest coming back standing by.
 
 ## Detached reconstructions
 

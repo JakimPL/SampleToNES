@@ -1,11 +1,13 @@
 from pydantic import BaseModel
 
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
 
 
 class MenuBarViewModel(BaseModel, frozen=True):
     channels: SequencerChannelsViewModel
     project_open: bool
+    operation_active: bool
     reconstruction_loaded: bool
     reconstruction_saveable: bool
     reconstruction_in_project: bool
@@ -21,10 +23,12 @@ class MenuBarViewModel(BaseModel, frozen=True):
     player_paused: bool
     stop_enabled: bool
     autoplay: bool
-    follow_playback: bool
+    follow_mode: FollowMode
     loop_song: bool
     fullscreen: bool
     advanced_settings: bool
+    auto_expand_favorite_reconstructions: bool
+    auto_expand_favorite_directories: bool
 
     @property
     def undo_enabled(self) -> bool:
@@ -33,6 +37,11 @@ class MenuBarViewModel(BaseModel, frozen=True):
     @property
     def redo_enabled(self) -> bool:
         return self.project_open and self.can_redo
+
+    @property
+    def render_enabled(self) -> bool:
+        """Rendering the song needs a song to render, while the application is free to run one."""
+        return self.project_open and not self.operation_active
 
     @property
     def add_to_sequencer_enabled(self) -> bool:

@@ -34,8 +34,13 @@ class TestFocusedFieldKind(BaseTestSuite):
         focused_item: int
         expected: FieldKind
 
-    test_cases = [
-        TestCase(label="nothing focused", items={}, focused_item=NO_ITEM, expected=FieldKind.NONE),
+    test_cases = (
+        TestCase(
+            label="nothing focused",
+            items={},
+            focused_item=NO_ITEM,
+            expected=FieldKind.NONE,
+        ),
         TestCase(
             label="stale item destroyed by a table rebuild",
             items={},
@@ -78,16 +83,32 @@ class TestFocusedFieldKind(BaseTestSuite):
             focused_item=FOCUSED,
             expected=FieldKind.NONE,
         ),
-    ]
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_focused_field_kind(self, test_case: TestCase, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_focused_field_kind(
+        self,
+        test_case: TestCase,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         FakeItemTree(test_case.items, focused_item=test_case.focused_item).install(monkeypatch)
 
         assert focused_field_kind() is test_case.expected
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_is_field_focused_follows_the_kind(self, test_case: TestCase, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_is_field_focused_follows_the_kind(
+        self,
+        test_case: TestCase,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         FakeItemTree(test_case.items, focused_item=test_case.focused_item).install(monkeypatch)
 
         assert is_field_focused() == (test_case.expected is not FieldKind.NONE)

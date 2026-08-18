@@ -53,13 +53,17 @@ def coordinator() -> ReconstructionTabCoordinator:
 
 class TestLoadReconstructionSurfacesConcreteErrors:
     """Each concrete load failure reaches the user through a populated error dialog, so a bad
-    reconstruction file is reported rather than swallowed. The browser unlocks in every case."""
+    reconstruction file is reported rather than swallowed. The browser unlocks in every case.
+    """
 
     @pytest.mark.parametrize(
         "error, expected_message",
         [
             (InvalidMetadataError("bad metadata"), INVALID_METADATA_KEY),
-            (InvalidReconstructionValuesError("bad values", ValueError("v")), INVALID_VALUES_KEY),
+            (
+                InvalidReconstructionValuesError("bad values", ValueError("v")),
+                INVALID_VALUES_KEY,
+            ),
             (InvalidReconstructionError("bad file"), INVALID_FILE_KEY),
             (DeserializationError("bad bytes"), DESERIALIZATION_ERROR_KEY),
             (LoadReconstructionError("unclassified"), LOAD_ERROR_KEY),
@@ -76,7 +80,10 @@ class TestLoadReconstructionSurfacesConcreteErrors:
 
         coordinator.load_reconstruction(Path("sample.stn"))
 
-        coordinator._dialogs.show_error.assert_called_once_with(error, expected_message)
+        coordinator._dialogs.show_error.assert_called_once_with(
+            error,
+            expected_message,
+        )
         coordinator._browser_panel.unlock.assert_called_once_with()
 
     def test_missing_file_shows_file_not_found_dialog(
@@ -89,7 +96,10 @@ class TestLoadReconstructionSurfacesConcreteErrors:
 
         coordinator.load_reconstruction(path)
 
-        coordinator._dialogs.show_file_not_found.assert_called_once_with(path, FILE_NOT_FOUND_KEY)
+        coordinator._dialogs.show_file_not_found.assert_called_once_with(
+            path,
+            FILE_NOT_FOUND_KEY,
+        )
         coordinator._browser_panel.unlock.assert_called_once_with()
 
     def test_incompatible_version_dialog_reports_both_versions(
@@ -124,7 +134,10 @@ class TestLoadReconstructionTail:
 
         coordinator.load_reconstruction(Path("sample.stn"))
 
-        coordinator._dialogs.show_error.assert_called_once_with(error, LOAD_ERROR_KEY)
+        coordinator._dialogs.show_error.assert_called_once_with(
+            error,
+            LOAD_ERROR_KEY,
+        )
         coordinator._browser_panel.unlock.assert_called_once_with()
 
     def test_unexpected_error_propagates_and_unlocks(
@@ -291,7 +304,11 @@ class TestExportResultReportsTruncation:
                 kind=ExportKind.SAMPLE,
                 filepath=Path("instruments"),
                 tracker_format=TrackerFormat.FAMITRACKER,
-                truncation=EnvelopeTruncation(frames=252, source_frames=410, instruments=3),
+                truncation=EnvelopeTruncation(
+                    frames=252,
+                    source_frames=410,
+                    instruments=3,
+                ),
             )
         )
 
@@ -304,7 +321,12 @@ class TestExportResultReportsTruncation:
         export_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         export_coordinator._on_export_result(
-            ExportSuccess(kind=ExportKind.WAV, filepath=Path("track.wav"), tracker_format=None, truncation=None)
+            ExportSuccess(
+                kind=ExportKind.WAV,
+                filepath=Path("track.wav"),
+                tracker_format=None,
+                truncation=None,
+            )
         )
 
         assert _shown_message(export_coordinator) == export_coordinator._export_messages.wav_success

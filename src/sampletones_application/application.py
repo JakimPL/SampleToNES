@@ -11,7 +11,12 @@ from sampletones_application.config.deployment.deployment import (
 )
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.profile import UserProfile
+from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
+from sampletones_application.coordinators.display import DisplayCoordinator
+from sampletones_application.coordinators.edit.router import EditRouter
+from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.coordinators.playback.router import PlaybackRouter
@@ -19,7 +24,10 @@ from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.coordinators.reconstruction import (
     ReconstructionCoordinator,
 )
-from sampletones_application.coordinators.tabs.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.render import SongRenderCoordinator
+from sampletones_application.coordinators.tabs.instructions import (
+    InstructionsTabCoordinator,
+)
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
@@ -38,8 +46,9 @@ from sampletones_application.logic.project.title.document import (
     ReconstructionTitlePart,
     document_title,
 )
-from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.render import SongRenderLogic
 from sampletones_application.parameters import (
     InstructionsTabParameters,
     MainTabParameters,
@@ -49,9 +58,10 @@ from sampletones_application.parameters import (
 from sampletones_application.paths import (
     BEHAVIOR_DIRECTORY,
     DEPLOYMENT_CONFIG_PATH,
+    KEYBINDINGS_DIRECTORY,
     LANG_EN,
     LAYOUT_DIRECTORY,
-    PALETTE_PATH,
+    PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
 from sampletones_application.services import (
@@ -65,11 +75,13 @@ from sampletones_application.services import (
     ServiceCancelled,
     ServiceError,
     ServiceSuccess,
+    SongRenderService,
 )
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_ABOUT,
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+    TAG_GLOBAL_TEXTURE_LOGO,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
     TAG_GLOBAL_THEME_PLAYER_BUTTON,
@@ -85,9 +97,15 @@ from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.dialogs.audio_settings import (
     GUIAudioSettingsWindow,
 )
+from sampletones_application.ui.panels.dialogs.countdown import GUICountdownWindow
+from sampletones_application.ui.panels.dialogs.display_settings import (
+    GUIDisplaySettingsWindow,
+)
+from sampletones_application.ui.panels.dialogs.keybindings import GUIKeybindingsWindow
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
 )
+from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -101,8 +119,14 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.frame_limiter import FrameLimiter
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.palette.palette import PaletteBindings
+from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.palette import Palette
+from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.palette import Palette
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
@@ -118,9 +142,9 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
-from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
@@ -130,7 +154,9 @@ from sampletones_shared.application import (
     SAMPLETONES_GROUP,
     SAMPLETONES_NAME_VERSION,
 )
+from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.types.application import Sender
 
 SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"
@@ -154,6 +180,7 @@ class Application:
 
     def __init__(
         self,
+        profile: UserProfile,
         config_path: Optional[Path] = None,
         library_path: Optional[Path] = None,
         reconstruction_path: Optional[Path] = None,
@@ -162,7 +189,11 @@ class Application:
         self.deployment: DeploymentConfig = DeploymentConfig.load(DEPLOYMENT_CONFIG_PATH)
         self._set_logging_level()
 
-        self._palette: Palette = Palette.load(PALETTE_PATH)
+        self.session_manager = SessionManager(profile)
+        self._palette_catalog: PaletteCatalog = PaletteCatalog.load(PALETTES_DIRECTORY)
+        self._palette_source: PaletteSource = PaletteSource(
+            self._palette_catalog.select(self.session_manager.palette_name),
+        )
         self.layout: LayoutConfig = self._load_layout_config()
         self._setup_gui_elements()
 
@@ -172,16 +203,21 @@ class Application:
             display_time=self.layout.behavior.ui.status_bar_display_time,
         )
         self.key_router: KeyRouter = KeyRouter()
-        self.shortcut_manager: ShortcutManager = ShortcutManager(key_router=self.key_router)
+        self._shortcut_catalog: ShortcutCatalog = ShortcutCatalog.load(KEYBINDINGS_DIRECTORY)
+        self._shortcut_source: ShortcutSource = ShortcutSource(self._preferred_scheme())
+        self.shortcut_manager: ShortcutManager = ShortcutManager(
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
         self.dialogs: DialogsRenderer = DialogsRenderer(
             layout=self.layout.general,
             language_manager=self.language_manager,
             status_bar=self.status_bar,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
-        self.session_manager = SessionManager()
 
         self.library_manager = InstructionsLibraryManager(
             self.config_manager,
@@ -199,6 +235,7 @@ class Application:
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
+        self.render_service: SongRenderService = SongRenderService(priority=_priority)
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
 
@@ -215,22 +252,54 @@ class Application:
         self.project_controller.on_saved = self.history.mark_saved
         self.history.on_history_changed = self._on_history_changed
 
-        self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.main.fps_update_interval)
-        self.frame_limiter: FrameLimiter = FrameLimiter(self.layout.behavior.main.max_fps)
+        self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.ui.fps_update_interval)
+        self.frame_limiter: FrameLimiter = FrameLimiter(self.session_manager.max_fps)
         self._audio_was_playing: bool = False
 
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
             layout=self.layout.settings,
             language_manager=self.language_manager,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
         self.audio_settings_window.on_master_gain_changed = self.session_manager.set_master_gain
+        self.display_settings_window: GUIDisplaySettingsWindow = GUIDisplaySettingsWindow(
+            layout=self.layout.settings,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
+        self.keybindings_window: GUIKeybindingsWindow = GUIKeybindingsWindow(
+            layout=self.layout.settings,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
+        self.display_countdown_window: GUICountdownWindow = GUICountdownWindow(
+            layout=self.layout.settings.display.countdown,
+            title=self.language_manager["settings.display.title.countdown"],
+            message=self.language_manager["settings.display.message.countdown"],
+            remaining_format=self.language_manager["settings.display.template.countdown_remaining"],
+            keep_label=self.language_manager["settings.display.label.keep_button"],
+            revert_label=self.language_manager["settings.display.label.revert_button"],
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
+        self.render_window: GUIRenderWindow = GUIRenderWindow(
+            layout=self.layout.settings,
+            path_colors=self.layout.general.colors.paths,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+            status_bar=self.status_bar,
+        )
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.project_properties_window.on_commit = self._commit_project_properties
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
@@ -246,18 +315,41 @@ class Application:
             player_glyphs=self.layout.glyphs.player,
             player_layout=self.layout.player,
             language_manager=self.language_manager,
+            build_edit_actions=self._build_edit_actions,
             on_play_from_start=self._play_from_start,
             on_pause_or_resume=self._play,
             on_stop=self._stop,
+            on_channel_muted=self._mute_channel,
         )
 
         self._viewport_manager = ViewportManager(
             self.session_manager,
             self.theme,
-            min_width=self.layout.general.window.min_width,
-            min_height=self.layout.general.window.min_height,
-            vsync=self.layout.behavior.main.vsync,
+            self.layout.general.window,
             on_fullscreen_state_changed=self._update_menu,
+        )
+
+        self._display_coordinator = DisplayCoordinator(
+            self.session_manager,
+            self._viewport_manager,
+            self.frame_limiter,
+            self._palette_source,
+            self._palette_catalog,
+            window=self.display_settings_window,
+            countdown=self.display_countdown_window,
+            behavior=self.layout.behavior.display,
+            window_layout=self.layout.general.window,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+        )
+
+        self._keybindings_coordinator = KeybindingsCoordinator(
+            self.session_manager,
+            self._shortcut_source,
+            self._shortcut_catalog,
+            window=self.keybindings_window,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
         )
 
         self._project_coordinator = ProjectCoordinator(
@@ -299,11 +391,9 @@ class Application:
             export_service=self.export_service,
             tracker_backends=self.tracker_backends,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
-            on_reconstruct_file=self._reconstruct_file_dialog,
-            on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
+            on_favorite_changed=self._repaint_reconstruction_favorites,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
-            is_operation_active=self._is_operation_active,
             original_audio_locator=self._original_audio_locator,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -356,20 +446,25 @@ class Application:
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,
             original_audio_locator=self._original_audio_locator,
+            tab_active=self._is_sequencer_tab_current,
             layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
             on_edit_sample_requested=self._edit_project_sample,
+            on_favorite_changed=self._repaint_reconstruction_favorites,
             on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
             on_channels_changed=self._update_menu,
         )
+
+        self._edit_router = EditRouter(surfaces=self._sequencer_tab.edit_surfaces)
 
         self._playback_router = PlaybackRouter(
             sources=(
@@ -387,6 +482,23 @@ class Application:
             self.session_manager,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
+        )
+
+        self._render_logic = SongRenderLogic(
+            self.project_controller,
+            self.config_manager,
+            self.session_manager,
+            self.render_service,
+            language_manager=self.language_manager,
+            is_operation_active=self._is_operation_active,
+        )
+
+        self._render_coordinator = SongRenderCoordinator(
+            self._render_logic,
+            window=self.render_window,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+            on_activity_changed=self._on_render_activity_changed,
         )
 
         self._shell = ApplicationShell(
@@ -435,9 +547,14 @@ class Application:
 
     def _load_layout_config(self) -> LayoutConfig:
         try:
-            return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, self._palette)
+            return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, self._palette_source)
         except ValidationError as exception:
             raise SystemError(f"Invalid layout configuration: {exception}") from exception
+
+    def _preferred_scheme(self) -> ShortcutScheme:
+        """The keys the session runs under: the scheme it names, as its own overrides rebind it."""
+        scheme = self._shortcut_catalog.select(self.session_manager.shortcut_scheme_name)
+        return scheme.with_overrides(self.session_manager.shortcut_overrides)
 
     def _setup_gui_elements(self) -> None:
         FontRegistry.setup(self.layout.fonts)
@@ -448,7 +565,7 @@ class Application:
         )
 
         try:
-            setup_themes(THEME_DIRECTORY, self._palette)
+            setup_themes(THEME_DIRECTORY, self._palette_source)
         except ValidationError as exception:
             raise SystemError(f"Invalid theme configuration: {exception}") from exception
 
@@ -472,6 +589,7 @@ class Application:
             save_project_as=self._project_coordinator.save_as_dialog,
             project_properties=self._open_project_properties,
             export_project=self._project_coordinator.export_project_dialog,
+            render_song=self._render_coordinator.open,
             close_project=self._project_coordinator.close_with_confirmation,
             exit=self._on_close,
             undo=self._sequencer_tab.undo,
@@ -494,16 +612,21 @@ class Application:
             play_from_frame=self._play_from_frame,
             stop=self._stop,
             toggle_autoplay=self._toggle_autoplay,
-            toggle_follow_playback=self._toggle_follow_playback,
+            set_follow_mode=self._set_follow_mode,
             toggle_loop_song=self._toggle_loop_song,
-            toggle_channel=self._sequencer_tab.toggle_channel,
+            toggle_channel=self._toggle_channel,
             unmute_all_channels=self._sequencer_tab.unmute_all_channels,
             audio_settings=self._open_audio_settings,
+            display_settings=self._display_coordinator.open,
+            keyboard_settings=self._keybindings_coordinator.open,
             toggle_advanced_settings=self._toggle_advanced_settings,
+            toggle_auto_expand_favorite_reconstructions=self._toggle_auto_expand_favorite_reconstructions,
+            toggle_auto_expand_favorite_directories=self._toggle_auto_expand_favorite_directories,
             toggle_fullscreen=self._shell.toggle_fullscreen,
             about=self._open_about_dialog,
             next_tab=self._next_tab,
             previous_tab=self._previous_tab,
+            select_tab=self._set_current_tab,
         )
 
     def _setup_shell(self, bindings: ShortcutBindings) -> None:
@@ -540,8 +663,35 @@ class Application:
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
         self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
         self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
+        self._palette_source.on_palette_changed = self._on_palette_changed
+        self._shortcut_source.on_bindings_changed = self._on_bindings_changed
 
-    def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+    def _on_bindings_changed(self, _scheme: ShortcutScheme) -> None:
+        """Hands the keys of the scheme now in place to what has already read a combination.
+
+        Every registration names the action it fires, so the work left is the copies of the keys:
+        the index a press resolves through and the accelerators the menus print.
+        """
+        self.shortcut_manager.rebind()
+
+    def _on_palette_changed(self, _palette: Palette) -> None:
+        """Repaints what holds a colour DearPyGui has copied, once another palette is in place.
+
+        Every layout and theme colour already answers with the new palette, so the work left is
+        handing those values to the copies DearPyGui keeps: the registered theme colours and item
+        arguments, the viewport clear colour, and the sequencer tables, whose tints belong to the
+        table rather than to an item.
+        """
+        PaletteBindings.apply()
+        self._viewport_manager.refresh_clear_color()
+        self._sequencer_tab.repaint()
+
+    def _on_tab_changed(
+        self,
+        _sender: Sender,
+        _app_data: Any,
+        _user_data: Any,
+    ) -> None:
         self._update_menu()
 
     def _build_initial_menu_state(self) -> MenuBarViewModel:
@@ -552,6 +702,7 @@ class Application:
             reconstruction_in_project=self._editing_project_sample(),
             reconstruction_file_backed=self._reconstruction_coordinator.is_saveable(),
             reconstruction_audio_recorded=self.reconstruction_manager.audio_filepath is not None,
+            operation_active=self._is_operation_active(),
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
             play_label=self.language_manager["global.menu.label.item_playback_play"],
@@ -562,16 +713,27 @@ class Application:
             player_paused=False,
             stop_enabled=False,
             autoplay=self.session_manager.autoplay,
-            follow_playback=self.session_manager.follow_playback,
+            follow_mode=self.session_manager.follow_mode,
             loop_song=self.session_manager.loop_song,
             channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
+            auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
+            auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
+
+    def _is_sequencer_tab_current(self) -> bool:
+        """Whether the Sequencer is the tab in front, which is what puts its panels on the keyboard.
+
+        The tracker, order and samples panels keep their cursor and selection while another tab is
+        worked on, so this is what tells a press meant for the reconstruction in front from one
+        meant for the song.
+        """
+        return self._shell.get_current_tab() == Tab.SEQUENCER
 
     def _is_play_from_frame_enabled(self) -> bool:
         """Playing from the current frame applies to the Sequencer's song, so it needs that tab open."""
-        return self._shell.get_current_tab() == Tab.SEQUENCER and self.project_manager.is_open
+        return self._is_sequencer_tab_current() and self.project_manager.is_open
 
     def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
         return MenuBarViewModel(
@@ -581,6 +743,7 @@ class Application:
             reconstruction_in_project=self._editing_project_sample(),
             reconstruction_file_backed=self._reconstruction_coordinator.is_saveable(),
             reconstruction_audio_recorded=self.reconstruction_manager.audio_filepath is not None,
+            operation_active=self._is_operation_active(),
             can_undo=self.history.can_undo,
             can_redo=self.history.can_redo,
             play_label=self._playback_router.play_label,
@@ -591,11 +754,13 @@ class Application:
             player_paused=self._playback_router.is_paused,
             stop_enabled=self._playback_router.is_stop_enabled,
             autoplay=self.session_manager.autoplay,
-            follow_playback=self.session_manager.follow_playback,
+            follow_mode=self.session_manager.follow_mode,
             loop_song=self.session_manager.loop_song,
             channels=self._sequencer_tab.channels,
             fullscreen=self.session_manager.fullscreen,
             advanced_settings=self.session_manager.advanced_settings,
+            auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
+            auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
 
     def _on_history_changed(self) -> None:
@@ -614,38 +779,50 @@ class Application:
 
     def _toggle_autoplay(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self.session_manager.toggle_autoplay()
         self._update_menu()
 
-    def _toggle_follow_playback(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self.session_manager.set_follow_playback(not self.session_manager.follow_playback)
+    def _set_follow_mode(self, mode: FollowMode) -> None:
+        """Chooses how far the sequencer view chases the playhead, and marks the choice in the menu.
+
+        The tab coordinator carries this to the player, which holds the setting and emits a view as
+        it changes, so the grid's following settles in the same step as the menu's mark.
+        """
+        self._sequencer_tab.set_follow_mode(mode)
         self._update_menu()
 
     def _toggle_loop_song(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self.session_manager.set_loop_song(not self.session_manager.loop_song)
         self._update_menu()
 
     def _toggle_advanced_settings(
         self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
+        _sender: Optional[Sender] = None,
+        _app_data: Optional[Any] = None,
+        _user_data: Optional[Any] = None,
     ) -> None:
         self._main_tab.toggle_advanced_settings()
+        self._update_menu()
+
+    def _toggle_auto_expand_favorite_reconstructions(self) -> None:
+        self.session_manager.set_auto_expand_favorite_reconstructions(
+            not self.session_manager.auto_expand_favorite_reconstructions
+        )
+        self._update_menu()
+
+    def _toggle_auto_expand_favorite_directories(self) -> None:
+        self.session_manager.set_auto_expand_favorite_directories(
+            not self.session_manager.auto_expand_favorite_directories
+        )
         self._update_menu()
 
     def _reconstruct_file_dialog(self) -> None:
@@ -689,14 +866,30 @@ class Application:
         return self._main_tab.is_converter_panel_visible()
 
     def _is_operation_active(self) -> bool:
-        return self._main_tab.is_converter_active() or self._instructions_tab.is_library_generating()
+        return (
+            self._main_tab.is_converter_active()
+            or self._instructions_tab.is_library_generating()
+            or self._render_coordinator.is_active
+        )
 
     def _refresh_busy_state(self) -> None:
-        """Re-evaluate the reconstruct and generate-library buttons whenever a conversion or library
-        generation starts or finishes, keeping the two long operations mutually exclusive. Each panel
-        reads the live ``_is_operation_active`` state for itself; this only nudges them to
-        re-apply, so the busy truth lives in one place."""
+        """Re-evaluate the reconstruct and generate-library buttons whenever a conversion, library
+        generation or render starts or finishes, keeping the long operations mutually exclusive. Each
+        panel reads the live ``_is_operation_active`` state for itself; this only nudges them to
+        re-apply, so the busy truth lives in one place. The menu follows the same edge, since what
+        greys an entry offering another such operation is one already running."""
         self._instructions_tab.refresh_generate_button()
+        self._update_menu()
+
+    def _on_render_activity_changed(self) -> None:
+        """Follows a render claiming the application and handing it back.
+
+        What a render occupies is the same ground a conversion or a library generation occupies,
+        so its edges reach the same busy state — the action buttons of each tab, the converter's
+        own view, and the menu entries that would start another exclusive operation.
+        """
+        self._refresh_busy_state()
+        self._main_tab.refresh_converter_view()
 
     def _on_library_operation_changed(self) -> None:
         """Responds to a library generation starting or finishing: refreshes the cross-tab action
@@ -753,6 +946,16 @@ class Application:
     def _refresh_reconstruction_trees(self) -> None:
         self._reconstructions_tab.refresh_browser()
         self._sequencer_tab.refresh_browser()
+
+    def _repaint_reconstruction_favorites(self, node: FileSystemNode) -> None:
+        """Repaints the toggled path in both browsers, whichever tab the star was clicked in.
+
+        The two browsers render one tree and read one set of favorites, so the rows standing for the
+        toggled path are read once here and handed to each of them.
+        """
+        nodes = self.browser_manager.nodes_at(node.filepath)
+        self._reconstructions_tab.repaint_browser_favorites(nodes)
+        self._sequencer_tab.repaint_browser_favorites(nodes)
 
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)
@@ -920,11 +1123,14 @@ class Application:
             return
 
         info = self.project_controller.project.info
+        settings = self.project_controller.project.settings
         self.project_properties_window.open(
             ProjectPropertiesViewModel(
                 title=info.title,
                 author=info.author,
                 comment=info.comment,
+                first_highlight=settings.first_highlight,
+                second_highlight=settings.second_highlight,
                 created=info.created,
                 modified=info.modified,
             )
@@ -935,13 +1141,16 @@ class Application:
         title: str,
         author: str,
         comment: str,
+        first_highlight: int,
+        second_highlight: int,
     ) -> None:
         """Applies the properties dialog's values as one undoable gesture.
 
-        Only fields that differ from the current project info reach the controller,
-        so confirming the dialog with no edits is a no-op.
+        Only fields that differ from the current project reach the controller, so
+        confirming the dialog with no edits is a no-op.
         """
         info = self.project_controller.project.info
+        settings = self.project_controller.project.settings
         with self.history.transaction(HistoryAction.EDIT_PROJECT_PROPERTIES):
             if title != info.title:
                 self.project_controller.set_title(title)
@@ -949,6 +1158,10 @@ class Application:
                 self.project_controller.set_author(author)
             if comment != info.comment:
                 self.project_controller.set_comment(comment)
+            if first_highlight != settings.first_highlight:
+                self.project_controller.set_first_highlight(first_highlight)
+            if second_highlight != settings.second_highlight:
+                self.project_controller.set_second_highlight(second_highlight)
 
     def _open_audio_settings(self) -> None:
         """Opens the audio settings dialog seeded with the device manager's state."""
@@ -960,7 +1173,8 @@ class Application:
         )
 
     def _open_about_dialog(self) -> None:
-        """Presents the application name, version, description, and authorship in a modal notice."""
+        """Presents the application's mark beside its name, version, description, and authorship."""
+        about = self.layout.general.dialogs.about
         description = self.language_manager["global.dialog.message.about_description"]
         author_line = self.language_manager["global.dialog.template.about_author"].format(
             author=SAMPLETONES_AUTHOR,
@@ -968,26 +1182,40 @@ class Application:
         )
 
         def content(parent: str) -> None:
-            name_text = dpg.add_text(SAMPLETONES_NAME_VERSION, parent=parent)
-            dpg.add_separator(parent=parent)
-            FontRegistry.bind_to_item(name_text, Font.BOLD_LARGE)
-            dpg.add_text(
-                description,
-                parent=parent,
-                wrap=self.dialogs.default_wrap,
-            )
-            author_text = dpg.add_text(author_line, parent=parent)
-            FontRegistry.bind_to_item(author_text, Font.ITALIC)
+            with dpg.group(horizontal=True, parent=parent):
+                dpg.add_image(
+                    TAG_GLOBAL_TEXTURE_LOGO,
+                    width=about.logo,
+                    height=about.logo,
+                )
+                with dpg.group():
+                    name_text = dpg.add_text(SAMPLETONES_NAME_VERSION)
+                    FontRegistry.bind_to_item(name_text, Font.BOLD_TITLE)
+                    dpg.add_separator()
+                    dpg.add_text(description, wrap=about.text_wrap)
+                    author_text = dpg.add_text(author_line)
+                    FontRegistry.bind_to_item(author_text, Font.ITALIC)
 
         self.dialogs.show_modal(
             get_dialog_tag(TAG_GLOBAL_DIALOG_ABOUT),
             self.language_manager["global.dialog.title.about"],
             content,
+            width=about.width,
+            height=about.height,
         )
 
     def _refresh_audio_devices(self) -> None:
-        """Re-enumerates the output devices and repaints the open dialog in place."""
-        self.audio_device_manager.refresh_devices()
+        """Re-enumerates the output devices and repaints the open dialog in place.
+
+        Re-enumeration restarts the audio backend, which needs the output free; a source that
+        keeps hold of it leaves the device list as it stands and reports the failure.
+        """
+        try:
+            self.audio_device_manager.refresh_devices()
+        except PlaybackError as exception:
+            self._on_playback_error(exception)
+            return
+
         self.audio_settings_window.update_view(
             AudioSettingsViewModel.from_device_manager(
                 self.audio_device_manager,
@@ -1001,8 +1229,17 @@ class Application:
         sample_rate: SampleRate,
         buffer_size: BufferSize,
     ) -> None:
-        """Applies the dialog's committed device, sample rate, and buffer size."""
-        self.audio_device_manager.configure_device(device_index, sample_rate)
+        """Applies the dialog's committed device, sample rate, and buffer size.
+
+        Switching devices needs the output free; a source that keeps hold of it leaves the
+        settings as they stand and reports the failure.
+        """
+        try:
+            self.audio_device_manager.configure_device(device_index, sample_rate)
+        except PlaybackError as exception:
+            self._on_playback_error(exception)
+            return
+
         self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _owning_project_sample(self) -> Optional[Sample]:
@@ -1124,9 +1361,25 @@ class Application:
     def _persist_application_state(self) -> None:
         self.session_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
+        self._save_browser_shapes()
         current_tab = self._shell.get_current_tab()
         self.session_manager.set_current_tab(current_tab)
         self.session_manager.save_config()
+
+    def _save_browser_shapes(self) -> None:
+        """Asks every tab holding a tree to write down which of its rows stand open.
+
+        The shape belongs to the browser showing it, and it is read the once here rather than followed
+        row by row, a pass over the rows running on the tree worker.
+        """
+        self._main_tab.save_browser_shape()
+        self._reconstructions_tab.save_browser_shape()
+        self._sequencer_tab.save_browser_shape()
+        self._instructions_tab.save_browser_shape()
+
+    def _build_edit_actions(self) -> bool:
+        """States the actions of the grid holding the cursor into the Edit menu being built."""
+        return self._edit_router.build_menu_actions()
 
     def _play_from_start(self) -> None:
         self._playback_router.play_from_start()
@@ -1138,7 +1391,7 @@ class Application:
 
     def _play_from_frame(self) -> None:
         """Plays from the current order frame; available only in the Sequencer tab."""
-        if self._shell.get_current_tab() != Tab.SEQUENCER:
+        if not self._is_sequencer_tab_current():
             return
 
         self._sequencer_tab.play_from_current_frame()
@@ -1147,6 +1400,26 @@ class Application:
     def _stop(self) -> None:
         self._playback_router.stop()
         self._update_menu()
+
+    def _toggle_channel(self, generator: GeneratorName) -> None:
+        """Switches one NES channel in the tab in front of the reader.
+
+        A channel is switched by a control of its own on three tabs: the generators a
+        reconstruction is built from on the Main tab, the slices the waveform draws and plays on
+        the Reconstructions tab, and the sequencer's mix elsewhere. One key reaches whichever of
+        them is on screen, so a reader silences what they are listening to without leaving it.
+        """
+        match self._shell.get_current_tab():
+            case Tab.MAIN:
+                self._main_tab.toggle_generator(generator)
+            case Tab.RECONSTRUCTIONS:
+                self._reconstructions_tab.toggle_generator(generator)
+            case _:
+                self._mute_channel(generator)
+
+    def _mute_channel(self, generator: GeneratorName) -> None:
+        """Flips one channel of the sequencer's mix, the gesture the Channels submenu offers."""
+        self._sequencer_tab.toggle_channel(generator)
 
     def _show_confirmation_dialog(
         self,
@@ -1193,8 +1466,9 @@ class Application:
         return self.project_controller.is_open
 
     def _exit_application(self) -> None:
+        self._render_coordinator.cleanup()
         stop_background_workers()
-        self.audio_device_manager.stop()
+        self._playback_router.shutdown()
         self._main_tab.cleanup()
 
         dpg.stop_dearpygui()
@@ -1203,6 +1477,7 @@ class Application:
         delta_time = dpg.get_delta_time()
         self._shell.update_fps(delta_time)
         self._shell.update_status_bar(delta_time)
+        self._display_coordinator.tick(delta_time)
         self._refresh_playback_menu_state()
 
     def _refresh_playback_menu_state(self) -> None:
@@ -1248,7 +1523,9 @@ class Application:
         except KeyboardInterrupt:
             return
         finally:
+            self._render_coordinator.cleanup()
             stop_background_workers()
+            self._playback_router.shutdown()
             self._main_tab.cleanup()
             self.library_manager.shutdown()
             save_failed = self._save_config()

@@ -69,7 +69,7 @@ carries every register value the channel takes for that tick. From
 | Field | Range | Runtime meaning | What the exporter writes |
 | --- | --- | --- | --- |
 | `pulseWidth` | 0–3 | square duty cycle; on the noise channel, any nonzero value selects the short LFSR | the duty-cycle envelope item (squares), the short/long mode (noise), a flat value (triangle) |
-| `volumeOrRate` | 0–15 | the literal channel volume while `envelope` stays off | the volume envelope item |
+| `volumeOrRate` | 0–15 | the literal channel volume while `envelope` stays off | the volume envelope item, or a full level where the slice leaves its volume to the channel |
 | `envelope` | bool | reads `volumeOrRate` as a hardware decay rate | `false`, so each item is the volume itself |
 | `soundLength` | 0–511 | length counter in ticks; `0` holds the note | `0`, so the volume envelope alone shapes the note |
 | `toneAdd` | −4096–4095 | period offset added to the tuning-table period (squares and triangle) | `0` in a document, the pitch contour in a preset |
@@ -79,16 +79,24 @@ carries every register value the channel takes for that tick. From
 
 **Looping.** Playback returns to the instrument's `loop` row once it runs off the end,
 which is the only mode there is. A looping slice therefore sets `loop = 0` so its
-envelopes repeat from the start while the note is held; a one-shot sets
-`loop = len - 1`, and since the volume envelope ends on a note-off item, the
-instrument rests in silence once it has played through. A sample's `loop` flag drives
-this, the same flag the FamiTracker exporter reads.
+envelopes repeat from the start while the note is held; a one-shot sets `loop = len - 1`
+and rests on the level that row carries — silence where the volume envelope ends on a
+note-off item, the channel's own level where the slice holds its volume. A sample's
+`loop` flag drives this, the same flag the FamiTracker exporter reads.
+
+**A held volume.** A slice whose volume envelope carries no item leaves its level to the
+channel, so the exporter writes a full `volumeOrRate` for every frame the slice
+describes. Playback combines a row's level with the pattern's volume column through a
+PT3 volume table, where a full-level row comes out at the column's own level, so those
+rows sound at whatever level the channel carries — the same reading FamiTracker gives a
+disabled volume sequence. A slice describing no frame at all is what writes a single
+silent row, the smallest instrument Bitphase plays.
 
 **Equal lengths.** Instrument rows and table rows advance on independent per-tick
 counters, so they share a length and a loop point and stay in step for as long as the
 note sounds. `equalize_lengths` in `exporters/lengths.py` supplies that shared length —
 the same rule the FamiTracker exporter applies, with the item limit left unbounded
-here (section D).
+here (section F).
 
 ## C. Pitch
 
@@ -146,7 +154,41 @@ against the pitch the slice was reconstructed at, under the tuning a freshly cre
 Bitphase document plays — NTSC at concert pitch. The noise channel takes its period
 from the note, so its preset rows hold a flat offset.
 
-## D. What the exporter builds per scope
+## D. Tempo as a groove
+
+A Bitphase song states a **speed** — the engine ticks each row lasts — where a _SampleToNES_
+project states a tempo and a speed together. The row rate the pair asks for is fractional at
+most tempi, so the exporter carries it as a [groove](../glossary.md#groove): whole tick counts,
+one per row of a pattern, averaging out to that rate with the longer rows on the bar and the
+beat. `sampletones_core/timing/` builds them and in-app playback reads the same groove, so a
+document plays the rows the sequencer played. At 60 Hz, speed 6 and tempo 210, a 16-row
+pattern in common time comes to
+
+```
+5 4 5 4 5 4 4 4 5 4 4 4 5 4 4 4      69 ticks, a rate of 30/7 per row
+```
+
+**The groove reaches the engine as a table.** A speed effect that names a table reads one of
+its entries per pattern row, which is what carries a per-row tick count into a song:
+
+| Part | What the exporter writes |
+| --- | --- |
+| `initialSpeed` | the ticks the pattern's first row lasts |
+| The table | one entry per pattern row, `loop = 0`, taking the id above the last slice table |
+| The effect | `S` with `delay = 0` and an empty parameter, naming that table |
+| Its place | the first row of the DPCM channel, in every pattern |
+
+A speed effect applies from whichever channel carries it, so the groove rides the DPCM channel
+this exporter leaves silent and every sounding channel keeps the one effect column the chip
+gives it. The table advances an entry per row and resumes from where a trigger placed it, so
+triggering it again at each pattern start holds every row on the entry that describes it,
+however the order jumps.
+
+**A tempo the speed column states writes neither.** Where every row lasts alike — tempo 150 at
+60 Hz, where the rate is the speed itself — `initialSpeed` carries the tempo whole, and the
+document holds one table per slice with every effect column empty.
+
+## E. What the exporter builds per scope
 
 A `.btp` holds a whole document, so every scope lands in one file; a preset holds one
 instrument, so a reconstruction lands as a set of them beside the name the export was
@@ -175,34 +217,39 @@ Row cells follow from the columns: an instrument command writes the note from
 `initial_pitch + transpose`, the instrument number, the table column and the row's
 volume; a note-off writes note name `1`; a blank line leaves every column alone.
 
-## E. Bitphase capacity limits
+**The volume column names silence.** In Bitphase you type `0` to silence a channel and
+leave the cell blank to carry its level forward — and the file stores those two as `-1` and
+`0`. The volume field is declared `allowZeroValue`, so Bitphase parses a typed `0` to `-1`
+and prints a stored `-1` back as `0`, while a stored `0` shows as a blank cell; its engine
+reads `-1` as volume zero. So a row asking for silence writes `-1`, a row naming a level
+writes it verbatim, and a row with an empty volume cell writes `0` — which is the same cell
+you would see in the tracker either way.
+
+## F. Bitphase capacity limits
 
 | Quantity | Bitphase limit | Exporter behaviour |
 | --- | --- | --- |
 | Items per instrument row list | unbounded | writes the envelope whole |
-| Rows per table | unbounded | writes the contour whole |
+| Rows per table | unbounded | writes the contour, or the groove, whole |
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
-| Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables |
+| Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, one of which a groove takes |
 | Note range | the 96-entry tuning table, pitch 24–119 | clamps to the nearest playable note |
+| Volume column | `-1` silences (the tracker shows `0`), `0` carries the level forward (shown blank), 1–15 set the level | writes the row's level, and `-1` where a row asks for silence |
 | Pattern length (rows) | 1–256 | clamps the preview pattern; a project keeps `rows_per_pattern` |
 | Order positions | unbounded | matches |
-| Speed | 1–255 | written verbatim from settings |
-| DPCM channel | present | emitted empty |
+| Speed | 1–255 | the groove's tick counts, bounded to that range |
+| DPCM channel | present | rests, apart from the groove trigger each pattern's first row carries |
 
 Tables and instruments are numbered together — each slice takes one of each — so the
-table column is what a wide document reaches first: 35 slices fit, and the exporter
-raises rather than writing a document whose later voices cannot be named.
+table column is what a wide document reaches first, and the exporter raises rather than
+writing a document whose later voices cannot be named. A song whose rows vary spends one
+of those ids on its groove, so the slices a document holds are those the table column can
+still name.
 
-## F. What does not cross over
+## G. What does not cross over
 
-Three things the SampleToNES model holds have no counterpart in a Bitphase document,
-and the exporter leaves them behind:
-
-- **`ProjectInfo.comment`** — a Bitphase project carries a name and an author only.
-- **`ProjectSettings.tempo`** — Bitphase's engine is speed-only, so `initialSpeed`
-  carries `speed` and the tempo is left to the tick rate.
-- **A volume column of `0`** — Bitphase reads it as "leave the volume alone", so a row
-  that asks for silence through the volume column alone reaches playback unchanged.
+**`ProjectInfo.comment`** has no counterpart in a Bitphase document, which carries a name and
+an author only, so the exporter leaves the comment behind.
 
 `interruptFrequency` carries the reconstruction's own tick rate. Bitphase's settings
 panel offers 50 and 60 Hz, and its loader and timeline accept any value, so a rate

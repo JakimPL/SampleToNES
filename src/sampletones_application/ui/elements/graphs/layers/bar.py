@@ -3,14 +3,14 @@ from dataclasses import dataclass
 import numpy as np
 
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
-from sampletones_shared.types.application import Color
+from sampletones_application.utils.palette.colors.base import BaseColor
 
 
 @dataclass(frozen=True)
 class BarLayer(Layer):
     data: np.ndarray
     name: str
-    color: Color
+    color: BaseColor
     bar_weight: float
 
     def __post_init__(self) -> None:

@@ -1,19 +1,29 @@
 from .spec import (
+    CHANNEL_FEATURE_DEFAULTS,
     FEATURE_DIMENSION_ORDER,
     GENERATOR_FEATURE_RANGES,
     GENERATOR_KIND,
+    RESTING_REFERENCE_PERIOD,
+    RESTING_REFERENCE_PITCH,
     FeatureRange,
     feature_range,
+    resting_held_features,
+    resting_reference,
     supported_features,
     supports,
 )
 
 __all__ = [
-    "FeatureRange",
+    "CHANNEL_FEATURE_DEFAULTS",
     "FEATURE_DIMENSION_ORDER",
     "GENERATOR_FEATURE_RANGES",
     "GENERATOR_KIND",
-    "supported_features",
+    "RESTING_REFERENCE_PERIOD",
+    "RESTING_REFERENCE_PITCH",
+    "FeatureRange",
     "feature_range",
+    "resting_held_features",
+    "resting_reference",
+    "supported_features",
     "supports",
 ]

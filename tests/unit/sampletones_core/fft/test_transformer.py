@@ -19,9 +19,7 @@ from sampletones_shared.types.array import (
 )
 from sampletones_shared.utils.transformations.functions import power, power_inverse
 from sampletones_shared.utils.transformations.morpher import LogMorpher
-from sampletones_shared.utils.transformations.transformation import (
-    Transformation,
-)
+from sampletones_shared.utils.transformations.transformation import Transformation
 from tests.suite.arrays import assert_array_equal
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -36,7 +34,10 @@ def transformer_identity() -> FFTTransformer:
 
 @pytest.fixture
 def transformer_square() -> FFTTransformer:
-    transformation = Transformation(partial(power, a=0.5), partial(power_inverse, a=0.5))
+    transformation = Transformation(
+        partial(power, a=0.5),
+        partial(power_inverse, a=0.5),
+    )
     return FFTTransformer(transformation=transformation, sample_rate=44100)
 
 
@@ -56,7 +57,7 @@ class TestFromGamma(BaseTestSuite):
         sample_rate: int
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             label="gamma_0_identity",
             gamma=0,
@@ -153,7 +154,7 @@ class TestFromGamma(BaseTestSuite):
             sample_rate=1000000,
             expected=ValueError,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -168,12 +169,21 @@ class TestFromGamma(BaseTestSuite):
             sample_rate=test_case.sample_rate,
             match=test_case.match,
         ):
-            result = FFTTransformer.from_gamma(gamma=test_case.gamma, sample_rate=test_case.sample_rate)
+            result = FFTTransformer.from_gamma(
+                gamma=test_case.gamma,
+                sample_rate=test_case.sample_rate,
+            )
             assert isinstance(result, FFTTransformer)
             assert result.sample_rate == test_case.sample_rate
             assert isinstance(test_case.expected, Transformation)
-            assert compare_functions(result.transformation.forward, test_case.expected.forward)
-            assert compare_functions(result.transformation.backward, test_case.expected.backward)
+            assert compare_functions(
+                result.transformation.forward,
+                test_case.expected.forward,
+            )
+            assert compare_functions(
+                result.transformation.backward,
+                test_case.expected.backward,
+            )
 
             test_value = np.array([4.0, 9.0, 16.0], dtype=np.float32)
             expected_forward = test_case.expected.forward(test_value)
@@ -195,7 +205,7 @@ class TestCalculateSpectrum(BaseTestSuite):
         mock_spectrum: Histogram
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             audio=np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32),
             sample_rate=44100,
@@ -250,14 +260,18 @@ class TestCalculateSpectrum(BaseTestSuite):
             match="negative values",
             label="spectrum_with_negative_values_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_calculate_spectrum(self, test_case: TestCase, transformer_identity: FFTTransformer) -> None:
+    def test_calculate_spectrum(
+        self,
+        test_case: TestCase,
+        transformer_identity: FFTTransformer,
+    ) -> None:
         with patch(
             "sampletones_core.fft.transformer.calculate_spectrum",
             return_value=test_case.mock_spectrum,
@@ -292,7 +306,7 @@ class TestCalculateFeature(BaseTestSuite):
         transformer: TransformerFixture
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             audio=np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32),
             sample_rate=44100,
@@ -366,14 +380,18 @@ class TestCalculateFeature(BaseTestSuite):
             match="negative values",
             label="negative_spectrum_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_calculate_feature(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+    def test_calculate_feature(
+        self,
+        test_case: TestCase,
+        request: pytest.FixtureRequest,
+    ) -> None:
         transformer = test_case.transformer.get_fixture(request)
 
         with patch(
@@ -407,7 +425,7 @@ class TestForward(BaseTestSuite):
         transformer: TransformerFixture
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_data=Histogram(
                 edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
@@ -463,14 +481,18 @@ class TestForward(BaseTestSuite):
             match="must be a Histogram or Array/Numeric",
             label="invalid_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_forward(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+    def test_forward(
+        self,
+        test_case: TestCase,
+        request: pytest.FixtureRequest,
+    ) -> None:
         transformer = test_case.transformer.get_fixture(request)
 
         if not expect_error(
@@ -503,7 +525,7 @@ class TestBackward(BaseTestSuite):
         transformer: TransformerFixture
         match: Optional[str] = None
 
-    test_cases = [
+    test_cases = (
         TestCase(
             input_data=Histogram(
                 edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
@@ -559,14 +581,18 @@ class TestBackward(BaseTestSuite):
             match="must be a Histogram or Array/Numeric",
             label="invalid_type_error",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_backward(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+    def test_backward(
+        self,
+        test_case: TestCase,
+        request: pytest.FixtureRequest,
+    ) -> None:
         transformer = test_case.transformer.get_fixture(request)
 
         if not expect_error(
@@ -599,7 +625,7 @@ class TestComposeFunction(BaseTestSuite):
         operation: MultaryTransformation[Union[Numeric, Array]]
         arguments: Tuple[Union[Numeric, Array], ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.IDENTITY,
             operation=lambda x: x * 2.0,
@@ -677,14 +703,18 @@ class TestComposeFunction(BaseTestSuite):
             expected=np.float64(8.0),
             label="square_scalar_float64",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_compose_function(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+    def test_compose_function(
+        self,
+        test_case: TestCase,
+        request: pytest.FixtureRequest,
+    ) -> None:
         transformer = test_case.transformer.get_fixture(request)
         composed_function = transformer.compose_function(test_case.operation)
         result = composed_function(*test_case.arguments)
@@ -707,7 +737,7 @@ class TestApply(BaseTestSuite):
         operation: MultaryTransformation
         arguments: Tuple[Histogram, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.SQUARE,
             operation=np.add,
@@ -817,7 +847,7 @@ class TestApply(BaseTestSuite):
             expected=TypeError,
             label="non_histogram_feature",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -848,7 +878,7 @@ class TestReduce(BaseTestSuite):
         operation: MultaryTransformation
         arguments: Tuple[Histogram, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.SQUARE,
             operation=np.add,
@@ -961,14 +991,18 @@ class TestReduce(BaseTestSuite):
             expected=TypeError,
             label="non_histogram_feature",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_reduce(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+    def test_reduce(
+        self,
+        test_case: TestCase,
+        request: pytest.FixtureRequest,
+    ) -> None:
         transformer = test_case.transformer.get_fixture(request)
 
         if not expect_error(
@@ -977,7 +1011,10 @@ class TestReduce(BaseTestSuite):
             test_case.operation,
             *test_case.arguments,
         ):
-            result = transformer.reduce(test_case.operation, *test_case.arguments)
+            result = transformer.reduce(
+                test_case.operation,
+                *test_case.arguments,
+            )
             assert isinstance(result, Histogram)
             assert isinstance(test_case.expected, Histogram)
             assert_array_equal(result.edges, test_case.expected.edges)
@@ -991,7 +1028,7 @@ class TestToFeatures(BaseTestSuite):
         transformer: TransformerFixture
         inputs: Tuple[Union[Histogram, Numeric], ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.SQUARE,
             inputs=(
@@ -1191,7 +1228,7 @@ class TestToFeatures(BaseTestSuite):
             expected=ValueError,
             label="inconsistent_edges",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1225,7 +1262,7 @@ class TestAdd(BaseTestSuite):
         transformer: TransformerFixture
         inputs: Tuple[Union[Histogram, Numeric], ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.SQUARE,
             inputs=(
@@ -1359,7 +1396,7 @@ class TestAdd(BaseTestSuite):
             expected=ValueError,
             label="inconsistent_edges",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1389,7 +1426,7 @@ class TestSubtract(BaseTestSuite):
         input1: Union[Histogram, Numeric]
         input2: Union[Histogram, Numeric]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.SQUARE,
             input1=Histogram(
@@ -1484,7 +1521,7 @@ class TestSubtract(BaseTestSuite):
             expected=ValueError,
             label="inconsistent_edges",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1514,7 +1551,7 @@ class TestMultiply(BaseTestSuite):
         transformer: TransformerFixture
         inputs: Tuple[Union[Histogram, Numeric], ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.SQUARE,
             inputs=(
@@ -1618,7 +1655,7 @@ class TestMultiply(BaseTestSuite):
             expected=TypeError,
             label="invalid_type",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1648,7 +1685,7 @@ class TestDivide(BaseTestSuite):
         input1: Union[Histogram, Numeric]
         input2: Union[Histogram, Numeric]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.SQUARE,
             input1=Histogram(
@@ -1727,7 +1764,7 @@ class TestDivide(BaseTestSuite):
             expected=ValueError,
             label="inconsistent_edges",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1757,7 +1794,7 @@ class TestMean(BaseTestSuite):
         transformer: TransformerFixture
         features: Tuple[Histogram, ...]
 
-    test_cases = [
+    test_cases = (
         TestCase(
             transformer=TransformerFixture.SQUARE,
             features=(
@@ -1851,7 +1888,7 @@ class TestMean(BaseTestSuite):
             expected=ValueError,
             label="inconsistent_edges",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

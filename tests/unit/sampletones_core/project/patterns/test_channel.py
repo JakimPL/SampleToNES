@@ -17,7 +17,7 @@ class TestPatternPool:
         assert index in channel.patterns
         assert channel.pattern(index).length == 8
 
-    def test_duplicate_pattern_copies_rows_with_new_identity(self) -> None:
+    def test_clone_pattern_copies_rows_with_new_identity(self) -> None:
         channel = _channel()
         source = channel.patterns[0]
         source.rows[0] = Row(
@@ -25,17 +25,17 @@ class TestPatternPool:
             volume=10,
         )
 
-        clone_index = channel.duplicate_pattern(0)
+        clone_index = channel.clone_pattern(0)
         clone = channel.pattern(clone_index)
 
         assert clone_index != 0
         assert clone is not source
         assert clone.rows[0] == source.rows[0]
 
-    def test_duplicate_pattern_avoids_reserved_indices(self) -> None:
+    def test_clone_pattern_avoids_reserved_indices(self) -> None:
         channel = _channel()
 
-        clone_index = channel.duplicate_pattern(0, reserved_indices={1, 2})
+        clone_index = channel.clone_pattern(0, reserved_indices={1, 2})
 
         assert clone_index == 3
 

@@ -32,6 +32,7 @@ CORE_COLOR_MAP: Final[Dict[str, int]] = {
     "Header": dpg.mvThemeCol_Header,
     "HeaderActive": dpg.mvThemeCol_HeaderActive,
     "HeaderHovered": dpg.mvThemeCol_HeaderHovered,
+    "InputTextCursor": dpg.mvThemeCol_InputTextCursor,
     "MenuBarBg": dpg.mvThemeCol_MenuBarBg,
     "PopupBg": dpg.mvThemeCol_PopupBg,
     "ScrollbarBg": dpg.mvThemeCol_ScrollbarBg,
@@ -63,10 +64,27 @@ CORE_COLOR_MAP: Final[Dict[str, int]] = {
 }
 
 PLOTS_COLOR_MAP: Final[Dict[str, int]] = {
+    "AxisBg": dpg.mvPlotCol_AxisBg,
+    "AxisBgActive": dpg.mvPlotCol_AxisBgActive,
+    "AxisBgHovered": dpg.mvPlotCol_AxisBgHovered,
+    "AxisGrid": dpg.mvPlotCol_AxisGrid,
+    "AxisText": dpg.mvPlotCol_AxisText,
+    "AxisTick": dpg.mvPlotCol_AxisTick,
+    "Crosshairs": dpg.mvPlotCol_Crosshairs,
+    "ErrorBar": dpg.mvPlotCol_ErrorBar,
     "Fill": dpg.mvPlotCol_Fill,
     "FrameBg": dpg.mvPlotCol_FrameBg,
+    "InlayText": dpg.mvPlotCol_InlayText,
+    "LegendBg": dpg.mvPlotCol_LegendBg,
+    "LegendBorder": dpg.mvPlotCol_LegendBorder,
+    "LegendText": dpg.mvPlotCol_LegendText,
     "Line": dpg.mvPlotCol_Line,
+    "MarkerFill": dpg.mvPlotCol_MarkerFill,
+    "MarkerOutline": dpg.mvPlotCol_MarkerOutline,
     "PlotBg": dpg.mvPlotCol_PlotBg,
+    "PlotBorder": dpg.mvPlotCol_PlotBorder,
+    "Selection": dpg.mvPlotCol_Selection,
+    "TitleText": dpg.mvPlotCol_TitleText,
 }
 
 CORE_STYLE_MAP: Final[Dict[str, int]] = {
@@ -85,6 +103,7 @@ CORE_STYLE_MAP: Final[Dict[str, int]] = {
     "PopupRounding": dpg.mvStyleVar_PopupRounding,
     "ScrollbarRounding": dpg.mvStyleVar_ScrollbarRounding,
     "ScrollbarSize": dpg.mvStyleVar_ScrollbarSize,
+    "SelectableTextAlign": dpg.mvStyleVar_SelectableTextAlign,
     "TabRounding": dpg.mvStyleVar_TabRounding,
     "WindowBorderSize": dpg.mvStyleVar_WindowBorderSize,
     "WindowPadding": dpg.mvStyleVar_WindowPadding,
@@ -92,7 +111,17 @@ CORE_STYLE_MAP: Final[Dict[str, int]] = {
 }
 
 PLOTS_STYLE_MAP: Final[Dict[str, int]] = {
+    "FillAlpha": dpg.mvPlotStyleVar_FillAlpha,
+    "LegendInnerPadding": dpg.mvPlotStyleVar_LegendInnerPadding,
+    "LegendPadding": dpg.mvPlotStyleVar_LegendPadding,
     "LineWeight": dpg.mvPlotStyleVar_LineWeight,
+    "MajorGridSize": dpg.mvPlotStyleVar_MajorGridSize,
+    "MajorTickSize": dpg.mvPlotStyleVar_MajorTickSize,
+    "MarkerSize": dpg.mvPlotStyleVar_MarkerSize,
+    "MinorAlpha": dpg.mvPlotStyleVar_MinorAlpha,
+    "MinorGridSize": dpg.mvPlotStyleVar_MinorGridSize,
+    "PlotBorderSize": dpg.mvPlotStyleVar_PlotBorderSize,
+    "PlotPadding": dpg.mvPlotStyleVar_PlotPadding,
 }
 
 CATEGORY_MAP: Final[Dict[str, int]] = {

@@ -65,7 +65,12 @@ class TestMenuBeforeTheFirstModel:
     def test_a_channel_offers_to_mute_and_to_solo(self, menu: _MenuRecorder) -> None:
         _switch().add_menu_items(GeneratorName.TRIANGLE, None)
 
-        assert menu.labels == [LABELS.mute, LABELS.solo, LABELS.mute_all, LABELS.unmute_all]
+        assert menu.labels == [
+            LABELS.mute,
+            LABELS.solo,
+            LABELS.mute_all,
+            LABELS.unmute_all,
+        ]
 
     def test_muting_everything_is_offered_and_restoring_is_withheld(self, menu: _MenuRecorder) -> None:
         _switch().add_menu_items(None, None)

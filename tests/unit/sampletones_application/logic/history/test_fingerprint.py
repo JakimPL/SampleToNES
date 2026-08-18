@@ -4,9 +4,12 @@ import pytest
 
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.errors import HistoryIntegrityError
-from sampletones_application.logic.history.fingerprint import ReconstructionHashCache, fingerprint_project
-from sampletones_application.logic.history.snapshot import snapshot_project
+from sampletones_application.logic.history.fingerprint import (
+    ReconstructionHashCache,
+    fingerprint_project,
+)
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.utils.serialization import hash_model
 from tests.conftest import ReconstructionFactory
@@ -35,8 +38,14 @@ class TestFingerprint:
 
         assert fingerprint_project(snapshot, reconstruction_hash=hash_model) == original
 
-    def test_fingerprint_changes_with_state(self, project_controller: ProjectController) -> None:
-        before = fingerprint_project(project_controller.project, reconstruction_hash=hash_model)
+    def test_fingerprint_changes_with_state(
+        self,
+        project_controller: ProjectController,
+    ) -> None:
+        before = fingerprint_project(
+            project_controller.project,
+            reconstruction_hash=hash_model,
+        )
 
         project_controller.set_tempo(project_controller.project.settings.tempo + 7)
 
@@ -107,6 +116,7 @@ class TestStrictManagerFingerprinting:
         controller, history = history_factory()
         with history.transaction(HistoryAction.ADD_SAMPLE):
             controller.add_sample(reconstruction_factory(), name="lead")
+
         with history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
 
@@ -132,6 +142,7 @@ class TestStrictManagerFingerprinting:
         controller, history = history_factory()
         with history.transaction(HistoryAction.ADD_SAMPLE):
             sample = controller.add_sample(reconstruction_factory(), name="lead")
+
         with history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
 
@@ -148,8 +159,10 @@ class TestStrictManagerFingerprinting:
         controller, history = history_factory(budget=2)
         with history.transaction(HistoryAction.ADD_SAMPLE):
             sample = controller.add_sample(reconstruction_factory(), name="lead")
+
         with history.transaction(HistoryAction.REMOVE_SAMPLE):
             controller.remove_sample(sample.id)
+
         with history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
 

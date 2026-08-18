@@ -10,7 +10,9 @@ from sampletones_core.configs import Config
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
 from sampletones_core.generators import MIXER_LEVELS
 from sampletones_core.library import InstructionLibraryData
-from sampletones_core.reconstructions.reconstructor.approximation import ApproximationData
+from sampletones_core.reconstructions.reconstructor.approximation import (
+    ApproximationData,
+)
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_shared.exceptions import NoLibraryDataError
@@ -125,8 +127,14 @@ class TestReconstructorResetGenerators:
     ) -> None:
         from sampletones_core.generators.implementation.noise import NoiseGenerator
         from sampletones_core.generators.implementation.pulse import PulseGenerator
-        from sampletones_core.generators.implementation.triangle import TriangleGenerator
-        from sampletones_core.instructions import NoiseInstruction, PulseInstruction, TriangleInstruction
+        from sampletones_core.generators.implementation.triangle import (
+            TriangleGenerator,
+        )
+        from sampletones_core.instructions import (
+            NoiseInstruction,
+            PulseInstruction,
+            TriangleInstruction,
+        )
 
         reconstructor = _make_reconstructor(config, library_data)
         for generator in reconstructor.generators.values():
@@ -271,7 +279,9 @@ class TestReconstructorCall:
         tmp_path: Path,
     ) -> None:
         from sampletones_core.audio import write_wave
-        from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
+        from sampletones_core.reconstructions.reconstruction.reconstruction import (
+            Reconstruction,
+        )
 
         audio_path = tmp_path / "test.wav"
         audio = np.tile(synthetic_fragment.audio, 3).astype(np.float32)

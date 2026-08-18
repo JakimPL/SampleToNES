@@ -1,11 +1,5 @@
 from typing import Final, Tuple
 
-# NES limits
-
-DEFAULT_NES_FREQUENCY: Final[int] = 30
-MIN_NES_FREQUENCY: Final[int] = 15
-MAX_NES_FREQUENCY: Final[int] = 300
-
 # Pitches and frequencies
 
 APU_CLOCK: Final[float] = 1789773.0
@@ -42,9 +36,10 @@ ARPEGGIO_MAX: Final[int] = 127
 
 # Instruction parameters ranges
 
+SILENT_VOLUME: Final[int] = 0
 MIN_VOLUME: Final[int] = 1
 MAX_VOLUME: Final[int] = 15
-VOLUME_RANGE: Final[range] = range(0, MAX_VOLUME + 1)
+VOLUME_RANGE: Final[range] = range(MAX_VOLUME + 1)
 MAX_DUTY_CYCLE: Final[int] = 3
 
 # Channel-specific constants

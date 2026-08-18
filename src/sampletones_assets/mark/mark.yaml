@@ -1,0 +1,43 @@
+frame:
+  grid: 64
+  corner_radius: 14
+  rim:
+    inset: 1
+    width: 2
+    opacity: 0.14
+
+colors:
+  background:
+    top: "#3a3650"
+    bottom: "#211d30"
+  sine: "#64c8ff"
+  square: "#ffc864"
+  rim: "#cdb6ff"
+
+waves:
+  width: 4
+  sine:
+    start: {x: 8, y: 32}
+    curves:
+      - control_start: {x: 11, y: 16}
+        control_end: {x: 15, y: 16}
+        end: {x: 18, y: 32}
+      - control_start: {x: 21, y: 48}
+        control_end: {x: 25, y: 48}
+        end: {x: 28, y: 32}
+  square:
+    points:
+      - {x: 28, y: 32}
+      - {x: 28, y: 20}
+      - {x: 38, y: 20}
+      - {x: 38, y: 44}
+      - {x: 48, y: 44}
+      - {x: 48, y: 20}
+      - {x: 56, y: 20}
+      - {x: 56, y: 32}
+
+render:
+  supersample: 16
+  curve_samples: 96
+  raster_size: 256
+  windows_sizes: [256, 128, 64, 48, 32, 24, 16]

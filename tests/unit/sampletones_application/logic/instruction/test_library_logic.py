@@ -86,7 +86,8 @@ def _load_logic(*, load_error: Exception) -> LibraryLogic:
 class TestLoadLibraryTail:
     """The load pipeline wraps every unclassified deserialize failure in a ``LoadLibraryError``
     subtype, so the ladder's tail reports those through ``on_load_error`` with the generic
-    message; a failure outside the load contract is a bug and propagates. Both paths unlock."""
+    message; a failure outside the load contract is a bug and propagates. Both paths unlock.
+    """
 
     def test_unclassified_load_error_reports_the_generic_message(self) -> None:
         error = UnhandledLibraryError("wrapped")
@@ -125,7 +126,10 @@ class TestLoadLibrarySurfacesConcreteErrors:
         [
             (OSError("io"), FILE_LOAD_ERROR_KEY),
             (InvalidMetadataError("bad metadata"), INVALID_METADATA_KEY),
-            (InvalidLibraryDataValuesError("bad values", ValueError("v")), INVALID_DATA_VALUES_KEY),
+            (
+                InvalidLibraryDataValuesError("bad values", ValueError("v")),
+                INVALID_DATA_VALUES_KEY,
+            ),
             (InvalidLibraryDataError("bad data"), INVALID_DATA_KEY),
             (DeserializationError("bad bytes"), DESERIALIZATION_ERROR_KEY),
             (LoadLibraryError("unclassified"), LOAD_ERROR_KEY),

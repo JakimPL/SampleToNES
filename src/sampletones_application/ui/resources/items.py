@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sampletones_core.paths import (
+from sampletones_shared.paths.resources import (
     FONT_ICON,
     FONT_MONO_BOLD,
     FONT_MONO_REGULAR,

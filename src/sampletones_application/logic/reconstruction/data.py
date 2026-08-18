@@ -131,13 +131,7 @@ class ReconstructionData:
                 normalize=config.general.normalize,
                 quantize=config.general.quantize,
             )
-        except (
-            FileNotFoundError,
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ):
+        except (FileNotFoundError, IsADirectoryError, PermissionError, OSError):
             logger.warning(f"Could not load original audio from '{audio_filepath}'. The original is unavailable")
             return None
 

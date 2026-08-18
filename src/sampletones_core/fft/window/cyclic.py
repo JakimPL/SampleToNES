@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
@@ -36,7 +36,7 @@ class CyclicArray(DataModel):
 
         return round((phase * self.sample_rate) / self.frequency)
 
-    def get_fragment(self, phase: Union[int, float] = 0, length: Optional[int] = None) -> np.ndarray:
+    def get_fragment(self, phase: float = 0, length: Optional[int] = None) -> np.ndarray:
         n = len(self.array)
         if n == 0:
             return np.empty(0, dtype=self.array.dtype)
@@ -49,7 +49,7 @@ class CyclicArray(DataModel):
         fragment: np.ndarray = self.array[idx]
         return fragment
 
-    def get_windowed_fragment(self, phase: Union[int, float], window: Window) -> np.ndarray:
+    def get_windowed_fragment(self, phase: float, window: Window) -> np.ndarray:
         offset = self.get_offset(phase) if isinstance(phase, float) else phase
         offset += window.left_offset
         fragment: np.ndarray = self.get_fragment(offset, window.size)

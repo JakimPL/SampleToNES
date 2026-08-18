@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.logic.reconstruction.session import ReconstructionSession

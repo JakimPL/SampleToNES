@@ -11,14 +11,16 @@ from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.general import (
     A4_FREQUENCY,
     A4_PITCH,
-    DEFAULT_NES_FREQUENCY,
     LIMIT_MAX_PITCH,
-    MAX_NES_FREQUENCY,
     MIN_FREQUENCY,
-    MIN_NES_FREQUENCY,
 )
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.data import DataModel
+from sampletones_shared.constants.nes import (
+    DEFAULT_NES_FREQUENCY,
+    MAX_NES_FREQUENCY,
+    MIN_NES_FREQUENCY,
+)
 
 
 class InstructionsLibraryConfig(DataModel):
@@ -28,7 +30,7 @@ class InstructionsLibraryConfig(DataModel):
         default=DEFAULT_NES_FREQUENCY,
         ge=MIN_NES_FREQUENCY,
         le=MAX_NES_FREQUENCY,
-        description="Instruction change rate in Hz; the default equals half of the NTSC frame rate.",
+        description="Instruction change rate in Hz; the default is the NTSC frame rate.",
         validation_alias=AliasChoices(
             "change_rate",
             "nes_frequency",

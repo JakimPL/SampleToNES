@@ -12,9 +12,9 @@ SELECTORS: Dict[SelectorName, Type[Selector]] = {
 }
 
 __all__ = [
-    "Selector",
-    "GreedySelector",
-    "ViterbiSelector",
-    "ScoredCandidate",
     "SELECTORS",
+    "GreedySelector",
+    "ScoredCandidate",
+    "Selector",
+    "ViterbiSelector",
 ]

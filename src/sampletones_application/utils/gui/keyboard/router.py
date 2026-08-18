@@ -118,5 +118,5 @@ class KeyRouter:
         self._modal_stack[-1].handle_key(event)
         return True
 
-    def _dispatch(self, sender: Sender, app_data: int) -> None:
+    def _dispatch(self, _sender: Sender, app_data: int) -> None:
         self.route(KeyEvent.capture(app_data))

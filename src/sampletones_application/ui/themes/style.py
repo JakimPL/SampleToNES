@@ -3,7 +3,7 @@ from typing import Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_shared.types.application import Color
+from sampletones_application.utils.palette.colors.base import BaseColor
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -14,7 +14,7 @@ class ThemeValue:
 
 @dataclass(frozen=True, kw_only=True)
 class ThemeColor(ThemeValue):
-    color: Color
+    color: BaseColor
 
 
 @dataclass(frozen=True, kw_only=True)

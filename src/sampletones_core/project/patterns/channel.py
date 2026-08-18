@@ -62,7 +62,7 @@ class Channel(BaseModel):
 
         return self.patterns[index]
 
-    def duplicate_pattern(self, index: int, *, reserved_indices: AbstractSet[int] = frozenset()) -> int:
+    def clone_pattern(self, index: int, *, reserved_indices: AbstractSet[int] = frozenset()) -> int:
         """Clones the pattern at ``index`` into a fresh index and returns that index.
 
         ``reserved_indices`` are extra indices the clone must avoid beyond the pool's

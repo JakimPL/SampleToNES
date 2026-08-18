@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 import pytest
 
@@ -21,25 +20,17 @@ class NoteCase:
     octave: int
 
 
-PITCH_CASES: List[NoteCase] = [
-    NoteCase(pitch=24, note=1, octave=0),  # C-0, lowest representable
-    NoteCase(pitch=33, note=10, octave=0),  # A-0
-    NoteCase(pitch=60, note=1, octave=3),  # C-3
-    NoteCase(pitch=119, note=12, octave=7),  # B-7, highest representable
-    NoteCase(pitch=12, note=1, octave=0),  # below range clamps up to C-0
-    NoteCase(pitch=200, note=12, octave=7),  # above range clamps down to B-7
-]
-
-PERIOD_CASES: List[NoteCase] = [
-    NoteCase(pitch=0, note=1, octave=0),
-    NoteCase(pitch=11, note=12, octave=0),
-    NoteCase(pitch=15, note=4, octave=1),
-    NoteCase(pitch=16, note=1, octave=0),  # wraps into the 16 noise periods
-]
-
-
 class TestPitchToNoteCell:
-    @pytest.mark.parametrize("case", PITCH_CASES)
+    test_cases = (
+        NoteCase(pitch=24, note=1, octave=0),  # C-0, lowest representable
+        NoteCase(pitch=33, note=10, octave=0),  # A-0
+        NoteCase(pitch=60, note=1, octave=3),  # C-3
+        NoteCase(pitch=119, note=12, octave=7),  # B-7, highest representable
+        NoteCase(pitch=12, note=1, octave=0),  # below range clamps up to C-0
+        NoteCase(pitch=200, note=12, octave=7),  # above range clamps down to B-7
+    )
+
+    @pytest.mark.parametrize("case", test_cases)
     def test_pitch_maps_to_note_and_octave(self, case: NoteCase) -> None:
         cell = pitch_to_note_cell(case.pitch)
         assert cell.note == case.note
@@ -53,7 +44,14 @@ class TestPitchToNoteCell:
 
 
 class TestPeriodToNoteCell:
-    @pytest.mark.parametrize("case", PERIOD_CASES)
+    test_cases = (
+        NoteCase(pitch=0, note=1, octave=0),
+        NoteCase(pitch=11, note=12, octave=0),
+        NoteCase(pitch=15, note=4, octave=1),
+        NoteCase(pitch=16, note=1, octave=0),  # wraps into the 16 noise periods
+    )
+
+    @pytest.mark.parametrize("case", test_cases)
     def test_period_maps_to_note_and_octave(self, case: NoteCase) -> None:
         cell = period_to_note_cell(case.pitch)
         assert cell.note == case.note

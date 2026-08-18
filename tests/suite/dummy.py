@@ -14,7 +14,7 @@ class ValueObject:
     def __hash__(self) -> int:
         return hash(self.value)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, ValueObject):
             return False
 
@@ -32,7 +32,7 @@ class CollisionObject:
     def __hash__(self) -> int:
         return 0
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, CollisionObject):
             return False
 

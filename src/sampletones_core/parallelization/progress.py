@@ -1,6 +1,6 @@
 from collections import deque
 from time import monotonic
-from typing import Deque, Final, Optional, Tuple, Union
+from typing import Deque, Final, Optional, Tuple
 
 ESTIMATION_MEASUREMENTS_SAMPLES: Final[float] = 0.05
 
@@ -9,7 +9,7 @@ class ETAEstimator:
     def __init__(
         self,
         total: int,
-        ems: Union[float, int] = ESTIMATION_MEASUREMENTS_SAMPLES,
+        ems: float = ESTIMATION_MEASUREMENTS_SAMPLES,
     ) -> None:
         self._total = total
         self._ems = self._get_estimation_measurements_samples(ems)
@@ -49,7 +49,7 @@ class ETAEstimator:
 
         return f"{seconds_remaining}s"
 
-    def _get_estimation_measurements_samples(self, ems: Union[float, int]) -> int:
+    def _get_estimation_measurements_samples(self, ems: float) -> int:
         if isinstance(ems, float):
             ems = round(ems * self._total)
 

@@ -22,29 +22,80 @@ class TestBool(BaseTestSuite):
         def label(self) -> str:
             return f"[{self.interval.left},{self.interval.right}]_expect_{self.expected}"
 
-    test_cases = [
-        TestCase(interval=Interval(0.0, 1.0), expected=True),
-        TestCase(interval=Interval(1.0, 5.0), expected=True),
-        TestCase(interval=Interval(-10.0, 10.0), expected=True),
-        TestCase(interval=Interval(np.float32(0.0), np.float32(1.0)), expected=True),
-        TestCase(interval=Interval(np.float64(5.5), np.float64(10.5)), expected=True),
-        TestCase(interval=Interval(-np.inf, 0.0), expected=True),
-        TestCase(interval=Interval(0.0, np.inf), expected=True),
-        TestCase(interval=Interval(-np.inf, np.inf), expected=True),
-        TestCase(interval=Interval(1.0, 1.0), expected=False),
-        TestCase(interval=Interval(5.0, 5.0), expected=False),
-        TestCase(interval=Interval(5.0, 3.0), expected=False),
-        TestCase(interval=Interval(np.float32(2.0), np.float32(1.0)), expected=False),
+    test_cases = (
+        TestCase(
+            interval=Interval(0.0, 1.0),
+            expected=True,
+        ),
+        TestCase(
+            interval=Interval(1.0, 5.0),
+            expected=True,
+        ),
+        TestCase(
+            interval=Interval(-10.0, 10.0),
+            expected=True,
+        ),
+        TestCase(
+            interval=Interval(np.float32(0.0), np.float32(1.0)),
+            expected=True,
+        ),
+        TestCase(
+            interval=Interval(np.float64(5.5), np.float64(10.5)),
+            expected=True,
+        ),
+        TestCase(
+            interval=Interval(-np.inf, 0.0),
+            expected=True,
+        ),
+        TestCase(
+            interval=Interval(0.0, np.inf),
+            expected=True,
+        ),
+        TestCase(
+            interval=Interval(-np.inf, np.inf),
+            expected=True,
+        ),
+        TestCase(
+            interval=Interval(1.0, 1.0),
+            expected=False,
+        ),
+        TestCase(
+            interval=Interval(5.0, 5.0),
+            expected=False,
+        ),
+        TestCase(
+            interval=Interval(5.0, 3.0),
+            expected=False,
+        ),
+        TestCase(
+            interval=Interval(np.float32(2.0), np.float32(1.0)),
+            expected=False,
+        ),
         TestCase(
             interval=Interval(np.float64(10.0), np.float64(10.0)),
             expected=False,
         ),
-        TestCase(interval=Interval(np.inf, np.inf), expected=False),
-        TestCase(interval=Interval(np.inf, -np.inf), expected=False),
-        TestCase(interval=Interval(np.nan, 1.0), expected=False),
-        TestCase(interval=Interval(0.0, np.nan), expected=False),
-        TestCase(interval=Interval(np.nan, np.nan), expected=False),
-    ]
+        TestCase(
+            interval=Interval(np.inf, np.inf),
+            expected=False,
+        ),
+        TestCase(
+            interval=Interval(np.inf, -np.inf),
+            expected=False,
+        ),
+        TestCase(
+            interval=Interval(np.nan, 1.0),
+            expected=False,
+        ),
+        TestCase(
+            interval=Interval(0.0, np.nan),
+            expected=False,
+        ),
+        TestCase(
+            interval=Interval(np.nan, np.nan),
+            expected=False,
+        ),
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -65,11 +116,23 @@ class TestLength(BaseTestSuite):
         def label(self) -> str:
             return f"[{self.interval.left},{self.interval.right}]"
 
-    test_cases = [
-        TestCase(interval=Interval(0.0, 1.0), expected=1.0),
-        TestCase(interval=Interval(0.0, 5.0), expected=5.0),
-        TestCase(interval=Interval(2.0, 7.0), expected=5.0),
-        TestCase(interval=Interval(-5.0, 5.0), expected=10.0),
+    test_cases = (
+        TestCase(
+            interval=Interval(0.0, 1.0),
+            expected=1.0,
+        ),
+        TestCase(
+            interval=Interval(0.0, 5.0),
+            expected=5.0,
+        ),
+        TestCase(
+            interval=Interval(2.0, 7.0),
+            expected=5.0,
+        ),
+        TestCase(
+            interval=Interval(-5.0, 5.0),
+            expected=10.0,
+        ),
         TestCase(
             interval=Interval(np.float32(1.5), np.float32(3.5)),
             expected=np.float32(2.0),
@@ -78,17 +141,35 @@ class TestLength(BaseTestSuite):
             interval=Interval(np.float64(10.0), np.float64(15.0)),
             expected=np.float64(5.0),
         ),
-        TestCase(interval=Interval(-np.inf, 0.0), expected=np.inf),
-        TestCase(interval=Interval(0.0, np.inf), expected=np.inf),
-        TestCase(interval=Interval(-np.inf, np.inf), expected=np.inf),
-        TestCase(interval=Interval(1.0, 1.0), expected=0.0),
-        TestCase(interval=Interval(5.0, 3.0), expected=0.0),
+        TestCase(
+            interval=Interval(-np.inf, 0.0),
+            expected=np.inf,
+        ),
+        TestCase(
+            interval=Interval(0.0, np.inf),
+            expected=np.inf,
+        ),
+        TestCase(
+            interval=Interval(-np.inf, np.inf),
+            expected=np.inf,
+        ),
+        TestCase(
+            interval=Interval(1.0, 1.0),
+            expected=0.0,
+        ),
+        TestCase(
+            interval=Interval(5.0, 3.0),
+            expected=0.0,
+        ),
         TestCase(
             interval=Interval(np.float32(10.0), np.float32(5.0)),
             expected=np.float32(0.0),
         ),
-        TestCase(interval=Interval(np.inf, np.inf), expected=0.0),
-    ]
+        TestCase(
+            interval=Interval(np.inf, np.inf),
+            expected=0.0,
+        ),
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -112,13 +193,31 @@ class TestZero(BaseTestSuite):
             right_type = type(self.interval.right).__name__
             return f"{left_type}__{right_type}"
 
-    test_cases = [
-        TestCase(interval=Interval(True, True), expected=int),
-        TestCase(interval=Interval(1, 2), expected=int),
-        TestCase(interval=Interval(1.0, 2.0), expected=float),
-        TestCase(interval=Interval(np.int8(1), np.int8(2)), expected=np.int8),
-        TestCase(interval=Interval(np.int32(1), np.int32(2)), expected=np.int32),
-        TestCase(interval=Interval(np.int64(1), np.int64(2)), expected=np.int64),
+    test_cases = (
+        TestCase(
+            interval=Interval(True, True),
+            expected=int,
+        ),
+        TestCase(
+            interval=Interval(1, 2),
+            expected=int,
+        ),
+        TestCase(
+            interval=Interval(1.0, 2.0),
+            expected=float,
+        ),
+        TestCase(
+            interval=Interval(np.int8(1), np.int8(2)),
+            expected=np.int8,
+        ),
+        TestCase(
+            interval=Interval(np.int32(1), np.int32(2)),
+            expected=np.int32,
+        ),
+        TestCase(
+            interval=Interval(np.int64(1), np.int64(2)),
+            expected=np.int64,
+        ),
         TestCase(
             interval=Interval(np.float32(1.0), np.float32(2.0)),
             expected=np.float32,
@@ -133,12 +232,30 @@ class TestZero(BaseTestSuite):
         TestCase(interval=Interval(1.0, True), expected=float),
         TestCase(interval=Interval(1, 1.0), expected=float),
         TestCase(interval=Interval(1.0, 1), expected=float),
-        TestCase(interval=Interval(np.int8(1), np.int32(2)), expected=np.int32),
-        TestCase(interval=Interval(np.int32(1), np.int8(2)), expected=np.int32),
-        TestCase(interval=Interval(np.int8(1), np.int64(2)), expected=np.int64),
-        TestCase(interval=Interval(np.int64(1), np.int8(2)), expected=np.int64),
-        TestCase(interval=Interval(np.int32(1), np.int64(2)), expected=np.int64),
-        TestCase(interval=Interval(np.int64(1), np.int32(2)), expected=np.int64),
+        TestCase(
+            interval=Interval(np.int8(1), np.int32(2)),
+            expected=np.int32,
+        ),
+        TestCase(
+            interval=Interval(np.int32(1), np.int8(2)),
+            expected=np.int32,
+        ),
+        TestCase(
+            interval=Interval(np.int8(1), np.int64(2)),
+            expected=np.int64,
+        ),
+        TestCase(
+            interval=Interval(np.int64(1), np.int8(2)),
+            expected=np.int64,
+        ),
+        TestCase(
+            interval=Interval(np.int32(1), np.int64(2)),
+            expected=np.int64,
+        ),
+        TestCase(
+            interval=Interval(np.int64(1), np.int32(2)),
+            expected=np.int64,
+        ),
         TestCase(
             interval=Interval(np.float32(1.0), np.float64(2.0)),
             expected=np.float64,
@@ -147,31 +264,103 @@ class TestZero(BaseTestSuite):
             interval=Interval(np.float64(1.0), np.float32(2.0)),
             expected=np.float64,
         ),
-        TestCase(interval=Interval(1, np.int8(2)), expected=np.int8),
-        TestCase(interval=Interval(np.int8(1), 257), expected=np.int8),
-        TestCase(interval=Interval(1, np.int32(2)), expected=np.int32),
-        TestCase(interval=Interval(np.int32(1), 2), expected=np.int32),
-        TestCase(interval=Interval(1.0, np.float32(2.0)), expected=np.float32),
-        TestCase(interval=Interval(np.float32(1.0), 2.0), expected=np.float32),
-        TestCase(interval=Interval(1.0, np.float64(2.0)), expected=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), 2.0), expected=np.float64),
-        TestCase(interval=Interval(1, np.float32(2.0)), expected=np.float32),
-        TestCase(interval=Interval(np.float32(1.0), 2), expected=np.float32),
-        TestCase(interval=Interval(1, np.float64(2.0)), expected=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), 2), expected=np.float64),
-        TestCase(interval=Interval(np.int8(1), np.float32(2.0)), expected=np.float32),
-        TestCase(interval=Interval(np.float32(1.0), np.int8(2)), expected=np.float32),
-        TestCase(interval=Interval(np.int32(1), np.float32(2.0)), expected=np.float64),
-        TestCase(interval=Interval(np.float32(1.0), np.int32(2)), expected=np.float64),
-        TestCase(interval=Interval(np.int64(1), np.float32(2.0)), expected=np.float64),
-        TestCase(interval=Interval(np.float32(1.0), np.int64(2)), expected=np.float64),
-        TestCase(interval=Interval(np.int8(1), np.float64(2.0)), expected=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), np.int8(2)), expected=np.float64),
-        TestCase(interval=Interval(np.int32(1), np.float64(2.0)), expected=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), np.int32(2)), expected=np.float64),
-        TestCase(interval=Interval(np.int64(1), np.float64(2.0)), expected=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), np.int64(2)), expected=np.float64),
-    ]
+        TestCase(
+            interval=Interval(1, np.int8(2)),
+            expected=np.int8,
+        ),
+        TestCase(
+            interval=Interval(np.int8(1), 257),
+            expected=np.int8,
+        ),
+        TestCase(
+            interval=Interval(1, np.int32(2)),
+            expected=np.int32,
+        ),
+        TestCase(
+            interval=Interval(np.int32(1), 2),
+            expected=np.int32,
+        ),
+        TestCase(
+            interval=Interval(1.0, np.float32(2.0)),
+            expected=np.float32,
+        ),
+        TestCase(
+            interval=Interval(np.float32(1.0), 2.0),
+            expected=np.float32,
+        ),
+        TestCase(
+            interval=Interval(1.0, np.float64(2.0)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.float64(1.0), 2.0),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(1, np.float32(2.0)),
+            expected=np.float32,
+        ),
+        TestCase(
+            interval=Interval(np.float32(1.0), 2),
+            expected=np.float32,
+        ),
+        TestCase(
+            interval=Interval(1, np.float64(2.0)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.float64(1.0), 2),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.int8(1), np.float32(2.0)),
+            expected=np.float32,
+        ),
+        TestCase(
+            interval=Interval(np.float32(1.0), np.int8(2)),
+            expected=np.float32,
+        ),
+        TestCase(
+            interval=Interval(np.int32(1), np.float32(2.0)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.float32(1.0), np.int32(2)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.int64(1), np.float32(2.0)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.float32(1.0), np.int64(2)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.int8(1), np.float64(2.0)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.float64(1.0), np.int8(2)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.int32(1), np.float64(2.0)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.float64(1.0), np.int32(2)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.int64(1), np.float64(2.0)),
+            expected=np.float64,
+        ),
+        TestCase(
+            interval=Interval(np.float64(1.0), np.int64(2)),
+            expected=np.float64,
+        ),
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -194,7 +383,7 @@ class TestMidpoint(BaseTestSuite):
         def label(self) -> str:
             return f"[{self.interval.left},{self.interval.right}]"
 
-    test_cases = [
+    test_cases = (
         TestCase(interval=Interval(0.0, 2.0), expected=1.0),
         TestCase(interval=Interval(1.0, 5.0), expected=3.0),
         TestCase(interval=Interval(-10.0, 10.0), expected=0.0),
@@ -212,11 +401,14 @@ class TestMidpoint(BaseTestSuite):
         TestCase(interval=Interval(-np.inf, np.inf), expected=np.nan),
         TestCase(interval=Interval(1.0, 1.0), expected=None),
         TestCase(interval=Interval(5.0, 3.0), expected=None),
-        TestCase(interval=Interval(np.float32(10.0), np.float32(5.0)), expected=None),
+        TestCase(
+            interval=Interval(np.float32(10.0), np.float32(5.0)),
+            expected=None,
+        ),
         TestCase(interval=Interval(np.inf, np.inf), expected=None),
         TestCase(interval=Interval(np.nan, 1.0), expected=None),
         TestCase(interval=Interval(0.0, np.nan), expected=None),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -249,7 +441,7 @@ class TestIntersection(BaseTestSuite):
             )
             return f"[{self.interval1.left},{self.interval1.right}]_{interval2_str}{error_suffix}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             interval1=Interval(1.0, 5.0),
             interval2=Interval(3.0, 7.0),
@@ -316,7 +508,7 @@ class TestIntersection(BaseTestSuite):
             expected=TypeError,
             match="Expected Interval",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -324,7 +516,7 @@ class TestIntersection(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_intersection(self, test_case: TestCase) -> None:
-        other = test_case.interval2 if isinstance(test_case.interval2, Interval) else test_case.interval2
+        other = test_case.interval2
 
         if not expect_error(
             test_case.interval1.intersection,
@@ -348,7 +540,7 @@ class TestContains(BaseTestSuite):
         def label(self) -> str:
             return f"[{self.interval1.left},{self.interval1.right}]_contains_[{self.interval2.left},{self.interval2.right}]_{self.expected}"
 
-    test_cases = [
+    test_cases = (
         TestCase(
             interval1=Interval(0.0, 10.0),
             interval2=Interval(2.0, 8.0),
@@ -429,7 +621,7 @@ class TestContains(BaseTestSuite):
             interval2=Interval(np.float32(3.0), np.float32(5.0)),
             expected=False,
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -449,7 +641,7 @@ class TestFloat(BaseTestSuite):
         def label(self) -> str:
             return f"left_{type(self.expected.left).__name__}_right_{type(self.expected.right).__name__}"
 
-    test_cases = [
+    test_cases = (
         TestCase(expected=Interval(np.float32(1.5), np.float32(3.5))),
         TestCase(expected=Interval(np.float64(2.0), np.float64(8.0))),
         TestCase(expected=Interval(np.float32(-5.0), np.float32(5.0))),
@@ -457,7 +649,7 @@ class TestFloat(BaseTestSuite):
         TestCase(expected=Interval(np.float64(10.5), np.float64(20.5))),
         TestCase(expected=Interval(-np.inf, np.inf)),
         TestCase(expected=Interval(np.float32(-np.inf), np.float32(5.0))),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -498,15 +690,27 @@ class TestFromEdges(BaseTestSuite):
             dtype_name = self.edges.dtype.name if isinstance(self.edges, np.ndarray) else type(self.edges).__name__
             return f"dtype_{dtype_name}_len_{len(self.edges)}{error_suffix}"
 
-    test_cases = [
-        TestCase(edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), expected=2),
-        TestCase(edges=np.array([0.0, 2.0, 5.0, 10.0], dtype=np.float64), expected=3),
+    test_cases = (
+        TestCase(
+            edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            expected=2,
+        ),
+        TestCase(
+            edges=np.array([0.0, 2.0, 5.0, 10.0], dtype=np.float64),
+            expected=3,
+        ),
         TestCase(
             edges=np.array([1.0, 3.0, 7.0, 15.0, 31.0], dtype=np.float32),
             expected=4,
         ),
-        TestCase(edges=np.array([-10.0, 0.0, 10.0], dtype=np.float64), expected=2),
-        TestCase(edges=np.array([0.0, 1.0], dtype=np.float32), expected=1),
+        TestCase(
+            edges=np.array([-10.0, 0.0, 10.0], dtype=np.float64),
+            expected=2,
+        ),
+        TestCase(
+            edges=np.array([0.0, 1.0], dtype=np.float32),
+            expected=1,
+        ),
         TestCase(
             edges=[0.0, 1.0, 2.0],
             expected=TypeError,
@@ -537,7 +741,7 @@ class TestFromEdges(BaseTestSuite):
             expected=ValueError,
             match="strictly increasing",
         ),
-    ]
+    )
 
     @pytest.mark.parametrize(
         "test_case",

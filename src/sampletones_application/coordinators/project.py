@@ -31,7 +31,6 @@ from sampletones_application.utils.file_dialogs.api import (
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_core.paths import EXT_FILE_PROJECT
 from sampletones_core.trackers.backend import TrackerBackend
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.scope import ExportScope
@@ -45,6 +44,7 @@ from sampletones_shared.exceptions import (
     SerializationError,
 )
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
 from sampletones_shared.types.callback import Callback, VoidCallback
 from sampletones_shared.utils.system.paths import get_directory, get_filename
 

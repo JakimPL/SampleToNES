@@ -19,28 +19,80 @@ class TestComposeTag(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         parts: Tuple[Any, ...]
 
-    test_cases = [
-        TestCase(label="single_part", parts=("plot",), expected="plot"),
-        TestCase(label="two_parts", parts=("handler", "mouse"), expected="handler.mouse"),
-        TestCase(label="four_parts", parts=("a", "b", "c", "d"), expected="a.b.c.d"),
-        TestCase(label="uppercase_lowers", parts=("Pulse", "Duty"), expected="pulse.duty"),
-        TestCase(label="space_becomes_underscore", parts=("my layer",), expected="my_layer"),
-        TestCase(label="whitespace_run_collapses", parts=("my   layer",), expected="my_layer"),
-        TestCase(label="surrounding_whitespace_strips", parts=("  layer  ",), expected="layer"),
+    test_cases = (
+        TestCase(
+            label="single_part",
+            parts=("plot",),
+            expected="plot",
+        ),
+        TestCase(
+            label="two_parts",
+            parts=("handler", "mouse"),
+            expected="handler.mouse",
+        ),
+        TestCase(
+            label="four_parts",
+            parts=("a", "b", "c", "d"),
+            expected="a.b.c.d",
+        ),
+        TestCase(
+            label="uppercase_lowers",
+            parts=("Pulse", "Duty"),
+            expected="pulse.duty",
+        ),
+        TestCase(
+            label="space_becomes_underscore",
+            parts=("my layer",),
+            expected="my_layer",
+        ),
+        TestCase(
+            label="whitespace_run_collapses",
+            parts=("my   layer",),
+            expected="my_layer",
+        ),
+        TestCase(
+            label="surrounding_whitespace_strips",
+            parts=("  layer  ",),
+            expected="layer",
+        ),
         TestCase(label="tab_and_newline_normalize", parts=("a\tb\nc",), expected="a_b_c"),
         TestCase(
             label="composed_base_contributes_its_segments",
             parts=("global.graph.y_axis", "theme"),
             expected="global.graph.y_axis.theme",
         ),
-        TestCase(label="str_enum_member_serves_as_part", parts=(_Layer.PULSE_ONE, "graph"), expected="pulse_1.graph"),
-        TestCase(label="digits_survive", parts=("layer", "12"), expected="layer.12"),
-        TestCase(label="no_part_raises", parts=(), expected=ValueError),
-        TestCase(label="empty_part_raises", parts=("base", ""), expected=ValueError),
-        TestCase(label="whitespace_only_part_raises", parts=("base", "   "), expected=ValueError),
-    ]
+        TestCase(
+            label="str_enum_member_serves_as_part",
+            parts=(_Layer.PULSE_ONE, "graph"),
+            expected="pulse_1.graph",
+        ),
+        TestCase(
+            label="digits_survive",
+            parts=("layer", "12"),
+            expected="layer.12",
+        ),
+        TestCase(
+            label="no_part_raises",
+            parts=(),
+            expected=ValueError,
+        ),
+        TestCase(
+            label="empty_part_raises",
+            parts=("base", ""),
+            expected=ValueError,
+        ),
+        TestCase(
+            label="whitespace_only_part_raises",
+            parts=("base", "   "),
+            expected=ValueError,
+        ),
+    )
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_compose_tag(self, test_case: TestCase) -> None:
         if not expect_error(compose_tag, test_case.expected, *test_case.parts):
             assert compose_tag(*test_case.parts) == test_case.expected

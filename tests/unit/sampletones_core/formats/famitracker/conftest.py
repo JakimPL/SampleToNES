@@ -26,7 +26,9 @@ from sampletones_core.structures import IdentifiedCollection
 RECONSTRUCTION_LENGTH = 8
 
 
-def build_reconstruction(instructions: Mapping[GeneratorName, Sequence[Instruction]]) -> Reconstruction:
+def build_reconstruction(
+    instructions: Mapping[GeneratorName, Sequence[Instruction]],
+) -> Reconstruction:
     approximations = {generator: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for generator in instructions}
     return Reconstruction.create(
         approximation=np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32),
@@ -43,12 +45,19 @@ def pulse_sample(name: str, pitch: int, *, loop: bool = False) -> Sample:
         PulseInstruction(on=True, pitch=pitch, volume=15, duty_cycle=0),
         PulseInstruction(on=True, pitch=pitch, volume=8, duty_cycle=0),
     ]
-    return Sample(name=name, reconstruction=build_reconstruction({GeneratorName.PULSE1: instructions}), loop=loop)
+    return Sample(
+        name=name,
+        reconstruction=build_reconstruction({GeneratorName.PULSE1: instructions}),
+        loop=loop,
+    )
 
 
 def noise_sample(name: str, period: int) -> Sample:
     instructions = [NoiseInstruction(on=True, period=period, volume=15, short=False)]
-    return Sample(name=name, reconstruction=build_reconstruction({GeneratorName.NOISE: instructions}))
+    return Sample(
+        name=name,
+        reconstruction=build_reconstruction({GeneratorName.NOISE: instructions}),
+    )
 
 
 def dual_generator_sample(name: str, pulse_pitch: int, triangle_pitch: int) -> Sample:
@@ -81,14 +90,18 @@ def project_fixture() -> ProjectFixture:
 
     pulse_rows: List[Row] = [Row() for _ in range(8)]
     pulse_rows[0] = Row(
-        command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE1), transpose=0, volume=10
+        command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE1),
+        transpose=0,
+        volume=10,
     )
     pulse_rows[2] = Row(command=NoteOff())
     pulse_rows[4] = Row(volume=5)
 
     noise_rows: List[Row] = [Row() for _ in range(8)]
     noise_rows[0] = Row(
-        command=Instrument(sample_id=drum.id, generator_name=GeneratorName.NOISE), transpose=0, volume=15
+        command=Instrument(sample_id=drum.id, generator_name=GeneratorName.NOISE),
+        transpose=0,
+        volume=15,
     )
 
     channels = {

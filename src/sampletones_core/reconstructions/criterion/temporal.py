@@ -1,5 +1,7 @@
 from sampletones_shared.array import xp
 
+from .alignment import align_candidates
+
 
 def calculate_temporal_loss(
     audio: xp.ndarray,
@@ -27,16 +29,7 @@ def calculate_temporal_loss(
         ValueError: If the target has more than one dimension.
         ValueError: If the candidate width departs from the target length.
     """
-    reference = xp.asarray(audio)
-    candidates = xp.asarray(approximation)
-
-    if reference.ndim != 1:
-        raise ValueError("reference must be 1D")
-
-    if candidates.ndim == 1:
-        candidates = candidates[None, :]
-    elif candidates.shape[1] != reference.shape[0]:
-        raise ValueError(f"candidate width {candidates.shape[1]} does not match reference length {reference.shape[0]}")
+    reference, candidates = align_candidates(audio, approximation)
 
     rmse = xp.sqrt(xp.mean(xp.square(candidates - reference), axis=-1))
     level = xp.sqrt(xp.mean(xp.square(reference)))

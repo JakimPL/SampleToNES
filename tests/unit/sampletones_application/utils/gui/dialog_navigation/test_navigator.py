@@ -6,26 +6,23 @@ from sampletones_application.utils.gui.dialog_navigation.navigator import (
 )
 from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
-from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS, SHIFT
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from tests.suite.shortcuts import shipped_scheme, shipped_source
 
 MODULE = "sampletones_application.utils.gui.dialog_navigation.navigator"
-
-KEY_TAB = 1
-KEY_RETURN = 2
-KEY_ESCAPE = 3
 
 
 def _dpg(*, exists: bool = True) -> MagicMock:
     dpg = MagicMock()
-    dpg.mvKey_Tab = KEY_TAB
-    dpg.mvKey_Return = KEY_RETURN
-    dpg.mvKey_Escape = KEY_ESCAPE
     dpg.does_item_exist.return_value = exists
     return dpg
 
 
-def _event(key: int, *, shift: bool = False) -> KeyEvent:
-    return KeyEvent(key=key, modifiers=SHIFT if shift else NO_MODIFIERS)
+def _press(shortcut_id: ShortcutId) -> KeyEvent:
+    """The press the shipped scheme gives a dialog action."""
+    combination = shipped_scheme().shortcut(shortcut_id).combination
+    assert combination is not None
+    return KeyEvent(key=combination.key, modifiers=combination.modifiers)
 
 
 def _stops() -> List[FocusStop]:
@@ -38,48 +35,62 @@ def _navigator(*, on_escape: MagicMock, router: KeyRouter) -> DialogKeyboardNavi
         stops=_stops(),
         on_escape=on_escape,
         key_router=router,
+        shortcut_source=shipped_source(),
         initial_index=0,
     )
 
 
 class TestKeyDispatch:
-    def test_tab_cycles_the_ring_forward(self) -> None:
+    def test_the_next_control_action_cycles_the_ring_forward(self) -> None:
         navigator = _navigator(on_escape=MagicMock(), router=KeyRouter())
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg()):
-            navigator.handle_key(_event(KEY_TAB))
+            navigator.handle_key(_press(ShortcutId.DIALOG_NEXT_CONTROL))
 
         navigator._ring.cycle.assert_called_once_with(1)
 
-    def test_shift_tab_cycles_the_ring_backward(self) -> None:
+    def test_the_previous_control_action_cycles_the_ring_backward(self) -> None:
         navigator = _navigator(on_escape=MagicMock(), router=KeyRouter())
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg()):
-            navigator.handle_key(_event(KEY_TAB, shift=True))
+            navigator.handle_key(_press(ShortcutId.DIALOG_PREVIOUS_CONTROL))
 
         navigator._ring.cycle.assert_called_once_with(-1)
 
-    def test_enter_activates_the_focused_stop(self) -> None:
+    def test_the_activate_action_activates_the_focused_stop(self) -> None:
         navigator = _navigator(on_escape=MagicMock(), router=KeyRouter())
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg()):
-            navigator.handle_key(_event(KEY_RETURN))
+            navigator.handle_key(_press(ShortcutId.DIALOG_ACTIVATE))
 
         navigator._ring.activate_focused.assert_called_once_with()
 
-    def test_escape_runs_the_cancel_action(self) -> None:
+    def test_the_cancel_action_runs_the_cancel_callback(self) -> None:
         on_escape = MagicMock()
         navigator = _navigator(on_escape=on_escape, router=KeyRouter())
         navigator._ring = MagicMock()
 
         with patch(f"{MODULE}.dpg", _dpg()):
-            navigator.handle_key(_event(KEY_ESCAPE))
+            navigator.handle_key(_press(ShortcutId.DIALOG_CANCEL))
 
         on_escape.assert_called_once_with()
         navigator._ring.cycle.assert_not_called()
+
+    def test_a_press_the_dialog_leaves_unnamed_reaches_the_ring_not_at_all(self) -> None:
+        """A dialog answers its own four actions, so a project shortcut passes the ring by."""
+        on_escape = MagicMock()
+        navigator = _navigator(on_escape=on_escape, router=KeyRouter())
+        navigator._ring = MagicMock()
+
+        with patch(f"{MODULE}.dpg", _dpg()):
+            navigator.handle_key(_press(ShortcutId.SAVE_PROJECT))
+
+        on_escape.assert_not_called()
+        navigator._ring.cycle.assert_not_called()
+        navigator._ring.activate_focused.assert_not_called()
 
     def test_key_on_a_closed_dialog_disposes(self) -> None:
         router = KeyRouter()
@@ -88,7 +99,7 @@ class TestKeyDispatch:
         router.push_modal(navigator)
 
         with patch(f"{MODULE}.dpg", _dpg(exists=False)):
-            navigator.handle_key(_event(KEY_ESCAPE))
+            navigator.handle_key(_press(ShortcutId.DIALOG_CANCEL))
 
         assert not router.is_modal_open
         navigator._ring.activate_focused.assert_not_called()

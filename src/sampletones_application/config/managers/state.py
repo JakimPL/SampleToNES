@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.session.state.state import ApplicationState
-from sampletones_application.paths import APPLICATION_STATE_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import get_directory, to_path
@@ -11,25 +10,24 @@ from sampletones_shared.utils.validation import flatten_location, validate_with_
 
 
 class ApplicationStateManager:
-    def __init__(self) -> None:
+    def __init__(self, path: Path) -> None:
+        self.path: Path = path
         self.state: ApplicationState = self._load()
 
     def _load(self) -> ApplicationState:
-        if not APPLICATION_STATE_PATH.exists():
+        if not self.path.exists():
             return ApplicationState()
 
-        raw = load_yaml(to_path(APPLICATION_STATE_PATH))
+        raw = load_yaml(to_path(self.path))
         if not raw or not isinstance(raw, dict):
-            logger.warning(
-                f"Application state file '{APPLICATION_STATE_PATH}' is empty or invalid." " Loading default state."
-            )
+            logger.warning(f"Application state file '{self.path}' is empty or invalid. Loading default state.")
             return ApplicationState()
 
         recovered = validate_with_recovery(ApplicationState, raw)
         if recovered.dropped:
             properties = ", ".join(flatten_location(location) for location in recovered.dropped)
             logger.warning(
-                f"Application state file '{APPLICATION_STATE_PATH}' had incompatible settings"
+                f"Application state file '{self.path}' had incompatible settings"
                 f" that were reset to defaults: {properties}"
             )
 
@@ -37,15 +35,15 @@ class ApplicationStateManager:
 
     def save(self) -> None:
         try:
-            APPLICATION_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            self.path.parent.mkdir(parents=True, exist_ok=True)
             save_yaml_atomic(
-                APPLICATION_STATE_PATH,
+                self.path,
                 self.state.model_dump(mode="json"),
             )
         except OSError as exception:
             logger.error_with_traceback(
                 exception,
-                f"File error while saving application state to {APPLICATION_STATE_PATH}",
+                f"File error while saving application state to {self.path}",
             )
 
     def set_window_state(
@@ -95,6 +93,27 @@ class ApplicationStateManager:
 
     def set_card_collapsed(self, card_tag: str, collapsed: bool) -> None:
         self.state.collapsed_cards[card_tag] = collapsed
+
+    def is_favorites_filter_active(self, panel_tag: str) -> bool:
+        return self.state.favorites_filters.get(panel_tag, False)
+
+    def set_favorites_filter_active(self, panel_tag: str, active: bool) -> None:
+        self.state.favorites_filters[panel_tag] = active
+
+    def expanded_rows(self, panel_tag: str) -> Set[str]:
+        return set(self.state.expanded_rows.get(panel_tag, ()))
+
+    def set_expanded_rows(self, panel_tag: str, rows: Set[str]) -> None:
+        """Writes the rows a browser stands open, in a settled order so the file reads the same twice."""
+        self.state.expanded_rows[panel_tag] = sorted(rows)
+
+    @property
+    def expanded_directories(self) -> Set[Path]:
+        return set(self.state.expanded_directories)
+
+    def set_expanded_directories(self, directories: Set[Path]) -> None:
+        """Writes the folders the explorer stands open, in a settled order for a file read twice."""
+        self.state.expanded_directories = sorted(directories)
 
     def load_current_tab(self) -> Tab:
         return self.state.current.tab

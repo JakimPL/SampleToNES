@@ -1,27 +1,60 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Final
+from typing import Dict, Final, List
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.playback import FollowMode
+from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
-from sampletones_application.logic.history.snapshot import HistoryEntry, snapshot_project
+from sampletones_application.logic.history.snapshot import HistoryEntry
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.sequencer.channels import ALL_CHANNELS, SequencerChannelsLogic
+from sampletones_application.logic.sequencer.channels import (
+    ALL_CHANNELS,
+    SequencerChannelsLogic,
+)
+from sampletones_application.logic.sequencer.clipboard import (
+    OrderBlockText,
+    ParsedBlockCache,
+    ProjectSampleDirectory,
+    SequencerClipboard,
+    TrackerBlockText,
+)
+from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
+from sampletones_application.logic.sequencer.order import (
+    OrderBlockReader,
+    OrderBlockWriter,
+    SequencerOrderLogic,
+)
+from sampletones_application.logic.sequencer.tracker import (
+    SequencerTrackerLogic,
+    TrackerBlockReader,
+    TrackerBlockWriter,
+)
+from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.panels.sequencer import channels as channels_module
-from sampletones_application.ui.panels.sequencer import grid as grid_module
-from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
+from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
+from sampletones_application.view_model.sequencer.region import (
+    OrderCell,
+    OrderRegion,
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.samples import SampleSelection
+from sampletones_application.view_model.sequencer.slot import TrackerSlot
+from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -29,6 +62,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.exceptions import InvalidReconstructionValuesError
 from tests.suite.language import FakeLanguageManager
 
@@ -57,8 +91,8 @@ def coordinator() -> SequencerTabCoordinator:
     instance._project_controller.has_samples = True
     instance._sequencer_browser_logic = MagicMock()
     instance._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
-    instance._sequencer_grid_logic = MagicMock()
-    instance._sequencer_grid_logic.settings.nes_frequency = 60
+    instance._sequencer_tracker_logic = MagicMock()
+    instance._sequencer_tracker_logic.settings.nes_frequency = 60
     instance._dialogs = MagicMock()
     instance._on_tab_switch = MagicMock()
     instance._language_manager = FakeLanguageManager(TEXTS)
@@ -135,8 +169,8 @@ def nes_frequency_coordinator() -> SequencerTabCoordinator:
     instance = object.__new__(SequencerTabCoordinator)
     instance._history = MagicMock()
     instance._history_detail = MagicMock()
-    instance._sequencer_grid_logic = MagicMock()
-    instance._sequencer_grid_logic.settings.nes_frequency = 60
+    instance._sequencer_tracker_logic = MagicMock()
+    instance._sequencer_tracker_logic.settings.nes_frequency = 60
     instance._project_controller = MagicMock()
     instance._project_controller.has_samples = True
     instance._dialogs = MagicMock()
@@ -153,7 +187,7 @@ class TestRequestNesFrequencyChange:
     ) -> None:
         nes_frequency_coordinator._request_nes_frequency_change(60)
 
-        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_not_called()
         nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_applies_without_confirmation_when_no_samples(
@@ -164,7 +198,7 @@ class TestRequestNesFrequencyChange:
 
         nes_frequency_coordinator._request_nes_frequency_change(30)
 
-        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(30)
+        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_called_once_with(30)
         nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_applies_without_confirmation_once_acknowledged(
@@ -175,7 +209,7 @@ class TestRequestNesFrequencyChange:
 
         nes_frequency_coordinator._request_nes_frequency_change(30)
 
-        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(30)
+        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_called_once_with(30)
         nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_prompts_before_applying_when_samples_exist(
@@ -185,11 +219,11 @@ class TestRequestNesFrequencyChange:
         nes_frequency_coordinator._request_nes_frequency_change(30)
 
         nes_frequency_coordinator._dialogs.show_confirmation.assert_called_once()
-        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_not_called()
 
         confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
         confirmation["on_confirm"]()
-        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(30)
+        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_called_once_with(30)
 
     def test_applying_requests_a_retune_of_the_samples(
         self,
@@ -222,7 +256,28 @@ class TestRequestNesFrequencyChange:
         confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
         confirmation["on_cancel"]()
 
-        nes_frequency_coordinator._sequencer_grid_logic.push_settings.assert_called_once()
+        nes_frequency_coordinator._sequencer_tracker_logic.push_settings.assert_called_once()
+
+
+SOUNDING_ROW: Final[int] = 7
+
+
+def _playhead(frame_index: int, row_index: int) -> SongPosition:
+    """The playhead standing on a row of an order frame."""
+    return SongPosition(order_position=frame_index, row_index=row_index)
+
+
+def _player_view(*, follow_mode: FollowMode) -> SongPlayerViewModel:
+    """A stopped transport view, which is what the coordinator reads the follow behaviour from."""
+    return SongPlayerViewModel(
+        is_loaded=True,
+        is_playing=False,
+        is_paused=False,
+        follow_mode=follow_mode,
+        order_position=0,
+        row_index=0,
+        error=None,
+    )
 
 
 @pytest.fixture
@@ -230,78 +285,88 @@ def playback_coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the collaborators the follow-playback handlers touch."""
     instance = object.__new__(SequencerTabCoordinator)
     instance._song_player_logic = MagicMock()
-    instance._sequencer_grid_logic = MagicMock()
-    instance._sequencer_grid_panel = MagicMock()
+    instance._sequencer_tracker_logic = MagicMock()
+    instance._sequencer_tracker_panel = MagicMock()
     instance._sequencer_order_panel = MagicMock()
+    instance._playing_position = None
     return instance
 
 
-class TestFollowPlayback:
-    def test_position_change_follows_playhead_when_enabled(
+class TestFollowMode:
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_sounding_frame_is_shown_while_the_mode_follows_patterns(
         self,
         playback_coordinator: SequencerTabCoordinator,
+        mode: FollowMode,
     ) -> None:
-        playback_coordinator._song_player_logic.follow_playback = True
+        """The marks move on every mode; only a following mode moves the frame that is edited."""
+        playback_coordinator._song_player_logic.follow_mode = mode
 
         playback_coordinator._on_player_position_changed(2, 5)
 
-        playback_coordinator._sequencer_grid_panel.set_playing_row.assert_called_once_with(5)
+        panel = playback_coordinator._sequencer_tracker_panel
+        panel.set_playing_position.assert_called_once_with(_playhead(2, 5))
         playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(2)
-        playback_coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(2)
+        assert playback_coordinator._sequencer_tracker_logic.select_frame.called is mode.follows_pattern
 
-    def test_position_change_does_not_move_edited_frame_when_disabled(
+    def test_the_frame_is_selected_before_the_row_is_marked(
         self,
         playback_coordinator: SequencerTabCoordinator,
     ) -> None:
-        playback_coordinator._song_player_logic.follow_playback = False
+        """The mark and the scroll that reveals it land on the pattern the playhead has reached."""
+        playback_coordinator._song_player_logic.follow_mode = FollowMode.ROWS
+        recorder = MagicMock()
+        recorder.attach_mock(playback_coordinator._sequencer_tracker_logic, "logic")
+        recorder.attach_mock(playback_coordinator._sequencer_tracker_panel, "panel")
 
         playback_coordinator._on_player_position_changed(2, 5)
 
-        playback_coordinator._sequencer_grid_panel.set_playing_row.assert_called_once_with(5)
-        playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(2)
-        playback_coordinator._sequencer_grid_logic.select_frame.assert_not_called()
+        names = [name for name, _, _ in recorder.mock_calls]
+        assert names.index("logic.select_frame") < names.index("panel.set_playing_position")
 
-    def test_order_selection_seeks_playhead_when_following(
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_the_view_states_whether_the_grid_follows_the_row(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+        mode: FollowMode,
+    ) -> None:
+        playback_coordinator._on_player_view_changed(_player_view(follow_mode=mode))
+
+        panel = playback_coordinator._sequencer_tracker_panel
+        panel.set_row_following.assert_called_once_with(mode.follows_row)
+
+    def test_a_stopped_view_drops_the_marks(
         self,
         playback_coordinator: SequencerTabCoordinator,
     ) -> None:
-        playback_coordinator._song_player_logic.follow_playback = True
+        playback_coordinator._on_player_view_changed(_player_view(follow_mode=FollowMode.ROWS))
+
+        playback_coordinator._sequencer_tracker_panel.set_playing_position.assert_called_once_with(None)
+        playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(None)
+
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_order_selection_seeks_the_playhead_while_following(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+        mode: FollowMode,
+    ) -> None:
+        """Choosing a frame always picks what is edited, and moves the playhead when following."""
+        playback_coordinator._song_player_logic.follow_mode = mode
 
         playback_coordinator._on_order_frame_selected(3)
 
-        playback_coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(3)
-        playback_coordinator._song_player_logic.seek.assert_called_once_with(3)
+        playback_coordinator._sequencer_tracker_logic.select_frame.assert_called_once_with(3)
+        assert playback_coordinator._song_player_logic.seek.called is mode.follows_pattern
 
-    def test_order_selection_only_edits_when_not_following(
+    @pytest.mark.parametrize("mode", list(FollowMode), ids=str)
+    def test_a_chosen_mode_reaches_the_player(
         self,
         playback_coordinator: SequencerTabCoordinator,
+        mode: FollowMode,
     ) -> None:
-        playback_coordinator._song_player_logic.follow_playback = False
+        playback_coordinator.set_follow_mode(mode)
 
-        playback_coordinator._on_order_frame_selected(3)
-
-        playback_coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(3)
-        playback_coordinator._song_player_logic.seek.assert_not_called()
-
-
-class TestNoteOffDispatch:
-    def test_channel_cell_writes_note_off_to_that_channel(
-        self,
-        playback_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        playback_coordinator._on_set_note_off(2, GeneratorName.PULSE1)
-
-        playback_coordinator._sequencer_grid_logic.set_note_off.assert_called_once_with(GeneratorName.PULSE1, 2)
-        playback_coordinator._sequencer_grid_logic.set_note_off_all_generators.assert_not_called()
-
-    def test_sample_column_cuts_every_channel(
-        self,
-        playback_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        playback_coordinator._on_set_note_off(2, None)
-
-        playback_coordinator._sequencer_grid_logic.set_note_off_all_generators.assert_called_once_with(2)
-        playback_coordinator._sequencer_grid_logic.set_note_off.assert_not_called()
+        playback_coordinator._song_player_logic.set_follow_mode.assert_called_once_with(mode)
 
 
 @pytest.fixture
@@ -309,11 +374,12 @@ def order_ops_coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the collaborators the order-frame handlers touch."""
     instance = object.__new__(SequencerTabCoordinator)
     instance._sequencer_order_logic = MagicMock()
-    instance._sequencer_grid_logic = MagicMock()
+    instance._sequencer_tracker_logic = MagicMock()
     instance._sequencer_order_panel = MagicMock()
+    instance._sequencer_tracker_panel = MagicMock()
     instance._song_player_logic = MagicMock()
     instance._project_controller = MagicMock()
-    instance._playing_order = None
+    instance._playing_position = None
     return instance
 
 
@@ -334,7 +400,7 @@ class TestOrderFrameOperations:
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 3
+        coordinator._playing_position = _playhead(3, SOUNDING_ROW)
         coordinator._project_controller.order_length = 5
 
         coordinator._on_order_remove(1)
@@ -347,7 +413,7 @@ class TestOrderFrameOperations:
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = None
+        coordinator._playing_position = None
         coordinator._project_controller.order_length = 5
 
         coordinator._on_order_remove(1)
@@ -359,7 +425,7 @@ class TestOrderFrameOperations:
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 2
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
         coordinator._song_player_logic.is_playing.return_value = True
 
         coordinator._on_order_duplicate(0)
@@ -372,7 +438,7 @@ class TestOrderFrameOperations:
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 2
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
         coordinator._song_player_logic.is_playing.return_value = True
 
         coordinator._on_order_move(2, 5)
@@ -387,20 +453,34 @@ class TestOrderFrameOperations:
         # The cursor and playing highlight must advance on the keypress, not on the next row
         # update, so a rapid second Alt+arrow acts on the moved frame rather than snapping back.
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 2
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
         coordinator._song_player_logic.is_playing.return_value = True
 
         coordinator._on_order_move(2, 3)
 
-        coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(3)
+        coordinator._sequencer_tracker_logic.select_frame.assert_called_once_with(3)
         coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(3)
+
+    def test_move_carries_the_sounding_row_to_the_frame_it_lands_on(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """The tracker's mark belongs to a frame, so an edit that moves the frame moves the mark."""
+        coordinator = order_ops_coordinator
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
+        coordinator._song_player_logic.is_playing.return_value = True
+
+        coordinator._on_order_move(2, 5)
+
+        panel = coordinator._sequencer_tracker_panel
+        panel.set_playing_position.assert_called_once_with(_playhead(5, SOUNDING_ROW))
 
     def test_clear_leaves_the_playhead_in_place(
         self,
         order_ops_coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator = order_ops_coordinator
-        coordinator._playing_order = 2
+        coordinator._playing_position = _playhead(2, SOUNDING_ROW)
 
         coordinator._on_order_clear(2)
 
@@ -481,13 +561,13 @@ class TestImportFrequencyCheck:
         self,
         coordinator: SequencerTabCoordinator,
     ) -> None:
-        coordinator._sequencer_grid_logic.settings.nes_frequency = 60
+        coordinator._sequencer_tracker_logic.settings.nes_frequency = 60
         coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
 
         coordinator.import_reconstruction(Path("reconstruction.stn"))
 
         coordinator._dialogs.show_confirmation.assert_not_called()
-        coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        coordinator._sequencer_tracker_logic.set_nes_frequency.assert_not_called()
         coordinator._sequencer_browser_logic.add_reconstruction.assert_called_once()
 
     def test_empty_project_adopts_reconstruction_frequency_silently(
@@ -495,12 +575,12 @@ class TestImportFrequencyCheck:
         coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator._project_controller.has_samples = False
-        coordinator._sequencer_grid_logic.settings.nes_frequency = 60
+        coordinator._sequencer_tracker_logic.settings.nes_frequency = 60
         coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
 
         coordinator.import_reconstruction(Path("reconstruction.stn"))
 
-        coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(50)
+        coordinator._sequencer_tracker_logic.set_nes_frequency.assert_called_once_with(50)
         coordinator._sequencer_browser_logic.add_reconstruction.assert_called_once()
         coordinator._dialogs.show_confirmation.assert_not_called()
         coordinator._on_tab_switch.assert_called_once_with(Tab.SEQUENCER)
@@ -510,13 +590,13 @@ class TestImportFrequencyCheck:
         coordinator: SequencerTabCoordinator,
     ) -> None:
         coordinator._project_controller.has_samples = True
-        coordinator._sequencer_grid_logic.settings.nes_frequency = 60
+        coordinator._sequencer_tracker_logic.settings.nes_frequency = 60
         coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
 
         coordinator.import_reconstruction(Path("reconstruction.stn"))
 
         coordinator._dialogs.show_confirmation.assert_called_once()
-        coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        coordinator._sequencer_tracker_logic.set_nes_frequency.assert_not_called()
         coordinator._sequencer_browser_logic.add_reconstruction.assert_not_called()
         coordinator._on_tab_switch.assert_not_called()
 
@@ -543,8 +623,8 @@ def replace_coordinator() -> SequencerTabCoordinator:
     instance._project_controller.sample_count = 2
     instance._sequencer_browser_logic = MagicMock()
     instance._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
-    instance._sequencer_grid_logic = MagicMock()
-    instance._sequencer_grid_logic.settings.nes_frequency = 60
+    instance._sequencer_tracker_logic = MagicMock()
+    instance._sequencer_tracker_logic.settings.nes_frequency = 60
     instance._sequencer_samples_logic = MagicMock()
     instance._sequencer_samples_panel = MagicMock()
     instance._sequencer_samples_panel.selection = SampleSelection(
@@ -603,7 +683,7 @@ class TestReplaceReconstruction:
             reconstruction,
         )
         replace_coordinator._dialogs.show_confirmation.assert_not_called()
-        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        replace_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_not_called()
 
     def test_rename_and_substitution_share_one_history_entry(
         self,
@@ -623,7 +703,10 @@ class TestReplaceReconstruction:
         """The detail names the outgoing reconstruction, which the sample only holds until the swap."""
         order = MagicMock()
         order.attach_mock(replace_coordinator._history_detail.replace_sample, "detail")
-        order.attach_mock(replace_coordinator._sequencer_browser_logic.replace_reconstruction, "replace")
+        order.attach_mock(
+            replace_coordinator._sequencer_browser_logic.replace_reconstruction,
+            "replace",
+        )
 
         replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
 
@@ -638,7 +721,10 @@ class TestReplaceReconstruction:
         reconstruction = replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value
         order = MagicMock()
         order.attach_mock(replace_coordinator._on_sample_reconstruction_replaced, "announce")
-        order.attach_mock(replace_coordinator._sequencer_browser_logic.replace_reconstruction, "replace")
+        order.attach_mock(
+            replace_coordinator._sequencer_browser_logic.replace_reconstruction,
+            "replace",
+        )
 
         replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
 
@@ -657,7 +743,7 @@ class TestReplaceReconstruction:
 
         replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
 
-        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(50)
+        replace_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_called_once_with(50)
         replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_called_once()
         replace_coordinator._dialogs.show_confirmation.assert_not_called()
 
@@ -678,7 +764,7 @@ class TestReplaceReconstruction:
         confirmation["on_confirm"]()
 
         replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_called_once()
-        replace_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        replace_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_not_called()
 
 
 class TestReplaceTargetLabel:
@@ -699,14 +785,22 @@ class TestReplaceTargetLabel:
 
 @pytest.fixture
 def history_coordinator() -> SequencerTabCoordinator:
-    """A coordinator with only the history collaborator wired."""
+    """A coordinator with the two collaborators an undoable gesture reaches.
+
+    The history is a mock, so a test reads the transaction a gesture opens; the
+    controller is real, so a test reads the notifications the gesture's mutations
+    actually produce.
+    """
     instance = object.__new__(SequencerTabCoordinator)
     instance._history = MagicMock()
+    instance._project_controller = ProjectController(ProjectManager())
     return instance
 
 
 @pytest.fixture
-def wired_history_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
+def wired_history_coordinator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> SequencerTabCoordinator:
     """A coordinator whose history wiring matches production.
 
     A real manager observes a real controller, and every project replacement —
@@ -739,7 +833,10 @@ class TestHistoryResetWiring:
         with coordinator._history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
 
-        controller.replace_project(snapshot_project(controller.project), clean=False)
+        controller.replace_project(
+            snapshot_project(controller.project),
+            clean=False,
+        )
 
         assert len(coordinator._history.entries) == 1
         assert coordinator._history.entries[0].action is HistoryAction.INITIAL
@@ -848,17 +945,17 @@ def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordin
     wiring is read for. The menu bar above the tab is a recorder, so a test can read whether it
     was told. Modifiers are reported as held nowhere; a test that needs Ctrl says so.
     """
-    monkeypatch.setattr(grid_module.dpg, "does_item_exist", lambda item: False)
-    monkeypatch.setattr(grid_module.dpg, "set_value", lambda item, value: None)
+    monkeypatch.setattr(tracker_module.dpg, "does_item_exist", lambda item: False)
+    monkeypatch.setattr(tracker_module.dpg, "set_value", lambda item, value: None)
     monkeypatch.setattr(channels_module, "capture_modifiers", lambda: NO_MODIFIERS)
 
     language_manager = LanguageManager(LANG_EN)
     instance = object.__new__(SequencerTabCoordinator)
     instance._on_channels_changed = MagicMock()
     instance._sequencer_channels_logic = SequencerChannelsLogic()
-    instance._sequencer_grid_panel = GUISequencerGridPanel.__new__(GUISequencerGridPanel)
-    instance._sequencer_grid_panel._current_channels = None
-    instance._sequencer_grid_panel._create_channel_switch(language_manager)
+    instance._sequencer_tracker_panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+    instance._sequencer_tracker_panel._current_channels = None
+    instance._sequencer_tracker_panel._create_channel_switch(language_manager)
     instance._sequencer_order_panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
     instance._sequencer_order_panel._current_channels = None
     instance._sequencer_order_panel._create_channel_switch(language_manager)
@@ -873,7 +970,7 @@ class TestChannelHeaderWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        panel = channels_coordinator._sequencer_grid_panel
+        panel = channels_coordinator._sequencer_tracker_panel
 
         panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
 
@@ -884,7 +981,7 @@ class TestChannelHeaderWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        panel = channels_coordinator._sequencer_grid_panel
+        panel = channels_coordinator._sequencer_tracker_panel
 
         panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
         panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
@@ -898,7 +995,7 @@ class TestChannelHeaderWiring:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(channels_module, "capture_modifiers", lambda: CTRL)
-        panel = channels_coordinator._sequencer_grid_panel
+        panel = channels_coordinator._sequencer_tracker_panel
 
         panel._on_header_clicked(0, True, GeneratorName.PULSE2)
 
@@ -908,7 +1005,7 @@ class TestChannelHeaderWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        panel = channels_coordinator._sequencer_grid_panel
+        panel = channels_coordinator._sequencer_tracker_panel
 
         panel._on_header_clicked(0, True, None)
 
@@ -919,7 +1016,7 @@ class TestChannelHeaderWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        panel = channels_coordinator._sequencer_grid_panel
+        panel = channels_coordinator._sequencer_tracker_panel
 
         panel._on_header_clicked(0, True, None)
         panel._on_header_clicked(0, True, None)
@@ -931,7 +1028,7 @@ class TestChannelHeaderWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        panel = channels_coordinator._sequencer_grid_panel
+        panel = channels_coordinator._sequencer_tracker_panel
         panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
 
         panel.call(panel.on_channels_muted)
@@ -943,7 +1040,7 @@ class TestChannelHeaderWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        panel = channels_coordinator._sequencer_grid_panel
+        panel = channels_coordinator._sequencer_tracker_panel
         panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
 
         panel.call(panel.on_channels_unmuted)
@@ -992,10 +1089,10 @@ class TestChannelRowLabelWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        grid_panel = channels_coordinator._sequencer_grid_panel
+        tracker_panel = channels_coordinator._sequencer_tracker_panel
         order_panel = channels_coordinator._sequencer_order_panel
 
-        grid_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        tracker_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
 
         assert order_panel._is_muted(GeneratorName.TRIANGLE)
 
@@ -1003,12 +1100,12 @@ class TestChannelRowLabelWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        grid_panel = channels_coordinator._sequencer_grid_panel
+        tracker_panel = channels_coordinator._sequencer_tracker_panel
         order_panel = channels_coordinator._sequencer_order_panel
 
         order_panel._on_label_clicked(0, True, GeneratorName.PULSE2)
 
-        assert grid_panel._is_muted(GeneratorName.PULSE2)
+        assert tracker_panel._is_muted(GeneratorName.PULSE2)
 
     def test_the_order_menu_silences_every_channel(
         self,
@@ -1077,14 +1174,14 @@ class TestChannelMenuWiring:
     ) -> None:
         channels_coordinator.toggle_channel(GeneratorName.TRIANGLE)
 
-        assert channels_coordinator._sequencer_grid_panel._is_muted(GeneratorName.TRIANGLE)
+        assert channels_coordinator._sequencer_tracker_panel._is_muted(GeneratorName.TRIANGLE)
         assert channels_coordinator._sequencer_order_panel._is_muted(GeneratorName.TRIANGLE)
 
     def test_a_table_click_tells_the_menu_bar(
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        channels_coordinator._sequencer_grid_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        channels_coordinator._sequencer_tracker_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
 
         channels_coordinator._on_channels_changed.assert_called_once_with()
 
@@ -1120,11 +1217,18 @@ class TestUndoableWrapper:
         )
         target.assert_called_once_with(150)
 
-    def test_wrapped_call_passes_computed_detail(self, history_coordinator: SequencerTabCoordinator) -> None:
+    def test_wrapped_call_passes_computed_detail(
+        self,
+        history_coordinator: SequencerTabCoordinator,
+    ) -> None:
         target = MagicMock()
         segments = (HistoryDetailSegment(text="v150", role=HistoryDetailRole.VALUE),)
 
-        wrapped = history_coordinator._undoable(HistoryAction.SET_TEMPO, target, detail=lambda _: segments)
+        wrapped = history_coordinator._undoable(
+            HistoryAction.SET_TEMPO,
+            target,
+            detail=lambda _: segments,
+        )
         wrapped(150)
 
         history_coordinator._history.transaction.assert_called_once_with(
@@ -1133,7 +1237,10 @@ class TestUndoableWrapper:
             coalesce=None,
         )
 
-    def test_wrapped_call_passes_computed_coalesce_key(self, history_coordinator: SequencerTabCoordinator) -> None:
+    def test_wrapped_call_passes_computed_coalesce_key(
+        self,
+        history_coordinator: SequencerTabCoordinator,
+    ) -> None:
         target = MagicMock()
 
         wrapped = history_coordinator._undoable(
@@ -1148,6 +1255,25 @@ class TestUndoableWrapper:
             detail=(),
             coalesce=("tempo",),
         )
+
+    def test_wrapped_call_announces_one_song_change_for_the_whole_gesture(
+        self,
+        history_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        controller = history_coordinator._project_controller
+        announcements: List[str] = []
+        controller.on_song_changed = lambda: announcements.append("song")
+        initial_length = controller.order_length
+
+        def append_frames(count: int) -> None:
+            for _ in range(count):
+                controller.append_frame()
+
+        wrapped = history_coordinator._undoable(HistoryAction.EDIT_ROW, append_frames)
+        wrapped(3)
+
+        assert controller.order_length == initial_length + 3
+        assert announcements == ["song"]
 
 
 @pytest.fixture
@@ -1164,7 +1290,7 @@ def _loop_entry(loop: bool) -> HistoryEntry:
     return HistoryEntry(
         project=MagicMock(),
         action=HistoryAction.SET_SAMPLE_LOOP,
-        created=datetime.now(),
+        created=datetime.now(tz=UTC),
         detail=(
             HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
             HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),
@@ -1173,7 +1299,10 @@ def _loop_entry(loop: bool) -> HistoryEntry:
 
 
 class TestHistoryViewModelBuild:
-    def test_word_segments_resolve_to_language_text(self, view_coordinator: SequencerTabCoordinator) -> None:
+    def test_word_segments_resolve_to_language_text(
+        self,
+        view_coordinator: SequencerTabCoordinator,
+    ) -> None:
         view_coordinator._history.cursor = 1
         view_coordinator._history.entries = (_loop_entry(True), _loop_entry(False))
 
@@ -1203,5 +1332,365 @@ def exposure_coordinator() -> SequencerTabCoordinator:
 
 
 class TestPlayerExposure:
-    def test_player_returns_the_guarded_wrapper(self, exposure_coordinator: SequencerTabCoordinator) -> None:
+    def test_player_returns_the_guarded_wrapper(
+        self,
+        exposure_coordinator: SequencerTabCoordinator,
+    ) -> None:
         assert isinstance(exposure_coordinator.player, GuardedPlayer)
+
+
+PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
+    first_row=0,
+    last_row=0,
+    first_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.INSTRUMENT).flat_index,
+    last_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME).flat_index,
+)
+PULSE1_FRAME: Final[OrderRegion] = OrderRegion(
+    first_row=CHANNEL_AXIS.index(GeneratorName.PULSE1),
+    last_row=CHANNEL_AXIS.index(GeneratorName.PULSE1),
+    first_position=0,
+    last_position=0,
+)
+
+
+class FakeTextClipboard:
+    """The desktop's clipboard, held in memory so a test reads what a copy put there."""
+
+    def __init__(self) -> None:
+        self.text: str = ""
+
+    def read(self) -> str:
+        return self.text
+
+    def write(self, text: str) -> None:
+        self.text = text
+
+
+@pytest.fixture
+def block_coordinator() -> SequencerTabCoordinator:
+    """A coordinator whose block path is real, from the tracker logic through to the clipboard.
+
+    A real manager observes the same controller production wires it to, so a test reads the
+    entries a gesture actually records, and the hooks are the ones ``_wire_block_callbacks``
+    assigns rather than wrappers a test built to look like them. The system clipboard is the one
+    boundary standing in, since the desktop's own is reached through a running viewport.
+    """
+    instance = object.__new__(SequencerTabCoordinator)
+    controller = ProjectController(ProjectManager())
+    history = HistoryManager(controller, budget=10, strict=True)
+    controller.on_mutation = history.handle_mutation
+    controller.new()
+    history.reset()
+    instance._project_controller = controller
+    instance._history = history
+    instance._sequencer_tracker_logic = SequencerTrackerLogic(controller)
+    instance._clipboard = SequencerClipboard()
+    instance._system_clipboard = FakeTextClipboard()
+    instance._tracker_block_text = TrackerBlockText(samples=ProjectSampleDirectory(controller))
+    instance._order_block_text = OrderBlockText()
+    instance._tracker_text_cache = ParsedBlockCache(instance._tracker_block_text.parse)
+    instance._order_text_cache = ParsedBlockCache(instance._order_block_text.parse)
+    instance._tracker_block_reader = TrackerBlockReader(instance._sequencer_tracker_logic)
+    instance._tracker_block_writer = TrackerBlockWriter(instance._sequencer_tracker_logic)
+    instance._sequencer_order_logic = SequencerOrderLogic(controller)
+    instance._order_block_reader = OrderBlockReader(instance._sequencer_order_logic)
+    instance._order_block_writer = OrderBlockWriter(instance._sequencer_order_logic)
+    instance._history_detail = SequencerHistoryDetail(
+        instance._sequencer_tracker_logic,
+        MagicMock(),
+    )
+    instance._sequencer_tracker_panel = MagicMock()
+    instance._sequencer_order_panel = MagicMock()
+    instance._wire_block_callbacks()
+    return instance
+
+
+def _place_transpose(
+    coordinator: SequencerTabCoordinator,
+    transpose: int,
+) -> None:
+    """Puts one value in the frame, through the same wrapper an edit reaches the history by."""
+    edit = coordinator._undoable(
+        HistoryAction.EDIT_ROW,
+        coordinator._sequencer_tracker_logic.write_cell,
+    )
+    edit(0, GeneratorName.PULSE1, None, transpose, None)
+
+
+class TestBlockCopy:
+    def test_a_copy_fills_the_clipboard_with_the_block_it_covers(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        with coordinator._history.transaction(HistoryAction.EDIT_ROW):
+            coordinator._sequencer_tracker_logic.set_cell_subcolumn(
+                0,
+                GeneratorName.PULSE1,
+                transpose=5,
+            )
+
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+
+        block = coordinator._clipboard.tracker_block
+        assert block is not None
+        assert block.transposes[(0, 1)] == 5
+
+    def test_a_copy_leaves_the_history_stack_as_it_stands(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """A gesture that only reads the project records nothing, where the edit beside it does."""
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+
+        assert recorded > 0
+        assert len(coordinator._history.entries) == recorded
+
+
+class TestBlockEdits:
+    """Each gesture that writes records the one entry that takes the grid back."""
+
+    def test_a_cut_takes_the_block_and_empties_what_it_covered(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+
+        coordinator._sequencer_tracker_panel.on_cut_block(PULSE1_CELL)
+
+        block = coordinator._clipboard.tracker_block
+        assert block is not None
+        assert block.transposes[(0, 1)] == 5
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 0).transpose is None
+
+    def test_a_cut_records_one_entry(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_cut_block(PULSE1_CELL)
+
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
+
+    def test_a_delete_empties_the_region_in_one_entry(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_delete_block(PULSE1_CELL)
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 0).transpose is None
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.DELETE_BLOCK
+
+    def test_a_paste_writes_the_copied_block_in_one_entry(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE2))
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE2, 1).transpose == 5
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
+
+
+class TestOrderBlockEdits:
+    """The order's gestures reach the same clipboard and record the same one entry each."""
+
+    def test_a_copy_fills_the_clipboard_and_leaves_the_history_as_it_stands(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_order_panel.on_copy_block(PULSE1_FRAME)
+
+        block = coordinator._clipboard.order_block
+        assert block is not None
+        assert block.entries == {(0, 0): 0}
+        assert len(coordinator._history.entries) == recorded
+
+    def test_a_cut_takes_the_block_and_silences_what_it_covered(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_order_panel.on_cut_block(PULSE1_FRAME)
+
+        assert coordinator._sequencer_order_logic.entry(GeneratorName.PULSE1, 0) is None
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
+
+    def test_a_delete_silences_the_region_in_one_entry(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_order_panel.on_delete_block(PULSE1_FRAME)
+
+        assert coordinator._sequencer_order_logic.entry(GeneratorName.PULSE1, 0) is None
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.DELETE_BLOCK
+
+    def test_a_paste_covers_the_frames_it_appends_and_the_entries_it_writes(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """One entry stands for the whole gesture, so an undo takes the appended frames back too."""
+        coordinator = block_coordinator
+        coordinator._sequencer_order_panel.on_copy_block(PULSE1_FRAME)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_order_panel.on_paste_block(OrderCell(generator=GeneratorName.NOISE, position=1))
+
+        assert coordinator._sequencer_order_logic.position_count() == 2
+        assert coordinator._sequencer_order_logic.entry(GeneratorName.NOISE, 1) == 0
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
+
+        coordinator._history.undo()
+
+        assert coordinator._sequencer_order_logic.position_count() == 1
+
+    def test_a_paste_with_nothing_copied_records_nothing(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """A transaction over a gesture that writes nothing commits nothing, so an empty clipboard
+        leaves the history where it stood."""
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE2))
+
+        assert len(coordinator._history.entries) == recorded
+
+
+class TestSystemClipboardCopy:
+    """A copy writes both clipboards, so the same gesture reaches a paste here and elsewhere."""
+
+    def test_a_copy_states_the_block_as_text(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+
+        assert coordinator._system_clipboard.text == "SampleToNES/1 tracker rows=1 slots=3..5\n.. +05 ."
+
+    def test_an_order_copy_states_its_own_grid(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+
+        coordinator._on_order_copy_block(PULSE1_FRAME)
+
+        assert coordinator._system_clipboard.text == "SampleToNES/1 order rows=1 positions=0..0\n00"
+
+    def test_a_cut_states_the_block_it_took(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+
+        coordinator._sequencer_tracker_panel.on_cut_block(PULSE1_CELL)
+
+        assert coordinator._system_clipboard.text == "SampleToNES/1 tracker rows=1 slots=3..5\n.. +05 ."
+
+
+class TestSystemClipboardPrecedence:
+    """Text that reads as a block for this grid stands ahead of the slot it copied into."""
+
+    def test_a_block_copied_elsewhere_is_the_one_a_paste_writes(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """This is a second instance's copy arriving, which is what carries a block between them."""
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+        coordinator._system_clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 9
+
+    def test_unrelated_text_leaves_the_copied_block_in_hand(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+        coordinator._system_clipboard.write("a line from a message")
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 5
+
+    def test_a_truncated_block_leaves_the_copied_block_in_hand(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        coordinator._on_tracker_copy_block(PULSE1_CELL)
+        coordinator._system_clipboard.write("SampleToNES/1 tracker rows=4 slots=3..5\n.. +09 .")
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+
+        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 5
+
+    def test_the_other_grid_s_text_leaves_the_copied_block_in_hand(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """A tracker copy stands on the clipboard while the order pastes, so each grid keeps its own."""
+        coordinator = block_coordinator
+        coordinator._on_order_copy_block(PULSE1_FRAME)
+        coordinator._system_clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
+
+        coordinator._sequencer_order_panel.on_paste_block(OrderCell(generator=GeneratorName.NOISE, position=1))
+
+        assert coordinator._sequencer_order_logic.entry(GeneratorName.NOISE, 1) == 0
+
+    def test_a_paste_offers_itself_on_the_text_standing_on_the_clipboard(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """The menu asks the same question the paste does, so it offers what the next press reaches."""
+        coordinator = block_coordinator
+
+        assert not coordinator._can_paste_tracker_block()
+
+        coordinator._system_clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
+
+        assert coordinator._can_paste_tracker_block()
+        assert not coordinator._can_paste_order_block()

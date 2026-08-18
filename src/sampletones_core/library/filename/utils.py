@@ -2,14 +2,12 @@ from pathlib import Path
 
 from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
-    GAMMA_PREFIX,
-    format_nes_frequency,
-    format_sample_rate,
-    format_spectrum_method,
+    format_frequencies,
+    format_transformation,
 )
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.library.key import InstructionLibraryKey
-from sampletones_core.paths import EXT_FILE_LIBRARY
+from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.system.paths import get_filename
 
@@ -39,12 +37,9 @@ def create_key_from_filename(filename: Pathlike) -> InstructionLibraryKey:
 
 def get_display_name_from_key(key: InstructionLibraryKey) -> str:
     nes_frequency = round(key.sample_rate / key.frame_length)
-    gamma = f"{GAMMA_PREFIX}{key.transformation_gamma}"
     return DISPLAY_SEPARATOR.join(
         [
-            format_sample_rate(key.sample_rate),
-            format_nes_frequency(nes_frequency),
-            format_spectrum_method(key.spectrum_method),
-            gamma,
+            format_frequencies(key.sample_rate, nes_frequency),
+            format_transformation(key.spectrum_method, key.transformation_gamma),
         ]
     )

@@ -1,20 +1,16 @@
 import sys
-from typing import Final, List, Optional, Tuple
+from typing import Tuple
 
 import dearpygui.dearpygui as dpg
-from screeninfo import Monitor, ScreenInfoError, get_monitors
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.layout.general.window import WindowLayout
 from sampletones_application.ui.resources.items import IconResource
 from sampletones_application.ui.resources.resources import get_icon_path
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_application.utils.monitors import MonitorArea, monitor_area_for_window
 from sampletones_shared.application import SAMPLETONES_NAME
-from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
-
-_MAX_WINDOW_MONITOR_RATIO: Final[float] = 0.9
-_FALLBACK_SCREEN_WIDTH: Final[int] = 1920
-_FALLBACK_SCREEN_HEIGHT: Final[int] = 1080
 
 
 class ViewportManager:
@@ -22,17 +18,13 @@ class ViewportManager:
         self,
         session_manager: SessionManager,
         theme: Theme,
+        window: WindowLayout,
         *,
-        min_width: int,
-        min_height: int,
-        vsync: bool,
         on_fullscreen_state_changed: VoidCallback,
     ) -> None:
         self._session_manager = session_manager
         self._theme = theme
-        self._min_width = min_width
-        self._min_height = min_height
-        self._vsync = vsync
+        self._window = window
         self._on_fullscreen_state_changed = on_fullscreen_state_changed
 
     def create_viewport(self) -> None:
@@ -54,17 +46,50 @@ class ViewportManager:
             title=SAMPLETONES_NAME,
             width=window_width,
             height=window_height,
-            min_width=self._min_width,
-            min_height=self._min_height,
+            min_width=self._window.min_width,
+            min_height=self._window.min_height,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
             x_pos=window_x,
             y_pos=window_y,
-            decorated=True,
+            decorated=not self._session_manager.borderless,
             disable_close=True,
-            vsync=self._vsync,
+            vsync=self._session_manager.vsync,
         )
 
+        self.refresh_clear_color()
+
+    def set_resolution(self, width: int, height: int) -> None:
+        """Resizes the window, holding it at the configured minimum."""
+        dpg.set_viewport_width(max(self._window.min_width, width))
+        dpg.set_viewport_height(max(self._window.min_height, height))
+
+    def set_borderless(self, borderless: bool) -> None:
+        """Shows or hides the system's title bar and frame around the window."""
+        dpg.set_viewport_decorated(not borderless)
+
+    def set_vsync(self, vsync: bool) -> None:
+        """Sets whether the render loop waits for the monitor's refresh."""
+        dpg.set_viewport_vsync(vsync)
+
+    @property
+    def resolution(self) -> Tuple[int, int]:
+        """The size the window is showing at right now."""
+        return dpg.get_viewport_width(), dpg.get_viewport_height()
+
+    @property
+    def monitor_area(self) -> MonitorArea:
+        """The area of the monitor the window currently sits on, and the room it leaves a window."""
+        viewport_x, viewport_y = dpg.get_viewport_pos()
+        width, height = self.resolution
+        return self._monitor_area(int(viewport_x), int(viewport_y), width, height)
+
+    def refresh_clear_color(self) -> None:
+        """Paints the area around the windows in the main theme's background colour.
+
+        DearPyGui holds the clear colour outside the theme system, so it is issued again
+        whenever the theme's background answers with a new value.
+        """
         color = self._theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
         assert color is not None, "Background color is not defined in the main theme"
         dpg.set_viewport_clear_color(list(color))
@@ -109,25 +134,6 @@ class ViewportManager:
         )
         self._on_fullscreen_state_changed()
 
-    @staticmethod
-    def _get_screen_dimensions() -> Tuple[int, int]:
-        """Screen dimensions assumed while the platform reports no monitor, sized for a common desktop."""
-        return _FALLBACK_SCREEN_WIDTH, _FALLBACK_SCREEN_HEIGHT
-
-    @staticmethod
-    def _get_monitors() -> List[Monitor]:
-        """Monitors reported by the platform, empty where none can be enumerated.
-
-        A display server that exposes no enumerator — a headless session, a remote shell,
-        a Wayland compositor without the expected backend — makes ``screeninfo`` raise
-        instead of returning an empty list, so the window falls back to assumed dimensions.
-        """
-        try:
-            return get_monitors()
-        except ScreenInfoError as exception:
-            logger.warning(f"No monitor information available: {exception}")
-            return []
-
     def _fit_window_to_monitor(
         self,
         x: int,
@@ -137,65 +143,41 @@ class ViewportManager:
     ) -> Tuple[int, int, int, int]:
         """Fit the window to its monitor, hold it at the configured minimum, and clamp it within reserved margins.
 
-        The size is limited to ``_MAX_WINDOW_MONITOR_RATIO`` of the monitor so the title bar and
-        side panels stay on screen once the decoration frame is added, and held at ``min_width`` /
-        ``min_height`` so even a small requested size opens usably wide. The position is nudged
-        inside the resulting margins so every edge lands within the monitor.
+        The size is limited to the monitor's usable area so the title bar and side panels stay on
+        screen once the decoration frame is added, and held at ``min_width`` / ``min_height`` so
+        even a small requested size opens usably wide. The position is nudged inside the resulting
+        margins so every edge lands within the monitor.
         """
-        monitor = self._monitor_for_window(x, y, width, height)
-        if monitor is not None:
-            screen_x = int(monitor.x)
-            screen_y = int(monitor.y)
-            screen_w = int(monitor.width)
-            screen_h = int(monitor.height)
-        else:
-            screen_x = 0
-            screen_y = 0
-            screen_w, screen_h = self._get_screen_dimensions()
+        area = self._monitor_area(x, y, width, height)
+        fitted_width = max(self._window.min_width, min(width, area.usable_width))
+        fitted_height = max(self._window.min_height, min(height, area.usable_height))
 
-        usable_w = int(screen_w * _MAX_WINDOW_MONITOR_RATIO)
-        usable_h = int(screen_h * _MAX_WINDOW_MONITOR_RATIO)
-        fitted_width = max(self._min_width, min(width, usable_w))
-        fitted_height = max(self._min_height, min(height, usable_h))
-
-        margin_x = (screen_w - usable_w) // 2
-        margin_y = (screen_h - usable_h) // 2
+        margin_x = (area.width - area.usable_width) // 2
+        margin_y = (area.height - area.usable_height) // 2
         fitted_x = max(
-            screen_x + margin_x,
-            min(x, screen_x + screen_w - margin_x - fitted_width),
+            area.x + margin_x,
+            min(x, area.x + area.width - margin_x - fitted_width),
         )
         fitted_y = max(
-            screen_y + margin_y,
-            min(y, screen_y + screen_h - margin_y - fitted_height),
+            area.y + margin_y,
+            min(y, area.y + area.height - margin_y - fitted_height),
         )
 
         return fitted_x, fitted_y, fitted_width, fitted_height
 
-    def _monitor_for_window(
+    def _monitor_area(
         self,
         x: int,
         y: int,
         width: int,
         height: int,
-    ) -> Optional[Monitor]:
-        monitors = self._get_monitors()
-        if not monitors:
-            return None
-
-        best_monitor = monitors[0]
-        best_overlap = -1
-        for monitor in monitors:
-            overlap_width = max(
-                0,
-                min(x + width, monitor.x + monitor.width) - max(x, monitor.x),
-            )
-            overlap_height = max(
-                0,
-                min(y + height, monitor.y + monitor.height) - max(y, monitor.y),
-            )
-            overlap = overlap_width * overlap_height
-            if overlap > best_overlap:
-                best_overlap = overlap
-                best_monitor = monitor
-
-        return best_monitor
+    ) -> MonitorArea:
+        """The area of the monitor a window of the given geometry sits on, under the layout's policy."""
+        return monitor_area_for_window(
+            x,
+            y,
+            width,
+            height,
+            usable_ratio=self._window.max_monitor_ratio,
+            fallback_monitor=self._window.fallback_monitor,
+        )

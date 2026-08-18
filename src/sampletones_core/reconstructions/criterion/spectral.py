@@ -4,6 +4,8 @@ from sampletones_core.constants.algorithm import SPECTRUM_FLOOR
 from sampletones_core.constants.enums import SpectralDistance
 from sampletones_shared.array import xp
 
+from .alignment import align_candidates
+
 
 def calculate_spectral_loss(
     reference: xp.ndarray,
@@ -39,13 +41,26 @@ def calculate_spectral_loss(
 
     match distance:
         case SpectralDistance.SQUARED:
-            numerator = xp.sqrt(xp.sum(weights * (candidates - reference) ** 2, axis=-1))
+            numerator = xp.sqrt(
+                xp.sum(
+                    weights * (candidates - reference) ** 2,
+                    axis=-1,
+                )
+            )
             denominator = xp.sqrt(xp.sum(weights * reference**2, axis=-1))
         case SpectralDistance.ABSOLUTE:
             numerator = xp.sum(weights * xp.abs(candidates - reference), axis=-1)
             denominator = xp.sum(weights * reference, axis=-1)
         case SpectralDistance.BETA_DIVERGENCE:
-            numerator = xp.sum(weights * _beta_divergence(reference, candidates, divergence_beta), axis=-1)
+            numerator = xp.sum(
+                weights
+                * _beta_divergence(
+                    reference,
+                    candidates,
+                    divergence_beta,
+                ),
+                axis=-1,
+            )
             denominator = xp.sum(weights * reference, axis=-1)
         case _:
             raise ValueError(f"Unsupported spectral distance: {distance}")
@@ -58,24 +73,18 @@ def _prepare(
     candidates: xp.ndarray,
     weights: xp.ndarray,
 ) -> Tuple[xp.ndarray, xp.ndarray, xp.ndarray]:
-    reference = xp.asarray(reference)
-    candidates = xp.asarray(candidates)
-
-    if reference.ndim != 1:
-        raise ValueError("reference must be 1D")
-
-    if candidates.ndim == 1:
-        candidates = candidates[None, :]
-    elif candidates.shape[1] != reference.shape[0]:
-        raise ValueError(f"candidate width {candidates.shape[1]} does not match reference length {reference.shape[0]}")
-
+    reference, candidates = align_candidates(reference, candidates)
     if weights.ndim == 1:
         weights = weights.reshape((1, -1))
 
-    return reference.reshape((1, -1)), candidates, weights
+    return reference, candidates, weights
 
 
-def _beta_divergence(reference: xp.ndarray, candidates: xp.ndarray, beta: float) -> xp.ndarray:
+def _beta_divergence(
+    reference: xp.ndarray,
+    candidates: xp.ndarray,
+    beta: float,
+) -> xp.ndarray:
     reference = reference + SPECTRUM_FLOOR
     candidates = candidates + SPECTRUM_FLOOR
 

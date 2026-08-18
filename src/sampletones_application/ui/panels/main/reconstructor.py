@@ -2,17 +2,12 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.tabs.main.reconstructor import ReconstructorLayout
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import (
-    SUF_HANDLER_REGISTRY,
-    TAG_GLOBAL_THEME_CHANNEL_NOISE,
-    TAG_GLOBAL_THEME_CHANNEL_PULSE1,
-    TAG_GLOBAL_THEME_CHANNEL_PULSE2,
-    TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
-)
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
     PRE_MAIN_RECONSTRUCTOR_GENERATOR,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
@@ -23,6 +18,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -98,21 +94,11 @@ class GUIReconstructorPanel(GUIPanel):
     def _generator_chips(self) -> List[Tuple[GeneratorName, str, str]]:
         return [
             (
-                GeneratorName.PULSE1,
-                self._language_manager["global.context.label.pulse_1"],
-                TAG_GLOBAL_THEME_CHANNEL_PULSE1,
-            ),
-            (
-                GeneratorName.PULSE2,
-                self._language_manager["global.context.label.pulse_2"],
-                TAG_GLOBAL_THEME_CHANNEL_PULSE2,
-            ),
-            (
-                GeneratorName.TRIANGLE,
-                self._language_manager["global.context.label.triangle"],
-                TAG_GLOBAL_THEME_CHANNEL_TRIANGLE,
-            ),
-            (GeneratorName.NOISE, self._language_manager["global.context.label.noise"], TAG_GLOBAL_THEME_CHANNEL_NOISE),
+                generator_name,
+                channel_label(self._language_manager, generator_name),
+                CHANNEL_THEME_TAGS[generator_name],
+            )
+            for generator_name in GeneratorName.items()
         ]
 
     def _create_drive_slider(self) -> None:
@@ -145,7 +131,20 @@ class GUIReconstructorPanel(GUIPanel):
             self._language_manager["main.reconstructor.tooltip.tooltip_drive"],
         )
 
-    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
+    def toggle_generator(self, generator: GeneratorName) -> None:
+        """Switches one generator in or out of the set a reconstruction is built from.
+
+        This is the gesture a click on the generator's checkbox makes, reached by the key the
+        channel answers to, so the panel reports the settings either way.
+        """
+        checkbox_tag = self._get_generator_checkbox_tag(generator)
+        dpg_set_value(checkbox_tag, not dpg.get_value(checkbox_tag))
+        self._report_generation_settings()
+
+    def _on_parameter_change(self, _sender: Sender, _app_data: Any) -> None:
+        self._report_generation_settings()
+
+    def _report_generation_settings(self) -> None:
         generators = [
             generator for generator in GeneratorName if dpg.get_value(self._get_generator_checkbox_tag(generator))
         ]

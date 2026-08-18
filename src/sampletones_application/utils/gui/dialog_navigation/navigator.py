@@ -6,7 +6,8 @@ from sampletones_application.utils.gui.dialog_navigation.ring import FocusRing
 from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
-from sampletones_application.utils.gui.keyboard.modifiers import Modifier
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -27,12 +28,14 @@ class DialogKeyboardNavigator:
         stops: List[FocusStop],
         on_escape: VoidCallback,
         key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
         initial_index: int = 0,
     ) -> None:
         self._window_tag = window_tag
         self._ring = FocusRing(stops, initial_index)
         self._on_escape = on_escape
         self._router = key_router
+        self._shortcuts = shortcut_source
         self._disposed = False
 
     def install(self) -> None:
@@ -56,15 +59,17 @@ class DialogKeyboardNavigator:
             self._ring.focus_initial()
 
     def handle_key(self, event: KeyEvent) -> None:
-        """Routes Tab/Enter/Escape to the focus ring, disposing once the dialog has vanished."""
+        """Routes the dialog actions to the focus ring, disposing once the dialog has vanished."""
         if not dpg.does_item_exist(self._window_tag):
             self.dispose()
             return
 
-        match event.key:
-            case dpg.mvKey_Tab:
-                self._ring.cycle(-1 if Modifier.SHIFT in event.modifiers else 1)
-            case dpg.mvKey_Return:
+        match self._shortcuts.action(ShortcutCategory.DIALOG, event):
+            case ShortcutId.DIALOG_NEXT_CONTROL:
+                self._ring.cycle(1)
+            case ShortcutId.DIALOG_PREVIOUS_CONTROL:
+                self._ring.cycle(-1)
+            case ShortcutId.DIALOG_ACTIVATE:
                 self._ring.activate_focused()
-            case dpg.mvKey_Escape:
+            case ShortcutId.DIALOG_CANCEL:
                 self._on_escape()

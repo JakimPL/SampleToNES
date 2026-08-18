@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 import time
 from functools import wraps
-from typing import Any, Callable, Final, List, Optional, Set, cast
+from typing import Any, Callable, ClassVar, Final, List, Optional, Set, cast
 
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import CallbackT, VoidCallback
@@ -21,8 +21,8 @@ class BackgroundWorkCancelled(Exception):
 
 
 class SingleThreadExecutor:
-    _live_threads: Set[threading.Thread] = set()
-    _live_threads_lock = threading.Lock()
+    _live_threads: ClassVar[Set[threading.Thread]] = set()
+    _live_threads_lock: ClassVar[threading.Lock] = threading.Lock()
     _shutdown = threading.Event()
 
     def __init__(self) -> None:
@@ -44,9 +44,7 @@ class SingleThreadExecutor:
                 target()
             finally:
                 with SingleThreadExecutor._live_threads_lock:
-                    SingleThreadExecutor._live_threads.discard(
-                        threading.current_thread(),
-                    )
+                    SingleThreadExecutor._live_threads.discard(threading.current_thread())
 
         with self._lock:
             thread = threading.Thread(
@@ -108,6 +106,7 @@ class SingleThreadExecutor:
                     if remaining <= 0.0:
                         cls._report_surviving_workers(live_threads)
                         return
+
                 thread.join(remaining)
 
     @classmethod
@@ -138,6 +137,7 @@ def concurrent(
             def task() -> None:
                 if SingleThreadExecutor.is_shutting_down():
                     return
+
                 try:
                     function(self, *args, **kwargs)
                 except BackgroundWorkCancelled:

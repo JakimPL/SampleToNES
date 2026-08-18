@@ -1,225 +1,101 @@
-from __future__ import annotations
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Generic, Optional, Self, TypeVar
 
-from typing import Dict, Final, Optional, Tuple
-
-from pydantic.dataclasses import dataclass
-
-from sampletones_application.ui.panels.sequencer.columns import (
-    COLUMNS,
-    SUBCOLUMNS,
-    flat_index,
-    from_flat,
-)
-from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.ui.panels.sequencer.input.edit import (
-    ClearAction,
-    EditAction,
-)
-from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_shared.constants.symbols import MINUS, PLUS, PLUS_MINUS, SIGNS
-
-DIGIT_COUNT: Final[Dict[SubColumn, int]] = {
-    SubColumn.INSTRUMENT: 2,
-    SubColumn.TRANSPOSE: 2,
-    SubColumn.VOLUME: 1,
-}
+CursorT = TypeVar("CursorT")
+RegionT = TypeVar("RegionT")
 
 
-def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
-    try:
-        match cursor.subcolumn:
-            case SubColumn.INSTRUMENT:
-                return EditAction(
-                    row=cursor.row,
-                    generator=cursor.generator,
-                    sample_index=int(pending, 16),
-                    transpose=None,
-                    volume=None,
-                )
-            case SubColumn.VOLUME:
-                return EditAction(
-                    row=cursor.row,
-                    generator=cursor.generator,
-                    sample_index=None,
-                    transpose=None,
-                    volume=min(int(pending, 16), MAX_VOLUME),
-                )
-            case SubColumn.TRANSPOSE:
-                sign = -1 if pending.startswith(MINUS) else 1
-                magnitude = pending.lstrip(PLUS_MINUS)
-                if not magnitude:
-                    return None
+@dataclass(frozen=True)
+class GridInputState(ABC, Generic[CursorT, RegionT]):
+    """Edit cursor, pending entry and selection anchor of a sequencer grid.
 
-                return EditAction(
-                    row=cursor.row,
-                    generator=cursor.generator,
-                    sample_index=None,
-                    transpose=sign * int(magnitude, 16),
-                    volume=None,
-                )
-    except ValueError:
-        return None
+    The anchor is where a range selection was started; the cursor is its other end, so the two
+    together are the region a block operation acts on. Every plain move builds a state without
+    one, which is what makes a move collapse a selection to the cell it lands in.
 
+    A grid states how a pair of its own cells bounds a block and how a block reaches a cell; the
+    selection rules that follow from those two are stated here and serve every grid.
+    """
 
-@dataclass
-class TrackerInputState:
-    cursor: Optional[TrackerCursor] = None
+    cursor: Optional[CursorT] = None
     pending: str = ""
+    anchor: Optional[CursorT] = None
 
-    def reset_pending(self) -> TrackerInputState:
-        return TrackerInputState(cursor=self.cursor, pending="")
+    @abstractmethod
+    def _region_between(self, first: CursorT, second: CursorT) -> RegionT:
+        """The block a pair of cells bounds, whichever way round the pair stands."""
 
-    def navigate_row(
-        self,
-        value: int,
-        row_count: int,
-        absolute: bool = False,
-    ) -> TrackerInputState:
-        if self.cursor is None or row_count == 0:
-            return self
+    @abstractmethod
+    def _covers(self, region: RegionT, cell: CursorT) -> bool:
+        """Whether ``region`` reaches ``cell``."""
 
-        new_row = value if absolute else self.cursor.row + value
-        new_row = max(0, min(new_row, row_count - 1))
-        return TrackerInputState(
-            cursor=TrackerCursor(
-                new_row,
-                self.cursor.generator,
-                self.cursor.subcolumn,
-            ),
-            pending="",
-        )
+    def reset_pending(self) -> Self:
+        """Drops a partial entry, leaving the cursor and any selection where they stand.
 
-    def navigate_subcolumn(
-        self,
-        value: int,
-        absolute: bool = False,
-    ) -> TrackerInputState:
-        if self.cursor is None:
-            return self
-
-        if absolute:
-            new_sub = SUBCOLUMNS[value % len(SUBCOLUMNS)]
-            return TrackerInputState(
-                cursor=TrackerCursor(
-                    self.cursor.row,
-                    self.cursor.generator,
-                    new_sub,
-                ),
-                pending="",
-            )
-
-        current = flat_index(self.cursor.generator, self.cursor.subcolumn)
-        return TrackerInputState(
-            cursor=from_flat(self.cursor.row, current + value),
-            pending="",
-        )
-
-    def navigate_column_by(self, delta: int) -> TrackerInputState:
-        if self.cursor is None:
-            return self
-
-        current_idx = COLUMNS.index(self.cursor.generator)
-        next_idx = (current_idx + delta) % len(COLUMNS)
-        return TrackerInputState(
-            cursor=TrackerCursor(self.cursor.row, COLUMNS[next_idx], self.cursor.subcolumn),
-            pending="",
-        )
-
-    def type_char(
-        self,
-        char: str,
-    ) -> Tuple[TrackerInputState, Optional[EditAction]]:
-        if self.cursor is None:
-            return self, None
-
-        if self.cursor.subcolumn is SubColumn.INSTRUMENT and char == MINUS:
-            return self.reset_pending(), self._note_off_action(self.cursor)
-
-        if self.cursor.subcolumn is SubColumn.TRANSPOSE:
-            return self._type_transpose_char(char)
-
-        if char in SIGNS:
-            return self, None
-
-        pending = self.pending + char
-        expected = DIGIT_COUNT[self.cursor.subcolumn]
-        if len(pending) < expected:
-            return TrackerInputState(cursor=self.cursor, pending=pending), None
-
-        action = _parse(self.cursor, pending)
-        return self.reset_pending(), action
-
-    def _note_off_action(self, cursor: TrackerCursor) -> EditAction:
-        return EditAction(
-            row=cursor.row,
-            generator=cursor.generator,
-            sample_index=None,
-            transpose=None,
-            volume=None,
-            note_off=True,
-        )
-
-    def _type_transpose_char(
-        self,
-        char: str,
-    ) -> Tuple[TrackerInputState, Optional[EditAction]]:
-        """Drives the signed transpose field: ``[±][H][H]``.
-
-        The first slot is reserved for the sign. A leading sign sets it; a leading
-        digit implies ``+``. A sign key pressed later flips the sign in place,
-        keeping any digits already entered. The field commits once both magnitude
-        digits are in.
+        The anchor survives because this runs before every move, the extending ones included:
+        each gesture then decides whether to hold the selection or collapse it.
         """
-        if self.cursor is None:
-            return self, None
+        return type(self)(cursor=self.cursor, pending="", anchor=self.anchor)
 
-        is_sign = char in SIGNS
-        if not self.pending:
-            pending = char if is_sign else f"{PLUS}{char}"
-        elif is_sign:
-            pending = char + self.pending[1:]
-            return (
-                TrackerInputState(cursor=self.cursor, pending=pending),
-                None,
-            )
-        else:
-            pending = self.pending + char
+    def collapse(self) -> Self:
+        """Drops the selection, leaving the cursor's own cell as the whole target."""
+        return type(self)(cursor=self.cursor, pending=self.pending)
 
-        digits = len(pending) - 1
-        if digits < DIGIT_COUNT[SubColumn.TRANSPOSE]:
-            return TrackerInputState(cursor=self.cursor, pending=pending), None
+    @property
+    def region(self) -> Optional[RegionT]:
+        """The block a selection covers, once one has been started."""
+        if self.cursor is None or self.anchor is None:
+            return None
 
-        action = _parse(self.cursor, pending)
-        return self.reset_pending(), action
+        return self._region_between(self.anchor, self.cursor)
 
-    def commit_partial(self) -> Tuple[TrackerInputState, Optional[EditAction]]:
-        if not self.pending or self.cursor is None:
-            return self, None
+    def region_at(self, cell: CursorT) -> RegionT:
+        """The block a gesture raised on ``cell`` acts on: the selection it stands in, or the cell
+        alone.
 
-        if self.cursor.subcolumn is SubColumn.TRANSPOSE:
-            action = _parse(self.cursor, self.pending)
-            return self.reset_pending(), action
+        A gesture raised inside a selection acts on the whole of it, which is what a reader who has
+        just dragged a range out expects it to reach; one raised anywhere else acts on the cell it
+        names, which is a block of exactly that cell. A cursor with nothing selected therefore
+        stands on a block of one cell, so copying reaches the cell the reader is working in and
+        needs no selection made first.
+        """
+        region = self.region
+        if region is not None and self._covers(region, cell):
+            return region
 
-        expected = DIGIT_COUNT[self.cursor.subcolumn]
-        padded = self.pending.zfill(expected)
-        action = _parse(self.cursor, padded)
-        return self.reset_pending(), action
+        return self._region_between(cell, cell)
 
-    def clear(self) -> Tuple[TrackerInputState, ClearAction]:
-        action = ClearAction(
-            row=self.cursor.row if self.cursor else 0,
-            generator=self.cursor.generator if self.cursor else None,
+    def extend_to(self, cursor: CursorT) -> Self:
+        """Carries the moving end of the selection to ``cursor``, anchoring it where it began.
+
+        A selection that has not been started yet takes the cell the cursor stands on as its
+        anchor, so the first extending gesture selects the cell it came from as well as the one
+        it reaches.
+        """
+        return type(self)(
+            cursor=cursor,
+            pending="",
+            anchor=self.anchor if self.anchor is not None else self.cursor,
         )
-        return self.reset_pending(), action
 
-    def clear_subcolumn(self) -> Tuple[TrackerInputState, ClearAction]:
-        action = ClearAction(
-            row=self.cursor.row if self.cursor else 0,
-            generator=self.cursor.generator if self.cursor else None,
-            subcolumn=self.cursor.subcolumn if self.cursor else None,
-        )
-        return self.reset_pending(), action
+    def select_between(self, anchor: CursorT, cursor: CursorT) -> Self:
+        """Stands a selection between two cells, the cursor landing on the second.
 
-    def cancel(self) -> TrackerInputState:
-        return self.reset_pending()
+        A select gesture names a shape by the two corners bounding it, and leaves the cursor on the
+        far one: the next extending press then grows or shrinks the selection from the edge the
+        reader has just reached.
+        """
+        return type(self)(cursor=cursor, pending="", anchor=anchor)
+
+    def cancel(self) -> Self:
+        """Drops a partial entry and any selection, which is what Escape asks of a grid."""
+        return self.collapse().reset_pending()
+
+    def _after_entry(self) -> Self:
+        """The state a committed entry leaves: the cursor alone, nothing pending and nothing selected.
+
+        Typing writes the one cell the cursor stands on, so it takes the selection down to that
+        cell instead of leaving a range for the next gesture to act on.
+        """
+        return self.collapse().reset_pending()

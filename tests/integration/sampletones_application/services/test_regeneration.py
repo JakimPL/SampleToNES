@@ -225,9 +225,18 @@ class TestArpeggioEditKeepsTheSamplePitch:
             label="arpeggio_edit_keeps_the_sample_pitch",
             build=build,
             steps=[
-                ScenarioStep(label="check_the_starting_reference", action=check_the_starting_reference),
-                ScenarioStep(label="raise_the_first_frame_an_octave", action=raise_the_first_frame_an_octave),
-                ScenarioStep(label="reload_the_edited_features", action=reload_the_edited_features),
+                ScenarioStep(
+                    label="check_the_starting_reference",
+                    action=check_the_starting_reference,
+                ),
+                ScenarioStep(
+                    label="raise_the_first_frame_an_octave",
+                    action=raise_the_first_frame_an_octave,
+                ),
+                ScenarioStep(
+                    label="reload_the_edited_features",
+                    action=reload_the_edited_features,
+                ),
                 ScenarioStep(label="clear_the_envelope", action=clear_the_envelope),
                 ScenarioStep(label="check_the_reference_held", action=check_the_reference_held),
             ],

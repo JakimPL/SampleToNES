@@ -1,6 +1,8 @@
 from typing import List
 
-from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
+from sampletones_application.layout.general.plus_minus_buttons import (
+    PlusMinusButtonsLayout,
+)
 from sampletones_application.ui.elements.plus_minus_buttons import GUIPlusMinusButtons
 
 LAYOUT = PlusMinusButtonsLayout(

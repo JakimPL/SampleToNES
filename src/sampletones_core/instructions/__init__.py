@@ -14,16 +14,16 @@ from .types import (
 from .utils import get_instruction_by_type
 
 __all__ = [
+    "INSTRUCTION_CLASS_MAP",
     "Instruction",
+    "InstructionClass",
     "InstructionData",
+    "InstructionFields",
+    "InstructionT",
+    "InstructionTypeUnion",
+    "InstructionUnion",
+    "NoiseInstruction",
     "PulseInstruction",
     "TriangleInstruction",
-    "NoiseInstruction",
-    "INSTRUCTION_CLASS_MAP",
-    "InstructionT",
-    "InstructionClass",
-    "InstructionUnion",
-    "InstructionTypeUnion",
-    "InstructionFields",
     "get_instruction_by_type",
 ]

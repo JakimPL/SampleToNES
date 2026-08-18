@@ -1,7 +1,14 @@
-from typing import Callable, Final, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import channel_label, context_label, context_text
+from sampletones_application.categories.elements.global_ import ContextElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerInstrumentsElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
@@ -14,6 +21,7 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
 from sampletones_application.ui.elements.context_menu import (
+    add_detail_items,
     add_play_menu_item,
     context_menu,
 )
@@ -25,21 +33,61 @@ from sampletones_application.utils.gui.dpg import dpg_delete_children
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
+    ActivePredicate,
     KeyEvent,
     KeyRouter,
 )
-from sampletones_application.utils.gui.keyboard.modifiers import Modifier
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
     SampleEntryViewModel,
     SampleSelection,
     SequencerSamplesViewModel,
 )
-from sampletones_core.utils.display import display_id, display_sample_label
+from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.utils.display import display_id
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback
 
 FROZEN_HEADER_ROWS: Final[int] = 1
+
+
+@dataclass(frozen=True)
+class SampleMove:
+    """One of the four moves, as its key press and its menu item each name it."""
+
+    element: SequencerInstrumentsElements
+    shortcut: ShortcutId
+    direction: MoveDirection
+
+
+SAMPLE_MOVES: Final[Tuple[SampleMove, ...]] = (
+    SampleMove(
+        element=SequencerInstrumentsElements.CONTEXT_MOVE_UP,
+        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_UP,
+        direction=MoveDirection.PREVIOUS,
+    ),
+    SampleMove(
+        element=SequencerInstrumentsElements.CONTEXT_MOVE_DOWN,
+        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_DOWN,
+        direction=MoveDirection.NEXT,
+    ),
+    SampleMove(
+        element=SequencerInstrumentsElements.CONTEXT_MOVE_TOP,
+        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_TO_TOP,
+        direction=MoveDirection.FIRST,
+    ),
+    SampleMove(
+        element=SequencerInstrumentsElements.CONTEXT_MOVE_BOTTOM,
+        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_TO_BOTTOM,
+        direction=MoveDirection.LAST,
+    ),
+)
+
+MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {move.shortcut: move.direction for move in SAMPLE_MOVES}
 
 
 class GUISequencerSamplesPanel(GUIPanel):
@@ -47,19 +95,29 @@ class GUISequencerSamplesPanel(GUIPanel):
         self,
         *,
         layout: SequencerLayout,
+        detail_color: BaseColor,
         language_manager: LanguageManager,
         key_router: KeyRouter,
+        tab_active: ActivePredicate,
+        shortcut_source: ShortcutSource,
         initial_collapsed: bool = False,
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
+        self._detail_color = detail_color
         self._router = key_router
+        self._tab_active = tab_active
+        self._shortcuts = shortcut_source
         self._row_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_TABLE, SUF_HANDLER_REGISTRY)
         self._rename_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME, SUF_HANDLER_REGISTRY)
         self._selected_sample_id: Optional[str] = None
         self._selected_row: Optional[int] = None
         self._editing_sample_id: Optional[str] = None
         self._entries: Tuple[SampleEntryViewModel, ...] = ()
+        self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
+        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
+        self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
+        self.sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]] = None
         self.on_sample_selected: Optional[StringCallback] = None
         self.on_sample_edit_requested: Optional[StringCallback] = None
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
@@ -79,7 +137,7 @@ class GUISequencerSamplesPanel(GUIPanel):
     def create_panel(self, parent: str) -> None:
         with self._collapsible_card(
             parent,
-            self._language_manager["sequencer.instruments.label.instruments_text"],
+            self._label(self._language_manager, SequencerInstrumentsElements.INSTRUMENTS_TEXT),
             glyph=self._glyphs.headers.samples,
         ):
             self._create_samples_table()
@@ -105,13 +163,14 @@ class GUISequencerSamplesPanel(GUIPanel):
         )
 
     def _create_samples_table(self) -> None:
-        with dpg.child_window(
-            tag=TAG_SEQUENCER_INSTRUMENTS_WINDOW,
-            border=False,
-            width=-1,
-            height=-1,
-        ):
-            with dpg.table(
+        with (
+            dpg.child_window(
+                tag=TAG_SEQUENCER_INSTRUMENTS_WINDOW,
+                border=False,
+                width=-1,
+                height=-1,
+            ),
+            dpg.table(
                 tag=TAG_SEQUENCER_INSTRUMENTS_TABLE,
                 width=-1,
                 height=-1,
@@ -125,22 +184,32 @@ class GUISequencerSamplesPanel(GUIPanel):
                 freeze_rows=FROZEN_HEADER_ROWS,
                 row_background=True,
                 policy=dpg.mvTable_SizingFixedFit,
-            ):
-                dpg.add_table_column(
-                    label=self._language_manager["sequencer.instruments.label.column_id"],
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.instrument.id,
-                )
-                dpg.add_table_column(
-                    label=self._language_manager["sequencer.instruments.label.column_name"],
-                    width_stretch=True,
-                    init_width_or_weight=self._layout.table_cells.instrument.name,
-                )
-                dpg.add_table_column(
-                    label=self._language_manager["sequencer.instruments.label.column_loop"],
-                    width_fixed=True,
-                    init_width_or_weight=self._layout.table_cells.instrument.loop,
-                )
+            ),
+        ):
+            dpg.add_table_column(
+                label=self._label(
+                    self._language_manager,
+                    SequencerInstrumentsElements.COLUMN_ID,
+                ),
+                width_fixed=True,
+                init_width_or_weight=self._layout.table_cells.instrument.id,
+            )
+            dpg.add_table_column(
+                label=self._label(
+                    self._language_manager,
+                    SequencerInstrumentsElements.COLUMN_NAME,
+                ),
+                width_stretch=True,
+                init_width_or_weight=self._layout.table_cells.instrument.name,
+            )
+            dpg.add_table_column(
+                label=self._label(
+                    self._language_manager,
+                    SequencerInstrumentsElements.COLUMN_LOOP,
+                ),
+                width_fixed=True,
+                init_width_or_weight=self._layout.table_cells.instrument.loop,
+            )
         ThemeRegistry.get(TAG_SEQUENCER_INSTRUMENTS_THEME_ROW).bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
 
     def update_view(self, view_model: SequencerSamplesViewModel) -> None:
@@ -163,18 +232,36 @@ class GUISequencerSamplesPanel(GUIPanel):
         if self._selected_row is None:
             self._selected_sample_id = None
 
-    def _build_sample_row(self, position: int, entry: SampleEntryViewModel) -> None:
+    def _build_sample_row(
+        self,
+        position: int,
+        entry: SampleEntryViewModel,
+    ) -> None:
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE)
         self._build_id_cell(row_id, position, entry)
         self._build_name_cell(row_id, position, entry)
         self._build_loop_cell(row_id, entry)
         if entry.sample_id == self._selected_sample_id:
             self._selected_row = position
-            dpg.highlight_table_row(
-                TAG_SEQUENCER_INSTRUMENTS_TABLE,
-                position,
-                color=self._layout.colors.cell_cursor,
-            )
+            self._highlight_selected_row(position)
+
+    def _highlight_selected_row(self, position: int) -> None:
+        dpg.highlight_table_row(
+            TAG_SEQUENCER_INSTRUMENTS_TABLE,
+            position,
+            color=self._layout.colors.cell_cursor.rgba,
+        )
+
+    def repaint(self) -> None:
+        """Issues the selected row's tint again so it takes the palette now in place.
+
+        DearPyGui keeps a row highlight on the table rather than on an item, so the colour
+        reaches it only by being pushed again.
+        """
+        if self._selected_row is None or not dpg.does_item_exist(TAG_SEQUENCER_INSTRUMENTS_TABLE):
+            return
+
+        self._highlight_selected_row(self._selected_row)
 
     def _build_id_cell(
         self,
@@ -252,7 +339,7 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _on_sample_selected(
         self,
         sender: Sender,
-        app_data: bool,
+        _app_data: bool,
         user_data: Tuple[int, str],
     ) -> None:
         position, sample_id = user_data
@@ -265,11 +352,7 @@ class GUISequencerSamplesPanel(GUIPanel):
 
         self._selected_row = position
         self._selected_sample_id = sample_id
-        dpg.highlight_table_row(
-            TAG_SEQUENCER_INSTRUMENTS_TABLE,
-            position,
-            color=self._layout.colors.cell_cursor,
-        )
+        self._highlight_selected_row(position)
         self.call(self.on_sample_selected, sample_id)
 
     @property
@@ -312,50 +395,65 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _keys_active(self) -> bool:
         """Whether the samples panel owns the next key.
 
-        While a name is being edited the panel keeps the keyboard so Escape can cancel the rename.
-        Otherwise it acts only when a sample is selected and no field holds the keyboard; a modal
+        The panel answers only while its tab is in front, since a selection outlives a move to
+        another tab. There, a name being edited keeps the keyboard so Escape can cancel the rename;
+        otherwise the panel acts when a sample is selected and no field holds the keyboard. A modal
         dialog claims keys at a higher priority in the router, so the panel needs no modal check.
         """
+        if not self._tab_active():
+            return False
+
         if self._editing_sample_id is not None:
             return True
 
         return self._selected_sample_id is not None and not self._router.is_field_focused
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
-        """Applies a samples key to the selected sample, reporting whether the panel consumed it."""
+        """Applies a samples key to the selected sample, reporting whether the panel consumed it.
+
+        The scheme says which press each samples action answers to; a press the samples category
+        leaves unnamed goes to the application's global shortcuts.
+        """
+        shortcut_id = self._shortcuts.action(ShortcutCategory.SAMPLES, event)
         if self._editing_sample_id is not None:
-            if event.key == dpg.mvKey_Escape:
-                self._cancel_rename()
-                return True
-            return False
+            return self._cancel_edit(shortcut_id)
 
         sample_id = self._selected_sample_id
-        if sample_id is None:
+        if sample_id is None or shortcut_id is None:
             return False
 
-        if Modifier.CTRL in event.modifiers:
+        if self._move_sample(shortcut_id):
+            return True
+
+        match shortcut_id:
+            case ShortcutId.SAMPLES_REMOVE_SAMPLE:
+                self.call(self.on_remove_requested, sample_id)
+            case ShortcutId.SAMPLES_RENAME_SAMPLE:
+                self._start_rename(sample_id)
+            case _:
+                return False
+
+        return True
+
+    def _cancel_edit(self, shortcut_id: Optional[ShortcutId]) -> bool:
+        """Drops the name being edited, reporting whether the press was the cancel.
+
+        A rename in progress keeps every other key for the input, so typing a name reaches the
+        field rather than the panel.
+        """
+        if shortcut_id is not ShortcutId.SAMPLES_CANCEL_RENAME:
             return False
 
-        if Modifier.ALT in event.modifiers:
-            return self._handle_alt_move(event.key)
+        self._cancel_rename()
+        return True
 
-        if event.key == dpg.mvKey_Delete:
-            self.call(self.on_remove_requested, sample_id)
-            return True
+    def _move_sample(self, shortcut_id: ShortcutId) -> bool:
+        """Moves the selected sample up, down, to the top or to the bottom of the list.
 
-        if event.key == dpg.mvKey_F2:
-            self._start_rename(sample_id)
-            return True
-
-        return False
-
-    def _handle_alt_move(self, key: int) -> bool:
-        """Moves the selected sample up/down/to-top/to-bottom on Alt + arrow / Home / End.
-
-        Returns whether the key was an Alt move gesture, so a boundary with nowhere to go still
+        Returns whether the action was one of the moves, so a boundary with nowhere to go still
         counts as consumed and stays out of the global shortcuts.
         """
-        direction = self._alt_move_direction(key)
+        direction = MOVE_DIRECTIONS.get(shortcut_id)
         if direction is None or self._selected_sample_id is None or self._selected_row is None:
             return False
 
@@ -364,19 +462,6 @@ class GUISequencerSamplesPanel(GUIPanel):
             self.call(self.on_move_requested, self._selected_sample_id, target)
 
         return True
-
-    def _alt_move_direction(self, key: int) -> Optional[MoveDirection]:
-        match key:
-            case dpg.mvKey_Up:
-                return MoveDirection.PREVIOUS
-            case dpg.mvKey_Down:
-                return MoveDirection.NEXT
-            case dpg.mvKey_Home:
-                return MoveDirection.FIRST
-            case dpg.mvKey_End:
-                return MoveDirection.LAST
-            case _:
-                return None
 
     def _start_rename(self, sample_id: str) -> None:
         """Turns the sample's name cell into a focused text input."""
@@ -409,23 +494,27 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._editing_sample_id = None
         self._rebuild()
 
-    def _on_rename_enter(self, sender: Sender, app_data: str) -> None:
+    def _on_rename_enter(self, _sender: Sender, _app_data: str) -> None:
         self._commit_rename()
 
-    def _on_rename_deactivated(self, sender: Sender, app_data: int) -> None:
+    def _on_rename_deactivated(self, _sender: Sender, _app_data: int) -> None:
         self._commit_rename()
 
     def _on_loop_toggled(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: bool,
         user_data: str,
     ) -> None:
-        self.call(self.on_loop_changed, user_data, app_data)
+        self.call(
+            self.on_loop_changed,
+            user_data,
+            app_data,
+        )
 
     def _on_sample_double_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: List[int],
     ) -> None:
         clicked_item = app_data[1]
@@ -436,7 +525,7 @@ class GUISequencerSamplesPanel(GUIPanel):
 
     def _on_sample_clicked(
         self,
-        sender: Sender,
+        _sender: Sender,
         app_data: Tuple[int, int],
     ) -> None:
         mouse_button, clicked_item = app_data
@@ -458,77 +547,139 @@ class GUISequencerSamplesPanel(GUIPanel):
         if entry is None:
             return
 
+        target = SampleSelection(
+            sample_id=sample_id,
+            position=position,
+            name=entry.name,
+        )
         with context_menu():
-            header = dpg.add_text(display_sample_label(position, entry.name))
+            header = dpg.add_text(target.label)
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
+            add_detail_items(
+                self._footprint_items(sample_id),
+                color=self._detail_color,
+                tooltip=self._tip_size_bytes,
+            )
             dpg.add_separator()
             add_play_menu_item(
-                self._language_manager["global.context.label.play"],
+                context_label(self._language_manager, ContextElements.PLAY),
                 lambda: self.call(
                     self.on_play_requested,
                     sample_id,
                 ),
             )
-            dpg.add_menu_item(
-                label=self._language_manager["sequencer.instruments.label.context_edit"],
-                callback=lambda: self.call(self.on_sample_edit_requested, sample_id),
-            )
-            dpg.add_menu_item(
-                label=self._language_manager["sequencer.instruments.label.context_rename"],
-                callback=lambda: self._start_rename(sample_id),
-            )
-            dpg.add_menu_item(
-                label=self._language_manager["sequencer.instruments.label.context_duplicate"],
-                callback=lambda: self.call(self.on_duplicate_requested, sample_id),
-            )
             dpg.add_separator()
-            dpg.add_menu_item(
-                label=self._language_manager["sequencer.instruments.label.context_remove"],
-                callback=lambda: self.call(self.on_remove_requested, sample_id),
-            )
-            dpg.add_separator()
-            count = len(self._entries)
-            self._add_move_item(
-                self._language_manager["sequencer.instruments.label.context_move_up"],
-                sample_id,
-                position,
-                count,
-                MoveDirection.PREVIOUS,
-            )
-            self._add_move_item(
-                self._language_manager["sequencer.instruments.label.context_move_down"],
-                sample_id,
-                position,
-                count,
-                MoveDirection.NEXT,
-            )
-            self._add_move_item(
-                self._language_manager["sequencer.instruments.label.context_move_top"],
-                sample_id,
-                position,
-                count,
-                MoveDirection.FIRST,
-            )
-            self._add_move_item(
-                self._language_manager["sequencer.instruments.label.context_move_bottom"],
-                sample_id,
-                position,
-                count,
-                MoveDirection.LAST,
-            )
+            self.add_action_items(target)
+
+    def _footprint_items(self, sample_id: str) -> List[Tuple[str, str]]:
+        """The byte figures the menu prints for a sample: its total, then each channel that plays.
+
+        The figures are asked for as the menu opens, so they name what the sample occupies at the
+        moment a reader looks. A channel standing by is written by no export, so it costs nothing
+        and the menu names the channels that do.
+        """
+        footprint = self.query(self.sample_footprint, sample_id, default=None)
+        if footprint is None:
+            return []
+
+        items = [(self._lbl_sample_size, self._format_size(footprint.total_bytes))]
+        for generator_name in GeneratorName.items():
+            instrument_bytes = footprint.bytes_for(generator_name)
+            if instrument_bytes is not None:
+                items.append(
+                    (
+                        channel_label(self._language_manager, generator_name),
+                        self._format_size(instrument_bytes),
+                    )
+                )
+
+        return items
+
+    def _format_size(self, byte_count: int) -> str:
+        return self._tpl_size_bytes.format(bytes=byte_count)
+
+    def owns_edit_actions(self) -> bool:
+        """Whether the Edit menu states this panel's actions, which it does while it holds a sample.
+
+        The menu offers what the next press would reach, so the key scope decides it, and the
+        selection those keys act on is the one the actions are built for.
+        """
+        return self._keys_active() and self.selection is not None
+
+    def build_edit_actions(self) -> None:
+        """Builds the panel's whole action set for the sample the selection holds."""
+        selection = self.selection
+        if selection is not None:
+            self.add_action_items(selection)
+
+    def add_action_items(self, target: SampleSelection) -> None:
+        """Builds every action a sample offers, in the order each menu prints them.
+
+        The panel states its actions once, and whoever asks for them decides where they are shown:
+        the row menu asks for the sample a pointer landed on, and the menu bar asks for the one the
+        selection holds. An action added here reaches both, printing the key it answers to.
+        """
+        dpg.add_menu_item(
+            label=self._label(
+                self._language_manager,
+                SequencerInstrumentsElements.CONTEXT_EDIT,
+            ),
+            callback=lambda: self.call(self.on_sample_edit_requested, target.sample_id),
+        )
+        dpg.add_menu_item(
+            label=self._label(
+                self._language_manager,
+                SequencerInstrumentsElements.CONTEXT_RENAME,
+            ),
+            shortcut=self._shortcuts.display(ShortcutId.SAMPLES_RENAME_SAMPLE),
+            callback=lambda: self._start_rename(target.sample_id),
+        )
+        dpg.add_menu_item(
+            label=self._label(
+                self._language_manager,
+                SequencerInstrumentsElements.CONTEXT_DUPLICATE,
+            ),
+            callback=lambda: self.call(self.on_duplicate_requested, target.sample_id),
+        )
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=self._label(
+                self._language_manager,
+                SequencerInstrumentsElements.CONTEXT_REMOVE,
+            ),
+            shortcut=self._shortcuts.display(ShortcutId.SAMPLES_REMOVE_SAMPLE),
+            callback=lambda: self.call(self.on_remove_requested, target.sample_id),
+        )
+        dpg.add_separator()
+        for move in SAMPLE_MOVES:
+            self._add_move_item(move, target)
 
     def _add_move_item(
         self,
-        label: str,
-        sample_id: str,
-        position: int,
-        count: int,
-        direction: MoveDirection,
+        move: SampleMove,
+        target: SampleSelection,
     ) -> None:
-        """Add a move item, greyed out (disabled) when the move would have no effect."""
-        target = direction.target(position, count)
+        """Builds one move item, offered while the move carries the sample somewhere new."""
+        position = move.direction.target(target.position, len(self._entries))
         dpg.add_menu_item(
-            label=label,
-            enabled=target is not None,
-            callback=lambda: self.call(self.on_move_requested, sample_id, target),
+            label=self._label(self._language_manager, move.element),
+            shortcut=self._shortcuts.display(move.shortcut),
+            enabled=position is not None,
+            callback=lambda: self.call(
+                self.on_move_requested,
+                target.sample_id,
+                position,
+            ),
         )
+
+    @staticmethod
+    def _label(
+        language_manager: LanguageManager,
+        element: SequencerInstrumentsElements,
+    ) -> str:
+        return language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            element,
+        ]

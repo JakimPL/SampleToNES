@@ -5,14 +5,25 @@ import pytest
 
 from sampletones_core.formats.bitphase.btp import write_btp
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
-from sampletones_core.formats.bitphase.specification.channels import CHANNEL_COUNT, CHANNEL_LABELS, ChannelIndex
+from sampletones_core.formats.bitphase.specification.channels import (
+    CHANNEL_COUNT,
+    CHANNEL_LABELS,
+    ChannelIndex,
+)
 from sampletones_core.formats.bitphase.specification.chip import (
     CHIP_TYPE_NES,
     CPU_FREQUENCIES,
+    MAX_INITIAL_SPEED,
     MAX_TUNING_PERIOD,
+    MIN_INITIAL_SPEED,
     MIN_TUNING_PERIOD,
     TUNING_TABLE_LENGTH,
     ChipVariant,
+)
+from sampletones_core.formats.bitphase.specification.effects import (
+    NO_EFFECT_PARAMETER,
+    SPEED_EFFECT_DELAY,
+    EffectId,
 )
 from sampletones_core.formats.bitphase.specification.instruments import (
     MAX_PULSE_WIDTH,
@@ -29,12 +40,23 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NO_INSTRUMENT_CHANGE,
     NOTE_RANGE,
     TABLE_COLUMN_OFFSET,
+    VOLUME_OFF,
     NoteName,
 )
 from sampletones_core.project.project import Project
-from tests.suite.bitphase import LoadedNote, LoadedProject, LoadedRow, parse_btp
+from sampletones_core.timing import Metre, RowRate, calculate_groove
+from tests.suite.bitphase import (
+    BITPHASE_NO_EFFECTS,
+    LoadedEffect,
+    LoadedNote,
+    LoadedProject,
+    LoadedRow,
+    LoadedTable,
+    parse_btp,
+)
 
 EXPECTED_INSTRUMENT_COUNT: Final[int] = 5
+GROOVE_TEMPO: Final[int] = 210
 PLAYED_CHANNELS: Final[List[int]] = [
     int(ChannelIndex.SQUARE1),
     int(ChannelIndex.SQUARE2),
@@ -53,10 +75,28 @@ def note_index(note: LoadedNote) -> int:
     return note.name - int(NoteName.C) + (note.octave - FIRST_OCTAVE) * NOTE_RANGE
 
 
+def at_tempo(project: Project, tempo: int) -> Project:
+    """The same project played at another tempo, leaving the session-wide fixture as it is."""
+    return Project(
+        metadata=project.metadata,
+        info=project.info,
+        settings=project.settings.model_copy(update={"tempo": tempo}),
+        samples=project.samples,
+        song=project.song,
+    )
+
+
 @pytest.fixture
 def document(integration_project: Project, document_path: Path) -> LoadedProject:
     write_btp(document_path, project_to_bitphase(integration_project))
     return parse_btp(document_path.read_bytes(), list(CHANNEL_LABELS))
+
+
+@pytest.fixture
+def groove_document(integration_project: Project, groove_document_path: Path) -> LoadedProject:
+    project = at_tempo(integration_project, GROOVE_TEMPO)
+    write_btp(groove_document_path, project_to_bitphase(project))
+    return parse_btp(groove_document_path.read_bytes(), list(CHANNEL_LABELS))
 
 
 class TestBtpPipeline:
@@ -184,7 +224,83 @@ class TestTheTriggersReachTheirVoices:
         assert all(MIN_NOTE_INDEX <= index <= MAX_NOTE_INDEX for index in indices)
 
     def test_every_volume_column_stays_within_the_channel_range(self, document: LoadedProject) -> None:
-        assert all(0 <= row.volume <= FULL_VOLUME for row in every_row(document))
+        assert all(VOLUME_OFF <= row.volume <= FULL_VOLUME for row in every_row(document))
+
+
+class TestTheGrooveReachesTheFile:
+    """A tempo the speed column cannot state travels as a table of per-row tick counts and a
+    trigger that names it, so the file has to hold the groove the calculator produced and
+    re-trigger it wherever the order takes playback.
+    """
+
+    @pytest.fixture(name="groove_table")
+    def groove_table_fixture(self, groove_document: LoadedProject) -> LoadedTable:
+        return groove_document.tables[-1]
+
+    def test_the_groove_takes_the_table_above_the_slices(
+        self,
+        groove_document: LoadedProject,
+        groove_table: LoadedTable,
+    ) -> None:
+        assert groove_table.id == len(groove_document.instruments)
+
+    def test_the_table_holds_one_entry_per_pattern_row(
+        self,
+        groove_document: LoadedProject,
+        groove_table: LoadedTable,
+    ) -> None:
+        lengths = {pattern.length for pattern in groove_document.songs[0].patterns}
+        assert lengths == {len(groove_table.rows)}
+
+    def test_every_entry_is_a_speed_the_engine_reads(self, groove_table: LoadedTable) -> None:
+        assert all(MIN_INITIAL_SPEED <= ticks <= MAX_INITIAL_SPEED for ticks in groove_table.rows)
+
+    def test_the_table_holds_the_groove_the_project_plays(
+        self,
+        integration_project: Project,
+        groove_table: LoadedTable,
+    ) -> None:
+        project = at_tempo(integration_project, GROOVE_TEMPO)
+        groove = calculate_groove(
+            RowRate.from_settings(project.settings),
+            Metre.from_settings(project.settings, rows=project.song.rows_per_pattern),
+            minimum_ticks=MIN_INITIAL_SPEED,
+            maximum_ticks=MAX_INITIAL_SPEED,
+        )
+        assert groove_table.rows == list(groove.ticks)
+
+    def test_the_song_starts_on_the_ticks_its_first_row_lasts(
+        self,
+        groove_document: LoadedProject,
+        groove_table: LoadedTable,
+    ) -> None:
+        assert groove_document.songs[0].initial_speed == groove_table.rows[0]
+
+    def test_every_pattern_triggers_the_groove_on_its_first_row(
+        self,
+        groove_document: LoadedProject,
+        groove_table: LoadedTable,
+    ) -> None:
+        trigger = LoadedEffect(
+            effect=int(EffectId.SPEED),
+            delay=SPEED_EFFECT_DELAY,
+            parameter=NO_EFFECT_PARAMETER,
+            table_index=groove_table.id,
+        )
+        triggers = [
+            pattern.channels[int(ChannelIndex.DPCM)].rows[0].effects for pattern in groove_document.songs[0].patterns
+        ]
+        assert triggers == [[trigger]] * len(triggers)
+
+    def test_a_tempo_the_speed_column_states_leaves_every_effect_column_empty(
+        self,
+        document: LoadedProject,
+    ) -> None:
+        """The song's own tempo divides into whole ticks, so its document carries the speed
+        and nothing beside it.
+        """
+        assert len(document.tables) == len(document.instruments)
+        assert all(row.effects == list(BITPHASE_NO_EFFECTS) for row in every_row(document))
 
 
 class TestTheInstrumentRowsArePlayable:
