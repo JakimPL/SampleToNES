@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.session.state.state import ApplicationState
@@ -99,6 +99,13 @@ class ApplicationStateManager:
 
     def set_favorites_filter_active(self, panel_tag: str, active: bool) -> None:
         self.state.favorites_filters[panel_tag] = active
+
+    def expanded_rows(self, panel_tag: str) -> Set[str]:
+        return set(self.state.expanded_rows.get(panel_tag, ()))
+
+    def set_expanded_rows(self, panel_tag: str, rows: Set[str]) -> None:
+        """Writes the rows a browser stands open, in a settled order so the file reads the same twice."""
+        self.state.expanded_rows[panel_tag] = sorted(rows)
 
     def load_current_tab(self) -> Tab:
         return self.state.current.tab

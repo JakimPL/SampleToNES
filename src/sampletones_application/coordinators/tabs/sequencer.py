@@ -208,6 +208,7 @@ class SequencerTabCoordinator:
             colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL),
             initial_favorites_only=session_manager.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL),
+            initial_expanded_rows=session_manager.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL),
         )
         self._sequencer_tracker_logic: SequencerTrackerLogic = SequencerTrackerLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
@@ -955,6 +956,13 @@ class SequencerTabCoordinator:
 
     def refresh_browser(self) -> None:
         self._sequencer_browser_panel.refresh()
+
+    def save_browser_shape(self) -> None:
+        """Writes down the rows the browser stands open, so a later run brings them back."""
+        self._session_manager.set_expanded_rows(
+            self._sequencer_browser_panel.tag,
+            self._sequencer_browser_panel.expanded_rows,
+        )
 
     def redraw_browser(self) -> None:
         """Draws the browser again from the model it holds, which a change of filter asks for."""

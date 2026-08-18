@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import AbstractSet, Dict
 
 import dearpygui.dearpygui as dpg
 
@@ -20,7 +20,7 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tags import FileBrowserTags
-from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.ui.elements.tree.tree import NO_EXPANDED_ROWS, GUITreePanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.parallelization.thread import concurrent
@@ -55,6 +55,7 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
         status_bar: GUIStatusBar,
         colors: TreeColors,
         initial_collapsed: bool,
+        initial_expanded_rows: AbstractSet[str] = NO_EXPANDED_ROWS,
     ) -> None:
         self._lbl_collapse_all = language_manager["global.browser.label.collapse_all"]
         self._msg_collapse_all = language_manager["global.status.message.collapse_all"]
@@ -69,6 +70,7 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
+            initial_expanded_rows=initial_expanded_rows,
         )
 
         self._enable_horizontal_collapse(

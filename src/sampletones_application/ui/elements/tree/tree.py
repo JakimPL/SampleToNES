@@ -1,7 +1,20 @@
 from abc import ABC, abstractmethod
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
+from typing import (
+    AbstractSet,
+    Any,
+    Callable,
+    Dict,
+    Final,
+    FrozenSet,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 import dearpygui.dearpygui as dpg
 
@@ -97,6 +110,8 @@ from sampletones_shared.types.callback import (
 )
 from sampletones_shared.utils.system.paths import open_path_in_explorer
 
+NO_EXPANDED_ROWS: Final[FrozenSet[str]] = frozenset()
+
 
 class GUITreePanel(GUIPanel, ABC):
     _NAME_FONT: Font = Font.REGULAR_SMALL
@@ -118,6 +133,7 @@ class GUITreePanel(GUIPanel, ABC):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
+        initial_expanded_rows: AbstractSet[str] = NO_EXPANDED_ROWS,
     ) -> None:
         self._language_manager = language_manager
         self._logic = tree_logic
@@ -127,7 +143,7 @@ class GUITreePanel(GUIPanel, ABC):
         self.tree_tag = tree_tag
 
         self._pending_specs: List[NodeSpec] = []
-        self._expanded_rows: Set[str] = set()
+        self._expanded_rows: Set[str] = set(initial_expanded_rows)
         self._emitter = TreeEmitter(scheduling=scheduling)
 
         self._filter: TreeFilter = NO_FILTER
@@ -234,16 +250,21 @@ class GUITreePanel(GUIPanel, ABC):
         return self._pending_specs
 
     def _forget_rows_the_model_dropped(self) -> None:
-        """Holds the memory of open rows to the rows a pass over the whole tree found.
+        """Holds the memory of open rows to the rows the model states, read afresh on every pass.
 
-        A pass showing everything states which rows exist, so a row it left out belongs to a folder
-        the disk no longer holds and its place in the memory goes with it. A pass narrowed to the
-        favorites speaks for those rows alone, and leaves the memory of the rest as it stands.
+        A row the memory holds that the model no longer states belongs to a folder the disk has lost,
+        so its place in the memory goes with it. Reading the model rather than the rows a pass drew is
+        what lets a browser opening in the favorites mode — or opening on a session written before the
+        reconstructions directory moved — drop what is gone.
         """
-        if not self._REMEMBERS_EXPANSION or self._filter.favorites_only:
+        if not self._REMEMBERS_EXPANSION:
             return
 
-        self._expanded_rows &= {spec.node_tag for spec in self._pending_specs}
+        root = self.tree.get_root()
+        if root is None:
+            return
+
+        self._expanded_rows &= {self._generate_node_tag(node) for node in root.descendants if node.children}
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = compose_tag(self.tag, SUF_INPUT_SEARCH)
@@ -422,6 +443,11 @@ class GUITreePanel(GUIPanel, ABC):
         stands_open = should_expand or node_tag in self._expanded_rows
         self._set_row_expanded(node_tag, stands_open and bool(node.children))
         return stands_open
+
+    @property
+    def expanded_rows(self) -> Set[str]:
+        """The rows the browser stands open, which is the shape a session writes down."""
+        return set(self._expanded_rows)
 
     def _set_row_expanded(self, node_tag: str, expanded: bool) -> None:
         """Holds whether a row stands open, which is what a later pass brings it back by."""

@@ -208,6 +208,53 @@ class TestTheReadersShape:
         assert render_view(panel) == WHOLE_TREE_WITHOUT_THE_ARCHIVE
         assert panel._expanded_rows == set()
 
+    def test_a_browser_opens_with_the_rows_a_session_left_it(self, corpus: BrowserCorpus) -> None:
+        """The shape outlives the run it was made in, so a browser is handed it as it is built."""
+        panel = build_browser_panel(corpus, set(), favorites_only=False)
+        archive_tag = panel._generate_node_tag(row_named(corpus, "archive"))
+
+        opened = build_browser_panel(
+            corpus,
+            set(),
+            favorites_only=False,
+            expanded_rows={archive_tag},
+        )
+
+        assert "v archive" in render_view(opened)
+
+    def test_a_pass_in_the_favorites_mode_forgets_the_rows_the_model_dropped(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        """The model states which rows exist whatever the mode narrows to, so a lost row is dropped."""
+        panel = build_browser_panel(corpus, {corpus.paths["A/beat"]}, favorites_only=False)
+        archive = row_named(corpus, "archive")
+        set_row_expanded(panel, archive, expanded=True)
+        render_view(panel)
+
+        archive.parent = None
+        set_filter(panel, favorites_only=True)
+        render_view(panel)
+
+        assert panel._expanded_rows == set()
+
+    def test_the_shape_a_save_writes_is_the_rows_standing_open(self, corpus: BrowserCorpus) -> None:
+        panel = build_browser_panel(corpus, set(), favorites_only=False)
+        archive_tag = panel._generate_node_tag(row_named(corpus, "archive"))
+        set_row_expanded(panel, row_named(corpus, "archive"), expanded=True)
+
+        assert panel.expanded_rows == {archive_tag}
+
+    def test_the_shape_a_save_reads_is_taken_apart_from_the_browser(self, corpus: BrowserCorpus) -> None:
+        """The browser keeps writing its own memory, so what a save carries is a reading of it."""
+        panel = build_browser_panel(corpus, set(), favorites_only=False)
+        set_row_expanded(panel, row_named(corpus, "archive"), expanded=True)
+        written = panel.expanded_rows
+
+        set_row_expanded(panel, row_named(corpus, "archive"), expanded=False)
+
+        assert written != panel.expanded_rows
+
     def test_two_browsers_over_one_tree_remember_their_own_shape(self, corpus: BrowserCorpus) -> None:
         """A row is remembered under the tag of the browser showing it, so neither reaches the other."""
         sequencer = build_browser_panel(corpus, set(), favorites_only=False, panel_tag="sequencer.browser")

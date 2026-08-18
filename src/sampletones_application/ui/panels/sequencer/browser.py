@@ -1,3 +1,5 @@
+from typing import AbstractSet
+
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
@@ -43,6 +45,7 @@ class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
         colors: TreeColors,
         initial_collapsed: bool,
         initial_favorites_only: bool,
+        initial_expanded_rows: AbstractSet[str],
     ) -> None:
         self._language_manager = language_manager
 
@@ -55,6 +58,7 @@ class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
             colors=colors,
             initial_collapsed=initial_collapsed,
             initial_favorites_only=initial_favorites_only,
+            initial_expanded_rows=initial_expanded_rows,
         )
 
     @property

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Protocol, Tuple
+from typing import AbstractSet, Any, Callable, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -83,6 +83,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
     _NAME_FONT: Font = Font.REGULAR_SMALL
     _MONOSPACE_CONFIG_NODES: bool = True
     _REBUILD_ON_CREATE: bool = False
+    _REMEMBERS_EXPANSION: bool = True
     _tags: FileBrowserTags = FileBrowserTags(
         panel=TAG_INSTRUCTIONS_LIBRARY_PANEL,
         tree=TAG_INSTRUCTIONS_LIBRARY_TREE,
@@ -99,6 +100,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         *,
         scheduling: SchedulingBehavior,
         initial_collapsed: bool,
+        initial_expanded_rows: AbstractSet[str],
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
@@ -125,6 +127,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
             status_bar=status_bar,
             colors=colors,
             initial_collapsed=initial_collapsed,
+            initial_expanded_rows=initial_expanded_rows,
         )
 
     @property

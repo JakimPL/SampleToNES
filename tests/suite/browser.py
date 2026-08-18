@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, Final, List, Mapping, Sequence, Set, Tuple
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Set, Tuple
 
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.ui.elements.tree.colors import TreeColors
@@ -292,6 +292,7 @@ def build_browser_panel(
     panel_tag: str = PANEL_TAG,
     auto_expand_reconstructions: bool = False,
     auto_expand_directories: bool = False,
+    expanded_rows: Optional[Set[str]] = None,
 ) -> GUISequencerBrowserPanel:
     """Builds a browser panel showing the corpus under a filter, with the favorites its logic answers.
 
@@ -302,7 +303,7 @@ def build_browser_panel(
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = panel_tag
-    panel._expanded_rows = set()
+    panel._expanded_rows = set() if expanded_rows is None else set(expanded_rows)
     panel.tree_tag = TREE_TAG
     panel.tree = corpus.tree
     panel._logic = FakeTreeLogic(  # type: ignore[assignment]

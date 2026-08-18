@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import AbstractSet, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -50,6 +50,7 @@ class GUIReconstructionsBrowserPanel(GUIReconstructionBrowserPanel):
         colors: TreeColors,
         initial_collapsed: bool,
         initial_favorites_only: bool,
+        initial_expanded_rows: AbstractSet[str],
     ) -> None:
         self._language_manager = language_manager
 
@@ -62,6 +63,7 @@ class GUIReconstructionsBrowserPanel(GUIReconstructionBrowserPanel):
             colors=colors,
             initial_collapsed=initial_collapsed,
             initial_favorites_only=initial_favorites_only,
+            initial_expanded_rows=initial_expanded_rows,
         )
 
         self.on_load_reconstruction: Optional[PathCallback] = None

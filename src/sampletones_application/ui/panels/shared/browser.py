@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Optional, Tuple
+from typing import AbstractSet, Any, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -39,7 +39,8 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
 
     Reconstructions carry favorites, so this browser offers the control showing them alone and opens
     in the mode the session left it in. It holds the shape the reader unfolded as well, so a rebuild
-    — a refresh, a change of mode — brings the rows back standing as they were left.
+    — a refresh, a change of mode — brings the rows back standing as they were left, and so does the
+    next run of the application.
     """
 
     _MONOSPACE_CONFIG_NODES: bool = True
@@ -57,6 +58,7 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         colors: TreeColors,
         initial_collapsed: bool,
         initial_favorites_only: bool,
+        initial_expanded_rows: AbstractSet[str],
     ) -> None:
         self._language_manager = language_manager
         self.on_refresh_tree: Optional[VoidCallback] = None
@@ -70,6 +72,7 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
             status_bar=status_bar,
             colors=colors,
             initial_collapsed=initial_collapsed,
+            initial_expanded_rows=initial_expanded_rows,
         )
 
         self._restore_favorites_only(initial_favorites_only)

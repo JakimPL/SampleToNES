@@ -1364,9 +1364,20 @@ class Application:
     def _persist_application_state(self) -> None:
         self.session_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
+        self._save_browser_shapes()
         current_tab = self._shell.get_current_tab()
         self.session_manager.set_current_tab(current_tab)
         self.session_manager.save_config()
+
+    def _save_browser_shapes(self) -> None:
+        """Asks every tab holding a tree to write down which of its rows stand open.
+
+        The shape belongs to the browser showing it, and it is read the once here rather than followed
+        row by row, a pass over the rows running on the tree worker.
+        """
+        self._reconstructions_tab.save_browser_shape()
+        self._sequencer_tab.save_browser_shape()
+        self._instructions_tab.save_browser_shape()
 
     def _build_edit_actions(self) -> bool:
         """States the actions of the grid holding the cursor into the Edit menu being built."""

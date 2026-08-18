@@ -136,6 +136,7 @@ class InstructionsTabCoordinator:
             self._library_tree_logic,
             scheduling=layout.scheduling,
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_LIBRARY_PANEL),
+            initial_expanded_rows=session_manager.expanded_rows(TAG_INSTRUCTIONS_LIBRARY_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
             colors=layout.tree_colors,
@@ -484,6 +485,13 @@ class InstructionsTabCoordinator:
             self.load_library_file(filepath)
         except (SampleToNESError, OSError) as exception:
             logger.warning(f"Could not load library from {logger.format_path(filepath)}: {exception}")
+
+    def save_browser_shape(self) -> None:
+        """Writes down the rows the catalogue stands open, so a later run brings them back."""
+        self._session_manager.set_expanded_rows(
+            self._library_panel.tag,
+            self._library_panel.expanded_rows,
+        )
 
     def is_library_generating(self) -> bool:
         return self._library_logic.is_library_generating()

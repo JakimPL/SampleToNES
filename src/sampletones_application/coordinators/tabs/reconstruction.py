@@ -166,6 +166,7 @@ class ReconstructionTabCoordinator:
             colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
             initial_favorites_only=session_manager.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
+            initial_expanded_rows=session_manager.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
@@ -556,6 +557,13 @@ class ReconstructionTabCoordinator:
 
     def refresh_browser(self) -> None:
         self._browser_panel.refresh()
+
+    def save_browser_shape(self) -> None:
+        """Writes down the rows the browser stands open, so a later run brings them back."""
+        self._session_manager.set_expanded_rows(
+            self._browser_panel.tag,
+            self._browser_panel.expanded_rows,
+        )
 
     def redraw_browser(self) -> None:
         """Draws the browser again from the model it holds, which a change of filter asks for."""

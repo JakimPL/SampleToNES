@@ -120,6 +120,24 @@ class TestApplicationStateManagerCardsAndFilters:
 
         assert manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL) is False
 
+    def test_a_browser_no_run_has_touched_stands_open_nowhere(self, manager: ApplicationStateManager) -> None:
+        assert manager.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL) == set()
+
+    def test_a_browser_reads_the_rows_it_was_given(self, manager: ApplicationStateManager) -> None:
+        manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.a", "row.b"})
+        assert manager.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL) == {"row.a", "row.b"}
+
+    def test_each_browser_keeps_the_rows_of_its_own_panel(self, manager: ApplicationStateManager) -> None:
+        manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.a"})
+
+        assert manager.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL) == set()
+
+    def test_the_rows_are_written_in_a_settled_order(self, manager: ApplicationStateManager) -> None:
+        """The file reads the same twice, whichever order the browser answered its rows in."""
+        manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.b", "row.a"})
+
+        assert manager.state.expanded_rows[TAG_SEQUENCER_BROWSER_PANEL] == ["row.a", "row.b"]
+
 
 class TestApplicationStateManagerCurrentPaths:
     def test_set_current_reconstruction_updates_property(
@@ -247,6 +265,18 @@ class TestApplicationStateManagerSave:
         reloaded = ApplicationStateManager(path)
 
         assert reloaded.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL) is True
+
+    def test_save_and_reload_preserves_the_rows_each_browser_stands_open(self, tmp_path: Path) -> None:
+        """The shape the reader unfolded returns on the next launch, for that browser alone."""
+        path = tmp_path / "state.yaml"
+        manager = ApplicationStateManager(path)
+        manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.a", "row.b"})
+        manager.save()
+
+        reloaded = ApplicationStateManager(path)
+
+        assert reloaded.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL) == {"row.a", "row.b"}
+        assert reloaded.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL) == set()
         assert reloaded.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL) is False
 
     @pytest.mark.parametrize("exception_type", [PermissionError, IsADirectoryError, OSError])

@@ -59,6 +59,12 @@ class SessionManager:
     def set_favorites_filter_active(self, panel_tag: str, active: bool) -> None:
         self._state_manager.set_favorites_filter_active(panel_tag, active)
 
+    def expanded_rows(self, panel_tag: str) -> Set[str]:
+        return self._state_manager.expanded_rows(panel_tag)
+
+    def set_expanded_rows(self, panel_tag: str, rows: Set[str]) -> None:
+        self._state_manager.set_expanded_rows(panel_tag, rows)
+
     def toggle_autoplay(self) -> bool:
         return self._config_manager.toggle_autoplay()
 
