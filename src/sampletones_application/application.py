@@ -1190,7 +1190,7 @@ class Application:
                 )
                 with dpg.group():
                     name_text = dpg.add_text(SAMPLETONES_NAME_VERSION)
-                    FontRegistry.bind_to_item(name_text, Font.BOLD_LARGE)
+                    FontRegistry.bind_to_item(name_text, Font.BOLD_TITLE)
                     dpg.add_separator()
                     dpg.add_text(description, wrap=about.text_wrap)
                     author_text = dpg.add_text(author_line)

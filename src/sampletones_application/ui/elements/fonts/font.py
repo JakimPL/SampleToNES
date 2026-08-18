@@ -11,6 +11,7 @@ class Font(Enum):
     BOLD = "Bold"
     BOLD_SMALL = "BoldSmall"
     BOLD_LARGE = "BoldLarge"
+    BOLD_TITLE = "BoldTitle"
     MONO = "Mono"
     MONO_SMALL = "MonoSmall"
     MONO_BOLD = "MonoBold"

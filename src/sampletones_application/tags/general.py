@@ -32,6 +32,12 @@ TAG_GLOBAL_FONT_BOLD_LARGE = TagName(
     Widget.FONT,
     "bold_large",
 )
+TAG_GLOBAL_FONT_BOLD_TITLE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.FONT,
+    "bold_title",
+)
 TAG_GLOBAL_FONT_ITALIC = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
