@@ -32,6 +32,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.texture import TextureRegistry
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
@@ -169,6 +170,7 @@ class ApplicationShell:
     ) -> None:
         dpg.create_context()
         self._set_fonts()
+        self._set_textures()
         self._register_shortcuts(bindings)
         self._set_default_theme()
         self._viewport_manager.create_viewport()
@@ -197,6 +199,9 @@ class ApplicationShell:
 
     def _set_fonts(self) -> None:
         FontRegistry.register_fonts(self._layout.fonts.scale)
+
+    def _set_textures(self) -> None:
+        TextureRegistry.register_textures()
 
     def _set_default_theme(self) -> None:
         self._theme.bind()

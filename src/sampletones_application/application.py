@@ -81,6 +81,7 @@ from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_ABOUT,
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+    TAG_GLOBAL_TEXTURE_LOGO,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
     TAG_GLOBAL_THEME_PLAYER_BUTTON,
@@ -1182,7 +1183,8 @@ class Application:
         )
 
     def _open_about_dialog(self) -> None:
-        """Presents the application name, version, description, and authorship in a modal notice."""
+        """Presents the application's mark beside its name, version, description, and authorship."""
+        about = self.layout.general.dialogs.about
         description = self.language_manager["global.dialog.message.about_description"]
         author_line = self.language_manager["global.dialog.template.about_author"].format(
             author=SAMPLETONES_AUTHOR,
@@ -1190,21 +1192,26 @@ class Application:
         )
 
         def content(parent: str) -> None:
-            name_text = dpg.add_text(SAMPLETONES_NAME_VERSION, parent=parent)
-            dpg.add_separator(parent=parent)
-            FontRegistry.bind_to_item(name_text, Font.BOLD_LARGE)
-            dpg.add_text(
-                description,
-                parent=parent,
-                wrap=self.dialogs.default_wrap,
-            )
-            author_text = dpg.add_text(author_line, parent=parent)
-            FontRegistry.bind_to_item(author_text, Font.ITALIC)
+            with dpg.group(horizontal=True, parent=parent):
+                dpg.add_image(
+                    TAG_GLOBAL_TEXTURE_LOGO,
+                    width=about.logo,
+                    height=about.logo,
+                )
+                with dpg.group():
+                    name_text = dpg.add_text(SAMPLETONES_NAME_VERSION)
+                    FontRegistry.bind_to_item(name_text, Font.BOLD_LARGE)
+                    dpg.add_separator()
+                    dpg.add_text(description, wrap=about.text_wrap)
+                    author_text = dpg.add_text(author_line)
+                    FontRegistry.bind_to_item(author_text, Font.ITALIC)
 
         self.dialogs.show_modal(
             get_dialog_tag(TAG_GLOBAL_DIALOG_ABOUT),
             self.language_manager["global.dialog.title.about"],
             content,
+            width=about.width,
+            height=about.height,
         )
 
     def _refresh_audio_devices(self) -> None:

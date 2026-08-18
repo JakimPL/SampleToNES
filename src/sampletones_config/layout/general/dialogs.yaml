@@ -14,3 +14,8 @@ text_input:
 traceback:
   width: 0
   height: 400
+about:
+  width: 480
+  height: 210
+  logo: 72
+  padding: 40

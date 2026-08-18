@@ -30,6 +30,7 @@ class Widget(StrEnum):
     TABLE = "table"
     TABS = "tabs"
     TEXT = "text"
+    TEXTURE = "texture"
     THEME = "theme"
     TOOLTIP = "tooltip"
     TREE = "tree"

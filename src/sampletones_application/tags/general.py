@@ -681,6 +681,13 @@ TAG_GLOBAL_TAB_SEQUENCER = TagName(
     "sequencer",
 )
 
+TAG_GLOBAL_TEXTURE_LOGO = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.TEXTURE,
+    "logo",
+)
+
 SUF_BUTTON = "button"
 SUF_BUTTONS = "buttons"
 SUF_BUTTON_COPY = compose_tag(SUF_BUTTON, "copy")
