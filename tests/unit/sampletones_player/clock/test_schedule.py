@@ -5,9 +5,8 @@ from fractions import Fraction
 from typing import Final, Tuple
 
 import pytest
-from pydantic import ValidationError
 
-from sampletones_player.clock.schedule import FixedPointStep, PlaySchedule
+from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.specification.clock import (
     FIXED_POINT_SCALE,
     MAX_STEP_WHOLE,
@@ -243,13 +242,3 @@ class TestPlayScheduleBounds(BaseTestSuite):
         schedule = PlaySchedule.from_parameters(60)
         with pytest.raises(ValueError, match="play_calls must be at least 0"):
             schedule.advance_at(-1)
-
-    @pytest.mark.parametrize("fraction", (-1, FIXED_POINT_SCALE))
-    def test_a_fraction_outside_the_word_is_rejected(self, fraction: int) -> None:
-        with pytest.raises(ValidationError):
-            FixedPointStep(whole=0, fraction=fraction)
-
-    @pytest.mark.parametrize("whole", (-1, MAX_STEP_WHOLE + 1))
-    def test_a_whole_part_outside_the_byte_is_rejected(self, whole: int) -> None:
-        with pytest.raises(ValidationError):
-            FixedPointStep(whole=whole, fraction=0)

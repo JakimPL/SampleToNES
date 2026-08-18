@@ -1,4 +1,4 @@
-from typing import Final
+from typing import Final, FrozenSet
 
 from sampletones_core.constants.general import MAX_TIMER
 
@@ -38,3 +38,15 @@ NOISE_LENGTH_COUNTER_LOAD: Final[int] = 0x00
 
 CHANNELS_ENABLED: Final[int] = 0x0F
 FRAME_COUNTER_SEQUENCE: Final[int] = 0x40
+
+FIRST_CHANNEL_REGISTER: Final[int] = 0x4000
+LAST_CHANNEL_REGISTER: Final[int] = 0x4013
+SILENCED_REGISTER: Final[int] = 0x00
+
+REGISTERS_WRITTEN_ON_CHANGE: Final[FrozenSet[int]] = frozenset(
+    {
+        PULSE1_TIMER_HIGH,
+        PULSE2_TIMER_HIGH,
+        TRIANGLE_TIMER_HIGH,
+    }
+)

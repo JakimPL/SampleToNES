@@ -15,6 +15,7 @@ from .library import (
     NoLibraryDataError,
     UnhandledLibraryError,
 )
+from .player import PlayerError, SongTooLargeError
 from .project import (
     IncompatibleProjectVersionError,
     IncorrectReconstructionDataError,
@@ -72,9 +73,11 @@ __all__ = [
     "NoLibraryDataError",
     "NotAValidArchiveError",
     "PlaybackError",
+    "PlayerError",
     "ReconstructionError",
     "SampleToNESError",
     "SerializationError",
+    "SongTooLargeError",
     "UnhandledLibraryError",
     "UnhandledProjectError",
     "UnhandledReconstructionError",
