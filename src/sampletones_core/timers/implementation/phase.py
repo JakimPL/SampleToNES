@@ -6,6 +6,7 @@ from sampletones_core.constants.algorithm import RESET_PHASE
 from sampletones_core.constants.general import APU_CLOCK
 from sampletones_shared.types.data import Initials
 
+from ..arithmetic import frequency_to_timer, get_timer_ticks, timer_to_frequency
 from ..timer import Timer
 
 
@@ -64,20 +65,8 @@ class PhaseTimer(Timer):
     def initials(self) -> Tuple[Any, ...]:
         return (self.phase,)
 
-    @staticmethod
-    def frequency_to_timer(frequency: float) -> int:
-        if frequency <= 0:
-            return 0
-
-        timer = round(APU_CLOCK / (16 * frequency)) - 1
-        return max(0, min(timer, 0x7FF))
-
-    @staticmethod
-    def get_timer_ticks(timer: int) -> int:
-        return (timer + 1) * 16 if timer > 0 else 0
-
     def round_frequency_by_timer(self) -> None:
-        self._frequency = APU_CLOCK / (16 * (self._timer + 1))
+        self._frequency = timer_to_frequency(self._timer)
 
     @property
     def frequency(self) -> float:
@@ -86,8 +75,8 @@ class PhaseTimer(Timer):
     @frequency.setter
     def frequency(self, value: float) -> None:
         self._frequency = value
-        self._timer = self.frequency_to_timer(value)
-        self._timer_ticks = self.get_timer_ticks(self._timer)
+        self._timer = frequency_to_timer(value)
+        self._timer_ticks = get_timer_ticks(self._timer)
         self.round_frequency_by_timer()
 
         self._real_frequency = self.frequency * self.phase_increment

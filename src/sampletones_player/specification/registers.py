@@ -1,0 +1,40 @@
+from typing import Final
+
+from sampletones_core.constants.general import MAX_TIMER
+
+PULSE1_CONTROL: Final[int] = 0x4000
+PULSE1_SWEEP: Final[int] = 0x4001
+PULSE1_TIMER_LOW: Final[int] = 0x4002
+PULSE1_TIMER_HIGH: Final[int] = 0x4003
+PULSE2_CONTROL: Final[int] = 0x4004
+PULSE2_SWEEP: Final[int] = 0x4005
+PULSE2_TIMER_LOW: Final[int] = 0x4006
+PULSE2_TIMER_HIGH: Final[int] = 0x4007
+TRIANGLE_LINEAR_COUNTER: Final[int] = 0x4008
+TRIANGLE_TIMER_LOW: Final[int] = 0x400A
+TRIANGLE_TIMER_HIGH: Final[int] = 0x400B
+NOISE_CONTROL: Final[int] = 0x400C
+NOISE_PERIOD: Final[int] = 0x400E
+NOISE_LENGTH_COUNTER: Final[int] = 0x400F
+APU_STATUS: Final[int] = 0x4015
+APU_FRAME_COUNTER: Final[int] = 0x4017
+
+MAX_REGISTER_VALUE: Final[int] = 0xFF
+TIMER_HIGH_SHIFT: Final[int] = 8
+MAX_TIMER_HIGH: Final[int] = MAX_TIMER >> TIMER_HIGH_SHIFT
+
+LENGTH_COUNTER_HALT: Final[int] = 0x20
+CONSTANT_VOLUME: Final[int] = 0x10
+SUSTAINED_LEVEL: Final[int] = LENGTH_COUNTER_HALT | CONSTANT_VOLUME
+DUTY_CYCLE_SHIFT: Final[int] = 6
+SWEEP_DISABLED: Final[int] = 0x08
+
+TRIANGLE_COUNTER_CONTROL: Final[int] = 0x80
+TRIANGLE_SOUNDING_RELOAD: Final[int] = 0x7F
+TRIANGLE_SILENT_RELOAD: Final[int] = 0x00
+
+NOISE_MODE_SHIFT: Final[int] = 7
+NOISE_LENGTH_COUNTER_LOAD: Final[int] = 0x00
+
+CHANNELS_ENABLED: Final[int] = 0x0F
+FRAME_COUNTER_SEQUENCE: Final[int] = 0x40

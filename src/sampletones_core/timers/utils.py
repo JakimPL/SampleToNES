@@ -3,6 +3,7 @@ from typing import Dict
 from sampletones_core.configs import Config
 from sampletones_core.utils.frequencies import pitch_to_frequency
 
+from .arithmetic import frequency_to_timer
 from .implementation.phase import PhaseTimer
 
 
@@ -23,3 +24,18 @@ def get_frequency_table(config: Config) -> Dict[int, float]:
         frequencies[note] = timer.frequency
 
     return frequencies
+
+
+def get_timer_table(config: Config) -> Dict[int, int]:
+    """The timer register value each pitch sounds at.
+
+    States the frequency table the generators render from in the terms the hardware takes, so
+    a channel driven by these values sounds the pitch a reconstruction was built against.
+
+    Args:
+        config: The configuration the reconstruction was built with.
+
+    Returns:
+        Dict[int, int]: The timer value for every pitch the configuration covers.
+    """
+    return {pitch: frequency_to_timer(frequency) for pitch, frequency in get_frequency_table(config).items()}
