@@ -11,6 +11,7 @@
 * In-project sample selection in Reconstruction view
 * Playing a fragment by clicking on a waveform
 * Note pitch shown as a transpose offset rather than a note name
+* Application installation progress bar
 
 ### Tracker
 
@@ -26,6 +27,7 @@
 
 * In-application guide/tutorial
 * Language selector
+* NSF export
 
 ### Technical
 
@@ -41,3 +43,4 @@
 
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
+* Audible noise instructions when matching near-silent samples for FFT γ0

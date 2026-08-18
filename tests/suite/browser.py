@@ -1,8 +1,8 @@
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, Final, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import AbstractSet, Dict, Final, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.ui.elements.tree.colors import TreeColors
@@ -32,10 +32,13 @@ HASH_F: Final[str] = "ffffffff66666666ffffffff66666666"
 ARCHIVE: Final[str] = "archive"
 STRAY: Final[str] = "stray"
 
+BY_CONFIGURATION: Final[str] = "By configuration"
+BY_SAMPLE: Final[str] = "By sample"
+
 BROWSER_TEXTS: Final[Mapping[str, str]] = {
     "global.browser.label.root": "Root",
-    "global.browser.label.by_configuration": "By configuration",
-    "global.browser.label.by_sample": "By sample",
+    "global.browser.label.by_configuration": BY_CONFIGURATION,
+    "global.browser.label.by_sample": BY_SAMPLE,
 }
 
 TREE_COLORS: Final[TreeColors] = TreeColors(
@@ -103,6 +106,119 @@ WHOLE_TREE: Final[str] = as_view("""
       - sweep·8 kHz·60 Hz·CQT·γ2·P
       - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
     """)
+
+STARRED_CONFIGURATION: Final[str] = as_view("""
+    > By configuration
+      > 44.1 kHz·30 Hz
+        > FFT·γ0
+          > PT
+            > takes
+              - alt
+            - beat
+    > By sample
+      > beat
+        - 44.1 kHz·30 Hz·FFT·γ0·PT
+      - takes·alt·44.1 kHz·30 Hz·FFT·γ0·PT
+    """)
+
+
+@dataclass(frozen=True)
+class _Row:
+    """One row of a rendered view read apart: how deep it sits, the state it stands in, its text."""
+
+    depth: int
+    marker: str
+    text: str
+
+    @property
+    def label(self) -> str:
+        return self.text.removesuffix(HIDDEN_MARKER)
+
+    def opened(self) -> "_Row":
+        return replace(self, marker=OPEN_MARKER) if self.marker == CLOSED_MARKER else self
+
+
+def with_rows_open(rendered: str, *labels: str) -> str:
+    """The view these rows read as once the rows under these labels stand open.
+
+    A view differing from another by which rows are unfolded is written as the view it varies and the
+    labels of the rows standing open in it, so the rows themselves are stated the once.
+    """
+    rows = _read_view(rendered)
+    wanted = frozenset(labels)
+    _assert_rows_named(rows, wanted)
+    return _write_view(row.opened() if row.label in wanted else row for row in rows)
+
+
+def with_branch_open(rendered: str, *labels: str) -> str:
+    """The view these rows read as once the branches under these labels stand open throughout.
+
+    A branch the browser opened all the way down stands open at every depth, which one label states
+    for the row carrying it and every row nested under it.
+    """
+    rows = _read_view(rendered)
+    wanted = frozenset(labels)
+    _assert_rows_named(rows, wanted)
+    opened = _rows_of_branches(rows, wanted)
+    return _write_view(row.opened() if index in opened else row for index, row in enumerate(rows))
+
+
+def without_branch(rendered: str, label: str) -> str:
+    """The view left once the row under this label and the rows nested under it are gone.
+
+    A model dropping a folder drops the rows below it as well, so the view of what remains is written
+    as the whole view apart from that branch.
+    """
+    rows = _read_view(rendered)
+    wanted = frozenset({label})
+    _assert_rows_named(rows, wanted)
+    dropped = _rows_of_branches(rows, wanted)
+    return _write_view(row for index, row in enumerate(rows) if index not in dropped)
+
+
+def _read_view(rendered: str) -> List[_Row]:
+    return [_read_row(line) for line in rendered.splitlines()]
+
+
+def _read_row(line: str) -> _Row:
+    marker, _, text = line.lstrip().partition(" ")
+    return _Row(
+        depth=(len(line) - len(line.lstrip())) // len(INDENT),
+        marker=marker,
+        text=text,
+    )
+
+
+def _write_view(rows: Iterable[_Row]) -> str:
+    return "\n".join(f"{INDENT * row.depth}{row.marker} {row.text}" for row in rows)
+
+
+def _rows_of_branches(rows: Sequence[_Row], labels: AbstractSet[str]) -> Set[int]:
+    """Every row the named branches reach: each row carrying a label, and the rows nested under it."""
+    reached: Set[int] = set()
+    for index, row in enumerate(rows):
+        if row.label in labels:
+            reached.add(index)
+            reached.update(_rows_nested_under(rows, index))
+
+    return reached
+
+
+def _rows_nested_under(rows: Sequence[_Row], index: int) -> Set[int]:
+    nested: Set[int] = set()
+    for nested_index in range(index + 1, len(rows)):
+        if rows[nested_index].depth <= rows[index].depth:
+            break
+
+        nested.add(nested_index)
+
+    return nested
+
+
+def _assert_rows_named(rows: Sequence[_Row], labels: AbstractSet[str]) -> None:
+    """Holds a derived view to the rows the view it varies reads, so a label naming none is stated."""
+    missing = labels - {row.label for row in rows}
+    assert not missing, f"the view holds no row labelled {sorted(missing)}"
 
 
 def config_fields(
@@ -394,6 +510,11 @@ def _row_marker(spec: NodeSpec) -> str:
 
 def _row_state(panel: GUITreePanel, spec: NodeSpec) -> str:
     return "" if panel._is_node_visible(spec.node) else HIDDEN_MARKER
+
+
+def paths_of(corpus: BrowserCorpus, *keys: str) -> Set[Path]:
+    """The paths a test stars, named as the corpus lays them out."""
+    return {corpus.paths[key] for key in keys}
 
 
 def nodes_at(corpus: BrowserCorpus, key: str) -> Tuple[FileSystemNode, ...]:

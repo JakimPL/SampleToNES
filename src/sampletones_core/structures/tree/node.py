@@ -81,6 +81,19 @@ class ConfigNode(FileSystemNode):
         )
 
 
+class ConfigGroupNode(TreeNode):
+    """A heading gathering the configurations that share a stretch of their display name.
+
+    The browser lifts a configuration directory under the rates it runs at and the spectrum it was
+    built from, naming each heading with that stretch of the configuration's own display name.
+    Carrying the heading as a class of its own lets a reader of configuration text — a label, a
+    tooltip, a font — reach it the way it reaches the configuration row below.
+    """
+
+    def copy(self, parent: Optional[TreeNode] = None) -> ConfigGroupNode:
+        return ConfigGroupNode(self.name, node_type=self.node_type, parent=parent)
+
+
 class LibraryNode(TreeNode):
     def __init__(
         self,

@@ -5,6 +5,7 @@ from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree.node import (
+    ConfigGroupNode,
     ConfigNode,
     FileSystemNode,
     GeneratorNode,
@@ -99,6 +100,18 @@ class TestConfigNode:
             config=CONFIG_FIELDS,
         )
         assert isinstance(node, FileSystemNode)
+
+
+class TestConfigGroupNode:
+    def test_copy_preserves_name_and_type(self) -> None:
+        node = ConfigGroupNode("44.1 kHz·60 Hz", NodeType.GROUP)
+        copied = node.copy()
+        assert copied.name == "44.1 kHz·60 Hz"
+        assert copied.node_type == NodeType.GROUP
+
+    def test_a_copy_is_a_configuration_heading_of_its_own(self) -> None:
+        node = ConfigGroupNode("FFT·γ0", NodeType.GROUP)
+        assert isinstance(node.copy(), ConfigGroupNode)
 
 
 class TestLibraryNode:

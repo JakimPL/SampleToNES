@@ -92,6 +92,7 @@ from sampletones_core.configs.display import (
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
+    ConfigGroupNode,
     ConfigNode,
     FileSystemNode,
     LibraryNode,
@@ -750,13 +751,16 @@ class GUITreePanel(GUIPanel, ABC):
         return self._colors.node
 
     def _resolve_node_name_font(self, node: TreeNode) -> Font:
-        """Select the label font for a node: monospace for config-bearing nodes where the panel opts in.
+        """Select the label font for a node: monospace for the rows stating a configuration.
 
-        A config-bearing node carries the machine-generated fields a reconstruction or library
-        directory encodes, so a panel that sets ``_MONOSPACE_CONFIG_NODES`` renders those names in
-        the fixed-width font for legibility. Every other node keeps the panel's ``_NAME_FONT``.
+        A row states a configuration when its label is the machine-generated text a configuration
+        carries: the fields a reconstruction directory encodes, the stretch of them a heading gathers
+        several directories under, the name a library goes by. A panel that sets
+        ``_MONOSPACE_CONFIG_NODES`` renders every one of those rows in the fixed-width font, so a
+        column of them reads field under field and a heading reads as the row below it does. Every
+        other row keeps the panel's ``_NAME_FONT``.
         """
-        if self._MONOSPACE_CONFIG_NODES and self._node_detail_items(node):
+        if self._MONOSPACE_CONFIG_NODES and isinstance(node, (ConfigNode, ConfigGroupNode, LibraryNode)):
             return self._CONFIG_FONT
 
         return self._NAME_FONT

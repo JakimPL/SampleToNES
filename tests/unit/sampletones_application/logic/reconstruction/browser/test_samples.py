@@ -9,7 +9,7 @@ from sampletones_application.logic.reconstruction.browser.tree.samples.branch im
 )
 from sampletones_core.configs.display import disambiguated_display_name
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_core.structures.tree import ConfigNode, NodeType, TreeNode
+from sampletones_core.structures.tree import ConfigGroupNode, ConfigNode, NodeType, TreeNode
 
 from .conftest import (
     BRANCH_NAME,
@@ -100,6 +100,19 @@ class TestSampleNodeTypes:
         folder_node = group_children(branch)["Amen Breaks"]
         assert folder_node.node_type == NodeType.GROUP
         assert sample_children(folder_node)["cw_amen02_165"].node_type == NodeType.SAMPLE
+
+    def test_the_folder_a_source_came_from_states_no_configuration(self) -> None:
+        """A source folder is named by the disk, so it reads as a folder rather than as a heading."""
+        fields = config_fields()
+        directory = RECONSTRUCTIONS / fields.directory_name
+        entry = DirectoryEntry(
+            path=directory,
+            config=fields,
+            entries=(reconstruction_entry(directory, "Amen Breaks", "cw_amen02_165"),),
+        )
+        branch = build_branch(scan_of(entry))
+
+        assert not isinstance(group_children(branch)["Amen Breaks"], ConfigGroupNode)
 
     def test_a_folder_and_the_audio_beside_it_stay_two_rows(self) -> None:
         """A configuration directory holding ``song.stn`` beside ``song/inner.stn`` lists both.
