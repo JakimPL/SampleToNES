@@ -3,7 +3,7 @@ from sampletones_application.logic.reconstruction.browser.tree.configurations.na
     disambiguate_generator_siblings,
 )
 from sampletones_application.logic.reconstruction.browser.tree.containers import (
-    find_or_create_group,
+    find_or_create_config_group,
 )
 from sampletones_core.configs.display import (
     format_frequencies,
@@ -20,9 +20,10 @@ from sampletones_core.structures.tree import (
 def organize_top_level_config_directories(branch: TreeNode) -> None:
     """Groups top-level config directories under frequencies/transformation nodes, leaving other folders flat.
 
-    A config directory moves under ``frequencies`` ▶ ``transformation`` artificial group nodes and is
-    renamed to its generator abbreviation, while any other top-level folder keeps the existing
-    flat friendly naming for the config directories nested inside it.
+    A config directory moves under ``frequencies`` ▶ ``transformation`` configuration headings and is
+    renamed to its generator abbreviation, so the three rows leading to it spell its display name.
+    Any other top-level folder keeps the flat friendly naming for the config directories nested
+    inside it.
     """
     for child in list(branch.children):
         match child:
@@ -39,11 +40,11 @@ def _attach_config_directory_under_groups(
     branch: TreeNode,
 ) -> None:
     fields = directory_node.config
-    frequencies_node = find_or_create_group(
+    frequencies_node = find_or_create_config_group(
         format_frequencies(fields.sr, fields.nf),
         parent=branch,
     )
-    transformation_node = find_or_create_group(
+    transformation_node = find_or_create_config_group(
         format_transformation(fields.sm, fields.tg),
         parent=frequencies_node,
     )
