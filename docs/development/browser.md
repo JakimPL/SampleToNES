@@ -198,16 +198,17 @@ Switching the mode on is the reader asking to be shown their favorites, so the p
 is the one that follows a star: `_state_favorites_only` records the request and `_resolve_filter` spends
 it, and the rows it opens are noted in the mode's own memory. Later passes read that memory, so a
 refresh, a query or a star gained meanwhile leaves the reader looking at their favorites, while the
-stars followed stay the ones the switch asked about. Switching the mode off lets the memory go and those
-rows fold back. A change of preference asks for nothing; it is answered the next time the reader asks
-for the mode, which keeps a menu click from moving the tree the reader is working in.
+stars followed stay the ones the switch asked about. Every turn of the mode is a pass's to answer: the
+pass that reads the mode off lets the memory go and those rows fold back. A change of preference asks
+for nothing; it is answered the next time the reader asks for the mode, which keeps a menu click from
+moving the tree the reader is working in.
 
 **The way down becomes the reader's once their own rows stand on it.** A reader looking at their
-favorites opens rows of their own below the way the mode opened, and folding that way would take theirs
-off the screen with it. `_release_the_rows_the_mode_opened` therefore reads the model as the mode goes
-off and hands the reader every row of the mode's that holds one of theirs somewhere below it, which
-writes the way down into the shape a session keeps. What is left held the mode's opening alone, and
-folds with it.
+favorites opens rows of their own below the way the mode opened, so a row of the mode's holds theirs on
+the screen. `_release_the_rows_the_mode_opened` therefore reads the model on the pass that finds the
+mode off — on the tree worker, beside the other walks a pass makes — and hands the reader every row of
+the mode's that holds one of theirs somewhere below it, which writes the way down into the shape a
+session keeps. What is left held the mode's opening alone, and folds with it.
 
 **A row the favorites mode holds back holds nothing it would show.** A row it shows either stands on
 the way to a starred row or sits beneath one, and each of those facts holds for every row above it — so

@@ -10,6 +10,7 @@ from tests.suite.browser import (
     as_view,
     build_browser_panel,
     build_corpus,
+    click_favorites,
     deselect_favorites,
     nodes_at,
     render_view,
@@ -168,6 +169,32 @@ class TestTheReadersShape:
         render_view(panel)
 
         deselect_favorites(panel)
+
+        assert render_view(panel) == WHOLE_TREE
+
+    def test_the_pass_that_follows_the_click_is_what_hands_the_modes_rows_back(
+        self,
+        corpus: BrowserCorpus,
+    ) -> None:
+        """The rows the mode opened are a pass's to hand back, which a click alone leaves standing.
+
+        A click landing while the tree is locked starts no pass, so the rows stand as the mode left
+        them and whichever pass runs next folds them.
+        """
+        panel = build_browser_panel(
+            corpus,
+            {corpus.paths["A/beat"]},
+            favorites_only=False,
+            auto_expand_reconstructions=True,
+        )
+        select_favorites(panel)
+        view_the_mode_left = render_view(panel)
+
+        click_favorites(panel, favorites_only=False)
+
+        assert render_view(panel) == view_the_mode_left
+
+        resolve_pass(panel)
 
         assert render_view(panel) == WHOLE_TREE
 

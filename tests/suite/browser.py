@@ -442,11 +442,20 @@ def select_favorites(panel: GUITreePanel) -> None:
 def deselect_favorites(panel: GUITreePanel) -> None:
     """Switches the favorites mode off the way the reader's click does, and resolves the pass it starts.
 
-    Switching the mode off is what hands back the rows it opened, so a view showing them folded is read
-    through this.
+    The pass that reads the mode off is what hands back the rows it opened, so a view showing them
+    folded is read through this.
     """
     panel._state_favorites_only(False)
     panel._resolve_filter()
+
+
+def click_favorites(panel: GUITreePanel, *, favorites_only: bool) -> None:
+    """States the mode the reader's click leaves the control reading, with no pass following it.
+
+    A rebuild the tree is locked against starts nothing, so the click stands as a request and the pass
+    that runs next is what answers it.
+    """
+    panel._state_favorites_only(favorites_only)
 
 
 def resolve_pass(panel: GUITreePanel) -> None:

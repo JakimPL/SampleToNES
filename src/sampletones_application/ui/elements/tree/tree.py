@@ -379,19 +379,19 @@ class GUITreePanel(GUIPanel, ABC):
         Switching the mode on is the reader asking to be shown their favorites, so the pass it starts
         opens the way down to them and notes which rows it opened. That way stands open for as long as
         the mode does, so a refresh, a query or a star gained meanwhile leaves the reader looking at
-        their favorites. Switching the mode off hands those rows back.
+        their favorites. Switching the mode off is answered by the pass that follows it as well, which
+        hands those rows back.
         """
         self._filter = self._filter.with_favorites_only(favorites_only)
         self._auto_expand_pending = favorites_only
-        self._release_the_rows_the_mode_opened()
 
     def _release_the_rows_the_mode_opened(self) -> None:
         """Folds the rows the mode opened, leaving standing the way down to the reader's own rows.
 
         A row the reader opened below one the mode opened stands on that row, so the reader is looking
-        at a tree they built on the way the mode opened. Handing that way back would take their own
-        rows off the screen with it, and it therefore becomes theirs to keep. What is left held the
-        mode's opening alone, and folds with it.
+        at a tree they built on the way the mode opened. That row holds their own on the screen, and
+        it therefore becomes theirs to keep. What is left held the mode's opening alone, and folds with
+        it. The rows are read off the model, so a pass on the tree worker is what runs this.
         """
         if not self._mode_expanded_rows:
             return
@@ -1022,16 +1022,21 @@ class GUITreePanel(GUIPanel, ABC):
         """Resolve the filter against the model as it stands, which a rebuild does once per pass.
 
         The model is what the whole answer is read from, so the resolution runs on the rebuild worker
-        and a filter stated before a refresh answers for the rows that refresh brings. The way down
-        the favorites mode opens is read out of the anchors here as well, which notes it the once for
-        the pass.
+        and a filter stated before a refresh answers for the rows that refresh brings. Both of the
+        favorites mode's turns are answered here, each by the pass that follows it: the pass the reader
+        asked for notes the way down it opens, and the pass that reads the mode off hands those rows
+        back.
         """
         self._search_visibility = self._resolve_search_visibility()
         (
             self._favorites_visibility,
             way_down,
         ) = self._resolve_favorites()
-        self._mode_expanded_rows |= way_down
+        if self._filter.favorites_only:
+            self._mode_expanded_rows |= way_down
+        else:
+            self._release_the_rows_the_mode_opened()
+
         self._auto_expand_pending = False
 
     def _resolve_search_visibility(self) -> Optional[TreeVisibility]:
