@@ -65,6 +65,13 @@ class SessionManager:
     def set_expanded_rows(self, panel_tag: str, rows: Set[str]) -> None:
         self._state_manager.set_expanded_rows(panel_tag, rows)
 
+    @property
+    def expanded_directories(self) -> Set[Path]:
+        return self._state_manager.expanded_directories
+
+    def set_expanded_directories(self, directories: Set[Path]) -> None:
+        self._state_manager.set_expanded_directories(directories)
+
     def toggle_autoplay(self) -> bool:
         return self._config_manager.toggle_autoplay()
 

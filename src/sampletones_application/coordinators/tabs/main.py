@@ -130,6 +130,7 @@ class MainTabCoordinator:
         self._explorer_logic: ExplorerLogic = ExplorerLogic(
             config_manager,
             language_manager=language_manager,
+            open_directories=session_manager.expanded_directories,
         )
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
@@ -492,6 +493,10 @@ class MainTabCoordinator:
 
     def set_input_path(self, path: Path, convert: bool) -> None:
         self._converter_logic.set_input_path(path, convert=convert)
+
+    def save_browser_shape(self) -> None:
+        """Writes down the folders the explorer stands open, so a later run reads down to them."""
+        self._session_manager.set_expanded_directories(self._explorer_logic.open_directories)
 
     def refresh_browser(self) -> None:
         self._explorer_panel.refresh()

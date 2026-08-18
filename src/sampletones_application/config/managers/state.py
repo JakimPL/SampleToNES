@@ -107,6 +107,14 @@ class ApplicationStateManager:
         """Writes the rows a browser stands open, in a settled order so the file reads the same twice."""
         self.state.expanded_rows[panel_tag] = sorted(rows)
 
+    @property
+    def expanded_directories(self) -> Set[Path]:
+        return set(self.state.expanded_directories)
+
+    def set_expanded_directories(self, directories: Set[Path]) -> None:
+        """Writes the folders the explorer stands open, in a settled order for a file read twice."""
+        self.state.expanded_directories = sorted(directories)
+
     def load_current_tab(self) -> Tab:
         return self.state.current.tab
 

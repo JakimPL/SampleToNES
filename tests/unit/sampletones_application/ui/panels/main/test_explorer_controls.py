@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Set, Tuple
 
 import pytest
 
 from sampletones_application.ui.elements.tree import tree as tree_module
+from sampletones_application.ui.panels.main import explorer as explorer_module
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
 
@@ -13,11 +14,24 @@ MUSIC = ROOT / "music"
 
 
 class FakeExplorerLogic:
-    """Answers what the panel asks of its model, recording the folders it is told to drop."""
+    """Answers what the panel asks of its model, recording what it is told about each folder."""
 
     def __init__(self, tree: Tree) -> None:
         self.tree = tree
         self.cleared: List[Tuple[str, ...]] = []
+        self.loaded: Set[Path] = set()
+        self.read: List[Path] = []
+        self.standing: List[Tuple[Path, bool]] = []
+
+    def has_loaded_children(self, filepath: Path) -> bool:
+        return filepath in self.loaded
+
+    def expand_directory(self, node: FileSystemNode) -> None:
+        self.read.append(node.filepath)
+        self.loaded.add(node.filepath)
+
+    def set_directory_open(self, filepath: Path, is_open: bool) -> None:
+        self.standing.append((filepath, is_open))
 
     def collapse_all(self) -> None:
         root = self.tree.get_root()
@@ -71,6 +85,85 @@ def build_panel(tree: Tree) -> GUIExplorerPanel:
     panel._expanded_rows = set()
     panel._explorer_logic = FakeExplorerLogic(tree)  # type: ignore[assignment]
     return panel
+
+
+@pytest.fixture
+def toggled(monkeypatch: pytest.MonkeyPatch) -> List[Tuple[str, bool]]:
+    """Records the rows the panel folds through the framework, in place of the widgets."""
+    calls: List[Tuple[str, bool]] = []
+    monkeypatch.setattr(explorer_module.dpg, "does_item_exist", lambda tag: True)
+    monkeypatch.setattr(explorer_module.dpg, "get_value", lambda tag: False)
+    monkeypatch.setattr(
+        explorer_module.dpg,
+        "set_value",
+        lambda tag, value: calls.append((tag, value)),
+    )
+    return calls
+
+
+class TestFollowingAFold:
+    """A click on a folder is how it opens, and the explorer is told what it now stands as."""
+
+    def test_opening_a_folder_reads_it_and_records_it_open(
+        self,
+        toggled: List[Tuple[str, bool]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        tree = explorer_tree()
+        panel = build_panel(tree)
+        music = tree.find_nodes(FileSystemNode, lambda node: node.filepath == MUSIC)[0]
+        monkeypatch.setattr(panel, "_rebuild_node_subtree", lambda node, node_tag: None, raising=False)
+
+        panel._toggle_directory_expansion(music, "row.music")
+
+        assert panel._explorer_logic.read == [MUSIC]
+        assert panel._explorer_logic.standing == [(MUSIC, True)]
+        assert toggled == [("row.music", True)]
+
+    def test_a_folder_read_already_is_not_read_again(
+        self,
+        toggled: List[Tuple[str, bool]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        tree = explorer_tree()
+        panel = build_panel(tree)
+        music = tree.find_nodes(FileSystemNode, lambda node: node.filepath == MUSIC)[0]
+        panel._explorer_logic.loaded.add(MUSIC)
+        monkeypatch.setattr(panel, "_rebuild_node_subtree", lambda node, node_tag: None, raising=False)
+
+        panel._toggle_directory_expansion(music, "row.music")
+
+        assert panel._explorer_logic.read == []
+        assert panel._explorer_logic.standing == [(MUSIC, True)]
+
+    def test_folding_a_folder_records_it_closed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        tree = explorer_tree()
+        panel = build_panel(tree)
+        music = tree.find_nodes(FileSystemNode, lambda node: node.filepath == MUSIC)[0]
+        panel._explorer_logic.loaded.add(MUSIC)
+        monkeypatch.setattr(explorer_module.dpg, "does_item_exist", lambda tag: True)
+        monkeypatch.setattr(explorer_module.dpg, "get_value", lambda tag: True)
+        monkeypatch.setattr(explorer_module.dpg, "set_value", lambda tag, value: None)
+
+        panel._toggle_directory_expansion(music, "row.music")
+
+        assert panel._explorer_logic.standing == [(MUSIC, False)]
+
+    def test_a_row_that_left_the_tree_is_left_alone(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        tree = explorer_tree()
+        panel = build_panel(tree)
+        music = tree.find_nodes(FileSystemNode, lambda node: node.filepath == MUSIC)[0]
+        monkeypatch.setattr(explorer_module.dpg, "does_item_exist", lambda tag: False)
+
+        panel._toggle_directory_expansion(music, "row.music")
+
+        assert panel._explorer_logic.standing == []
 
 
 class TestCollapseAll:

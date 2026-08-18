@@ -132,6 +132,17 @@ class TestApplicationStateManagerCardsAndFilters:
 
         assert manager.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL) == set()
 
+    def test_an_explorer_no_run_has_touched_stands_open_nowhere(self, manager: ApplicationStateManager) -> None:
+        assert manager.expanded_directories == set()
+
+    def test_the_explorer_reads_the_folders_it_was_given(
+        self,
+        manager: ApplicationStateManager,
+        tmp_path: Path,
+    ) -> None:
+        manager.set_expanded_directories({tmp_path})
+        assert manager.expanded_directories == {tmp_path}
+
     def test_the_rows_are_written_in_a_settled_order(self, manager: ApplicationStateManager) -> None:
         """The file reads the same twice, whichever order the browser answered its rows in."""
         manager.set_expanded_rows(TAG_SEQUENCER_BROWSER_PANEL, {"row.b", "row.a"})
@@ -277,6 +288,17 @@ class TestApplicationStateManagerSave:
 
         assert reloaded.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL) == {"row.a", "row.b"}
         assert reloaded.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL) == set()
+
+    def test_save_and_reload_preserves_the_folders_the_explorer_stands_open(self, tmp_path: Path) -> None:
+        """The folders the reader walked into return on the next launch, read down to as they were."""
+        path = tmp_path / "state.yaml"
+        manager = ApplicationStateManager(path)
+        manager.set_expanded_directories({tmp_path / "music", tmp_path / "notes"})
+        manager.save()
+
+        reloaded = ApplicationStateManager(path)
+
+        assert reloaded.expanded_directories == {tmp_path / "music", tmp_path / "notes"}
         assert reloaded.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL) is False
 
     @pytest.mark.parametrize("exception_type", [PermissionError, IsADirectoryError, OSError])

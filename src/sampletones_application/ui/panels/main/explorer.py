@@ -55,7 +55,11 @@ class ExplorerLogicProtocol(Protocol):
 
     def expand_directory(self, node: FileSystemNode) -> None: ...
 
-    def is_directory_expanded(self, filepath: Path) -> bool: ...
+    def has_loaded_children(self, filepath: Path) -> bool: ...
+
+    def is_directory_open(self, filepath: Path) -> bool: ...
+
+    def set_directory_open(self, filepath: Path, is_open: bool) -> None: ...
 
     def has_relevant_content(self, filepath: Path) -> bool: ...
 
@@ -165,7 +169,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         node_tag: str,
     ) -> List[NodeSpec]:
         self._pending_specs = []
-        if self._explorer_logic.is_directory_expanded(node.filepath):
+        if self._explorer_logic.has_loaded_children(node.filepath):
             for child in node.children:
                 self._build_tree_node(
                     child,
@@ -194,16 +198,13 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         self._mark_favorite_ancestry(node, state)
 
         if node.node_type == NodeType.DIRECTORY:
-            should_expand = self._should_expand_node(node) or self._explorer_logic.is_directory_expanded(node.filepath)
-            is_directory_expanded = self._explorer_logic.is_directory_expanded(node.filepath)
             self._append_spec(
                 node,
                 node_tag,
                 state.parent,
                 open_on_double_click=True,
-                should_expand=should_expand,
+                should_expand=self._should_expand_node(node) or self._explorer_logic.is_directory_open(node.filepath),
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                is_node_expanded=is_directory_expanded,
             )
         else:
             self._append_spec(
@@ -361,19 +362,24 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         node: FileSystemNode,
         node_tag: str,
     ) -> None:
+        """Folds or unfolds a folder, reading its children the first time it is opened.
+
+        The folder is told what it now stands as, which is the shape a refresh and a later run of the
+        application bring it back in.
+        """
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
             return
 
         if not dpg.does_item_exist(node_tag):
             return
 
-        is_directory_expanded = self._explorer_logic.is_directory_expanded(node.filepath)
-        state = dpg.get_value(node_tag)
-        if not is_directory_expanded:
+        is_open = not dpg.get_value(node_tag)
+        if not self._explorer_logic.has_loaded_children(node.filepath):
             self._explorer_logic.expand_directory(node)
             self._rebuild_node_subtree(node, node_tag)
 
-        dpg.set_value(node_tag, not state)
+        dpg.set_value(node_tag, is_open)
+        self._explorer_logic.set_directory_open(node.filepath, is_open)
 
     def _add_context_menu_file_actions(self, node: FileSystemNode) -> None:
         dpg.add_separator()

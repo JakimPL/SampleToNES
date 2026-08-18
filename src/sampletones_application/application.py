@@ -1375,6 +1375,7 @@ class Application:
         The shape belongs to the browser showing it, and it is read the once here rather than followed
         row by row, a pass over the rows running on the tree worker.
         """
+        self._main_tab.save_browser_shape()
         self._reconstructions_tab.save_browser_shape()
         self._sequencer_tab.save_browser_shape()
         self._instructions_tab.save_browser_shape()
