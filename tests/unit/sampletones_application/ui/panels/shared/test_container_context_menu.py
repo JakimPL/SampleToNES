@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.ui.elements.tree import tree as tree_module
 from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.elements.tree.expansion import RowExpansionMemory
 from sampletones_application.ui.elements.tree.tag import compose_node_tag
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.shared import browser as shared_browser_module
@@ -48,7 +49,7 @@ def _panel() -> GUISequencerBrowserPanel:
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = PANEL_TAG
-    panel._state_expansion_memory(set())
+    panel._expansion = RowExpansionMemory(set())
     panel._language_manager = FakeLanguageManager(TEXTS)
     panel._colors = TreeColors(
         favorite=TEXT_COLOR,
@@ -303,7 +304,7 @@ class TestExpansionItems:
         panel._add_context_menu_expansion_items(group)
         recorder.item(EXPAND_LABEL)["callback"]()
 
-        assert panel._expanded_rows == rows
+        assert panel.expanded_rows == rows
 
     def test_the_browser_forgets_the_shape_the_item_folded(
         self,
@@ -312,15 +313,17 @@ class TestExpansionItems:
     ) -> None:
         panel = _panel()
         group, sample, _ = _sample_tree()
-        panel._expanded_rows = {
-            compose_node_tag(group, panel_tag=PANEL_TAG),
-            compose_node_tag(sample, panel_tag=PANEL_TAG),
-        }
+        panel._expansion = RowExpansionMemory(
+            {
+                compose_node_tag(group, panel_tag=PANEL_TAG),
+                compose_node_tag(sample, panel_tag=PANEL_TAG),
+            }
+        )
 
         panel._add_context_menu_expansion_items(group)
         recorder.item(COLLAPSE_LABEL)["callback"]()
 
-        assert panel._expanded_rows == set()
+        assert panel.expanded_rows == set()
 
     def test_leaf_rows_are_left_alone(
         self,

@@ -7,6 +7,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_FAVORITE_CHILD,
 )
+from sampletones_application.ui.elements.tree.expansion import RowExpansionMemory
 from sampletones_application.ui.elements.tree.filter import NO_FILTER
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.spec import NodeSpec
@@ -81,7 +82,7 @@ def build_panel(
     panel._filter = NO_FILTER
     panel._search_visibility = None
     panel._favorites_visibility = None
-    panel._state_expansion_memory(set())
+    panel._expansion = RowExpansionMemory(set())
     monkeypatch.setattr(panel, "_logic", FakeTreeLogic(favorites), raising=False)
     monkeypatch.setattr(
         panel,

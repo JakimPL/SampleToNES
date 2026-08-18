@@ -57,6 +57,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.emitter import TreeEmitter
+from sampletones_application.ui.elements.tree.expansion import RowExpansionMemory
 from sampletones_application.ui.elements.tree.filter import NO_FILTER, TreeFilter
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
@@ -142,7 +143,7 @@ class GUITreePanel(GUIPanel, ABC):
         self.tree_tag = tree_tag
 
         self._pending_specs: List[NodeSpec] = []
-        self._state_expansion_memory(initial_expanded_rows)
+        self._expansion = RowExpansionMemory(initial_expanded_rows)
         self._emitter = TreeEmitter(scheduling=scheduling)
 
         self._filter: TreeFilter = NO_FILTER
@@ -248,33 +249,19 @@ class GUITreePanel(GUIPanel, ABC):
         self._forget_rows_the_model_dropped()
         return self._pending_specs
 
-    def _state_expansion_memory(self, initial_expanded_rows: AbstractSet[str]) -> None:
-        """Sets up the two memories of open rows: the reader's, and the favorites mode's.
-
-        The reader's opens holding what a session left the browser standing as, and the mode's opening
-        empty, a mode being asked for afresh in each run.
-        """
-        self._expanded_rows: Set[str] = set(initial_expanded_rows)
-        self._mode_expanded_rows: Set[str] = set()
-
     def _forget_rows_the_model_dropped(self) -> None:
-        """Holds both memories of open rows to the rows the model states, read afresh on every pass.
+        """Holds the memory of open rows to the rows the model states, read afresh on every pass.
 
-        A row a memory holds that the model no longer states belongs to a folder the disk has lost, so
-        its place goes with it. Reading the model rather than the rows a pass drew is what lets a
-        browser opening in the favorites mode — or opening on a session written before the
-        reconstructions directory moved — drop what is gone.
+        A row the memory holds that the model no longer states belongs to a folder the disk has lost, so
+        its place goes with it. The model is what the answer is read from, so a browser opening in the
+        favorites mode — or opening on a session written before the reconstructions directory moved —
+        drops what is gone.
         """
-        if not self._REMEMBERS_EXPANSION:
-            return
-
         root = self.tree.get_root()
-        if root is None:
+        if root is None or not self._expansion:
             return
 
-        rows_the_model_states = {self._generate_node_tag(node) for node in root.descendants if node.children}
-        self._expanded_rows &= rows_the_model_states
-        self._mode_expanded_rows &= rows_the_model_states
+        self._expansion.hold_to({self._generate_node_tag(node) for node in root.descendants if node.children})
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = compose_tag(self.tag, SUF_INPUT_SEARCH)
@@ -385,38 +372,21 @@ class GUITreePanel(GUIPanel, ABC):
         self._filter = self._filter.with_favorites_only(favorites_only)
         self._auto_expand_pending = favorites_only
 
-    def _release_the_rows_the_mode_opened(self) -> None:
-        """Folds the rows the mode opened, leaving standing the way down to the reader's own rows.
+    def _release_mode_rows(self) -> None:
+        """Hands back the rows the favorites mode opened, which the memory holds the rule for.
 
-        A row the reader opened below one the mode opened stands on that row, so the reader is looking
-        at a tree they built on the way the mode opened. That row holds their own on the screen, and
-        it therefore becomes theirs to keep. What is left held the mode's opening alone, and folds with
-        it. The rows are read off the model, so a pass on the tree worker is what runs this.
-        """
-        if not self._mode_expanded_rows:
-            return
-
-        self._expanded_rows |= self._rows_the_readers_own_stand_on()
-        self._mode_expanded_rows = set()
-
-    def _rows_the_readers_own_stand_on(self) -> Set[str]:
-        """The rows the mode opened that hold a row the reader opened somewhere below them.
-
-        Each row the reader stands open is read off the model together with the way up to it, so a row
-        between one of theirs and the top of the tree answers however deep theirs stands.
+        The rows the reader stands open are read off the model, and the way down to each of them is what
+        the mode keeps standing however deep theirs stands. The model is read on the pass that finds the
+        mode off, on the tree worker.
         """
         root = self.tree.get_root()
-        if root is None:
-            return set()
+        if root is None or not self._expansion.follows_the_mode:
+            return
 
-        ways_down: Set[str] = set()
-        for node in root.descendants:
-            if self._generate_node_tag(node) not in self._expanded_rows:
-                continue
-
-            ways_down |= {self._generate_node_tag(ancestor) for ancestor in node.ancestors}
-
-        return ways_down & self._mode_expanded_rows
+        reader_rows = self._expansion.rows
+        self._expansion.release(
+            self._way_down_to([node for node in root.descendants if self._generate_node_tag(node) in reader_rows]),
+        )
 
     def _restore_favorites_only(self, favorites_only: bool) -> None:
         """Takes the mode a session left the browser in, which its first rebuild then draws by.
@@ -460,10 +430,7 @@ class GUITreePanel(GUIPanel, ABC):
             node,
             has_favorite_ancestor=has_favorite_ancestor,
         )
-        stands_open = self._stands_open(
-            node_tag,
-            should_expand=should_expand,
-        )
+        stands_open = should_expand or self._expansion.stands_open(node_tag)
         self._pending_specs.append(
             NodeSpec(
                 node=node,
@@ -480,42 +447,9 @@ class GUITreePanel(GUIPanel, ABC):
             )
         )
 
-    def _stands_open(
-        self,
-        node_tag: str,
-        *,
-        should_expand: bool,
-    ) -> bool:
-        """Whether the row is created standing open: a filter points at it, or a memory holds it.
-
-        Two memories answer, each holding what one hand opened. The reader's holds the rows they opened
-        themselves and is what a session writes down. The mode's holds the way down it opened on the
-        pass the reader asked for, noted as that pass resolved the filter, which stands for as long as
-        the mode does and folds once it goes, apart from the rows the reader's own have come to stand
-        on.
-        """
-        if not self._REMEMBERS_EXPANSION:
-            return should_expand
-
-        return should_expand or node_tag in self._expanded_rows or node_tag in self._mode_expanded_rows
-
     @property
     def expanded_rows(self) -> Set[str]:
-        """The rows the reader stands open, which is the shape a session writes down."""
-        return set(self._expanded_rows)
-
-    def _set_row_expanded(self, node_tag: str, expanded: bool) -> None:
-        """Holds whether a row stands open, which is what a later pass brings it back by.
-
-        A row the reader opens is theirs from then on. A row they fold is theirs to fold whichever hand
-        opened it, so folding it lets go of the mode's claim on it too and it stays folded.
-        """
-        if expanded:
-            self._expanded_rows.add(node_tag)
-            return
-
-        self._expanded_rows.discard(node_tag)
-        self._mode_expanded_rows.discard(node_tag)
+        return self._expansion.rows
 
     def _set_subtree_expanded(self, node: TreeNode, *, expanded: bool) -> None:
         """Folds or unfolds the row together with every row below it holding something.
@@ -527,7 +461,7 @@ class GUITreePanel(GUIPanel, ABC):
             if container.children:
                 node_tag = self._generate_node_tag(container)
                 dpg_set_value(node_tag, expanded)
-                self._set_row_expanded(node_tag, expanded)
+                self._expansion.remember(node_tag, expanded=expanded)
 
     def _finish_emit(
         self,
@@ -696,7 +630,7 @@ class GUITreePanel(GUIPanel, ABC):
         if not dpg.does_item_exist(node_tag):
             return
 
-        self._set_row_expanded(node_tag, bool(dpg_get_value(node_tag)))
+        self._expansion.remember(node_tag, expanded=bool(dpg_get_value(node_tag)))
 
     def _setup_handlers(self) -> None:
         for handler in self._node_handlers.values():
@@ -1033,9 +967,9 @@ class GUITreePanel(GUIPanel, ABC):
             way_down,
         ) = self._resolve_favorites()
         if self._filter.favorites_only:
-            self._mode_expanded_rows |= way_down
+            self._expansion.follow(way_down)
         else:
-            self._release_the_rows_the_mode_opened()
+            self._release_mode_rows()
 
         self._auto_expand_pending = False
 
@@ -1069,20 +1003,15 @@ class GUITreePanel(GUIPanel, ABC):
             self._way_down_to(self._auto_expanded_anchors(reached)),
         )
 
-    def _way_down_to(self, anchors: Sequence[TreeNode]) -> Set[str]:
-        """The tags of the rows standing above the anchors, which is the way down the mode opens.
+    def _way_down_to(self, rows: Sequence[TreeNode]) -> Set[str]:
+        """The tags of the rows standing above these rows, which is a way down to them.
 
-        An anchor is a row the reader asked to be pointed at, so what opens is the rows above it while
-        the anchor's own row stands as the reader left it. The container both branches hang from is a
-        row on no screen, and stays out of the answer.
+        A row given here is one the browser is pointed at, so a way down opens the rows above it while
+        its own row stands as the reader left it. The container both branches hang from is a row on no
+        screen, and stays out of the answer.
         """
         root = self.tree.get_root()
-        return {
-            self._generate_node_tag(ancestor)
-            for anchor in anchors
-            for ancestor in anchor.ancestors
-            if ancestor is not root
-        }
+        return {self._generate_node_tag(ancestor) for row in rows for ancestor in row.ancestors if ancestor is not root}
 
     def _auto_expanded_anchors(
         self,

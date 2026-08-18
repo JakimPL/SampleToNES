@@ -6,6 +6,7 @@ from typing import Dict, Final, List, Mapping, Optional, Sequence, Set, Tuple
 
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.elements.tree.expansion import RowExpansionMemory
 from sampletones_application.ui.elements.tree.filter import TreeFilter
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.spec import NodeSpec
@@ -304,7 +305,7 @@ def build_browser_panel(
     """
     panel = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     panel.tag = panel_tag
-    panel._state_expansion_memory(set() if expanded_rows is None else expanded_rows)
+    panel._expansion = RowExpansionMemory(set() if expanded_rows is None else expanded_rows)
     panel.tree_tag = TREE_TAG
     panel.tree = corpus.tree
     panel._logic = FakeTreeLogic(  # type: ignore[assignment]
@@ -415,7 +416,7 @@ def set_row_expanded(
     expanded: bool,
 ) -> None:
     """Leaves a row standing the way the reader would leave it, which the browser then remembers."""
-    panel._set_row_expanded(panel._generate_node_tag(node), expanded)
+    panel._expansion.remember(panel._generate_node_tag(node), expanded=expanded)
 
 
 def set_filter(

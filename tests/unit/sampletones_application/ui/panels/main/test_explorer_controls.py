@@ -4,6 +4,7 @@ from typing import List, Set, Tuple
 import pytest
 
 from sampletones_application.ui.elements.tree import tree as tree_module
+from sampletones_application.ui.elements.tree.expansion import RowExpansionMemory
 from sampletones_application.ui.panels.main import explorer as explorer_module
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
@@ -82,7 +83,7 @@ def build_panel(tree: Tree) -> GUIExplorerPanel:
     panel = GUIExplorerPanel.__new__(GUIExplorerPanel)
     panel.tag = PANEL_TAG
     panel.tree = tree
-    panel._state_expansion_memory(set())
+    panel._expansion = RowExpansionMemory(set())
     panel._explorer_logic = FakeExplorerLogic(tree)  # type: ignore[assignment]
     return panel
 

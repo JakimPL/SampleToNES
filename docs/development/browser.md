@@ -110,9 +110,9 @@ one row from the next.
 The browsers form one line of inheritance, each level owning what it shares:
 
 * `GUITreePanel` (`ui/elements/tree/tree.py`) — a tree of rows: the controls it narrows by and the filter
-  they compose, the shape it holds across rebuilds, the rebuild handshake, spec collection, themes and
-  fonts per row, the detail tooltip, the status-bar messages, and the context-menu items every browser
-  can offer.
+  they compose, the shape it holds across rebuilds — kept for it by `RowExpansionMemory`
+  (`ui/elements/tree/expansion.py`) — the rebuild handshake, spec collection, themes and fonts per row,
+  the detail tooltip, the status-bar messages, and the context-menu items every browser can offer.
 * `GUIFileBrowserPanel` (`ui/elements/tree/browser.py`) — a browser of files as a collapsible card: the
   controls bringing the tree up to date and folding it away, the tree window, the folder-and-file
   handler pair, and enabling the card as the tree locks and unlocks. A subclass declares its widgets as
@@ -205,25 +205,27 @@ moving the tree the reader is working in.
 
 **The way down becomes the reader's once their own rows stand on it.** A reader looking at their
 favorites opens rows of their own below the way the mode opened, so a row of the mode's holds theirs on
-the screen. `_release_the_rows_the_mode_opened` therefore reads the model on the pass that finds the
-mode off — on the tree worker, beside the other walks a pass makes — and hands the reader every row of
-the mode's that holds one of theirs somewhere below it, which writes the way down into the shape a
-session keeps. What is left held the mode's opening alone, and folds with it.
+the screen. `_release_mode_rows` therefore reads the model on the pass that finds the mode off — on the
+tree worker, beside the other walks a pass makes — and hands the memory the ways down to the reader's
+rows; `RowExpansionMemory.release` keeps the rows of the mode's among them, which writes the way down
+into the shape a session keeps. What is left held the mode's opening alone, and folds with it.
 
 **A row the favorites mode holds back holds nothing it would show.** A row it shows either stands on
 the way to a starred row or sits beneath one, and each of those facts holds for every row above it — so
 declining a row declines its subtree, and one decision covers it while the traversal walks on.
 
-**Two memories, each holding what one hand opened.** A browser holding `_REMEMBERS_EXPANSION` records
-the rows standing open by the tag those rows are addressed under, and a later pass creates them open
-again. The reader's memory holds what the reader did — a click, read a frame later once the row has
-answered it, and the expansion items and the collapse control, which record what they set — and it is
-what a session writes down. The mode's memory holds the way down it opened, and goes when the mode does,
-so a narrowed browser hands the tree back the way the reader had it, keeping the rows theirs now stand
-on. Folding a row is the reader's word
-on it whichever hand opened it, so `_set_row_expanded` releases the mode's claim along with the reader's
-and the row stays folded. Both memories are held to the rows the model states, read afresh on every
-pass, so a row a moved reconstructions directory left behind leaves them with it.
+**Two memories, each holding what one hand opened.** `RowExpansionMemory` owns both and the rules that
+join them, holding each row by the tag it is addressed under so a later pass creates it open again. The
+reader's rows hold what the reader did — a click, read a frame later once the row has answered it, and
+the expansion items and the collapse control, which record what they set — and they are what a session
+writes down. The mode's rows hold the way down it opened, and go when the mode does, so a narrowed
+browser hands the tree back the way the reader had it, keeping the rows theirs now stand on. Folding a
+row is the reader's word on it whichever hand opened it, so `remember` releases the mode's claim along
+with the reader's and the row stays folded. A pass writes from the tree worker while a click writes from
+the main thread, so one lock covers every answer the memory gives. Both sets are held to the rows the
+model states, read afresh on every pass, so a row a moved reconstructions directory left behind leaves
+them with it. Which browsers record a shape at all is `_REMEMBERS_EXPANSION`: it decides whether a click
+is followed through to the memory, and a browser that keeps none leaves it empty.
 
 A search unfolds by the same rule from the other end: its matches and the rows above them open for as
 long as the query stands, resolved afresh on each pass, and clearing the query folds them back.

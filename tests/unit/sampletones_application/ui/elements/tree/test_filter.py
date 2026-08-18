@@ -1,5 +1,6 @@
 from typing import Dict, List, Set, Type
 
+from sampletones_application.ui.elements.tree.expansion import RowExpansionMemory
 from sampletones_application.ui.elements.tree.filter import NO_FILTER, TreeFilter
 from sampletones_application.ui.panels.reconstruction.browser import GUIReconstructionsBrowserPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
@@ -51,7 +52,7 @@ def build_panel(
     panel._filter = NO_FILTER
     panel._search_visibility = None
     panel._favorites_visibility = None
-    panel._state_expansion_memory(set())
+    panel._expansion = RowExpansionMemory(set())
     return panel
 
 

@@ -70,5 +70,5 @@ class TestCollapseAllControl:
 
         panel._on_collapse_all_clicked()
 
-        assert panel._expanded_rows == set()
+        assert panel.expanded_rows == set()
         assert render_view(panel) == WHOLE_TREE

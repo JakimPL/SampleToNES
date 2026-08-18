@@ -308,7 +308,7 @@ class TestTheReadersShape:
         archive.parent = None
 
         assert render_view(panel) == WHOLE_TREE_WITHOUT_THE_ARCHIVE
-        assert panel._expanded_rows == set()
+        assert panel.expanded_rows == set()
 
     def test_a_browser_opens_with_the_rows_a_session_left_it(self, corpus: BrowserCorpus) -> None:
         """The shape outlives the run it was made in, so a browser is handed it as it is built."""
@@ -338,7 +338,7 @@ class TestTheReadersShape:
         select_favorites(panel)
         render_view(panel)
 
-        assert panel._expanded_rows == set()
+        assert panel.expanded_rows == set()
 
     def test_the_shape_a_save_writes_is_the_rows_standing_open(self, corpus: BrowserCorpus) -> None:
         panel = build_browser_panel(corpus, set(), favorites_only=False)
@@ -416,7 +416,7 @@ class TestFollowingTheReader:
 
         panel._read_row_expansion("row.tag")
 
-        assert panel._expanded_rows == {"row.tag"}
+        assert panel.expanded_rows == {"row.tag"}
 
     def test_a_row_that_left_the_tree_is_read_no_further(
         self,
@@ -428,4 +428,4 @@ class TestFollowingTheReader:
 
         panel._read_row_expansion("row.tag")
 
-        assert panel._expanded_rows == set()
+        assert panel.expanded_rows == set()
