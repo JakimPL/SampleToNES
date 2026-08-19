@@ -1,5 +1,9 @@
 # SampleToNES
 
+## v0.3.2
+
+* Added NSF player and export.
+
 ## v0.3.1 [2026-08-18]
 
 * Added support to [Bitphase](https://github.com/paator/bitphase).
