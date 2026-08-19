@@ -1,7 +1,7 @@
 from typing import Dict
 
 from sampletones_core.configs import Config
-from sampletones_core.utils.frequencies import pitch_to_frequency
+from sampletones_shared.utils.frequencies import pitch_to_frequency
 
 from .arithmetic import frequency_to_timer
 from .implementation.phase import PhaseTimer

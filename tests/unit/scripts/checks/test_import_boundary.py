@@ -1,134 +1,170 @@
+from collections import Counter
 from pathlib import Path
-from typing import Final, List
+from typing import Dict, Final, List, Set, Tuple
 
 import pytest
 
-from sampletones_shared.meta.source.modules import source_paths
+from sampletones_shared.meta.import_boundary.check import check_boundaries
+from sampletones_shared.meta.import_boundary.rule import BoundaryRule
+from sampletones_shared.meta.import_boundary.scope import rule_modules
+from sampletones_shared.paths.source import SOURCE_ROOT
 from tests.suite.scripts import load_script
+from tests.suite.source import swept_paths, write_module
 
 check_import_boundary = load_script("checks/import_boundary.py")
 
-LOGIC_RULE: Final[str] = "logic/**/*.py"
+APPLICATION: Final[str] = "sampletones_application"
+CORE: Final[str] = "sampletones_core"
+PLAYER: Final[str] = "sampletones_player"
+ASSEMBLER: Final[str] = "sampletones_player.driver.assembler"
 
-FORBIDDEN_IMPORT: Final[str] = "import dearpygui.dearpygui as dpg\n"
+VISUAL_IMPORT: Final[str] = "import dearpygui.dearpygui as dpg\n"
 CONTRACT_IMPORT: Final[str] = "from sampletones_application.services.result import ServiceResult\n"
 PLAIN_IMPORT: Final[str] = "from sampletones_core.project.project import Project\n"
+PLAYER_IMPORT: Final[str] = "from sampletones_player.song import Song\n"
+ASSEMBLER_IMPORT: Final[str] = "from sampletones_player.driver.assembler.builder import build_driver\n"
+DRIVER_IMPORT: Final[str] = "from sampletones_player.driver.image import DriverImage\n"
 PANEL_SUFFIX: Final[str] = "def build() -> None:\n    dpg.add_group(parent=SUF_PANEL_LEFT)\n"
 
 
-def write_module(directory: Path, name: str, body: str) -> Path:
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / name
-    path.write_text(body, encoding="utf-8")
-    return path
+def reached_modules(rule: BoundaryRule) -> List[Path]:
+    """The modules a rule of the real source tree applies to."""
+    root = SOURCE_ROOT / rule.root
+    return rule_modules(root, rule.pattern, rule.excluding, swept_paths(root), None)
 
 
-def swept(package: Path) -> List[Path]:
-    return [path.resolve() for path in source_paths([package])]
+def reaches(layers: Dict[str, Tuple[str, ...]], unit: str, seen: Set[str]) -> Set[str]:
+    """Every unit a unit imports, directly or through the units it imports."""
+    for allowed in layers[unit]:
+        if allowed not in seen:
+            seen.add(allowed)
+            reaches(layers, allowed, seen)
+
+    return seen
 
 
-class TestRuleModules:
-    def test_a_module_directly_under_the_rule_directory_is_reached(self, tmp_path: Path) -> None:
-        """`logic/**/*.py` names `logic/direct.py` as surely as `logic/inner/deep.py`."""
-        direct = write_module(tmp_path / "logic", "direct.py", PLAIN_IMPORT)
-
-        reached = check_import_boundary.rule_modules(tmp_path, LOGIC_RULE, set(swept(tmp_path)), None)
-
-        assert reached == [direct.resolve()]
-
-    def test_a_module_nested_under_the_rule_directory_is_reached(self, tmp_path: Path) -> None:
-        deep = write_module(tmp_path / "logic" / "inner", "deep.py", PLAIN_IMPORT)
-
-        reached = check_import_boundary.rule_modules(tmp_path, LOGIC_RULE, set(swept(tmp_path)), None)
-
-        assert reached == [deep.resolve()]
-
-    def test_a_module_outside_the_rule_directory_stays_aside(self, tmp_path: Path) -> None:
-        write_module(tmp_path / "services", "conversion.py", PLAIN_IMPORT)
-
-        assert check_import_boundary.rule_modules(tmp_path, LOGIC_RULE, set(swept(tmp_path)), None) == []
-
-    def test_a_selection_narrows_the_rule_to_the_files_it_names(self, tmp_path: Path) -> None:
-        named = write_module(tmp_path / "logic", "named.py", PLAIN_IMPORT)
-        write_module(tmp_path / "logic", "other.py", PLAIN_IMPORT)
-
-        reached = check_import_boundary.rule_modules(
-            tmp_path,
-            LOGIC_RULE,
-            set(swept(tmp_path)),
-            {named.resolve()},
-        )
-
-        assert reached == [named.resolve()]
+def reported(tmp_path: Path) -> List[str]:
+    """What the declared rules report over a tree a test builds."""
+    violations = check_boundaries(
+        tmp_path,
+        check_import_boundary.RULES,
+        check_import_boundary.TOKEN_RULES,
+        None,
+    )
+    return [violation.kind for violation in violations]
 
 
-class TestCheckBoundaries:
-    def test_a_forbidden_import_is_reported(self, tmp_path: Path) -> None:
-        write_module(tmp_path / "logic", "direct.py", FORBIDDEN_IMPORT)
+class TestPackageGraph:
+    """The packages under the source root, and the order they may reach each other in."""
 
-        violations = check_import_boundary.check_boundaries(tmp_path, None)
+    LAYERS: Final[Dict[str, Tuple[str, ...]]] = check_import_boundary.PACKAGE_LAYERS
 
-        assert [violation.kind for violation in violations] == ["dearpygui"]
+    def test_every_package_of_the_source_tree_is_declared(self) -> None:
+        directories = {path.name for path in SOURCE_ROOT.iterdir() if (path / "__init__.py").is_file()}
 
-    def test_the_report_names_the_line_the_import_sits_on(self, tmp_path: Path) -> None:
-        path = write_module(tmp_path / "logic", "direct.py", f"{PLAIN_IMPORT}{FORBIDDEN_IMPORT}")
+        assert set(self.LAYERS) == directories
 
-        violations = check_import_boundary.check_boundaries(tmp_path, None)
+    def test_every_layer_a_package_may_import_is_a_declared_package(self) -> None:
+        assert all(allowed in self.LAYERS for layers in self.LAYERS.values() for allowed in layers)
 
-        assert violations[0].location.startswith(f"{path}:2")
+    def test_the_package_graph_is_acyclic(self) -> None:
+        assert all(package not in reaches(self.LAYERS, package, set()) for package in self.LAYERS)
 
-    def test_a_contract_module_stays_reachable(self, tmp_path: Path) -> None:
+    def test_the_reconstruction_engine_stays_clear_of_the_console_player(self) -> None:
+        assert PLAYER not in reaches(self.LAYERS, CORE, set())
+
+    def test_the_console_player_reads_the_reconstruction_engine(self) -> None:
+        assert CORE in self.LAYERS[PLAYER]
+
+    def test_the_synthesis_package_stands_below_the_reconstruction_engine(self) -> None:
+        """Equal temperament sits in `sampletones_shared`, so synthesis reaches no engine module."""
+        assert CORE not in reaches(self.LAYERS, "sampletones_synthesis", set())
+
+
+class TestPlayerGraph:
+    """The player's own subpackages, and the order they may reach each other in."""
+
+    LAYERS: Final[Dict[str, Tuple[str, ...]]] = check_import_boundary.PLAYER_LAYERS
+
+    def test_every_layer_a_unit_may_import_is_a_declared_unit(self) -> None:
+        assert all(allowed in self.LAYERS for layers in self.LAYERS.values() for allowed in layers)
+
+    def test_the_player_graph_is_acyclic(self) -> None:
+        assert all(unit not in reaches(self.LAYERS, unit, set()) for unit in self.LAYERS)
+
+    def test_the_specification_is_the_layer_everything_stands_on(self) -> None:
+        assert self.LAYERS["specification"] == ()
+
+    def test_the_build_toolchain_is_reached_from_no_shipped_module(self) -> None:
+        """`driver/assembler/` stays outside the wheel, so an import of it breaks an installed copy."""
+        assert all("driver/assembler" not in layers for layers in self.LAYERS.values())
+
+    def test_the_driver_is_reached_through_the_file_that_writes_the_nsf(self) -> None:
+        assert "driver" in self.LAYERS["nsf"]
+
+    def test_every_module_of_the_player_belongs_to_one_unit(self) -> None:
+        owners = Counter(path for rule in check_import_boundary.PLAYER_GRAPH.rules() for path in reached_modules(rule))
+
+        assert set(owners) == swept_paths(SOURCE_ROOT / PLAYER)
+        assert set(owners.values()) == {1}
+
+
+class TestDeclaredRules:
+    """Each declared boundary read over a tree that crosses it."""
+
+    def test_a_layer_reaching_the_interface_is_reported(self, tmp_path: Path) -> None:
+        write_module(tmp_path / APPLICATION / "logic", "direct.py", VISUAL_IMPORT)
+
+        assert reported(tmp_path) == ["dearpygui"]
+
+    def test_a_service_contract_stays_reachable(self, tmp_path: Path) -> None:
         """A layer reads another layer's data contract while its implementation stays out of reach."""
-        write_module(tmp_path / "logic", "direct.py", CONTRACT_IMPORT)
+        write_module(tmp_path / APPLICATION / "logic", "direct.py", CONTRACT_IMPORT)
 
-        assert check_import_boundary.check_boundaries(tmp_path, None) == []
+        assert reported(tmp_path) == []
 
-    def test_an_allowed_import_reports_nothing(self, tmp_path: Path) -> None:
-        write_module(tmp_path / "logic", "direct.py", PLAIN_IMPORT)
+    def test_the_reconstruction_engine_reaching_the_console_player_is_reported(self, tmp_path: Path) -> None:
+        write_module(tmp_path / CORE / "formats", "player.py", PLAYER_IMPORT)
 
-        assert check_import_boundary.check_boundaries(tmp_path, None) == []
+        assert reported(tmp_path) == [PLAYER]
 
-    def test_a_forbidden_token_is_reported(self, tmp_path: Path) -> None:
-        write_module(tmp_path / "ui" / "panels", "left.py", PANEL_SUFFIX)
+    def test_the_console_player_reading_the_engine_is_left_alone(self, tmp_path: Path) -> None:
+        write_module(tmp_path / PLAYER / "nsf", "file.py", PLAIN_IMPORT)
 
-        violations = check_import_boundary.check_boundaries(tmp_path, None)
+        assert reported(tmp_path) == []
 
-        assert len(violations) == 1
+    def test_a_shipped_module_reaching_the_build_toolchain_is_reported(self, tmp_path: Path) -> None:
+        write_module(tmp_path / PLAYER / "nsf", "file.py", ASSEMBLER_IMPORT)
 
-    def test_a_selection_narrows_the_check(self, tmp_path: Path) -> None:
-        checked = write_module(tmp_path / "logic", "checked.py", FORBIDDEN_IMPORT)
-        write_module(tmp_path / "logic", "other.py", FORBIDDEN_IMPORT)
+        assert reported(tmp_path) == [ASSEMBLER]
 
-        violations = check_import_boundary.check_boundaries(tmp_path, {checked.resolve()})
+    def test_the_build_toolchain_reads_the_driver_it_assembles(self, tmp_path: Path) -> None:
+        write_module(tmp_path / PLAYER / "driver" / "assembler", "builder.py", DRIVER_IMPORT)
 
-        assert len(violations) == 1
+        assert reported(tmp_path) == []
+
+    def test_a_panel_composing_a_column_suffix_is_reported(self, tmp_path: Path) -> None:
+        write_module(tmp_path / APPLICATION / "ui" / "panels", "left.py", PANEL_SUFFIX)
+
+        assert len(reported(tmp_path)) == 1
 
 
-class TestSweptRoots:
-    """A root the sweep reads nothing under reports nothing, which reads as a clean tree."""
+class TestRuleCoverage:
+    """A rule naming no module of the tree reads as a clean tree, so each one reaches something."""
 
-    def test_the_application_package_holds_modules(self) -> None:
-        assert source_paths([check_import_boundary.APP_ROOT])
+    def test_the_source_root_holds_modules(self) -> None:
+        assert swept_paths(SOURCE_ROOT)
 
     def test_every_boundary_rule_reaches_a_module(self) -> None:
-        package = check_import_boundary.APP_ROOT
-        assert all(list(package.glob(rule.pattern)) for rule in check_import_boundary.RULES)
+        assert all(reached_modules(rule) for rule in check_import_boundary.RULES)
 
     def test_every_token_rule_reaches_a_module(self) -> None:
-        package = check_import_boundary.APP_ROOT
-        assert all(list(package.glob(rule.pattern)) for rule in check_import_boundary.TOKEN_RULES)
-
-    def test_a_package_holding_no_module_stops_the_check(self, tmp_path: Path) -> None:
-        with pytest.raises(FileNotFoundError):
-            check_import_boundary.check_boundaries(tmp_path, None)
-
-    def test_an_absent_package_stops_the_check(self, tmp_path: Path) -> None:
-        with pytest.raises(NotADirectoryError):
-            check_import_boundary.check_boundaries(tmp_path / "absent", None)
+        rules = check_import_boundary.TOKEN_RULES
+        assert all(list((SOURCE_ROOT / rule.root).glob(rule.pattern)) for rule in rules)
 
 
 class TestMain:
-    def test_the_repository_holds_its_layer_boundaries(self) -> None:
+    def test_the_repository_holds_its_import_boundaries(self) -> None:
         assert check_import_boundary.main(["--all"]) == 0
 
     def test_a_forbidden_import_is_reported_where_it_sits(
@@ -136,9 +172,9 @@ class TestMain:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        path = write_module(tmp_path / "logic", "direct.py", FORBIDDEN_IMPORT)
+        path = write_module(tmp_path / APPLICATION / "logic", "direct.py", VISUAL_IMPORT)
 
-        exit_code = check_import_boundary.main(["--all", "--package", str(tmp_path)])
+        exit_code = check_import_boundary.main(["--all", "--source", str(tmp_path)])
 
         assert exit_code == 1
         error = capsys.readouterr().err
@@ -150,8 +186,8 @@ class TestMain:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        write_module(tmp_path / "logic", "reported.py", FORBIDDEN_IMPORT)
-        clean = write_module(tmp_path / "logic", "clean.py", PLAIN_IMPORT)
+        write_module(tmp_path / APPLICATION / "logic", "reported.py", VISUAL_IMPORT)
+        clean = write_module(tmp_path / APPLICATION / "logic", "clean.py", PLAIN_IMPORT)
 
-        assert check_import_boundary.main([str(clean), "--package", str(tmp_path)]) == 0
+        assert check_import_boundary.main([str(clean), "--source", str(tmp_path)]) == 0
         assert capsys.readouterr().err == ""
