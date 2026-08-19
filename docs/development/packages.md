@@ -35,12 +35,11 @@ graph TD
     PLAYER --> SHARED
     APP --> SHARED
     ENTRY --> SHARED
-    SYNTH -.->|"pitch limits"| CORE
 ```
 
 | Package | Purpose | May import |
 |---------|---------|------------|
-| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the AST layer the checks read source through | — |
+| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the source layer the checks read the tree through | — |
 | `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, calibration — reached as package data rather than by import | — |
 | `sampletones_assets` | The application mark and the bundled fonts, with the code that draws the mark | `sampletones_shared` |
 | `sampletones_synthesis` | Analytic waveform synthesis: oscillators, envelopes, layers and voices | `sampletones_shared` |
@@ -57,14 +56,11 @@ player's format move while the engine holds still. The consequence is that an ex
 reaching the console — the seam `sampletones_core/trackers/backend.py` describes — is registered
 from above rather than from the engine's own registry.
 
-### The pitch back-edge
-
-`sampletones_synthesis/frequency.py` reaches back up to `sampletones_core` for the pitch limits and
-the pitch-to-frequency conversion, which is the one edge running against the order above. The check
-narrows it to exactly the two modules it needs, `sampletones_core.constants.general` and
-`sampletones_core.utils.frequencies`, so the rest of the engine stays out of reach from below.
-Moving those facts into `sampletones_shared` closes the edge; it is listed in
-[`bugs-and-todos.md`](bugs-and-todos.md) until then.
+**Equal temperament sits at the bottom.** The MIDI pitch limits and the A4 reference are
+`sampletones_shared/constants/music.py`, and the pitch-to-frequency conversion they govern is
+`sampletones_shared/utils/frequencies.py` — so the synthesis package reads them without reaching up
+into the engine, and `sampletones_core/utils/frequencies.py` keeps what is the engine's own: the
+project's usable pitch range, the noise periods, and the note and period names.
 
 ---
 
@@ -102,3 +98,8 @@ it may import — and derives the rule it runs from them: every unit a table lea
 reach, so an edge is declared before it is taken. The hook audits the whole source tree on every
 commit (`make check-import-boundary`), which means adding an edge to a table is how a new dependency
 is opened, and removing one enumerates the work of closing it.
+
+The script is the declaration alone. Reading a module line by line, resolving a unit to the modules
+it owns, deriving a rule from a graph and reporting what crosses it live in
+`sampletones_shared/meta/import_boundary/`, beside the source layer the other checks read the tree
+through.

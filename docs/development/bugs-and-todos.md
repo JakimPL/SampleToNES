@@ -38,7 +38,6 @@
 * Per-tab undo routing
 * In-application console
 * Improve performance of browser favorite scan of the entire tree per click
-* `sampletones_synthesis` reaching back into `sampletones_core` for the pitch limits and `pitch_to_frequency`
 
 ## Bugs
 

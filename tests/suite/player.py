@@ -3,7 +3,6 @@ from typing import Dict, Final, Optional, Sequence
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.timers.arithmetic import frequency_to_timer
-from sampletones_core.utils.frequencies import pitch_to_frequency
 from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
@@ -20,6 +19,7 @@ from sampletones_player.specification.registers import (
     TRIANGLE_SILENT_RELOAD,
     TRIANGLE_SOUNDING_RELOAD,
 )
+from sampletones_shared.utils.frequencies import pitch_to_frequency
 
 PLAYER_REFERENCE_TIMER: Final[int] = 0x154
 PLAYER_OCTAVE_UP_TIMER: Final[int] = PLAYER_REFERENCE_TIMER // 2

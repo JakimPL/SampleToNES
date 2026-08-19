@@ -1,7 +1,8 @@
 from enum import StrEnum
 from typing import Dict, Final
 
-from sampletones_core.constants.general import A4_FREQUENCY, APU_CLOCK
+from sampletones_core.constants.general import APU_CLOCK
+from sampletones_shared.constants.music import A4_FREQUENCY
 
 CHIP_TYPE_NES: Final[str] = "nes"
 

@@ -2,8 +2,8 @@ from typing import Annotated, Any, Union
 
 from pydantic import BeforeValidator, Field, StrictFloat, StrictInt
 
-from sampletones_core.constants.general import LIMIT_MAX_PITCH, LIMIT_MIN_PITCH
-from sampletones_core.utils.frequencies import pitch_to_frequency
+from sampletones_shared.constants.music import LIMIT_MAX_PITCH, LIMIT_MIN_PITCH
+from sampletones_shared.utils.frequencies import pitch_to_frequency
 
 
 def _require_hertz(value: Any) -> Any:

@@ -8,14 +8,10 @@ from sampletones_core.constants.audio import (
     MIN_SAMPLE_RATE,
 )
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_core.constants.general import (
-    A4_FREQUENCY,
-    A4_PITCH,
-    LIMIT_MAX_PITCH,
-    MIN_FREQUENCY,
-)
+from sampletones_core.constants.general import MIN_FREQUENCY
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.data import DataModel
+from sampletones_shared.constants.music import A4_FREQUENCY, A4_PITCH, LIMIT_MAX_PITCH
 from sampletones_shared.constants.nes import (
     DEFAULT_NES_FREQUENCY,
     MAX_NES_FREQUENCY,
