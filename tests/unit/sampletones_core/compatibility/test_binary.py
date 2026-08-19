@@ -46,7 +46,10 @@ class TestUpgradeBinary:
                 "metadata": {"reconstruction_data_version": "2.1"},
                 "approximations_data": [{"generator_name": "pulse1", "approximation": [1.0, 2.0]}],
                 "instructions_data": [],
-                "config": {"generation": {"generators": ["pulse1", "noise"]}},
+                "config": {
+                    "metadata": {"reconstruction_data_version": "2.1"},
+                    "generation": {"generators": ["pulse1", "noise"]},
+                },
             },
             use_bin_type=True,
         )
@@ -57,4 +60,5 @@ class TestUpgradeBinary:
         assert data["approximations_data"][0]["channel_name"] == "pulse1"
         assert "generator_name" not in data["approximations_data"][0]
         assert data["config"]["generation"]["channels"] == ["pulse1", "noise"]
+        assert data["config"]["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
         assert data["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION

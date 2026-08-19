@@ -33,6 +33,13 @@ class TestReconstructionV2_2:
         assert upgraded["config"]["generation"]["channels"] == ["pulse1", "noise"]
         assert "generators" not in upgraded["config"]["generation"]
 
+    def test_stamps_the_embedded_config_metadata(self) -> None:
+        data = {"config": {"metadata": {"reconstruction_data_version": "2.1"}}}
+
+        upgraded = update(data)
+
+        assert upgraded["config"]["metadata"]["reconstruction_data_version"] == "2.2"
+
     def test_leaves_the_input_untouched(self) -> None:
         data = {
             "approximations_data": [{GENERATOR_NAME: "pulse1"}],

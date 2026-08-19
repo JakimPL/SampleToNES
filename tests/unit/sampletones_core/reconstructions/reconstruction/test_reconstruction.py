@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable, Final, List
 from unittest.mock import patch
 
+import msgpack
 import numpy as np
 import pytest
 
@@ -198,6 +199,40 @@ class TestMetadataValidation:
 
         with pytest.raises(InvalidMetadataError):
             Reconstruction.load(path)
+
+
+class TestVersionUpgradeOnLoad:
+    def test_a_2_1_file_loads_through_the_upgrade(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        path = tmp_path / "old.stn"
+        reconstruction.save(path)
+
+        binary = path.read_bytes()
+        data = msgpack.unpackb(binary, raw=False)
+        data["metadata"]["reconstruction_data_version"] = "2.1"
+        for item in data["approximations_data"]:
+            item["generator_name"] = item.pop("channel_name")
+
+        for item in data["instructions_data"]:
+            item["generator_name"] = item.pop("channel_name")
+
+        generation = data["config"]["generation"]
+        generation["generators"] = generation.pop("channels")
+        config_metadata = data["config"].get("metadata")
+        if isinstance(config_metadata, dict):
+            config_metadata["reconstruction_data_version"] = "2.1"
+
+        path.write_bytes(msgpack.packb(data, use_bin_type=True))
+
+        loaded = Reconstruction.load(path)
+
+        assert loaded.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
+        assert loaded.config.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
+        assert set(loaded.approximations) == set(reconstruction.approximations)
 
 
 class TestDeserializeDataWrapping(BaseTestSuite):
