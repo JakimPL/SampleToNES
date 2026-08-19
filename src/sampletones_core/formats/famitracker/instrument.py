@@ -1,4 +1,4 @@
-from sampletones_core.formats.famitracker.binary import BinaryWriter
+from sampletones_core.formats.famitracker.binary import FamiTrackerWriter
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
 from sampletones_core.formats.famitracker.specification.file import FTI_MAGIC, FTI_VERSION
@@ -17,13 +17,13 @@ from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import save_binary
 
 
-def _write_header(writer: BinaryWriter) -> None:
+def _write_header(writer: FamiTrackerWriter) -> None:
     writer.write_bytes(FTI_MAGIC)
     writer.write_bytes(FTI_VERSION)
 
 
 def _write_type_and_name(
-    writer: BinaryWriter,
+    writer: FamiTrackerWriter,
     instrument: Instrument2A03,
 ) -> None:
     writer.write_uint8(INSTRUMENT_TYPE_2A03)
@@ -31,7 +31,7 @@ def _write_type_and_name(
 
 
 def _write_sequence(
-    writer: BinaryWriter,
+    writer: FamiTrackerWriter,
     sequence: InstrumentSequence,
 ) -> None:
     if not sequence.enabled:
@@ -47,20 +47,20 @@ def _write_sequence(
         writer.write_int8(item)
 
 
-def _write_sequences(writer: BinaryWriter, instrument: Instrument2A03) -> None:
+def _write_sequences(writer: FamiTrackerWriter, instrument: Instrument2A03) -> None:
     writer.write_int8(SEQUENCE_COUNT_2A03)
     for kind in SequenceKind:
         _write_sequence(writer, instrument.sequences[kind])
 
 
-def _write_empty_dpcm_section(writer: BinaryWriter) -> None:
+def _write_empty_dpcm_section(writer: FamiTrackerWriter) -> None:
     writer.write_uint32(EMPTY_DPCM_ASSIGNMENTS)
     writer.write_uint32(EMPTY_DPCM_SAMPLES)
 
 
 def instrument_to_fti_bytes(instrument: Instrument2A03) -> bytes:
     """Serializes a 2A03 instrument to the FamiTracker ``.fti`` byte layout."""
-    writer = BinaryWriter()
+    writer = FamiTrackerWriter()
     _write_header(writer)
     _write_type_and_name(writer, instrument)
     _write_sequences(writer, instrument)

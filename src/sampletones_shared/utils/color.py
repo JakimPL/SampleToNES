@@ -3,6 +3,7 @@ from typing import Annotated, Any, Final
 import numpy as np
 from pydantic import BeforeValidator
 
+from sampletones_shared.constants.general import HEXADECIMAL_BASE
 from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.arrays import clamp
 
@@ -87,14 +88,14 @@ def parse_hex_color(value: str) -> ColorRGBA:
         raise ValueError(f"Color must have 6 or 8 hex digits after '#', got {len(hex_part)}: {value!r}")
 
     try:
-        int(hex_part, 16)
+        int(hex_part, HEXADECIMAL_BASE)
     except ValueError as exception:
         raise ValueError(f"Color contains non-hex characters: {value!r}") from exception
 
-    r = int(hex_part[0:2], 16)
-    g = int(hex_part[2:4], 16)
-    b = int(hex_part[4:6], 16)
-    a = int(hex_part[6:8], 16) if len(hex_part) == 8 else 255
+    r = int(hex_part[0:2], HEXADECIMAL_BASE)
+    g = int(hex_part[2:4], HEXADECIMAL_BASE)
+    b = int(hex_part[4:6], HEXADECIMAL_BASE)
+    a = int(hex_part[6:8], HEXADECIMAL_BASE) if len(hex_part) == 8 else 255
 
     return (r, g, b, a)
 

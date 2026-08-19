@@ -1,0 +1,9 @@
+from typing import Final
+
+PLAY_PERIOD_MICROSECONDS: Final[int] = 16666
+MICROSECONDS_PER_SECOND: Final[int] = 1_000_000
+
+FIXED_POINT_BITS: Final[int] = 16
+FIXED_POINT_SCALE: Final[int] = 1 << FIXED_POINT_BITS
+MAX_STEP_FRACTION: Final[int] = FIXED_POINT_SCALE - 1
+MAX_STEP_WHOLE: Final[int] = 0xFF

@@ -7,6 +7,7 @@ from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.panels.sequencer.input.state import GridInputState
 from sampletones_application.view_model.sequencer.region import OrderRegion
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_shared.constants.general import HEXADECIMAL_BASE
 
 INDEX_DIGITS: Final[int] = 2
 
@@ -19,7 +20,7 @@ class OrderCursor:
 
 def _parse(pending: str) -> Optional[int]:
     try:
-        return int(pending, 16)
+        return int(pending, HEXADECIMAL_BASE)
     except ValueError:
         return None
 

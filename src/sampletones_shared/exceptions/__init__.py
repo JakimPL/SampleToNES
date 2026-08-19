@@ -15,6 +15,12 @@ from .library import (
     NoLibraryDataError,
     UnhandledLibraryError,
 )
+from .player import (
+    DriverBuildError,
+    PlayerError,
+    SongTooLargeError,
+    ToolchainMissingError,
+)
 from .project import (
     IncompatibleProjectVersionError,
     IncorrectReconstructionDataError,
@@ -46,6 +52,7 @@ __all__ = [
     "CallbackQueueStop",
     "CuPyNotInstalledWarning",
     "DeserializationError",
+    "DriverBuildError",
     "FileDialogUnavailableError",
     "IncompatibleLibraryDataVersionError",
     "IncompatibleProjectVersionError",
@@ -72,9 +79,12 @@ __all__ = [
     "NoLibraryDataError",
     "NotAValidArchiveError",
     "PlaybackError",
+    "PlayerError",
     "ReconstructionError",
     "SampleToNESError",
     "SerializationError",
+    "SongTooLargeError",
+    "ToolchainMissingError",
     "UnhandledLibraryError",
     "UnhandledProjectError",
     "UnhandledReconstructionError",

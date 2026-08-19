@@ -98,12 +98,17 @@ build-backend = "hatchling.build"
 conflicts = [[{ extra = "gpu" }, { extra = "gpu-cuda11" }]]
 
 [tool.hatch.build.targets.wheel]
+exclude = [
+    "src/sampletones_player/driver/assembler",
+    "src/sampletones_player/driver/assembly",
+]
 packages = [
     "src/sampletones",
     "src/sampletones_application",
     "src/sampletones_assets",
     "src/sampletones_config",
     "src/sampletones_core",
+    "src/sampletones_player",
     "src/sampletones_shared",
     "src/sampletones_synthesis",
 ]
@@ -121,6 +126,7 @@ known_first_party = [
     "sampletones_assets",
     "sampletones_config",
     "sampletones_core",
+    "sampletones_player",
     "sampletones_shared",
     "sampletones_synthesis",
 ]
@@ -133,6 +139,7 @@ source = [
     "sampletones_application",
     "sampletones_assets",
     "sampletones_core",
+    "sampletones_player",
     "sampletones_shared",
     "sampletones_synthesis",
 ]
@@ -148,6 +155,7 @@ files = [
     "src/sampletones_application",
     "src/sampletones_assets",
     "src/sampletones_core",
+    "src/sampletones_player",
     "src/sampletones_shared",
     "src/sampletones_synthesis",
 ]

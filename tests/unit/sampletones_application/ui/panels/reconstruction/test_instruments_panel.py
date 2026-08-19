@@ -24,16 +24,23 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
 from sampletones_application.ui.panels.reconstruction.instruments import instruments as instruments_module
-from sampletones_application.ui.panels.reconstruction.instruments.instruments import GUIReconstructionInstrumentsPanel
+from sampletones_application.ui.panels.reconstruction.instruments.instruments import (
+    GUIReconstructionInstrumentsPanel,
+)
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
-from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
+from sampletones_application.view_model.reconstruction.instruments import (
+    ReconstructionInstrumentsViewModel,
+)
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
-from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
+from sampletones_core.formats.famitracker.specification.sequences import (
+    MAX_SEQUENCE_ITEMS,
+)
+from sampletones_shared.constants.general import HEXADECIMAL_BASE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -215,8 +222,15 @@ class TestSequenceStatusMessage:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, 16)
-        message = panel._sequence_status_message(GeneratorName.PULSE1, FeatureKey.VOLUME)
+        panel._apply_input_theme(
+            GeneratorName.PULSE1,
+            FeatureKey.VOLUME,
+            HEXADECIMAL_BASE,
+        )
+        message = panel._sequence_status_message(
+            GeneratorName.PULSE1,
+            FeatureKey.VOLUME,
+        )
         assert message == panel._language_manager[SEQUENCE_STATUS_KEY].format(
             instrument_feature=FeatureKey.VOLUME.capitalized
         )

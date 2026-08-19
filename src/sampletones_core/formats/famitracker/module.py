@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from sampletones_core.formats.famitracker.binary import BinaryWriter
+from sampletones_core.formats.famitracker.binary import FamiTrackerWriter
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.module import (
     FamiTrackerModule,
@@ -51,12 +51,12 @@ from sampletones_core.formats.famitracker.specification.sequences import (
 )
 
 
-def _write_file_header(writer: BinaryWriter) -> None:
+def _write_file_header(writer: FamiTrackerWriter) -> None:
     writer.write_bytes(FTM_MAGIC)
     writer.write_uint32(FTM_VERSION)
 
 
-def _write_params_block(writer: BinaryWriter, parameters: ModuleParameters) -> None:
+def _write_params_block(writer: FamiTrackerWriter, parameters: ModuleParameters) -> None:
     with writer.block(BLOCK_PARAMS) as body:
         body.write_uint8(parameters.expansion_chip)
         body.write_int32(parameters.channel_count)
@@ -68,14 +68,14 @@ def _write_params_block(writer: BinaryWriter, parameters: ModuleParameters) -> N
         body.write_int32(parameters.speed_split_point)
 
 
-def _write_info_block(writer: BinaryWriter, information: ModuleInformation) -> None:
+def _write_info_block(writer: FamiTrackerWriter, information: ModuleInformation) -> None:
     with writer.block(BLOCK_INFO) as body:
         body.write_fixed_string(information.title, INFO_STRING_LENGTH)
         body.write_fixed_string(information.author, INFO_STRING_LENGTH)
         body.write_fixed_string(information.copyright, INFO_STRING_LENGTH)
 
 
-def _write_header_block(writer: BinaryWriter, track: Track) -> None:
+def _write_header_block(writer: FamiTrackerWriter, track: Track) -> None:
     with writer.block(BLOCK_HEADER) as body:
         body.write_uint8(SINGLE_TRACK_COUNT - 1)
         body.write_terminated_string(track.title)
@@ -85,7 +85,7 @@ def _write_header_block(writer: BinaryWriter, track: Track) -> None:
 
 
 def _write_instrument_body(
-    writer: BinaryWriter,
+    writer: FamiTrackerWriter,
     instrument: Instrument2A03,
     references: SequenceReferences,
 ) -> None:
@@ -99,7 +99,7 @@ def _write_instrument_body(
 
 
 def _write_instruments_block(
-    writer: BinaryWriter,
+    writer: FamiTrackerWriter,
     instruments: Sequence[Instrument2A03],
     references: SequenceReferences,
 ) -> None:
@@ -112,7 +112,7 @@ def _write_instruments_block(
             body.write_counted_string(instrument.name)
 
 
-def _write_sequences_block(writer: BinaryWriter, pool: Sequence[PooledSequence]) -> None:
+def _write_sequences_block(writer: FamiTrackerWriter, pool: Sequence[PooledSequence]) -> None:
     with writer.block(BLOCK_SEQUENCES) as body:
         body.write_int32(len(pool))
         for pooled in pool:
@@ -127,7 +127,7 @@ def _write_sequences_block(writer: BinaryWriter, pool: Sequence[PooledSequence])
             body.write_int32(pooled.sequence.setting)
 
 
-def _write_frames_block(writer: BinaryWriter, track: Track) -> None:
+def _write_frames_block(writer: FamiTrackerWriter, track: Track) -> None:
     with writer.block(BLOCK_FRAMES) as body:
         body.write_int32(len(track.order))
         body.write_int32(track.speed)
@@ -138,7 +138,7 @@ def _write_frames_block(writer: BinaryWriter, track: Track) -> None:
                 body.write_uint8(pattern_index)
 
 
-def _write_patterns_block(writer: BinaryWriter, patterns: Sequence[PatternData]) -> None:
+def _write_patterns_block(writer: FamiTrackerWriter, patterns: Sequence[PatternData]) -> None:
     with writer.block(BLOCK_PATTERNS) as body:
         for pattern in patterns:
             body.write_int32(FIRST_TRACK_INDEX)
@@ -156,12 +156,12 @@ def _write_patterns_block(writer: BinaryWriter, patterns: Sequence[PatternData])
                     body.write_int8(param)
 
 
-def _write_dpcm_samples_block(writer: BinaryWriter) -> None:
+def _write_dpcm_samples_block(writer: FamiTrackerWriter) -> None:
     with writer.block(BLOCK_DPCM_SAMPLES) as body:
         body.write_uint8(EMPTY_DPCM_SAMPLES)
 
 
-def _write_comments_block(writer: BinaryWriter, comment: str) -> None:
+def _write_comments_block(writer: FamiTrackerWriter, comment: str) -> None:
     with writer.block(BLOCK_COMMENTS) as body:
         body.write_int32(COMMENT_HIDDEN_ON_OPEN)
         body.write_terminated_string(comment)
@@ -171,7 +171,7 @@ def module_to_ftm_bytes(module: FamiTrackerModule) -> bytes:
     """Serializes a FamiTracker module to the ``.ftm`` byte layout."""
     pool, references = build_sequence_pool(module.instruments)
 
-    writer = BinaryWriter()
+    writer = FamiTrackerWriter()
     _write_file_header(writer)
     _write_params_block(writer, module.parameters)
     _write_info_block(writer, module.information)

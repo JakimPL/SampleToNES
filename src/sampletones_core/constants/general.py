@@ -3,14 +3,16 @@ from typing import Final, Tuple
 # Pitches and frequencies
 
 APU_CLOCK: Final[float] = 1789773.0
+TIMER_CYCLE_DIVIDER: Final[int] = 16
+MAX_TIMER: Final[int] = 0x7FF
 LIMIT_MIN_PITCH: Final[int] = 24
 MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
 LIMIT_MAX_PITCH: Final[int] = 127
 PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
 
-MIN_FREQUENCY: Final[float] = APU_CLOCK / 0x8000
-MAX_FREQUENCY: Final[float] = APU_CLOCK / 0x10
+MIN_FREQUENCY: Final[float] = APU_CLOCK / (TIMER_CYCLE_DIVIDER * (MAX_TIMER + 1))
+MAX_FREQUENCY: Final[float] = APU_CLOCK / TIMER_CYCLE_DIVIDER
 
 A4_FREQUENCY: Final[float] = 440.0
 A4_PITCH: Final[int] = 69
