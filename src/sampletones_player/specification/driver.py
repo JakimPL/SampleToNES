@@ -3,6 +3,7 @@ from typing import Final
 from sampletones_player.specification.nsf import PROGRAM_START
 
 DRIVER_PACKAGE: Final[str] = "sampletones_player.driver"
+DRIVER_BINARY_DIRECTORY: Final[str] = "binary"
 DRIVER_CODE_NAME: Final[str] = "driver.bin"
 
 MAX_ADDRESS: Final[int] = 0xFFFF

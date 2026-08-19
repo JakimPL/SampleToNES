@@ -98,6 +98,10 @@ build-backend = "hatchling.build"
 conflicts = [[{ extra = "gpu" }, { extra = "gpu-cuda11" }]]
 
 [tool.hatch.build.targets.wheel]
+exclude = [
+    "src/sampletones_player/driver/assembler",
+    "src/sampletones_player/driver/assembly",
+]
 packages = [
     "src/sampletones",
     "src/sampletones_application",

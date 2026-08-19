@@ -74,18 +74,24 @@ that come with them. `scripts/ci/checks/bundle.py` holds the release bundles to 
 
 ## NES player driver
 
-The player that runs on the console is 6502 assembly, held in `src/sampletones_player/driver`
-beside the linker configuration and the build script that assembles it. `make player` runs that
-script, which needs `ca65` and `ld65` from [cc65](https://cc65.github.io/) — on Debian and Ubuntu,
-`sudo apt install cc65`.
+The player that runs on the console is 6502 assembly, and `src/sampletones_player/driver` holds it
+in three parts: `assembly/` carries the sources, their includes and the linker configuration,
+`binary/` carries the assembled `driver.bin`, and `assembler/` carries the Python that turns one
+into the other. `make player` runs `scripts/player.py` over that package, so the build behaves the
+same on every system the project supports.
+
+Assembling needs `ca65` and `ld65` from [cc65](https://cc65.github.io/) — on Debian and Ubuntu,
+`sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the
+programs are absent. cc65 is a build-time tool for the driver alone, which is why it belongs
+neither in the requirements a user installs nor in `scripts/linux/build/dependencies.sh`.
 
 The assembled `driver.bin` is committed, so a checkout carries the player and exporting an NSF
 needs no assembler. A jump table leads the image, which fixes the addresses an NSF header names
-whatever the driver's length, so the exporter states them from `specification/driver.py`. cc65 is
-a build-time tool for the driver alone, which is why it belongs neither in the requirements a user
-installs nor in `scripts/linux/build/dependencies.sh`. Editing the assembly means running
-`make player` again and committing what it writes; the driver's test suite rebuilds the sources
-and holds the committed image to them wherever cc65 is installed.
+whatever the driver's length, so the exporter states them from `specification/driver.py` and a
+build holds the linker's own labels to them before it writes anything. Editing the assembly means
+running `make player` again and committing what it writes; the driver's test suite rebuilds the
+sources and holds the committed image to them wherever cc65 is installed. The wheel carries the
+assembled image alone, which is all an installed copy reads.
 
 cc65 is distributed under the zlib licence, and the driver stays clear of it: the link line names
 our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches

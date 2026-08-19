@@ -20,6 +20,7 @@ from sampletones_application.view_model.sequencer.slot import (
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_shared.constants.general import HEXADECIMAL_BASE
 from sampletones_shared.constants.symbols import MINUS, PLUS, PLUS_MINUS, SIGNS
 
 DIGIT_COUNT: Final[Dict[SubColumn, int]] = {
@@ -43,7 +44,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                 return EditAction(
                     row=cursor.row,
                     generator=cursor.generator,
-                    sample_index=int(pending, 16),
+                    sample_index=int(pending, HEXADECIMAL_BASE),
                     transpose=None,
                     volume=None,
                 )
@@ -53,7 +54,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     generator=cursor.generator,
                     sample_index=None,
                     transpose=None,
-                    volume=min(int(pending, 16), MAX_VOLUME),
+                    volume=min(int(pending, HEXADECIMAL_BASE), MAX_VOLUME),
                 )
             case SubColumn.TRANSPOSE:
                 sign = -1 if pending.startswith(MINUS) else 1
@@ -65,7 +66,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     row=cursor.row,
                     generator=cursor.generator,
                     sample_index=None,
-                    transpose=sign * int(magnitude, 16),
+                    transpose=sign * int(magnitude, HEXADECIMAL_BASE),
                     volume=None,
                 )
     except ValueError:

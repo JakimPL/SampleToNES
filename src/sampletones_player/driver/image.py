@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from sampletones_player.driver.addresses import DriverAddresses
 from sampletones_player.specification.driver import (
+    DRIVER_BINARY_DIRECTORY,
     DRIVER_CODE_NAME,
     DRIVER_PACKAGE,
     JUMP_ABSOLUTE_OPCODE,
@@ -76,5 +77,5 @@ class DriverImage(BaseModel):
             ValueError: If the committed bytes lay out something other than the addresses the
                 driver is built to answer at.
         """
-        code = (resources.files(DRIVER_PACKAGE) / DRIVER_CODE_NAME).read_bytes()
+        code = (resources.files(DRIVER_PACKAGE) / DRIVER_BINARY_DIRECTORY / DRIVER_CODE_NAME).read_bytes()
         return cls(code=code, addresses=DriverAddresses.for_code(len(code)))

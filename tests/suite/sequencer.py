@@ -4,9 +4,16 @@ from typing import Dict, Final, List, Optional, Sequence, Tuple
 import numpy as np
 
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.sequencer.order import OrderBlock, SequencerOrderLogic
+from sampletones_application.logic.sequencer.order import (
+    OrderBlock,
+    SequencerOrderLogic,
+)
 from sampletones_application.logic.sequencer.order.block import BlockKey as OrderBlockKey
-from sampletones_application.logic.sequencer.tracker import BlockNote, SequencerTrackerLogic, TrackerBlock
+from sampletones_application.logic.sequencer.tracker import (
+    BlockNote,
+    SequencerTrackerLogic,
+    TrackerBlock,
+)
 from sampletones_application.logic.sequencer.tracker.block import BlockKey
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
@@ -28,6 +35,7 @@ from sampletones_core.utils.display import (
     NOTE_OFF,
     display_id,
 )
+from sampletones_shared.constants.general import HEXADECIMAL_BASE
 from sampletones_shared.constants.symbols import MINUS, MIXED, PLUS
 
 SAMPLE_LENGTH: Final[int] = 64
@@ -152,7 +160,7 @@ def parse_index(token: str) -> Optional[int]:
     if token == display_id(None):
         return None
 
-    return int(token, 16)
+    return int(token, HEXADECIMAL_BASE)
 
 
 def parse_block(
@@ -242,14 +250,14 @@ def parse_note(
     if token == UNKNOWN_SAMPLE:
         return UNKNOWN_SAMPLE_ID
 
-    return sample_ids[int(token, 16)]
+    return sample_ids[int(token, HEXADECIMAL_BASE)]
 
 
 def parse_transpose(token: str) -> Optional[int]:
     if token == NOTE_BLANK:
         return None
 
-    magnitude = int(token[1:], 16)
+    magnitude = int(token[1:], HEXADECIMAL_BASE)
     return -magnitude if token.startswith(MINUS) else magnitude
 
 
@@ -257,7 +265,7 @@ def parse_volume(token: str) -> Optional[int]:
     if token == BLANK:
         return None
 
-    return int(token, 16)
+    return int(token, HEXADECIMAL_BASE)
 
 
 def _instruction(generator: GeneratorName) -> InstructionUnion:

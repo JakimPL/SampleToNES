@@ -1,7 +1,3 @@
-import shutil
-import subprocess
-from importlib import resources
-from pathlib import Path
 from typing import Any, Dict, Final
 
 import pytest
@@ -9,8 +5,6 @@ import pytest
 from sampletones_player.driver.addresses import DriverAddresses
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.specification.driver import (
-    DRIVER_CODE_NAME,
-    DRIVER_PACKAGE,
     INIT_ADDRESS,
     JUMP_ABSOLUTE_OPCODE,
     LOAD_ADDRESS,
@@ -19,7 +13,6 @@ from sampletones_player.specification.driver import (
 )
 from tests.suite.base import BaseTestSuite
 
-BUILD_SCRIPT_NAME: Final[str] = "build.sh"
 RETURN_OPCODE: Final[int] = 0x60
 JUMP_TABLE: Final[bytes] = bytes((JUMP_ABSOLUTE_OPCODE, 0x00, 0x80, JUMP_ABSOLUTE_OPCODE, 0x00, 0x80))
 CODE: Final[bytes] = JUMP_TABLE + bytes((RETURN_OPCODE,))
@@ -80,20 +73,3 @@ class TestTheImageContract(BaseTestSuite):
     def test_an_address_past_the_bus_is_rejected(self) -> None:
         with pytest.raises(ValueError):
             DriverImage(**image_fields(play=MAX_ADDRESS + 1))
-
-
-class TestTheDriverBuild(BaseTestSuite):
-    """The committed driver against the sources it is built from."""
-
-    @staticmethod
-    def build(destination: Path) -> None:
-        with resources.as_file(resources.files(DRIVER_PACKAGE) / BUILD_SCRIPT_NAME) as script:
-            subprocess.run(["bash", str(script), str(destination)], check=True, capture_output=True)
-
-    @pytest.mark.skipif(shutil.which("ca65") is None, reason="cc65 assembles the driver")
-    def test_the_committed_driver_matches_its_sources(self, tmp_path: Path) -> None:
-        self.build(tmp_path)
-        committed = (resources.files(DRIVER_PACKAGE) / DRIVER_CODE_NAME).read_bytes()
-        assert (
-            tmp_path / DRIVER_CODE_NAME
-        ).read_bytes() == committed, f"{DRIVER_CODE_NAME} is behind its sources: run `make player`"

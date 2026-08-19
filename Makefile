@@ -116,7 +116,7 @@ icons:
 	uv run --group assets python scripts/assets/icons.py
 
 player:
-	bash src/sampletones_player/driver/build.sh
+	uv run scripts/player.py
 
 check-import-boundary:
 	uv run scripts/checks/import_boundary.py --all
