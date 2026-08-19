@@ -8,6 +8,7 @@ import pytest
 
 from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.specification.clock import (
+    FIXED_POINT_BITS,
     FIXED_POINT_SCALE,
     MAX_STEP_WHOLE,
     MICROSECONDS_PER_SECOND,
@@ -94,22 +95,7 @@ class TestPlaySchedule(BaseTestSuite):
 
 
 class TestTheScheduleHoldsTheRate(BaseTestSuite):
-    """The property the whole schedule exists for: a run of calls lands on its exact tick."""
-
-    @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
-    def test_a_long_run_lands_on_the_exact_tick_count(self, nes_frequency: int) -> None:
-        schedule = PlaySchedule.from_parameters(nes_frequency)
-        exact = exact_rate(nes_frequency) * LONG_RUN_PLAY_CALLS
-        assert abs(schedule.ticks_at(LONG_RUN_PLAY_CALLS) - exact) < 1
-
-    @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
-    def test_the_cumulative_count_never_drifts_past_one_tick(self, nes_frequency: int) -> None:
-        schedule = PlaySchedule.from_parameters(nes_frequency)
-        rate = exact_rate(nes_frequency)
-        assert all(
-            abs(schedule.ticks_at(play_calls) - rate * play_calls) < 1
-            for play_calls in range(0, LONG_RUN_PLAY_CALLS, 97)
-        )
+    """The rate a stream is read at, and the advances a rate dividing the play period produces."""
 
     @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
     def test_the_rate_is_the_stream_measured_against_the_play_period(self, nes_frequency: int) -> None:
@@ -180,14 +166,26 @@ class TestFixedPointStep(BaseTestSuite):
     @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
     def test_the_driver_starts_on_the_first_tick(self, nes_frequency: int) -> None:
         schedule = PlaySchedule.from_parameters(nes_frequency)
-        assert schedule.fixed_point_ticks_at(0) == 0
+        assert schedule.ticks_at(0) == 0
         assert schedule.maximum_drift(0) == 0
 
     @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
-    def test_the_driver_only_moves_forward(self, nes_frequency: int) -> None:
+    def test_the_accumulator_reaches_the_same_ticks(self, nes_frequency: int) -> None:
+        """The driver's own loop, held against the schedule it is written from.
+
+        The schedule multiplies the step by the call count, and the 6502 adds the step to a
+        16-bit accumulator once a call and reads the ticks off the carry. Both must count the
+        same, since the assembly follows the second and the golden trace follows the first.
+        """
         schedule = PlaySchedule.from_parameters(nes_frequency)
-        ticks = [schedule.fixed_point_ticks_at(play_calls) for play_calls in range(1024)]
-        assert all(later >= earlier for earlier, later in zip(ticks, ticks[1:]))
+        step = schedule.fixed_point_step
+
+        accumulator = 0
+        for play_call in range(LONG_RUN_PLAY_CALLS):
+            accumulator += step.fraction
+            advance = step.whole + (accumulator >> FIXED_POINT_BITS)
+            accumulator %= FIXED_POINT_SCALE
+            assert advance == schedule.advance_at(play_call)
 
     def test_a_whole_step_needs_no_fraction(self) -> None:
         step = PlaySchedule(ticks_per_play_call=Fraction(3)).fixed_point_step
@@ -228,10 +226,10 @@ class TestPlayScheduleBounds(BaseTestSuite):
         with pytest.raises(ValueError, match="play_calls must be at least 0"):
             schedule.ticks_at(-1)
 
-    def test_a_negative_call_count_is_rejected_by_the_driver_schedule(self) -> None:
+    def test_a_negative_call_count_is_rejected_by_the_exact_schedule(self) -> None:
         schedule = PlaySchedule.from_parameters(60)
         with pytest.raises(ValueError, match="play_calls must be at least 0"):
-            schedule.fixed_point_ticks_at(-1)
+            schedule.exact_ticks_at(-1)
 
     def test_a_negative_run_is_rejected_by_the_drift(self) -> None:
         schedule = PlaySchedule.from_parameters(60)

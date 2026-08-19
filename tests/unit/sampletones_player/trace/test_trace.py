@@ -10,11 +10,13 @@ from sampletones_player.specification.registers import (
     FIRST_CHANNEL_REGISTER,
     FRAME_COUNTER_SEQUENCE,
     LAST_CHANNEL_REGISTER,
+    NOISE_LENGTH_COUNTER,
     PULSE1_CONTROL,
     PULSE1_SWEEP,
     PULSE1_TIMER_HIGH,
     PULSE1_TIMER_LOW,
     PULSE2_SWEEP,
+    PULSE2_TIMER_HIGH,
     REGISTERS_WRITTEN_ON_CHANGE,
     SILENCED_REGISTER,
     SWEEP_DISABLED,
@@ -74,6 +76,20 @@ class TestInitialisation:
     def test_the_sweep_survives_the_clearing_pass(self) -> None:
         sweeps = [write.value for write in self.initialisation if write.address == PULSE1_SWEEP]
         assert sweeps[-1] == SWEEP_DISABLED
+
+    def test_every_length_counter_loads_once_the_channels_are_enabled(self) -> None:
+        """A channel sounds only while its length counter stands above zero.
+
+        The counter loads from a write to the register carrying its length index, and only while
+        the channel is enabled, so every one of those registers has to be reached after
+        :data:`APU_STATUS`. The noise channel's is written for that alone; the other three carry
+        the first tick's timer high byte.
+        """
+        writes = self.initialisation
+        enabled = writes.index(RegisterWrite(APU_STATUS, CHANNELS_ENABLED))
+        for address in (PULSE1_TIMER_HIGH, PULSE2_TIMER_HIGH, TRIANGLE_TIMER_HIGH, NOISE_LENGTH_COUNTER):
+            loaded = max(index for index, write in enumerate(writes) if write.address == address)
+            assert loaded > enabled
 
     def test_the_first_tick_sounds_from_initialisation(self) -> None:
         first_tick = self.initialisation[-WRITES_PER_TICK:]

@@ -12,6 +12,8 @@ from sampletones_player.specification.registers import (
     FIRST_CHANNEL_REGISTER,
     FRAME_COUNTER_SEQUENCE,
     LAST_CHANNEL_REGISTER,
+    NOISE_LENGTH_COUNTER,
+    NOISE_LENGTH_COUNTER_LOAD,
     PULSE1_SWEEP,
     PULSE2_SWEEP,
     REGISTERS_WRITTEN_ON_CHANGE,
@@ -32,6 +34,12 @@ class RegisterTrace:
     the streams and writes the tick it lands on, or leaves the console alone. The three registers
     that reset a running channel are written only where their value changes, which is what keeps
     a pulse waveform's phase running across a rest the way a rendered channel does.
+
+    A channel sounds only while its length counter stands above zero, and the counter loads from a
+    write to the register carrying the length index once the channel is enabled. Initialisation
+    therefore reaches those registers after :data:`APU_STATUS`: the noise channel's directly, and
+    the three that carry a timer through the first tick's high byte. Halting every counter is what
+    holds them there for the rest of the song.
 
     Attributes:
         initialisation: The writes the init routine makes, leaving the console on the song's
@@ -72,6 +80,7 @@ class RegisterTrace:
         writes.append(RegisterWrite(APU_FRAME_COUNTER, FRAME_COUNTER_SEQUENCE))
         writes.append(RegisterWrite(PULSE1_SWEEP, SWEEP_DISABLED))
         writes.append(RegisterWrite(PULSE2_SWEEP, SWEEP_DISABLED))
+        writes.append(RegisterWrite(NOISE_LENGTH_COUNTER, NOISE_LENGTH_COUNTER_LOAD))
         writes.extend(cls._tick_writes(song, FIRST_TICK, shadows))
         return tuple(writes)
 

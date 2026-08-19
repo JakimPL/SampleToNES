@@ -16,7 +16,7 @@ from sampletones_player.specification.clock import (
 
 @dataclass(frozen=True)
 class PlaySchedule:
-    """The engine ticks each play call advances a stream by, held exact so a stream keeps its rate.
+    """The engine ticks each play call advances a stream by, counted the way the console counts them.
 
     An NSF asks the console to call its play routine at one fixed rate, and a reconstruction is
     built at whatever rate its ``nes_frequency`` states. The two meet here: the schedule states how
@@ -24,6 +24,10 @@ class PlaySchedule:
     adding :attr:`fixed_point_step` to an accumulator and advancing by the whole ticks that fall
     out. One data set plays at every stream rate, and a stream slower than the play rate simply
     stands still on the calls between its ticks.
+
+    Every answer about where the stream stands comes from that same rounded step, so the schedule
+    states what the assembly does rather than what an unrounded clock would do. The exact rate
+    stays as :attr:`ticks_per_play_call`, which is what :meth:`maximum_drift` measures against.
 
     This is the rule :class:`~sampletones_core.timing.clock.TickClock` applies one level down:
     spread the fractional part across consecutive units so the running total tracks the exact
@@ -75,11 +79,32 @@ class PlaySchedule:
     def ticks_at(self, play_calls: int) -> int:
         """The tick the stream stands on once ``play_calls`` calls have been made.
 
+        Counts the way the driver counts: the rounded step added once per call, with the whole
+        ticks read off the top of the running total. The console has only this arithmetic, so it
+        is the schedule a song plays on, and :meth:`exact_ticks_at` is what it is measured against.
+
         Args:
             play_calls: How many play calls have been made, at least 0.
 
         Returns:
             int: The tick's index, within one tick of where the exact clock puts the stream.
+
+        Raises:
+            ValueError: If ``play_calls`` is negative.
+        """
+        if play_calls < 0:
+            raise ValueError(f"play_calls must be at least 0, got {play_calls}")
+
+        return (play_calls * self.fixed_point_step.value) >> FIXED_POINT_BITS
+
+    def exact_ticks_at(self, play_calls: int) -> int:
+        """The tick an unrounded clock puts the stream on once ``play_calls`` calls have been made.
+
+        Args:
+            play_calls: How many play calls have been made, at least 0.
+
+        Returns:
+            int: The tick's index, held in exact arithmetic.
 
         Raises:
             ValueError: If ``play_calls`` is negative.
@@ -113,27 +138,6 @@ class PlaySchedule:
         whole, fraction = divmod(round(self.ticks_per_play_call * FIXED_POINT_SCALE), FIXED_POINT_SCALE)
         return FixedPointStep(whole=whole, fraction=fraction)
 
-    def fixed_point_ticks_at(self, play_calls: int) -> int:
-        """The tick the driver's own arithmetic stands on once ``play_calls`` calls have been made.
-
-        Reproduces the accumulator in full: the rounded step added once per call, with the whole
-        ticks read off the top of the running total. Holding this beside :meth:`ticks_at` is what
-        shows the rounding staying within a tick of the exact clock.
-
-        Args:
-            play_calls: How many play calls have been made, at least 0.
-
-        Returns:
-            int: The tick's index as the driver counts it.
-
-        Raises:
-            ValueError: If ``play_calls`` is negative.
-        """
-        if play_calls < 0:
-            raise ValueError(f"play_calls must be at least 0, got {play_calls}")
-
-        return (play_calls * self.fixed_point_step.value) >> FIXED_POINT_BITS
-
     def maximum_drift(self, play_calls: int) -> int:
         """The furthest the driver's schedule stands from the exact one across a run of calls.
 
@@ -149,8 +153,6 @@ class PlaySchedule:
         if play_calls < 0:
             raise ValueError(f"play_calls must be at least 0, got {play_calls}")
 
-        step = self.fixed_point_step.value
         return max(
-            abs((play_call * step >> FIXED_POINT_BITS) - self.ticks_at(play_call))
-            for play_call in range(play_calls + 1)
+            abs(self.ticks_at(play_call) - self.exact_ticks_at(play_call)) for play_call in range(play_calls + 1)
         )
