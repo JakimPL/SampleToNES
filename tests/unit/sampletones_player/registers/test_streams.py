@@ -3,7 +3,6 @@ from typing import Final
 import pytest
 from pydantic import ValidationError
 
-from sampletones_player.specification.channels import CHANNEL_ORDER
 from tests.suite.player import (
     PLAYER_FULL_VOLUME,
     PLAYER_OCTAVE_UP_TIMER,

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from fractions import Fraction
+from functools import cached_property
 from math import floor
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_player.clock.step import FixedPointStep
 from sampletones_player.specification.clock import (
@@ -14,8 +16,7 @@ from sampletones_player.specification.clock import (
 )
 
 
-@dataclass(frozen=True)
-class PlaySchedule:
+class PlaySchedule(BaseModel):
     """The engine ticks each play call advances a stream by, counted the way the console counts them.
 
     An NSF asks the console to call its play routine at one fixed rate, and a reconstruction is
@@ -40,14 +41,9 @@ class PlaySchedule:
         ticks_per_play_call: The exact ticks one play call advances the stream by.
     """
 
-    ticks_per_play_call: Fraction
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
-    def __post_init__(self) -> None:
-        if self.ticks_per_play_call <= 0:
-            raise ValueError(f"ticks_per_play_call must be above 0, got {self.ticks_per_play_call}")
-
-        if self.ticks_per_play_call > MAX_STEP_WHOLE:
-            raise ValueError(f"ticks_per_play_call must be at most {MAX_STEP_WHOLE}, got {self.ticks_per_play_call}")
+    ticks_per_play_call: Fraction = Field(..., gt=0, le=MAX_STEP_WHOLE)
 
     @classmethod
     def from_parameters(cls, nes_frequency: int) -> PlaySchedule:
@@ -132,9 +128,12 @@ class PlaySchedule:
         """
         return self.ticks_at(play_call + 1) - self.ticks_at(play_call)
 
-    @property
+    @cached_property
     def fixed_point_step(self) -> FixedPointStep:
-        """The exact step rounded to the nearest unit the driver's accumulator counts in."""
+        """The exact step rounded to the nearest unit the driver's accumulator counts in.
+
+        Every answer the schedule gives counts in this step, so it is computed once and held.
+        """
         whole, fraction = divmod(round(self.ticks_per_play_call * FIXED_POINT_SCALE), FIXED_POINT_SCALE)
         return FixedPointStep(whole=whole, fraction=fraction)
 

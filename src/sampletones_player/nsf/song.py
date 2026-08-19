@@ -1,9 +1,9 @@
 from typing import Sequence, Tuple
 
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.formats.binary import BinaryWriter
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.song import Song
-from sampletones_player.specification.channels import CHANNEL_ORDER
 from sampletones_player.specification.song import (
     MAX_STREAM_OFFSET,
     NO_LOOP,
@@ -51,7 +51,7 @@ def _validate_space(size: int, available_bytes: int) -> None:
 
 
 def _validate_offsets(offsets: Sequence[int]) -> None:
-    for channel, offset in zip(CHANNEL_ORDER, offsets):
+    for channel, offset in zip(GeneratorName.items(), offsets):
         if offset > MAX_STREAM_OFFSET:
             raise SongTooLargeError(
                 f"the {channel.value} stream starts {offset} bytes into the song "

@@ -4,12 +4,12 @@ from typing import Tuple
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.hold import hold
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.triangle import TriangleRegisters
-from sampletones_player.specification.channels import CHANNEL_ORDER
 
 
 class ChannelStreams(BaseModel):
@@ -37,7 +37,7 @@ class ChannelStreams(BaseModel):
 
     @model_validator(mode="after")
     def _validate_every_channel_reaches_a_tick(self) -> ChannelStreams:
-        empty = tuple(channel.value for channel, stream in zip(CHANNEL_ORDER, self.ordered) if not stream)
+        empty = tuple(channel.value for channel, stream in zip(GeneratorName.items(), self.ordered) if not stream)
         if empty:
             raise ValueError(f"every channel needs at least one tick, and {', '.join(empty)} has none")
 
@@ -45,7 +45,7 @@ class ChannelStreams(BaseModel):
 
     @property
     def ordered(self) -> Tuple[Tuple[ChannelRegisters, ...], ...]:
-        """The four streams in the order :data:`CHANNEL_ORDER` states."""
+        """The four streams in the order the generator names run."""
         return (self.pulse1, self.pulse2, self.triangle, self.noise)
 
     @property

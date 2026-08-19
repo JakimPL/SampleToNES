@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Final, Optional, Tuple
 
 import pytest
+from pydantic import ValidationError
 
 from sampletones_player.song import Song
 from tests.suite.base import BaseTestSuite
@@ -34,12 +35,17 @@ class TestSongLoopBounds:
         assert song.loop_tick is None
 
     def test_a_loop_at_the_songs_length_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError, match="loop_tick must lie within"):
             player_song(resting_streams((SOUNDING, OCTAVE_UP)), NTSC_FREQUENCY, loop_tick=2)
 
     def test_a_negative_loop_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError, match="loop_tick must lie within"):
             player_song(resting_streams((SOUNDING,)), NTSC_FREQUENCY, loop_tick=-1)
+
+    def test_the_song_stays_as_built(self) -> None:
+        song = player_song(resting_streams((SOUNDING,)), NTSC_FREQUENCY, loop_tick=None)
+        with pytest.raises(ValidationError):
+            song.loop_tick = 0
 
 
 class TestSongPlayback(BaseTestSuite):

@@ -7,7 +7,6 @@ import pytest
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
-from sampletones_player.specification.channels import CHANNEL_ORDER
 from sampletones_player.specification.song import (
     LOOP_TICK_OFFSET,
     MAX_STREAM_OFFSET,
@@ -35,7 +34,7 @@ from tests.suite.player import (
 NTSC_FREQUENCY: Final[int] = 60
 HALF_RATE_FREQUENCY: Final[int] = 30
 PROGRAM_AREA_BYTES: Final[int] = 0x8000
-UNBOUNDED_SPACE: Final[int] = MAX_STREAM_OFFSET * len(CHANNEL_ORDER)
+UNBOUNDED_SPACE: Final[int] = MAX_STREAM_OFFSET * len(GeneratorName)
 
 SOUNDING: Final = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_REFERENCE_TIMER)
 RESTING: Final = pulse_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_TIMER)
@@ -47,7 +46,7 @@ def read_word(data: bytes, offset: int) -> int:
 
 
 def stream_offsets(data: bytes) -> Tuple[int, ...]:
-    return tuple(read_word(data, STREAM_OFFSETS_OFFSET + WORD_SIZE * channel) for channel in range(len(CHANNEL_ORDER)))
+    return tuple(read_word(data, STREAM_OFFSETS_OFFSET + WORD_SIZE * channel) for channel in range(len(GeneratorName)))
 
 
 def two_tick_song(nes_frequency: int) -> Song:

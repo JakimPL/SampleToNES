@@ -15,13 +15,6 @@ from sampletones_player.specification.registers import (
     TRIANGLE_TIMER_LOW,
 )
 
-CHANNEL_ORDER: Final[Tuple[GeneratorName, ...]] = (
-    GeneratorName.PULSE1,
-    GeneratorName.PULSE2,
-    GeneratorName.TRIANGLE,
-    GeneratorName.NOISE,
-)
-
 CHANNEL_REGISTER_ADDRESSES: Final[Dict[GeneratorName, Tuple[int, ...]]] = {
     GeneratorName.PULSE1: (PULSE1_CONTROL, PULSE1_TIMER_LOW, PULSE1_TIMER_HIGH),
     GeneratorName.PULSE2: (PULSE2_CONTROL, PULSE2_TIMER_LOW, PULSE2_TIMER_HIGH),

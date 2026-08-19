@@ -1,12 +1,14 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
 from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.registers.streams import ChannelStreams
 
 
-@dataclass(frozen=True)
-class Song:
+class Song(BaseModel):
     """A reconstruction as the player holds it: the four streams, the clock, and where it repeats.
 
     Attributes:
@@ -15,13 +17,18 @@ class Song:
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
     """
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     streams: ChannelStreams
     schedule: PlaySchedule
     loop_tick: Optional[int]
 
-    def __post_init__(self) -> None:
+    @model_validator(mode="after")
+    def _validate_the_loop_lies_within_the_song(self) -> Song:
         if self.loop_tick is not None and not 0 <= self.loop_tick < self.ticks:
             raise ValueError(f"loop_tick must lie within the song's {self.ticks} ticks, got {self.loop_tick}")
+
+        return self
 
     @property
     def ticks(self) -> int:

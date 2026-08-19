@@ -5,6 +5,7 @@ from fractions import Fraction
 from typing import Final, Tuple
 
 import pytest
+from pydantic import ValidationError
 
 from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.specification.clock import (
@@ -197,10 +198,19 @@ class TestFixedPointStep(BaseTestSuite):
         step = PlaySchedule(ticks_per_play_call=rate).fixed_point_step
         assert (step.whole, step.fraction) == (2, 0)
 
+    def test_the_step_is_derived_once_and_held(self) -> None:
+        schedule = PlaySchedule.from_parameters(50)
+        assert schedule.fixed_point_step is schedule.fixed_point_step
+
 
 class TestPlayScheduleBounds(BaseTestSuite):
     def test_the_stream_starts_on_its_first_tick(self) -> None:
         assert PlaySchedule.from_parameters(60).ticks_at(0) == 0
+
+    def test_the_schedule_stays_as_built(self) -> None:
+        schedule = PlaySchedule.from_parameters(60)
+        with pytest.raises(ValidationError):
+            schedule.ticks_per_play_call = Fraction(1)
 
     @pytest.mark.parametrize("nes_frequency", (MIN_NES_FREQUENCY, MAX_NES_FREQUENCY))
     def test_the_engine_range_fits_the_step(self, nes_frequency: int) -> None:
@@ -214,11 +224,11 @@ class TestPlayScheduleBounds(BaseTestSuite):
 
     @pytest.mark.parametrize("ticks_per_play_call", (Fraction(0), Fraction(-1, 2)))
     def test_a_stream_that_never_advances_is_rejected(self, ticks_per_play_call: Fraction) -> None:
-        with pytest.raises(ValueError, match="ticks_per_play_call must be above 0"):
+        with pytest.raises(ValidationError, match="ticks_per_play_call"):
             PlaySchedule(ticks_per_play_call=ticks_per_play_call)
 
     def test_a_step_past_the_whole_byte_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="ticks_per_play_call must be at most"):
+        with pytest.raises(ValidationError, match="ticks_per_play_call"):
             PlaySchedule(ticks_per_play_call=Fraction(MAX_STEP_WHOLE + 1))
 
     def test_a_negative_call_count_is_rejected(self) -> None:
