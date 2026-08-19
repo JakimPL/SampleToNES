@@ -20,6 +20,8 @@ from uuid import uuid4
 import numpy as np
 from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
+from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.compatibility.upgrade import upgrade_binary
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.data import DataModel, Metadata, MetadataContract
@@ -416,6 +418,7 @@ class Reconstruction(DataModel):
         fast: bool = True,
     ) -> Reconstruction:
         try:
+            binary = upgrade_binary(ObjectKind.RECONSTRUCTION, binary)
             return cls.deserialize(binary, validation=validation, fast=fast)
         except (ValidationError, TypeError, ValueError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(
