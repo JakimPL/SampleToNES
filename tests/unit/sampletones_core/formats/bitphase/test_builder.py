@@ -3,7 +3,7 @@ from typing import Final, List
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import NUM_PERIODS
 from sampletones_core.formats.bitphase.builder import (
     PREVIEW_REST_PATTERN_ID,
@@ -62,7 +62,7 @@ def project_fixture() -> BitphaseProject:
             build_instrument(
                 "Kick (noise)",
                 build_features(VOLUME_ENVELOPE, initial_pitch=NOISE_PERIOD),
-                generator=GeneratorName.NOISE,
+                channel=ChannelName.NOISE,
             ),
         )
     )
@@ -207,7 +207,7 @@ class TestOneSliceOnItsOwn:
             build_instrument(
                 "Hat",
                 build_features(VOLUME_ENVELOPE, arpeggio=[0, 1, 2, 3], initial_pitch=NOISE_PERIOD),
-                generator=GeneratorName.NOISE,
+                channel=ChannelName.NOISE,
             )
         )
         row = project.songs[0].patterns[0].channels[int(ChannelIndex.NOISE)].rows[PREVIEW_TRIGGER_ROW]
@@ -222,7 +222,7 @@ class TestOneSliceOnItsOwn:
                     arpeggio=[0, -1, -2, -3],
                     initial_pitch=NOISE_PERIOD,
                 ),
-                generator=GeneratorName.NOISE,
+                channel=ChannelName.NOISE,
             )
         )
         assert all(0 <= offset < NUM_PERIODS for offset in project.tables[0].rows)

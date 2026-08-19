@@ -3,7 +3,7 @@ from typing import Final, FrozenSet, Tuple
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 class ReconstructionPathState(StrEnum):
@@ -36,13 +36,13 @@ class ReconstructionViewModel(BaseModel, frozen=True):
     """What the reconstruction view renders, including which channels the waveform offers.
 
     A channel plays once its instruction stream describes a frame, which is what makes its
-    generator checkbox reachable; :attr:`selected_generators` is the subset the reader keeps
+    channel checkbox reachable; :attr:`selected_channels` is the subset the reader keeps
     switched on, so a channel switched off by hand stays off across an edit.
     """
 
     reconstruction_loaded: bool
-    playing_generators: FrozenSet[GeneratorName]
-    selected_generators: FrozenSet[GeneratorName]
+    playing_channels: FrozenSet[ChannelName]
+    selected_channels: FrozenSet[ChannelName]
     reconstruction_file: ReconstructionPathViewModel
     original_audio: ReconstructionPathViewModel
 

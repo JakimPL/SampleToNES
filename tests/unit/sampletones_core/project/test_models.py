@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
@@ -14,7 +14,7 @@ from tests.suite.case import BaseAutolabelTestCase
 def _instrument() -> Instrument:
     return Instrument(
         sample_id="abc123",
-        generator_name=GeneratorName.TRIANGLE,
+        channel_name=ChannelName.TRIANGLE,
     )
 
 
@@ -31,8 +31,8 @@ class TestInstrument:
         assert hash(first) == hash(second)
 
     def test_distinct_slices_differ(self) -> None:
-        triangle = Instrument(sample_id="abc", generator_name=GeneratorName.TRIANGLE)
-        noise = Instrument(sample_id="abc", generator_name=GeneratorName.NOISE)
+        triangle = Instrument(sample_id="abc", channel_name=ChannelName.TRIANGLE)
+        noise = Instrument(sample_id="abc", channel_name=ChannelName.NOISE)
         assert triangle != noise
 
     def test_round_trip(self) -> None:

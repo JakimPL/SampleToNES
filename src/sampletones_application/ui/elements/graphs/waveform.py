@@ -32,7 +32,7 @@ from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.utils.palette.colors.grayscale import GrayscaleColor
 from sampletones_application.view_model.shared.waveform_data import WaveformData
-from sampletones_core.constants.enums import AudioSourceType, GeneratorName
+from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Sender
 
@@ -191,13 +191,13 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def _extract_reconstruction_layer_data(
         self,
         waveform_data: WaveformData,
-        selected_generators: Optional[List[GeneratorName]] = None,
+        selected_channels: Optional[List[ChannelName]] = None,
     ) -> Tuple[Optional[np.ndarray], np.ndarray, float]:
-        if selected_generators is None:
-            selected_generators = list(waveform_data.approximations.keys())
+        if selected_channels is None:
+            selected_channels = list(waveform_data.approximations.keys())
 
         original_audio = waveform_data.original_audio
-        approximation = waveform_data.partials(selected_generators)
+        approximation = waveform_data.partials(selected_channels)
         full_approximation = waveform_data.approximation
 
         if not self.reconstruction_autoscale or original_audio is None:
@@ -215,7 +215,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def _display_layers(
         self,
         waveform_data: WaveformData,
-        selected_generators: Optional[List[GeneratorName]] = None,
+        selected_channels: Optional[List[ChannelName]] = None,
     ) -> List[Union[ArrayLayer, InstructionLayer]]:
         """Builds the ordered waveform layers for the current data.
 
@@ -225,7 +225,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """
         original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(
             waveform_data,
-            selected_generators,
+            selected_channels,
         )
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         if original_audio is None:
@@ -237,13 +237,13 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def update_waveform_data(
         self,
         waveform_data: WaveformData,
-        selected_generators: Optional[List[GeneratorName]] = None,
+        selected_channels: Optional[List[ChannelName]] = None,
     ) -> None:
         if not isinstance(self.current_data, WaveformData):
             return
 
         self.current_data = waveform_data
-        for layer in self._display_layers(waveform_data, selected_generators):
+        for layer in self._display_layers(waveform_data, selected_channels):
             self.layers[layer.name] = layer
 
         self._update_display()
@@ -251,12 +251,12 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def load_waveform_data(
         self,
         waveform_data: WaveformData,
-        selected_generators: Optional[List[GeneratorName]] = None,
+        selected_channels: Optional[List[ChannelName]] = None,
     ) -> None:
         self._reconstruction_dimmed = False
         self.clear_layers()
         self.current_data = waveform_data
-        for layer in self._display_layers(waveform_data, selected_generators):
+        for layer in self._display_layers(waveform_data, selected_channels):
             self.add_layer(layer)
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:

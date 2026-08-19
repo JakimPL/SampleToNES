@@ -71,7 +71,7 @@ class BitphasePresetBackend:
 
     The panel reads one instrument per file into the slot the user has selected, so a
     whole reconstruction lands as a set of them beside the chosen destination, one file
-    per generator slice named after the instrument. A preset carries rows alone, so its
+    per channel slice named after the instrument. A preset carries rows alone, so its
     pitch contour rides in each row's tone offset.
     """
 

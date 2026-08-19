@@ -3,6 +3,6 @@ reconstruction:
   transformation_gamma: 0
   instructions_per_generator: 32
 instruments:
-  - { name: kick,  synth: kick,  generators: [pulse1, triangle] }
-  - { name: lead,  synth: lead,  generators: [pulse1, pulse2] }
-  - { name: hihat, synth: hihat, generators: [noise] }
+  - { name: kick,  synth: kick,  channels: [pulse1, triangle] }
+  - { name: lead,  synth: lead,  channels: [pulse1, pulse2] }
+  - { name: hihat, synth: hihat, channels: [noise] }

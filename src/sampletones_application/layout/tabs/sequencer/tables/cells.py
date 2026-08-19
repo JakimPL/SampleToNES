@@ -7,5 +7,5 @@ class SequencerTableCells(BaseModel, extra="forbid", frozen=True):
     row: int
     sample: int
     divider: int
-    generator: int
+    channel: int
     instrument: InstrumentColumnWidths

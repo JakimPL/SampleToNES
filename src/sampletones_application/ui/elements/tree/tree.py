@@ -83,7 +83,7 @@ from sampletones_application.utils.parallelization.thread import (
     SingleThreadExecutor,
 )
 from sampletones_core.configs.display import (
-    format_generators,
+    format_channels,
     format_nes_frequency,
     format_sample_rate,
     format_spectrum_method,
@@ -173,7 +173,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._lbl_detail_spectrum_method = language_manager["global.context.label.detail_spectrum_method"]
         self._lbl_detail_transformation_gamma = language_manager["global.context.label.detail_transformation_gamma"]
         self._lbl_detail_window_size = language_manager["global.context.label.detail_window_size"]
-        self._lbl_detail_generators = language_manager["global.context.label.detail_generators"]
+        self._lbl_detail_channels = language_manager["global.context.label.detail_channels"]
         self._lbl_detail_configuration = language_manager["global.context.label.detail_configuration"]
 
         self.on_favorites_filter_changed: Optional[Callable[[str, bool], None]] = None
@@ -811,7 +811,7 @@ class GUITreePanel(GUIPanel, ABC):
             (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
             (self._lbl_detail_spectrum_method, format_spectrum_method(fields.sm)),
             (self._lbl_detail_transformation_gamma, str(fields.tg)),
-            (self._lbl_detail_generators, format_generators(fields.generators)),
+            (self._lbl_detail_channels, format_channels(fields.channels)),
             (self._lbl_detail_configuration, short_hash(fields.ch)),
         ]
 

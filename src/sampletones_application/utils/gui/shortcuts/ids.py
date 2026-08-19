@@ -3,7 +3,7 @@ from typing import Dict, Final, Self, Tuple
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.constants.playback import FollowMode
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.trackers.format import TrackerFormat
 
 
@@ -213,11 +213,11 @@ TAB_SHORTCUT_IDS: Final[Dict[Tab, ShortcutId]] = {
     Tab.INSTRUCTIONS: ShortcutId.SELECT_TAB_INSTRUCTIONS,
 }
 
-CHANNEL_SHORTCUT_IDS: Final[Dict[GeneratorName, ShortcutId]] = {
-    GeneratorName.PULSE1: ShortcutId.TOGGLE_CHANNEL_PULSE_1,
-    GeneratorName.PULSE2: ShortcutId.TOGGLE_CHANNEL_PULSE_2,
-    GeneratorName.TRIANGLE: ShortcutId.TOGGLE_CHANNEL_TRIANGLE,
-    GeneratorName.NOISE: ShortcutId.TOGGLE_CHANNEL_NOISE,
+CHANNEL_SHORTCUT_IDS: Final[Dict[ChannelName, ShortcutId]] = {
+    ChannelName.PULSE1: ShortcutId.TOGGLE_CHANNEL_PULSE_1,
+    ChannelName.PULSE2: ShortcutId.TOGGLE_CHANNEL_PULSE_2,
+    ChannelName.TRIANGLE: ShortcutId.TOGGLE_CHANNEL_TRIANGLE,
+    ChannelName.NOISE: ShortcutId.TOGGLE_CHANNEL_NOISE,
 }
 
 PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {

@@ -8,7 +8,7 @@ import pytest
 
 from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -25,20 +25,20 @@ class Harness:
     """An application standing in one tab, recording which surface a channel key reaches."""
 
     def __init__(self, tab: Tab) -> None:
-        self.switched: List[Tuple[Surface, GeneratorName]] = []
+        self.switched: List[Tuple[Surface, ChannelName]] = []
 
         self.application = Application.__new__(Application)
         self.application._shell = MagicMock()
         self.application._shell.get_current_tab.return_value = tab
         self.application._main_tab = MagicMock()
-        self.application._main_tab.toggle_generator = partial(self._record, Surface.MAIN)
+        self.application._main_tab.toggle_channel = partial(self._record, Surface.MAIN)
         self.application._reconstructions_tab = MagicMock()
-        self.application._reconstructions_tab.toggle_generator = partial(self._record, Surface.RECONSTRUCTIONS)
+        self.application._reconstructions_tab.toggle_channel = partial(self._record, Surface.RECONSTRUCTIONS)
         self.application._sequencer_tab = MagicMock()
         self.application._sequencer_tab.toggle_channel = partial(self._record, Surface.SEQUENCER)
 
-    def _record(self, surface: Surface, generator: GeneratorName) -> None:
-        self.switched.append((surface, generator))
+    def _record(self, surface: Surface, channel: ChannelName) -> None:
+        self.switched.append((surface, channel))
 
 
 class TestToggleChannel(BaseTestSuite):
@@ -51,7 +51,7 @@ class TestToggleChannel(BaseTestSuite):
 
     test_cases = (
         TestCase(
-            label="the main tab switches a generator of the reconstructor",
+            label="the main tab switches a channel of the reconstructor",
             tab=Tab.MAIN,
             expected=Surface.MAIN,
         ),
@@ -80,9 +80,9 @@ class TestToggleChannel(BaseTestSuite):
     def test_the_surface_a_channel_key_reaches(self, test_case: TestCase) -> None:
         harness = Harness(test_case.tab)
 
-        harness.application._toggle_channel(GeneratorName.TRIANGLE)
+        harness.application._toggle_channel(ChannelName.TRIANGLE)
 
-        assert harness.switched == [(test_case.expected, GeneratorName.TRIANGLE)]
+        assert harness.switched == [(test_case.expected, ChannelName.TRIANGLE)]
 
     @pytest.mark.parametrize(
         "test_case",
@@ -93,10 +93,10 @@ class TestToggleChannel(BaseTestSuite):
         """The four keys stand together, so a tab answers all of them or none."""
         harness = Harness(test_case.tab)
 
-        for generator in GeneratorName:
-            harness.application._toggle_channel(generator)
+        for channel in ChannelName:
+            harness.application._toggle_channel(channel)
 
-        assert harness.switched == [(test_case.expected, generator) for generator in GeneratorName]
+        assert harness.switched == [(test_case.expected, channel) for channel in ChannelName]
 
 
 class TestMuteChannel:
@@ -104,6 +104,6 @@ class TestMuteChannel:
         """The Channels submenu shows the sequencer's mix, so choosing an item switches that mix."""
         harness = Harness(Tab.MAIN)
 
-        harness.application._mute_channel(GeneratorName.NOISE)
+        harness.application._mute_channel(ChannelName.NOISE)
 
-        assert harness.switched == [(Surface.SEQUENCER, GeneratorName.NOISE)]
+        assert harness.switched == [(Surface.SEQUENCER, ChannelName.NOISE)]

@@ -13,7 +13,7 @@ from sampletones_application.logic.reconstruction.manager import ReconstructionM
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
@@ -57,7 +57,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         mock_reconstruction_manager: MagicMock,
     ) -> None:
         mock_reconstruction_manager.current_features = None
-        received: List[Optional[Dict[GeneratorName, Features]]] = []
+        received: List[Optional[Dict[ChannelName, Features]]] = []
         instruments_logic.on_feature_data_changed = received.append
         instruments_logic.update_display()
         assert received == [None]
@@ -82,10 +82,10 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
     ) -> None:
         feature_data = FeatureData.load(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
-        received: List[Optional[Dict[GeneratorName, Features]]] = []
+        received: List[Optional[Dict[ChannelName, Features]]] = []
         instruments_logic.on_feature_data_changed = received.append
         instruments_logic.update_display()
-        assert received == [feature_data.generators]
+        assert received == [feature_data.channels]
 
     def test_with_features_exposes_the_playing_generators(
         self,
@@ -97,7 +97,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
         instruments_logic.update_display()
-        assert GeneratorName.PULSE1 in received[0].playing_generators
+        assert ChannelName.PULSE1 in received[0].playing_channels
 
 
 class TestReconstructionInstrumentsLogicFootprint:
@@ -127,8 +127,8 @@ class TestReconstructionInstrumentsLogicFootprint:
         instruments_logic.update_display()
         footprint = received[0].footprint
         assert footprint is not None
-        assert {instrument.generator for instrument in footprint.instruments} == {
-            generator_name for generator_name, features in feature_data.generators.items() if features.has_frames
+        assert {instrument.channel for instrument in footprint.instruments} == {
+            channel_name for channel_name, features in feature_data.channels.items() if features.has_frames
         }
 
     def test_the_size_is_the_one_a_one_shot_export_writes(
@@ -147,7 +147,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         assert footprint is not None
         expected = total_footprint(
             features_footprint(features, loop=False)
-            for features in feature_data.generators.values()
+            for features in feature_data.channels.values()
             if features.has_frames
         )
         assert footprint.total_bytes == expected.total_bytes
@@ -166,16 +166,16 @@ class TestReconstructionInstrumentsLogicFootprint:
 
         volume = np.array([15, 12, 8, 4, 0], dtype=np.int8)
         instruments_logic.handle_raw_data_changed(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
             volume,
         )
 
-        edited = feature_data.generators[GeneratorName.PULSE1].model_copy(deep=True)
+        edited = feature_data.channels[ChannelName.PULSE1].model_copy(deep=True)
         edited[FeatureKey.VOLUME] = volume
         footprint = received[0].footprint
         assert footprint is not None
-        assert footprint.bytes_for(GeneratorName.PULSE1) == features_footprint(edited, loop=False).total_bytes
+        assert footprint.bytes_for(ChannelName.PULSE1) == features_footprint(edited, loop=False).total_bytes
 
     def test_a_bar_edit_is_measured_as_it_arrives(
         self,
@@ -189,7 +189,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         instruments_logic.on_view_changed = received.append
 
         instruments_logic.handle_bar_point_clicked(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             FeatureKey.ARPEGGIO,
             np.zeros(6, dtype=np.int8),
         )
@@ -205,15 +205,15 @@ class TestReconstructionInstrumentsLogicFootprint:
         """The regeneration owns the loaded envelopes, so the measurement reads a copy."""
         feature_data = FeatureData.load(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
-        loaded_volume = feature_data.generators[GeneratorName.PULSE1].volume.copy()
+        loaded_volume = feature_data.channels[ChannelName.PULSE1].volume.copy()
 
         instruments_logic.handle_raw_data_changed(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
             np.array([15, 12, 8, 4, 0], dtype=np.int8),
         )
 
-        assert np.array_equal(feature_data.generators[GeneratorName.PULSE1].volume, loaded_volume)
+        assert np.array_equal(feature_data.channels[ChannelName.PULSE1].volume, loaded_volume)
 
     def test_a_refresh_reports_the_view_alone(
         self,
@@ -224,7 +224,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         """A regenerated reconstruction refreshes the figures, leaving the edited envelopes displayed."""
         mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
         received: List[ReconstructionInstrumentsViewModel] = []
-        feature_updates: List[Optional[Dict[GeneratorName, Features]]] = []
+        feature_updates: List[Optional[Dict[ChannelName, Features]]] = []
         instruments_logic.on_view_changed = received.append
         instruments_logic.on_feature_data_changed = feature_updates.append
 
@@ -243,7 +243,7 @@ class TestReconstructionInstrumentsLogicHandlePitchValueChanged:
     ) -> None:
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic.handle_pitch_value_changed(GeneratorName.PULSE1, 61)
+        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, 61)
         callback.assert_called_once()
 
     def test_forwards_generator_pitch_feature_and_value(
@@ -253,9 +253,9 @@ class TestReconstructionInstrumentsLogicHandlePitchValueChanged:
     ) -> None:
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic.handle_pitch_value_changed(GeneratorName.PULSE1, 61)
-        generator_name, _features, feature_key, value = callback.call_args.args
-        assert generator_name == GeneratorName.PULSE1
+        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, 61)
+        channel_name, _features, feature_key, value = callback.call_args.args
+        assert channel_name == ChannelName.PULSE1
         assert feature_key == FeatureKey.INITIAL_PITCH
         assert value == 61
 
@@ -269,7 +269,7 @@ class TestReconstructionInstrumentsLogicHandleBarPoint:
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
         instruments_logic.handle_bar_point_clicked(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
             np.zeros(4, dtype=np.float32),
         )
@@ -285,7 +285,7 @@ class TestReconstructionInstrumentsLogicHandleRawData:
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
         instruments_logic.handle_raw_data_changed(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             FeatureKey.ARPEGGIO,
             np.zeros(4, dtype=np.float32),
         )

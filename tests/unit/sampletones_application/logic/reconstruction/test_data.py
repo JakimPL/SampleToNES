@@ -6,7 +6,7 @@ import numpy as np
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 
 
@@ -241,7 +241,7 @@ class TestReconstructionDataGetPartials:
             name="Sample",
         )
 
-        result = data.get_partials([GeneratorName.TRIANGLE])
+        result = data.get_partials([ChannelName.TRIANGLE])
 
         assert np.all(result == 0.0)
 
@@ -255,7 +255,7 @@ class TestReconstructionDataGetPartials:
             name="Sample",
         )
 
-        result = data.get_partials([GeneratorName.PULSE1])
+        result = data.get_partials([ChannelName.PULSE1])
 
-        expected = reconstruction.approximations[GeneratorName.PULSE1]
+        expected = reconstruction.approximations[ChannelName.PULSE1]
         assert np.array_equal(result, expected)

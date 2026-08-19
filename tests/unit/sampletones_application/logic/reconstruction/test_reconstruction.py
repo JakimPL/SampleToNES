@@ -17,7 +17,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import AudioSourceType, GeneratorName
+from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.instructions import TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.trackers.format import TrackerFormat
@@ -303,8 +303,8 @@ class TestReconstructionPanelLogicPlayingChannels:
 
         panel_logic.display_reconstruction()
 
-        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1})
-        assert received[0].selected_generators == frozenset({GeneratorName.PULSE1})
+        assert received[0].playing_channels == frozenset({ChannelName.PULSE1})
+        assert received[0].selected_channels == frozenset({ChannelName.PULSE1})
 
     def test_an_edit_reports_the_view_again(
         self,
@@ -318,7 +318,7 @@ class TestReconstructionPanelLogicPlayingChannels:
 
         panel_logic.update_reconstruction()
 
-        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1})
+        assert received[0].playing_channels == frozenset({ChannelName.PULSE1})
 
     def test_a_channel_switched_off_by_hand_survives_an_edit(
         self,
@@ -328,12 +328,12 @@ class TestReconstructionPanelLogicPlayingChannels:
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.display_reconstruction()
-        panel_logic.set_selected_generators([])
+        panel_logic.set_selected_channels([])
         received = self._received(panel_logic)
 
         panel_logic.update_reconstruction()
 
-        assert received[0].selected_generators == frozenset()
+        assert received[0].selected_channels == frozenset()
 
     def test_a_channel_gaining_its_first_frame_joins_the_waveform(
         self,
@@ -343,8 +343,8 @@ class TestReconstructionPanelLogicPlayingChannels:
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.display_reconstruction()
-        loaded_data.reconstruction.update_generator_data(
-            GeneratorName.TRIANGLE,
+        loaded_data.reconstruction.update_channel_data(
+            ChannelName.TRIANGLE,
             [TriangleInstruction(on=True, pitch=48)],
             np.ones(64, dtype=np.float32),
             48,
@@ -354,8 +354,8 @@ class TestReconstructionPanelLogicPlayingChannels:
 
         panel_logic.update_reconstruction()
 
-        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1, GeneratorName.TRIANGLE})
-        assert received[0].selected_generators == frozenset({GeneratorName.PULSE1, GeneratorName.TRIANGLE})
+        assert received[0].playing_channels == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
+        assert received[0].selected_channels == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
 
     def test_a_channel_taken_out_of_play_leaves_the_waveform(
         self,
@@ -365,8 +365,8 @@ class TestReconstructionPanelLogicPlayingChannels:
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.display_reconstruction()
-        loaded_data.reconstruction.update_generator_data(
-            GeneratorName.PULSE1,
+        loaded_data.reconstruction.update_channel_data(
+            ChannelName.PULSE1,
             [],
             np.zeros(0, dtype=np.float32),
             60,
@@ -376,8 +376,8 @@ class TestReconstructionPanelLogicPlayingChannels:
 
         panel_logic.update_reconstruction()
 
-        assert received[0].playing_generators == frozenset()
-        assert received[0].selected_generators == frozenset()
+        assert received[0].playing_channels == frozenset()
+        assert received[0].selected_channels == frozenset()
 
 
 class TestReconstructionPanelLogicClose:
@@ -479,7 +479,7 @@ class TestReconstructionPanelLogicAudioSource:
         callback.assert_called_once()
 
 
-class TestReconstructionPanelLogicSelectedGenerators:
+class TestReconstructionPanelLogicSelectedChannels:
     def test_set_selected_generators_updates_selection(
         self,
         panel_logic: ReconstructionPanelLogic,
@@ -487,8 +487,8 @@ class TestReconstructionPanelLogicSelectedGenerators:
         loaded_data: ReconstructionData,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.set_selected_generators([GeneratorName.PULSE1])
-        assert panel_logic._selected_generators == [GeneratorName.PULSE1]
+        panel_logic.set_selected_channels([ChannelName.PULSE1])
+        assert panel_logic._selected_channels == [ChannelName.PULSE1]
 
     def test_set_selected_generators_fires_waveform_load(
         self,
@@ -499,7 +499,7 @@ class TestReconstructionPanelLogicSelectedGenerators:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         callback = MagicMock()
         panel_logic.on_waveform_load_changed = callback
-        panel_logic.set_selected_generators([GeneratorName.PULSE1])
+        panel_logic.set_selected_channels([ChannelName.PULSE1])
         callback.assert_called_once()
 
     def test_set_selected_generators_with_no_data_skips_waveform(
@@ -508,7 +508,7 @@ class TestReconstructionPanelLogicSelectedGenerators:
     ) -> None:
         callback = MagicMock()
         panel_logic.on_waveform_load_changed = callback
-        panel_logic.set_selected_generators([GeneratorName.PULSE1])
+        panel_logic.set_selected_channels([ChannelName.PULSE1])
         callback.assert_not_called()
 
 
@@ -518,7 +518,7 @@ class TestReconstructionPanelLogicExportInstrument:
         panel_logic: ReconstructionPanelLogic,
     ) -> None:
         with pytest.raises(AssertionError):
-            panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
+            panel_logic.request_export_instrument_dialog(ChannelName.PULSE1)
 
     def test_request_export_instrument_dialog_fires_dialog_callback(
         self,
@@ -529,7 +529,7 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         callback = MagicMock()
         panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
+        panel_logic.request_export_instrument_dialog(ChannelName.PULSE1)
         callback.assert_called_once()
 
     def test_request_export_instrument_dialog_suggests_the_slice_name(
@@ -544,7 +544,7 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         callback = MagicMock()
         panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
+        panel_logic.request_export_instrument_dialog(ChannelName.PULSE1)
         assert callback.call_args.args[0] == "Sample (pulse1)"
 
     def test_request_export_instrument_dialog_for_unknown_generator_is_no_op(
@@ -556,7 +556,7 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         callback = MagicMock()
         panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.TRIANGLE)
+        panel_logic.request_export_instrument_dialog(ChannelName.TRIANGLE)
         callback.assert_not_called()
 
     def test_request_export_instrument_dialog_sends_the_generator_to_the_dialog(
@@ -565,12 +565,12 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        """The generator travels with the request, so the confirmation names it back."""
+        """The channel travels with the request, so the confirmation names it back."""
         mock_reconstruction_manager.current_reconstruction = loaded_data
         callback = MagicMock()
         panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        assert callback.call_args.args[2] == GeneratorName.PULSE1
+        panel_logic.request_export_instrument_dialog(ChannelName.PULSE1)
+        assert callback.call_args.args[2] == ChannelName.PULSE1
 
     def test_handle_export_instrument_confirmed_with_no_data_does_not_export(
         self,
@@ -580,7 +580,7 @@ class TestReconstructionPanelLogicExportInstrument:
     ) -> None:
         panel_logic.handle_export_instrument_confirmed(
             tmp_path / "instrument.fti",
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
         )
         mock_export_service.export_instrument.assert_not_called()
 
@@ -595,7 +595,7 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.handle_export_instrument_confirmed(
             tmp_path / "instrument.fti",
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
         )
         mock_export_service.export_instrument.assert_called_once()
 
@@ -610,7 +610,7 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.handle_export_instrument_confirmed(
             tmp_path / "Clap (pulse1).fti",
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
         )
         request = mock_export_service.export_instrument.call_args.args[2]
         assert request.name == "Clap (pulse1)"
@@ -629,7 +629,7 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.handle_export_instrument_confirmed(
             tmp_path / f"instrument{case.extension}",
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
         )
         backend = mock_export_service.export_instrument.call_args.args[1]
         assert backend is mock_tracker_backends[case.tracker_format]
@@ -650,7 +650,7 @@ class TestReconstructionPanelLogicExportInstrument:
         with pytest.raises(ValueError):
             panel_logic.handle_export_instrument_confirmed(
                 tmp_path / f"instrument{extension}",
-                GeneratorName.PULSE1,
+                ChannelName.PULSE1,
             )
 
 
@@ -811,7 +811,7 @@ class TestReconstructionPanelLogicExportWav:
         tmp_path: Path,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic._selected_generators = [GeneratorName.PULSE1]
+        panel_logic._selected_channels = [ChannelName.PULSE1]
         panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
         mock_export_service.export_wav.assert_called_once()
         call_args = mock_export_service.export_wav.call_args

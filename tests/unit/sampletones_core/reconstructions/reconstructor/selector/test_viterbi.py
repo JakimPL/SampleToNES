@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Window
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import PulseInstruction
@@ -17,7 +17,7 @@ from sampletones_core.reconstructions.reconstructor.worker import ReconstructorW
 def _selector(
     config: Config,
     window: Window,
-    generators: Dict[GeneratorName, GeneratorUnion],
+    channels: Dict[ChannelName, GeneratorUnion],
     worker: ReconstructorWorker,
     **decoder_overrides: Any,
 ) -> ViterbiSelector:
@@ -26,7 +26,7 @@ def _selector(
     return ViterbiSelector(
         updated_config,
         window,
-        generators,
+        channels,
         worker.scorer,
         worker.candidate_provider,
         worker.phase_aligner,
@@ -59,10 +59,10 @@ class TestViterbiContinuity:
         self,
         config: Config,
         window: Window,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
         worker: ReconstructorWorker,
     ) -> None:
-        selector = _selector(config, window, generators, worker, pitch_weight=1.0)
+        selector = _selector(config, window, channels, worker, pitch_weight=1.0)
         frames = _flickering_frames()
 
         path = selector._decode(frames)
@@ -75,13 +75,13 @@ class TestViterbiContinuity:
         self,
         config: Config,
         window: Window,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
         worker: ReconstructorWorker,
     ) -> None:
         selector = _selector(
             config,
             window,
-            generators,
+            channels,
             worker,
             pitch_weight=0.0,
             volume_weight=0.0,
@@ -101,20 +101,20 @@ class TestViterbiTransitionCost:
         self,
         config: Config,
         window: Window,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
         worker: ReconstructorWorker,
     ) -> None:
-        selector = _selector(config, window, generators, worker)
+        selector = _selector(config, window, channels, worker)
         assert selector._transition_cost(STEADY, STEADY) == 0.0
 
     def test_larger_pitch_jump_costs_more(
         self,
         config: Config,
         window: Window,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
         worker: ReconstructorWorker,
     ) -> None:
-        selector = _selector(config, window, generators, worker, pitch_weight=0.1)
+        selector = _selector(config, window, channels, worker, pitch_weight=0.1)
         near = PulseInstruction(on=True, pitch=61, volume=10, duty_cycle=0)
         far = PulseInstruction(on=True, pitch=84, volume=10, duty_cycle=0)
         assert selector._transition_cost(STEADY, near) < selector._transition_cost(STEADY, far)
@@ -123,10 +123,10 @@ class TestViterbiTransitionCost:
         self,
         config: Config,
         window: Window,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
         worker: ReconstructorWorker,
     ) -> None:
-        selector = _selector(config, window, generators, worker, on_off_weight=0.25)
+        selector = _selector(config, window, channels, worker, on_off_weight=0.25)
         silence = PulseInstruction(on=False, pitch=60, volume=0, duty_cycle=0)
         assert selector._transition_cost(STEADY, silence) == 0.25
 
@@ -141,5 +141,5 @@ class TestViterbiSelectIntegration:
         first = worker(fragmented_audio, fragment_ids)
         second = worker(fragmented_audio, fragment_ids)
         for fragment_id in fragment_ids:
-            for generator_name in first[fragment_id]:
-                assert first[fragment_id][generator_name].instruction == second[fragment_id][generator_name].instruction
+            for channel_name in first[fragment_id]:
+                assert first[fragment_id][channel_name].instruction == second[fragment_id][channel_name].instruction

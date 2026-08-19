@@ -227,7 +227,7 @@ def config_fields(
     nes_frequency: int,
     spectrum_method: SpectrumMethod,
     transformation_gamma: int,
-    generators: str,
+    channels: str,
     config_hash: str,
 ) -> ConfigDirectoryFields:
     return ConfigDirectoryFields(
@@ -235,7 +235,7 @@ def config_fields(
         nf=nes_frequency,
         sm=spectrum_method,
         tg=transformation_gamma,
-        gn=generators,
+        gn=channels,
         ch=config_hash,
     )
 
@@ -245,7 +245,7 @@ CONFIG_A: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=30,
     spectrum_method=SpectrumMethod.FFT,
     transformation_gamma=0,
-    generators="PTN",
+    channels="PTN",
     config_hash=HASH_A,
 )
 CONFIG_B: Final[ConfigDirectoryFields] = config_fields(
@@ -253,7 +253,7 @@ CONFIG_B: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=30,
     spectrum_method=SpectrumMethod.FFT,
     transformation_gamma=0,
-    generators="PTN",
+    channels="PTN",
     config_hash=HASH_B,
 )
 CONFIG_C: Final[ConfigDirectoryFields] = config_fields(
@@ -261,7 +261,7 @@ CONFIG_C: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=30,
     spectrum_method=SpectrumMethod.FFT,
     transformation_gamma=0,
-    generators="PT",
+    channels="PT",
     config_hash=HASH_C,
 )
 CONFIG_D: Final[ConfigDirectoryFields] = config_fields(
@@ -269,7 +269,7 @@ CONFIG_D: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=30,
     spectrum_method=SpectrumMethod.CQT,
     transformation_gamma=0,
-    generators="PTN",
+    channels="PTN",
     config_hash=HASH_D,
 )
 CONFIG_E: Final[ConfigDirectoryFields] = config_fields(
@@ -277,7 +277,7 @@ CONFIG_E: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=60,
     spectrum_method=SpectrumMethod.CQT,
     transformation_gamma=2,
-    generators="P",
+    channels="P",
     config_hash=HASH_E,
 )
 CONFIG_F: Final[ConfigDirectoryFields] = config_fields(
@@ -285,7 +285,7 @@ CONFIG_F: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=50,
     spectrum_method=SpectrumMethod.LOG_SPACED_FFT,
     transformation_gamma=1,
-    generators="TN",
+    channels="TN",
     config_hash=HASH_F,
 )
 
@@ -448,7 +448,7 @@ def _state_detail_labels(panel: GUITreePanel) -> None:
     panel._lbl_detail_spectrum_method = "spectrum_method"
     panel._lbl_detail_transformation_gamma = "transformation_gamma"
     panel._lbl_detail_window_size = "window_size"
-    panel._lbl_detail_generators = "generators"
+    panel._lbl_detail_channels = "channels"
     panel._lbl_detail_configuration = "configuration"
 
 

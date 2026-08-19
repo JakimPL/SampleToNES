@@ -3,13 +3,13 @@ from typing import Dict, Final
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
-CHANNEL_ELEMENTS: Final[Dict[GeneratorName, ContextElements]] = {
-    GeneratorName.PULSE1: ContextElements.PULSE_1,
-    GeneratorName.PULSE2: ContextElements.PULSE_2,
-    GeneratorName.TRIANGLE: ContextElements.TRIANGLE,
-    GeneratorName.NOISE: ContextElements.NOISE,
+CHANNEL_ELEMENTS: Final[Dict[ChannelName, ContextElements]] = {
+    ChannelName.PULSE1: ContextElements.PULSE_1,
+    ChannelName.PULSE2: ContextElements.PULSE_2,
+    ChannelName.TRIANGLE: ContextElements.TRIANGLE,
+    ChannelName.NOISE: ContextElements.NOISE,
 }
 
 
@@ -55,11 +55,11 @@ def context_label(
 
 def channel_label(
     language_manager: LanguageManager,
-    generator: GeneratorName,
+    channel: ChannelName,
 ) -> str:
     """Resolves an NES channel's name, the words every display naming a channel prints.
 
     The playback menu's mix, the samples menu's byte figures and anything else addressing a
     channel read it from one entry, so a reader meets the same name for the same channel.
     """
-    return context_label(language_manager, CHANNEL_ELEMENTS[generator])
+    return context_label(language_manager, CHANNEL_ELEMENTS[channel])

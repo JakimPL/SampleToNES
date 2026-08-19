@@ -11,7 +11,7 @@ from sampletones_application.logic.sequencer.tracker import (
 from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.instruments.note_off import NoteOff
 from tests.suite.sequencer import sample_reconstruction
 
@@ -42,17 +42,17 @@ def reader(logic: SequencerTrackerLogic) -> TrackerBlockReader:
     return TrackerBlockReader(logic)
 
 
-def _slot(generator: Optional[GeneratorName], subcolumn: SubColumn) -> int:
-    return TrackerSlot(generator, subcolumn).flat_index
+def _slot(channel: Optional[ChannelName], subcolumn: SubColumn) -> int:
+    return TrackerSlot(channel, subcolumn).flat_index
 
 
 def _cell(
     row_index: int,
-    generator: Optional[GeneratorName],
+    channel: Optional[ChannelName],
     subcolumn: SubColumn,
 ) -> TrackerRegion:
     """The region one subcolumn of one cell covers."""
-    slot = _slot(generator, subcolumn)
+    slot = _slot(channel, subcolumn)
     return TrackerRegion(
         first_row=row_index,
         last_row=row_index,
@@ -62,7 +62,7 @@ def _cell(
 
 
 def _column(
-    generator: Optional[GeneratorName],
+    channel: Optional[ChannelName],
     *,
     last_row: int = 0,
 ) -> TrackerRegion:
@@ -70,8 +70,8 @@ def _column(
     return TrackerRegion(
         first_row=0,
         last_row=last_row,
-        first_slot=_slot(generator, SubColumn.INSTRUMENT),
-        last_slot=_slot(generator, SubColumn.VOLUME),
+        first_slot=_slot(channel, SubColumn.INSTRUMENT),
+        last_slot=_slot(channel, SubColumn.VOLUME),
     )
 
 
@@ -85,13 +85,13 @@ class TestChannelColumn:
         reader: TrackerBlockReader,
     ) -> None:
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1]),
+            sample_reconstruction([ChannelName.PULSE1]),
             name="lead",
         )
-        logic.place_note(0, GeneratorName.PULSE1, sample.id)
-        logic.set_cell_subcolumn(0, GeneratorName.PULSE1, transpose=5, volume=3)
+        logic.place_note(0, ChannelName.PULSE1, sample.id)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE1, transpose=5, volume=3)
 
-        block = reader.read(_column(GeneratorName.PULSE1))
+        block = reader.read(_column(ChannelName.PULSE1))
 
         assert block.notes[_key(SubColumn.INSTRUMENT)] == sample.id
         assert block.transposes[_key(SubColumn.TRANSPOSE)] == 5
@@ -102,7 +102,7 @@ class TestChannelColumn:
         reader: TrackerBlockReader,
     ) -> None:
         """An untouched channel holds no pattern at all, which reads as the empty cell it shows."""
-        block = reader.read(_column(GeneratorName.NOISE))
+        block = reader.read(_column(ChannelName.NOISE))
 
         assert block.notes[_key(SubColumn.INSTRUMENT)] is None
         assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
@@ -113,9 +113,9 @@ class TestChannelColumn:
         logic: SequencerTrackerLogic,
         reader: TrackerBlockReader,
     ) -> None:
-        logic.cut_note(0, GeneratorName.PULSE1)
+        logic.cut_note(0, ChannelName.PULSE1)
 
-        block = reader.read(_cell(0, GeneratorName.PULSE1, SubColumn.INSTRUMENT))
+        block = reader.read(_cell(0, ChannelName.PULSE1, SubColumn.INSTRUMENT))
 
         assert block.notes[_key(SubColumn.INSTRUMENT)] == NoteOff()
 
@@ -125,9 +125,9 @@ class TestChannelColumn:
         reader: TrackerBlockReader,
     ) -> None:
         """An explicit zero resets the channel's transpose, so it is a value and not an absence."""
-        logic.set_cell_subcolumn(0, GeneratorName.PULSE2, transpose=0)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE2, transpose=0)
 
-        block = reader.read(_cell(0, GeneratorName.PULSE2, SubColumn.TRANSPOSE))
+        block = reader.read(_cell(0, ChannelName.PULSE2, SubColumn.TRANSPOSE))
 
         assert block.transposes[_key(SubColumn.TRANSPOSE)] == 0
 
@@ -138,9 +138,9 @@ class TestChannelColumn:
     ) -> None:
         """A region reaching past the rows a pattern holds takes emptiness from beyond its end."""
         logic.set_rows_per_pattern(2)
-        logic.set_cell_subcolumn(0, GeneratorName.PULSE1, volume=4)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE1, volume=4)
 
-        block = reader.read(_column(GeneratorName.PULSE1, last_row=3))
+        block = reader.read(_column(ChannelName.PULSE1, last_row=3))
 
         assert block.volumes[_key(SubColumn.VOLUME)] == 4
         assert block.volumes[_key(SubColumn.VOLUME, 2)] is None
@@ -157,7 +157,7 @@ class TestSampleColumn:
         reader: TrackerBlockReader,
     ) -> None:
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
         logic.place_note(0, None, sample.id)
@@ -176,7 +176,7 @@ class TestSampleColumn:
     ) -> None:
         """The channels hold instruments of their own, and the block keeps the sample they share."""
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.PULSE2]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.PULSE2]),
             name="chord",
         )
         logic.place_note(0, None, sample.id)
@@ -191,7 +191,7 @@ class TestSampleColumn:
         reader: TrackerBlockReader,
     ) -> None:
         """No sample governs the row, so the column spans every channel and only one holds a value."""
-        logic.set_cell_subcolumn(0, GeneratorName.PULSE1, transpose=5)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE1, transpose=5)
 
         block = reader.read(_cell(0, None, SubColumn.TRANSPOSE))
 
@@ -202,7 +202,7 @@ class TestSampleColumn:
         logic: SequencerTrackerLogic,
         reader: TrackerBlockReader,
     ) -> None:
-        logic.cut_note(0, GeneratorName.PULSE1)
+        logic.cut_note(0, ChannelName.PULSE1)
 
         block = reader.read(_cell(0, None, SubColumn.INSTRUMENT))
 
@@ -240,7 +240,7 @@ class TestOffsets:
         reader: TrackerBlockReader,
     ) -> None:
         """The last slot reads as nothing, and the cells beside it keep the offsets they stand at."""
-        logic.set_cell_subcolumn(0, GeneratorName.PULSE1, volume=2)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE1, volume=2)
 
         block = reader.read(
             TrackerRegion(
@@ -268,8 +268,8 @@ class TestOffsets:
             TrackerRegion(
                 first_row=0,
                 last_row=0,
-                first_slot=_slot(GeneratorName.PULSE2, SubColumn.TRANSPOSE),
-                last_slot=_slot(GeneratorName.TRIANGLE, SubColumn.INSTRUMENT),
+                first_slot=_slot(ChannelName.PULSE2, SubColumn.TRANSPOSE),
+                last_slot=_slot(ChannelName.TRIANGLE, SubColumn.INSTRUMENT),
             )
         )
 

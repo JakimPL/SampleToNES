@@ -7,7 +7,7 @@ import pytest
 
 from sampletones_application.logic.sequencer.playback.synthesizer import SampleVoice
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.instructions import (
@@ -32,35 +32,35 @@ DUTY_CYCLE: Final[int] = 2
 
 
 def _reconstruction(
-    generator_name: GeneratorName,
+    channel_name: ChannelName,
     instructions: Sequence[InstructionUnion],
     held_features: Iterable[FeatureKey],
 ) -> Reconstruction:
     """A one-channel reconstruction whose instrument leaves ``held_features`` to the channel."""
     reconstruction = Reconstruction.create(
         approximation=np.zeros(AUDIO_LENGTH, dtype=np.float32),
-        approximations={generator_name: np.zeros(AUDIO_LENGTH, dtype=np.float32)},
-        instructions={generator_name: list(instructions)},
+        approximations={channel_name: np.zeros(AUDIO_LENGTH, dtype=np.float32)},
+        instructions={channel_name: list(instructions)},
         config=Config(),
         coefficient=1.0,
         audio_filepath=Path("/dev/null"),
     )
-    reconstruction.update_generator_data(
-        generator_name,
+    reconstruction.update_channel_data(
+        channel_name,
         list(instructions),
         np.ones(AUDIO_LENGTH, dtype=np.float32),
-        reconstruction.initial_pitches[generator_name],
+        reconstruction.initial_pitches[channel_name],
         held_features,
     )
     return reconstruction
 
 
 def _voice(
-    generator_name: GeneratorName,
+    channel_name: ChannelName,
     instructions: Sequence[InstructionUnion],
     held_features: Iterable[FeatureKey],
 ) -> SampleVoice:
-    return SampleVoice.read(_reconstruction(generator_name, instructions, held_features), generator_name)
+    return SampleVoice.read(_reconstruction(channel_name, instructions, held_features), channel_name)
 
 
 def _channel_values() -> Dict[FeatureKey, int]:
@@ -72,13 +72,13 @@ class TestAFrameSoundsAsTheInstrumentWroteIt(BaseTestSuite):
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        generator_name: GeneratorName
+        channel_name: ChannelName
         instructions: List[InstructionUnion]
 
     test_cases = (
         TestCase(
             label="pulse",
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
             instructions=[
                 PulseInstruction(
                     on=True,
@@ -90,12 +90,12 @@ class TestAFrameSoundsAsTheInstrumentWroteIt(BaseTestSuite):
         ),
         TestCase(
             label="triangle",
-            generator_name=GeneratorName.TRIANGLE,
+            channel_name=ChannelName.TRIANGLE,
             instructions=[TriangleInstruction(on=True, pitch=REFERENCE_PITCH)],
         ),
         TestCase(
             label="noise",
-            generator_name=GeneratorName.NOISE,
+            channel_name=ChannelName.NOISE,
             instructions=[
                 NoiseInstruction(
                     on=True,
@@ -113,7 +113,7 @@ class TestAFrameSoundsAsTheInstrumentWroteIt(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_the_frame_plays_as_it_stands(self, test_case: TestCase) -> None:
-        voice = _voice(test_case.generator_name, test_case.instructions, ())
+        voice = _voice(test_case.channel_name, test_case.instructions, ())
 
         assert voice.sound(test_case.instructions[0], _channel_values()) == test_case.instructions[0]
 
@@ -123,7 +123,7 @@ class TestAFrameSoundsAsTheInstrumentWroteIt(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_the_channel_takes_up_what_the_instrument_writes(self, test_case: TestCase) -> None:
-        voice = _voice(test_case.generator_name, test_case.instructions, ())
+        voice = _voice(test_case.channel_name, test_case.instructions, ())
         values = _channel_values()
 
         voice.sound(test_case.instructions[0], values)
@@ -150,7 +150,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        generator_name: GeneratorName
+        channel_name: ChannelName
         instruction: InstructionUnion
         held_feature: FeatureKey
         channel_value: int
@@ -159,7 +159,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
     test_cases = (
         TestCase(
             label="pulse volume",
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
             instruction=_INSTRUCTION,
             held_feature=FeatureKey.VOLUME,
             channel_value=CHANNEL_VOLUME,
@@ -172,7 +172,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         ),
         TestCase(
             label="pulse arpeggio",
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
             instruction=_INSTRUCTION,
             held_feature=FeatureKey.ARPEGGIO,
             channel_value=CHANNEL_ARPEGGIO,
@@ -185,7 +185,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         ),
         TestCase(
             label="pulse duty cycle",
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
             instruction=_INSTRUCTION,
             held_feature=FeatureKey.DUTY_CYCLE,
             channel_value=CHANNEL_DUTY_CYCLE,
@@ -198,7 +198,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         ),
         TestCase(
             label="triangle arpeggio",
-            generator_name=GeneratorName.TRIANGLE,
+            channel_name=ChannelName.TRIANGLE,
             instruction=TriangleInstruction(on=True, pitch=REFERENCE_PITCH),
             held_feature=FeatureKey.ARPEGGIO,
             channel_value=CHANNEL_ARPEGGIO,
@@ -206,7 +206,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         ),
         TestCase(
             label="noise period",
-            generator_name=GeneratorName.NOISE,
+            channel_name=ChannelName.NOISE,
             instruction=NoiseInstruction(
                 on=True,
                 period=REFERENCE_PERIOD,
@@ -224,7 +224,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         ),
         TestCase(
             label="noise mode",
-            generator_name=GeneratorName.NOISE,
+            channel_name=ChannelName.NOISE,
             instruction=NoiseInstruction(
                 on=True,
                 period=REFERENCE_PERIOD,
@@ -248,7 +248,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_the_frame_sounds_the_channels_value_and_the_instruments_rest(self, test_case: TestCase) -> None:
-        voice = _voice(test_case.generator_name, [test_case.instruction], (test_case.held_feature,))
+        voice = _voice(test_case.channel_name, [test_case.instruction], (test_case.held_feature,))
         values = _channel_values()
         values[test_case.held_feature] = test_case.channel_value
 
@@ -260,7 +260,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_a_held_dimension_leaves_the_channels_value_where_it_stands(self, test_case: TestCase) -> None:
-        voice = _voice(test_case.generator_name, [test_case.instruction], (test_case.held_feature,))
+        voice = _voice(test_case.channel_name, [test_case.instruction], (test_case.held_feature,))
         values = _channel_values()
         values[test_case.held_feature] = test_case.channel_value
 
@@ -270,8 +270,8 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
 
     def test_a_level_one_instrument_wrote_is_what_the_next_one_holds(self) -> None:
         """The channel carries a value across samples, which is what makes an empty envelope mean this."""
-        writes = _voice(GeneratorName.PULSE1, [self._INSTRUCTION], ())
-        holds = _voice(GeneratorName.PULSE1, [self._INSTRUCTION], (FeatureKey.VOLUME,))
+        writes = _voice(ChannelName.PULSE1, [self._INSTRUCTION], ())
+        holds = _voice(ChannelName.PULSE1, [self._INSTRUCTION], (FeatureKey.VOLUME,))
         values = _channel_values()
 
         writes.sound(self._INSTRUCTION, values)
@@ -281,13 +281,13 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
     def test_an_instrument_holding_its_level_sounds_a_silent_frame(self) -> None:
         """Silence is stated by a volume envelope, so an instrument leaving one out plays on."""
         rest = PulseInstruction.null_instruction()
-        voice = _voice(GeneratorName.PULSE1, [self._INSTRUCTION, rest], (FeatureKey.VOLUME,))
+        voice = _voice(ChannelName.PULSE1, [self._INSTRUCTION, rest], (FeatureKey.VOLUME,))
 
         assert voice.sound(rest, _channel_values()).on is True
 
     def test_a_silent_frame_takes_the_channel_to_silence_where_the_instrument_writes_its_level(self) -> None:
         rest = PulseInstruction.null_instruction()
-        voice = _voice(GeneratorName.PULSE1, [self._INSTRUCTION, rest], ())
+        voice = _voice(ChannelName.PULSE1, [self._INSTRUCTION, rest], ())
         values = _channel_values()
 
         assert voice.sound(rest, values).on is False
@@ -295,7 +295,7 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
 
     def test_a_silent_frame_leaves_the_other_dimensions_where_the_channel_holds_them(self) -> None:
         rest = PulseInstruction.null_instruction()
-        voice = _voice(GeneratorName.PULSE1, [self._INSTRUCTION, rest], ())
+        voice = _voice(ChannelName.PULSE1, [self._INSTRUCTION, rest], ())
         values = _channel_values()
         values[FeatureKey.DUTY_CYCLE] = DUTY_CYCLE
 

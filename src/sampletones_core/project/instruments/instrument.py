@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 class Instrument(BaseModel):
@@ -15,7 +15,7 @@ class Instrument(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     sample_id: str = Field(..., description="Stable id of the referenced sample.")
-    generator_name: GeneratorName = Field(
+    channel_name: ChannelName = Field(
         ...,
         description="Which reconstruction channel-slice to use.",
     )

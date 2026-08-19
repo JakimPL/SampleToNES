@@ -105,10 +105,10 @@ class TrackerBlockText:
         row_offset: int,
     ) -> str:
         """One row of the block, its fields in slot order and its columns held apart by a bar."""
-        base = column_slot_base(slot_from_flat(region.first_slot).generator)
+        base = column_slot_base(slot_from_flat(region.first_slot).channel)
         fields: List[str] = []
         for position, slot in enumerate(region.slots):
-            if position > 0 and slot.generator != region.slots[position - 1].generator:
+            if position > 0 and slot.channel != region.slots[position - 1].channel:
                 fields.append(COLUMN_SEPARATOR)
 
             key = (row_offset, region.first_slot + position - base)
@@ -180,7 +180,7 @@ class TrackerBlockText:
         shape: BlockShape,
     ) -> Optional[TrackerBlock]:
         """The block a body states, each kind of subcolumn gathered into a map of its own."""
-        base = column_slot_base(slot_from_flat(shape.first).generator)
+        base = column_slot_base(slot_from_flat(shape.first).channel)
         notes: Dict[BlockKey, Optional[BlockNote]] = {}
         transposes: Dict[BlockKey, Optional[int]] = {}
         volumes: Dict[BlockKey, Optional[int]] = {}

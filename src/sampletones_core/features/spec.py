@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Final, List, Tuple
 
-from sampletones_core.constants.enums import FeatureKey, GeneratorName, LibraryGeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey, LibraryGeneratorName
 from sampletones_core.constants.general import (
     ARPEGGIO_MAX,
     ARPEGGIO_MIN,
@@ -59,15 +59,15 @@ GENERATOR_FEATURE_RANGES: Final[Dict[LibraryGeneratorName, Dict[FeatureKey, Feat
 }
 
 
-GENERATOR_KIND: Final[Dict[GeneratorName, LibraryGeneratorName]] = {
-    GeneratorName.PULSE1: LibraryGeneratorName.PULSE,
-    GeneratorName.PULSE2: LibraryGeneratorName.PULSE,
-    GeneratorName.TRIANGLE: LibraryGeneratorName.TRIANGLE,
-    GeneratorName.NOISE: LibraryGeneratorName.NOISE,
+CHANNEL_GENERATOR_KIND: Final[Dict[ChannelName, LibraryGeneratorName]] = {
+    ChannelName.PULSE1: LibraryGeneratorName.PULSE,
+    ChannelName.PULSE2: LibraryGeneratorName.PULSE,
+    ChannelName.TRIANGLE: LibraryGeneratorName.TRIANGLE,
+    ChannelName.NOISE: LibraryGeneratorName.NOISE,
 }
 
 
-def resting_reference(generator_name: GeneratorName) -> int:
+def resting_reference(channel_name: ChannelName) -> int:
     """The reference an arpeggio envelope is measured against while a channel describes no frame.
 
     A channel with no frames still carries a reference, since the first envelope given to it
@@ -75,12 +75,12 @@ def resting_reference(generator_name: GeneratorName) -> int:
     audible note, and on a noise period between the extremes.
 
     Args:
-        generator_name: The channel whose resting reference is read.
+        channel_name: The channel whose resting reference is read.
 
     Returns:
         int: The pitch a tonal channel rests at, or the period the noise channel rests at.
     """
-    match GENERATOR_KIND[generator_name]:
+    match CHANNEL_GENERATOR_KIND[channel_name]:
         case LibraryGeneratorName.NOISE:
             return RESTING_REFERENCE_PERIOD
         case _:
@@ -88,7 +88,7 @@ def resting_reference(generator_name: GeneratorName) -> int:
 
 
 def resting_held_features(
-    generator_name: GeneratorName,
+    channel_name: ChannelName,
 ) -> Tuple[FeatureKey, ...]:
     """The dimensions a channel governs while it describes no frame.
 
@@ -97,12 +97,12 @@ def resting_held_features(
     one edited down to empty envelopes.
 
     Args:
-        generator_name: The channel whose resting record is read.
+        channel_name: The channel whose resting record is read.
 
     Returns:
         Tuple[FeatureKey, ...]: The dimensions the channel offers, in dimension order.
     """
-    return tuple(supported_features(GENERATOR_KIND[generator_name]))
+    return tuple(supported_features(CHANNEL_GENERATOR_KIND[channel_name]))
 
 
 def supported_features(

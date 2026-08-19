@@ -5,7 +5,7 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.clipboard.samples import (
     ProjectSampleDirectory,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.sequencer import sample_reconstruction
 
 
@@ -23,7 +23,7 @@ def directory(controller: ProjectController) -> ProjectSampleDirectory:
 
 def _add_sample(controller: ProjectController, name: str) -> str:
     sample = controller.add_sample(
-        sample_reconstruction([GeneratorName.PULSE1]),
+        sample_reconstruction([ChannelName.PULSE1]),
         name=name,
     )
     return sample.id

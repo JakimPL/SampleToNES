@@ -29,7 +29,7 @@ class FamiTrackerBackend:
     """Writes FamiTracker's ``.fti`` instruments and ``.ftm`` modules.
 
     FamiTracker reads one instrument per ``.fti`` file, so a whole reconstruction lands
-    as a set of them beside the chosen destination, one file per generator slice named
+    as a set of them beside the chosen destination, one file per channel slice named
     after the instrument.
     """
 

@@ -4,7 +4,7 @@ from typing import Final, Tuple
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.song import (
@@ -34,7 +34,7 @@ from tests.suite.player import (
 NTSC_FREQUENCY: Final[int] = 60
 HALF_RATE_FREQUENCY: Final[int] = 30
 PROGRAM_AREA_BYTES: Final[int] = 0x8000
-UNBOUNDED_SPACE: Final[int] = MAX_STREAM_OFFSET * len(GeneratorName)
+UNBOUNDED_SPACE: Final[int] = MAX_STREAM_OFFSET * len(ChannelName)
 
 SOUNDING: Final = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_REFERENCE_TIMER)
 RESTING: Final = pulse_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_TIMER)
@@ -46,7 +46,7 @@ def read_word(data: bytes, offset: int) -> int:
 
 
 def stream_offsets(data: bytes) -> Tuple[int, ...]:
-    return tuple(read_word(data, STREAM_OFFSETS_OFFSET + WORD_SIZE * channel) for channel in range(len(GeneratorName)))
+    return tuple(read_word(data, STREAM_OFFSETS_OFFSET + WORD_SIZE * channel) for channel in range(len(ChannelName)))
 
 
 def two_tick_song(nes_frequency: int) -> Song:
@@ -171,5 +171,5 @@ class TestSongTooLarge:
     def test_a_song_reaching_past_the_offset_field_raises(self) -> None:
         ticks = MAX_STREAM_OFFSET // len(SOUNDING.values) + 1
         song = player_song(resting_streams((SOUNDING,) * ticks), NTSC_FREQUENCY, loop_tick=None)
-        with pytest.raises(SongTooLargeError, match=GeneratorName.PULSE2.value):
+        with pytest.raises(SongTooLargeError, match=ChannelName.PULSE2.value):
             song_to_bytes(song, UNBOUNDED_SPACE)

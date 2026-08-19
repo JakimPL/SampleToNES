@@ -7,7 +7,7 @@ import pytest
 
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import LoadReconstructionError
@@ -378,8 +378,8 @@ class TestReconstructionManagerLocateOriginalAudio:
         missing_path = tmp_path / "ghost.wav"
         reconstruction = Reconstruction.create(
             approximation=np.zeros(64, dtype=np.float32),
-            approximations={GeneratorName.PULSE1: np.zeros(64, dtype=np.float32)},
-            instructions={GeneratorName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
+            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
+            instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             config=Config(),
             coefficient=1.0,
             audio_filepath=missing_path,

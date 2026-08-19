@@ -140,7 +140,7 @@ from sampletones_application.view_model.shared.project_properties import (
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import BufferSize, SampleRate
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
@@ -995,13 +995,13 @@ class Application:
 
     def _regenerate_instrument(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         features: Features,
         feature_key: FeatureKey,
         feature_value: FeatureValue,
     ) -> None:
         self._reconstruction_coordinator.regenerate_instrument(
-            generator_name,
+            channel_name,
             features,
             feature_key,
             feature_value,
@@ -1029,7 +1029,7 @@ class Application:
             HistoryAction.EDIT_RECONSTRUCTION,
             detail=self._sequencer_tab.reconstruction_edit_detail(
                 sample.id,
-                outcome.generator_name,
+                outcome.channel_name,
                 outcome.feature_key,
             ),
             coalesce=(sample.id,),
@@ -1401,7 +1401,7 @@ class Application:
         self._playback_router.stop()
         self._update_menu()
 
-    def _toggle_channel(self, generator: GeneratorName) -> None:
+    def _toggle_channel(self, generator: ChannelName) -> None:
         """Switches one NES channel in the tab in front of the reader.
 
         A channel is switched by a control of its own on three tabs: the generators a
@@ -1411,13 +1411,13 @@ class Application:
         """
         match self._shell.get_current_tab():
             case Tab.MAIN:
-                self._main_tab.toggle_generator(generator)
+                self._main_tab.toggle_channel(generator)
             case Tab.RECONSTRUCTIONS:
-                self._reconstructions_tab.toggle_generator(generator)
+                self._reconstructions_tab.toggle_channel(generator)
             case _:
                 self._mute_channel(generator)
 
-    def _mute_channel(self, generator: GeneratorName) -> None:
+    def _mute_channel(self, generator: ChannelName) -> None:
         """Flips one channel of the sequencer's mix, the gesture the Channels submenu offers."""
         self._sequencer_tab.toggle_channel(generator)
 

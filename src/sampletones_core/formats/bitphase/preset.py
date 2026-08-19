@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Final, Sequence, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.bitphase.envelopes import features_to_envelopes
 from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset, NesInstrumentRow
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
@@ -24,7 +24,7 @@ PRESET_JSON_INDENT: Final[int] = 2
 
 
 def _tone_offsets(
-    generator: GeneratorName,
+    channel: ChannelName,
     initial_pitch: int,
     contour: Sequence[int],
 ) -> Tuple[int, ...]:
@@ -37,7 +37,7 @@ def _tone_offsets(
     than from a period offset, so its rows hold a flat offset and the note carries the
     pitch.
     """
-    if generator == GeneratorName.NOISE:
+    if channel == ChannelName.NOISE:
         return (NO_TONE_OFFSET,) * len(contour)
 
     base_index = pitch_to_note_index(initial_pitch)
@@ -56,18 +56,18 @@ def instrument_to_preset(request: InstrumentExport) -> BitphaseInstrumentPreset:
     """Builds the single-instrument file Bitphase's instruments panel loads.
 
     Args:
-        request: The generator slice to write.
+        request: The channel slice to write.
 
     Returns:
         BitphaseInstrumentPreset: The instrument to serialize.
     """
     envelopes = features_to_envelopes(
         request.features,
-        request.generator,
+        request.channel,
         loop=request.loop,
     )
     offsets = _tone_offsets(
-        request.generator,
+        request.channel,
         request.features.initial_pitch,
         envelopes.table_rows,
     )

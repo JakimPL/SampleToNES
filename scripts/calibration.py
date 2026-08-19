@@ -11,8 +11,8 @@ from sampletones_core.calibration.report import write_csv, write_markdown
 from sampletones_core.calibration.runner import build_variants, evaluate_variants
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
-    DEFAULT_GENERATORS,
-    GeneratorName,
+    DEFAULT_CHANNELS,
+    ChannelName,
     SpectrumMethod,
 )
 from sampletones_shared.logger import logger
@@ -21,7 +21,7 @@ from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 DEFAULT_OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "calibration"
 DEFAULT_METHODS: Final[str] = f"{SpectrumMethod.FFT.value},{SpectrumMethod.CQT.value}"
 DEFAULT_PERCEPTUAL_EXPONENTS: Final[str] = "1.0"
-DEFAULT_GENERATOR_NAMES: Final[str] = ",".join(generator.value for generator in DEFAULT_GENERATORS)
+DEFAULT_CHANNEL_NAMES: Final[str] = ",".join(generator.value for generator in DEFAULT_CHANNELS)
 
 
 def main() -> None:
@@ -59,22 +59,22 @@ def main() -> None:
         help="Comma-separated values of weights.temporal_loss_weight; empty keeps the base blend.",
     )
     parser.add_argument(
-        "--generators",
+        "--channels",
         type=str,
-        default=DEFAULT_GENERATOR_NAMES,
-        help="Comma-separated channel generators every variant reconstructs with.",
+        default=DEFAULT_CHANNEL_NAMES,
+        help="Comma-separated channels every variant reconstructs with.",
     )
     arguments = parser.parse_args()
 
-    generators = [GeneratorName(name.strip()) for name in arguments.generators.split(",") if name.strip()]
-    if not generators:
-        parser.error("--generators requires at least one generator name")
+    channels = [ChannelName(name.strip()) for name in arguments.channels.split(",") if name.strip()]
+    if not channels:
+        parser.error("--channels requires at least one channel name")
 
     base = Config.load(arguments.config) if arguments.config else Config.default()
     base = base.model_copy(
         update={
             "generation": base.generation.model_copy(
-                update={"generators": generators},
+                update={"channels": channels},
             )
         },
     )
@@ -94,7 +94,7 @@ def main() -> None:
     referees = build_referees(sample_rate)
     variants = build_variants(base, methods, exponents, temporal_weights)
 
-    channel_names = ", ".join(generator.value for generator in generators)
+    channel_names = ", ".join(channel.value for channel in channels)
     logger.info(
         f"Evaluating {len(variants)} variants x {len(items)} items x {len(referees)} referees on {channel_names}"
     )

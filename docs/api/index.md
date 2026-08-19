@@ -13,7 +13,7 @@ from sampletones import (
     InstructionLibrary,
     Reconstruction,
     Reconstructor,
-    GeneratorName,
+    ChannelName,
     Generator,
     PulseGenerator,
     TriangleGenerator,
@@ -31,8 +31,8 @@ from sampletones import (
 | `Window` | analysis window derived from a config (`Window.from_config(config)`) |
 | `InstructionLibrary` | the library of candidate instructions a reconstruction searches |
 | `Reconstructor` | runs a reconstruction: `Reconstructor(config)("sample.wav")` |
-| `Reconstruction` | the result of a reconstruction — its approximation audio, per-generator instructions, and the config used |
-| `GeneratorName` | enum naming the four channels: `pulse1`, `pulse2`, `triangle`, `noise` |
+| `Reconstruction` | the result of a reconstruction — its approximation audio, per-channel instructions, and the config used |
+| `ChannelName` | enum naming the four channels: `pulse1`, `pulse2`, `triangle`, `noise` |
 | `Generator` | shared base class of the oscillator generators |
 | `PulseGenerator`, `TriangleGenerator`, `NoiseGenerator` | render one channel's waveform from an instruction |
 | `Instruction` | shared base class of the per-frame channel instructions |
@@ -110,7 +110,7 @@ write_wave("reconstruction.wav", sample_rate, reconstruction.approximation)
 
 ### Load a reconstruction
 
-`Reconstruction.load` reads a saved `.stn` back into a `Reconstruction`, carrying its approximation, per-generator instructions, and config:
+`Reconstruction.load` reads a saved `.stn` back into a `Reconstruction`, carrying its approximation, per-channel instructions, and config:
 
 ```python
 from sampletones import Reconstruction
@@ -120,7 +120,7 @@ reconstruction = Reconstruction.load("reconstruction.stn")
 
 ### Export instruments
 
-`Reconstruction.export` returns the per-channel [features](../formats/instruction-libraries.md), one entry per generator, and each set saves as a FamiTracker `.fti` instrument:
+`Reconstruction.export` returns the per-channel [features](../formats/instruction-libraries.md), one entry per channel, and each set saves as a FamiTracker `.fti` instrument:
 
 ```python
 from sampletones import Reconstruction

@@ -8,7 +8,7 @@ from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import load_audio
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 
@@ -145,5 +145,5 @@ class ReconstructionData:
             frame_length=self.reconstruction.config.frame_length,
         )
 
-    def get_partials(self, generator_names: List[GeneratorName]) -> np.ndarray:
-        return self.waveform_data().partials(generator_names)
+    def get_partials(self, channel_names: List[ChannelName]) -> np.ndarray:
+        return self.waveform_data().partials(channel_names)

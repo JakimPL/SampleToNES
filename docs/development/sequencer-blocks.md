@@ -25,7 +25,7 @@ coordinates, which is what lets it land anywhere it is anchored.
 
 Two axes underpin both grids:
 
-- **`constants/sequencer.py::CHANNEL_AXIS`** — `(None,) + GeneratorName.items()`. Index 0
+- **`constants/sequencer.py::CHANNEL_AXIS`** — `(None,) + ChannelName.items()`. Index 0
   is the aggregate column (the tracker's **Sample**, the order's **Master**) and 1 to 4
   are the channels. Both grids lay out along it, so a row index means the same thing in
   either.

@@ -20,7 +20,7 @@ from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -54,27 +54,27 @@ LABEL_UNSOLO = "Unsolo"
 LABEL_MUTE_ALL = "Mute all channels"
 LABEL_UNMUTE_ALL = "Unmute all channels"
 
-ROW_LABELS: Dict[Optional[GeneratorName], str] = {
+ROW_LABELS: Dict[Optional[ChannelName], str] = {
     None: "Master",
-    GeneratorName.PULSE1: "Pulse 1",
-    GeneratorName.PULSE2: "Pulse 2",
-    GeneratorName.TRIANGLE: "Triangle",
-    GeneratorName.NOISE: "Noise",
+    ChannelName.PULSE1: "Pulse 1",
+    ChannelName.PULSE2: "Pulse 2",
+    ChannelName.TRIANGLE: "Triangle",
+    ChannelName.NOISE: "Noise",
 }
 
-CHANNEL_TABLE_ROWS: Dict[GeneratorName, int] = {
-    GeneratorName.PULSE1: 2,
-    GeneratorName.PULSE2: 3,
-    GeneratorName.TRIANGLE: 4,
-    GeneratorName.NOISE: 5,
+CHANNEL_TABLE_ROWS: Dict[ChannelName, int] = {
+    ChannelName.PULSE1: 2,
+    ChannelName.PULSE2: 3,
+    ChannelName.TRIANGLE: 4,
+    ChannelName.NOISE: 5,
 }
 """Each channel's table row: the master row, the divider beneath it, then the four channels."""
 
-LABEL_WIDGETS: Dict[Optional[GeneratorName], Sender] = {row: 300 + index for index, row in enumerate(ROW_LABELS)}
+LABEL_WIDGETS: Dict[Optional[ChannelName], Sender] = {row: 300 + index for index, row in enumerate(ROW_LABELS)}
 
 
-def _entry_widget(generator: GeneratorName, position: int) -> int:
-    return 2000 + 100 * GeneratorName.items().index(generator) + position
+def _entry_widget(channel: ChannelName, position: int) -> int:
+    return 2000 + 100 * ChannelName.items().index(channel) + position
 
 
 class _DearPyGuiRecorder:
@@ -131,7 +131,7 @@ class _MenuRecorder:
         self.callbacks[label]()
 
 
-def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerOrderPanel:
+def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerOrderPanel:
     """Builds a panel around the state the channel cues read, with no DearPyGui context.
 
     The cues touch the layout colours, the theme ids, the row labels, and the entry registry, so
@@ -159,9 +159,9 @@ def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerOrderPanel:
     panel._entry_theme = ENTRY_THEME
     panel._muted_entry_theme = MUTED_ENTRY_THEME
     panel._order = EditableCells()
-    for generator in GeneratorName.items():
+    for channel in ChannelName.items():
         for position in range(POSITION_COUNT):
-            panel._order.register((generator, position), _entry_widget(generator, position))
+            panel._order.register((channel, position), _entry_widget(channel, position))
 
     panel._create_channel_switch(LanguageManager(LANG_EN))
     return panel
@@ -197,7 +197,7 @@ def _hold(monkeypatch: pytest.MonkeyPatch, modifiers: ModifierSet) -> None:
     monkeypatch.setattr(channels_module, "capture_modifiers", lambda: modifiers)
 
 
-def _right_click(panel: GUISequencerOrderPanel, row: Optional[GeneratorName]) -> None:
+def _right_click(panel: GUISequencerOrderPanel, row: Optional[ChannelName]) -> None:
     panel._on_label_right_clicked(
         LABEL_WIDGET_ID,
         (order_module.dpg.mvMouseButton_Right, LABEL_WIDGETS[row]),
@@ -212,12 +212,12 @@ class TestRowLabelClickDispatch:
     ) -> None:
         panel = _panel(frozenset())
         _hold(monkeypatch, NO_MODIFIERS)
-        toggled: List[GeneratorName] = []
+        toggled: List[ChannelName] = []
         panel.on_channel_mute_toggled = toggled.append
 
-        panel._on_label_clicked(LABEL_WIDGET_ID, True, GeneratorName.TRIANGLE)
+        panel._on_label_clicked(LABEL_WIDGET_ID, True, ChannelName.TRIANGLE)
 
-        assert toggled == [GeneratorName.TRIANGLE]
+        assert toggled == [ChannelName.TRIANGLE]
 
     def test_ctrl_click_solos_the_clicked_channel(
         self,
@@ -226,13 +226,13 @@ class TestRowLabelClickDispatch:
     ) -> None:
         panel = _panel(frozenset())
         _hold(monkeypatch, CTRL)
-        soloed: List[GeneratorName] = []
+        soloed: List[ChannelName] = []
         panel.on_channel_soloed = soloed.append
         panel.on_channel_mute_toggled = lambda _: pytest.fail("Ctrl+click must not toggle")
 
-        panel._on_label_clicked(LABEL_WIDGET_ID, True, GeneratorName.NOISE)
+        panel._on_label_clicked(LABEL_WIDGET_ID, True, ChannelName.NOISE)
 
-        assert soloed == [GeneratorName.NOISE]
+        assert soloed == [ChannelName.NOISE]
 
     def test_master_label_switches_every_channel(
         self,
@@ -258,7 +258,7 @@ class TestRowLabelClickDispatch:
         self,
         recorder: _DearPyGuiRecorder,
         monkeypatch: pytest.MonkeyPatch,
-        row: Optional[GeneratorName],
+        row: Optional[ChannelName],
     ) -> None:
         panel = _panel(frozenset())
         _hold(monkeypatch, NO_MODIFIERS)
@@ -276,7 +276,7 @@ class TestRowWash:
 
         panel._apply_channel_cues()
 
-        assert recorder.row_tints[CHANNEL_TABLE_ROWS[GeneratorName.PULSE1]] == (
+        assert recorder.row_tints[CHANNEL_TABLE_ROWS[ChannelName.PULSE1]] == (
             240,
             146,
             86,
@@ -284,25 +284,23 @@ class TestRowWash:
         )
 
     def test_muted_channel_takes_the_neutral_wash(self, recorder: _DearPyGuiRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.PULSE1}))
+        panel = _panel(frozenset({ChannelName.PULSE1}))
 
         panel._apply_channel_cues()
 
-        assert recorder.row_tints[CHANNEL_TABLE_ROWS[GeneratorName.PULSE1]] == MUTED_BACKGROUND
+        assert recorder.row_tints[CHANNEL_TABLE_ROWS[ChannelName.PULSE1]] == MUTED_BACKGROUND
 
     def test_the_other_channels_keep_their_tint_while_one_is_muted(self, recorder: _DearPyGuiRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.TRIANGLE}))
+        panel = _panel(frozenset({ChannelName.TRIANGLE}))
 
         panel._apply_channel_cues()
 
-        washed = {
-            generator for generator, row in CHANNEL_TABLE_ROWS.items() if recorder.row_tints[row] == MUTED_BACKGROUND
-        }
-        assert washed == {GeneratorName.TRIANGLE}
+        washed = {channel for channel, row in CHANNEL_TABLE_ROWS.items() if recorder.row_tints[row] == MUTED_BACKGROUND}
+        assert washed == {ChannelName.TRIANGLE}
 
     def test_the_master_row_carries_no_channel_wash(self, recorder: _DearPyGuiRecorder) -> None:
         """The master row stands for every channel, so it takes its own shade instead of a tint."""
-        panel = _panel(frozenset(GeneratorName.items()))
+        panel = _panel(frozenset(ChannelName.items()))
 
         panel._apply_channel_cues()
 
@@ -310,31 +308,31 @@ class TestRowWash:
 
     def test_the_wash_matches_the_shade_the_tracker_column_takes(self, recorder: _DearPyGuiRecorder) -> None:
         """Both tables read the same colour, so a silenced channel looks the same in each."""
-        panel = _panel(frozenset({GeneratorName.NOISE}))
+        panel = _panel(frozenset({ChannelName.NOISE}))
 
-        assert panel._channel_row_tint(GeneratorName.NOISE) == MUTED_BACKGROUND
+        assert panel._channel_row_tint(ChannelName.NOISE) == MUTED_BACKGROUND
 
 
 class TestRowLabelShade:
     def test_muted_channel_label_takes_the_muted_shade(self, recorder: _DearPyGuiRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.PULSE2}))
+        panel = _panel(frozenset({ChannelName.PULSE2}))
 
         panel._apply_channel_cues()
 
-        assert recorder.bound_themes[LABEL_WIDGETS[GeneratorName.PULSE2]] == MUTED_LABEL_THEME
+        assert recorder.bound_themes[LABEL_WIDGETS[ChannelName.PULSE2]] == MUTED_LABEL_THEME
 
     def test_audible_channel_label_keeps_the_plain_shade(self, recorder: _DearPyGuiRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.PULSE2}))
+        panel = _panel(frozenset({ChannelName.PULSE2}))
 
         panel._apply_channel_cues()
 
-        assert recorder.bound_themes[LABEL_WIDGETS[GeneratorName.NOISE]] == LABEL_THEME
+        assert recorder.bound_themes[LABEL_WIDGETS[ChannelName.NOISE]] == LABEL_THEME
 
     def test_master_label_keeps_the_plain_shade_with_every_channel_muted(
         self,
         recorder: _DearPyGuiRecorder,
     ) -> None:
-        panel = _panel(frozenset(GeneratorName.items()))
+        panel = _panel(frozenset(ChannelName.items()))
 
         panel._apply_channel_cues()
 
@@ -343,33 +341,33 @@ class TestRowLabelShade:
 
 class TestEntryTextShade:
     def test_muted_channel_entries_take_the_dimmed_theme(self, recorder: _DearPyGuiRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.TRIANGLE}))
+        panel = _panel(frozenset({ChannelName.TRIANGLE}))
 
         panel._apply_channel_cues()
 
         bound = {
-            recorder.bound_themes[_entry_widget(GeneratorName.TRIANGLE, position)] for position in range(POSITION_COUNT)
+            recorder.bound_themes[_entry_widget(ChannelName.TRIANGLE, position)] for position in range(POSITION_COUNT)
         }
         assert bound == {MUTED_ENTRY_THEME}
 
     def test_audible_channel_entries_keep_the_full_theme(self, recorder: _DearPyGuiRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.TRIANGLE}))
+        panel = _panel(frozenset({ChannelName.TRIANGLE}))
 
         panel._apply_channel_cues()
 
         bound = {
-            recorder.bound_themes[_entry_widget(GeneratorName.PULSE1, position)] for position in range(POSITION_COUNT)
+            recorder.bound_themes[_entry_widget(ChannelName.PULSE1, position)] for position in range(POSITION_COUNT)
         }
         assert bound == {ENTRY_THEME}
 
     def test_unmuting_restores_the_full_theme(self, recorder: _DearPyGuiRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.NOISE}))
+        panel = _panel(frozenset({ChannelName.NOISE}))
         panel._apply_channel_cues()
 
         panel.update_channels(SequencerChannelsViewModel(muted=frozenset()))
 
         bound = {
-            recorder.bound_themes[_entry_widget(GeneratorName.NOISE, position)] for position in range(POSITION_COUNT)
+            recorder.bound_themes[_entry_widget(ChannelName.NOISE, position)] for position in range(POSITION_COUNT)
         }
         assert bound == {ENTRY_THEME}
 
@@ -378,9 +376,9 @@ class TestPushedModel:
     def test_the_pushed_model_is_kept_for_the_next_rebuild(self, recorder: _DearPyGuiRecorder) -> None:
         panel = _panel(frozenset())
 
-        panel.update_channels(SequencerChannelsViewModel(muted=frozenset({GeneratorName.PULSE1})))
+        panel.update_channels(SequencerChannelsViewModel(muted=frozenset({ChannelName.PULSE1})))
 
-        assert panel._is_muted(GeneratorName.PULSE1)
+        assert panel._is_muted(ChannelName.PULSE1)
 
     def test_a_panel_awaiting_its_first_model_reports_every_channel_audible(
         self,
@@ -389,16 +387,16 @@ class TestPushedModel:
         panel = _panel(frozenset())
         panel._current_channels = None
 
-        assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
+        assert not any(panel._is_muted(channel) for channel in ChannelName.items())
 
 
 class TestRowLabelRightClickRouting:
     def test_a_right_click_opens_the_menu_for_the_clicked_row(self, menu: _MenuRecorder) -> None:
         panel = _panel(frozenset())
 
-        _right_click(panel, GeneratorName.TRIANGLE)
+        _right_click(panel, ChannelName.TRIANGLE)
 
-        assert menu.titles == [ROW_LABELS[GeneratorName.TRIANGLE]]
+        assert menu.titles == [ROW_LABELS[ChannelName.TRIANGLE]]
 
     def test_the_master_label_opens_the_whole_mix_menu(self, menu: _MenuRecorder) -> None:
         panel = _panel(frozenset())
@@ -413,7 +411,7 @@ class TestRowLabelRightClickRouting:
 
         panel._on_label_right_clicked(
             LABEL_WIDGET_ID,
-            (order_module.dpg.mvMouseButton_Left, LABEL_WIDGETS[GeneratorName.NOISE]),
+            (order_module.dpg.mvMouseButton_Left, LABEL_WIDGETS[ChannelName.NOISE]),
         )
 
         assert menu.titles == []
@@ -441,14 +439,14 @@ class TestRowLabelMenuItems:
     def test_a_channel_menu_carries_its_own_gestures_and_the_whole_mix(self, menu: _MenuRecorder) -> None:
         panel = _panel(frozenset())
 
-        _right_click(panel, GeneratorName.PULSE1)
+        _right_click(panel, ChannelName.PULSE1)
 
         assert menu.labels == [LABEL_MUTE, LABEL_SOLO, LABEL_MUTE_ALL, LABEL_UNMUTE_ALL]
 
     def test_the_items_name_the_change_they_make(self, menu: _MenuRecorder) -> None:
-        panel = _panel(frozenset(GeneratorName.items()) - {GeneratorName.PULSE1})
+        panel = _panel(frozenset(ChannelName.items()) - {ChannelName.PULSE1})
 
-        _right_click(panel, GeneratorName.PULSE1)
+        _right_click(panel, ChannelName.PULSE1)
 
         assert menu.labels == [
             LABEL_MUTE,
@@ -458,9 +456,9 @@ class TestRowLabelMenuItems:
         ]
 
     def test_muting_everything_is_withheld_in_full_silence(self, menu: _MenuRecorder) -> None:
-        panel = _panel(frozenset(GeneratorName.items()))
+        panel = _panel(frozenset(ChannelName.items()))
 
-        _right_click(panel, GeneratorName.NOISE)
+        _right_click(panel, ChannelName.NOISE)
 
         assert not menu.is_enabled(LABEL_MUTE_ALL)
         assert menu.is_enabled(LABEL_UNMUTE_ALL)
@@ -468,33 +466,33 @@ class TestRowLabelMenuItems:
     def test_restoring_everything_is_withheld_in_the_full_mix(self, menu: _MenuRecorder) -> None:
         panel = _panel(frozenset())
 
-        _right_click(panel, GeneratorName.NOISE)
+        _right_click(panel, ChannelName.NOISE)
 
         assert menu.is_enabled(LABEL_MUTE_ALL)
         assert not menu.is_enabled(LABEL_UNMUTE_ALL)
 
     def test_the_mute_item_switches_the_clicked_channel(self, menu: _MenuRecorder) -> None:
         panel = _panel(frozenset())
-        toggled: List[GeneratorName] = []
+        toggled: List[ChannelName] = []
         panel.on_channel_mute_toggled = toggled.append
-        _right_click(panel, GeneratorName.PULSE2)
+        _right_click(panel, ChannelName.PULSE2)
 
         menu.click(LABEL_MUTE)
 
-        assert toggled == [GeneratorName.PULSE2]
+        assert toggled == [ChannelName.PULSE2]
 
     def test_the_solo_item_solos_the_clicked_channel(self, menu: _MenuRecorder) -> None:
         panel = _panel(frozenset())
-        soloed: List[GeneratorName] = []
+        soloed: List[ChannelName] = []
         panel.on_channel_soloed = soloed.append
-        _right_click(panel, GeneratorName.TRIANGLE)
+        _right_click(panel, ChannelName.TRIANGLE)
 
         menu.click(LABEL_SOLO)
 
-        assert soloed == [GeneratorName.TRIANGLE]
+        assert soloed == [ChannelName.TRIANGLE]
 
     def test_the_whole_mix_items_reach_their_own_hooks(self, menu: _MenuRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.NOISE}))
+        panel = _panel(frozenset({ChannelName.NOISE}))
         calls: List[str] = []
         panel.on_channels_muted = lambda: calls.append("muted")
         panel.on_channels_unmuted = lambda: calls.append("unmuted")

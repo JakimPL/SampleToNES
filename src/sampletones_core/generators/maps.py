@@ -1,8 +1,8 @@
 from typing import Dict, Final
 
 from sampletones_core.constants.enums import (
+    ChannelName,
     GeneratorClassName,
-    GeneratorName,
     LibraryGeneratorName,
 )
 from sampletones_core.constants.general import (
@@ -29,11 +29,11 @@ LIBRARY_GENERATOR_CLASS_MAP: Final[Dict[LibraryGeneratorName, GeneratorClassName
 }
 
 
-GENERATOR_CLASSES: Final[Dict[GeneratorName, GeneratorTypeUnion]] = {
-    GeneratorName.PULSE1: PulseGenerator,
-    GeneratorName.PULSE2: PulseGenerator,
-    GeneratorName.TRIANGLE: TriangleGenerator,
-    GeneratorName.NOISE: NoiseGenerator,
+CHANNEL_CLASSES: Final[Dict[ChannelName, GeneratorTypeUnion]] = {
+    ChannelName.PULSE1: PulseGenerator,
+    ChannelName.PULSE2: PulseGenerator,
+    ChannelName.TRIANGLE: TriangleGenerator,
+    ChannelName.NOISE: NoiseGenerator,
 }
 
 

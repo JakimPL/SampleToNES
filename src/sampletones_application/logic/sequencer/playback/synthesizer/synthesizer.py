@@ -6,7 +6,7 @@ import numpy as np
 from sampletones_application.logic.shared.project_source import ProjectSource
 from sampletones_core.audio import clip_audio_inplace, silence
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project import Project
@@ -64,7 +64,7 @@ class RowSynthesizer:
         project_source: ProjectSource,
         config: Config,
         *,
-        active_channels: Callable[[], FrozenSet[GeneratorName]],
+        active_channels: Callable[[], FrozenSet[ChannelName]],
         sample_rate: Callable[[], int],
     ) -> None:
         self._project_source = project_source
@@ -176,9 +176,9 @@ class RowSynthesizer:
         channels: ChannelBank,
     ) -> np.ndarray:
         mixed = silence(frames.total)
-        for generator_name in GeneratorName.items():
+        for channel_name in ChannelName.items():
             channel_audio = self._render_channel(
-                generator_name,
+                channel_name,
                 project,
                 song,
                 frames,
@@ -190,43 +190,43 @@ class RowSynthesizer:
 
     def _render_channel(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         project: Project,
         song: Song,
         frames: RowFrames,
         channels: ChannelBank,
     ) -> np.ndarray:
-        state = channels.state(generator_name)
+        state = channels.state(channel_name)
 
-        row = self._resolve_row(generator_name, song)
+        row = self._resolve_row(channel_name, song)
         if row is not None:
             self._apply_row_to_state(state, row)
 
         sample_id = state.sample_id
-        if sample_id is None or generator_name not in self._active_channels():
+        if sample_id is None or channel_name not in self._active_channels():
             return silence(frames.total)
 
         return self._synthesize_ticks(
             state,
             sample_id,
             project,
-            generator_name,
+            channel_name,
             frames,
         )
 
     def _resolve_row(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         song: Song,
     ) -> Optional[Row]:
         if self._position.order_position >= song.order_length():
             return None
 
-        order_entry = song.order[self._position.order_position].get(generator_name)
+        order_entry = song.order[self._position.order_position].get(channel_name)
         if order_entry is None:
             return None
 
-        pattern = song.pattern(generator_name, order_entry)
+        pattern = song.pattern(channel_name, order_entry)
         if pattern is None or self._position.row_index >= len(pattern.rows):
             return None
 
@@ -255,18 +255,18 @@ class RowSynthesizer:
         state: ChannelState,
         sample_id: str,
         project: Project,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         frames: RowFrames,
     ) -> np.ndarray:
         sample = project.sample(sample_id)
         if sample is None:
             return silence(frames.total)
 
-        instructions = sample.reconstruction.instructions[generator_name]
+        instructions = sample.reconstruction.instructions[channel_name]
         if not instructions:
             return silence(frames.total)
 
-        voice = SampleVoice.read(sample.reconstruction, generator_name)
+        voice = SampleVoice.read(sample.reconstruction, channel_name)
         output = silence(frames.total)
         silence_frame = silence(frames.longest)
 

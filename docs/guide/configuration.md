@@ -11,7 +11,7 @@ go deeper.
 The **Main** tab exposes the everyday settings (grouped under **General
 settings**, **Reconstructor settings**, and **Advanced settings**):
 
-- which **Generators** (channels) take part, and the **Drive** applied to them;
+- which **Channels** take part, and the **Drive** applied to them;
 - **Normalize audio** and **Quantize audio** preprocessing;
 - the **Sample rate** and **NES frequency**;
 - the **Generation method** and **Feature scaling**, which set how the audio's

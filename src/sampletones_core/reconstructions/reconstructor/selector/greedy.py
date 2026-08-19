@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import FragmentedAudio
 
 from ..approximation import ApproximationData
@@ -12,5 +12,5 @@ class GreedySelector(Selector):
         self,
         fragmented_audio: FragmentedAudio,
         fragment_ids: List[int],
-    ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
+    ) -> Dict[int, Dict[ChannelName, ApproximationData]]:
         return {fragment_id: self.reconstruct_fragment(fragmented_audio[fragment_id]) for fragment_id in fragment_ids}

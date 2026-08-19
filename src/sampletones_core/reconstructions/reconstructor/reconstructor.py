@@ -6,12 +6,12 @@ import numpy as np
 from sampletones_core.audio import active_frame_level, load_audio
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
     MIXER_LEVELS,
     GeneratorUnion,
-    get_generators_by_names,
+    get_generators_by_channels,
 )
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_shared.exceptions import NoLibraryDataError
@@ -29,9 +29,9 @@ def reconstruct(
     fragmented_audio: FragmentedAudio,
     config: Config,
     window: Window,
-    generators: Dict[GeneratorName, GeneratorUnion],
+    channels: Dict[ChannelName, GeneratorUnion],
     library_data: InstructionLibraryData,
-) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
+) -> Dict[int, Dict[ChannelName, ApproximationData]]:
     """Reconstructs the given fragments in a single worker pass.
 
     Args:
@@ -39,16 +39,16 @@ def reconstruct(
         fragmented_audio: The framed target audio.
         config: The reconstruction configuration.
         window: The analysis window.
-        generators: The generators to match against, by channel name.
+        channels: The channels to match against, each carrying its generator.
         library_data: The instruction library the candidates are drawn from.
 
     Returns:
-        For each fragment id, the chosen approximation per generator.
+        For each fragment id, the chosen approximation per channel.
     """
     worker = ReconstructorWorker(
         config=config,
         window=window,
-        generators=generators,
+        channels=channels,
         library_data=library_data,
         signal_length=fragmented_audio.audio.shape[0],
     )
@@ -77,7 +77,7 @@ class Reconstructor:
         """Builds a reconstructor for a configuration and loads its library.
 
         Args:
-            config: The reconstruction configuration selecting generators, window, and
+            config: The reconstruction configuration selecting channels, window, and
                 matching settings.
             library: The instruction library to match against; a default library rooted
                 at the configured directory is used when omitted.
@@ -88,8 +88,8 @@ class Reconstructor:
         self.config: Config = config
         self.state: ReconstructionState = ReconstructionState.create([])
 
-        generator_names = self.config.generation.generators
-        self.generators = get_generators_by_names(config, generator_names)
+        channel_names = self.config.generation.channels
+        self.channels = get_generators_by_channels(config, channel_names)
 
         self.window: Window = Window.from_config(self.config)
         self.library_data: InstructionLibraryData = self.load_library(library)
@@ -115,7 +115,7 @@ class Reconstructor:
         path = to_path(path)
         audio = self.load_audio(path)
         self.reset_generators()
-        self.state = ReconstructionState.create(list(self.generators.keys()))
+        self.state = ReconstructionState.create(list(self.channels.keys()))
         coefficient = self.get_coefficient(audio)
         fragmented_audio = self.get_fragments(audio / coefficient)
         self.reconstruct(fragmented_audio)
@@ -156,7 +156,7 @@ class Reconstructor:
         Returns:
             float: The positive scale factor the input is divided by before matching.
         """
-        total = sum(MIXER_LEVELS[generator.class_name()] for generator in self.generators.values())
+        total = sum(MIXER_LEVELS[generator.class_name()] for generator in self.channels.values())
         level = max(
             active_frame_level(
                 audio,
@@ -192,7 +192,7 @@ class Reconstructor:
         worker = ReconstructorWorker(
             config=self.config,
             window=self.window,
-            generators=self.generators,
+            channels=self.channels,
             library_data=self.library_data,
             signal_length=fragmented_audio.audio.shape[0],
         )
@@ -203,7 +203,7 @@ class Reconstructor:
                 self.update_state(fragment_approximation)
 
     def load_library(self, library: Optional[InstructionLibrary] = None) -> InstructionLibraryData:
-        """Loads and filters the instruction library for the enabled generators.
+        """Loads and filters the instruction library for the enabled channels.
 
         Args:
             library: The library to draw from; a default library rooted at the
@@ -211,7 +211,7 @@ class Reconstructor:
 
         Returns:
             InstructionLibraryData: The library data restricted to the enabled
-                generators' instruction types.
+                channels' instruction types.
 
         Raises:
             NoLibraryDataError: If no library exists for the configuration and window.
@@ -227,7 +227,7 @@ class Reconstructor:
         return InstructionLibraryData.create(
             config=self.config,
             data=library_data.filter(
-                tuple(generator.class_name() for generator in self.generators.values()),
+                tuple(generator.class_name() for generator in self.channels.values()),
             ),
         )
 
@@ -240,9 +240,9 @@ class Reconstructor:
 
         Args:
             fragment_approximation: The chosen approximation for one fragment and
-                generator.
+                channel.
         """
-        generator: GeneratorUnion = self.generators[fragment_approximation.generator_name]
+        generator: GeneratorUnion = self.channels[fragment_approximation.channel_name]
         if self.config.generation.final_regeneration:
             instruction = fragment_approximation.instruction
             initials = generator.initials
@@ -260,6 +260,6 @@ class Reconstructor:
         self.state.append(fragment_approximation, approximation)
 
     def reset_generators(self) -> None:
-        """Resets every generator so the next reconstruction starts fresh."""
-        for generator in self.generators.values():
+        """Resets every channel's generator so the next reconstruction starts fresh."""
+        for generator in self.channels.values():
             generator.reset()

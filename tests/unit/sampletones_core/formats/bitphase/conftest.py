@@ -2,7 +2,7 @@ from typing import Final, Optional, Sequence
 
 import numpy as np
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
 
@@ -17,7 +17,7 @@ def build_features(
     duty_cycle: Optional[Sequence[int]] = None,
     initial_pitch: int = REFERENCE_PITCH,
 ) -> Features:
-    """Builds the envelopes of one generator slice, flat in every dimension left out."""
+    """Builds the envelopes of one channel slice, flat in every dimension left out."""
     contour = np.zeros(len(volume), dtype=int) if arpeggio is None else np.array(arpeggio, dtype=int)
     return Features(
         initial_pitch=initial_pitch,
@@ -33,12 +33,12 @@ def build_instrument(
     name: str,
     features: Features,
     *,
-    generator: GeneratorName = GeneratorName.PULSE1,
+    channel: ChannelName = ChannelName.PULSE1,
     loop: bool = False,
 ) -> InstrumentExport:
     return InstrumentExport(
         name=name,
-        generator=generator,
+        channel=channel,
         features=features,
         loop=loop,
         nes_frequency=NES_FREQUENCY,

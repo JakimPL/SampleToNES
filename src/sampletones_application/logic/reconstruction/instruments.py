@@ -14,14 +14,14 @@ from sampletones_application.view_model.reconstruction.update import (
     ReconstructionUpdate,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.formats.famitracker.footprint import features_footprint
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 OnReconstructionInstrumentUpdatedCallback = Callable[
-    [GeneratorName, Features, FeatureKey, FeatureValue],
+    [ChannelName, Features, FeatureKey, FeatureValue],
     None,
 ]
 
@@ -39,13 +39,13 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
 
         self.on_view_changed: Optional[Callable[[ReconstructionInstrumentsViewModel], None]] = None
-        self.on_feature_data_changed: Optional[Callable[[Optional[Dict[GeneratorName, Features]]], None]] = None
+        self.on_feature_data_changed: Optional[Callable[[Optional[Dict[ChannelName, Features]]], None]] = None
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
 
     def update_display(self) -> None:
-        generators = self._current_generators()
-        self.call(self.on_view_changed, self._build_view_model(generators))
-        self.call(self.on_feature_data_changed, generators)
+        channels = self._current_generators()
+        self.call(self.on_view_changed, self._build_view_model(channels))
+        self.call(self.on_feature_data_changed, channels)
 
     def refresh_view(self) -> None:
         """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
@@ -56,33 +56,33 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         """
         self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
 
-    def _current_generators(self) -> Optional[Dict[GeneratorName, Features]]:
+    def _current_generators(self) -> Optional[Dict[ChannelName, Features]]:
         feature_data = self.reconstruction_manager.current_features
-        return None if feature_data is None else feature_data.generators
+        return None if feature_data is None else feature_data.channels
 
     def _build_view_model(
         self,
-        generators: Optional[Dict[GeneratorName, Features]],
+        channels: Optional[Dict[ChannelName, Features]],
     ) -> ReconstructionInstrumentsViewModel:
-        if generators is None:
+        if channels is None:
             return ReconstructionInstrumentsViewModel(
                 reconstruction_loaded=False,
-                playing_generators=frozenset(),
+                playing_channels=frozenset(),
                 footprint=None,
             )
 
-        playing_generators: FrozenSet[GeneratorName] = frozenset(
-            generator_name for generator_name, features in generators.items() if features.has_frames
+        playing_channels: FrozenSet[ChannelName] = frozenset(
+            channel_name for channel_name, features in channels.items() if features.has_frames
         )
         return ReconstructionInstrumentsViewModel(
             reconstruction_loaded=True,
-            playing_generators=playing_generators,
-            footprint=self._build_footprint(generators),
+            playing_channels=playing_channels,
+            footprint=self._build_footprint(channels),
         )
 
     def _build_footprint(
         self,
-        generators: Dict[GeneratorName, Features],
+        channels: Dict[ChannelName, Features],
     ) -> SampleFootprintViewModel:
         """Measures each playing channel's instrument as the size its own export writes.
 
@@ -93,20 +93,20 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         """
         return SampleFootprintViewModel.from_footprints(
             {
-                generator_name: features_footprint(features, loop=False)
-                for generator_name, features in generators.items()
+                channel_name: features_footprint(features, loop=False)
+                for channel_name, features in channels.items()
                 if features.has_frames
             }
         )
 
     def handle_pitch_value_changed(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         value: int,
     ) -> None:
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
-                generator_name,
+                channel_name,
                 FeatureKey.INITIAL_PITCH,
                 value,
             )
@@ -114,14 +114,14 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
     def handle_bar_point_clicked(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
-        self._report_edited_size(generator_name, feature_key, data)
+        self._report_edited_size(channel_name, feature_key, data)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
-                generator_name,
+                channel_name,
                 feature_key,
                 data,
             )
@@ -129,14 +129,14 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
     def handle_raw_data_changed(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
-        self._report_edited_size(generator_name, feature_key, data)
+        self._report_edited_size(channel_name, feature_key, data)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
-                generator_name,
+                channel_name,
                 feature_key,
                 data,
             )
@@ -144,7 +144,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
     def _report_edited_size(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
@@ -154,16 +154,16 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         while the reconstruction is still being rebuilt. The regenerated instruments report again
         once they land, so the figures settle on the exported form.
         """
-        generators = self._current_generators()
-        if generators is None:
+        channels = self._current_generators()
+        if channels is None:
             return
 
         self.call(
             self.on_view_changed,
             self._build_view_model(
                 self._with_edit(
-                    generators,
-                    generator_name,
+                    channels,
+                    channel_name,
                     feature_key,
                     data,
                 )
@@ -172,15 +172,15 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
     def _with_edit(
         self,
-        generators: Dict[GeneratorName, Features],
-        generator_name: GeneratorName,
+        channels: Dict[ChannelName, Features],
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
-    ) -> Dict[GeneratorName, Features]:
+    ) -> Dict[ChannelName, Features]:
         """The loaded channels with one envelope replaced, leaving the loaded ones as they are."""
-        edited = generators[generator_name].model_copy(deep=True)
+        edited = channels[channel_name].model_copy(deep=True)
         edited[feature_key] = data
-        return {**generators, generator_name: edited}
+        return {**channels, channel_name: edited}
 
     def _schedule_reconstruction_update(
         self,
@@ -204,18 +204,18 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         if self._pending_reconstruction_update is None:
             return
 
-        generator_name, feature_key, data = self._pending_reconstruction_update
+        channel_name, feature_key, data = self._pending_reconstruction_update
         self._pending_reconstruction_update = None
         self.call(
             self.on_reconstruction_instrument_updated,
-            generator_name,
-            self._get_features(generator_name),
+            channel_name,
+            self._get_features(channel_name),
             feature_key,
             data,
         )
 
-    def _get_features(self, generator_name: GeneratorName) -> Features:
+    def _get_features(self, channel_name: ChannelName) -> Features:
         current_features = self.reconstruction_manager.current_features
         assert current_features is not None, "Current features should not be None"
 
-        return current_features[generator_name]
+        return current_features[channel_name]

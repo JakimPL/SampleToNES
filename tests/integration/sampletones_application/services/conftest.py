@@ -6,7 +6,7 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MIN_PITCH
 from sampletones_core.exporters import Features, PulseExporter
 from sampletones_core.instructions import PulseInstruction
@@ -45,8 +45,8 @@ def minimal_reconstruction(default_config, pulse_instructions) -> Reconstruction
     length = 256
     return Reconstruction.create(
         approximation=np.zeros(length, dtype=np.float32),
-        approximations={GeneratorName.PULSE1: np.zeros(length, dtype=np.float32)},
-        instructions={GeneratorName.PULSE1: pulse_instructions},
+        approximations={ChannelName.PULSE1: np.zeros(length, dtype=np.float32)},
+        instructions={ChannelName.PULSE1: pulse_instructions},
         config=default_config,
         coefficient=1.0,
         audio_filepath=Path("/dev/null"),

@@ -22,7 +22,7 @@ from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
@@ -347,36 +347,36 @@ class TestChannelKeys:
     """
 
     @staticmethod
-    def _press(app: Application, generator: GeneratorName, tab: Tab) -> None:
+    def _press(app: Application, channel: ChannelName, tab: Tab) -> None:
         with patch.object(app._shell, "get_current_tab", return_value=tab):
-            _press_shortcut(app, CHANNEL_SHORTCUT_IDS[generator])
+            _press_shortcut(app, CHANNEL_SHORTCUT_IDS[channel])
 
     def test_the_main_tab_switches_the_generator_a_reconstruction_is_built_from(self, app: Application) -> None:
-        selected = frozenset(app.config_manager.config.generation.generators)
+        selected = frozenset(app.config_manager.config.generation.channels)
 
-        self._press(app, GeneratorName.TRIANGLE, Tab.MAIN)
+        self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
 
-        assert frozenset(app.config_manager.config.generation.generators) == selected ^ {GeneratorName.TRIANGLE}
+        assert frozenset(app.config_manager.config.generation.channels) == selected ^ {ChannelName.TRIANGLE}
 
     def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
-        self._press(app, GeneratorName.NOISE, Tab.SEQUENCER)
+        self._press(app, ChannelName.NOISE, Tab.SEQUENCER)
 
-        assert app._sequencer_tab.channels.is_muted(GeneratorName.NOISE)
+        assert app._sequencer_tab.channels.is_muted(ChannelName.NOISE)
 
     def test_a_second_press_returns_the_mix_it_started_from(self, app: Application) -> None:
-        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
-        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
+        self._press(app, ChannelName.PULSE1, Tab.SEQUENCER)
+        self._press(app, ChannelName.PULSE1, Tab.SEQUENCER)
 
         assert not app._sequencer_tab.channels.any_muted
 
     def test_the_reconstructions_tab_holding_nothing_leaves_the_mix_alone(self, app: Application) -> None:
         """With no reconstruction loaded every slice reads as unavailable, so the key rests there."""
-        self._press(app, GeneratorName.PULSE2, Tab.RECONSTRUCTIONS)
+        self._press(app, ChannelName.PULSE2, Tab.RECONSTRUCTIONS)
 
         assert not app._sequencer_tab.channels.any_muted
 
     def test_the_main_tab_leaves_the_sequencer_mix_alone(self, app: Application) -> None:
-        self._press(app, GeneratorName.PULSE1, Tab.MAIN)
+        self._press(app, ChannelName.PULSE1, Tab.MAIN)
 
         assert not app._sequencer_tab.channels.any_muted
 

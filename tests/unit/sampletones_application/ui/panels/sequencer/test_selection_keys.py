@@ -15,7 +15,7 @@ from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.view_model.sequencer.region import OrderRegion, TrackerRegion
 from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.shortcuts import shipped_source
 
 ROW_COUNT = 64
@@ -31,20 +31,20 @@ def _press(text: str) -> KeyEvent:
 
 
 def _tracker(
-    generator: Optional[GeneratorName] = GeneratorName.PULSE1,
+    channel: Optional[ChannelName] = ChannelName.PULSE1,
     subcolumn: SubColumn = SubColumn.INSTRUMENT,
 ) -> GUISequencerTrackerPanel:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._shortcuts = shipped_source()
-    panel._input_state = TrackerInputState(cursor=TrackerCursor(CURSOR_ROW, generator, subcolumn))
+    panel._input_state = TrackerInputState(cursor=TrackerCursor(CURSOR_ROW, channel, subcolumn))
     panel._current_row_count = ROW_COUNT
     return panel
 
 
-def _order(generator: Optional[GeneratorName] = GeneratorName.PULSE1) -> GUISequencerOrderPanel:
+def _order(channel: Optional[ChannelName] = ChannelName.PULSE1) -> GUISequencerOrderPanel:
     panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
     panel._shortcuts = shipped_source()
-    panel._input_state = OrderInputState(cursor=OrderCursor(generator, CURSOR_POSITION))
+    panel._input_state = OrderInputState(cursor=OrderCursor(channel, CURSOR_POSITION))
     panel._position_count = POSITION_COUNT
     return panel
 
@@ -101,8 +101,8 @@ class TestTrackerSelectionKeys:
         region = states[-1].region
         assert region is not None
         assert region.slots == (
-            TrackerSlot(GeneratorName.PULSE1, SubColumn.INSTRUMENT),
-            TrackerSlot(GeneratorName.PULSE1, SubColumn.TRANSPOSE),
+            TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            TrackerSlot(ChannelName.PULSE1, SubColumn.TRANSPOSE),
         )
 
     def test_shift_end_selects_to_the_last_row(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -153,7 +153,7 @@ class TestOrderSelectionKeys:
         assert panel._on_key_pressed(_press("Shift+Up")) is True
         region = states[-1].region
         assert region is not None
-        assert region.generators == (None, GeneratorName.PULSE1)
+        assert region.channels == (None, ChannelName.PULSE1)
 
     def test_shift_end_selects_to_the_last_position(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel = _order()
@@ -195,13 +195,13 @@ class TestTrackerSelectKeys:
         assert (region.first_slot, region.last_slot) == (0, SLOT_COUNT - 1)
 
     def test_ctrl_shift_a_selects_the_column_the_cursor_stands_in(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel = _tracker(generator=GeneratorName.TRIANGLE, subcolumn=SubColumn.VOLUME)
+        panel = _tracker(channel=ChannelName.TRIANGLE, subcolumn=SubColumn.VOLUME)
         states = _tracker_states(monkeypatch, panel)
 
         assert panel._on_key_pressed(_press("Ctrl+Shift+A")) is True
         region = states[-1].region
         assert region is not None
-        assert region.slots == tuple(TrackerSlot(GeneratorName.TRIANGLE, subcolumn) for subcolumn in SubColumn)
+        assert region.slots == tuple(TrackerSlot(ChannelName.TRIANGLE, subcolumn) for subcolumn in SubColumn)
 
     def test_ctrl_alt_a_selects_the_subcolumn_the_cursor_stands_in(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel = _tracker(subcolumn=SubColumn.VOLUME)
@@ -210,7 +210,7 @@ class TestTrackerSelectKeys:
         assert panel._on_key_pressed(_press("Ctrl+Alt+A")) is True
         region = states[-1].region
         assert region is not None
-        assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME),)
+        assert region.slots == (TrackerSlot(ChannelName.PULSE1, SubColumn.VOLUME),)
 
     def test_a_shape_stands_the_cursor_at_the_end_it_reaches(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A Shift+Up straight after shrinks the selection from the row the shape ended on."""
@@ -218,7 +218,7 @@ class TestTrackerSelectKeys:
         states = _tracker_states(monkeypatch, panel)
 
         assert panel._on_key_pressed(_press("Ctrl+A")) is True
-        assert states[-1].cursor == TrackerCursor(ROW_COUNT - 1, GeneratorName.NOISE, SubColumn.VOLUME)
+        assert states[-1].cursor == TrackerCursor(ROW_COUNT - 1, ChannelName.NOISE, SubColumn.VOLUME)
 
 
 class TestOrderSelectKeys:
@@ -231,17 +231,17 @@ class TestOrderSelectKeys:
         assert panel._on_key_pressed(_press("Ctrl+A")) is True
         region = states[-1].region
         assert region is not None
-        assert region.generators == CHANNEL_AXIS
+        assert region.channels == CHANNEL_AXIS
         assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)
 
     def test_ctrl_shift_a_selects_the_row_the_cursor_stands_in(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel = _order(generator=None)
+        panel = _order(channel=None)
         states = _order_states(monkeypatch, panel)
 
         assert panel._on_key_pressed(_press("Ctrl+Shift+A")) is True
         region = states[-1].region
         assert region is not None
-        assert region.generators == (None,)
+        assert region.channels == (None,)
         assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)
 
     def test_a_shape_stands_the_cursor_at_the_end_it_reaches(self, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -3,7 +3,7 @@ from typing import Optional
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 ROW_COUNT = 64
 
@@ -12,10 +12,10 @@ def _state(
     subcolumn: SubColumn,
     *,
     row: int = 0,
-    generator: Optional[GeneratorName] = GeneratorName.PULSE1,
+    channel: Optional[ChannelName] = ChannelName.PULSE1,
     pending: str = "",
 ) -> TrackerInputState:
-    return TrackerInputState(cursor=TrackerCursor(row, generator, subcolumn), pending=pending)
+    return TrackerInputState(cursor=TrackerCursor(row, channel, subcolumn), pending=pending)
 
 
 class TestNoteOffEntry:
@@ -24,7 +24,7 @@ class TestNoteOffEntry:
         assert action is not None
         assert action.note_off is True
         assert action.row == 0
-        assert action.generator == GeneratorName.PULSE1
+        assert action.channel == ChannelName.PULSE1
         assert state.pending == ""
 
     def test_plus_in_instrument_is_ignored(self) -> None:
@@ -67,22 +67,22 @@ class TestSelection:
         assert (region.first_row, region.last_row) == (4, 8)
 
     def test_extending_slots_reaches_across_the_column_boundary(self) -> None:
-        extended = _state(SubColumn.VOLUME, generator=None).extend_slot(1)
+        extended = _state(SubColumn.VOLUME, channel=None).extend_slot(1)
 
         region = extended.region
         assert region is not None
         assert (region.first_slot, region.last_slot) == (2, 3)
         assert extended.cursor is not None
-        assert extended.cursor.generator is GeneratorName.PULSE1
+        assert extended.cursor.channel is ChannelName.PULSE1
         assert extended.cursor.subcolumn is SubColumn.INSTRUMENT
 
     def test_extending_slots_stops_at_either_end_of_the_axis(self) -> None:
         """A selection covers a run of the grid, so its reach stops where plain navigation wraps."""
-        first = _state(SubColumn.INSTRUMENT, generator=None).extend_slot(-1)
-        last = _state(SubColumn.VOLUME, generator=GeneratorName.NOISE).extend_slot(1)
+        first = _state(SubColumn.INSTRUMENT, channel=None).extend_slot(-1)
+        last = _state(SubColumn.VOLUME, channel=ChannelName.NOISE).extend_slot(1)
 
         assert first.cursor == TrackerCursor(0, None, SubColumn.INSTRUMENT)
-        assert last.cursor == TrackerCursor(0, GeneratorName.NOISE, SubColumn.VOLUME)
+        assert last.cursor == TrackerCursor(0, ChannelName.NOISE, SubColumn.VOLUME)
 
     def test_a_plain_move_collapses_the_selection(self) -> None:
         moved = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT).navigate_row(1, ROW_COUNT)
@@ -137,16 +137,16 @@ class TestTargetRegion:
     """The region a block gesture acts on, which is the selection wherever one has been made."""
 
     def test_a_cell_of_a_grid_with_nothing_selected_is_raised_on_itself(self) -> None:
-        cell = TrackerCursor(4, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+        cell = TrackerCursor(4, ChannelName.PULSE1, SubColumn.TRANSPOSE)
 
         region = _state(SubColumn.TRANSPOSE, row=4).region_at(cell)
 
         assert (region.first_row, region.last_row) == (4, 4)
-        assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.TRANSPOSE),)
+        assert region.slots == (TrackerSlot(ChannelName.PULSE1, SubColumn.TRANSPOSE),)
 
     def test_a_cell_of_a_selection_is_raised_on_the_whole_of_it(self) -> None:
         selected = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT)
-        cell = TrackerCursor(5, GeneratorName.PULSE1, SubColumn.INSTRUMENT)
+        cell = TrackerCursor(5, ChannelName.PULSE1, SubColumn.INSTRUMENT)
 
         assert selected.region_at(cell) == selected.region
 
@@ -163,42 +163,42 @@ class TestSelectShapes:
         assert (region.first_slot, region.last_slot) == (0, SLOT_COUNT - 1)
 
     def test_selecting_a_column_reaches_the_cursor_s_channel_and_its_subcolumns(self) -> None:
-        cell = TrackerCursor(4, GeneratorName.TRIANGLE, SubColumn.TRANSPOSE)
+        cell = TrackerCursor(4, ChannelName.TRIANGLE, SubColumn.TRANSPOSE)
 
         selected = _state(SubColumn.TRANSPOSE, row=4).select_column(cell, ROW_COUNT)
 
         region = selected.region
         assert region is not None
         assert (region.first_row, region.last_row) == (0, ROW_COUNT - 1)
-        assert region.slots == tuple(TrackerSlot(GeneratorName.TRIANGLE, subcolumn) for subcolumn in SubColumn)
+        assert region.slots == tuple(TrackerSlot(ChannelName.TRIANGLE, subcolumn) for subcolumn in SubColumn)
 
     def test_the_sample_column_is_a_column_like_any_other(self) -> None:
         cell = TrackerCursor(4, None, SubColumn.VOLUME)
 
-        selected = _state(SubColumn.VOLUME, row=4, generator=None).select_column(cell, ROW_COUNT)
+        selected = _state(SubColumn.VOLUME, row=4, channel=None).select_column(cell, ROW_COUNT)
 
         region = selected.region
         assert region is not None
         assert region.columns == (None,)
 
     def test_selecting_a_subcolumn_reaches_the_one_slot_the_cursor_stands_on(self) -> None:
-        cell = TrackerCursor(4, GeneratorName.NOISE, SubColumn.VOLUME)
+        cell = TrackerCursor(4, ChannelName.NOISE, SubColumn.VOLUME)
 
-        selected = _state(SubColumn.VOLUME, row=4, generator=GeneratorName.NOISE).select_subcolumn(cell, ROW_COUNT)
+        selected = _state(SubColumn.VOLUME, row=4, channel=ChannelName.NOISE).select_subcolumn(cell, ROW_COUNT)
 
         region = selected.region
         assert region is not None
         assert (region.first_row, region.last_row) == (0, ROW_COUNT - 1)
-        assert region.slots == (TrackerSlot(GeneratorName.NOISE, SubColumn.VOLUME),)
+        assert region.slots == (TrackerSlot(ChannelName.NOISE, SubColumn.VOLUME),)
 
     def test_a_shape_stands_the_cursor_on_the_last_row_it_reaches(self) -> None:
         """A shape ends where the next Shift+arrow starts, which is the far corner it covers."""
-        cell = TrackerCursor(4, GeneratorName.PULSE1, SubColumn.INSTRUMENT)
+        cell = TrackerCursor(4, ChannelName.PULSE1, SubColumn.INSTRUMENT)
 
         selected = _state(SubColumn.INSTRUMENT, row=4).select_column(cell, ROW_COUNT)
 
-        assert selected.cursor == TrackerCursor(ROW_COUNT - 1, GeneratorName.PULSE1, SubColumn.VOLUME)
-        assert selected.anchor == TrackerCursor(0, GeneratorName.PULSE1, SubColumn.INSTRUMENT)
+        assert selected.cursor == TrackerCursor(ROW_COUNT - 1, ChannelName.PULSE1, SubColumn.VOLUME)
+        assert selected.anchor == TrackerCursor(0, ChannelName.PULSE1, SubColumn.INSTRUMENT)
 
     def test_a_frame_holding_no_rows_selects_nothing(self) -> None:
         state = _state(SubColumn.INSTRUMENT)
@@ -208,20 +208,20 @@ class TestSelectShapes:
 
 class TestColumnNavigation:
     def test_tab_preserves_subcolumn(self) -> None:
-        state = _state(SubColumn.VOLUME, generator=GeneratorName.PULSE1)
+        state = _state(SubColumn.VOLUME, channel=ChannelName.PULSE1)
         moved = state.navigate_column_by(1)
         assert moved.cursor is not None
-        assert moved.cursor.generator != GeneratorName.PULSE1
+        assert moved.cursor.channel != ChannelName.PULSE1
         assert moved.cursor.subcolumn is SubColumn.VOLUME
 
     def test_shift_tab_preserves_subcolumn(self) -> None:
-        state = _state(SubColumn.TRANSPOSE, generator=GeneratorName.PULSE1)
+        state = _state(SubColumn.TRANSPOSE, channel=ChannelName.PULSE1)
         moved = state.navigate_column_by(-1)
         assert moved.cursor is not None
         assert moved.cursor.subcolumn is SubColumn.TRANSPOSE
 
     def test_tab_preserves_row(self) -> None:
-        state = _state(SubColumn.VOLUME, row=5, generator=GeneratorName.PULSE1)
+        state = _state(SubColumn.VOLUME, row=5, channel=ChannelName.PULSE1)
         moved = state.navigate_column_by(1)
         assert moved.cursor is not None
         assert moved.cursor.row == 5

@@ -14,7 +14,7 @@ from sampletones_application.view_model.sequencer.slot import (
     slot_from_flat,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 class TestTrackerRegion:
@@ -22,7 +22,7 @@ class TestTrackerRegion:
         region = TrackerRegion(first_row=3, last_row=3, first_slot=4, last_slot=4)
 
         assert tuple(region.rows) == (3,)
-        assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.TRANSPOSE),)
+        assert region.slots == (TrackerSlot(ChannelName.PULSE1, SubColumn.TRANSPOSE),)
 
     def test_the_slots_read_as_the_columns_and_subcolumns_they_address(self) -> None:
         """A region's edges are subcolumns, so a run reaches across a column boundary mid-cell."""
@@ -30,7 +30,7 @@ class TestTrackerRegion:
 
         assert region.slots == (
             TrackerSlot(None, SubColumn.VOLUME),
-            TrackerSlot(GeneratorName.PULSE1, SubColumn.INSTRUMENT),
+            TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
         )
 
     def test_a_region_spans_the_whole_axis(self) -> None:
@@ -61,13 +61,13 @@ class TestOrderRegion:
     def test_a_single_cell_region_covers_that_cell(self) -> None:
         region = OrderRegion(first_row=0, last_row=0, first_position=2, last_position=2)
 
-        assert region.generators == (None,)
+        assert region.channels == (None,)
         assert tuple(region.positions) == (2,)
 
     def test_the_rows_read_as_the_channels_they_address(self) -> None:
         region = OrderRegion(first_row=0, last_row=2, first_position=0, last_position=0)
 
-        assert region.generators == (None, GeneratorName.PULSE1, GeneratorName.PULSE2)
+        assert region.channels == (None, ChannelName.PULSE1, ChannelName.PULSE2)
 
     def test_a_region_spans_the_whole_channel_axis(self) -> None:
         region = OrderRegion(
@@ -77,7 +77,7 @@ class TestOrderRegion:
             last_position=7,
         )
 
-        assert region.generators == CHANNEL_AXIS
+        assert region.channels == CHANNEL_AXIS
         assert tuple(region.positions) == tuple(range(8))
 
     def test_inverted_positions_are_rejected(self) -> None:
@@ -141,34 +141,34 @@ class TestOrderRegionMembership:
         return OrderRegion(first_row=1, last_row=2, first_position=3, last_position=6)
 
     @pytest.mark.parametrize(
-        ("generator", "position"),
+        ("channel", "position"),
         [
-            (GeneratorName.PULSE1, 3),
-            (GeneratorName.PULSE2, 6),
-            (GeneratorName.PULSE1, 5),
+            (ChannelName.PULSE1, 3),
+            (ChannelName.PULSE2, 6),
+            (ChannelName.PULSE1, 5),
         ],
     )
     def test_a_cell_inside_the_rectangle_belongs_to_it(
         self,
         region: OrderRegion,
-        generator: GeneratorName,
+        channel: ChannelName,
         position: int,
     ) -> None:
-        assert region.covers(generator, position) is True
+        assert region.covers(channel, position) is True
 
     @pytest.mark.parametrize(
-        ("generator", "position"),
+        ("channel", "position"),
         [
             (None, 5),
-            (GeneratorName.TRIANGLE, 5),
-            (GeneratorName.PULSE1, 2),
-            (GeneratorName.PULSE1, 7),
+            (ChannelName.TRIANGLE, 5),
+            (ChannelName.PULSE1, 2),
+            (ChannelName.PULSE1, 7),
         ],
     )
     def test_a_cell_outside_the_rectangle_stands_on_its_own(
         self,
         region: OrderRegion,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         position: int,
     ) -> None:
-        assert region.covers(generator, position) is False
+        assert region.covers(channel, position) is False

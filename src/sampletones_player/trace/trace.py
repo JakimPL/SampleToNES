@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Final, List, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_player.song import Song
 from sampletones_player.specification.channels import CHANNEL_REGISTER_ADDRESSES
 from sampletones_player.specification.registers import (
@@ -59,7 +59,7 @@ class RegisterTrace:
         shadows: Dict[int, int],
     ) -> Tuple[RegisterWrite, ...]:
         writes: List[RegisterWrite] = []
-        for channel, registers in zip(GeneratorName.items(), song.streams.at(tick)):
+        for channel, registers in zip(ChannelName.items(), song.streams.at(tick)):
             for address, value in zip(CHANNEL_REGISTER_ADDRESSES[channel], registers.values):
                 if address in REGISTERS_WRITTEN_ON_CHANGE:
                     if shadows.get(address) == value:

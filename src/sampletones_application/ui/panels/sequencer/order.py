@@ -93,21 +93,21 @@ from sampletones_application.view_model.sequencer.order import (
     SequencerOrderTrackerViewModel,
 )
 from sampletones_application.view_model.sequencer.region import OrderCell, OrderRegion
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
 
-OrderKey = Tuple[Optional[GeneratorName], int]
+OrderKey = Tuple[Optional[ChannelName], int]
 
 OnFrameSelectedCallback = Callable[[int], None]
 OnRemoveCallback = Callable[[int], None]
 OnFrameActionCallback = Callable[[int], None]
 OnMoveCallback = Callable[[int, int], None]
-OnSetOrderEntryCallback = Callable[[GeneratorName, int, Optional[int]], None]
+OnSetOrderEntryCallback = Callable[[ChannelName, int, Optional[int]], None]
 OnSetMasterEntryCallback = Callable[[int, Optional[int]], None]
-OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
-OnChannelSoloedCallback = Callable[[GeneratorName], None]
+OnChannelMuteToggledCallback = Callable[[ChannelName], None]
+OnChannelSoloedCallback = Callable[[ChannelName], None]
 OnBlockRegionCallback = Callable[[OrderRegion], None]
 OnPasteBlockCallback = Callable[[OrderCell], None]
 CanPasteBlockQuery = Callable[[], bool]
@@ -174,7 +174,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._cell_handler_tag = compose_tag(TAG_SEQUENCER_ORDER_TABLE, SUF_HANDLER_REGISTRY)
         self._label_handler_tag = compose_tag(TAG_SEQUENCER_ORDER_TABLE, SUF_HANDLER_HEADER)
         self._drag_handler_tag = compose_tag(TAG_SEQUENCER_ORDER_TABLE, SUF_HANDLER_DRAG)
-        self._label_rows: Dict[Sender, Optional[GeneratorName]] = {}
+        self._label_rows: Dict[Sender, Optional[ChannelName]] = {}
         self._entry_theme: int = 0
         self._muted_entry_theme: int = 0
         self._label_theme: int = 0
@@ -238,12 +238,12 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _load_row_labels(self, language_manager: LanguageManager) -> None:
         """Reads the name each row carries, which its label and its menu title show."""
-        self._row_labels: Dict[Optional[GeneratorName], str] = {
+        self._row_labels: Dict[Optional[ChannelName], str] = {
             None: self._label(language_manager, SequencerOrderElements.ROW_MASTER),
-            GeneratorName.PULSE1: self._label(language_manager, SequencerOrderElements.ROW_PULSE_1),
-            GeneratorName.PULSE2: self._label(language_manager, SequencerOrderElements.ROW_PULSE_2),
-            GeneratorName.TRIANGLE: self._label(language_manager, SequencerOrderElements.ROW_TRIANGLE),
-            GeneratorName.NOISE: self._label(language_manager, SequencerOrderElements.ROW_NOISE),
+            ChannelName.PULSE1: self._label(language_manager, SequencerOrderElements.ROW_PULSE_1),
+            ChannelName.PULSE2: self._label(language_manager, SequencerOrderElements.ROW_PULSE_2),
+            ChannelName.TRIANGLE: self._label(language_manager, SequencerOrderElements.ROW_TRIANGLE),
+            ChannelName.NOISE: self._label(language_manager, SequencerOrderElements.ROW_NOISE),
         }
 
     def _load_context_labels(self, language_manager: LanguageManager) -> None:
@@ -288,8 +288,8 @@ class GUISequencerOrderPanel(GUIPanel):
         )
         self._channel_switch = ChannelSwitch(
             labels=labels,
-            on_mute_toggled=lambda generator: self.call(self.on_channel_mute_toggled, generator),
-            on_soloed=lambda generator: self.call(self.on_channel_soloed, generator),
+            on_mute_toggled=lambda channel: self.call(self.on_channel_mute_toggled, channel),
+            on_soloed=lambda channel: self.call(self.on_channel_soloed, channel),
             on_toggled=lambda: self.call(self.on_channels_toggled),
             on_muted=lambda: self.call(self.on_channels_muted),
             on_unmuted=lambda: self.call(self.on_channels_unmuted),
@@ -405,7 +405,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 return
 
             new_state = OrderInputState(
-                cursor=OrderCursor(cursor.generator, frame),
+                cursor=OrderCursor(cursor.channel, frame),
             )
             if 0 <= frame < self._position_count:
                 self._apply_state(new_state, notify=False)
@@ -463,26 +463,26 @@ class GUISequencerOrderPanel(GUIPanel):
 
         self._tint_channel_rows()
         self._bind_label_themes()
-        for generator in GeneratorName.items():
-            self._bind_channel_entry_themes(generator)
+        for channel in ChannelName.items():
+            self._bind_channel_entry_themes(channel)
 
     def _bind_label_themes(self) -> None:
-        for label, generator in self._label_rows.items():
-            muted = generator is not None and self._is_muted(generator)
+        for label, channel in self._label_rows.items():
+            muted = channel is not None and self._is_muted(channel)
             dpg.bind_item_theme(
                 label,
                 self._muted_label_theme if muted else self._label_theme,
             )
 
-    def _bind_channel_entry_themes(self, generator: GeneratorName) -> None:
-        theme = self._muted_entry_theme if self._is_muted(generator) else self._entry_theme
+    def _bind_channel_entry_themes(self, channel: ChannelName) -> None:
+        theme = self._muted_entry_theme if self._is_muted(channel) else self._entry_theme
         for position in range(self._position_count):
-            widget = self._order.widget((generator, position))
+            widget = self._order.widget((channel, position))
             if widget is not None:
                 dpg.bind_item_theme(widget, theme)
 
-    def _is_muted(self, generator: GeneratorName) -> bool:
-        return self._current_channels is not None and self._current_channels.is_muted(generator)
+    def _is_muted(self, channel: ChannelName) -> bool:
+        return self._current_channels is not None and self._current_channels.is_muted(channel)
 
     def _compute_cell_values(
         self,
@@ -491,9 +491,9 @@ class GUISequencerOrderPanel(GUIPanel):
         cell_values: Dict[OrderKey, str] = {}
         for position in range(view_model.position_count):
             cell_values[(None, position)] = view_model.master_label(position)
-            for generator in GeneratorName.items():
-                cell_values[(generator, position)] = view_model.entry_label(
-                    generator,
+            for channel in ChannelName.items():
+                cell_values[(channel, position)] = view_model.entry_label(
+                    channel,
                     position,
                 )
 
@@ -546,7 +546,7 @@ class GUISequencerOrderPanel(GUIPanel):
             label="",
             parent=TAG_SEQUENCER_ORDER_TABLE,
             width_fixed=True,
-            init_width_or_weight=self._layout.table_cells.generator,
+            init_width_or_weight=self._layout.table_cells.channel,
         )
         for position in range(position_count):
             dpg.add_table_column(
@@ -557,9 +557,9 @@ class GUISequencerOrderPanel(GUIPanel):
             )
 
         self._label_rows = {}
-        for generator in CHANNEL_AXIS:
-            self._build_row(generator, position_count)
-            if generator is None:
+        for channel in CHANNEL_AXIS:
+            self._build_row(channel, position_count)
+            if channel is None:
                 self._build_divider_row(position_count)
 
         self._apply_column_backgrounds()
@@ -636,20 +636,20 @@ class GUISequencerOrderPanel(GUIPanel):
         tint, sharing the fraction. A silenced channel trades that identity for a
         neutral dark shade, so its row recedes as a whole.
         """
-        for generator in GeneratorName.items():
+        for channel in ChannelName.items():
             dpg.highlight_table_row(
                 TAG_SEQUENCER_ORDER_TABLE,
-                self._table_row(generator),
-                self._channel_row_tint(generator),
+                self._table_row(channel),
+                self._channel_row_tint(channel),
             )
 
-    def _channel_row_tint(self, generator: GeneratorName) -> ColorRGBA:
-        if self._is_muted(generator):
+    def _channel_row_tint(self, channel: ChannelName) -> ColorRGBA:
+        if self._is_muted(channel):
             return self._layout.colors.muted.background.rgba
 
-        channel = channel_color(self._layout.colors.channels, generator)
+        tint_color = channel_color(self._layout.colors.channels, channel)
         return FadedColor(
-            color=channel,
+            color=tint_color,
             fraction=self._layout.tracker.channel_column_tint,
         ).rgba
 
@@ -685,15 +685,15 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _build_row(
         self,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         position_count: int,
     ) -> None:
-        font = Font.MONO_BOLD_SMALL if generator is None else Font.MONO_SMALL
+        font = Font.MONO_BOLD_SMALL if channel is None else Font.MONO_SMALL
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_ORDER_TABLE)
-        self._add_row_label(row_id, generator)
+        self._add_row_label(row_id, channel)
         for position in range(position_count):
             cell = dpg.add_table_cell(parent=row_id)
-            key: OrderKey = (generator, position)
+            key: OrderKey = (channel, position)
             selectable = dpg.add_selectable(
                 parent=cell,
                 label=self._render_cell(key),
@@ -708,7 +708,7 @@ class GUISequencerOrderPanel(GUIPanel):
     def _add_row_label(
         self,
         row_id: Sender,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
         """Places one clickable row label: a channel's mute target, or the master target.
 
@@ -719,17 +719,17 @@ class GUISequencerOrderPanel(GUIPanel):
         label_cell = dpg.add_table_cell(parent=row_id)
         label = dpg.add_selectable(
             parent=label_cell,
-            label=self._row_labels[generator],
-            user_data=generator,
+            label=self._row_labels[channel],
+            user_data=channel,
             callback=self._on_label_clicked,
         )
         FontRegistry.bind_to_item(label, Font.MONO_BOLD_SMALL)
         dpg.bind_item_handler_registry(label, self._label_handler_tag)
         show_tooltip(
             label,
-            self._tooltip_label_master if generator is None else self._tooltip_label_channel,
+            self._tooltip_label_master if channel is None else self._tooltip_label_channel,
         )
-        self._label_rows[label] = generator
+        self._label_rows[label] = channel
 
     def _build_divider_row(self, position_count: int) -> None:
         """Inserts the thin rule that sets the master row apart from the channel
@@ -747,7 +747,7 @@ class GUISequencerOrderPanel(GUIPanel):
     def _render_cell(self, key: OrderKey) -> str:
         cursor = self._input_state.cursor
         stored = self._order.values.get(key, _EMPTY_LABEL)
-        if cursor is not None and (cursor.generator, cursor.position) == key:
+        if cursor is not None and (cursor.channel, cursor.position) == key:
             return pending_label(
                 self._input_state.pending,
                 stored,
@@ -756,15 +756,15 @@ class GUISequencerOrderPanel(GUIPanel):
 
         return stored
 
-    def _table_row(self, generator: Optional[GeneratorName]) -> int:
-        if generator is None:
+    def _table_row(self, channel: Optional[ChannelName]) -> int:
+        if channel is None:
             return MASTER_TABLE_ROW
-        return CHANNEL_AXIS.index(generator) + 1
+        return CHANNEL_AXIS.index(channel) + 1
 
     def _apply_cursor_highlight(self, cursor: OrderCursor) -> None:
         dpg.highlight_table_cell(
             TAG_SEQUENCER_ORDER_TABLE,
-            self._table_row(cursor.generator),
+            self._table_row(cursor.channel),
             cursor.position + 1,
             color=self._layout.colors.cell_cursor.rgba,
         )
@@ -777,10 +777,10 @@ class GUISequencerOrderPanel(GUIPanel):
             return frozenset()
 
         keys: Set[OrderKey] = set()
-        for generator in region.generators:
+        for channel in region.channels:
             for position in region.positions:
                 if position < self._position_count:
-                    keys.add((generator, position))
+                    keys.add((channel, position))
 
         return frozenset(keys)
 
@@ -790,12 +790,12 @@ class GUISequencerOrderPanel(GUIPanel):
 
         cursor = self._highlighted
         self._highlighted = None
-        if cursor.generator is None:
+        if cursor.channel is None:
             self._highlight_master_cell_at(cursor.position + 1)
         else:
             dpg.unhighlight_table_cell(
                 TAG_SEQUENCER_ORDER_TABLE,
-                self._table_row(cursor.generator),
+                self._table_row(cursor.channel),
                 cursor.position + 1,
             )
 
@@ -813,7 +813,7 @@ class GUISequencerOrderPanel(GUIPanel):
             return
 
         position = min(cursor.position, self._position_count - 1)
-        clamped = OrderCursor(cursor.generator, position)
+        clamped = OrderCursor(cursor.channel, position)
         self._input_state = OrderInputState(cursor=clamped)
         self._apply_cursor_highlight(clamped)
         self._apply_column_highlight(clamped.position, focused=True)
@@ -855,7 +855,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._refresh_remove_enabled()
 
     def _update_cell_display(self, cursor: OrderCursor) -> None:
-        key: OrderKey = (cursor.generator, cursor.position)
+        key: OrderKey = (cursor.channel, cursor.position)
         widget = self._order.widget(key)
         if widget is not None:
             dpg.configure_item(widget, label=self._render_cell(key))
@@ -867,8 +867,8 @@ class GUISequencerOrderPanel(GUIPanel):
             CaretOverlay.clear(TAG_SEQUENCER_ORDER_TABLE)
             return
 
-        key: OrderKey = (cursor.generator, cursor.position)
-        font = Font.MONO_BOLD_SMALL if cursor.generator is None else Font.MONO_SMALL
+        key: OrderKey = (cursor.channel, cursor.position)
+        font = Font.MONO_BOLD_SMALL if cursor.channel is None else Font.MONO_SMALL
         CaretOverlay.set_target(
             owner=TAG_SEQUENCER_ORDER_TABLE,
             widget=self._order.widget(key),
@@ -892,8 +892,8 @@ class GUISequencerOrderPanel(GUIPanel):
             return
 
         state = self._committed_state()
-        generator, position = user_data
-        cursor = OrderCursor(generator, position)
+        channel, position = user_data
+        cursor = OrderCursor(channel, position)
         if Modifier.SHIFT in capture_modifiers():
             self._apply_state(state.extend_to(cursor))
             return
@@ -960,21 +960,21 @@ class GUISequencerOrderPanel(GUIPanel):
 
         return (self._generator_at(top), position)
 
-    def _generator_at(self, top: float) -> Optional[GeneratorName]:
+    def _generator_at(self, top: float) -> Optional[ChannelName]:
         """Which channel row stands at a height, the master row reading ``None``.
 
         The master row stands apart from the channels beneath it, so the walk asks each row where
         it was drawn and takes the first one reaching past the pointer.
         """
-        for generator in CHANNEL_AXIS:
-            widget = self._order.widget((generator, 0))
+        for channel in CHANNEL_AXIS:
+            widget = self._order.widget((channel, 0))
             if widget is None:
                 continue
 
             _, row_top = dpg.get_item_rect_min(widget)
             _, row_height = dpg.get_item_rect_size(widget)
             if top < row_top + row_height:
-                return generator
+                return channel
 
         return CHANNEL_AXIS[-1]
 
@@ -1022,14 +1022,14 @@ class GUISequencerOrderPanel(GUIPanel):
         if key is None:
             return
 
-        generator, position = key
-        self._show_context_menu(generator, position)
+        channel, position = key
+        self._show_context_menu(channel, position)
 
     def _on_label_clicked(
         self,
         sender: Sender,
         _app_data: bool,
-        user_data: Optional[GeneratorName],
+        user_data: Optional[ChannelName],
     ) -> None:
         self._channel_switch.click(sender, user_data)
 
@@ -1052,28 +1052,28 @@ class GUISequencerOrderPanel(GUIPanel):
 
         self._show_channel_menu(self._label_rows[clicked_item])
 
-    def _show_channel_menu(self, generator: Optional[GeneratorName]) -> None:
+    def _show_channel_menu(self, channel: Optional[ChannelName]) -> None:
         """Opens the menu behind a row label, titled with the row's own name."""
         with context_menu():
-            header = dpg.add_text(self._row_labels[generator])
+            header = dpg.add_text(self._row_labels[channel])
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
             self._channel_switch.add_menu_items(
-                generator,
+                channel,
                 self._current_channels,
             )
 
     def _show_context_menu(
         self,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         position: int,
     ) -> None:
-        target = self._surface.target_at(OrderCursor(generator, position))
+        target = self._surface.target_at(OrderCursor(channel, position))
         with context_menu():
             header = dpg.add_text(
                 cell_title(
                     position,
-                    self._row_labels[generator],
+                    self._row_labels[channel],
                 )
             )
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
@@ -1511,12 +1511,12 @@ class GUISequencerOrderPanel(GUIPanel):
         if cursor is None:
             return
 
-        if cursor.generator is None:
+        if cursor.channel is None:
             self.call(self.on_set_master_entry, cursor.position, index)
         else:
             self.call(
                 self.on_set_order_entry,
-                cursor.generator,
+                cursor.channel,
                 cursor.position,
                 index,
             )

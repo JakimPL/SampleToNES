@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Self
 
 from pydantic import ConfigDict, Field
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.data.metadata import Metadata
 from sampletones_shared.paths.user import CONFIG_PATH
@@ -111,8 +111,8 @@ class Config(DataModel):
         return self.generation.drive
 
     @property
-    def generators(self) -> List[GeneratorName]:
-        return self.generation.generators.copy()
+    def channels(self) -> List[ChannelName]:
+        return self.generation.channels.copy()
 
     @property
     def normalize(self) -> bool:

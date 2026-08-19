@@ -6,7 +6,7 @@ from sampletones_application.ui.panels.sequencer.input.order import (
     OrderInputState,
 )
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 POSITION_COUNT = 4
 
@@ -55,7 +55,7 @@ class TestRemovableFrame:
     """The frame ``[-]`` acts on: the cursor's frame, else the followed tracker frame."""
 
     def test_cursor_frame_wins(self) -> None:
-        fixture = _panel(cursor=OrderCursor(GeneratorName.PULSE1, 2), current_position=0)
+        fixture = _panel(cursor=OrderCursor(ChannelName.PULSE1, 2), current_position=0)
 
         assert fixture.panel._get_removable_position() == 2
 
@@ -104,7 +104,7 @@ class TestRemoveButtonState:
 
 class TestRemoveClick:
     def test_click_removes_the_selected_frame(self) -> None:
-        fixture = _panel(cursor=OrderCursor(GeneratorName.NOISE, 3))
+        fixture = _panel(cursor=OrderCursor(ChannelName.NOISE, 3))
         fixture.panel._on_remove_clicked()
 
         assert fixture.removed == [3]

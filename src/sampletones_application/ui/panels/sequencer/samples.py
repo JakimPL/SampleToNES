@@ -47,7 +47,7 @@ from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback
@@ -583,12 +583,12 @@ class GUISequencerSamplesPanel(GUIPanel):
             return []
 
         items = [(self._lbl_sample_size, self._format_size(footprint.total_bytes))]
-        for generator_name in GeneratorName.items():
-            instrument_bytes = footprint.bytes_for(generator_name)
+        for channel_name in ChannelName.items():
+            instrument_bytes = footprint.bytes_for(channel_name)
             if instrument_bytes is not None:
                 items.append(
                     (
-                        channel_label(self._language_manager, generator_name),
+                        channel_label(self._language_manager, channel_name),
                         self._format_size(instrument_bytes),
                     )
                 )

@@ -134,7 +134,7 @@ class ConverterLogic(CallbackMixin):
             logger.warning("A conversion or library generation is already in progress")
             return
 
-        if not self._config_manager.config.generation.generators:
+        if not self._config_manager.config.generation.channels:
             self.call(self.on_no_generators)
             return
 

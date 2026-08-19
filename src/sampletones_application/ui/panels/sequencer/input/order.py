@@ -6,7 +6,7 @@ from typing import Final, Optional, Tuple
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.panels.sequencer.input.state import GridInputState
 from sampletones_application.view_model.sequencer.region import OrderRegion
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.constants.general import HEXADECIMAL_BASE
 
 INDEX_DIGITS: Final[int] = 2
@@ -14,7 +14,7 @@ INDEX_DIGITS: Final[int] = 2
 
 @dataclass(frozen=True)
 class OrderCursor:
-    generator: Optional[GeneratorName]
+    channel: Optional[ChannelName]
     position: int
 
 
@@ -39,8 +39,8 @@ class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
         first: OrderCursor,
         second: OrderCursor,
     ) -> OrderRegion:
-        first_row = CHANNEL_AXIS.index(first.generator)
-        second_row = CHANNEL_AXIS.index(second.generator)
+        first_row = CHANNEL_AXIS.index(first.channel)
+        second_row = CHANNEL_AXIS.index(second.channel)
         return OrderRegion(
             first_row=min(first_row, second_row),
             last_row=max(first_row, second_row),
@@ -49,7 +49,7 @@ class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
         )
 
     def _covers(self, region: OrderRegion, cell: OrderCursor) -> bool:
-        return region.covers(cell.generator, cell.position)
+        return region.covers(cell.channel, cell.position)
 
     def select_all(self, position_count: int) -> OrderInputState:
         """Selects the whole order: every channel row, across every position it holds."""
@@ -65,12 +65,12 @@ class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
         The master row is an ordinary member of the axis here, so selecting it selects a row the
         way selecting a channel does.
         """
-        return self._select_rows(cell.generator, cell.generator, position_count)
+        return self._select_rows(cell.channel, cell.channel, position_count)
 
     def _select_rows(
         self,
-        first_generator: Optional[GeneratorName],
-        last_generator: Optional[GeneratorName],
+        first_generator: Optional[ChannelName],
+        last_generator: Optional[ChannelName],
         position_count: int,
     ) -> OrderInputState:
         """Selects a run of rows across the whole order, the cursor landing on its far corner."""
@@ -94,7 +94,7 @@ class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
 
         new_position = value if absolute else self.cursor.position + value
         new_position = max(0, min(new_position, position_count - 1))
-        return self.extend_to(OrderCursor(self.cursor.generator, new_position))
+        return self.extend_to(OrderCursor(self.cursor.channel, new_position))
 
     def extend_channel(self, value: int) -> OrderInputState:
         """Carries the selection's moving end across the channel axis, stopping at either end.
@@ -105,7 +105,7 @@ class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
         if self.cursor is None:
             return self
 
-        current = CHANNEL_AXIS.index(self.cursor.generator)
+        current = CHANNEL_AXIS.index(self.cursor.channel)
         row = max(0, min(current + value, len(CHANNEL_AXIS) - 1))
         return self.extend_to(OrderCursor(CHANNEL_AXIS[row], self.cursor.position))
 
@@ -121,7 +121,7 @@ class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
         new_position = value if absolute else self.cursor.position + value
         new_position = max(0, min(new_position, position_count - 1))
         return OrderInputState(
-            cursor=OrderCursor(self.cursor.generator, new_position),
+            cursor=OrderCursor(self.cursor.channel, new_position),
             pending="",
         )
 
@@ -129,7 +129,7 @@ class OrderInputState(GridInputState[OrderCursor, OrderRegion]):
         if self.cursor is None:
             return self
 
-        current = CHANNEL_AXIS.index(self.cursor.generator)
+        current = CHANNEL_AXIS.index(self.cursor.channel)
         new_generator = CHANNEL_AXIS[(current + value) % len(CHANNEL_AXIS)]
         return OrderInputState(
             cursor=OrderCursor(new_generator, self.cursor.position),

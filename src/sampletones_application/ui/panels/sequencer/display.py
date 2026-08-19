@@ -4,10 +4,10 @@ from sampletones_application.ui.elements.table.cells import pending_label
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import SequencerCellViewModel
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
 
-CellKey = Tuple[int, Optional[GeneratorName], SubColumn]
+CellKey = Tuple[int, Optional[ChannelName], SubColumn]
 CellValues = Dict[CellKey, str]
 
 CELL_TITLE_SEPARATOR: Final[str] = " | "
@@ -57,18 +57,16 @@ def format_committed(subcolumn: SubColumn, value: Optional[int]) -> str:
 
 def subcolumn_label(
     row: int,
-    generator: Optional[GeneratorName],
+    channel: Optional[ChannelName],
     subcolumn: SubColumn,
     *,
     cursor: Optional[TrackerCursor],
     pending: str,
     cell_values: CellValues,
 ) -> str:
-    is_active = (
-        cursor is not None and cursor.row == row and cursor.generator == generator and cursor.subcolumn == subcolumn
-    )
+    is_active = cursor is not None and cursor.row == row and cursor.channel == channel and cursor.subcolumn == subcolumn
     stored = cell_values.get(
-        (row, generator, subcolumn),
+        (row, channel, subcolumn),
         _DEFAULT_LABELS[subcolumn],
     )
     if is_active:

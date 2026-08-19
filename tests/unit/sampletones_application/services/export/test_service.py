@@ -9,7 +9,7 @@ from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.project.project import Project
@@ -89,7 +89,7 @@ class StubBackend:
 def build_instrument(name: str = "Lead") -> InstrumentExport:
     return InstrumentExport(
         name=name,
-        generator=GeneratorName.PULSE1,
+        channel=ChannelName.PULSE1,
         features=Features(
             initial_pitch=60,
             volume=np.full(8, 15, dtype=int),

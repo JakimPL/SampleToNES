@@ -64,8 +64,10 @@ untouched.
 - `compatibility/update.py` — `VersionUpdate`, one named version step.
 - `compatibility/upgrade.py` — the engine: `upgrade`, `upgrade_binary`,
   `upgrade_json`, and the per-format registries `CURRENT_VERSIONS` and `UPDATES`.
-- `compatibility/<format>/__init__.py` — that format's `UPDATES` tuple, empty
-  until the format's first shape change.
+- `compatibility/<format>/__init__.py` — that format's `UPDATES` tuple. The
+  reconstruction chain currently holds the 2.1→2.2 step
+  (`compatibility/reconstruction/v2_2.py`), the project chain the 1.0→1.1 step
+  (`compatibility/project/v1_1.py`), and the library chain is empty.
 
 ### Version fields
 

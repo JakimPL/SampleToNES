@@ -9,7 +9,7 @@ from sampletones_application.coordinators.reconstruction import ReconstructionCo
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.regeneration import RegeneratedInstrument
 from sampletones_application.services.result import ServiceSuccess
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import (
     InvalidMetadataError,
@@ -144,7 +144,7 @@ class TestRegenerationApplyOrdering:
         regenerated = reconstruction_factory()
         outcome = RegeneratedInstrument(
             reconstruction=regenerated,
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
             feature_key=FeatureKey.VOLUME,
         )
 

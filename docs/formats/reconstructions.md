@@ -64,8 +64,16 @@ reconstruction stays self-contained and a saved project stays portable.
 
 Each file records the reconstruction data-version it was written with. On load,
 _SampleToNES_ requires that version to match the one it supports and declines a
-file written by an incompatible version rather than misreading it. The
-application version is stored alongside it, for reference.
+file written by an incompatible version rather than misreading it. A file
+written at a version the upgrade chain reaches is migrated in memory to the
+current shape before deserialization (see
+[Data compatibility](../development/compatibility.md)); the application version
+is stored alongside the data version, for reference.
+
+The current data version is 2.2. Version 2.2 renamed the per-channel stream and
+approximation keys from `generator_name` to `channel_name` and the channel
+selection under the embedded config from `generators` to `channels`; the enum
+values stored inside (`pulse1`, `pulse2`, `triangle`, `noise`) never changed.
 
 ## Storage and export
 

@@ -6,7 +6,7 @@ import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project import ProjectContainer
 from sampletones_core.project.instruments.instrument import Instrument
@@ -87,19 +87,19 @@ class TestSamples:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         song = controller.project.song
-        pattern_id = song.order[0][GeneratorName.PULSE1]
+        pattern_id = song.order[0][ChannelName.PULSE1]
         controller.set_row(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(sample_id=sample.id, channel_name=ChannelName.PULSE1),
             volume=15,
         )
 
         controller.remove_sample(sample.id)
 
         assert controller.project.sample(sample.id) is None
-        assert song.pattern(GeneratorName.PULSE1, pattern_id).rows[0].command is None
+        assert song.pattern(ChannelName.PULSE1, pattern_id).rows[0].command is None
 
     def test_is_sample_used_reflects_pattern_references(
         self,
@@ -107,17 +107,17 @@ class TestSamples:
     ) -> None:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        pattern_id = controller.project.song.order[0][GeneratorName.PULSE1]
+        pattern_id = controller.project.song.order[0][ChannelName.PULSE1]
 
         assert controller.is_sample_used(sample.id) is False
 
         controller.set_row(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             pattern_id,
             0,
             command=Instrument(
                 sample_id=sample.id,
-                generator_name=GeneratorName.PULSE1,
+                channel_name=ChannelName.PULSE1,
             ),
         )
 
@@ -149,20 +149,20 @@ class TestSamples:
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         controller.add_sample(reconstruction_factory(), name="pad")
         song = controller.project.song
-        pattern_id = song.order[0][GeneratorName.PULSE1]
+        pattern_id = song.order[0][ChannelName.PULSE1]
         controller.set_row(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             pattern_id,
             0,
             command=Instrument(
                 sample_id=sample.id,
-                generator_name=GeneratorName.PULSE1,
+                channel_name=ChannelName.PULSE1,
             ),
         )
 
         controller.move_sample(sample.id, 1)
 
-        row = song.pattern(GeneratorName.PULSE1, pattern_id).rows[0]
+        row = song.pattern(ChannelName.PULSE1, pattern_id).rows[0]
         assert row.command is not None
         assert row.command.sample_id == sample.id
 
@@ -245,14 +245,14 @@ class TestSamples:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         song = controller.project.song
-        pattern_id = song.order[0][GeneratorName.PULSE1]
+        pattern_id = song.order[0][ChannelName.PULSE1]
         controller.set_row(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             pattern_id,
             0,
             command=Instrument(
                 sample_id=sample.id,
-                generator_name=GeneratorName.PULSE1,
+                channel_name=ChannelName.PULSE1,
             ),
         )
 
@@ -261,7 +261,7 @@ class TestSamples:
             reconstruction_factory(),
         )
 
-        row = song.pattern(GeneratorName.PULSE1, pattern_id).rows[0]
+        row = song.pattern(ChannelName.PULSE1, pattern_id).rows[0]
         assert row.command is not None
         assert row.command.sample_id == sample.id
 
@@ -292,21 +292,21 @@ class TestSong:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         song = controller.project.song
-        pattern_id = song.order[0][GeneratorName.PULSE1]
+        pattern_id = song.order[0][ChannelName.PULSE1]
 
         controller.set_row(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             pattern_id,
             2,
             command=Instrument(
                 sample_id=sample.id,
-                generator_name=GeneratorName.PULSE1,
+                channel_name=ChannelName.PULSE1,
             ),
             transpose=0,
             volume=10,
         )
 
-        row = song.pattern(GeneratorName.PULSE1, pattern_id).rows[2]
+        row = song.pattern(ChannelName.PULSE1, pattern_id).rows[2]
         assert row.command is not None
         assert row.command.sample_id == sample.id
         assert row.transpose == 0
@@ -316,28 +316,28 @@ class TestSong:
         controller = _controller()
         song = controller.project.song
 
-        pattern_index = controller.add_pattern(GeneratorName.TRIANGLE)
+        pattern_index = controller.add_pattern(ChannelName.TRIANGLE)
         controller.append_frame()
-        controller.set_order_entry(GeneratorName.TRIANGLE, 1, pattern_index)
-        assert song.order[1][GeneratorName.TRIANGLE] == pattern_index
-        assert song.pattern(GeneratorName.TRIANGLE, pattern_index) is not None
+        controller.set_order_entry(ChannelName.TRIANGLE, 1, pattern_index)
+        assert song.order[1][ChannelName.TRIANGLE] == pattern_index
+        assert song.pattern(ChannelName.TRIANGLE, pattern_index) is not None
 
-        controller.remove_pattern(GeneratorName.TRIANGLE, pattern_index)
-        assert song.pattern(GeneratorName.TRIANGLE, pattern_index) is None
-        assert song.order[1][GeneratorName.TRIANGLE] is None
+        controller.remove_pattern(ChannelName.TRIANGLE, pattern_index)
+        assert song.pattern(ChannelName.TRIANGLE, pattern_index) is None
+        assert song.order[1][ChannelName.TRIANGLE] is None
 
     def test_move_frame_swaps_order_positions(self) -> None:
         controller = _controller()
         song = controller.project.song
-        first_index = song.order[0][GeneratorName.PULSE2]
-        second_index = controller.add_pattern(GeneratorName.PULSE2)
+        first_index = song.order[0][ChannelName.PULSE2]
+        second_index = controller.add_pattern(ChannelName.PULSE2)
         controller.append_frame()
-        controller.set_order_entry(GeneratorName.PULSE2, 1, second_index)
+        controller.set_order_entry(ChannelName.PULSE2, 1, second_index)
 
         controller.move_frame(0, 1)
 
-        assert song.order[0][GeneratorName.PULSE2] == second_index
-        assert song.order[1][GeneratorName.PULSE2] == first_index
+        assert song.order[0][ChannelName.PULSE2] == second_index
+        assert song.order[1][ChannelName.PULSE2] == first_index
 
 
 class TestPersistenceRoundTrip:
@@ -349,14 +349,14 @@ class TestPersistenceRoundTrip:
         controller.set_tempo(96)
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         song = controller.project.song
-        pattern_id = song.order[0][GeneratorName.PULSE1]
+        pattern_id = song.order[0][ChannelName.PULSE1]
         controller.set_row(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             pattern_id,
             0,
             command=Instrument(
                 sample_id=sample.id,
-                generator_name=GeneratorName.PULSE1,
+                channel_name=ChannelName.PULSE1,
             ),
             volume=12,
         )
@@ -368,7 +368,7 @@ class TestPersistenceRoundTrip:
         assert loaded.info.title == "Round"
         assert loaded.settings.tempo == 96
         assert [stored.name for stored in loaded.samples] == ["lead"]
-        loaded_row = loaded.song.pattern(GeneratorName.PULSE1, pattern_id).rows[0]
+        loaded_row = loaded.song.pattern(ChannelName.PULSE1, pattern_id).rows[0]
         assert loaded_row.command is not None
         assert loaded_row.command.sample_id == sample.id
         assert loaded_row.volume == 12
@@ -517,18 +517,18 @@ class TestSampleLoop:
 class TestPatternManagement:
     def test_add_pattern_returns_int_index(self) -> None:
         controller = _controller()
-        index = controller.add_pattern(GeneratorName.PULSE1)
+        index = controller.add_pattern(ChannelName.PULSE1)
         assert isinstance(index, int)
 
     def test_clone_pattern_creates_independent_copy(self) -> None:
         controller = _controller()
-        original_index = controller.add_pattern(GeneratorName.TRIANGLE)
+        original_index = controller.add_pattern(ChannelName.TRIANGLE)
         clone_index = controller.clone_pattern(
-            GeneratorName.TRIANGLE,
+            ChannelName.TRIANGLE,
             original_index,
         )
         assert clone_index != original_index
-        assert controller.song.pattern(GeneratorName.TRIANGLE, clone_index) is not None
+        assert controller.song.pattern(ChannelName.TRIANGLE, clone_index) is not None
 
 
 class TestFrameManagement:
@@ -544,7 +544,7 @@ class TestExistingRow:
     def test_update_row_on_nonexistent_pattern_is_no_op(self) -> None:
         controller = _controller()
         controller.update_row(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             999,
             0,
         )
@@ -575,8 +575,8 @@ class TestLiveLinkedReconstruction:
                 duty_cycle=1,
             )
         ]
-        reconstruction.update_generator_data(
-            GeneratorName.PULSE1,
+        reconstruction.update_channel_data(
+            ChannelName.PULSE1,
             new_instructions,
             np.zeros(64, dtype=np.float32),
             72,
@@ -584,7 +584,7 @@ class TestLiveLinkedReconstruction:
         )
 
         stored = controller.project.sample(sample.id).reconstruction
-        assert stored.get_generator_instructions(GeneratorName.PULSE1) == new_instructions
+        assert stored.get_channel_instructions(ChannelName.PULSE1) == new_instructions
 
 
 class TestBatch:
@@ -592,12 +592,12 @@ class TestBatch:
         controller = _controller()
         emitted: List[str] = []
         controller.on_song_changed = lambda: emitted.append("song")
-        pattern_index = controller.song.order[0][GeneratorName.PULSE1]
+        pattern_index = controller.song.order[0][ChannelName.PULSE1]
 
         with controller.batch():
             for row_index in range(8):
                 controller.set_row(
-                    GeneratorName.PULSE1,
+                    ChannelName.PULSE1,
                     pattern_index,
                     row_index,
                     volume=15,

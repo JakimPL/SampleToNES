@@ -4,11 +4,11 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
 from sampletones_core.fft.fragment.audio import FragmentedAudio
-from sampletones_core.generators import GeneratorUnion, get_generators_by_names
+from sampletones_core.generators import GeneratorUnion, get_generators_by_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
@@ -33,18 +33,18 @@ def extractor(config: Config, window: Window) -> FeatureExtractor:
 
 
 @pytest.fixture(scope="module")
-def generators(config: Config) -> Dict[GeneratorName, GeneratorUnion]:
-    return get_generators_by_names(config, config.generation.generators)
+def channels(config: Config) -> Dict[ChannelName, GeneratorUnion]:
+    return get_generators_by_channels(config, config.generation.channels)
 
 
 @pytest.fixture(scope="module")
 def library_data(
     config: Config,
     extractor: FeatureExtractor,
-    generators: Dict[GeneratorName, GeneratorUnion],
+    channels: Dict[ChannelName, GeneratorUnion],
 ) -> InstructionLibraryData:
     data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {}
-    for generator in generators.values():
+    for generator in channels.values():
         for instruction in list(generator.get_possible_instructions())[:INSTRUCTIONS_PER_GENERATOR_IN_TEST_LIBRARY]:
             data[instruction] = InstructionLibraryFragment.create(generator, instruction, extractor)
 
@@ -55,13 +55,13 @@ def library_data(
 def worker(
     config: Config,
     window: Window,
-    generators: Dict[GeneratorName, GeneratorUnion],
+    channels: Dict[ChannelName, GeneratorUnion],
     library_data: InstructionLibraryData,
 ) -> ReconstructorWorker:
     return ReconstructorWorker(
         config=config,
         window=window,
-        generators=generators,
+        channels=channels,
         library_data=library_data,
         signal_length=WORKER_SIGNAL_LENGTH,
     )

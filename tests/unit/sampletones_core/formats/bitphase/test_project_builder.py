@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
 from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
@@ -61,9 +61,9 @@ GROOVE_TICKS: Final[Tuple[int, ...]] = (5, 4, 4, 4, 5, 4, 4, 4)
 
 
 def build_reconstruction(
-    instructions: Mapping[GeneratorName, Sequence[Instruction]],
+    instructions: Mapping[ChannelName, Sequence[Instruction]],
 ) -> Reconstruction:
-    approximations = {generator: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for generator in instructions}
+    approximations = {channel: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for channel in instructions}
     return Reconstruction.create(
         approximation=np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32),
         approximations=approximations,
@@ -78,7 +78,7 @@ def pulse_sample(name: str, pitch: int) -> Sample:
     instructions = [PulseInstruction(on=True, pitch=pitch, volume=15, duty_cycle=0)]
     return Sample(
         name=name,
-        reconstruction=build_reconstruction({GeneratorName.PULSE1: instructions}),
+        reconstruction=build_reconstruction({ChannelName.PULSE1: instructions}),
     )
 
 
@@ -86,7 +86,7 @@ def triangle_sample(name: str, pitch: int) -> Sample:
     instructions = [TriangleInstruction(on=True, pitch=pitch)]
     return Sample(
         name=name,
-        reconstruction=build_reconstruction({GeneratorName.TRIANGLE: instructions}),
+        reconstruction=build_reconstruction({ChannelName.TRIANGLE: instructions}),
     )
 
 
@@ -108,32 +108,32 @@ def source_fixture(lead: Sample, bass: Sample) -> Project:
 
     pulse_rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
     pulse_rows[TRIGGER_ROW] = Row(
-        command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE1),
+        command=Instrument(sample_id=lead.id, channel_name=ChannelName.PULSE1),
         transpose=0,
         volume=ROW_VOLUME,
     )
     pulse_rows[NOTE_OFF_ROW] = Row(command=NoteOff())
     pulse_rows[TRANSPOSED_ROW] = Row(
-        command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE1),
+        command=Instrument(sample_id=lead.id, channel_name=ChannelName.PULSE1),
         transpose=TRANSPOSE,
     )
     pulse_rows[SILENCED_ROW] = Row(volume=SILENT_VOLUME)
 
     triangle_rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
     triangle_rows[TRIGGER_ROW] = Row(
-        command=Instrument(sample_id=bass.id, generator_name=GeneratorName.TRIANGLE),
+        command=Instrument(sample_id=bass.id, channel_name=ChannelName.TRIANGLE),
         transpose=0,
     )
 
     channels = {
-        GeneratorName.PULSE1: Channel(generator=GeneratorName.PULSE1, patterns={0: Pattern(rows=pulse_rows)}),
-        GeneratorName.PULSE2: Channel(generator=GeneratorName.PULSE2, patterns={}),
-        GeneratorName.TRIANGLE: Channel(generator=GeneratorName.TRIANGLE, patterns={0: Pattern(rows=triangle_rows)}),
-        GeneratorName.NOISE: Channel(generator=GeneratorName.NOISE, patterns={}),
+        ChannelName.PULSE1: Channel(name=ChannelName.PULSE1, patterns={0: Pattern(rows=pulse_rows)}),
+        ChannelName.PULSE2: Channel(name=ChannelName.PULSE2, patterns={}),
+        ChannelName.TRIANGLE: Channel(name=ChannelName.TRIANGLE, patterns={0: Pattern(rows=triangle_rows)}),
+        ChannelName.NOISE: Channel(name=ChannelName.NOISE, patterns={}),
     }
-    order: List[Dict[GeneratorName, Optional[int]]] = [
-        {GeneratorName.PULSE1: 0, GeneratorName.TRIANGLE: 0},
-        {GeneratorName.PULSE1: None, GeneratorName.TRIANGLE: 0},
+    order: List[Dict[ChannelName, Optional[int]]] = [
+        {ChannelName.PULSE1: 0, ChannelName.TRIANGLE: 0},
+        {ChannelName.PULSE1: None, ChannelName.TRIANGLE: 0},
     ]
 
     project = Project.create(title="Demo", author="Tester", settings=ProjectSettings())
@@ -318,12 +318,12 @@ class TestTheTempoBecomesAGroove:
 class TestAnUnbuildableRow:
     def test_a_row_naming_a_slice_with_no_instrument_is_refused(self, source: Project, lead: Sample) -> None:
         rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
-        rows[TRIGGER_ROW] = Row(command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE2))
-        source.song.channels[GeneratorName.PULSE2] = Channel(
-            generator=GeneratorName.PULSE2,
+        rows[TRIGGER_ROW] = Row(command=Instrument(sample_id=lead.id, channel_name=ChannelName.PULSE2))
+        source.song.channels[ChannelName.PULSE2] = Channel(
+            name=ChannelName.PULSE2,
             patterns={0: Pattern(rows=rows)},
         )
-        source.song.order[0][GeneratorName.PULSE2] = 0
+        source.song.order[0][ChannelName.PULSE2] = 0
 
         with pytest.raises(ValueError, match="has no instrument"):
             project_to_bitphase(source)

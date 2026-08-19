@@ -4,7 +4,7 @@ from typing import Final, Optional, Sequence
 import numpy as np
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.formats.famitracker.builder import build_instrument
 from sampletones_core.formats.famitracker.footprint import (
@@ -40,7 +40,7 @@ def build_features(
     arpeggio: Sequence[int],
     duty_cycle: Optional[Sequence[int]],
 ) -> Features:
-    """Builds the envelopes of one generator slice, leaving the pitch dimensions unused."""
+    """Builds the envelopes of one channel slice, leaving the pitch dimensions unused."""
     return Features(
         initial_pitch=REFERENCE_PITCH,
         volume=np.array(volume, dtype=int),
@@ -162,14 +162,14 @@ class TestReconstructionFootprints:
         """The sample holds every channel; the two that play are the two an export writes."""
         sample = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
         footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loop)
-        assert set(footprints) == {GeneratorName.PULSE1, GeneratorName.TRIANGLE}
+        assert set(footprints) == {ChannelName.PULSE1, ChannelName.TRIANGLE}
 
     def test_a_triangle_slice_carries_one_sequence_less_than_a_pulse_slice(self) -> None:
         """Triangle exports volume and arpeggio; pulse adds duty, hence one more pointer."""
         sample = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
         footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loop)
-        pulse = footprints[GeneratorName.PULSE1]
-        triangle = footprints[GeneratorName.TRIANGLE]
+        pulse = footprints[ChannelName.PULSE1]
+        triangle = footprints[ChannelName.TRIANGLE]
         assert pulse.instrument_bytes - triangle.instrument_bytes == SEQUENCE_POINTER_BYTES
 
     def test_each_channel_is_measured_under_the_given_loop_flag(self) -> None:
@@ -177,8 +177,8 @@ class TestReconstructionFootprints:
         features = sample.reconstruction.export()
         for loop in (False, True):
             assert reconstruction_footprints(sample.reconstruction, loop=loop) == {
-                generator_name: features_footprint(feature, loop=loop)
-                for generator_name, feature in features.items()
+                channel_name: features_footprint(feature, loop=loop)
+                for channel_name, feature in features.items()
                 if feature.has_frames
             }
 

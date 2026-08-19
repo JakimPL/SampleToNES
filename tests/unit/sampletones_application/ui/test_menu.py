@@ -26,7 +26,7 @@ from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 CHANNEL_NAMES = ["Pulse 1", "Pulse 2", "Triangle", "Noise"]
 UNMUTE_ALL = "Unmute all channels"
@@ -117,7 +117,7 @@ class _DearPyGuiRecorder:
 
 
 def _state(
-    muted: FrozenSet[GeneratorName],
+    muted: FrozenSet[ChannelName],
     *,
     reconstruction_loaded: bool = False,
     follow_mode: FollowMode = FollowMode.OFF,
@@ -175,7 +175,7 @@ def shortcuts(framework: _DearPyGuiRecorder) -> _ShortcutManagerRecorder:
 
 
 @pytest.fixture
-def switched() -> List[GeneratorName]:
+def switched() -> List[ChannelName]:
     """The channels the bar asks the sequencer to switch, in the order it asks."""
     return []
 
@@ -183,7 +183,7 @@ def switched() -> List[GeneratorName]:
 @pytest.fixture
 def menu_bar(
     shortcuts: _ShortcutManagerRecorder,
-    switched: List[GeneratorName],
+    switched: List[ChannelName],
 ) -> MenuBar:
     """A bar with the collaborators its submenus read, from the real language file."""
     instance = MenuBar.__new__(MenuBar)
@@ -328,7 +328,7 @@ class TestChannelsMenuItems:
         menu_bar: MenuBar,
         shortcuts: _ShortcutManagerRecorder,
         framework: _DearPyGuiRecorder,
-        switched: List[GeneratorName],
+        switched: List[ChannelName],
     ) -> None:
         """The check beside an item names the sequencer's mix, so the item switches that mix
         wherever the reader stands, while the key printed beside it reads the tab in front."""
@@ -348,7 +348,7 @@ class TestChannelsMenuItems:
         menu_bar._create_channels_menu(_state(frozenset()))
 
         tags = [item["tag"] for item in shortcuts.items[:-1]]
-        assert tags == [MenuBar._channel_menu_item_tag(generator) for generator in CHANNEL_SHORTCUT_IDS]
+        assert tags == [MenuBar._channel_menu_item_tag(channel) for channel in CHANNEL_SHORTCUT_IDS]
 
     def test_a_channel_is_checked_while_it_sounds(
         self,
@@ -356,7 +356,7 @@ class TestChannelsMenuItems:
         shortcuts: _ShortcutManagerRecorder,
         framework: _DearPyGuiRecorder,
     ) -> None:
-        menu_bar._create_channels_menu(_state(frozenset({GeneratorName.TRIANGLE})))
+        menu_bar._create_channels_menu(_state(frozenset({ChannelName.TRIANGLE})))
 
         assert shortcuts.item("Pulse 1")["default_value"]
         assert not shortcuts.item("Triangle")["default_value"]
@@ -365,7 +365,7 @@ class TestChannelsMenuItems:
         ("muted", "offered"),
         [
             (frozenset(), False),
-            (frozenset({GeneratorName.NOISE}), True),
+            (frozenset({ChannelName.NOISE}), True),
         ],
         ids=["full_mix_withholds_the_restore", "a_silenced_channel_offers_the_restore"],
     )
@@ -374,7 +374,7 @@ class TestChannelsMenuItems:
         menu_bar: MenuBar,
         shortcuts: _ShortcutManagerRecorder,
         framework: _DearPyGuiRecorder,
-        muted: FrozenSet[GeneratorName],
+        muted: FrozenSet[ChannelName],
         offered: bool,
     ) -> None:
         menu_bar._create_channels_menu(_state(muted))
@@ -388,13 +388,13 @@ class TestChannelsMenuUpdate:
         menu_bar: MenuBar,
         framework: _DearPyGuiRecorder,
     ) -> None:
-        menu_bar._update_channels(_state(frozenset({GeneratorName.PULSE2})))
+        menu_bar._update_channels(_state(frozenset({ChannelName.PULSE2})))
 
         assert framework.values == {
-            MenuBar._channel_menu_item_tag(GeneratorName.PULSE1): True,
-            MenuBar._channel_menu_item_tag(GeneratorName.PULSE2): False,
-            MenuBar._channel_menu_item_tag(GeneratorName.TRIANGLE): True,
-            MenuBar._channel_menu_item_tag(GeneratorName.NOISE): True,
+            MenuBar._channel_menu_item_tag(ChannelName.PULSE1): True,
+            MenuBar._channel_menu_item_tag(ChannelName.PULSE2): False,
+            MenuBar._channel_menu_item_tag(ChannelName.TRIANGLE): True,
+            MenuBar._channel_menu_item_tag(ChannelName.NOISE): True,
         }
 
     def test_the_restore_follows_the_mute_set(
@@ -402,7 +402,7 @@ class TestChannelsMenuUpdate:
         menu_bar: MenuBar,
         framework: _DearPyGuiRecorder,
     ) -> None:
-        menu_bar._update_channels(_state(frozenset({GeneratorName.PULSE2})))
+        menu_bar._update_channels(_state(frozenset({ChannelName.PULSE2})))
 
         assert framework.enabled == {TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS: True}
 

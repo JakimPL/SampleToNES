@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
@@ -17,7 +17,7 @@ from ..scorer import Scorer
 from .base import ScoredCandidate, Selector
 
 ChannelLattice = List[List[ScoredCandidate]]
-FrameCandidates = Dict[GeneratorName, List[ScoredCandidate]]
+FrameCandidates = Dict[ChannelName, List[ScoredCandidate]]
 
 
 class ViterbiSelector(Selector):
@@ -25,7 +25,7 @@ class ViterbiSelector(Selector):
         self,
         config: Config,
         window: Window,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
         scorer: Scorer,
         candidate_provider: CandidateProvider,
         phase_aligner: PhaseAligner,
@@ -34,7 +34,7 @@ class ViterbiSelector(Selector):
         super().__init__(
             config,
             window,
-            generators,
+            channels,
             scorer,
             candidate_provider,
             phase_aligner,
@@ -50,7 +50,7 @@ class ViterbiSelector(Selector):
         self,
         fragmented_audio: FragmentedAudio,
         fragment_ids: List[int],
-    ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
+    ) -> Dict[int, Dict[ChannelName, ApproximationData]]:
         lattices = self._build_lattices(fragmented_audio, fragment_ids)
         return self._decode_lattices(lattices, fragment_ids)
 
@@ -58,26 +58,26 @@ class ViterbiSelector(Selector):
         self,
         fragmented_audio: FragmentedAudio,
         fragment_ids: List[int],
-    ) -> Dict[GeneratorName, ChannelLattice]:
-        lattices: Dict[GeneratorName, ChannelLattice] = {name: [] for name in self.generators}
+    ) -> Dict[ChannelName, ChannelLattice]:
+        lattices: Dict[ChannelName, ChannelLattice] = {name: [] for name in self.channels}
         for fragment_id in fragment_ids:
-            for generator_name, states in self._frame_candidates(fragmented_audio[fragment_id]).items():
-                lattices[generator_name].append(states)
+            for channel_name, states in self._frame_candidates(fragmented_audio[fragment_id]).items():
+                lattices[channel_name].append(states)
 
         return lattices
 
     def _decode_lattices(
         self,
-        lattices: Dict[GeneratorName, ChannelLattice],
+        lattices: Dict[ChannelName, ChannelLattice],
         fragment_ids: List[int],
-    ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
-        result: Dict[int, Dict[GeneratorName, ApproximationData]] = {fragment_id: {} for fragment_id in fragment_ids}
-        for generator_name, frames in lattices.items():
+    ) -> Dict[int, Dict[ChannelName, ApproximationData]]:
+        result: Dict[int, Dict[ChannelName, ApproximationData]] = {fragment_id: {} for fragment_id in fragment_ids}
+        for channel_name, frames in lattices.items():
             path = self._decode(frames)
             for position, fragment_id in enumerate(fragment_ids):
                 state = frames[position][path[position]]
-                result[fragment_id][generator_name] = ApproximationData(
-                    generator_name=generator_name,
+                result[fragment_id][channel_name] = ApproximationData(
+                    channel_name=channel_name,
                     approximation=state.approximation,
                     instruction=state.instruction,
                 )
@@ -87,9 +87,9 @@ class ViterbiSelector(Selector):
     def _frame_candidates(self, fragment: Fragment) -> FrameCandidates:
         candidates: FrameCandidates = {}
         residual = fragment
-        for generator_name, generator in self.generators.items():
+        for channel_name, generator in self.channels.items():
             channel_states = self._channel_candidates(residual, generator)
-            candidates[generator_name] = channel_states
+            candidates[channel_name] = channel_states
             residual = self.feature_extractor.subtract(residual, channel_states[0].approximation)
 
         return candidates

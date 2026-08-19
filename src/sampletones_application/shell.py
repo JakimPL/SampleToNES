@@ -51,7 +51,7 @@ from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback, PathCallback
@@ -98,7 +98,7 @@ class ShortcutBindings:
     toggle_autoplay: Callback
     set_follow_mode: Callable[[FollowMode], None]
     toggle_loop_song: Callback
-    toggle_channel: Callable[[GeneratorName], None]
+    toggle_channel: Callable[[ChannelName], None]
     unmute_all_channels: Callback
     audio_settings: Callback
     display_settings: Callback

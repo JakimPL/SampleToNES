@@ -4,7 +4,7 @@ from typing import Tuple
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.hold import hold
 from sampletones_player.registers.noise import NoiseRegisters
@@ -37,7 +37,7 @@ class ChannelStreams(BaseModel):
 
     @model_validator(mode="after")
     def _validate_every_channel_reaches_a_tick(self) -> ChannelStreams:
-        empty = tuple(channel.value for channel, stream in zip(GeneratorName.items(), self.ordered) if not stream)
+        empty = tuple(channel.value for channel, stream in zip(ChannelName.items(), self.ordered) if not stream)
         if empty:
             raise ValueError(f"every channel needs at least one tick, and {', '.join(empty)} has none")
 

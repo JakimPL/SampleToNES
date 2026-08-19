@@ -1,14 +1,14 @@
 from sampletones_core.constants.enums import (
+    ChannelName,
     FeatureKey,
-    GeneratorName,
     LibraryGeneratorName,
 )
 from sampletones_core.exporters.implementation.noise import NoiseExporter
 from sampletones_core.exporters.implementation.pulse import PulseExporter
 from sampletones_core.exporters.implementation.triangle import TriangleExporter
 from sampletones_core.features import (
+    CHANNEL_GENERATOR_KIND,
     FEATURE_DIMENSION_ORDER,
-    GENERATOR_KIND,
     feature_range,
     supported_features,
     supports,
@@ -38,7 +38,7 @@ def test_supported_features_follow_dimension_order() -> None:
 
 def test_feature_ranges_match_expected_channel_domains() -> None:
     assert feature_range(LibraryGeneratorName.PULSE, FeatureKey.DUTY_CYCLE) == feature_range(
-        GENERATOR_KIND[GeneratorName.PULSE1],
+        CHANNEL_GENERATOR_KIND[ChannelName.PULSE1],
         FeatureKey.DUTY_CYCLE,
     )
     assert feature_range(LibraryGeneratorName.NOISE, FeatureKey.DUTY_CYCLE).maximum == 1

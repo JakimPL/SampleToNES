@@ -35,12 +35,12 @@ from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.sequencer.region import OrderRegion, TrackerRegion
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 ROW_COUNT = 64
 POSITION_COUNT = 8
 ORIGIN_WIDGET = 101
-ORIGIN_CELL: CellKey = (2, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+ORIGIN_CELL: CellKey = (2, ChannelName.PULSE1, SubColumn.TRANSPOSE)
 ORIGIN_ENTRY: OrderKey = (None, 1)
 
 
@@ -152,7 +152,7 @@ class TestTrackerDrag:
         assert states == []
 
     def test_a_drag_anchors_at_the_pressed_cell(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        reached: CellKey = (5, GeneratorName.TRIANGLE, SubColumn.VOLUME)
+        reached: CellKey = (5, ChannelName.TRIANGLE, SubColumn.VOLUME)
         panel, states = _tracker(monkeypatch, reached=reached)
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
@@ -166,11 +166,11 @@ class TestTrackerDrag:
         )
 
     def test_a_plain_drag_replaces_the_selection_already_held(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        reached: CellKey = (5, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+        reached: CellKey = (5, ChannelName.PULSE1, SubColumn.TRANSPOSE)
         panel, states = _tracker(monkeypatch, reached=reached)
         panel._input_state = TrackerInputState(
-            cursor=TrackerCursor(20, GeneratorName.NOISE, SubColumn.VOLUME),
-            anchor=TrackerCursor(30, GeneratorName.NOISE, SubColumn.VOLUME),
+            cursor=TrackerCursor(20, ChannelName.NOISE, SubColumn.VOLUME),
+            anchor=TrackerCursor(30, ChannelName.NOISE, SubColumn.VOLUME),
         )
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
@@ -185,20 +185,20 @@ class TestTrackerDrag:
         )
 
     def test_a_shift_press_carries_the_selection_already_held(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        reached: CellKey = (5, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+        reached: CellKey = (5, ChannelName.PULSE1, SubColumn.TRANSPOSE)
         panel, states = _tracker(monkeypatch, reached=reached, shift=True)
         panel._input_state = TrackerInputState(
-            cursor=TrackerCursor(9, GeneratorName.PULSE1, SubColumn.TRANSPOSE),
-            anchor=TrackerCursor(9, GeneratorName.PULSE2, SubColumn.TRANSPOSE),
+            cursor=TrackerCursor(9, ChannelName.PULSE1, SubColumn.TRANSPOSE),
+            anchor=TrackerCursor(9, ChannelName.PULSE2, SubColumn.TRANSPOSE),
         )
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
         panel._on_cell_held(0, ORIGIN_WIDGET)
 
-        assert states[-1].anchor == TrackerCursor(9, GeneratorName.PULSE2, SubColumn.TRANSPOSE)
+        assert states[-1].anchor == TrackerCursor(9, ChannelName.PULSE2, SubColumn.TRANSPOSE)
 
     def test_a_drag_back_to_its_origin_selects_that_cell(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        reached: CellKey = (5, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+        reached: CellKey = (5, ChannelName.PULSE1, SubColumn.TRANSPOSE)
         panel, states = _tracker(monkeypatch, reached=reached)
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
@@ -223,7 +223,7 @@ class TestTrackerDrag:
 
     def test_a_new_press_ends_the_gesture_before_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """The press starting a gesture ends the one before it, so its click places the cursor."""
-        reached: CellKey = (5, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+        reached: CellKey = (5, ChannelName.PULSE1, SubColumn.TRANSPOSE)
         panel, states = _tracker(monkeypatch, reached=reached)
         _silence_click(monkeypatch)
 
@@ -240,7 +240,7 @@ class TestTrackerDrag:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A drag returning to its own cell releases there, and that release reports a click."""
-        reached: CellKey = (5, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+        reached: CellKey = (5, ChannelName.PULSE1, SubColumn.TRANSPOSE)
         panel, states = _tracker(monkeypatch, reached=reached)
         _silence_click(monkeypatch)
 
@@ -377,7 +377,7 @@ class TestOrderDrag:
         assert states == []
 
     def test_a_drag_anchors_at_the_pressed_cell(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        reached: OrderKey = (GeneratorName.PULSE2, 4)
+        reached: OrderKey = (ChannelName.PULSE2, 4)
         panel, states = _order(monkeypatch, reached=reached)
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
@@ -391,21 +391,21 @@ class TestOrderDrag:
         )
 
     def test_a_shift_press_carries_the_selection_already_held(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        reached: OrderKey = (GeneratorName.PULSE2, 4)
+        reached: OrderKey = (ChannelName.PULSE2, 4)
         panel, states = _order(monkeypatch, reached=reached, shift=True)
         panel._input_state = OrderInputState(
-            cursor=OrderCursor(GeneratorName.NOISE, 6),
-            anchor=OrderCursor(GeneratorName.NOISE, 6),
+            cursor=OrderCursor(ChannelName.NOISE, 6),
+            anchor=OrderCursor(ChannelName.NOISE, 6),
         )
 
         panel._on_cell_held(0, ORIGIN_WIDGET)
         panel._on_cell_held(0, ORIGIN_WIDGET)
 
-        assert states[-1].anchor == OrderCursor(GeneratorName.NOISE, 6)
+        assert states[-1].anchor == OrderCursor(ChannelName.NOISE, 6)
 
     def test_a_new_press_ends_the_gesture_before_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """The press starting a gesture ends the one before it, so its click places the cursor."""
-        reached: OrderKey = (GeneratorName.PULSE2, 4)
+        reached: OrderKey = (ChannelName.PULSE2, 4)
         panel, states = _order(monkeypatch, reached=reached)
         _silence_click(monkeypatch)
 
@@ -421,7 +421,7 @@ class TestOrderDrag:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        reached: OrderKey = (GeneratorName.PULSE2, 4)
+        reached: OrderKey = (ChannelName.PULSE2, 4)
         panel, states = _order(monkeypatch, reached=reached)
         _silence_click(monkeypatch)
 

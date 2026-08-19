@@ -12,7 +12,7 @@ from sampletones_application.logic.sequencer.tracker import (
 from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.sequencer import fill_frame, render_frame, sample_reconstruction
@@ -43,7 +43,7 @@ def grid() -> Grid:
     logic = SequencerTrackerLogic(controller)
     logic.set_rows_per_pattern(FRAME_ROWS)
     lead = controller.add_sample(
-        sample_reconstruction([GeneratorName.PULSE1, GeneratorName.PULSE2]),
+        sample_reconstruction([ChannelName.PULSE1, ChannelName.PULSE2]),
         name="lead",
     )
     return Grid(
@@ -55,8 +55,8 @@ def grid() -> Grid:
 
 
 def _region(
-    first: Tuple[Optional[GeneratorName], SubColumn],
-    last: Tuple[Optional[GeneratorName], SubColumn],
+    first: Tuple[Optional[ChannelName], SubColumn],
+    last: Tuple[Optional[ChannelName], SubColumn],
     *,
     first_row: int = 0,
     last_row: int = 0,
@@ -88,8 +88,8 @@ class TestAdjustTranspose(BaseTestSuite):
         TestCase(
             label="a cell alone shifts its own channel",
             region=_region(
-                (GeneratorName.PULSE1, SubColumn.INSTRUMENT),
-                (GeneratorName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
             ),
             delta=1,
             expected=(
@@ -101,8 +101,8 @@ class TestAdjustTranspose(BaseTestSuite):
         TestCase(
             label="a region standing on another subcolumn still shifts the transpose",
             region=_region(
-                (GeneratorName.TRIANGLE, SubColumn.VOLUME),
-                (GeneratorName.TRIANGLE, SubColumn.VOLUME),
+                (ChannelName.TRIANGLE, SubColumn.VOLUME),
+                (ChannelName.TRIANGLE, SubColumn.VOLUME),
             ),
             delta=-1,
             expected=(
@@ -115,8 +115,8 @@ class TestAdjustTranspose(BaseTestSuite):
             label="a shift adds to the transpose a cell already holds",
             frame=(".. +02 . | .. ... . | .. ... . | .. ... .",),
             region=_region(
-                (GeneratorName.PULSE1, SubColumn.TRANSPOSE),
-                (GeneratorName.PULSE1, SubColumn.TRANSPOSE),
+                (ChannelName.PULSE1, SubColumn.TRANSPOSE),
+                (ChannelName.PULSE1, SubColumn.TRANSPOSE),
             ),
             delta=12,
             expected=(
@@ -128,8 +128,8 @@ class TestAdjustTranspose(BaseTestSuite):
         TestCase(
             label="a region across columns shifts each of them",
             region=_region(
-                (GeneratorName.PULSE2, SubColumn.VOLUME),
-                (GeneratorName.NOISE, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE2, SubColumn.VOLUME),
+                (ChannelName.NOISE, SubColumn.INSTRUMENT),
             ),
             delta=1,
             expected=(
@@ -141,8 +141,8 @@ class TestAdjustTranspose(BaseTestSuite):
         TestCase(
             label="a region across rows shifts each of them",
             region=_region(
-                (GeneratorName.PULSE1, SubColumn.INSTRUMENT),
-                (GeneratorName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
                 first_row=1,
                 last_row=2,
             ),
@@ -185,7 +185,7 @@ class TestAdjustTranspose(BaseTestSuite):
             frame=(f"{LEAD} ... . | {LEAD} ... . | .. ... . | .. ... .",),
             region=_region(
                 (None, SubColumn.INSTRUMENT),
-                (GeneratorName.PULSE1, SubColumn.VOLUME),
+                (ChannelName.PULSE1, SubColumn.VOLUME),
             ),
             delta=1,
             expected=(
@@ -198,8 +198,8 @@ class TestAdjustTranspose(BaseTestSuite):
             label="a shift stops at the transpose range",
             frame=(".. +20 . | .. ... . | .. ... . | .. ... .",),
             region=_region(
-                (GeneratorName.PULSE1, SubColumn.TRANSPOSE),
-                (GeneratorName.PULSE1, SubColumn.TRANSPOSE),
+                (ChannelName.PULSE1, SubColumn.TRANSPOSE),
+                (ChannelName.PULSE1, SubColumn.TRANSPOSE),
             ),
             delta=12,
             expected=(
@@ -241,8 +241,8 @@ class TestAdjustVolume(BaseTestSuite):
         TestCase(
             label="an unset cell steps down from full",
             region=_region(
-                (GeneratorName.PULSE1, SubColumn.INSTRUMENT),
-                (GeneratorName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
             ),
             delta=-1,
             expected=(
@@ -255,8 +255,8 @@ class TestAdjustVolume(BaseTestSuite):
             label="a coarse step moves the whole region",
             frame=(".. ... 8 | .. ... 8 | .. ... . | .. ... .",),
             region=_region(
-                (GeneratorName.PULSE1, SubColumn.VOLUME),
-                (GeneratorName.PULSE2, SubColumn.VOLUME),
+                (ChannelName.PULSE1, SubColumn.VOLUME),
+                (ChannelName.PULSE2, SubColumn.VOLUME),
             ),
             delta=-4,
             expected=(
@@ -269,8 +269,8 @@ class TestAdjustVolume(BaseTestSuite):
             label="a shift stops at silence",
             frame=(".. ... 1 | .. ... . | .. ... . | .. ... .",),
             region=_region(
-                (GeneratorName.PULSE1, SubColumn.VOLUME),
-                (GeneratorName.PULSE1, SubColumn.VOLUME),
+                (ChannelName.PULSE1, SubColumn.VOLUME),
+                (ChannelName.PULSE1, SubColumn.VOLUME),
             ),
             delta=-4,
             expected=(
@@ -284,7 +284,7 @@ class TestAdjustVolume(BaseTestSuite):
             frame=(f"{LEAD} ... 8 | {LEAD} ... 8 | .. ... . | .. ... .",),
             region=_region(
                 (None, SubColumn.INSTRUMENT),
-                (GeneratorName.PULSE1, SubColumn.VOLUME),
+                (ChannelName.PULSE1, SubColumn.VOLUME),
             ),
             delta=-1,
             expected=(

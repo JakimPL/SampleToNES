@@ -7,7 +7,7 @@ from typing import Any, Dict, Final, List, Optional
 import numpy as np
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
@@ -49,7 +49,7 @@ def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> F
 def build_instrument(name: str, frames: int) -> InstrumentExport:
     return InstrumentExport(
         name=name,
-        generator=GeneratorName.PULSE1,
+        channel=ChannelName.PULSE1,
         features=build_features(frames),
         loop=False,
         nes_frequency=NES_FREQUENCY,

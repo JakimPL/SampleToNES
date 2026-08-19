@@ -12,7 +12,7 @@ from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from tests.suite.shortcuts import shipped_source
 
@@ -80,14 +80,14 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuItemRecorder:
     return instance
 
 
-def _cell(row: int, generator: GeneratorName) -> TrackerCursor:
+def _cell(row: int, channel: ChannelName) -> TrackerCursor:
     """The cell a menu was raised on, which the items carry as their payload."""
-    return TrackerCursor(row, generator, SubColumn.INSTRUMENT)
+    return TrackerCursor(row, channel, SubColumn.INSTRUMENT)
 
 
-def _target(row: int, generator: GeneratorName) -> TrackerTarget:
+def _target(row: int, channel: ChannelName) -> TrackerTarget:
     """The cell a menu was raised on, paired with the block of that cell alone."""
-    cell = _cell(row, generator)
+    cell = _cell(row, channel)
     return TrackerTarget(cell=cell, region=TrackerInputState().region_at(cell))
 
 
@@ -97,7 +97,7 @@ class TestMenuDispatchPreservesPayload:
         deltas: List[int] = []
         panel.on_adjust_transpose = lambda region, delta: deltas.append(delta)
 
-        panel._add_transpose_items(_target(2, GeneratorName.PULSE1))
+        panel._add_transpose_items(_target(2, ChannelName.PULSE1))
         recorder.dispatch_as_dpg()
 
         assert deltas == [
@@ -112,7 +112,7 @@ class TestMenuDispatchPreservesPayload:
         deltas: List[int] = []
         panel.on_adjust_volume = lambda region, delta: deltas.append(delta)
 
-        panel._add_volume_items(_target(2, GeneratorName.PULSE1))
+        panel._add_volume_items(_target(2, ChannelName.PULSE1))
         recorder.dispatch_as_dpg()
 
         assert deltas == [
@@ -126,7 +126,7 @@ class TestMenuDispatchPreservesPayload:
         panel = _panel()
         calls: List[Tuple[TrackerRegion, int]] = []
         panel.on_adjust_transpose = lambda region, delta: calls.append((region, delta))
-        target = _target(7, GeneratorName.TRIANGLE)
+        target = _target(7, ChannelName.TRIANGLE)
 
         panel._add_transpose_items(target)
         recorder.dispatch_as_dpg()
@@ -145,9 +145,9 @@ class TestMenuDispatchPreservesPayload:
             ),
         )
         chosen: List[str] = []
-        panel.on_set_row = lambda row, generator, sample_id, transpose, volume: chosen.append(sample_id)
+        panel.on_set_row = lambda row, channel, sample_id, transpose, volume: chosen.append(sample_id)
 
-        panel._add_instrument_submenu(_cell(0, GeneratorName.PULSE2))
+        panel._add_instrument_submenu(_cell(0, ChannelName.PULSE2))
         recorder.dispatch_as_dpg()
 
         assert chosen == ["lead-id"]

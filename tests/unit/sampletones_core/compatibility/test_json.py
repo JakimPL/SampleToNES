@@ -25,3 +25,35 @@ class TestUpgradeJson:
         raw = b"{ not valid json"
 
         assert upgrade_json(ObjectKind.PROJECT, raw) is raw
+
+    def test_project_upgrade_renames_channel_fields_and_stamps(self) -> None:
+        raw = json.dumps(
+            {
+                "format_version": "1.0",
+                "song": {
+                    "channels": {
+                        "pulse1": {
+                            "generator": "pulse1",
+                            "patterns": {
+                                "0": {
+                                    "rows": {
+                                        "0": {"command": {"sample_id": "s", "generator_name": "pulse1"}},
+                                    }
+                                }
+                            },
+                        }
+                    }
+                },
+            }
+        ).encode("utf-8")
+
+        upgraded = upgrade_json(ObjectKind.PROJECT, raw)
+        data = json.loads(upgraded)
+
+        assert data["format_version"] == SAMPLETONES_PROJECT_DATA_VERSION
+        channel = data["song"]["channels"]["pulse1"]
+        assert channel["channel_name"] == "pulse1"
+        assert "generator" not in channel
+        command = channel["patterns"]["0"]["rows"]["0"]["command"]
+        assert command["channel_name"] == "pulse1"
+        assert "generator_name" not in command

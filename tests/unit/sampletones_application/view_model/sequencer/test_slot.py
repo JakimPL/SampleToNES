@@ -11,14 +11,14 @@ from sampletones_application.view_model.sequencer.slot import (
     slot_from_flat,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 _OUT_OF_RANGE = [-1, -SLOT_COUNT, SLOT_COUNT, SLOT_COUNT + 1]
 
 
 class TestAxis:
     def test_the_sample_column_leads_the_four_channels(self) -> None:
-        assert CHANNEL_AXIS == (None, *GeneratorName.items())
+        assert CHANNEL_AXIS == (None, *ChannelName.items())
 
     def test_the_axis_covers_every_column_once_over(self) -> None:
         assert SLOT_COUNT == len(CHANNEL_AXIS) * len(SUBCOLUMNS)
@@ -30,9 +30,7 @@ class TestFlatIndex:
         assert slot_from_flat(index).flat_index == index
 
     def test_the_axis_maps_onto_the_whole_index_range(self) -> None:
-        indices = {
-            TrackerSlot(generator, subcolumn).flat_index for generator in CHANNEL_AXIS for subcolumn in SUBCOLUMNS
-        }
+        indices = {TrackerSlot(channel, subcolumn).flat_index for channel in CHANNEL_AXIS for subcolumn in SUBCOLUMNS}
 
         assert indices == set(range(SLOT_COUNT))
 
@@ -41,14 +39,14 @@ class TestFlatIndex:
 
 
 class TestColumnBase:
-    @pytest.mark.parametrize("generator", CHANNEL_AXIS)
-    def test_every_base_starts_a_whole_column(self, generator: Optional[GeneratorName]) -> None:
+    @pytest.mark.parametrize("channel", CHANNEL_AXIS)
+    def test_every_base_starts_a_whole_column(self, channel: Optional[ChannelName]) -> None:
         """Kind alignment rests on this: an offset from any base addresses the same subcolumn."""
-        assert column_slot_base(generator) % len(SUBCOLUMNS) == 0
+        assert column_slot_base(channel) % len(SUBCOLUMNS) == 0
 
-    @pytest.mark.parametrize("generator", CHANNEL_AXIS)
-    def test_a_base_addresses_its_columns_first_subcolumn(self, generator: Optional[GeneratorName]) -> None:
-        assert slot_from_flat(column_slot_base(generator)) == TrackerSlot(generator, SUBCOLUMNS[0])
+    @pytest.mark.parametrize("channel", CHANNEL_AXIS)
+    def test_a_base_addresses_its_columns_first_subcolumn(self, channel: Optional[ChannelName]) -> None:
+        assert slot_from_flat(column_slot_base(channel)) == TrackerSlot(channel, SUBCOLUMNS[0])
 
 
 class TestBounds:

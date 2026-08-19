@@ -2,7 +2,7 @@ import math
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.slices import iterate_sample_slices
 from sampletones_core.formats.bitphase.envelopes import (
@@ -28,7 +28,7 @@ from sampletones_core.formats.bitphase.notes import (
 )
 from sampletones_core.formats.bitphase.specification.channels import (
     CHANNEL_LABELS,
-    GENERATOR_NAME_TO_CHANNEL_INDEX,
+    CHANNEL_TO_INDEX,
     ChannelIndex,
 )
 from sampletones_core.formats.bitphase.specification.chip import (
@@ -88,7 +88,7 @@ class Voice:
         number: Value a pattern's instrument column carries to play the instrument.
         instrument: The per-tick rows the channel takes on.
         table: The per-tick semitone contour that moves the note.
-        generator: The NES channel the slice was reconstructed for.
+        channel: The NES channel the slice was reconstructed for.
         initial_pitch: Pitch the slice's contour is measured against.
         ticks: How many ticks the instrument runs before it loops.
     """
@@ -96,24 +96,24 @@ class Voice:
     number: int
     instrument: BitphaseInstrument
     table: BitphaseTable
-    generator: GeneratorName
+    channel: ChannelName
     initial_pitch: int
     ticks: int
 
 
-VoiceTable = Dict[Tuple[str, GeneratorName], Voice]
+VoiceTable = Dict[Tuple[str, ChannelName], Voice]
 
 
 def _build_voice(
     index: int,
     name: str,
-    generator: GeneratorName,
+    channel: ChannelName,
     initial_pitch: int,
     envelopes: ChannelEnvelopes,
     *,
     maximum_table_id: int,
 ) -> Voice:
-    """Numbers one generator slice and packages it as an instrument-and-table pair.
+    """Numbers one channel slice and packages it as an instrument-and-table pair.
 
     Instruments and tables are numbered alike, so a pattern cell names the same position
     in both columns. The document states how far the table numbering reaches, since a song
@@ -145,19 +145,19 @@ def _build_voice(
             loop=envelopes.loop,
             name=name,
         ),
-        generator=generator,
+        channel=channel,
         initial_pitch=initial_pitch,
         ticks=len(envelopes.rows),
     )
 
 
-def _note_cell(channel_generator: GeneratorName, pitch: int) -> NoteCell:
+def _note_cell(channel_generator: ChannelName, pitch: int) -> NoteCell:
     """Resolves a pitch to the note column of the channel the row sits on.
 
     The noise channel reads its note as a period selector, so its pitch takes the
     mapping that reproduces that period; every other channel reads the tuning table.
     """
-    if channel_generator == GeneratorName.NOISE:
+    if channel_generator == ChannelName.NOISE:
         return note_index_to_note_cell(noise_period_to_note_index(pitch))
 
     return note_index_to_note_cell(pitch_to_note_index(pitch))
@@ -237,8 +237,8 @@ def _preview_patterns(
 ) -> Tuple[BitphasePattern, ...]:
     channel_rows = _empty_channels(length)
     for voice in voices:
-        channel = GENERATOR_NAME_TO_CHANNEL_INDEX[voice.generator]
-        note = _note_cell(voice.generator, voice.initial_pitch)
+        channel = CHANNEL_TO_INDEX[voice.channel]
+        note = _note_cell(voice.channel, voice.initial_pitch)
         channel_rows[channel][PREVIEW_TRIGGER_ROW] = _trigger_row(
             voice,
             note,
@@ -257,7 +257,7 @@ def _preview_patterns(
 def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
     """Builds a playable Bitphase document holding one reconstruction's instruments.
 
-    Every generator slice becomes an instrument and the table that carries its pitch
+    Every channel slice becomes an instrument and the table that carries its pitch
     contour, and one pattern triggers each slice on the channel it was reconstructed
     for, so opening the document and pressing play sounds the reconstruction.
 
@@ -274,11 +274,11 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
         _build_voice(
             index,
             instrument.name,
-            instrument.generator,
+            instrument.channel,
             instrument.features.initial_pitch,
             features_to_envelopes(
                 instrument.features,
-                instrument.generator,
+                instrument.channel,
                 loop=instrument.loop,
             ),
             maximum_table_id=MAX_TABLE_ID,
@@ -307,7 +307,7 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
 
 
 def instrument_to_bitphase(request: InstrumentExport) -> BitphaseProject:
-    """Builds a playable Bitphase document holding one generator slice.
+    """Builds a playable Bitphase document holding one channel slice.
 
     Args:
         request: The slice to write.
@@ -334,13 +334,13 @@ def _build_voice_table(
     for sample_slice in iterate_sample_slices(project):
         envelopes = features_to_envelopes(
             sample_slice.features,
-            sample_slice.generator,
+            sample_slice.channel,
             loop=sample_slice.sample.loop,
         )
         voice = _build_voice(
             sample_slice.index,
             sample_slice.instrument_name,
-            sample_slice.generator,
+            sample_slice.channel,
             sample_slice.features.initial_pitch,
             envelopes,
             maximum_table_id=maximum_table_id,
@@ -352,11 +352,10 @@ def _build_voice_table(
 
 
 def _resolve_voice(reference: Instrument, voices: VoiceTable) -> Voice:
-    voice = voices.get((reference.sample_id, reference.generator_name))
+    voice = voices.get((reference.sample_id, reference.channel_name))
     if voice is None:
         raise ValueError(
-            f"Row references sample '{reference.sample_id}' slice "
-            f"'{reference.generator_name}' that has no instrument"
+            f"Row references sample '{reference.sample_id}' slice " f"'{reference.channel_name}' that has no instrument"
         )
 
     return voice
@@ -381,7 +380,7 @@ def _volume_column(volume: Optional[int]) -> int:
 
 def _row_cell(
     row: Row,
-    channel_generator: GeneratorName,
+    channel_generator: ChannelName,
     voices: VoiceTable,
 ) -> BitphaseRow:
     """Converts one tracker line to the Bitphase row that plays it.
@@ -415,10 +414,10 @@ def _row_cell(
 def _channel_rows(
     rows: Sequence[Row],
     length: int,
-    generator: GeneratorName,
+    channel: ChannelName,
     voices: VoiceTable,
 ) -> List[BitphaseRow]:
-    cells = [_row_cell(row, generator, voices) for row in rows[:length]]
+    cells = [_row_cell(row, channel, voices) for row in rows[:length]]
     cells.extend(BitphaseRow() for _ in range(length - len(cells)))
     return cells
 
@@ -527,20 +526,20 @@ def _project_patterns(
                 groove_table.id,
             )
 
-        for generator in GeneratorName.items():
-            index = frame.get(generator)
+        for channel_name in ChannelName.items():
+            index = frame.get(channel_name)
             if index is None:
                 continue
 
-            pattern = song.channels[generator].pattern(index)
+            pattern = song.channels[channel_name].pattern(index)
             if pattern is None:
                 continue
 
-            channel = GENERATOR_NAME_TO_CHANNEL_INDEX[generator]
-            channel_rows[channel] = _channel_rows(
+            channel_index = CHANNEL_TO_INDEX[channel_name]
+            channel_rows[channel_index] = _channel_rows(
                 pattern.rows,
                 length,
-                generator,
+                channel_name,
                 voices,
             )
 

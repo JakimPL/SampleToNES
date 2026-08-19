@@ -39,3 +39,22 @@ class TestUpgradeBinary:
         binary = b"\xc1"
 
         assert upgrade_binary(ObjectKind.RECONSTRUCTION, binary) is binary
+
+    def test_reconstruction_upgrade_renames_channels_and_stamps(self) -> None:
+        binary = msgpack.packb(
+            {
+                "metadata": {"reconstruction_data_version": "2.1"},
+                "approximations_data": [{"generator_name": "pulse1", "approximation": [1.0, 2.0]}],
+                "instructions_data": [],
+                "config": {"generation": {"generators": ["pulse1", "noise"]}},
+            },
+            use_bin_type=True,
+        )
+
+        upgraded = upgrade_binary(ObjectKind.RECONSTRUCTION, binary)
+        data = msgpack.unpackb(upgraded, raw=False)
+
+        assert data["approximations_data"][0]["channel_name"] == "pulse1"
+        assert "generator_name" not in data["approximations_data"][0]
+        assert data["config"]["generation"]["channels"] == ["pulse1", "noise"]
+        assert data["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION

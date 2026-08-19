@@ -1,4 +1,4 @@
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.row import Row
@@ -7,7 +7,7 @@ ROWS_PER_PATTERN = 16
 
 
 def _channel() -> Channel:
-    return Channel.empty(GeneratorName.PULSE1, ROWS_PER_PATTERN)
+    return Channel.empty(ChannelName.PULSE1, ROWS_PER_PATTERN)
 
 
 class TestPatternPool:
@@ -21,7 +21,7 @@ class TestPatternPool:
         channel = _channel()
         source = channel.patterns[0]
         source.rows[0] = Row(
-            instrument=Instrument(sample_id="abc", generator_name=GeneratorName.PULSE1),
+            instrument=Instrument(sample_id="abc", channel_name=ChannelName.PULSE1),
             volume=10,
         )
 

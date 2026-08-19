@@ -71,8 +71,8 @@ class TestReconstructionViewModelEnablement:
     ) -> None:
         view_model = ReconstructionViewModel(
             reconstruction_loaded=case.reconstruction_loaded,
-            playing_generators=frozenset(),
-            selected_generators=frozenset(),
+            playing_channels=frozenset(),
+            selected_channels=frozenset(),
             reconstruction_file=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path=""),
             original_audio=ReconstructionPathViewModel(state=case.original_audio_state, path=""),
         )

@@ -12,11 +12,11 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
-OnChannelCallback = Callable[[GeneratorName], None]
+OnChannelCallback = Callable[[ChannelName], None]
 
 NOTHING_MUTED: Final[SequencerChannelsViewModel] = SequencerChannelsViewModel(muted=frozenset())
 
@@ -72,7 +72,7 @@ class ChannelSwitch:
         self._on_muted = on_muted
         self._on_unmuted = on_unmuted
 
-    def click(self, sender: Sender, generator: Optional[GeneratorName]) -> None:
+    def click(self, sender: Sender, channel: Optional[ChannelName]) -> None:
         """Routes a click on a channel's name: plain mutes, ``Ctrl`` solos, the master name
         switches every channel at once.
 
@@ -80,18 +80,18 @@ class ChannelSwitch:
         reports the mix through its colour, and the edit cursor stays where it is.
         """
         dpg.set_value(sender, False)
-        if generator is None:
+        if channel is None:
             self._on_toggled()
             return
 
         if Modifier.CTRL in capture_modifiers():
-            self._on_soloed(generator)
+            self._on_soloed(channel)
         else:
-            self._on_mute_toggled(generator)
+            self._on_mute_toggled(channel)
 
     def add_menu_items(
         self,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         channels: Optional[SequencerChannelsViewModel],
     ) -> None:
         """Fills the open menu for one channel, or for the master name that stands for them all.
@@ -100,15 +100,15 @@ class ChannelSwitch:
         each channel's, and either one reaches "everything" and "everything back".
         """
         mix = channels if channels is not None else NOTHING_MUTED
-        if generator is not None:
-            self._add_channel_items(generator, mix)
+        if channel is not None:
+            self._add_channel_items(channel, mix)
             dpg.add_separator()
 
         self._add_all_channels_items(mix)
 
     def _add_channel_items(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         mix: SequencerChannelsViewModel,
     ) -> None:
         """Offers the two gestures a click on this channel's name carries, each named for what it
@@ -118,12 +118,12 @@ class ChannelSwitch:
         than as a switch whose direction the user infers from the table.
         """
         dpg.add_menu_item(
-            label=self._labels.unmute if mix.is_muted(generator) else self._labels.mute,
-            callback=lambda: self._on_mute_toggled(generator),
+            label=self._labels.unmute if mix.is_muted(channel) else self._labels.mute,
+            callback=lambda: self._on_mute_toggled(channel),
         )
         dpg.add_menu_item(
-            label=self._labels.unsolo if mix.is_soloed(generator) else self._labels.solo,
-            callback=lambda: self._on_soloed(generator),
+            label=self._labels.unsolo if mix.is_soloed(channel) else self._labels.solo,
+            callback=lambda: self._on_soloed(channel),
         )
 
     def _add_all_channels_items(self, mix: SequencerChannelsViewModel) -> None:

@@ -28,7 +28,7 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import SampleToNESError
@@ -266,7 +266,7 @@ class ReconstructionCoordinator:
 
     def regenerate_instrument(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         features: Features,
         feature_key: FeatureKey,
         data: FeatureValue,
@@ -277,7 +277,7 @@ class ReconstructionCoordinator:
 
         accepted = self._regeneration_service.start(
             reconstruction_data.reconstruction,
-            generator_name,
+            channel_name,
             features,
             feature_key,
             data,

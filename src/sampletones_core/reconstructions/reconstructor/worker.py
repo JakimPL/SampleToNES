@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
 from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
 from sampletones_core.generators import (
@@ -22,7 +22,7 @@ from .selector import SELECTORS, Selector
 class ReconstructorWorker:
     config: Config
     window: Window
-    generators: Dict[GeneratorName, GeneratorUnion]
+    channels: Dict[ChannelName, GeneratorUnion]
     library_data: InstructionLibraryData
     signal_length: int
 
@@ -42,7 +42,7 @@ class ReconstructorWorker:
         selector = selector_class(
             config=self.config,
             window=self.window,
-            generators=self.generators,
+            channels=self.channels,
             scorer=scorer,
             candidate_provider=candidate_provider,
             phase_aligner=phase_aligner,
@@ -59,14 +59,14 @@ class ReconstructorWorker:
         self,
         fragmented_audio: FragmentedAudio,
         fragment_ids: List[int],
-    ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
+    ) -> Dict[int, Dict[ChannelName, ApproximationData]]:
         return self.selector.select(fragmented_audio, fragment_ids)
 
-    def reconstruct(self, fragment: Fragment) -> Dict[GeneratorName, ApproximationData]:
+    def reconstruct(self, fragment: Fragment) -> Dict[ChannelName, ApproximationData]:
         return self.selector.reconstruct_fragment(fragment)
 
     def get_remaining_generator_classes(
         self,
-        remaining_generators: Dict[GeneratorName, GeneratorUnion],
+        remaining_generators: Dict[ChannelName, GeneratorUnion],
     ) -> Dict[GeneratorClassName, GeneratorUnion]:
         return get_remaining_generator_classes(remaining_generators)

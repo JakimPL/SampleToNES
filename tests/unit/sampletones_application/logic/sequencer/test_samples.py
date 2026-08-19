@@ -8,7 +8,7 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
@@ -46,15 +46,15 @@ def _logic_with_mocks() -> Tuple[
 
 def _place_instrument(
     controller: ProjectController,
-    generator: GeneratorName,
+    channel: ChannelName,
     sample_id: str,
 ) -> None:
-    pattern_index = controller.project.song.order[0][generator]
+    pattern_index = controller.project.song.order[0][channel]
     controller.set_row(
-        generator,
+        channel,
         pattern_index,
         0,
-        command=Instrument(sample_id=sample_id, generator_name=generator),
+        command=Instrument(sample_id=sample_id, channel_name=channel),
     )
 
 
@@ -83,7 +83,7 @@ class TestIsSampleUsed:
     ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        _place_instrument(controller, GeneratorName.PULSE1, sample.id)
+        _place_instrument(controller, ChannelName.PULSE1, sample.id)
         assert logic.is_sample_used(sample.id) is True
 
 
@@ -104,7 +104,7 @@ class TestRemoveSample:
     ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        _place_instrument(controller, GeneratorName.PULSE1, sample.id)
+        _place_instrument(controller, ChannelName.PULSE1, sample.id)
 
         logic.remove_sample(sample.id)
 
@@ -171,13 +171,13 @@ class TestBuildSampleFootprint:
 
     def test_it_names_each_playing_channel(self) -> None:
         controller, logic = _logic()
-        generators = (GeneratorName.PULSE1, GeneratorName.TRIANGLE)
-        sample = controller.add_sample(sample_reconstruction(generators), name="bell")
+        channels = (ChannelName.PULSE1, ChannelName.TRIANGLE)
+        sample = controller.add_sample(sample_reconstruction(channels), name="bell")
 
         footprint = logic.build_sample_footprint(sample.id)
 
         assert footprint is not None
-        assert [instrument.generator for instrument in footprint.instruments] == list(generators)
+        assert [instrument.channel for instrument in footprint.instruments] == list(channels)
 
     def test_it_measures_the_sample_under_its_own_loop_flag(
         self,
@@ -215,13 +215,13 @@ class TestBuildSampleFootprint:
         the same frame written on each costs the triangle the less.
         """
         controller, logic = _logic()
-        generators = (GeneratorName.PULSE1, GeneratorName.TRIANGLE)
-        sample = controller.add_sample(sample_reconstruction(generators), name="bell")
+        channels = (ChannelName.PULSE1, ChannelName.TRIANGLE)
+        sample = controller.add_sample(sample_reconstruction(channels), name="bell")
 
         footprint = logic.build_sample_footprint(sample.id)
 
         assert footprint is not None
-        assert footprint.bytes_for(GeneratorName.TRIANGLE) < footprint.bytes_for(GeneratorName.PULSE1)
+        assert footprint.bytes_for(ChannelName.TRIANGLE) < footprint.bytes_for(ChannelName.PULSE1)
 
     def test_a_sample_the_pool_has_dropped_is_measured_nowhere(self) -> None:
         _, logic = _logic()

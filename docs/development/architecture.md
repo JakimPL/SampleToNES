@@ -205,7 +205,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 - A panel creates its entire widget tree in one call to `create_panel(parent)`, rooting its subtree at `self.tag` inside the coordinator-injected `parent`, and calls DPG afterwards only in `update_view()`, `update_*` methods, and event callbacks wired by DPG itself.
 - Panels hold only visual state: their tag, their child widget references, and layout dimensions. Domain objects stay in logic; panels receive projections of them.
 - A panel never encodes its own placement: it does not compose a column tag (`SUF_PANEL_*`) as its parent, and it never hosts a sibling panel. Tab layout is the coordinator's (see the Coordinators reference). Where a section is a card, one card is one panel is one module; the coordinator declares which cards a tab contains and how they are arranged.
-- Structural depth themes are bound only by the layout primitives, never by a panel or coordinator. The `TabColumns` scaffold binds each column its declared depth theme — recessed GROUND for a column hosting a stack of floating cards, raised SURFACE for a full-height column that is itself a single docked surface (a file tree, an instrument list) — and the `card()` context manager binds SURFACE to a card. Panels and coordinators bind only semantic/content themes (a per-generator checkbox tint, the player toolbar), never GROUND or SURFACE.
+- Structural depth themes are bound only by the layout primitives, never by a panel or coordinator. The `TabColumns` scaffold binds each column its declared depth theme — recessed GROUND for a column hosting a stack of floating cards, raised SURFACE for a full-height column that is itself a single docked surface (a file tree, an instrument list) — and the `card()` context manager binds SURFACE to a card. Panels and coordinators bind only semantic/content themes (a per-channel checkbox tint, the player toolbar), never GROUND or SURFACE.
 - Every mutation from outside goes through `update_view(view_model)` or through a direct DPG call (`dpg_configure_item`, `dpg_set_value`) triggered by an `update_*` method.
 - Callback wiring from coordinators sets public `on_x` attributes *after* construction; panels must therefore tolerate `None` hooks until wiring is complete.
 - A widget whose rendering needs synchronous per-item queries declares a consumer-owned `Protocol` of exactly that surface (e.g. `TreeLogicProtocol`, through which the file trees query per-node favorite and playability state); the owning coordinator constructs the real logic object and injects it, and the panel types against the Protocol. Hooks and view models remain the default — the Protocol is the exception for query-heavy widgets where projecting a whole tree per repaint would be disproportionate.
@@ -492,7 +492,7 @@ sampletones_application/
 | Service class | `<Domain>Service` | `ConversionService` |
 | DPG widget tag | `TAG_` + the composed tag, upper-cased | `TAG_MAIN_CONFIG_TABLE_CONFIG_ROW` (`main.config.table.config_row`) |
 | Tag suffix | `SUF_<ROLE>` | `SUF_PANEL_LEFT` |
-| Tag prefix | `PRE_<ROLE>` | `PRE_RECONSTRUCTION_GENERATOR` |
+| Tag prefix | `PRE_<ROLE>` | `PRE_RECONSTRUCTION_CHANNEL` |
 | Text key | `page.panel.text_type.element` | `global.dialog.label.ok` |
 | Panel callback hook | `on_<event>` attribute | `on_convert_requested` |
 | Panel state hook | `can_<action>` or `<action>_<subject>` attribute | `can_add_to_sequencer`, `replace_in_sequencer_label` |
