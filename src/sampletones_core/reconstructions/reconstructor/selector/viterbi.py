@@ -14,7 +14,8 @@ from ..approximation import ApproximationData
 from ..candidates import CandidateProvider
 from ..phase import PhaseAligner
 from ..scorer import Scorer
-from .base import ScoredCandidate, Selector
+from .base import Selector
+from .matching import ScoredCandidate
 
 ChannelLattice = List[List[ScoredCandidate]]
 FrameCandidates = Dict[ChannelName, List[ScoredCandidate]]
