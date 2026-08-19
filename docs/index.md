@@ -55,6 +55,7 @@ worked examples.
 The [**development**](development/) section is for contributors.
 
 - [Architecture](development/architecture.md) — the application's layers and the contracts between them.
+- [Package layers](development/packages.md) — the packages the repository divides into, and the order they import each other in.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
 - [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
 - [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
