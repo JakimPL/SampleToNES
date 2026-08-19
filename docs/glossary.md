@@ -11,10 +11,12 @@ The NES's sound chip (Ricoh 2A03). Its audio portion, the APU (Audio Processing
 Unit), generates all of the console's sound. _SampleToNES_ emulates its four
 melodic/percussive channels and no sampled-audio (DPCM) playback.
 
-### Channel / oscillator
+### Channel
 
-One of the 2A03's sound-producing units. There are four: two pulse, one
-triangle, one noise. The two words are used interchangeably here.
+One of the 2A03's four sound-producing units: `pulse1`, `pulse2`,
+`triangle`, and `noise`. The word *generator* names a distinct concept:
+the oscillator kinds an instruction library covers (`pulse`, `triangle`,
+`noise`) and the classes that implement them.
 
 ### Pulse (square)
 
