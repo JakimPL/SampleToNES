@@ -3,7 +3,7 @@ from typing import Dict, Final
 from sampletones_core.constants.enums import (
     ChannelName,
     GeneratorClassName,
-    LibraryGeneratorName,
+    GeneratorName,
 )
 from sampletones_core.constants.general import (
     MIXER_NOISE,
@@ -22,10 +22,10 @@ from .implementation.pulse import PulseGenerator
 from .implementation.triangle import TriangleGenerator
 from .types import GeneratorTypeUnion
 
-LIBRARY_GENERATOR_CLASS_MAP: Final[Dict[LibraryGeneratorName, GeneratorClassName]] = {
-    LibraryGeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,
-    LibraryGeneratorName.TRIANGLE: GeneratorClassName.TRIANGLE_GENERATOR,
-    LibraryGeneratorName.NOISE: GeneratorClassName.NOISE_GENERATOR,
+GENERATOR_TO_CLASS_NAME_MAP: Final[Dict[GeneratorName, GeneratorClassName]] = {
+    GeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,
+    GeneratorName.TRIANGLE: GeneratorClassName.TRIANGLE_GENERATOR,
+    GeneratorName.NOISE: GeneratorClassName.NOISE_GENERATOR,
 }
 
 

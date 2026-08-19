@@ -105,10 +105,10 @@ def project_fixture() -> ProjectFixture:
     )
 
     channels = {
-        ChannelName.PULSE1: Channel(channel_name=ChannelName.PULSE1, patterns={0: Pattern(rows=pulse_rows)}),
-        ChannelName.PULSE2: Channel(channel_name=ChannelName.PULSE2, patterns={}),
-        ChannelName.TRIANGLE: Channel(channel_name=ChannelName.TRIANGLE, patterns={}),
-        ChannelName.NOISE: Channel(channel_name=ChannelName.NOISE, patterns={0: Pattern(rows=noise_rows)}),
+        ChannelName.PULSE1: Channel(name=ChannelName.PULSE1, patterns={0: Pattern(rows=pulse_rows)}),
+        ChannelName.PULSE2: Channel(name=ChannelName.PULSE2, patterns={}),
+        ChannelName.TRIANGLE: Channel(name=ChannelName.TRIANGLE, patterns={}),
+        ChannelName.NOISE: Channel(name=ChannelName.NOISE, patterns={0: Pattern(rows=noise_rows)}),
     }
     order = [
         {

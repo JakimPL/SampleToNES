@@ -6,6 +6,7 @@ GENERATORS: Final = "generators"
 
 CHANNELS: Final = "channels"
 GENERATOR: Final = "generator"
+NAME: Final = "name"
 
 SONG: Final = "song"
 PATTERNS: Final = "patterns"

@@ -5,9 +5,9 @@ from .implementation.triangle import TriangleGenerator
 from .maps import (
     CHANNEL_CLASSES,
     GENERATOR_CLASS_MAP,
+    GENERATOR_TO_CLASS_NAME_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
     INSTRUCTION_TO_GENERATOR_MAP,
-    LIBRARY_GENERATOR_CLASS_MAP,
     MIXER_LEVELS,
 )
 from .types import (
@@ -29,7 +29,7 @@ __all__ = [
     "GENERATOR_CLASS_MAP",
     "GENERATOR_TO_INSTRUCTION_MAP",
     "INSTRUCTION_TO_GENERATOR_MAP",
-    "LIBRARY_GENERATOR_CLASS_MAP",
+    "GENERATOR_TO_CLASS_NAME_MAP",
     "MIXER_LEVELS",
     "Generator",
     "GeneratorClass",

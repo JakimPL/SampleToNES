@@ -71,7 +71,7 @@ from sampletones_application.view_model.shared.footprint import SampleFootprintV
 from sampletones_core.constants.enums import (
     ChannelName,
     FeatureKey,
-    LibraryGeneratorName,
+    GeneratorName,
 )
 from sampletones_core.exporters import Features
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, resting_reference, supported_features
@@ -286,7 +286,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _generator_kind(
         self,
         channel_name: ChannelName,
-    ) -> LibraryGeneratorName:
+    ) -> GeneratorName:
         return CHANNEL_GENERATOR_KIND[channel_name]
 
     def _generator_features(

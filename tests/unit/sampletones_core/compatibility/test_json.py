@@ -52,7 +52,7 @@ class TestUpgradeJson:
 
         assert data["format_version"] == SAMPLETONES_PROJECT_DATA_VERSION
         channel = data["song"]["channels"]["pulse1"]
-        assert channel["channel_name"] == "pulse1"
+        assert channel["name"] == "pulse1"
         assert "generator" not in channel
         command = channel["patterns"]["0"]["rows"]["0"]["command"]
         assert command["channel_name"] == "pulse1"

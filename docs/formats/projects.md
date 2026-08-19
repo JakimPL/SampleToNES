@@ -57,5 +57,5 @@ deserialization (see
 within a matching version are ignored, which leaves room for the format to grow.
 
 The current format version is 1.1. Version 1.1 renamed each channel pool's
-`generator` key to `channel_name` and a row instrument's `generator_name` key to
+`generator` key to `name` and a row instrument's `generator_name` key to
 `channel_name`; the channel values stored inside never changed.

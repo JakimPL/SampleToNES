@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Dict, Final, List, Literal
 
 
-class LibraryGeneratorName(StrEnum):
+class GeneratorName(StrEnum):
     PULSE = "pulse"
     TRIANGLE = "triangle"
     NOISE = "noise"

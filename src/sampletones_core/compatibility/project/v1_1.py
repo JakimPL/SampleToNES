@@ -6,6 +6,7 @@ from sampletones_core.compatibility.fields import (
     COMMAND,
     GENERATOR,
     GENERATOR_NAME,
+    NAME,
     PATTERNS,
     ROWS,
     SONG,
@@ -21,7 +22,7 @@ def update(data: SerializedData) -> SerializedData:
 
     Project format 1.0 stored a channel pool's channel under ``generator`` and a
     row instrument's channel under ``generator_name``. Project format 1.1 names
-    both ``channel_name``.
+    them ``name`` and ``channel_name``.
     """
     updated = dict(data)
     song = data.get(SONG)
@@ -51,7 +52,7 @@ def update(data: SerializedData) -> SerializedData:
 def _renamed_pool(channel: SerializedData) -> SerializedData:
     renamed = dict(channel)
     if GENERATOR in renamed:
-        renamed[CHANNEL_NAME] = renamed.pop(GENERATOR)
+        renamed[NAME] = renamed.pop(GENERATOR)
 
     patterns = channel.get(PATTERNS)
     if isinstance(patterns, dict):

@@ -114,7 +114,7 @@ colors:
   favorite: "#ffd76e"
   favorite_child: "#e7dbb7"
 
-  library_generator: "#d2e8d2"
+  generator: "#d2e8d2"
   library_group: "#d2e8e8"
   library_instruction: "#d2d2d2"
   library_root: "#dcdcdc"

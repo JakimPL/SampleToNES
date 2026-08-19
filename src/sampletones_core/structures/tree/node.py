@@ -5,7 +5,7 @@ from typing import Optional
 
 from anytree import Node
 
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 
@@ -118,7 +118,7 @@ class GeneratorNode(TreeNode):
     def __init__(
         self,
         name: str,
-        generator_name: LibraryGeneratorName,
+        generator_name: GeneratorName,
         node_type: NodeType = NodeType.GENERATOR,
         parent: Optional[TreeNode] = None,
     ) -> None:

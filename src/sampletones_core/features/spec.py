@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Final, List, Tuple
 
-from sampletones_core.constants.enums import ChannelName, FeatureKey, LibraryGeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
 from sampletones_core.constants.general import (
     ARPEGGIO_MAX,
     ARPEGGIO_MIN,
@@ -41,17 +41,17 @@ RESTING_REFERENCE_PITCH: Final[int] = 60
 RESTING_REFERENCE_PERIOD: Final[int] = NUM_PERIODS // 2
 
 
-GENERATOR_FEATURE_RANGES: Final[Dict[LibraryGeneratorName, Dict[FeatureKey, FeatureRange]]] = {
-    LibraryGeneratorName.PULSE: {
+GENERATOR_FEATURE_RANGES: Final[Dict[GeneratorName, Dict[FeatureKey, FeatureRange]]] = {
+    GeneratorName.PULSE: {
         FeatureKey.VOLUME: FeatureRange(0, MAX_VOLUME),
         FeatureKey.ARPEGGIO: FeatureRange(ARPEGGIO_MIN, ARPEGGIO_MAX),
         FeatureKey.DUTY_CYCLE: FeatureRange(0, MAX_DUTY_CYCLE),
     },
-    LibraryGeneratorName.TRIANGLE: {
+    GeneratorName.TRIANGLE: {
         FeatureKey.VOLUME: FeatureRange(0, MAX_VOLUME),
         FeatureKey.ARPEGGIO: FeatureRange(ARPEGGIO_MIN, ARPEGGIO_MAX),
     },
-    LibraryGeneratorName.NOISE: {
+    GeneratorName.NOISE: {
         FeatureKey.VOLUME: FeatureRange(0, MAX_VOLUME),
         FeatureKey.ARPEGGIO: FeatureRange(0, MAX_PERIOD),
         FeatureKey.DUTY_CYCLE: FeatureRange(0, MAX_NOISE_MODE),
@@ -59,11 +59,11 @@ GENERATOR_FEATURE_RANGES: Final[Dict[LibraryGeneratorName, Dict[FeatureKey, Feat
 }
 
 
-CHANNEL_GENERATOR_KIND: Final[Dict[ChannelName, LibraryGeneratorName]] = {
-    ChannelName.PULSE1: LibraryGeneratorName.PULSE,
-    ChannelName.PULSE2: LibraryGeneratorName.PULSE,
-    ChannelName.TRIANGLE: LibraryGeneratorName.TRIANGLE,
-    ChannelName.NOISE: LibraryGeneratorName.NOISE,
+CHANNEL_GENERATOR_KIND: Final[Dict[ChannelName, GeneratorName]] = {
+    ChannelName.PULSE1: GeneratorName.PULSE,
+    ChannelName.PULSE2: GeneratorName.PULSE,
+    ChannelName.TRIANGLE: GeneratorName.TRIANGLE,
+    ChannelName.NOISE: GeneratorName.NOISE,
 }
 
 
@@ -81,7 +81,7 @@ def resting_reference(channel_name: ChannelName) -> int:
         int: The pitch a tonal channel rests at, or the period the noise channel rests at.
     """
     match CHANNEL_GENERATOR_KIND[channel_name]:
-        case LibraryGeneratorName.NOISE:
+        case GeneratorName.NOISE:
             return RESTING_REFERENCE_PERIOD
         case _:
             return RESTING_REFERENCE_PITCH
@@ -106,18 +106,18 @@ def resting_held_features(
 
 
 def supported_features(
-    kind: LibraryGeneratorName,
+    kind: GeneratorName,
 ) -> List[FeatureKey]:
     ranges = GENERATOR_FEATURE_RANGES[kind]
     return [feature for feature in FEATURE_DIMENSION_ORDER if feature in ranges]
 
 
 def feature_range(
-    kind: LibraryGeneratorName,
+    kind: GeneratorName,
     feature: FeatureKey,
 ) -> FeatureRange:
     return GENERATOR_FEATURE_RANGES[kind][feature]
 
 
-def supports(kind: LibraryGeneratorName, feature: FeatureKey) -> bool:
+def supports(kind: GeneratorName, feature: FeatureKey) -> bool:
     return feature in GENERATOR_FEATURE_RANGES[kind]

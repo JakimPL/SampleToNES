@@ -39,7 +39,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.structures.tree import (
     GeneratorNode,
@@ -115,7 +115,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         self.on_generate_requested: Optional[VoidCallback] = None
         self.on_cancel_generation: Optional[VoidCallback] = None
         self.on_library_selected: Optional[Callable[[InstructionLibraryKey], None]] = None
-        self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, LibraryGeneratorName], None]] = None
+        self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, GeneratorName], None]] = None
         self.on_library_remove_requested: Optional[Callable[[InstructionLibraryKey], None]] = None
 
         super().__init__(

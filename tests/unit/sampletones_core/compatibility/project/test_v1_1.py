@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from sampletones_core.compatibility.fields import CHANNEL_NAME
+from sampletones_core.compatibility.fields import CHANNEL_NAME, NAME
 from sampletones_core.compatibility.project.v1_1 import update
 
 
@@ -14,7 +14,7 @@ class TestProjectV1_1:
 
         upgraded = update(data)
 
-        assert upgraded["song"]["channels"]["pulse1"][CHANNEL_NAME] == "pulse1"
+        assert upgraded["song"]["channels"]["pulse1"][NAME] == "pulse1"
         assert "generator" not in upgraded["song"]["channels"]["pulse1"]
 
     def test_renames_instrument_command_channel(self) -> None:
