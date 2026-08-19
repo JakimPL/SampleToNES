@@ -53,7 +53,10 @@ class Selector(ABC):
         fragment_ids: List[int],
     ) -> Dict[int, Dict[ChannelName, ApproximationData]]: ...
 
-    def reconstruct_fragment(self, fragment: Fragment) -> Dict[ChannelName, ApproximationData]:
+    def reconstruct_fragment(
+        self,
+        fragment: Fragment,
+    ) -> Dict[ChannelName, ApproximationData]:
         approximations: Dict[ChannelName, ApproximationData] = {}
         remaining_channels = dict(self.channels.items())
         while remaining_channels:
@@ -96,16 +99,36 @@ class Selector(ABC):
             The shortlisted candidates with their aligned costs, best first.
         """
         valid_instructions, candidate_approximations = self.candidate_provider.candidates(remaining_generator_classes)
-        spectral_costs = self.scorer.spectral_costs(fragment, candidate_approximations)
+        spectral_costs = self.scorer.spectral_costs(
+            fragment,
+            candidate_approximations,
+        )
         shortlist = Scorer.top_k(spectral_costs, self.top_k)
 
         scored: List[ScoredCandidate] = []
         for index in shortlist:
             instruction = valid_instructions[index]
-            generator = get_generator_by_instruction(instruction, remaining_generator_classes)
-            approximation = self._build_approximation(fragment, instruction, generator)
-            cost = self.scorer.aligned_cost(fragment, float(spectral_costs[index]), approximation)
-            scored.append(ScoredCandidate(instruction=instruction, cost=cost, approximation=approximation))
+            generator = get_generator_by_instruction(
+                instruction,
+                remaining_generator_classes,
+            )
+            approximation = self._build_approximation(
+                fragment,
+                instruction,
+                generator,
+            )
+            cost = self.scorer.aligned_cost(
+                fragment,
+                float(spectral_costs[index]),
+                approximation,
+            )
+            scored.append(
+                ScoredCandidate(
+                    instruction=instruction,
+                    cost=cost,
+                    approximation=approximation,
+                )
+            )
 
         scored.sort(key=lambda candidate: candidate.cost)
         return scored
@@ -116,7 +139,10 @@ class Selector(ABC):
         remaining_generator_classes: Dict[GeneratorClassName, GeneratorUnion],
     ) -> ApproximationData:
         best = self._score_candidates(fragment, remaining_generator_classes)[0]
-        generator = get_generator_by_instruction(best.instruction, remaining_generator_classes)
+        generator = get_generator_by_instruction(
+            best.instruction,
+            remaining_generator_classes,
+        )
 
         return ApproximationData(
             channel_name=ChannelName(generator.name),
@@ -132,4 +158,8 @@ class Selector(ABC):
     ) -> Fragment:
         if self.config.generation.calculation.find_best_phase:
             return self.phase_aligner.align(fragment, instruction)
-        return self.candidate_provider.get_approximation(instruction, generator)
+
+        return self.candidate_provider.get_approximation(
+            instruction,
+            generator,
+        )

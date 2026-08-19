@@ -36,7 +36,19 @@ def get_generators_map(
 def get_remaining_generator_classes(
     remaining_channels: Dict[ChannelName, GeneratorUnion],
 ) -> Dict[GeneratorClassName, GeneratorUnion]:
-    return {generator.class_name(): generator for generator in reversed(remaining_channels.values())}
+    """
+    Maps each remaining generator class to its representative channel generator.
+
+    Channels of one kind share a candidate catalogue, so one channel stands for the
+    kind while its candidates are scored. The lowest remaining channel of a kind is
+    its representative, which resolves successive picks over same-kind channels to
+    the lowest free channel deterministically.
+    """
+    return {
+        remaining_channels[name].class_name(): remaining_channels[name]
+        for name in reversed(ChannelName.items())
+        if name in remaining_channels
+    }
 
 
 def get_generator_by_instruction(

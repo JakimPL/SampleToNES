@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, Tuple
+from typing import Dict, Final, FrozenSet, List, Tuple
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
 from sampletones_core.constants.general import (
@@ -64,6 +64,12 @@ CHANNEL_GENERATOR_KIND: Final[Dict[ChannelName, GeneratorName]] = {
     ChannelName.PULSE2: GeneratorName.PULSE,
     ChannelName.TRIANGLE: GeneratorName.TRIANGLE,
     ChannelName.NOISE: GeneratorName.NOISE,
+}
+
+GENERATOR_CHANNEL_KINDS: Final[Dict[GeneratorName, FrozenSet[ChannelName]]] = {
+    GeneratorName.PULSE: frozenset((ChannelName.PULSE1, ChannelName.PULSE2)),
+    GeneratorName.TRIANGLE: frozenset((ChannelName.TRIANGLE,)),
+    GeneratorName.NOISE: frozenset((ChannelName.NOISE,)),
 }
 
 

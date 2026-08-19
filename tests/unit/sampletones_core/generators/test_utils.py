@@ -75,6 +75,31 @@ class TestGetRemainingGeneratorClasses:
         assert GeneratorClassName.PULSE_GENERATOR in result
         assert GeneratorClassName.NOISE_GENERATOR in result
 
+    def test_lowest_pulse_channel_is_representative_when_both_remain(self, config: Config) -> None:
+        named = {
+            ChannelName.PULSE2: PulseGenerator(config, ChannelName.PULSE2),
+            ChannelName.PULSE1: PulseGenerator(config, ChannelName.PULSE1),
+        }
+        result = get_remaining_generator_classes(named)
+        assert result[GeneratorClassName.PULSE_GENERATOR] is named[ChannelName.PULSE1]
+
+    def test_pulse2_represents_pulse_kind_after_pulse1_is_consumed(self, config: Config) -> None:
+        named = {
+            ChannelName.PULSE2: PulseGenerator(config, ChannelName.PULSE2),
+        }
+        result = get_remaining_generator_classes(named)
+        assert result[GeneratorClassName.PULSE_GENERATOR] is named[ChannelName.PULSE2]
+
+    def test_single_channel_kinds_keep_their_own_generator(self, config: Config) -> None:
+        named = {
+            ChannelName.PULSE1: PulseGenerator(config, ChannelName.PULSE1),
+            ChannelName.TRIANGLE: TriangleGenerator(config, ChannelName.TRIANGLE),
+            ChannelName.NOISE: NoiseGenerator(config, ChannelName.NOISE),
+        }
+        result = get_remaining_generator_classes(named)
+        assert result[GeneratorClassName.TRIANGLE_GENERATOR] is named[ChannelName.TRIANGLE]
+        assert result[GeneratorClassName.NOISE_GENERATOR] is named[ChannelName.NOISE]
+
 
 class TestGetGeneratorByInstruction:
     def test_pulse_instruction_returns_pulse_generator(self, all_generators: Dict) -> None:
