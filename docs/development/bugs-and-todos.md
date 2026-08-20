@@ -38,6 +38,7 @@
 * Per-tab undo routing
 * In-application console
 * Improve performance of browser favorite scan of the entire tree per click
+* NSF play rate: the driver's step follows the 16666 µs the header asks for, while players drive the play routine from the NTSC frame rate
 
 ## Bugs
 

@@ -33,7 +33,6 @@ from sampletones_core.formats.famitracker.specification.instruments import (
     MAX_INSTRUMENTS,
 )
 from sampletones_core.formats.famitracker.specification.parameters import (
-    DEFAULT_COPYRIGHT,
     DEFAULT_HIGHLIGHT_FIRST,
     DEFAULT_HIGHLIGHT_SECOND,
     DEFAULT_SPEED_SPLIT_POINT,
@@ -59,6 +58,7 @@ from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
+from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
 
 def build_instrument(
@@ -278,7 +278,7 @@ def project_to_module(project: Project) -> FamiTrackerModule:
     information = ModuleInformation(
         title=info.title,
         author=info.author,
-        copyright=DEFAULT_COPYRIGHT,
+        copyright=SAMPLETONES_COPYRIGHT,
     )
 
     patterns: List[PatternData] = []

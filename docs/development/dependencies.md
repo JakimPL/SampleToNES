@@ -82,8 +82,7 @@ same on every system the project supports.
 
 Assembling needs `ca65` and `ld65` from [cc65](https://cc65.github.io/) — on Debian and Ubuntu,
 `sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the
-programs are absent. cc65 is a build-time tool for the driver alone, which is why it belongs
-neither in the requirements a user installs nor in `scripts/linux/build/dependencies.sh`.
+programs are absent. cc65 is a build-time tool for the driver alone.
 
 The assembled `driver.bin` is committed, so a checkout carries the player and exporting an NSF
 needs no assembler. A jump table leads the image, which fixes the addresses an NSF header names
@@ -96,6 +95,41 @@ assembled image alone, which is all an installed copy reads.
 cc65 is distributed under the zlib licence, and the driver stays clear of it: the link line names
 our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches
 the committed image. That keeps the blob entirely ours to ship under the project's MIT licence.
+
+### Verifying the driver
+
+`tests/integration/nsf` runs an exported file the way a console runs it. [py65](https://github.com/mnaberez/py65)
+— a 6502 emulator in the `dev` dependency group — executes the assembled driver against memory that
+watches the APU's address range, so each routine answers with the register writes it made and the
+suite holds the whole run against `RegisterTrace.from_song`. Reading those writes back into
+instructions and rendering them through the project's own generators closes the loop on the sound
+as well: what the console plays stands against the very waveform the reconstruction carries. py65
+is a developer dependency, outside both the wheel and the bundles, and its BSD licence leaves the
+project's own terms untouched.
+
+Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) carrying the `libgme` demuxer, which
+is a build option rather than a given: `make nsf-render` asks the installed ffmpeg which demuxers
+it holds and names this system's install command before it decodes anything. It exports the example
+files and renders each one to a wave beside it, its length read out of the song block the file
+carries. That is an ear rather than a gate: the register trace is what the driver answers to, and
+the wave is what a person listens to.
+
+### The player's tools
+
+Three tools serve the player, each reached by one command:
+
+| Tool | Run by | Installed with | Reaches |
+| --- | --- | --- | --- |
+| cc65 (`ca65`, `ld65`) | `make player` | the system's package manager | the machine assembling the driver |
+| py65 | `make test` | `uv sync --group dev` | the `dev` dependency group |
+| ffmpeg with `libgme` | `make nsf-render` | the system's package manager | the machine listening to an export |
+
+`scripts/linux/build/dependencies.sh` and its macOS counterpart carry what building and running the
+application needs, and the workflows install the `dev` group, so py65 is the one of the three CI
+reaches — the suite verifies the driver through it alone. cc65 and ffmpeg stay on the machine of
+whoever runs `make player` or `make nsf-render`, and a workflow that assembles the driver or renders
+a wave is what would put them in those scripts. The application itself calls neither: an export is
+written by the package's own code, from the committed `driver.bin`.
 
 ## Linux (standalone executable)
 

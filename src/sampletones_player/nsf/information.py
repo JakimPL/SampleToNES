@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_player.specification.nsf import DEFAULT_COPYRIGHT
+from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
 
 class NSFInformation(BaseModel):
@@ -19,4 +19,4 @@ class NSFInformation(BaseModel):
 
     title: str
     artist: str
-    copyright: str = DEFAULT_COPYRIGHT
+    copyright: str = SAMPLETONES_COPYRIGHT

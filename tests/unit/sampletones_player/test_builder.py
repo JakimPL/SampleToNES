@@ -59,7 +59,7 @@ class TestChannelInstructions:
         assert channel_instructions([], NoiseInstruction) == [NoiseInstruction.null_instruction()]
 
     def test_a_stream_of_another_channels_type_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             channel_instructions(melody(), TriangleInstruction)
 
 
@@ -94,7 +94,7 @@ class TestStreamsFromInstructions:
 
     def test_a_channel_holding_another_channels_instructions_raises(self) -> None:
         instructions: Dict[GeneratorName, List[InstructionUnion]] = {GeneratorName.TRIANGLE: melody()}
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             streams_from_instructions(instructions, PLAYER_TIMER_TABLE)
 
 

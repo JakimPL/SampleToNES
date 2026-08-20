@@ -36,7 +36,7 @@ def channel_instructions(
         List[InstructionT]: The stream, covering at least one tick.
 
     Raises:
-        ValueError: If the stream holds an instruction another channel sounds.
+        TypeError: If the stream holds an instruction another channel sounds.
     """
     typed: List[InstructionT] = []
     for instruction in instructions:
@@ -72,7 +72,7 @@ def streams_from_instructions(
         ChannelStreams: The four streams the driver plays.
 
     Raises:
-        ValueError: If a channel's stream holds an instruction another channel sounds.
+        TypeError: If a channel's stream holds an instruction another channel sounds.
     """
     pulse1 = channel_instructions(
         instructions.get(GeneratorName.PULSE1, ()),
@@ -117,6 +117,7 @@ def song_from_reconstruction(
         Song: The streams, the clock and the loop point as the player holds them.
 
     Raises:
+        TypeError: If a channel's stream holds an instruction another channel sounds.
         ValueError: If ``loop_tick`` lies outside the song's ticks.
     """
     return Song(

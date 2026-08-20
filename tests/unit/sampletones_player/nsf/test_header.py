@@ -13,7 +13,6 @@ from sampletones_player.specification.nsf import (
     BANKSWITCH_OFFSET,
     BANKSWITCH_SIZE,
     COPYRIGHT_OFFSET,
-    DEFAULT_COPYRIGHT,
     EXPANSION_OFFSET,
     FIRST_SONG,
     FIRST_SONG_OFFSET,
@@ -40,6 +39,7 @@ from sampletones_player.specification.nsf import (
     TITLE_OFFSET,
     VERSION_OFFSET,
 )
+from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
@@ -76,7 +76,7 @@ class TestHeaderBytes:
         + b"\x00\x80\x00\x80\x03\x80"
         + TITLE.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
         + ARTIST.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
-        + DEFAULT_COPYRIGHT.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
+        + SAMPLETONES_COPYRIGHT.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
         + b"\x1a\x41"
         + bytes(BANKSWITCH_SIZE)
         + b"\x20\x4e"
@@ -135,7 +135,7 @@ class TestHeaderStrings(BaseTestSuite):
     test_cases = (
         TestCase(offset=TITLE_OFFSET, expected=TITLE),
         TestCase(offset=ARTIST_OFFSET, expected=ARTIST),
-        TestCase(offset=COPYRIGHT_OFFSET, expected=DEFAULT_COPYRIGHT),
+        TestCase(offset=COPYRIGHT_OFFSET, expected=SAMPLETONES_COPYRIGHT),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)

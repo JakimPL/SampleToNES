@@ -1,17 +1,21 @@
 from __future__ import annotations
 
-import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Final, List, Sequence
 
 from sampletones_shared.exceptions import DriverBuildError, ToolchainMissingError
+from sampletones_shared.utils.system.programs import (
+    locate_program,
+    missing_program_message,
+)
 from sampletones_shared.utils.system.system import System
 
 ASSEMBLER: Final[str] = "ca65"
 LINKER: Final[str] = "ld65"
 TARGET_CPU: Final[str] = "6502"
+ASSEMBLY_PURPOSE: Final[str] = "the player driver is assembled with cc65"
 
 INSTALL_HINTS: Final[Dict[System, str]] = {
     System.LINUX: "sudo apt install cc65",
@@ -61,12 +65,11 @@ class Toolchain:
         Raises:
             ToolchainMissingError: If the program is absent from the system.
         """
-        located = shutil.which(program)
+        located = locate_program(program)
         if located is None:
-            hint = INSTALL_HINTS[System.current()]
-            raise ToolchainMissingError(f"{program} is missing: the player driver is assembled with cc65 ({hint})")
+            raise ToolchainMissingError(missing_program_message(program, ASSEMBLY_PURPOSE, INSTALL_HINTS))
 
-        return Path(located)
+        return located
 
     def assemble(self, source: Path, include_directory: Path, destination: Path) -> None:
         """Assembles one 6502 source into an object file.

@@ -20,6 +20,7 @@ from uuid import uuid4
 import numpy as np
 from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
+from sampletones_core.audio.mixing import align, common_length, mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.data import DataModel, Metadata, MetadataContract
@@ -30,7 +31,7 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
-from sampletones_core.generators.maps import GENERATOR_CLASSES
+from sampletones_core.generators.render import render_generators
 from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
 from sampletones_shared.exceptions import (
@@ -43,7 +44,6 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.arrays import pad
 from sampletones_shared.utils.serialization import load_binary, serialize_array
 
 from ..reconstructor.state import ReconstructionState
@@ -233,7 +233,7 @@ class Reconstruction(DataModel):
             return None
 
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
-        approximation = cls._sum_approximations(list(approximations.values()))
+        approximation = mix(list(approximations.values()))
 
         return cls.create(
             approximation=approximation,
@@ -284,7 +284,7 @@ class Reconstruction(DataModel):
         )
         self.instructions_data = [streams[name] for name in GeneratorName.items()]
         self._invalidate_derived_caches(self)
-        self.approximation = self._sum_approximations([item.approximation for item in self.approximations_data])
+        self.approximation = mix([item.approximation for item in self.approximations_data])
 
     def get_generator_instructions(
         self,
@@ -325,25 +325,12 @@ class Reconstruction(DataModel):
         plain sum reproduces the stored approximation shape. Drive is left at unity to match the
         regeneration path.
         """
-        rendered: Dict[GeneratorName, np.ndarray] = {}
-        for generator_name, instructions in self.instructions.items():
-            if not instructions:
-                continue
-
-            generator = GENERATOR_CLASSES[generator_name](
-                config,
-                generator_name.value,
-            )
-            rendered[generator_name] = np.concatenate(
-                [generator(instruction, save=True) for instruction in instructions]  # type: ignore[arg-type]
-            )
-
-        max_length = max((len(audio) for audio in rendered.values()), default=0)
+        rendered = render_generators(self.instructions, config)
         approximations_data = self._build_approximations_data(
             rendered,
-            max_length,
+            common_length(rendered.values()),
         )
-        approximation = self._sum_approximations([item.approximation for item in approximations_data])
+        approximation = mix([item.approximation for item in approximations_data])
 
         retuned: Reconstruction = self.model_copy(
             update={
@@ -356,35 +343,23 @@ class Reconstruction(DataModel):
         return retuned
 
     @staticmethod
-    def _sum_approximations(arrays: Sequence[np.ndarray]) -> np.ndarray:
-        """Mixes equal-length per-generator approximations into one waveform.
-
-        Returns an empty float array when no generator contributes, so a reconstruction with no
-        rendered audio still carries a valid approximation.
-        """
-        if not arrays:
-            return np.zeros(0, dtype=np.float32)
-
-        mixed: np.ndarray = np.sum(np.array(arrays), axis=0).astype(np.float32)
-        return mixed
-
-    @staticmethod
     def _build_approximations_data(
         rendered: Mapping[GeneratorName, np.ndarray],
         length: int,
     ) -> List[ApproximationsItem]:
-        """Pads each rendered channel's audio to ``length``, in channel order.
+        """Brings each rendered channel's audio to ``length``, in channel order.
 
         A shared length lets the per-generator arrays stack and sum into the mixed approximation,
         and a fixed order keeps a stored reconstruction reading the same however an edit reached it.
         """
+        names = [generator_name for generator_name in GeneratorName.items() if generator_name in rendered]
+        aligned = align([rendered[generator_name] for generator_name in names], length)
         return [
             ApproximationsItem(
                 generator_name=generator_name,
-                approximation=pad(rendered[generator_name], 0, length),
+                approximation=audio,
             )
-            for generator_name in GeneratorName.items()
-            if generator_name in rendered
+            for generator_name, audio in zip(names, aligned)
         ]
 
     @staticmethod

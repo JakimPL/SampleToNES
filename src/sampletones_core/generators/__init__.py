@@ -10,6 +10,7 @@ from .maps import (
     LIBRARY_GENERATOR_CLASS_MAP,
     MIXER_LEVELS,
 )
+from .render import render_generators, render_instructions
 from .types import (
     GeneratorClass,
     GeneratorClassNames,
@@ -44,4 +45,6 @@ __all__ = [
     "get_generators_by_names",
     "get_generators_map",
     "get_remaining_generator_classes",
+    "render_generators",
+    "render_instructions",
 ]

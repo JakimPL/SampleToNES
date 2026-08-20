@@ -82,6 +82,7 @@ dev = [
     "isort==8.0.1",
     "mypy==2.1.0",
     "pre-commit==4.6.0",
+    "py65==1.2.0",
     "pylint==4.0.6",
     "pylint-pydantic==0.4.1",
     "pytest==9.1.1",

@@ -1,6 +1,6 @@
 import struct
 from pathlib import Path
-from typing import Dict, Final, Tuple
+from typing import Dict, Tuple
 
 import pytest
 
@@ -10,7 +10,6 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import write_nsf
-from sampletones_player.nsf.information import NSFInformation
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
@@ -29,12 +28,7 @@ from sampletones_player.specification.song import (
     TOTAL_TICKS_OFFSET,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
-
-ARTIST: Final[str] = "Integration"
-
-
-def exported_information(name: str) -> NSFInformation:
-    return NSFInformation(title=name, artist=ARTIST)
+from tests.integration.nsf.exports import exported_information
 
 
 def song_block(data: bytes, image: DriverImage) -> bytes:
