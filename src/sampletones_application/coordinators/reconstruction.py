@@ -35,7 +35,7 @@ from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from sampletones_shared.types.callback import Callback, VoidCallback
-from sampletones_shared.utils.system.paths import get_filename
+from sampletones_shared.utils.system.paths import first_missing, get_filename
 
 
 class ReconstructionCoordinator:
@@ -291,10 +291,10 @@ class ReconstructionCoordinator:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
         self._audio_device_manager.stop()
-        audio_filepath = reconstruction_data.reconstruction.audio_filepath
-        if isinstance(audio_filepath, Path) and not audio_filepath.exists():
+        missing_path = first_missing(reconstruction_data.reconstruction.source_paths)
+        if missing_path is not None:
             self._dialogs.show_file_not_found(
-                audio_filepath,
+                missing_path,
                 self._language_manager["reconstructions.browser.message.audio_file_not_found"],
             )
 

@@ -52,6 +52,7 @@ from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.arrays import pad
 from sampletones_shared.utils.serialization import load_binary, serialize_array
+from sampletones_shared.utils.system.paths import to_paths
 
 RECONSTRUCTION_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
     label="Reconstruction data",
@@ -73,7 +74,10 @@ class Reconstruction(DataModel):
     )
     audio_filepath: Optional[Union[Path, Tuple[Path, ...]]] = Field(
         ...,
-        description="Location of the source audio: one path for a single source, the stem paths for a stems reconstruction, and None once detached from the local origin",
+        description=(
+            "Location of the source audio: one path for a single source, the stem paths "
+            "for a stems reconstruction, and None once detached from the local origin"
+        ),
     )
     config: Config = Field(
         ...,
@@ -100,6 +104,11 @@ class Reconstruction(DataModel):
         ...,
         description="Normalization coefficient used during reconstruction",
     )
+
+    @cached_property
+    def source_paths(self) -> Tuple[Path, ...]:
+        """The recorded source audio paths, empty while the reconstruction is detached."""
+        return to_paths(self.audio_filepath)
 
     @cached_property
     def approximations(self) -> Dict[ChannelName, np.ndarray]:
@@ -312,6 +321,7 @@ class Reconstruction(DataModel):
         origin, so a saved project stays portable.
         """
         self.audio_filepath = None
+        self.__dict__.pop("source_paths", None)
 
     def with_nes_frequency(self, nes_frequency: int) -> Reconstruction:
         """Returns a copy retuned to ``nes_frequency`` by re-rendering its audio.

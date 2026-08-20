@@ -9,6 +9,7 @@ import pytest
 from sampletones_shared.utils.system.paths import (
     DEFAULT_MAX_FILENAME_DISPLAY,
     ensure_suffix,
+    first_missing,
     get_directory,
     get_filename,
     open_directory_in_explorer_linux,
@@ -18,11 +19,46 @@ from sampletones_shared.utils.system.paths import (
     shorten_filename,
     shorten_path,
     to_path,
+    to_paths,
 )
 from sampletones_shared.utils.system.system import System
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
+
+
+class TestFirstMissing:
+    def test_answers_the_first_path_that_names_no_file(self, tmp_path: Path) -> None:
+        existing = tmp_path / "here.wav"
+        existing.touch()
+        missing = tmp_path / "gone.wav"
+        later_missing = tmp_path / "also_gone.wav"
+
+        assert first_missing((existing, missing, later_missing)) == missing
+
+    def test_answers_none_when_every_path_stands(self, tmp_path: Path) -> None:
+        first = tmp_path / "one.wav"
+        second = tmp_path / "two.wav"
+        first.touch()
+        second.touch()
+
+        assert first_missing((first, second)) is None
+
+
+class TestToPaths:
+    def test_one_path_becomes_a_one_tuple(self) -> None:
+        assert to_paths(Path("/a/one.wav")) == (Path("/a/one.wav"),)
+
+    def test_several_paths_stay_as_they_are(self) -> None:
+        paths = (Path("/a/one.wav"), Path("/b/two.wav"))
+
+        assert to_paths(paths) == paths
+
+    def test_an_absent_location_is_empty(self) -> None:
+        assert to_paths(None) == ()
+
+    def test_strings_become_paths(self) -> None:
+        assert to_paths("/a/one.wav") == (Path("/a/one.wav"),)
 
 
 class TestToPath(BaseTestSuite):

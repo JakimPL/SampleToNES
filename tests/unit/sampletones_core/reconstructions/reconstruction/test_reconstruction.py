@@ -139,6 +139,37 @@ class TestStemsDataRoundTrip:
         assert loaded.audio_filepath == stem_paths
 
 
+class TestSourcePaths:
+    def test_single_source_yields_one_path(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+
+        assert reconstruction.source_paths == (Path("/dev/null"),)
+
+    def test_stem_sources_yield_the_recorded_tuple(self) -> None:
+        stem_paths = (
+            Path("/dev/null/stem_a.wav"),
+            Path("/dev/null/stem_b.wav"),
+        )
+        reconstruction = Reconstruction.create(
+            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
+            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
+            instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=stem_paths,
+        )
+
+        assert reconstruction.source_paths == stem_paths
+
+    def test_detaching_empties_the_source_paths(self) -> None:
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
+        assert reconstruction.source_paths == (Path("/dev/null"),)
+
+        reconstruction.detach_source()
+
+        assert reconstruction.source_paths == ()
+
+
 class TestRoundTrip:
     def test_save_load_round_trip(
         self,

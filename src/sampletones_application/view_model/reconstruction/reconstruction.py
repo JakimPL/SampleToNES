@@ -1,35 +1,15 @@
-from enum import StrEnum
-from typing import Final, FrozenSet, Tuple
+from typing import FrozenSet
 
 from pydantic import BaseModel
 
 from sampletones_core.constants.enums import ChannelName
 
-
-class ReconstructionPathState(StrEnum):
-    """Whether a path can be shown for a reconstruction location.
-
-    ``AVAILABLE`` carries a resolvable path. ``NOT_FOUND`` marks a recorded path whose
-    file is absent on this machine. ``NOT_APPLICABLE`` marks a location that a
-    reconstruction does not have (a sequencer sample keeps no file locations).
-    ``EMPTY`` is the resting state when no reconstruction is loaded.
-    """
-
-    AVAILABLE = "available"
-    NOT_FOUND = "not_found"
-    NOT_APPLICABLE = "not_applicable"
-    EMPTY = "empty"
-
-
-RECORDED_PATH_STATES: Final[Tuple[ReconstructionPathState, ...]] = (
-    ReconstructionPathState.AVAILABLE,
-    ReconstructionPathState.NOT_FOUND,
+from .paths.path import ReconstructionPathViewModel
+from .paths.state import (
+    PLAYABLE_PATH_STATES,
+    RECORDED_PATH_STATES,
+    ReconstructionPathState,
 )
-
-
-class ReconstructionPathViewModel(BaseModel, frozen=True):
-    state: ReconstructionPathState
-    path: str
 
 
 class ReconstructionViewModel(BaseModel, frozen=True):
@@ -50,7 +30,7 @@ class ReconstructionViewModel(BaseModel, frozen=True):
     def audio_source_enabled(self) -> bool:
         """The source toggle offers the original audio once its file is present on disk;
         until then playback stays on the reconstruction."""
-        return self.original_audio.state is ReconstructionPathState.AVAILABLE
+        return self.original_audio.state in PLAYABLE_PATH_STATES
 
     @property
     def locate_audio_enabled(self) -> bool:

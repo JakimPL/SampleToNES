@@ -4,7 +4,7 @@ from typing import Callable
 import numpy as np
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_core.audio import write_wave
+from sampletones_core.audio import load_audio, mix_audios, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
@@ -80,6 +80,48 @@ class TestFromReconstruction:
         )
 
         assert data.original_audio is not None
+
+    def test_mixes_several_recorded_paths_into_the_original(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        config = Config()
+        first = tmp_path / "kick.wav"
+        second = tmp_path / "snare.wav"
+        write_wave(first, config.library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        write_wave(second, config.library.sample_rate, np.ones(64, dtype=np.float32) * 0.25)
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (first, second)})
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        load_options = {
+            "target_sample_rate": config.library.sample_rate,
+            "normalize": config.general.normalize,
+            "quantize": config.general.quantize,
+        }
+        expected = mix_audios(
+            [
+                load_audio(path=first, **load_options),
+                load_audio(path=second, **load_options),
+            ]
+        )
+        assert data.original_audio is not None
+        np.testing.assert_allclose(data.original_audio, expected)
+
+    def test_one_unreadable_stem_costs_the_whole_original(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        first = tmp_path / "kick.wav"
+        missing = tmp_path / "gone.wav"
+        write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (first, missing)})
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        assert data.original_audio is None
 
 
 class TestReconstructionDataLoad:
@@ -172,6 +214,36 @@ class TestDetachedCopy:
 
         assert reconstruction.audio_filepath is not None
         assert copy.name == reconstruction.audio_filepath.stem
+
+    def test_names_after_the_shared_directory_of_stems(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        drums = tmp_path / "drums"
+        drums.mkdir()
+        stems = (drums / "kick.wav", drums / "snare.wav")
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": stems})
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        copy = data.detached_copy(tmp_path / "lead.stn")
+
+        assert copy.name == "drums"
+
+    def test_names_after_the_file_when_stems_share_no_directory(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "one").mkdir()
+        (tmp_path / "two").mkdir()
+        stems = (tmp_path / "one" / "kick.wav", tmp_path / "two" / "snare.wav")
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": stems})
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        copy = data.detached_copy(tmp_path / "lead.stn")
+
+        assert copy.name == "lead"
 
     def test_reuses_the_already_loaded_original_audio(
         self,

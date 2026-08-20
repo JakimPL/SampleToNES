@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
-from sampletones_core.audio import active_frame_level, load_audio
+from sampletones_core.audio import active_frame_level, load_audio, mix_audios
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import ChannelName
@@ -27,7 +27,6 @@ from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy impor
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.arrays import pad
 from sampletones_shared.utils.system.paths import to_path
 
 
@@ -165,7 +164,7 @@ class Reconstructor:
             checked_paths.append(to_path(path))
 
         audios = [self.load_audio(path) for path in checked_paths]
-        mix = self._mix_audios(audios)
+        mix = mix_audios(audios)
         coefficient = self.get_coefficient(mix)
         self.reset_generators()
         covered = {channel for entry in stems_config.entries for channel in entry.channels}
@@ -235,17 +234,6 @@ class Reconstructor:
             coefficient,
             tuple(checked_paths),
             stems_data=stems_data,
-        )
-
-    def _mix_audios(self, audios: List[np.ndarray]) -> np.ndarray:
-        """Sums the stem audios, each padded to the longest stem's length."""
-        if not audios:
-            raise ValueError("At least one stem audio is required")
-
-        max_length = max(audio.shape[0] for audio in audios)
-        return sum(
-            (pad(audio, 0, max_length) for audio in audios),
-            np.zeros(max_length, dtype=np.float64),
         )
 
     def load_audio(self, path: Path) -> np.ndarray:

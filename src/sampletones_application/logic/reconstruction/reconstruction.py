@@ -1,14 +1,18 @@
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, List, Optional, Protocol, Tuple, Union
+from typing import Callable, Dict, FrozenSet, List, Optional, Protocol, Tuple
 
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.view_model.reconstruction.reconstruction import (
-    ReconstructionPathState,
+from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
+    ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
@@ -24,7 +28,11 @@ from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.paths import get_filename, open_path_in_explorer
+from sampletones_shared.utils.system.paths import (
+    first_missing,
+    get_filename,
+    open_path_in_explorer,
+)
 
 
 class ExportServiceProtocol(Protocol):
@@ -162,7 +170,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_waveform_cleared)
         empty_path = ReconstructionPathViewModel(
             state=ReconstructionPathState.EMPTY,
-            path="",
+            paths=(),
         )
         self.call(
             self.on_view_changed,
@@ -397,15 +405,18 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._export_service.export_wav(filepath, sample_rate, audio_snapshot)
 
     def handle_locate_original_audio(self) -> None:
-        path = self._reconstruction_manager.audio_filepath
-        if not isinstance(path, Path):
+        if not self._reconstruction_manager.source_paths:
             return
 
         try:
             self._reconstruction_manager.locate_original_audio()
         except FileNotFoundError:
-            logger.warning(f"Original audio file could not be found: '{logger.format_path(path)}'")
-            self.call(self.on_locate_audio_not_found, path)
+            missing_path = first_missing(self._reconstruction_manager.source_paths)
+            if missing_path is None:
+                raise
+
+            logger.warning(f"Original audio file could not be found: '{logger.format_path(missing_path)}'")
+            self.call(self.on_locate_audio_not_found, missing_path)
 
     def open_reconstruction_in_explorer(self) -> None:
         """Reveals the loaded reconstruction's own file in the OS file manager."""
@@ -456,7 +467,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         """
         reconstruction_file = self._build_file_path_view_model(reconstruction_data.filepath)
         original_audio = self._build_audio_path_view_model(
-            reconstruction_data.reconstruction.audio_filepath,
+            reconstruction_data.reconstruction.source_paths,
             reconstruction_data.original_audio,
         )
         return reconstruction_file, original_audio
@@ -468,42 +479,30 @@ class ReconstructionPanelLogic(CallbackMixin):
         if filepath is None:
             return ReconstructionPathViewModel(
                 state=ReconstructionPathState.NOT_APPLICABLE,
-                path="",
+                paths=(),
             )
 
         return ReconstructionPathViewModel(
             state=ReconstructionPathState.AVAILABLE,
-            path=str(filepath),
+            paths=(str(filepath),),
         )
 
     @staticmethod
     def _build_audio_path_view_model(
-        audio_filepath: Optional[Union[Path, Tuple[Path, ...]]],
+        source_paths: Tuple[Path, ...],
         original_audio: Optional[np.ndarray],
     ) -> ReconstructionPathViewModel:
         """Reports the original-audio location, treating a recorded path with unusable content
         the same as a missing one, so the source toggle and waveform agree with what actually loaded."""
-        if audio_filepath is None:
-            return ReconstructionPathViewModel(
-                state=ReconstructionPathState.NOT_APPLICABLE,
-                path="",
-            )
-
-        if original_audio is None:
+        if source_paths and original_audio is None:
             return ReconstructionPathViewModel(
                 state=ReconstructionPathState.NOT_FOUND,
-                path="",
-            )
-
-        if isinstance(audio_filepath, Path):
-            return ReconstructionPathViewModel(
-                state=ReconstructionPathState.AVAILABLE,
-                path=str(audio_filepath),
+                paths=(),
             )
 
         return ReconstructionPathViewModel(
-            state=ReconstructionPathState.AVAILABLE,
-            path=", ".join(str(path) for path in audio_filepath),
+            state=ReconstructionPathState.from_source_paths(source_paths),
+            paths=tuple(str(path) for path in source_paths),
         )
 
     @property

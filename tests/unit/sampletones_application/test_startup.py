@@ -306,12 +306,12 @@ class TestAddOpenReconstructionToSequencer:
     ) -> None:
         self._open_file_backed_reconstruction(app, reconstruction_factory, tmp_path)
         app.project_controller.new()
-        source_before = app.reconstruction_manager.audio_filepath
+        source_before = app.reconstruction_manager.source_paths
 
         app._add_current_reconstruction_to_sequencer()
 
-        assert source_before is not None
-        assert app.reconstruction_manager.audio_filepath == source_before
+        assert source_before
+        assert app.reconstruction_manager.source_paths == source_before
         assert app._build_menu_bar_viewmodel().locate_audio_enabled
 
     def test_embedded_sample_is_a_detached_copy(

@@ -4,7 +4,8 @@ from typing import Final
 import numpy as np
 import pytest
 
-from sampletones_core.audio import write_wave
+from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_core.audio import load_audio, mix_audios, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions import Reconstructor
@@ -85,3 +86,49 @@ class TestReconstructStems:
                 [tmp_path / "only_one.wav"],
                 _stems_config(),
             )
+
+
+class TestStemsOriginalAudio:
+    def test_mixes_the_recorded_stems_into_one_original(self, tmp_path: Path) -> None:
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, library=library)
+
+        sample_rate = config.library.sample_rate
+        count = int(sample_rate * _DURATION_SECONDS)
+        time = np.arange(count) / sample_rate
+        tone = 0.5 * np.sin(2 * np.pi * _TONE_FREQUENCY * time)
+        rng = np.random.default_rng(93)
+        noise = rng.uniform(-0.3, 0.3, count)
+
+        tone_path = tmp_path / "tone.wav"
+        noise_path = tmp_path / "noise.wav"
+        write_wave(tone_path, sample_rate, tone)
+        write_wave(noise_path, sample_rate, noise)
+
+        reconstruction = reconstructor.reconstruct_stems(
+            [tone_path, noise_path],
+            _stems_config(),
+        )
+        assert reconstruction is not None
+
+        save_path = tmp_path / "stems.stn"
+        reconstruction.save(save_path)
+
+        data = ReconstructionData.load(save_path)
+
+        assert data.reconstruction.source_paths == (tone_path, noise_path)
+        assert data.name == tmp_path.name
+        load_options = {
+            "target_sample_rate": config.library.sample_rate,
+            "normalize": config.general.normalize,
+            "quantize": config.general.quantize,
+        }
+        expected = mix_audios(
+            [
+                load_audio(path=tone_path, **load_options),
+                load_audio(path=noise_path, **load_options),
+            ]
+        )
+        assert data.original_audio is not None
+        np.testing.assert_allclose(data.original_audio, expected)

@@ -7,9 +7,13 @@ from sampletones_application.ui.panels.reconstruction import plot as plot_module
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
-from sampletones_application.view_model.reconstruction.reconstruction import (
-    ReconstructionPathState,
+from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
+    ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 from sampletones_core.constants.enums import ChannelName
@@ -79,7 +83,7 @@ def _view_model(
     playing: FrozenSet[ChannelName],
     selected: FrozenSet[ChannelName],
 ) -> ReconstructionViewModel:
-    empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path="")
+    empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=())
     return ReconstructionViewModel(
         reconstruction_loaded=True,
         playing_channels=playing,

@@ -1,10 +1,11 @@
 # Stems reconstruction
 
 This document explains how one reconstruction is assigned across several stems.
-Consult it when changing the stems assignment algorithm, its configuration, or
-the per-stem record a reconstruction carries. The single-sample pipeline this
-builds on is described in [Reconstruction](reconstruction.md), and the stored
-record in [Reconstructions](../formats/reconstructions.md).
+Consult it when changing the stems assignment algorithm, its configuration, the
+per-stem record a reconstruction carries, or the way the application loads,
+names, and reveals the recorded stems. The single-sample pipeline this builds on
+is described in [Reconstruction](reconstruction.md), and the stored record in
+[Reconstructions](../formats/reconstructions.md).
 
 A stems reconstruction converts several audio stems at once. The stems are
 mixed and the mix is matched against the instruction library; within each frame,
@@ -75,3 +76,31 @@ handed to `Reconstructor.reconstruct_stems` together with the stem paths; it is
 part of the process rather than of the standard configuration. Per-frame
 assignment is greedy for now; Viterbi continuity and playback that decides per
 frame on the recorded streams are future work.
+
+## The recorded stems in the application
+
+A stems reconstruction records its stem paths under `audio_filepath` as a tuple,
+in entry order; the serialized form carries them in order. The application reads
+them through `source_paths`: empty once the reconstruction is detached from its
+origin, one path for a single source, the tuple for stems.
+
+Opening the document loads each recorded stem the way a single source loads
+(resampled, normalized and quantized as the configuration asks) and mixes them
+with `mix_audios` — padded to the longest stem and summed. The mix is the
+original audio the source toggle and the waveform offer, computed fresh on every
+load. A recorded stem absent or unreadable on this machine follows the
+single-source rule: the whole original is unavailable, the approximation stands
+on its own, and the application names the first missing path in its dialog.
+
+The document's name follows the naming rules in
+`sampletones_core.reconstructions.naming`, applied to the recorded paths in
+order: a single source names the document after the file's stem, several stems
+sharing one directory name it after that directory, and paths sharing no
+directory fall back to the `.stn` filename.
+
+The reconstruction tab's Audio source panel shows one shortened path line per
+stem, each line carrying its own full-path tooltip. Locating reveals every
+recorded path according to the capability matrix in
+[Desktop capabilities](../development/desktop-capabilities.md): one file-manager
+window with every stem selected where the file manager supports it, one window
+per directory otherwise.

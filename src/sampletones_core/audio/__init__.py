@@ -1,6 +1,7 @@
 from .device import AudioDevice, CurrentDevice
 from .io import load_audio, read_wave, write_wave
 from .manager import CHANNELS, FORMAT, AudioDeviceManager
+from .mixing import mix_audios
 from .processing import (
     active_frame_level,
     amplitude_to_decibels,
@@ -33,6 +34,7 @@ __all__ = [
     "interpolate",
     "load_audio",
     "minmax_decimate",
+    "mix_audios",
     "normalize",
     "quantize",
     "read_wave",

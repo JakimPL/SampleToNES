@@ -11,8 +11,10 @@ from sampletones_application.logic.reconstruction.manager import ReconstructionM
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
-from sampletones_application.view_model.reconstruction.reconstruction import (
+from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 from sampletones_core.audio import write_wave
@@ -224,15 +226,31 @@ class TestReconstructionPanelLogicPathRows:
 
     @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
-        audio_filepath = Path("/songs/source.wav") if case.has_filepath else None
+        source_paths = (Path("/songs/source.wav"),) if case.has_filepath else ()
         original_audio = np.zeros(4, dtype=np.float32) if case.has_content else None
 
         view_model = ReconstructionPanelLogic._build_audio_path_view_model(
-            audio_filepath,
+            source_paths,
             original_audio,
         )
 
         assert view_model.state is case.expected
+
+    def test_stem_paths_report_multiple_state(self) -> None:
+        stem_paths = (
+            Path("/stems/drums/kick.wav"),
+            Path("/stems/drums/snare.wav"),
+        )
+        original_audio = np.zeros(4, dtype=np.float32)
+
+        view_model = ReconstructionPanelLogic._build_audio_path_view_model(
+            stem_paths,
+            original_audio,
+        )
+
+        assert view_model.state is ReconstructionPathState.MULTIPLE
+        assert view_model.paths == tuple(str(path) for path in stem_paths)
+        assert view_model.path == ""
 
 
 class TestReconstructionPanelLogicUpdate:
@@ -830,12 +848,12 @@ class TestReconstructionPanelLogicComputeAudio:
 
 
 class TestReconstructionPanelLogicLocateAudio:
-    def test_no_audio_filepath_skips_locating(
+    def test_no_source_paths_skips_locating(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
     ) -> None:
-        mock_reconstruction_manager.audio_filepath = None
+        mock_reconstruction_manager.source_paths = ()
         panel_logic.handle_locate_original_audio()
         mock_reconstruction_manager.locate_original_audio.assert_not_called()
 
@@ -846,7 +864,7 @@ class TestReconstructionPanelLogicLocateAudio:
         tmp_path: Path,
     ) -> None:
         missing = tmp_path / "ghost.wav"
-        mock_reconstruction_manager.audio_filepath = missing
+        mock_reconstruction_manager.source_paths = (missing,)
         mock_reconstruction_manager.locate_original_audio.side_effect = FileNotFoundError
         callback = MagicMock()
         panel_logic.on_locate_audio_not_found = callback

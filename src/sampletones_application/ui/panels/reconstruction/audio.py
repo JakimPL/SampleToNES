@@ -1,9 +1,10 @@
-from typing import Callable, Optional
+from typing import Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.path import PathColors
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
@@ -18,9 +19,13 @@ from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.palette.colors.base import BaseColor
-from sampletones_application.view_model.reconstruction.reconstruction import (
-    ReconstructionPathState,
+from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
+    ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 from sampletones_core.constants.enums import AudioSourceType
@@ -44,6 +49,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
 
         self._reconstruction_file_path: GUIPathText
         self._original_audio_path: GUIPathText
+        self._original_audio_stem_paths: List[GUIPathText] = []
 
         self.on_audio_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
@@ -79,7 +85,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
             self._reconstruction_file_path,
             view_model.reconstruction_file,
         )
-        self._render_path(self._original_audio_path, view_model.original_audio)
+        self._render_original_audio(view_model.original_audio)
 
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
@@ -90,6 +96,45 @@ class GUIReconstructionAudioPanel(GUIPanel):
                 TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
                 self._lbl_reconstruction_radio,
             )
+
+    def _render_original_audio(self, view_model: ReconstructionPathViewModel) -> None:
+        """Draws the original-audio location: one line per recorded stem, one line otherwise."""
+        if view_model.state is ReconstructionPathState.MULTIPLE:
+            self._render_stem_paths(view_model.paths)
+            return
+
+        self._clear_stem_paths()
+        self._render_path(self._original_audio_path, view_model)
+
+    def _render_stem_paths(self, paths: Tuple[str, ...]) -> None:
+        while len(self._original_audio_stem_paths) > len(paths):
+            self._original_audio_stem_paths.pop().destroy()
+
+        for index, path in enumerate(paths):
+            widget = (
+                self._original_audio_stem_paths[index]
+                if index < len(self._original_audio_stem_paths)
+                else self._create_stem_path(index)
+            )
+            widget.set_path(path)
+
+    def _clear_stem_paths(self) -> None:
+        while len(self._original_audio_stem_paths) > 1:
+            self._original_audio_stem_paths.pop().destroy()
+
+    def _create_stem_path(self, index: int) -> GUIPathText:
+        widget = GUIPathText(
+            tag=compose_tag(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_ORIGINAL_AUDIO, str(index)),
+            path=None,
+            parent=self._body_container,
+            color=self._path_colors.default,
+            hover_color=self._path_colors.hover,
+            status_message=self._msg_path_status,
+            font=Font.REGULAR_SMALL,
+            status_bar=self._status_bar,
+        )
+        self._original_audio_stem_paths.append(widget)
+        return widget
 
     def _render_path(
         self,
@@ -135,6 +180,7 @@ class GUIReconstructionAudioPanel(GUIPanel):
             font=Font.REGULAR_SMALL,
             status_bar=self._status_bar,
         )
+        self._original_audio_stem_paths.append(self._original_audio_path)
 
         self._reconstruction_file_path.set_status("", self._path_status_color)
         self._original_audio_path.set_status("", self._path_status_color)

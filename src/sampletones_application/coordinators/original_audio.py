@@ -5,7 +5,8 @@ from sampletones_application.logic.reconstruction.audio_location import resolve_
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
-from sampletones_shared.utils.system.paths import open_path_in_explorer
+from sampletones_shared.utils.system.paths import first_missing, to_paths
+from sampletones_shared.utils.system.reveal.selection import open_paths_in_explorer
 
 
 class OriginalAudioLocator:
@@ -34,17 +35,16 @@ class OriginalAudioLocator:
             self._dialogs.show_error(exception, self._language_manager["reconstructions.browser.message.load_error"])
             return
 
-        if audio_filepath is None:
+        audio_paths = to_paths(audio_filepath)
+        if not audio_paths:
             return
 
-        if not isinstance(audio_filepath, Path):
-            return
-
-        if not audio_filepath.exists():
+        missing_path = first_missing(audio_paths)
+        if missing_path is not None:
             self._dialogs.show_file_not_found(
-                audio_filepath,
+                missing_path,
                 self._language_manager["reconstructions.reconstruction.message.locate_audio_failed"],
             )
             return
 
-        open_path_in_explorer(audio_filepath)
+        open_paths_in_explorer(audio_paths)
