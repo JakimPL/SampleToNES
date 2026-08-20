@@ -76,8 +76,9 @@ them.
 | `clock/` | `PlaySchedule` and `FixedPointStep` — the engine ticks one play call advances a stream by | `specification/` |
 | `registers/` | The per-tick register values each channel plays, and the four streams together | `specification/` |
 | `song.py` | `Song` — the streams, the schedule and the loop point as one value | `clock/`, `registers/` |
+| `builder.py` | The song a reconstruction plays as, its instructions encoded and its rate scheduled | `song.py`, `registers/`, `clock/` |
 | `trace/` | `RegisterTrace` — what the driver is expected to write, call by call | `song.py`, `specification/` |
-| `nsf/` | The song block and the NSF file the console loads | `song.py`, `registers/`, `specification/`, `driver/` |
+| `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `registers/`, `specification/`, `driver/` |
 | `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |
 | `driver/assembler/` | The cc65 build: the layout, the toolchain, the linker map reader and the builder | `driver/`, `specification/` |
 

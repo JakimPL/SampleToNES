@@ -1,8 +1,7 @@
 from typing import Final
 
 from sampletones_core.constants.enums import GeneratorName
-
-WORD_SIZE: Final[int] = 2
+from sampletones_player.specification.binary import WORD_SIZE
 
 STEP_WHOLE_OFFSET: Final[int] = 0
 STEP_FRACTION_OFFSET: Final[int] = STEP_WHOLE_OFFSET + 1

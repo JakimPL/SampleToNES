@@ -1,7 +1,14 @@
-from typing import Dict, Final, Optional, Sequence
+import os
+from pathlib import Path
+from typing import Dict, Final, List, Optional, Sequence
 
+import numpy as np
+
+from sampletones_core.configs import Config
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
-from sampletones_core.instructions import PulseInstruction
+from sampletones_core.instructions import InstructionUnion, PulseInstruction
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timers.arithmetic import frequency_to_timer
 from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.registers.noise import NoiseRegisters
@@ -121,3 +128,25 @@ def sounding_pulse(
 
 def silent_pulse() -> PulseInstruction:
     return PulseInstruction.null_instruction()
+
+
+PLAYER_APPROXIMATION_SAMPLES: Final[int] = 64
+
+
+def player_reconstruction(
+    instructions: Dict[GeneratorName, List[InstructionUnion]],
+    nes_frequency: int,
+) -> Reconstruction:
+    """A reconstruction carrying the given channel streams, built at ``nes_frequency``.
+
+    The audio itself is silent, since what a player test reads off a reconstruction is the
+    instructions its channels carry and the rate they advance at.
+    """
+    return Reconstruction.create(
+        approximation=np.zeros(PLAYER_APPROXIMATION_SAMPLES, dtype=np.float32),
+        approximations={},
+        instructions=instructions,
+        config=Config().with_library(nes_frequency=nes_frequency),
+        coefficient=1.0,
+        audio_filepath=Path(os.devnull),
+    )

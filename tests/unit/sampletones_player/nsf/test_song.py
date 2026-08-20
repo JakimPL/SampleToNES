@@ -7,6 +7,7 @@ import pytest
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
+from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.song import (
     LOOP_TICK_OFFSET,
     MAX_STREAM_OFFSET,
@@ -16,7 +17,6 @@ from sampletones_player.specification.song import (
     STEP_WHOLE_OFFSET,
     STREAM_OFFSETS_OFFSET,
     TOTAL_TICKS_OFFSET,
-    WORD_SIZE,
 )
 from sampletones_shared.exceptions import SongTooLargeError
 from tests.suite.base import BaseTestSuite

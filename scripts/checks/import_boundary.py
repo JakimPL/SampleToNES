@@ -70,6 +70,7 @@ PLAYER_LAYERS: Final[Dict[str, Tuple[str, ...]]] = {
     "clock": ("specification",),
     "registers": ("specification",),
     "song.py": ("clock", "registers"),
+    "builder.py": ("song.py", "registers", "clock"),
     "trace": ("song.py", "specification"),
     "nsf": ("song.py", "registers", "specification", "driver"),
     "driver": ("specification",),
