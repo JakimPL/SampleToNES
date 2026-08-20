@@ -2,9 +2,9 @@ from typing import FrozenSet
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 class ReconstructorPanelViewModel(BaseModel, frozen=True):
-    generators: FrozenSet[GeneratorName]
+    channels: FrozenSet[ChannelName]
     drive: float

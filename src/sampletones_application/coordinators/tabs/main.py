@@ -61,7 +61,7 @@ from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -124,7 +124,7 @@ class MainTabCoordinator:
         self._config_height = layout.config_height
         _msg_converter_error = language_manager["main.converter.message.status_error"]
         _msg_no_files = language_manager["main.converter.message.status_no_files"]
-        _msg_no_generators = language_manager["main.converter.message.status_no_generators"]
+        _msg_no_generators = language_manager["main.converter.message.status_no_channels"]
         self._ttl_progress = language_manager["main.converter.title.progress_dialog"]
 
         self._explorer_logic: ExplorerLogic = ExplorerLogic(
@@ -167,7 +167,7 @@ class MainTabCoordinator:
         )
         self._reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
             ReconstructorPanelViewModel(
-                generators=frozenset(_config.generation.generators),
+                channels=frozenset(_config.generation.channels),
                 drive=_config.generation.drive,
             ),
             layout=layout.main.reconstructor,
@@ -345,7 +345,7 @@ class MainTabCoordinator:
         config = self._config_manager.config
         self._reconstructor_panel.update_view(
             ReconstructorPanelViewModel(
-                generators=frozenset(config.generation.generators),
+                channels=frozenset(config.generation.channels),
                 drive=config.generation.drive,
             )
         )
@@ -501,9 +501,9 @@ class MainTabCoordinator:
     def refresh_browser(self) -> None:
         self._explorer_panel.refresh()
 
-    def toggle_generator(self, generator: GeneratorName) -> None:
-        """Switches one generator in or out of the set a reconstruction is built from."""
-        self._reconstructor_panel.toggle_generator(generator)
+    def toggle_channel(self, channel: ChannelName) -> None:
+        """Switches one channel in or out of the set a reconstruction is built from."""
+        self._reconstructor_panel.toggle_channel(channel)
 
     def toggle_advanced_settings(self) -> None:
         advanced_settings = self._session_manager.toggle_show_advanced_settings()

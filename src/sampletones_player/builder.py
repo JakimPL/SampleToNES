@@ -1,6 +1,6 @@
 from typing import Dict, List, Mapping, Optional, Sequence, Type
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import (
     InstructionT,
     InstructionUnion,
@@ -56,7 +56,7 @@ def channel_instructions(
 
 
 def streams_from_instructions(
-    instructions: Mapping[GeneratorName, Sequence[InstructionUnion]],
+    instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
     timer_table: Dict[int, int],
 ) -> ChannelStreams:
     """Encodes every channel's instructions into the register values its ticks write.
@@ -75,19 +75,19 @@ def streams_from_instructions(
         TypeError: If a channel's stream holds an instruction another channel sounds.
     """
     pulse1 = channel_instructions(
-        instructions.get(GeneratorName.PULSE1, ()),
+        instructions.get(ChannelName.PULSE1, ()),
         PulseInstruction,
     )
     pulse2 = channel_instructions(
-        instructions.get(GeneratorName.PULSE2, ()),
+        instructions.get(ChannelName.PULSE2, ()),
         PulseInstruction,
     )
     triangle = channel_instructions(
-        instructions.get(GeneratorName.TRIANGLE, ()),
+        instructions.get(ChannelName.TRIANGLE, ()),
         TriangleInstruction,
     )
     noise = channel_instructions(
-        instructions.get(GeneratorName.NOISE, ()),
+        instructions.get(ChannelName.NOISE, ()),
         NoiseInstruction,
     )
 

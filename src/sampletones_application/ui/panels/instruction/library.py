@@ -39,7 +39,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.structures.tree import (
     GeneratorNode,
@@ -115,7 +115,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         self.on_generate_requested: Optional[VoidCallback] = None
         self.on_cancel_generation: Optional[VoidCallback] = None
         self.on_library_selected: Optional[Callable[[InstructionLibraryKey], None]] = None
-        self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, LibraryGeneratorName], None]] = None
+        self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, GeneratorName], None]] = None
         self.on_library_remove_requested: Optional[Callable[[InstructionLibraryKey], None]] = None
 
         super().__init__(
@@ -347,7 +347,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
                     assert isinstance(node, GeneratorNode), "Node is not a GeneratorNode"
                     assert isinstance(parent, LibraryNode), "Generator node parent is not a LibraryNode"
                     message = self._language_manager["instructions.library.message.status_node_generator"].format(
-                        generator=node.generator_name,
+                        generator=node.channel_name,
                         library_key=parent.library_key.filename,
                     )
                 case _:
@@ -367,7 +367,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
             assert isinstance(node.parent, LibraryNode), "Generator node parent is not a LibraryNode"
-            self.call(self.on_generator_selected, node.parent.library_key, node.generator_name)
+            self.call(self.on_generator_selected, node.parent.library_key, node.channel_name)
 
         if mouse_button == dpg.mvMouseButton_Right:
             self._show_generator_context_menu(node)
@@ -450,5 +450,5 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         self.call(
             self.on_generator_selected,
             user_data.parent.library_key,
-            user_data.generator_name,
+            user_data.channel_name,
         )

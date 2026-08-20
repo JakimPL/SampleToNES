@@ -13,7 +13,7 @@ from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.reconstructions import Reconstruction
@@ -40,12 +40,12 @@ class MaskProvider:
     __test__ = False
 
     def __init__(self) -> None:
-        self.active: FrozenSet[GeneratorName] = ALL_CHANNELS
+        self.active: FrozenSet[ChannelName] = ALL_CHANNELS
 
-    def mute(self, generator: GeneratorName) -> None:
-        self.active = ALL_CHANNELS - {generator}
+    def mute(self, channel: ChannelName) -> None:
+        self.active = ALL_CHANNELS - {channel}
 
-    def __call__(self) -> FrozenSet[GeneratorName]:
+    def __call__(self) -> FrozenSet[ChannelName]:
         return self.active
 
 
@@ -75,9 +75,9 @@ def _controller(context: SynthesizerContext) -> ProjectController:
 
 def _state(
     context: SynthesizerContext,
-    generator: GeneratorName = GeneratorName.PULSE1,
+    channel: ChannelName = ChannelName.PULSE1,
 ):
-    return context.synthesizer._channels.state(generator)
+    return context.synthesizer._channels.state(channel)
 
 
 def _render(context: SynthesizerContext) -> np.ndarray:
@@ -114,7 +114,7 @@ class TestTriggerSetsDefaults:
             sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
             )
@@ -145,7 +145,7 @@ class TestTriggerSetsDefaults:
             sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
                 transpose=5,
@@ -182,7 +182,7 @@ class TestSustain:
             sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
             )
@@ -227,14 +227,14 @@ class TestModifierOnlyRow:
             sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
                 volume=15,
             )
             place_modifier_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=1,
                 volume=0,
             )
@@ -275,14 +275,14 @@ class TestModifierOnlyRow:
             sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
                 transpose=0,
             )
             place_modifier_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=1,
                 transpose=7,
             )
@@ -326,13 +326,13 @@ class TestChannelMask:
             sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
             )
 
         def mute_pulse1(context: SynthesizerContext) -> None:
-            context.mask.mute(GeneratorName.PULSE1)
+            context.mask.mute(ChannelName.PULSE1)
 
         def render_and_compare_against_unmasked(context: SynthesizerContext) -> None:
             audio_masked = _render(context)
@@ -368,13 +368,13 @@ class TestChannelMask:
             sample = add_sample(_controller(context), recon, loop=True)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
             )
 
         def mute_pulse1_and_render_row_0(context: SynthesizerContext) -> None:
-            context.mask.mute(GeneratorName.PULSE1)
+            context.mask.mute(ChannelName.PULSE1)
             assert np.allclose(_render(context), 0.0)
             assert _state(context).sample_id is not None
 
@@ -491,11 +491,11 @@ class TestNoteOff:
             sample = add_sample(_controller(context), recon, loop=True)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
             )
-            place_note_off(_controller(context), generator=GeneratorName.PULSE1, row_index=1)
+            place_note_off(_controller(context), channel=ChannelName.PULSE1, row_index=1)
 
         def render_row_0_and_assert_audible(context: SynthesizerContext) -> None:
             assert not np.all(_render(context) == 0.0)
@@ -532,7 +532,7 @@ class TestLoopBehavior:
             sample = add_sample(_controller(context), recon, loop=True)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
             )
@@ -576,7 +576,7 @@ class TestLoopBehavior:
             sample = add_sample(_controller(context), recon, loop=False)
             place_row(
                 _controller(context),
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
             )
@@ -612,7 +612,7 @@ class TestLoopBehavior:
             sample = add_sample(controller, recon, loop=True)
             place_row(
                 controller,
-                generator=GeneratorName.PULSE1,
+                channel=ChannelName.PULSE1,
                 row_index=0,
                 sample_id=sample.id,
             )
@@ -650,8 +650,8 @@ class TestSilenceCases:
     def test_none_order_slot_with_no_sounding_voice_produces_silence(self) -> None:
         def clear_all_order_slots(context: SynthesizerContext) -> None:
             song = _controller(context).project.song
-            for generator_name in GeneratorName.items():
-                song.set_order_entry(0, generator_name, None)
+            for channel_name in ChannelName.items():
+                song.set_order_entry(0, channel_name, None)
 
         def render_and_assert_silence(context: SynthesizerContext) -> None:
             audio = _render(context)
@@ -840,12 +840,12 @@ class TestNesFrequencyTempo:
         controller = make_controller()
         recon = make_pulse_reconstruction(count=12)
         sample = add_sample(controller, recon)
-        place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+        place_row(controller, channel=ChannelName.PULSE1, row_index=0, sample_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=SAMPLE_RATE)
 
         controller.set_nes_frequency(60)
         synthesizer.render_row()
-        pulse_state = synthesizer._channels.state(GeneratorName.PULSE1)
+        pulse_state = synthesizer._channels.state(ChannelName.PULSE1)
         assert pulse_state.generator.frame_length == round(SAMPLE_RATE / 60)
 
         controller.set_nes_frequency(30)
@@ -874,7 +874,7 @@ class TestChannelHeldValues:
         sample = add_sample(_controller(context), reconstruction, name=name)
         place_row(
             _controller(context),
-            generator=GeneratorName.PULSE1,
+            channel=ChannelName.PULSE1,
             row_index=row_index,
             sample_id=sample.id,
         )

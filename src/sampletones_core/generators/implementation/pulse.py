@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import (
     DUTY_CYCLES,
     MAX_VOLUME,
@@ -21,7 +21,7 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
     def __init__(
         self,
         config: Config,
-        name: str = GeneratorName.PULSE1,
+        name: str = ChannelName.PULSE1,
     ) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(

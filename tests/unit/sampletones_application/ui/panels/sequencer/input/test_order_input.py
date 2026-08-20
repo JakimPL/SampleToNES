@@ -5,17 +5,17 @@ from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 POSITION_COUNT = 8
 
 
 def _state(
-    generator: Optional[GeneratorName] = GeneratorName.PULSE1,
+    channel: Optional[ChannelName] = ChannelName.PULSE1,
     position: int = 0,
     pending: str = "",
 ) -> OrderInputState:
-    return OrderInputState(cursor=OrderCursor(generator, position), pending=pending)
+    return OrderInputState(cursor=OrderCursor(channel, position), pending=pending)
 
 
 class TestNavigation:
@@ -35,11 +35,11 @@ class TestNavigation:
         visited = []
         state = OrderInputState(cursor=OrderCursor(CHANNEL_AXIS[0], 0))
         for _ in range(len(CHANNEL_AXIS)):
-            visited.append(state.cursor.generator)
+            visited.append(state.cursor.channel)
             state = state.navigate_channel(1)
 
         assert visited == list(CHANNEL_AXIS)
-        assert state.cursor.generator == CHANNEL_AXIS[0]
+        assert state.cursor.channel == CHANNEL_AXIS[0]
 
 
 class TestSelection:
@@ -62,16 +62,16 @@ class TestSelection:
         assert leftwards == rightwards
 
     def test_extending_channels_reaches_from_master_down(self) -> None:
-        extended = _state(generator=None).extend_channel(2)
+        extended = _state(channel=None).extend_channel(2)
 
         region = extended.region
         assert region is not None
-        assert region.generators == (None, GeneratorName.PULSE1, GeneratorName.PULSE2)
+        assert region.channels == (None, ChannelName.PULSE1, ChannelName.PULSE2)
 
     def test_extending_channels_stops_at_either_end_of_the_axis(self) -> None:
         """A selection covers a run of the table, so its reach stops where plain navigation wraps."""
-        first = _state(generator=CHANNEL_AXIS[0]).extend_channel(-1)
-        last = _state(generator=CHANNEL_AXIS[-1]).extend_channel(1)
+        first = _state(channel=CHANNEL_AXIS[0]).extend_channel(-1)
+        last = _state(channel=CHANNEL_AXIS[-1]).extend_channel(1)
 
         assert first.cursor == OrderCursor(CHANNEL_AXIS[0], 0)
         assert last.cursor == OrderCursor(CHANNEL_AXIS[-1], 0)
@@ -113,16 +113,16 @@ class TestTarget:
     """The region a block gesture acts on, which is the selection wherever one has been made."""
 
     def test_a_cell_of_a_table_with_nothing_selected_is_raised_on_itself(self) -> None:
-        cell = OrderCursor(GeneratorName.PULSE2, 4)
+        cell = OrderCursor(ChannelName.PULSE2, 4)
 
-        region = _state(GeneratorName.PULSE2, position=4).region_at(cell)
+        region = _state(ChannelName.PULSE2, position=4).region_at(cell)
 
         assert (region.first_position, region.last_position) == (4, 4)
-        assert region.generators == (GeneratorName.PULSE2,)
+        assert region.channels == (ChannelName.PULSE2,)
 
     def test_a_cell_of_a_selection_is_raised_on_the_whole_of_it(self) -> None:
         selected = _state(position=4).extend_position(2, POSITION_COUNT)
-        cell = OrderCursor(GeneratorName.PULSE1, 5)
+        cell = OrderCursor(ChannelName.PULSE1, 5)
 
         assert selected.region_at(cell) == selected.region
 
@@ -135,17 +135,17 @@ class TestSelectShapes:
 
         region = selected.region
         assert region is not None
-        assert region.generators == CHANNEL_AXIS
+        assert region.channels == CHANNEL_AXIS
         assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)
 
     def test_selecting_a_row_reaches_the_cursor_s_channel_across_the_order(self) -> None:
-        cell = OrderCursor(GeneratorName.TRIANGLE, 2)
+        cell = OrderCursor(ChannelName.TRIANGLE, 2)
 
-        selected = _state(GeneratorName.TRIANGLE, position=2).select_row(cell, POSITION_COUNT)
+        selected = _state(ChannelName.TRIANGLE, position=2).select_row(cell, POSITION_COUNT)
 
         region = selected.region
         assert region is not None
-        assert region.generators == (GeneratorName.TRIANGLE,)
+        assert region.channels == (ChannelName.TRIANGLE,)
         assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)
 
     def test_the_master_row_is_a_row_like_any_other(self) -> None:
@@ -155,7 +155,7 @@ class TestSelectShapes:
 
         region = selected.region
         assert region is not None
-        assert region.generators == (None,)
+        assert region.channels == (None,)
 
     def test_a_shape_stands_the_cursor_on_the_last_position_it_reaches(self) -> None:
         """A shape ends where the next Shift+arrow starts, which is the far corner it covers."""

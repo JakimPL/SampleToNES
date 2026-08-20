@@ -17,12 +17,12 @@ TAGS_SOURCE: Final[str] = """
 TAG_GLOBAL_WINDOW_MAIN = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.WINDOW, "main")
 SUF_BUTTON = "button"
 SUF_BUTTON_COPY = compose_tag(SUF_BUTTON, "copy")
-PRE_RECONSTRUCTION_GENERATOR = "generator"
+PRE_RECONSTRUCTION_CHANNEL = "channel"
 PANEL_WIDTH = 320
 """
 
 PANEL_SOURCE: Final[str] = """
-from tags.general import PRE_RECONSTRUCTION_GENERATOR, SUF_BUTTON_COPY, TAG_GLOBAL_WINDOW_MAIN
+from tags.general import PRE_RECONSTRUCTION_CHANNEL, SUF_BUTTON_COPY, TAG_GLOBAL_WINDOW_MAIN
 
 def build() -> None:
     show(TAG_GLOBAL_WINDOW_MAIN, SUF_BUTTON_COPY)
@@ -52,7 +52,7 @@ class TestDeclaredFragments:
         assert {"SUF_BUTTON", "SUF_BUTTON_COPY"}.issubset(fragment_names(TAGS_SOURCE))
 
     def test_a_prefix_is_a_fragment(self) -> None:
-        assert "PRE_RECONSTRUCTION_GENERATOR" in fragment_names(TAGS_SOURCE)
+        assert "PRE_RECONSTRUCTION_CHANNEL" in fragment_names(TAGS_SOURCE)
 
     def test_a_constant_of_another_kind_is_no_fragment(self) -> None:
         assert "PANEL_WIDTH" not in fragment_names(TAGS_SOURCE)
@@ -69,12 +69,12 @@ class TestReferenceCounts:
 
     def test_an_import_alone_raises_no_count(self) -> None:
         counts: Dict[str, int] = check_unused_tags.reference_counts([module(PANEL_MODULE, PANEL_SOURCE)])
-        assert "PRE_RECONSTRUCTION_GENERATOR" not in counts
+        assert "PRE_RECONSTRUCTION_CHANNEL" not in counts
 
 
 class TestUnreadFragments:
     def test_a_fragment_nobody_reads_is_reported(self) -> None:
-        assert unread(TAGS_SOURCE, PANEL_SOURCE) == ["PRE_RECONSTRUCTION_GENERATOR"]
+        assert unread(TAGS_SOURCE, PANEL_SOURCE) == ["PRE_RECONSTRUCTION_CHANNEL"]
 
     def test_a_fragment_feeding_another_fragment_counts_as_read(self) -> None:
         assert "SUF_BUTTON" not in unread(TAGS_SOURCE, PANEL_SOURCE)
@@ -83,7 +83,7 @@ class TestUnreadFragments:
         assert "SUF_BUTTON_COPY" not in unread(TAGS_SOURCE, PANEL_SOURCE)
 
     def test_a_tree_reading_every_fragment_reports_nothing(self) -> None:
-        panel = PANEL_SOURCE.replace("SUF_BUTTON_COPY)", "SUF_BUTTON_COPY, PRE_RECONSTRUCTION_GENERATOR)")
+        panel = PANEL_SOURCE.replace("SUF_BUTTON_COPY)", "SUF_BUTTON_COPY, PRE_RECONSTRUCTION_CHANNEL)")
         assert unread(TAGS_SOURCE, panel) == []
 
 

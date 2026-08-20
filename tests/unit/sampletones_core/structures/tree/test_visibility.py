@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, FrozenSet, List
 
 import pytest
 
@@ -42,7 +42,7 @@ class TestVisibleRows:
     class TestCase(BaseTestCase):
         label: str
         matched_names: List[str]
-        expected_visible_names: frozenset[str]
+        expected_visible_names: FrozenSet[str]
 
     test_cases = (
         TestCase(

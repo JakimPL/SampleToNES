@@ -12,7 +12,7 @@ from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -30,25 +30,25 @@ LABEL_MUTE_ALL = "Mute all channels"
 LABEL_UNMUTE_ALL = "Unmute all channels"
 ALL_CHANNEL_LABELS = [LABEL_MUTE_ALL, LABEL_UNMUTE_ALL]
 
-COLUMN_LABELS: Dict[Optional[GeneratorName], str] = {
+COLUMN_LABELS: Dict[Optional[ChannelName], str] = {
     None: "Sample",
-    GeneratorName.PULSE1: "Pulse 1",
-    GeneratorName.PULSE2: "Pulse 2",
-    GeneratorName.TRIANGLE: "Triangle",
-    GeneratorName.NOISE: "Noise",
+    ChannelName.PULSE1: "Pulse 1",
+    ChannelName.PULSE2: "Pulse 2",
+    ChannelName.TRIANGLE: "Triangle",
+    ChannelName.NOISE: "Noise",
 }
 
-HEADER_WIDGETS: Dict[Optional[GeneratorName], Sender] = {
+HEADER_WIDGETS: Dict[Optional[ChannelName], Sender] = {
     column: 200 + index for index, column in enumerate(COLUMN_LABELS)
 }
 
-FULL_MIX: FrozenSet[GeneratorName] = frozenset()
-EVERY_CHANNEL: FrozenSet[GeneratorName] = frozenset(GeneratorName.items())
+FULL_MIX: FrozenSet[ChannelName] = frozenset()
+EVERY_CHANNEL: FrozenSet[ChannelName] = frozenset(ChannelName.items())
 
 
-def _others(generator: GeneratorName) -> FrozenSet[GeneratorName]:
-    """The mute set a solo of ``generator`` leaves behind."""
-    return EVERY_CHANNEL - {generator}
+def _others(channel: ChannelName) -> FrozenSet[ChannelName]:
+    """The mute set a solo of ``channel`` leaves behind."""
+    return EVERY_CHANNEL - {channel}
 
 
 class _MenuRecorder:
@@ -84,7 +84,7 @@ class _MenuRecorder:
         self.callbacks[label]()
 
 
-def _panel(muted: FrozenSet[GeneratorName]) -> GUISequencerTrackerPanel:
+def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
     """Builds a panel around the state the header menu reads, with no DearPyGui context.
 
     The menu touches the column labels, the pushed mute set, and the map from header widget to
@@ -116,7 +116,7 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     return instance
 
 
-def _right_click(panel: GUISequencerTrackerPanel, column: Optional[GeneratorName]) -> None:
+def _right_click(panel: GUISequencerTrackerPanel, column: Optional[ChannelName]) -> None:
     panel._on_header_right_clicked(
         SENDER_WIDGET_ID,
         (dpg.mvMouseButton_Right, HEADER_WIDGETS[column]),
@@ -127,9 +127,9 @@ class TestHeaderRightClickRouting:
     def test_a_right_click_opens_the_menu_for_the_clicked_column(self, recorder: _MenuRecorder) -> None:
         panel = _panel(FULL_MIX)
 
-        _right_click(panel, GeneratorName.TRIANGLE)
+        _right_click(panel, ChannelName.TRIANGLE)
 
-        assert recorder.titles == [COLUMN_LABELS[GeneratorName.TRIANGLE]]
+        assert recorder.titles == [COLUMN_LABELS[ChannelName.TRIANGLE]]
 
     def test_the_sample_header_opens_the_whole_mix_menu(self, recorder: _MenuRecorder) -> None:
         panel = _panel(FULL_MIX)
@@ -149,7 +149,7 @@ class TestHeaderRightClickRouting:
 
         panel._on_header_right_clicked(
             SENDER_WIDGET_ID,
-            (mouse_button, HEADER_WIDGETS[GeneratorName.NOISE]),
+            (mouse_button, HEADER_WIDGETS[ChannelName.NOISE]),
         )
 
         assert not recorder.titles
@@ -164,10 +164,10 @@ class TestHeaderRightClickRouting:
     def test_every_channel_header_reaches_its_own_menu(self, recorder: _MenuRecorder) -> None:
         panel = _panel(FULL_MIX)
 
-        for generator in GeneratorName.items():
-            _right_click(panel, generator)
+        for channel in ChannelName.items():
+            _right_click(panel, channel)
 
-        assert recorder.titles == [COLUMN_LABELS[generator] for generator in GeneratorName.items()]
+        assert recorder.titles == [COLUMN_LABELS[channel] for channel in ChannelName.items()]
 
 
 class TestChannelItemLabels:
@@ -175,19 +175,19 @@ class TestChannelItemLabels:
         "muted, expected",
         [
             (FULL_MIX, LABEL_MUTE),
-            (frozenset({GeneratorName.PULSE1}), LABEL_UNMUTE),
+            (frozenset({ChannelName.PULSE1}), LABEL_UNMUTE),
         ],
         ids=["audible", "silenced"],
     )
     def test_the_mute_item_names_the_change_it_makes(
         self,
         recorder: _MenuRecorder,
-        muted: FrozenSet[GeneratorName],
+        muted: FrozenSet[ChannelName],
         expected: str,
     ) -> None:
         panel = _panel(muted)
 
-        _right_click(panel, GeneratorName.PULSE1)
+        _right_click(panel, ChannelName.PULSE1)
 
         assert expected in recorder.labels
 
@@ -195,35 +195,35 @@ class TestChannelItemLabels:
         "muted, expected",
         [
             (FULL_MIX, LABEL_SOLO),
-            (frozenset({GeneratorName.PULSE2}), LABEL_SOLO),
-            (_others(GeneratorName.PULSE1), LABEL_UNSOLO),
+            (frozenset({ChannelName.PULSE2}), LABEL_SOLO),
+            (_others(ChannelName.PULSE1), LABEL_UNSOLO),
         ],
         ids=["full mix", "another channel silenced", "already alone"],
     )
     def test_the_solo_item_names_the_change_it_makes(
         self,
         recorder: _MenuRecorder,
-        muted: FrozenSet[GeneratorName],
+        muted: FrozenSet[ChannelName],
         expected: str,
     ) -> None:
         panel = _panel(muted)
 
-        _right_click(panel, GeneratorName.PULSE1)
+        _right_click(panel, ChannelName.PULSE1)
 
         assert expected in recorder.labels
 
     def test_each_column_reads_its_own_state(self, recorder: _MenuRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.PULSE1}))
+        panel = _panel(frozenset({ChannelName.PULSE1}))
 
-        _right_click(panel, GeneratorName.NOISE)
+        _right_click(panel, ChannelName.NOISE)
 
         assert LABEL_MUTE in recorder.labels
 
     def test_a_solo_elsewhere_leaves_this_channel_offering_a_solo(self, recorder: _MenuRecorder) -> None:
         """A silenced channel of a solo is offered its own solo, which moves the solo onto it."""
-        panel = _panel(_others(GeneratorName.PULSE1))
+        panel = _panel(_others(ChannelName.PULSE1))
 
-        _right_click(panel, GeneratorName.PULSE2)
+        _right_click(panel, ChannelName.PULSE2)
 
         assert LABEL_UNMUTE in recorder.labels
         assert LABEL_SOLO in recorder.labels
@@ -231,12 +231,12 @@ class TestChannelItemLabels:
     def test_a_channel_menu_carries_both_blocks(self, recorder: _MenuRecorder) -> None:
         panel = _panel(FULL_MIX)
 
-        _right_click(panel, GeneratorName.NOISE)
+        _right_click(panel, ChannelName.NOISE)
 
         assert recorder.labels == [LABEL_MUTE, LABEL_SOLO, *ALL_CHANNEL_LABELS]
 
     def test_the_sample_menu_addresses_no_single_channel(self, recorder: _MenuRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.NOISE}))
+        panel = _panel(frozenset({ChannelName.NOISE}))
 
         _right_click(panel, None)
 
@@ -248,13 +248,13 @@ class TestChannelItemLabels:
 class TestAllChannelItems:
     @pytest.mark.parametrize(
         "muted",
-        [FULL_MIX, frozenset({GeneratorName.NOISE})],
+        [FULL_MIX, frozenset({ChannelName.NOISE})],
         ids=["full mix", "one silenced"],
     )
     def test_muting_everything_is_offered_while_a_channel_sounds(
         self,
         recorder: _MenuRecorder,
-        muted: FrozenSet[GeneratorName],
+        muted: FrozenSet[ChannelName],
     ) -> None:
         panel = _panel(muted)
 
@@ -271,13 +271,13 @@ class TestAllChannelItems:
 
     @pytest.mark.parametrize(
         "muted",
-        [frozenset({GeneratorName.TRIANGLE}), EVERY_CHANNEL],
+        [frozenset({ChannelName.TRIANGLE}), EVERY_CHANNEL],
         ids=["one silenced", "every channel silenced"],
     )
     def test_restoring_everything_is_offered_while_a_channel_is_silent(
         self,
         recorder: _MenuRecorder,
-        muted: FrozenSet[GeneratorName],
+        muted: FrozenSet[ChannelName],
     ) -> None:
         panel = _panel(muted)
 
@@ -295,7 +295,7 @@ class TestAllChannelItems:
     def test_both_menus_end_with_the_whole_mix_items(self, recorder: _MenuRecorder) -> None:
         panel = _panel(FULL_MIX)
 
-        _right_click(panel, GeneratorName.PULSE1)
+        _right_click(panel, ChannelName.PULSE1)
         channel_menu = recorder.labels[-2:]
         _right_click(panel, None)
 
@@ -306,47 +306,47 @@ class TestAllChannelItems:
 class TestHeaderMenuActions:
     def test_the_mute_item_switches_the_clicked_channel(self, recorder: _MenuRecorder) -> None:
         panel = _panel(FULL_MIX)
-        toggled: List[GeneratorName] = []
+        toggled: List[ChannelName] = []
         panel.on_channel_mute_toggled = toggled.append
 
-        _right_click(panel, GeneratorName.TRIANGLE)
+        _right_click(panel, ChannelName.TRIANGLE)
         recorder.click(LABEL_MUTE)
 
-        assert toggled == [GeneratorName.TRIANGLE]
+        assert toggled == [ChannelName.TRIANGLE]
 
     def test_the_unmute_item_switches_the_clicked_channel(self, recorder: _MenuRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.TRIANGLE}))
-        toggled: List[GeneratorName] = []
+        panel = _panel(frozenset({ChannelName.TRIANGLE}))
+        toggled: List[ChannelName] = []
         panel.on_channel_mute_toggled = toggled.append
 
-        _right_click(panel, GeneratorName.TRIANGLE)
+        _right_click(panel, ChannelName.TRIANGLE)
         recorder.click(LABEL_UNMUTE)
 
-        assert toggled == [GeneratorName.TRIANGLE]
+        assert toggled == [ChannelName.TRIANGLE]
 
     def test_the_solo_item_solos_the_clicked_channel(self, recorder: _MenuRecorder) -> None:
         panel = _panel(FULL_MIX)
-        soloed: List[GeneratorName] = []
+        soloed: List[ChannelName] = []
         panel.on_channel_soloed = soloed.append
 
-        _right_click(panel, GeneratorName.NOISE)
+        _right_click(panel, ChannelName.NOISE)
         recorder.click(LABEL_SOLO)
 
-        assert soloed == [GeneratorName.NOISE]
+        assert soloed == [ChannelName.NOISE]
 
     def test_the_unsolo_item_takes_the_same_route_back(self, recorder: _MenuRecorder) -> None:
         """Leaving a solo restores the mix the solo interrupted, which the channels logic owns."""
-        panel = _panel(_others(GeneratorName.NOISE))
-        soloed: List[GeneratorName] = []
+        panel = _panel(_others(ChannelName.NOISE))
+        soloed: List[ChannelName] = []
         panel.on_channel_soloed = soloed.append
 
-        _right_click(panel, GeneratorName.NOISE)
+        _right_click(panel, ChannelName.NOISE)
         recorder.click(LABEL_UNSOLO)
 
-        assert soloed == [GeneratorName.NOISE]
+        assert soloed == [ChannelName.NOISE]
 
     def test_muting_everything_reaches_its_own_hook(self, recorder: _MenuRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.PULSE1}))
+        panel = _panel(frozenset({ChannelName.PULSE1}))
         muted: List[None] = []
         panel.on_channels_muted = lambda: muted.append(None)
         panel.on_channels_toggled = lambda: pytest.fail("the menu names the state it leaves")
@@ -357,7 +357,7 @@ class TestHeaderMenuActions:
         assert muted == [None]
 
     def test_restoring_everything_reaches_its_own_hook(self, recorder: _MenuRecorder) -> None:
-        panel = _panel(frozenset({GeneratorName.PULSE1}))
+        panel = _panel(frozenset({ChannelName.PULSE1}))
         unmuted: List[None] = []
         panel.on_channels_unmuted = lambda: unmuted.append(None)
         panel.on_channels_toggled = lambda: pytest.fail("the menu names the state it leaves")
@@ -372,7 +372,7 @@ class TestHeaderMenuActions:
         muted: List[None] = []
         panel.on_channels_muted = lambda: muted.append(None)
 
-        _right_click(panel, GeneratorName.PULSE2)
+        _right_click(panel, ChannelName.PULSE2)
         recorder.click(LABEL_MUTE_ALL)
 
         assert muted == [None]

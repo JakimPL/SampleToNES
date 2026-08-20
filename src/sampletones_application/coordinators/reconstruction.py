@@ -28,14 +28,14 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from sampletones_shared.types.callback import Callback, VoidCallback
-from sampletones_shared.utils.system.paths import get_filename
+from sampletones_shared.utils.system.paths import first_missing, get_filename
 
 
 class ReconstructionCoordinator:
@@ -266,7 +266,7 @@ class ReconstructionCoordinator:
 
     def regenerate_instrument(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         features: Features,
         feature_key: FeatureKey,
         data: FeatureValue,
@@ -277,7 +277,7 @@ class ReconstructionCoordinator:
 
         accepted = self._regeneration_service.start(
             reconstruction_data.reconstruction,
-            generator_name,
+            channel_name,
             features,
             feature_key,
             data,
@@ -291,10 +291,10 @@ class ReconstructionCoordinator:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
         self._audio_device_manager.stop()
-        audio_filepath = reconstruction_data.reconstruction.audio_filepath
-        if audio_filepath is not None and not audio_filepath.exists():
+        missing_path = first_missing(reconstruction_data.reconstruction.source_paths)
+        if missing_path is not None:
             self._dialogs.show_file_not_found(
-                audio_filepath,
+                missing_path,
                 self._language_manager["reconstructions.browser.message.audio_file_not_found"],
             )
 

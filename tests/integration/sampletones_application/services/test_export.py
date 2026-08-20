@@ -8,7 +8,7 @@ from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_core.audio import read_wave
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.trackers.implementation.famitracker import FamiTrackerBackend
 from sampletones_core.trackers.request import InstrumentExport, SampleExport
@@ -24,7 +24,7 @@ def backend_fixture() -> FamiTrackerBackend:
 def instrument_export(name: str, features: Features) -> InstrumentExport:
     return InstrumentExport(
         name=name,
-        generator=GeneratorName.PULSE1,
+        channel=ChannelName.PULSE1,
         features=features,
         loop=False,
         nes_frequency=NES_FREQUENCY,

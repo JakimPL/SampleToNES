@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import Dict, Final
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 class ChannelId(IntEnum):
@@ -16,9 +16,9 @@ class ChannelId(IntEnum):
 
 CHANNEL_COUNT_2A03: Final[int] = 5
 
-GENERATOR_NAME_TO_CHANNEL_ID: Final[Dict[GeneratorName, ChannelId]] = {
-    GeneratorName.PULSE1: ChannelId.SQUARE1,
-    GeneratorName.PULSE2: ChannelId.SQUARE2,
-    GeneratorName.TRIANGLE: ChannelId.TRIANGLE,
-    GeneratorName.NOISE: ChannelId.NOISE,
+CHANNEL_TO_ID: Final[Dict[ChannelName, ChannelId]] = {
+    ChannelName.PULSE1: ChannelId.SQUARE1,
+    ChannelName.PULSE2: ChannelId.SQUARE2,
+    ChannelName.TRIANGLE: ChannelId.TRIANGLE,
+    ChannelName.NOISE: ChannelId.NOISE,
 }

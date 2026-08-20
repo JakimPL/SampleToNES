@@ -139,6 +139,12 @@ class DataModel(BaseModel, ABC):
 
                 return self._pack_value(value, optional_inner, field_name)
 
+            if isinstance(value, Path):
+                return str(value)
+
+            if isinstance(value, tuple):
+                return [str(path) for path in value]
+
             return self._pack_union(value)
 
         if isinstance(annotation, TypeVar):
@@ -190,6 +196,12 @@ class DataModel(BaseModel, ABC):
                     fast,
                 )
 
+            if isinstance(raw, list):
+                return tuple(Path(item) for item in raw)
+
+            if isinstance(raw, str):
+                return Path(raw)
+
             return cls._unpack_union(raw)
 
         if isinstance(annotation, TypeVar):
@@ -233,6 +245,12 @@ class DataModel(BaseModel, ABC):
         if all(isinstance(model, DataModel) for model in collection):
             return [model.serialize_inner() for model in collection]
 
+        if all(isinstance(value, (int, float, bool)) for value in collection):
+            return list(collection)
+
+        if all(isinstance(value, list) for value in collection):
+            return [self._pack_list(value, field_name) for value in collection]
+
         raise SerializationError(
             f"Unsupported list element type {type(collection[0])} or mixed types for field '{field_name}'"
         )
@@ -247,6 +265,19 @@ class DataModel(BaseModel, ABC):
         fast: bool = True,
     ) -> List[Any]:
         origin = get_origin(element_class)
+        if origin is list:
+            nested_element_class = get_args(element_class)[0]
+            return [
+                cls._unpack_list(
+                    item,
+                    field_name,
+                    nested_element_class,
+                    validation,
+                    fast,
+                )
+                for item in raw_list
+            ]
+
         if origin is not None:
             raise DeserializationError(f"Generics are not supported for field '{field_name}'")
 
@@ -265,6 +296,9 @@ class DataModel(BaseModel, ABC):
 
         if issubclass(element_class, (str, StrEnum)):
             return [cls._deserialize_string(item, element_class) for item in raw_list]
+
+        if issubclass(element_class, (int, float, bool)):
+            return [element_class(item) for item in raw_list]
 
         raise DeserializationError(f"Unsupported vector element type: {element_class} for field '{field_name}'")
 

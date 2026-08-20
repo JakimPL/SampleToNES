@@ -106,7 +106,7 @@ from sampletones_application.view_model.sequencer.tracker import (
     SequencerRowViewModel,
     SequencerTrackerViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.utils.display import NOTE_OFF, display_id
@@ -114,16 +114,16 @@ from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
 
-OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
-OnClearSubcolumnCallback = Callable[[int, Optional[GeneratorName], SubColumn], None]
-OnSetRowCallback = Callable[[int, Optional[GeneratorName], Optional[str], Optional[int], Optional[int]], None]
-OnSetNoteOffCallback = Callable[[int, Optional[GeneratorName]], None]
+OnClearRowCallback = Callable[[int, Optional[ChannelName]], None]
+OnClearSubcolumnCallback = Callable[[int, Optional[ChannelName], SubColumn], None]
+OnSetRowCallback = Callable[[int, Optional[ChannelName], Optional[str], Optional[int], Optional[int]], None]
+OnSetNoteOffCallback = Callable[[int, Optional[ChannelName]], None]
 OnCellSelectedCallback = VoidCallback
 OnPlayFromRowCallback = Callable[[int], None]
 OnPlayFromFrameCallback = VoidCallback
 OnAdjustCallback = Callable[[TrackerRegion, int], None]
-OnChannelMuteToggledCallback = Callable[[GeneratorName], None]
-OnChannelSoloedCallback = Callable[[GeneratorName], None]
+OnChannelMuteToggledCallback = Callable[[ChannelName], None]
+OnChannelSoloedCallback = Callable[[ChannelName], None]
 OnBlockRegionCallback = Callable[[TrackerRegion], None]
 OnPasteBlockCallback = Callable[[TrackerCell], None]
 CanPasteBlockQuery = Callable[[], bool]
@@ -224,7 +224,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._drag_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_DRAG)
 
         self._rows: Dict[Optional[int], Sender] = {}
-        self._header_columns: Dict[Sender, Optional[GeneratorName]] = {}
+        self._header_columns: Dict[Sender, Optional[ChannelName]] = {}
         self._editable_cells: EditableCells[CellKey] = EditableCells()
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
@@ -306,12 +306,12 @@ class GUISequencerTrackerPanel(GUIPanel):
     def _load_column_labels(self, language_manager: LanguageManager) -> None:
         """Reads the name each column carries, which its header label and its menu title show."""
         self._lbl_col_row = self._label(language_manager, SequencerTrackerElements.COLUMN_ROW)
-        self._column_labels: Dict[Optional[GeneratorName], str] = {
+        self._column_labels: Dict[Optional[ChannelName], str] = {
             None: self._label(language_manager, SequencerTrackerElements.COLUMN_SAMPLE),
-            GeneratorName.PULSE1: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_1),
-            GeneratorName.PULSE2: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_2),
-            GeneratorName.TRIANGLE: self._label(language_manager, SequencerTrackerElements.COLUMN_TRIANGLE),
-            GeneratorName.NOISE: self._label(language_manager, SequencerTrackerElements.COLUMN_NOISE),
+            ChannelName.PULSE1: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_1),
+            ChannelName.PULSE2: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_2),
+            ChannelName.TRIANGLE: self._label(language_manager, SequencerTrackerElements.COLUMN_TRIANGLE),
+            ChannelName.NOISE: self._label(language_manager, SequencerTrackerElements.COLUMN_NOISE),
         }
 
     @staticmethod
@@ -370,8 +370,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
         self._channel_switch = ChannelSwitch(
             labels=labels,
-            on_mute_toggled=lambda generator: self.call(self.on_channel_mute_toggled, generator),
-            on_soloed=lambda generator: self.call(self.on_channel_soloed, generator),
+            on_mute_toggled=lambda channel: self.call(self.on_channel_mute_toggled, channel),
+            on_soloed=lambda channel: self.call(self.on_channel_soloed, channel),
             on_toggled=lambda: self.call(self.on_channels_toggled),
             on_muted=lambda: self.call(self.on_channels_muted),
             on_unmuted=lambda: self.call(self.on_channels_unmuted),
@@ -513,10 +513,10 @@ class GUISequencerTrackerPanel(GUIPanel):
                     width_fixed=True,
                     init_width_or_weight=self._layout.table_cells.divider,
                 )
-                for _ in GeneratorName.items():
+                for _ in ChannelName.items():
                     dpg.add_table_column(
                         width_fixed=True,
-                        init_width_or_weight=self._layout.table_cells.generator,
+                        init_width_or_weight=self._layout.table_cells.channel,
                         no_clip=True,
                     )
                 dpg.add_table_column(width_stretch=True)
@@ -653,10 +653,10 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._paint_row(row_index)
 
     def _render_cell(self, key: CellKey) -> str:
-        row, generator, subcolumn = key
+        row, channel, subcolumn = key
         return tracker_display.subcolumn_label(
             row,
-            generator,
+            channel,
             subcolumn,
             cursor=self._input_state.cursor,
             pending=self._input_state.pending,
@@ -704,20 +704,20 @@ class GUISequencerTrackerPanel(GUIPanel):
         table carries in its row labels. A silenced channel trades that identity for a
         neutral dark shade, so its column recedes as a whole.
         """
-        for generator in GeneratorName.items():
+        for channel in ChannelName.items():
             dpg.highlight_table_column(
                 TAG_SEQUENCER_TRACKER_TABLE,
-                tracker_table_column(generator),
-                self._channel_column_tint(generator),
+                tracker_table_column(channel),
+                self._channel_column_tint(channel),
             )
 
-    def _channel_column_tint(self, generator: GeneratorName) -> ColorRGBA:
-        if self._is_muted(generator):
+    def _channel_column_tint(self, channel: ChannelName) -> ColorRGBA:
+        if self._is_muted(channel):
             return self._layout.colors.muted.background.rgba
 
-        channel = channel_color(self._layout.colors.channels, generator)
+        tint_color = channel_color(self._layout.colors.channels, channel)
         return FadedColor(
-            color=channel,
+            color=tint_color,
             fraction=self._layout.tracker.channel_column_tint,
         ).rgba
 
@@ -730,13 +730,13 @@ class GUISequencerTrackerPanel(GUIPanel):
             cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.sample_instrument
             cell_values[(row.index, None, SubColumn.TRANSPOSE)] = row.sample_transpose
             cell_values[(row.index, None, SubColumn.VOLUME)] = row.sample_volume
-            for generator in GeneratorName.items():
-                cell = row.cells[generator]
+            for channel in ChannelName.items():
+                cell = row.cells[channel]
                 for subcolumn in SubColumn:
                     cell_values[
                         (
                             row.index,
-                            generator,
+                            channel,
                             subcolumn,
                         )
                     ] = tracker_display.cell_display(
@@ -766,8 +766,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._add_header_label_cell(row_id)
         self._add_header_selectable(row_id, None)
         self._add_empty_cell(row_id)
-        for generator in GeneratorName.items():
-            self._add_header_selectable(row_id, generator)
+        for channel in ChannelName.items():
+            self._add_header_selectable(row_id, channel)
 
     def _add_header_label_cell(self, row_id: Sender) -> None:
         """Places the row-number column's label, which names a column the user reads only.
@@ -786,7 +786,7 @@ class GUISequencerTrackerPanel(GUIPanel):
     def _add_header_selectable(
         self,
         row_id: Sender,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
         """Places one clickable column label: a channel's mute target, or the master target.
 
@@ -798,17 +798,17 @@ class GUISequencerTrackerPanel(GUIPanel):
         header_cell = dpg.add_table_cell(parent=row_id)
         selectable = dpg.add_selectable(
             parent=header_cell,
-            label=self._column_labels[generator],
+            label=self._column_labels[channel],
             height=self._layout.tracker.header_height,
-            user_data=generator,
+            user_data=channel,
             callback=self._on_header_clicked,
         )
         dpg.bind_item_handler_registry(selectable, self._header_handler_tag)
         show_tooltip(
             selectable,
-            self._tooltip_header_sample if generator is None else self._tooltip_header_channel,
+            self._tooltip_header_sample if channel is None else self._tooltip_header_channel,
         )
-        self._header_columns[selectable] = generator
+        self._header_columns[selectable] = channel
 
     def _build_table_row(self, row: SequencerRowViewModel) -> None:
         """Builds one tracker row.
@@ -824,8 +824,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._add_row_number_cell(row_id, row.index)
         self._add_column_cell(row_id, row.index, None)
         self._add_empty_cell(row_id)
-        for generator in GeneratorName.items():
-            self._add_column_cell(row_id, row.index, generator)
+        for channel in ChannelName.items():
+            self._add_column_cell(row_id, row.index, channel)
 
     def _add_empty_cell(self, row_id: Sender) -> None:
         empty_cell = dpg.add_table_cell(parent=row_id)
@@ -850,9 +850,9 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         row_id: Sender,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
-        font = Font.MONO_BOLD_SMALL if generator is None else Font.MONO_SMALL
+        font = Font.MONO_BOLD_SMALL if channel is None else Font.MONO_SMALL
         cell = dpg.add_table_cell(parent=row_id)
         group = dpg.add_group(
             horizontal=True,
@@ -863,7 +863,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._add_subcolumn_selectable(
                 group,
                 row_index,
-                generator,
+                channel,
                 subcolumn,
                 font,
             )
@@ -872,11 +872,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         group: Sender,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         subcolumn: SubColumn,
         font: Font,
     ) -> None:
-        key = (row_index, generator, subcolumn)
+        key = (row_index, channel, subcolumn)
         selectable = dpg.add_selectable(
             parent=group,
             label=self._render_cell(key),
@@ -894,7 +894,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         cursor = self._input_state.cursor
         if cursor is not None:
             if cursor.row < self._current_row_count:
-                self._apply_cell_highlight(cursor.row, cursor.generator)
+                self._apply_cell_highlight(cursor.row, cursor.channel)
             else:
                 self._input_state = TrackerInputState()
 
@@ -905,7 +905,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         cursor = self._input_state.cursor
         if cursor is not None:
             self._input_state = TrackerInputState()
-            self._remove_cell_highlight(cursor.row, cursor.generator)
+            self._remove_cell_highlight(cursor.row, cursor.channel)
             self._selection.repaint()
 
         self._update_caret()
@@ -914,21 +914,21 @@ class GUISequencerTrackerPanel(GUIPanel):
         old_cursor = self._input_state.cursor
         new_cursor = new_state.cursor
 
-        old_pos = (old_cursor.row, old_cursor.generator) if old_cursor is not None else None
-        new_pos = (new_cursor.row, new_cursor.generator) if new_cursor is not None else None
+        old_pos = (old_cursor.row, old_cursor.channel) if old_cursor is not None else None
+        new_pos = (new_cursor.row, new_cursor.channel) if new_cursor is not None else None
 
         self._input_state = new_state
 
         if old_pos != new_pos and old_cursor is not None:
-            self._remove_cell_highlight(old_cursor.row, old_cursor.generator)
+            self._remove_cell_highlight(old_cursor.row, old_cursor.channel)
 
         if old_cursor is not None:
-            self._update_cell_display(old_cursor.row, old_cursor.generator)
+            self._update_cell_display(old_cursor.row, old_cursor.channel)
 
         if new_cursor is not None:
             if old_pos != new_pos:
-                self._apply_cell_highlight(new_cursor.row, new_cursor.generator)
-            self._update_cell_display(new_cursor.row, new_cursor.generator)
+                self._apply_cell_highlight(new_cursor.row, new_cursor.channel)
+            self._update_cell_display(new_cursor.row, new_cursor.channel)
 
         if new_pos != old_pos and new_cursor is not None:
             self.call(self.on_cell_selected)
@@ -960,27 +960,27 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         self._tint_channel_columns()
         self._bind_header_themes()
-        for generator in GeneratorName.items():
-            self._bind_channel_cell_themes(generator)
+        for channel in ChannelName.items():
+            self._bind_channel_cell_themes(channel)
 
     def _bind_header_themes(self) -> None:
-        for selectable, generator in self._header_columns.items():
-            muted = generator is not None and self._is_muted(generator)
+        for selectable, channel in self._header_columns.items():
+            muted = channel is not None and self._is_muted(channel)
             dpg.bind_item_theme(
                 selectable,
                 self._muted_header_theme if muted else self._header_theme,
             )
 
-    def _bind_channel_cell_themes(self, generator: GeneratorName) -> None:
-        themes = self._muted_subcolumn_themes if self._is_muted(generator) else self._subcolumn_themes
+    def _bind_channel_cell_themes(self, channel: ChannelName) -> None:
+        themes = self._muted_subcolumn_themes if self._is_muted(channel) else self._subcolumn_themes
         for row_index in range(self._current_row_count):
             for subcolumn in SubColumn:
-                cell_id = self._editable_cells.widget((row_index, generator, subcolumn))
+                cell_id = self._editable_cells.widget((row_index, channel, subcolumn))
                 if cell_id is not None:
                     dpg.bind_item_theme(cell_id, themes[subcolumn])
 
-    def _is_muted(self, generator: GeneratorName) -> bool:
-        return self._current_channels is not None and self._current_channels.is_muted(generator)
+    def _is_muted(self, channel: ChannelName) -> bool:
+        return self._current_channels is not None and self._current_channels.is_muted(channel)
 
     def set_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_SEQUENCER_TRACKER_GROUP, enabled=enabled)
@@ -988,10 +988,10 @@ class GUISequencerTrackerPanel(GUIPanel):
     def _update_cell_display(
         self,
         row: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
         for subcolumn in SubColumn:
-            key = (row, generator, subcolumn)
+            key = (row, channel, subcolumn)
             cell_id = self._editable_cells.widget(key)
             if cell_id is not None:
                 dpg.configure_item(cell_id, label=self._render_cell(key))
@@ -1003,8 +1003,8 @@ class GUISequencerTrackerPanel(GUIPanel):
             CaretOverlay.clear(TAG_SEQUENCER_TRACKER_TABLE)
             return
 
-        key = (cursor.row, cursor.generator, cursor.subcolumn)
-        font = Font.MONO_BOLD_SMALL if cursor.generator is None else Font.MONO_SMALL
+        key = (cursor.row, cursor.channel, cursor.subcolumn)
+        font = Font.MONO_BOLD_SMALL if cursor.channel is None else Font.MONO_SMALL
         CaretOverlay.set_target(
             owner=TAG_SEQUENCER_TRACKER_TABLE,
             widget=self._editable_cells.widget(key),
@@ -1031,11 +1031,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         the others are ``None`` meaning "leave unchanged". Forwarding those ``None``
         values lets the downstream partial update preserve the rest of the row.
         """
-        row, generator = action.row, action.generator
+        row, channel = action.row, action.channel
 
         if action.note_off:
-            self._editable_cells.values[(row, generator, SubColumn.INSTRUMENT)] = NOTE_OFF
-            self.call(self.on_set_note_off, row, generator)
+            self._editable_cells.values[(row, channel, SubColumn.INSTRUMENT)] = NOTE_OFF
+            self.call(self.on_set_note_off, row, channel)
             return
 
         sample_id: Optional[str] = None
@@ -1044,19 +1044,19 @@ class GUISequencerTrackerPanel(GUIPanel):
             resolved = self._resolve_sample_id(action.sample_index)
             sample_index = resolved[0] if resolved is not None else None
             sample_id = resolved[1] if resolved is not None else None
-            self._editable_cells.values[(row, generator, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
+            self._editable_cells.values[(row, channel, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
                 SubColumn.INSTRUMENT,
                 sample_index,
             )
 
         if action.transpose is not None:
-            self._editable_cells.values[(row, generator, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
+            self._editable_cells.values[(row, channel, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
                 SubColumn.TRANSPOSE,
                 action.transpose,
             )
 
         if action.volume is not None:
-            self._editable_cells.values[(row, generator, SubColumn.VOLUME)] = tracker_display.format_committed(
+            self._editable_cells.values[(row, channel, SubColumn.VOLUME)] = tracker_display.format_committed(
                 SubColumn.VOLUME,
                 action.volume,
             )
@@ -1064,7 +1064,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.call(
             self.on_set_row,
             row,
-            generator,
+            channel,
             sample_id,
             action.transpose,
             action.volume,
@@ -1074,33 +1074,33 @@ class GUISequencerTrackerPanel(GUIPanel):
         if action.subcolumn is None:
             for subcolumn in SubColumn:
                 self._editable_cells.values.pop(
-                    (action.row, action.generator, subcolumn),
+                    (action.row, action.channel, subcolumn),
                     None,
                 )
-            self.call(self.on_clear_row, action.row, action.generator)
+            self.call(self.on_clear_row, action.row, action.channel)
         else:
             self._editable_cells.values.pop(
-                (action.row, action.generator, action.subcolumn),
+                (action.row, action.channel, action.subcolumn),
                 None,
             )
             self.call(
                 self.on_clear_subcolumn,
                 action.row,
-                action.generator,
+                action.channel,
                 action.subcolumn,
             )
 
     def _apply_cell_highlight(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
         """Marks the cursor: its cell on the cell layer, its row through the row background."""
         self._paint_row(row_index)
         dpg.highlight_table_cell(
             TAG_SEQUENCER_TRACKER_TABLE,
             tracker_table_row(row_index),
-            tracker_table_column(generator),
+            tracker_table_column(channel),
             color=self._layout.colors.cell_cursor.rgba,
         )
 
@@ -1120,14 +1120,14 @@ class GUISequencerTrackerPanel(GUIPanel):
                 continue
 
             for slot in region.slots:
-                keys.add((row_index, slot.generator, slot.subcolumn))
+                keys.add((row_index, slot.channel, slot.subcolumn))
 
         return frozenset(keys)
 
     def _remove_cell_highlight(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
         """Clears the cursor cell and returns its row to the background the row itself carries.
 
@@ -1137,7 +1137,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg.unhighlight_table_cell(
             TAG_SEQUENCER_TRACKER_TABLE,
             tracker_table_row(row_index),
-            tracker_table_column(generator),
+            tracker_table_column(channel),
         )
         self._paint_row(row_index)
 
@@ -1145,7 +1145,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         sender: Sender,
         _app_data: bool,
-        user_data: Tuple[int, Optional[GeneratorName], SubColumn],
+        user_data: Tuple[int, Optional[ChannelName], SubColumn],
     ) -> None:
         """Places the cursor on the clicked cell, or carries a selection out to it while Shift is held.
 
@@ -1156,8 +1156,8 @@ class GUISequencerTrackerPanel(GUIPanel):
             return
 
         state = self._committed_state()
-        row_index, generator, subcolumn = user_data
-        cursor = TrackerCursor(row_index, generator, subcolumn)
+        row_index, channel, subcolumn = user_data
+        cursor = TrackerCursor(row_index, channel, subcolumn)
         if Modifier.SHIFT in capture_modifiers():
             self._apply_state(state.extend_to(cursor))
             return
@@ -1218,7 +1218,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if row_index is None or slot is None:
             return None
 
-        return (row_index, slot.generator, slot.subcolumn)
+        return (row_index, slot.channel, slot.subcolumn)
 
     def _row_at(self, top: float) -> Optional[int]:
         """Which pattern row stands at a height, counted from the first row's top edge.
@@ -1244,7 +1244,7 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         for index in range(SLOT_COUNT):
             slot = slot_from_flat(index)
-            widget = self._editable_cells.widget((0, slot.generator, slot.subcolumn))
+            widget = self._editable_cells.widget((0, slot.channel, slot.subcolumn))
             if widget is None:
                 return None
 
@@ -1259,7 +1259,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         sender: Sender,
         _app_data: bool,
-        user_data: Optional[GeneratorName],
+        user_data: Optional[ChannelName],
     ) -> None:
         self._channel_switch.click(sender, user_data)
 
@@ -1284,14 +1284,14 @@ class GUISequencerTrackerPanel(GUIPanel):
 
     def _show_header_context_menu(
         self,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
         """Opens the menu behind a column header, titled with the column's own name."""
         with context_menu():
-            header = dpg.add_text(self._column_labels[generator])
+            header = dpg.add_text(self._column_labels[channel])
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
-            self._channel_switch.add_menu_items(generator, self._current_channels)
+            self._channel_switch.add_menu_items(channel, self._current_channels)
 
     def _on_cell_right_clicked(
         self,
@@ -1311,19 +1311,19 @@ class GUISequencerTrackerPanel(GUIPanel):
         if key is None:
             return
 
-        row_index, generator, subcolumn = key
-        self._show_context_menu(row_index, generator, subcolumn)
+        row_index, channel, subcolumn = key
+        self._show_context_menu(row_index, channel, subcolumn)
 
     def _show_context_menu(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         subcolumn: SubColumn,
     ) -> None:
-        target = self._surface.target_at(TrackerCursor(row_index, generator, subcolumn))
+        target = self._surface.target_at(TrackerCursor(row_index, channel, subcolumn))
         with context_menu():
             header = dpg.add_text(
-                tracker_display.cell_title(row_index, self._column_labels[generator]),
+                tracker_display.cell_title(row_index, self._column_labels[channel]),
             )
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             dpg.add_separator()
@@ -1367,7 +1367,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._add_instrument_submenu(target.cell)
         dpg.add_menu_item(
             label=self._lbl_context_note_off,
-            callback=lambda: self.call(self.on_set_note_off, target.cell.row, target.cell.generator),
+            callback=lambda: self.call(self.on_set_note_off, target.cell.row, target.cell.channel),
         )
         dpg.add_separator()
         self._add_transpose_items(target)
@@ -1412,7 +1412,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             for index, sample in enumerate(samples):
                 dpg.add_menu_item(
                     label=tracker_display.indexed_label(index, sample.name),
-                    user_data=(cell.row, cell.generator, sample.sample_id),
+                    user_data=(cell.row, cell.channel, sample.sample_id),
                     callback=self._on_set_instrument_menu,
                 )
 
@@ -1447,10 +1447,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         _sender: Sender,
         _app_data: None,
-        user_data: Tuple[int, Optional[GeneratorName], str],
+        user_data: Tuple[int, Optional[ChannelName], str],
     ) -> None:
-        row_index, generator, sample_id = user_data
-        self.call(self.on_set_row, row_index, generator, sample_id, None, None)
+        row_index, channel, sample_id = user_data
+        self.call(self.on_set_row, row_index, channel, sample_id, None, None)
 
     def _on_transpose_menu(
         self,
@@ -1481,17 +1481,17 @@ class GUISequencerTrackerPanel(GUIPanel):
             callback=lambda: self.call(
                 self.on_clear_subcolumn,
                 cell.row,
-                cell.generator,
+                cell.channel,
                 cell.subcolumn,
             ),
         )
-        if cell.generator is not None:
+        if cell.channel is not None:
             dpg.add_menu_item(
                 label=self._lbl_context_clear_cell,
                 callback=lambda: self.call(
                     self.on_clear_row,
                     cell.row,
-                    cell.generator,
+                    cell.channel,
                 ),
             )
         dpg.add_menu_item(
@@ -1892,13 +1892,13 @@ class GUISequencerTrackerPanel(GUIPanel):
     ) -> None:
         dpg.set_value(sender, False)
         existing = self._input_state.cursor
-        generator = existing.generator if existing is not None else None
+        channel = existing.channel if existing is not None else None
         subcolumn = existing.subcolumn if existing is not None else SubColumn.INSTRUMENT
         self._apply_state(
             TrackerInputState(
                 cursor=TrackerCursor(
                     user_data,
-                    generator,
+                    channel,
                     subcolumn,
                 ),
                 pending="",

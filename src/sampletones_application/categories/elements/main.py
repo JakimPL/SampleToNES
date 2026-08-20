@@ -32,7 +32,7 @@ class ConfigPanelElements(AbstractElement):
 
 
 class ReconstructorElements(AbstractElement):
-    SECTION_GENERATORS = "section_generators"
+    SECTION_CHANNELS = "section_channels"
     SECTION_SETTINGS = "section_settings"
     SLIDER_DRIVE = "slider_drive"
     TOOLTIP_DRIVE = "tooltip_drive"
@@ -53,7 +53,7 @@ class ConverterElements(AbstractElement):
     STATUS_ERROR = "status_error"
     STATUS_RECONSTRUCTION_COMPLETED = "status_reconstruction_completed"
     STATUS_NO_FILES = "status_no_files"
-    STATUS_NO_GENERATORS = "status_no_generators"
+    STATUS_NO_CHANNELS = "status_no_channels"
     STATUS_IDLE = "status_idle"
     STATUS_WAITING = "status_waiting"
     STATUS_GENERATING_LIBRARY = "status_generating_library"

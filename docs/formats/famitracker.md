@@ -166,7 +166,7 @@ one-item sequence sets the value once and holds it. A dimension arrives empty wh
 reconstruction records it as one the channel governs — the state clearing the envelope in the
 instruments panel puts it in (see [Reconstructions](reconstructions.md)).
 
-**How _SampleToNES_ fills an instrument.** Each generator slice of a sample's
+**How _SampleToNES_ fills an instrument.** Each channel slice of a sample's
 reconstruction becomes one instrument, so a sample yields one to four instruments.
 A reconstruction holds a stream for every channel, and one describing no frame is a
 channel standing by (see [Reconstructions](reconstructions.md#contents)): it takes no

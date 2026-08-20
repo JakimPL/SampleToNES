@@ -2,32 +2,32 @@ from typing import Final, Optional
 
 from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
 from sampletones_application.utils.palette.colors.base import BaseColor
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 _LEADING_TABLE_COLUMNS: Final[int] = 2
 SAMPLE_TABLE_COLUMN: Final[int] = _LEADING_TABLE_COLUMNS
 DIVIDER_TABLE_COLUMN: Final[int] = SAMPLE_TABLE_COLUMN + 1
 _FIRST_CHANNEL_TABLE_COLUMN: Final[int] = DIVIDER_TABLE_COLUMN + 1
 _TRAILING_TABLE_COLUMNS: Final[int] = 1
-TRACKER_TABLE_COLUMNS: Final[int] = _FIRST_CHANNEL_TABLE_COLUMN + len(GeneratorName.items()) + _TRAILING_TABLE_COLUMNS
+TRACKER_TABLE_COLUMNS: Final[int] = _FIRST_CHANNEL_TABLE_COLUMN + len(ChannelName.items()) + _TRAILING_TABLE_COLUMNS
 
 HEADER_TABLE_ROW: Final[int] = 0
 HEADER_TABLE_ROWS: Final[int] = HEADER_TABLE_ROW + 1
 
 
-def channel_color(colors: ChannelColors, generator: GeneratorName) -> BaseColor:
-    match generator:
-        case GeneratorName.PULSE1:
+def channel_color(colors: ChannelColors, channel: ChannelName) -> BaseColor:
+    match channel:
+        case ChannelName.PULSE1:
             return colors.pulse1
-        case GeneratorName.PULSE2:
+        case ChannelName.PULSE2:
             return colors.pulse2
-        case GeneratorName.TRIANGLE:
+        case ChannelName.TRIANGLE:
             return colors.triangle
-        case GeneratorName.NOISE:
+        case ChannelName.NOISE:
             return colors.noise
 
 
-def tracker_table_column(generator: Optional[GeneratorName]) -> int:
+def tracker_table_column(channel: Optional[ChannelName]) -> int:
     """Maps a logical column to its DPG table column index.
 
     The visual divider between the sample column and the channels occupies a table
@@ -35,10 +35,10 @@ def tracker_table_column(generator: Optional[GeneratorName]) -> int:
     logical position. The divider is purely visual, so :data:`CHANNEL_AXIS` covers
     only the cursor-addressable columns.
     """
-    if generator is None:
+    if channel is None:
         return SAMPLE_TABLE_COLUMN
 
-    return _FIRST_CHANNEL_TABLE_COLUMN + GeneratorName.items().index(generator)
+    return _FIRST_CHANNEL_TABLE_COLUMN + ChannelName.items().index(channel)
 
 
 def tracker_table_row(row_index: int) -> int:

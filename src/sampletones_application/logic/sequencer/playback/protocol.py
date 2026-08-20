@@ -15,7 +15,7 @@ class ChannelGeneratorProtocol(Protocol):
     ``PulseGenerator``) are accepted while keeping their precise generic types.
 
     The instruction parameter is typed ``Any`` because the generator-to-instruction
-    pairing is a runtime invariant maintained by ``GENERATOR_CLASSES`` dispatch, which
+    pairing is a runtime invariant maintained by ``CHANNEL_CLASSES`` dispatch, which
     lies outside the static type system.
 
     ``frame_length`` is settable so the synthesiser can give each tick the span its clock

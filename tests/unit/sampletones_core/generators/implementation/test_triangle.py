@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import MIXER_TRIANGLE
 from sampletones_core.generators.implementation.triangle import TriangleGenerator
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
@@ -19,7 +19,7 @@ def config() -> Config:
 
 @pytest.fixture
 def generator(config: Config) -> TriangleGenerator:
-    return TriangleGenerator(config, GeneratorName.TRIANGLE)
+    return TriangleGenerator(config, ChannelName.TRIANGLE)
 
 
 class TestTriangleGeneratorCall:

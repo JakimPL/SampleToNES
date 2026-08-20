@@ -14,6 +14,7 @@ from typing import (
     Self,
     Sequence,
     Tuple,
+    Union,
 )
 from uuid import uuid4
 
@@ -21,18 +22,24 @@ import numpy as np
 from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones_core.audio.mixing import align, common_length, mix
+from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.compatibility.upgrade import upgrade_binary
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.data import DataModel, Metadata, MetadataContract
 from sampletones_core.exporters import (
-    GENERATOR_NAME_TO_EXPORTER_MAP,
+    CHANNEL_TO_EXPORTER_MAP,
     INSTRUCTION_TO_EXPORTER_MAP,
     ExporterTypeUnion,
     ExporterUnion,
     Features,
 )
-from sampletones_core.generators.render import render_generators
+from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
+from sampletones_core.reconstructions.reconstruction.approximations import ApproximationsItem
+from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
 from sampletones_shared.exceptions import (
     IncompatibleReconstructionVersionError,
@@ -45,10 +52,7 @@ from sampletones_shared.types.callback import Callback
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_binary, serialize_array
-
-from ..reconstructor.state import ReconstructionState
-from .approximations import ApproximationsItem
-from .instructions import InstructionsItem
+from sampletones_shared.utils.system.paths import to_paths
 
 RECONSTRUCTION_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
     label="Reconstruction data",
@@ -68,9 +72,12 @@ class Reconstruction(DataModel):
         ...,
         description="Unique identifier for the reconstruction",
     )
-    audio_filepath: Optional[Path] = Field(
+    audio_filepath: Optional[Union[Path, Tuple[Path, ...]]] = Field(
         ...,
-        description="Location of the source audio; None marks a reconstruction detached from its local origin",
+        description=(
+            "Location of the source audio: one path for a single source, the stem paths "
+            "for a stems reconstruction, and None once detached from the local origin"
+        ),
     )
     config: Config = Field(
         ...,
@@ -83,11 +90,15 @@ class Reconstruction(DataModel):
     )
     approximations_data: List[ApproximationsItem] = Field(
         ...,
-        description="Approximations per generator",
+        description="Approximations per channel",
     )
     instructions_data: List[InstructionsItem] = Field(
         ...,
-        description="Instructions per generator",
+        description="Instructions per channel",
+    )
+    stems_data: Optional[StemsData] = Field(
+        None,
+        description="Stems assignment recorded when built from several stems",
     )
     coefficient: float = Field(
         ...,
@@ -95,11 +106,16 @@ class Reconstruction(DataModel):
     )
 
     @cached_property
-    def approximations(self) -> Dict[GeneratorName, np.ndarray]:
-        return {item.generator_name: item.approximation for item in self.approximations_data}
+    def source_paths(self) -> Tuple[Path, ...]:
+        """The recorded source audio paths, empty while the reconstruction is detached."""
+        return to_paths(self.audio_filepath)
 
     @cached_property
-    def streams(self) -> Dict[GeneratorName, InstructionsItem]:
+    def approximations(self) -> Dict[ChannelName, np.ndarray]:
+        return {item.channel_name: item.approximation for item in self.approximations_data}
+
+    @cached_property
+    def streams(self) -> Dict[ChannelName, InstructionsItem]:
         """The instruction stream each channel carries, in channel order.
 
         This is where the channel set is made whole: a channel the stored data names a stream
@@ -107,43 +123,43 @@ class Reconstruction(DataModel):
         carries. Every per-channel view reads from here, so each of them covers the four
         channels however a reconstruction reached memory.
         """
-        stored = {item.generator_name: item for item in self.instructions_data}
+        stored = {item.channel_name: item for item in self.instructions_data}
         return {
-            generator_name: stored.get(generator_name, InstructionsItem.resting(generator_name))
-            for generator_name in GeneratorName.items()
+            channel_name: stored.get(channel_name, InstructionsItem.resting(channel_name))
+            for channel_name in ChannelName.items()
         }
 
     @cached_property
-    def instructions(self) -> Dict[GeneratorName, List[InstructionUnion]]:
+    def instructions(self) -> Dict[ChannelName, List[InstructionUnion]]:
         return {
-            generator_name: [instruction.instruction for instruction in item.instructions]
-            for generator_name, item in self.streams.items()
+            channel_name: [instruction.instruction for instruction in item.instructions]
+            for channel_name, item in self.streams.items()
         }
 
     @cached_property
-    def initial_pitches(self) -> Dict[GeneratorName, int]:
-        """The reference pitch each generator's arpeggio envelope is measured against."""
-        return {generator_name: item.initial_pitch for generator_name, item in self.streams.items()}
+    def initial_pitches(self) -> Dict[ChannelName, int]:
+        """The reference pitch each channel's arpeggio envelope is measured against."""
+        return {channel_name: item.initial_pitch for channel_name, item in self.streams.items()}
 
     @cached_property
-    def held_features(self) -> Dict[GeneratorName, Tuple[FeatureKey, ...]]:
-        """The dimensions each generator leaves to the channel.
+    def held_features(self) -> Dict[ChannelName, Tuple[FeatureKey, ...]]:
+        """The dimensions each channel's instrument writes for itself.
 
         An instruction states every dimension of its frame, so which of them the instrument
         itself writes is stated here: the rest are the channel's, and an export leaves their
         envelopes empty for the player to fill from the value it holds.
         """
-        return {generator_name: tuple(item.held_features) for generator_name, item in self.streams.items()}
+        return {channel_name: tuple(item.held_features) for channel_name, item in self.streams.items()}
 
     @cached_property
-    def playing_generators(self) -> Tuple[GeneratorName, ...]:
+    def playing_channels(self) -> Tuple[ChannelName, ...]:
         """The channels whose instruction stream describes a frame.
 
         A reconstruction holds a stream for every channel, so this is what says which of them
         play: the rest stand by, exporting nothing and costing nothing, while describing a
         frame is what puts one in play.
         """
-        return tuple(generator_name for generator_name, item in self.streams.items() if item.instructions)
+        return tuple(channel_name for channel_name, item in self.streams.items() if item.instructions)
 
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
@@ -152,16 +168,16 @@ class Reconstruction(DataModel):
     @classmethod
     def _exporter_class(
         cls,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         instructions: List[InstructionUnion],
     ) -> ExporterTypeUnion:
         """The exporter a channel's stream is read through.
 
         The instruction type names the exporter wherever the stream describes a frame; a
-        channel standing by takes the exporter its generator name pairs with.
+        channel standing by takes the exporter its channel name pairs with.
         """
         if not instructions:
-            return GENERATOR_NAME_TO_EXPORTER_MAP[generator_name]
+            return CHANNEL_TO_EXPORTER_MAP[channel_name]
 
         return cls._get_exporter_class(instructions[0])
 
@@ -178,32 +194,33 @@ class Reconstruction(DataModel):
     def create(
         cls,
         approximation: np.ndarray,
-        approximations: Mapping[GeneratorName, np.ndarray],
-        instructions: Mapping[GeneratorName, Sequence[InstructionUnion]],
+        approximations: Mapping[ChannelName, np.ndarray],
+        instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
         config: Config,
         coefficient: float,
-        audio_filepath: Path,
+        audio_filepath: Union[Path, Tuple[Path, ...]],
+        stems_data: Optional[StemsData] = None,
     ) -> Self:
         approximation = np.nan_to_num(approximation, nan=0.0)
         approximations_data: List[ApproximationsItem] = [
             ApproximationsItem(
-                generator_name=generator_name,
-                approximation=approximations[generator_name],
+                channel_name=channel_name,
+                approximation=approximations[channel_name],
             )
-            for generator_name in GeneratorName.items()
-            if generator_name in approximations
+            for channel_name in ChannelName.items()
+            if channel_name in approximations
         ]
 
         instructions_data: List[InstructionsItem] = []
-        for generator_name in GeneratorName.items():
-            channel_instructions = list(instructions.get(generator_name, ()))
+        for channel_name in ChannelName.items():
+            channel_instructions = list(instructions.get(channel_name, ()))
             if not channel_instructions:
-                instructions_data.append(InstructionsItem.resting(generator_name))
+                instructions_data.append(InstructionsItem.resting(channel_name))
                 continue
 
             instructions_data.append(
                 InstructionsItem.create(
-                    generator_name=generator_name,
+                    channel_name=channel_name,
                     instructions=channel_instructions,
                     initial_pitch=cls._derive_initial_pitch(channel_instructions),
                     held_features=(),
@@ -215,6 +232,7 @@ class Reconstruction(DataModel):
             approximation=approximation,
             approximations_data=approximations_data,
             instructions_data=instructions_data,
+            stems_data=stems_data,
             config=config,
             coefficient=coefficient,
             audio_filepath=audio_filepath,
@@ -226,7 +244,8 @@ class Reconstruction(DataModel):
         state: ReconstructionState,
         config: Config,
         coefficient: float,
-        path: Path,
+        path: Union[Path, Tuple[Path, ...]],
+        stems_data: Optional[StemsData] = None,
     ) -> Optional[Self]:
         if any(len(approximation) == 0 for approximation in state.approximations.values()):
             logger.warning(f"Reconstruction for file: {path} is empty")
@@ -242,17 +261,18 @@ class Reconstruction(DataModel):
             config=config,
             coefficient=coefficient,
             audio_filepath=path,
+            stems_data=stems_data,
         )
 
-    def update_generator_data(
+    def update_channel_data(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         instructions: List[InstructionUnion],
         partial_approximation: np.ndarray,
         initial_pitch: int,
         held_features: Iterable[FeatureKey],
     ) -> None:
-        """Replaces one generator's instructions, audio, reference pitch, and held dimensions.
+        """Replaces one channel's instructions, audio, reference pitch, and held dimensions.
 
         The reference pitch travels with the instructions it produced, so a later export
         measures the arpeggio against the same base the edit was made from. The held
@@ -264,9 +284,9 @@ class Reconstruction(DataModel):
         long as it carries samples, which keeps silence out of the stored waveforms.
         """
         partial_approximation = np.trim_zeros(partial_approximation, trim="b")
-        rendered = {name: audio for name, audio in self.approximations.items() if name != generator_name}
+        rendered = {name: audio for name, audio in self.approximations.items() if name != channel_name}
         if partial_approximation.size:
-            rendered[generator_name] = partial_approximation
+            rendered[channel_name] = partial_approximation
 
         max_length = max(
             (len(np.trim_zeros(audio, trim="b")) for audio in rendered.values()),
@@ -276,21 +296,21 @@ class Reconstruction(DataModel):
         self.approximations_data = self._build_approximations_data(rendered, max_length)
 
         streams = dict(self.streams)
-        streams[generator_name] = InstructionsItem.create(
-            generator_name=generator_name,
+        streams[channel_name] = InstructionsItem.create(
+            channel_name=channel_name,
             instructions=instructions,
             initial_pitch=initial_pitch,
             held_features=held_features,
         )
-        self.instructions_data = [streams[name] for name in GeneratorName.items()]
+        self.instructions_data = [streams[name] for name in ChannelName.items()]
         self._invalidate_derived_caches(self)
         self.approximation = mix([item.approximation for item in self.approximations_data])
 
-    def get_generator_instructions(
+    def get_channel_instructions(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
     ) -> List[InstructionUnion]:
-        return self.instructions[generator_name]
+        return self.instructions[channel_name]
 
     def detach_source(self) -> None:
         """Drops the local source-audio location so the reconstruction becomes self-contained.
@@ -301,13 +321,14 @@ class Reconstruction(DataModel):
         origin, so a saved project stays portable.
         """
         self.audio_filepath = None
+        self.__dict__.pop("source_paths", None)
 
     def with_nes_frequency(self, nes_frequency: int) -> Reconstruction:
         """Returns a copy retuned to ``nes_frequency`` by re-rendering its audio.
 
         A project runs every embedded sample at one change rate, so a reconstruction joining a
         project adopts that rate. The frozen ``config`` is rebuilt at the new rate and each
-        generator's approximation is re-synthesized from its stored instructions at the matching
+        channel's approximation is re-synthesized from its stored instructions at the matching
         frame length, re-timing the audio; the instructions and coefficient carry over. The
         original instance is returned when it already runs at ``nes_frequency``.
         """
@@ -317,15 +338,15 @@ class Reconstruction(DataModel):
         return self._resynthesized(self.config.with_library(nes_frequency=nes_frequency))
 
     def _resynthesized(self, config: Config) -> Reconstruction:
-        """Re-renders every generator's approximation from its instructions at ``config``.
+        """Re-renders every channel's approximation from its instructions at ``config``.
 
         Each instruction spans ``config.frame_length`` samples, so re-rendering at a new frame
         length re-times the audio. The channels describing frames are rendered, padded to a
-        common length and summed; the mixer weight is baked into each generator's output, so a
+        common length and summed; the mixer weight is baked into each channel's output, so a
         plain sum reproduces the stored approximation shape. Drive is left at unity to match the
         regeneration path.
         """
-        rendered = render_generators(self.instructions, config)
+        rendered = render_channels(self.instructions, config)
         approximations_data = self._build_approximations_data(
             rendered,
             common_length(rendered.values()),
@@ -344,33 +365,33 @@ class Reconstruction(DataModel):
 
     @staticmethod
     def _build_approximations_data(
-        rendered: Mapping[GeneratorName, np.ndarray],
+        rendered: Mapping[ChannelName, np.ndarray],
         length: int,
     ) -> List[ApproximationsItem]:
         """Brings each rendered channel's audio to ``length``, in channel order.
 
-        A shared length lets the per-generator arrays stack and sum into the mixed approximation,
+        A shared length lets the per-channel arrays stack and sum into the mixed approximation,
         and a fixed order keeps a stored reconstruction reading the same however an edit reached it.
         """
-        names = [generator_name for generator_name in GeneratorName.items() if generator_name in rendered]
-        aligned = align([rendered[generator_name] for generator_name in names], length)
+        names = [channel_name for channel_name in ChannelName.items() if channel_name in rendered]
+        aligned = align([rendered[channel_name] for channel_name in names], length)
         return [
             ApproximationsItem(
-                generator_name=generator_name,
+                channel_name=channel_name,
                 approximation=audio,
             )
-            for generator_name, audio in zip(names, aligned)
+            for channel_name, audio in zip(names, aligned)
         ]
 
     @staticmethod
     def _invalidate_derived_caches(reconstruction: Reconstruction) -> None:
-        """Drops the memoized per-generator views so they recompute from their backing data."""
+        """Drops the memoized per-channel views so they recompute from their backing data."""
         reconstruction.__dict__.pop("approximations", None)
         reconstruction.__dict__.pop("streams", None)
         reconstruction.__dict__.pop("instructions", None)
         reconstruction.__dict__.pop("initial_pitches", None)
         reconstruction.__dict__.pop("held_features", None)
-        reconstruction.__dict__.pop("playing_generators", None)
+        reconstruction.__dict__.pop("playing_channels", None)
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
@@ -391,6 +412,7 @@ class Reconstruction(DataModel):
         fast: bool = True,
     ) -> Reconstruction:
         try:
+            binary = upgrade_binary(ObjectKind.RECONSTRUCTION, binary)
             return cls.deserialize(binary, validation=validation, fast=fast)
         except (ValidationError, TypeError, ValueError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(
@@ -432,17 +454,17 @@ class Reconstruction(DataModel):
                     f"with exporter {exporter_class.__name__}"
                 )
 
-    def export(self) -> Dict[GeneratorName, Features]:
+    def export(self) -> Dict[ChannelName, Features]:
         """The envelopes each channel exports, one entry per channel the reconstruction holds.
 
         A channel standing by describes no frame, so its envelopes come back empty and every
         reader tells it from a channel that plays by :attr:`Features.has_frames`.
 
         Returns:
-            Dict[GeneratorName, Features]: The envelope representation of each channel.
+            Dict[ChannelName, Features]: The envelope representation of each channel.
         """
-        features: Dict[GeneratorName, Features] = {}
-        for name in GeneratorName.items():
+        features: Dict[ChannelName, Features] = {}
+        for name in ChannelName.items():
             instructions = self.instructions[name]
             exporter_class = self._exporter_class(name, instructions)
             exporter: ExporterUnion = exporter_class()
@@ -468,10 +490,13 @@ class Reconstruction(DataModel):
     @field_serializer("audio_filepath")
     def _serialize_audio_filepath(
         self,
-        audio_filepath: Optional[Path],
+        audio_filepath: Optional[Union[Path, Tuple[Path, ...]]],
         _info: Any,
-    ) -> Optional[str]:
+    ) -> Optional[Union[str, List[str]]]:
         if audio_filepath is None:
             return None
 
-        return str(audio_filepath)
+        if isinstance(audio_filepath, Path):
+            return str(audio_filepath)
+
+        return [str(path) for path in audio_filepath]

@@ -174,7 +174,9 @@ on machines with a GPU, runs on the array backend in `sampletones_shared`.
 
 Both selectors live in `sampletones_core.reconstructions.reconstructor.selector` and
 are chosen with `generation.decoder.selector`. They share the criterion and the
-library; they differ only in how they search.
+library; they differ only in how they search. The same candidate scoring drives
+the stems assignment, which hands channels to several stems per frame
+(see [Stems reconstruction](stems.md)).
 
 Both score candidates in two stages: every candidate is first ranked by the
 phase-independent spectral term, and the best `top_k` are then re-scored with the
@@ -196,9 +198,12 @@ while remaining:
 ```
 
 It assigns each channel exactly once per frame, always letting the channel that fits
-the residual best go first. It is simple and fast, but it has **no memory between
-frames**: nothing discourages the instruction streams from jumping around frame to
-frame, which can sound jittery even when each individual frame is well matched.
+the residual best go first. When several channels share one generator kind, the
+lowest remaining channel of that kind represents it during scoring, so successive
+picks over one kind land on the lowest free channel. It is simple and fast, but it
+has **no memory between frames**: nothing discourages the instruction streams from
+jumping around frame to frame, which can sound jittery even when each individual
+frame is well matched.
 
 ### 5.2 Viterbi (continuity-aware)
 

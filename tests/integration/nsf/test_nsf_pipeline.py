@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_player.builder import song_from_reconstruction
@@ -40,7 +40,7 @@ def read_word(data: bytes, offset: int) -> int:
 
 
 def stream_offsets(block: bytes) -> Tuple[int, ...]:
-    return tuple(read_word(block, STREAM_OFFSETS_OFFSET + WORD_SIZE * channel) for channel in range(len(GeneratorName)))
+    return tuple(read_word(block, STREAM_OFFSETS_OFFSET + WORD_SIZE * channel) for channel in range(len(ChannelName)))
 
 
 @pytest.fixture

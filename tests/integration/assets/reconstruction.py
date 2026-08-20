@@ -7,10 +7,10 @@ from sampletones_core.audio import write_wave
 from sampletones_core.audio.processing import normalize
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.configs.generation import GenerationConfig
-from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
+from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
-from sampletones_core.generators import get_generators_by_names
+from sampletones_core.generators import get_generators_by_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import (
     InstructionLibrary,
@@ -24,29 +24,29 @@ from sampletones_shared.utils.serialization import load_yaml
 from tests.integration.assets.synth_config import SynthConfig
 
 INSTRUCTIONS_PER_GENERATOR: Final[int] = 48
-LIBRARY_GENERATORS: Final[List[GeneratorName]] = [
-    GeneratorName.PULSE1,
-    GeneratorName.TRIANGLE,
-    GeneratorName.NOISE,
+CHANNELS: Final[List[ChannelName]] = [
+    ChannelName.PULSE1,
+    ChannelName.TRIANGLE,
+    ChannelName.NOISE,
 ]
 
 
 def build_mini_library(config: Config, *, per_generator: int = INSTRUCTIONS_PER_GENERATOR) -> InstructionLibrary:
     """Builds a small in-memory instruction library covering pulse/triangle/noise.
 
-    Candidates are sampled with an even stride across each generator's instruction
+    Candidates are sampled with an even stride across each channel's instruction
     space so pitch, volume and period are represented, rather than a biased prefix.
     """
     window = Window.from_config(config)
     extractor = get_feature_extractor(config, window)
-    generators = get_generators_by_names(config, LIBRARY_GENERATORS)
+    channels = get_generators_by_channels(config, CHANNELS)
 
     data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {}
-    for generator in generators.values():
-        candidates = list(generator.get_possible_instructions())
+    for channel in channels.values():
+        candidates = list(channel.get_possible_instructions())
         stride = max(1, len(candidates) // per_generator)
         for instruction in candidates[::stride][:per_generator]:
-            data[instruction] = InstructionLibraryFragment.create(generator, instruction, extractor)
+            data[instruction] = InstructionLibraryFragment.create(channel, instruction, extractor)
 
     library = InstructionLibrary()
     library.data[library.create_key(config, window)] = InstructionLibraryData.create(config, data)
@@ -78,12 +78,12 @@ def make_sample(
     library: InstructionLibrary,
     *,
     tmp_dir: Pathlike,
-    expected_slices: FrozenSet[GeneratorName],
+    expected_slices: FrozenSet[ChannelName],
     loop: bool = False,
 ) -> Sample:
     """Reconstructs ``audio`` into a `Sample`, asserting the channels it plays."""
     reconstruction = reconstruct_sample(audio, config, library, tmp_dir=tmp_dir, name=name)
-    played = frozenset(reconstruction.playing_generators)
+    played = frozenset(reconstruction.playing_channels)
     if played != expected_slices:
         raise AssertionError(f"Sample '{name}' covers {set(played)}, expected {set(expected_slices)}")
 
@@ -117,8 +117,8 @@ def load_instrument_catalog(
 
     catalog: Dict[str, Sample] = {}
     for entry in spec["instruments"]:
-        generators = [GeneratorName(name) for name in entry["generators"]]
-        config = Config(library=library_config, generation=GenerationConfig(generators=generators))
+        channels = [ChannelName(name) for name in entry["channels"]]
+        config = Config(library=library_config, generation=GenerationConfig(channels=channels))
         audio = _render_instrument(synth_config, entry["synth"], sample_rate=sample_rate)
         catalog[entry["name"]] = make_sample(
             entry["name"],
@@ -126,7 +126,7 @@ def load_instrument_catalog(
             config,
             library,
             tmp_dir=tmp_dir,
-            expected_slices=frozenset(generators),
+            expected_slices=frozenset(channels),
         )
 
     return catalog
@@ -141,7 +141,7 @@ def _render_instrument(
     """
     Render a named voice at peak level 1.0.
 
-    A fresh generator seeded from the synth configuration keeps every instrument
+    A fresh channel seeded from the synth configuration keeps every instrument
     reproducible independently of catalog order.
     """
     voice = synth_config.voices[name]

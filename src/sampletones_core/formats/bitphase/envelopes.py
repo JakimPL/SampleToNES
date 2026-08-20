@@ -3,7 +3,7 @@ from typing import Dict, Final, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.lengths import equalize_lengths
 from sampletones_core.formats.bitphase.model.instrument import NesInstrumentRow
@@ -26,7 +26,7 @@ SILENT_ROW: Final[NesInstrumentRow] = NesInstrumentRow(
 
 @dataclass(frozen=True)
 class ChannelEnvelopes:
-    """One generator slice expressed the way Bitphase plays it back.
+    """One channel slice expressed the way Bitphase plays it back.
 
     The instrument rows and the table rows advance on their own per-tick counters, so
     they share a length and a loop point and stay in step for as long as the note
@@ -49,23 +49,23 @@ def _to_items(array: Optional[np.ndarray]) -> Tuple[int, ...]:
     return tuple(int(value) for value in array)
 
 
-def _pulse_width(generator: GeneratorName, duty_cycle: int) -> int:
+def _pulse_width(channel: ChannelName, duty_cycle: int) -> int:
     """Reads a duty-cycle item as the field the channel uses it for.
 
     A square channel takes it as the duty itself; the noise channel takes any nonzero
     value as its short LFSR mode; the triangle channel plays one fixed waveform.
     """
-    match generator:
-        case GeneratorName.PULSE1 | GeneratorName.PULSE2:
+    match channel:
+        case ChannelName.PULSE1 | ChannelName.PULSE2:
             return duty_cycle
-        case GeneratorName.NOISE:
+        case ChannelName.NOISE:
             return NOISE_MODE_SHORT if duty_cycle else NOISE_MODE_LONG
-        case GeneratorName.TRIANGLE:
+        case ChannelName.TRIANGLE:
             return FLAT_PULSE_WIDTH
 
 
-def _table_offset(generator: GeneratorName, arpeggio: int) -> int:
-    if generator == GeneratorName.NOISE:
+def _table_offset(channel: ChannelName, arpeggio: int) -> int:
+    if channel == ChannelName.NOISE:
         return noise_arpeggio_to_table_offset(arpeggio)
 
     return arpeggio
@@ -89,11 +89,11 @@ def _held_volume(frames: int) -> Tuple[int, ...]:
 
 def features_to_envelopes(
     features: Features,
-    generator: GeneratorName,
+    channel: ChannelName,
     *,
     loop: bool,
 ) -> ChannelEnvelopes:
-    """Converts one generator slice's envelopes into Bitphase instrument and table rows.
+    """Converts one channel slice's envelopes into Bitphase instrument and table rows.
 
     Volume becomes the instrument's per-tick level, the duty cycle becomes the channel's
     waveform field, and the arpeggio becomes the table contour that moves the note. A
@@ -108,7 +108,7 @@ def features_to_envelopes(
 
     Args:
         features: The per-dimension envelopes describing the slice.
-        generator: The NES channel the slice was reconstructed for.
+        channel: The NES channel the slice was reconstructed for.
         loop: Whether the instrument repeats its envelopes while its note is held.
 
     Returns:
@@ -135,13 +135,13 @@ def features_to_envelopes(
 
     rows = tuple(
         NesInstrumentRow(
-            pulse_width=_pulse_width(generator, duty_cycles[frame] if duty_cycles else FLAT_PULSE_WIDTH),
+            pulse_width=_pulse_width(channel, duty_cycles[frame] if duty_cycles else FLAT_PULSE_WIDTH),
             volume_or_rate=volume,
         )
         for frame, volume in enumerate(volumes)
     )
     contour = arpeggios or (NO_TABLE_OFFSET,) * len(volumes)
-    table_rows = tuple(_table_offset(generator, arpeggio) for arpeggio in contour)
+    table_rows = tuple(_table_offset(channel, arpeggio) for arpeggio in contour)
 
     return ChannelEnvelopes(
         rows=rows,

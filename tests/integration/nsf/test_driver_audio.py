@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 
 from sampletones_core.audio.mixing import mix
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.generators.render import render_generators
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.timers.utils import get_timer_table
@@ -14,7 +14,7 @@ from tests.integration.nsf.console.instructions import instructions_from_trace
 from tests.integration.nsf.console.session import captured_trace
 from tests.integration.nsf.exports import exported_information
 
-ChannelInstructions = Dict[GeneratorName, List[InstructionUnion]]
+ChannelInstructions = Dict[ChannelName, List[InstructionUnion]]
 
 
 def played_by_console(sample: Sample) -> ChannelInstructions:
@@ -50,7 +50,7 @@ def rendered(
 ) -> Dict[str, np.ndarray]:
     """The waveform the console's instructions sound as, rendered on the reconstruction's own engine."""
     return {
-        name: mix(list(render_generators(played[name], sample.reconstruction.config).values()))
+        name: mix(list(render_channels(played[name], sample.reconstruction.config).values()))
         for name, sample in instrument_catalog.items()
     }
 
@@ -76,7 +76,7 @@ class TestTheConsoleSoundsTheReconstruction:
         instrument_catalog: Dict[str, Sample],
     ) -> None:
         for name, sample in instrument_catalog.items():
-            silent = set(GeneratorName.items()) - set(sample.reconstruction.instructions)
+            silent = set(ChannelName.items()) - set(sample.reconstruction.instructions)
             for channel in silent:
                 assert not any(instruction.on for instruction in played[name][channel])
 
@@ -87,7 +87,7 @@ class TestTheConsoleSoundsTheReconstruction:
             for channel, stream in instructions.items()
             if any(instruction.on for instruction in stream)
         }
-        assert sounded == set(GeneratorName.items())
+        assert sounded == set(ChannelName.items())
 
     def test_every_run_ends_with_every_channel_silent(self, played: Dict[str, ChannelInstructions]) -> None:
         for instructions in played.values():

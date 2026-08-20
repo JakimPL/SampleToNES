@@ -3,13 +3,13 @@ from typing import Optional
 from pydantic.dataclasses import dataclass
 
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 @dataclass(frozen=True)
 class EditAction:
     row: int
-    generator: Optional[GeneratorName]
+    channel: Optional[ChannelName]
     sample_index: Optional[int]
     transpose: Optional[int]
     volume: Optional[int]
@@ -19,5 +19,5 @@ class EditAction:
 @dataclass
 class ClearAction:
     row: int
-    generator: Optional[GeneratorName]
+    channel: Optional[ChannelName]
     subcolumn: Optional[SubColumn] = None

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions.implementation.noise import NoiseInstruction
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
 from sampletones_core.instructions.implementation.triangle import TriangleInstruction
@@ -27,9 +27,9 @@ RECONSTRUCTION_LENGTH = 8
 
 
 def build_reconstruction(
-    instructions: Mapping[GeneratorName, Sequence[Instruction]],
+    instructions: Mapping[ChannelName, Sequence[Instruction]],
 ) -> Reconstruction:
-    approximations = {generator: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for generator in instructions}
+    approximations = {channel: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for channel in instructions}
     return Reconstruction.create(
         approximation=np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32),
         approximations=approximations,
@@ -47,7 +47,7 @@ def pulse_sample(name: str, pitch: int, *, loop: bool = False) -> Sample:
     ]
     return Sample(
         name=name,
-        reconstruction=build_reconstruction({GeneratorName.PULSE1: instructions}),
+        reconstruction=build_reconstruction({ChannelName.PULSE1: instructions}),
         loop=loop,
     )
 
@@ -56,14 +56,14 @@ def noise_sample(name: str, period: int) -> Sample:
     instructions = [NoiseInstruction(on=True, period=period, volume=15, short=False)]
     return Sample(
         name=name,
-        reconstruction=build_reconstruction({GeneratorName.NOISE: instructions}),
+        reconstruction=build_reconstruction({ChannelName.NOISE: instructions}),
     )
 
 
 def dual_generator_sample(name: str, pulse_pitch: int, triangle_pitch: int) -> Sample:
-    instructions: Mapping[GeneratorName, Sequence[Instruction]] = {
-        GeneratorName.PULSE1: [PulseInstruction(on=True, pitch=pulse_pitch, volume=15, duty_cycle=0)],
-        GeneratorName.TRIANGLE: [TriangleInstruction(on=True, pitch=triangle_pitch)],
+    instructions: Mapping[ChannelName, Sequence[Instruction]] = {
+        ChannelName.PULSE1: [PulseInstruction(on=True, pitch=pulse_pitch, volume=15, duty_cycle=0)],
+        ChannelName.TRIANGLE: [TriangleInstruction(on=True, pitch=triangle_pitch)],
     }
     return Sample(name=name, reconstruction=build_reconstruction(instructions))
 
@@ -90,7 +90,7 @@ def project_fixture() -> ProjectFixture:
 
     pulse_rows: List[Row] = [Row() for _ in range(8)]
     pulse_rows[0] = Row(
-        command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE1),
+        command=Instrument(sample_id=lead.id, channel_name=ChannelName.PULSE1),
         transpose=0,
         volume=10,
     )
@@ -99,29 +99,29 @@ def project_fixture() -> ProjectFixture:
 
     noise_rows: List[Row] = [Row() for _ in range(8)]
     noise_rows[0] = Row(
-        command=Instrument(sample_id=drum.id, generator_name=GeneratorName.NOISE),
+        command=Instrument(sample_id=drum.id, channel_name=ChannelName.NOISE),
         transpose=0,
         volume=15,
     )
 
     channels = {
-        GeneratorName.PULSE1: Channel(generator=GeneratorName.PULSE1, patterns={0: Pattern(rows=pulse_rows)}),
-        GeneratorName.PULSE2: Channel(generator=GeneratorName.PULSE2, patterns={}),
-        GeneratorName.TRIANGLE: Channel(generator=GeneratorName.TRIANGLE, patterns={}),
-        GeneratorName.NOISE: Channel(generator=GeneratorName.NOISE, patterns={0: Pattern(rows=noise_rows)}),
+        ChannelName.PULSE1: Channel(name=ChannelName.PULSE1, patterns={0: Pattern(rows=pulse_rows)}),
+        ChannelName.PULSE2: Channel(name=ChannelName.PULSE2, patterns={}),
+        ChannelName.TRIANGLE: Channel(name=ChannelName.TRIANGLE, patterns={}),
+        ChannelName.NOISE: Channel(name=ChannelName.NOISE, patterns={0: Pattern(rows=noise_rows)}),
     }
     order = [
         {
-            GeneratorName.PULSE1: 0,
-            GeneratorName.PULSE2: None,
-            GeneratorName.TRIANGLE: None,
-            GeneratorName.NOISE: 0,
+            ChannelName.PULSE1: 0,
+            ChannelName.PULSE2: None,
+            ChannelName.TRIANGLE: None,
+            ChannelName.NOISE: 0,
         },
         {
-            GeneratorName.PULSE1: None,
-            GeneratorName.PULSE2: None,
-            GeneratorName.TRIANGLE: None,
-            GeneratorName.NOISE: None,
+            ChannelName.PULSE1: None,
+            ChannelName.PULSE2: None,
+            ChannelName.TRIANGLE: None,
+            ChannelName.NOISE: None,
         },
     ]
     song = Song(rows_per_pattern=8, order=order, channels=channels)

@@ -1,6 +1,6 @@
 from typing import Dict, Final, List, Mapping, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PERIOD, MAX_VOLUME
 from sampletones_core.instructions import (
     InstructionUnion,
@@ -22,7 +22,7 @@ from tests.integration.nsf.console.machine import register_file
 TRIANGLE_SOUNDING: Final[int] = TRIANGLE_COUNTER_CONTROL | TRIANGLE_SOUNDING_RELOAD
 
 
-def channel_values(registers: Mapping[int, int], channel: GeneratorName) -> Tuple[int, ...]:
+def channel_values(registers: Mapping[int, int], channel: ChannelName) -> Tuple[int, ...]:
     """The values standing in one channel's registers, in the order the driver writes them."""
     return tuple(registers[address] for address in CHANNEL_REGISTER_ADDRESSES[channel])
 
@@ -34,7 +34,7 @@ def timer_value(timer_low: int, timer_high: int) -> int:
 
 def pulse_instruction(
     registers: Mapping[int, int],
-    channel: GeneratorName,
+    channel: ChannelName,
     pitches: Mapping[int, int],
 ) -> PulseInstruction:
     """The instruction a pulse channel's registers sound.
@@ -80,7 +80,7 @@ def triangle_instruction(registers: Mapping[int, int], pitches: Mapping[int, int
     Raises:
         KeyError: If the timer standing there belongs to no pitch the configuration covers.
     """
-    linear_counter, timer_low, timer_high = channel_values(registers, GeneratorName.TRIANGLE)
+    linear_counter, timer_low, timer_high = channel_values(registers, ChannelName.TRIANGLE)
     return TriangleInstruction(
         on=linear_counter == TRIANGLE_SOUNDING,
         pitch=pitches[timer_value(timer_low, timer_high)],
@@ -99,7 +99,7 @@ def noise_instruction(registers: Mapping[int, int]) -> NoiseInstruction:
     Returns:
         NoiseInstruction: The frame the channel plays.
     """
-    control, period = channel_values(registers, GeneratorName.NOISE)
+    control, period = channel_values(registers, ChannelName.NOISE)
     volume = control & MAX_VOLUME
     return NoiseInstruction(
         on=volume > 0,
@@ -109,7 +109,7 @@ def noise_instruction(registers: Mapping[int, int]) -> NoiseInstruction:
     )
 
 
-def instructions_at(registers: Mapping[int, int], pitches: Mapping[int, int]) -> Dict[GeneratorName, InstructionUnion]:
+def instructions_at(registers: Mapping[int, int], pitches: Mapping[int, int]) -> Dict[ChannelName, InstructionUnion]:
     """Every channel's instruction for one tick, read back out of the registers standing at it.
 
     Args:
@@ -117,20 +117,20 @@ def instructions_at(registers: Mapping[int, int], pitches: Mapping[int, int]) ->
         pitches: The pitch each timer value belongs to.
 
     Returns:
-        Dict[GeneratorName, InstructionUnion]: One instruction per channel.
+        Dict[ChannelName, InstructionUnion]: One instruction per channel.
     """
     return {
-        GeneratorName.PULSE1: pulse_instruction(registers, GeneratorName.PULSE1, pitches),
-        GeneratorName.PULSE2: pulse_instruction(registers, GeneratorName.PULSE2, pitches),
-        GeneratorName.TRIANGLE: triangle_instruction(registers, pitches),
-        GeneratorName.NOISE: noise_instruction(registers),
+        ChannelName.PULSE1: pulse_instruction(registers, ChannelName.PULSE1, pitches),
+        ChannelName.PULSE2: pulse_instruction(registers, ChannelName.PULSE2, pitches),
+        ChannelName.TRIANGLE: triangle_instruction(registers, pitches),
+        ChannelName.NOISE: noise_instruction(registers),
     }
 
 
 def instructions_from_trace(
     trace: RegisterTrace,
     timer_table: Mapping[int, int],
-) -> Dict[GeneratorName, List[InstructionUnion]]:
+) -> Dict[ChannelName, List[InstructionUnion]]:
     """The per-tick instructions a captured run plays, one stream per channel.
 
     This closes the loop the export opens: instructions became register values, the values became
@@ -142,11 +142,11 @@ def instructions_from_trace(
         timer_table: The timer register value each pitch sounds at.
 
     Returns:
-        Dict[GeneratorName, List[InstructionUnion]]: Each channel's stream, one instruction per
+        Dict[ChannelName, List[InstructionUnion]]: Each channel's stream, one instruction per
             tick the run sounded.
     """
     pitches = {timer: pitch for pitch, timer in timer_table.items()}
-    streams: Dict[GeneratorName, List[InstructionUnion]] = {channel: [] for channel in GeneratorName.items()}
+    streams: Dict[ChannelName, List[InstructionUnion]] = {channel: [] for channel in ChannelName.items()}
 
     for registers in register_file(trace):
         for channel, instruction in instructions_at(registers, pitches).items():

@@ -3,7 +3,7 @@ from typing import Callable, Dict, FrozenSet, Set, Tuple
 from pydantic import BaseModel
 
 from sampletones_application.view_model.sequencer.aggregate import aggregate_labels
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import (
     display_id,
     display_transpose,
@@ -30,8 +30,8 @@ class SequencerCellViewModel(BaseModel, frozen=True):
 
 class SequencerRowViewModel(BaseModel, frozen=True):
     index: int
-    cells: Dict[GeneratorName, SequencerCellViewModel]
-    relevant_generators: FrozenSet[GeneratorName]
+    cells: Dict[ChannelName, SequencerCellViewModel]
+    relevant_channels: FrozenSet[ChannelName]
     """Channels the row's sample(s) span — the union of their reconstructions' channels.
 
     The sample column summarises a subcolumn only across these channels, so a
@@ -39,14 +39,14 @@ class SequencerRowViewModel(BaseModel, frozen=True):
     """
 
     @property
-    def subcolumn_generators(self) -> FrozenSet[GeneratorName]:
+    def subcolumn_channels(self) -> FrozenSet[ChannelName]:
         """Channels every sample column summary spans.
 
         A sample governs the channels its reconstruction covers, so its subcolumns
         summarise exactly those. Transpose and volume exist independently of an
         instrument, so a row with no sample spans every channel.
         """
-        return self.relevant_generators or frozenset(self.cells)
+        return self.relevant_channels or frozenset(self.cells)
 
     @property
     def sample_instrument(self) -> str:
@@ -72,7 +72,7 @@ class SequencerRowViewModel(BaseModel, frozen=True):
         its channels, a transpose set on some of them, or a row cut on some and
         blank on the rest. A row with no cells at all shows the empty default.
         """
-        values: Set[str] = {select(self.cells[generator]) for generator in self.subcolumn_generators}
+        values: Set[str] = {select(self.cells[channel]) for channel in self.subcolumn_channels}
         return aggregate_labels(values, default=default)
 
 

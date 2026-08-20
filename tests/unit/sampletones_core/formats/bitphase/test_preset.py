@@ -4,7 +4,7 @@ from typing import Any, Dict, Final, List
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
 from sampletones_core.formats.bitphase.preset import (
@@ -92,7 +92,7 @@ class TestThePitchContourRidesInTheToneOffset:
             build_instrument(
                 "Hat",
                 build_features(VOLUME_ENVELOPE, arpeggio=[0, 1, 2, 3], initial_pitch=NOISE_PERIOD),
-                generator=GeneratorName.NOISE,
+                channel=ChannelName.NOISE,
             ),
         )
         assert {row.tone_add for row in preset.rows} == {NO_TONE_OFFSET}

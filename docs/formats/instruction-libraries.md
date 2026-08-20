@@ -19,8 +19,8 @@ instruction.
 
 Each entry contains:
 
-* **metadata** — the generator class (`pulse` / `triangle` / `noise`) and the
-  instruction values below;
+* **metadata** — the generator class (`PulseGenerator` / `TriangleGenerator` /
+  `NoiseGenerator`) and the instruction values below;
 * **instruction values** — the channel command:
     * **on** (0–1) — whether the channel sounds;
     * **pitch** (33–119) for pulse and triangle, or **period** (0–15) for noise;

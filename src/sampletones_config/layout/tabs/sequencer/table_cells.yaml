@@ -1,7 +1,7 @@
 row: 30
 sample: 80
 divider: 4
-generator: 80
+channel: 80
 instrument:
   id: 40
   name: 1

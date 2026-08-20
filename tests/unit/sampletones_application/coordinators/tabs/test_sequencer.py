@@ -61,7 +61,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWord,
     HistoryDetailWordSegment,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.exceptions import InvalidReconstructionValuesError
 from tests.suite.language import FakeLanguageManager
@@ -889,11 +889,11 @@ class TestChannelMuteLifetime:
         channels = coordinator._sequencer_channels_logic
         with coordinator._history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
-        channels.toggle(GeneratorName.TRIANGLE)
+        channels.toggle(ChannelName.TRIANGLE)
 
         coordinator.undo()
 
-        assert channels.active_channels == ALL_CHANNELS - {GeneratorName.TRIANGLE}
+        assert channels.active_channels == ALL_CHANNELS - {ChannelName.TRIANGLE}
 
     def test_redo_keeps_the_mute_set(
         self,
@@ -904,12 +904,12 @@ class TestChannelMuteLifetime:
         channels = coordinator._sequencer_channels_logic
         with coordinator._history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
-        channels.toggle(GeneratorName.NOISE)
+        channels.toggle(ChannelName.NOISE)
         coordinator.undo()
 
         coordinator.redo()
 
-        assert channels.active_channels == ALL_CHANNELS - {GeneratorName.NOISE}
+        assert channels.active_channels == ALL_CHANNELS - {ChannelName.NOISE}
 
     def test_opening_a_project_restores_every_channel(
         self,
@@ -917,7 +917,7 @@ class TestChannelMuteLifetime:
     ) -> None:
         coordinator = wired_history_coordinator
         channels = coordinator._sequencer_channels_logic
-        channels.solo(GeneratorName.TRIANGLE)
+        channels.solo(ChannelName.TRIANGLE)
 
         coordinator._project_controller.new()
 
@@ -929,7 +929,7 @@ class TestChannelMuteLifetime:
     ) -> None:
         coordinator = wired_history_coordinator
         channels = coordinator._sequencer_channels_logic
-        channels.toggle(GeneratorName.PULSE1)
+        channels.toggle(ChannelName.PULSE1)
 
         coordinator._project_controller.close()
 
@@ -972,10 +972,10 @@ class TestChannelHeaderWiring:
     ) -> None:
         panel = channels_coordinator._sequencer_tracker_panel
 
-        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        panel._on_header_clicked(0, True, ChannelName.TRIANGLE)
 
-        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.TRIANGLE}
-        assert panel._is_muted(GeneratorName.TRIANGLE)
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {ChannelName.TRIANGLE}
+        assert panel._is_muted(ChannelName.TRIANGLE)
 
     def test_a_second_click_returns_the_channel_to_the_mix(
         self,
@@ -983,11 +983,11 @@ class TestChannelHeaderWiring:
     ) -> None:
         panel = channels_coordinator._sequencer_tracker_panel
 
-        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
-        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        panel._on_header_clicked(0, True, ChannelName.TRIANGLE)
+        panel._on_header_clicked(0, True, ChannelName.TRIANGLE)
 
         assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
-        assert not panel._is_muted(GeneratorName.TRIANGLE)
+        assert not panel._is_muted(ChannelName.TRIANGLE)
 
     def test_ctrl_header_click_solos_that_channel(
         self,
@@ -997,9 +997,9 @@ class TestChannelHeaderWiring:
         monkeypatch.setattr(channels_module, "capture_modifiers", lambda: CTRL)
         panel = channels_coordinator._sequencer_tracker_panel
 
-        panel._on_header_clicked(0, True, GeneratorName.PULSE2)
+        panel._on_header_clicked(0, True, ChannelName.PULSE2)
 
-        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset({GeneratorName.PULSE2})
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset({ChannelName.PULSE2})
 
     def test_sample_header_click_silences_every_channel(
         self,
@@ -1010,7 +1010,7 @@ class TestChannelHeaderWiring:
         panel._on_header_clicked(0, True, None)
 
         assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
-        assert all(panel._is_muted(generator) for generator in GeneratorName.items())
+        assert all(panel._is_muted(channel) for channel in ChannelName.items())
 
     def test_sample_header_click_restores_every_channel_from_full_silence(
         self,
@@ -1022,31 +1022,31 @@ class TestChannelHeaderWiring:
         panel._on_header_clicked(0, True, None)
 
         assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
-        assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
+        assert not any(panel._is_muted(channel) for channel in ChannelName.items())
 
     def test_the_menu_silences_every_channel_from_a_mixed_set(
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
         panel = channels_coordinator._sequencer_tracker_panel
-        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        panel._on_header_clicked(0, True, ChannelName.TRIANGLE)
 
         panel.call(panel.on_channels_muted)
 
         assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset()
-        assert all(panel._is_muted(generator) for generator in GeneratorName.items())
+        assert all(panel._is_muted(channel) for channel in ChannelName.items())
 
     def test_the_menu_restores_every_channel_from_a_mixed_set(
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
         panel = channels_coordinator._sequencer_tracker_panel
-        panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        panel._on_header_clicked(0, True, ChannelName.TRIANGLE)
 
         panel.call(panel.on_channels_unmuted)
 
         assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
-        assert not any(panel._is_muted(generator) for generator in GeneratorName.items())
+        assert not any(panel._is_muted(channel) for channel in ChannelName.items())
 
 
 class TestChannelRowLabelWiring:
@@ -1058,10 +1058,10 @@ class TestChannelRowLabelWiring:
     ) -> None:
         order_panel = channels_coordinator._sequencer_order_panel
 
-        order_panel._on_label_clicked(0, True, GeneratorName.NOISE)
+        order_panel._on_label_clicked(0, True, ChannelName.NOISE)
 
-        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.NOISE}
-        assert order_panel._is_muted(GeneratorName.NOISE)
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {ChannelName.NOISE}
+        assert order_panel._is_muted(ChannelName.NOISE)
 
     def test_ctrl_row_label_click_solos_that_channel(
         self,
@@ -1071,9 +1071,9 @@ class TestChannelRowLabelWiring:
         monkeypatch.setattr(channels_module, "capture_modifiers", lambda: CTRL)
         order_panel = channels_coordinator._sequencer_order_panel
 
-        order_panel._on_label_clicked(0, True, GeneratorName.PULSE1)
+        order_panel._on_label_clicked(0, True, ChannelName.PULSE1)
 
-        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset({GeneratorName.PULSE1})
+        assert channels_coordinator._sequencer_channels_logic.active_channels == frozenset({ChannelName.PULSE1})
 
     def test_master_row_label_click_silences_every_channel(
         self,
@@ -1092,9 +1092,9 @@ class TestChannelRowLabelWiring:
         tracker_panel = channels_coordinator._sequencer_tracker_panel
         order_panel = channels_coordinator._sequencer_order_panel
 
-        tracker_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        tracker_panel._on_header_clicked(0, True, ChannelName.TRIANGLE)
 
-        assert order_panel._is_muted(GeneratorName.TRIANGLE)
+        assert order_panel._is_muted(ChannelName.TRIANGLE)
 
     def test_an_order_click_reaches_the_tracker(
         self,
@@ -1103,16 +1103,16 @@ class TestChannelRowLabelWiring:
         tracker_panel = channels_coordinator._sequencer_tracker_panel
         order_panel = channels_coordinator._sequencer_order_panel
 
-        order_panel._on_label_clicked(0, True, GeneratorName.PULSE2)
+        order_panel._on_label_clicked(0, True, ChannelName.PULSE2)
 
-        assert tracker_panel._is_muted(GeneratorName.PULSE2)
+        assert tracker_panel._is_muted(ChannelName.PULSE2)
 
     def test_the_order_menu_silences_every_channel(
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
         order_panel = channels_coordinator._sequencer_order_panel
-        order_panel._on_label_clicked(0, True, GeneratorName.TRIANGLE)
+        order_panel._on_label_clicked(0, True, ChannelName.TRIANGLE)
 
         order_panel.call(order_panel.on_channels_muted)
 
@@ -1123,7 +1123,7 @@ class TestChannelRowLabelWiring:
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
         order_panel = channels_coordinator._sequencer_order_panel
-        order_panel._on_label_clicked(0, True, GeneratorName.TRIANGLE)
+        order_panel._on_label_clicked(0, True, ChannelName.TRIANGLE)
 
         order_panel.call(order_panel.on_channels_unmuted)
 
@@ -1137,24 +1137,24 @@ class TestChannelMenuWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        channels_coordinator._sequencer_channels_logic.toggle(GeneratorName.NOISE)
+        channels_coordinator._sequencer_channels_logic.toggle(ChannelName.NOISE)
 
-        assert channels_coordinator.channels.muted == frozenset({GeneratorName.NOISE})
+        assert channels_coordinator.channels.muted == frozenset({ChannelName.NOISE})
 
     def test_toggling_a_channel_silences_it(
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
+        channels_coordinator.toggle_channel(ChannelName.PULSE1)
 
-        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {GeneratorName.PULSE1}
+        assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS - {ChannelName.PULSE1}
 
     def test_toggling_a_channel_twice_returns_it_to_the_mix(
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
-        channels_coordinator.toggle_channel(GeneratorName.PULSE1)
+        channels_coordinator.toggle_channel(ChannelName.PULSE1)
+        channels_coordinator.toggle_channel(ChannelName.PULSE1)
 
         assert channels_coordinator._sequencer_channels_logic.active_channels == ALL_CHANNELS
 
@@ -1162,7 +1162,7 @@ class TestChannelMenuWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        channels_coordinator._sequencer_channels_logic.solo(GeneratorName.TRIANGLE)
+        channels_coordinator._sequencer_channels_logic.solo(ChannelName.TRIANGLE)
 
         channels_coordinator.unmute_all_channels()
 
@@ -1172,16 +1172,16 @@ class TestChannelMenuWiring:
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        channels_coordinator.toggle_channel(GeneratorName.TRIANGLE)
+        channels_coordinator.toggle_channel(ChannelName.TRIANGLE)
 
-        assert channels_coordinator._sequencer_tracker_panel._is_muted(GeneratorName.TRIANGLE)
-        assert channels_coordinator._sequencer_order_panel._is_muted(GeneratorName.TRIANGLE)
+        assert channels_coordinator._sequencer_tracker_panel._is_muted(ChannelName.TRIANGLE)
+        assert channels_coordinator._sequencer_order_panel._is_muted(ChannelName.TRIANGLE)
 
     def test_a_table_click_tells_the_menu_bar(
         self,
         channels_coordinator: SequencerTabCoordinator,
     ) -> None:
-        channels_coordinator._sequencer_tracker_panel._on_header_clicked(0, True, GeneratorName.TRIANGLE)
+        channels_coordinator._sequencer_tracker_panel._on_header_clicked(0, True, ChannelName.TRIANGLE)
 
         channels_coordinator._on_channels_changed.assert_called_once_with()
 
@@ -1342,12 +1342,12 @@ class TestPlayerExposure:
 PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
     first_row=0,
     last_row=0,
-    first_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.INSTRUMENT).flat_index,
-    last_slot=TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME).flat_index,
+    first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT).flat_index,
+    last_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.VOLUME).flat_index,
 )
 PULSE1_FRAME: Final[OrderRegion] = OrderRegion(
-    first_row=CHANNEL_AXIS.index(GeneratorName.PULSE1),
-    last_row=CHANNEL_AXIS.index(GeneratorName.PULSE1),
+    first_row=CHANNEL_AXIS.index(ChannelName.PULSE1),
+    last_row=CHANNEL_AXIS.index(ChannelName.PULSE1),
     first_position=0,
     last_position=0,
 )
@@ -1414,7 +1414,7 @@ def _place_transpose(
         HistoryAction.EDIT_ROW,
         coordinator._sequencer_tracker_logic.write_cell,
     )
-    edit(0, GeneratorName.PULSE1, None, transpose, None)
+    edit(0, ChannelName.PULSE1, None, transpose, None)
 
 
 class TestBlockCopy:
@@ -1426,7 +1426,7 @@ class TestBlockCopy:
         with coordinator._history.transaction(HistoryAction.EDIT_ROW):
             coordinator._sequencer_tracker_logic.set_cell_subcolumn(
                 0,
-                GeneratorName.PULSE1,
+                ChannelName.PULSE1,
                 transpose=5,
             )
 
@@ -1466,7 +1466,7 @@ class TestBlockEdits:
         block = coordinator._clipboard.tracker_block
         assert block is not None
         assert block.transposes[(0, 1)] == 5
-        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 0).transpose is None
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).transpose is None
 
     def test_a_cut_records_one_entry(
         self,
@@ -1491,7 +1491,7 @@ class TestBlockEdits:
 
         coordinator._sequencer_tracker_panel.on_delete_block(PULSE1_CELL)
 
-        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 0).transpose is None
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).transpose is None
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.DELETE_BLOCK
 
@@ -1504,9 +1504,9 @@ class TestBlockEdits:
         coordinator._on_tracker_copy_block(PULSE1_CELL)
         recorded = len(coordinator._history.entries)
 
-        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE2))
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE2))
 
-        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE2, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE2, 1).transpose == 5
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
 
@@ -1537,7 +1537,7 @@ class TestOrderBlockEdits:
 
         coordinator._sequencer_order_panel.on_cut_block(PULSE1_FRAME)
 
-        assert coordinator._sequencer_order_logic.entry(GeneratorName.PULSE1, 0) is None
+        assert coordinator._sequencer_order_logic.entry(ChannelName.PULSE1, 0) is None
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
 
@@ -1550,7 +1550,7 @@ class TestOrderBlockEdits:
 
         coordinator._sequencer_order_panel.on_delete_block(PULSE1_FRAME)
 
-        assert coordinator._sequencer_order_logic.entry(GeneratorName.PULSE1, 0) is None
+        assert coordinator._sequencer_order_logic.entry(ChannelName.PULSE1, 0) is None
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.DELETE_BLOCK
 
@@ -1563,10 +1563,10 @@ class TestOrderBlockEdits:
         coordinator._sequencer_order_panel.on_copy_block(PULSE1_FRAME)
         recorded = len(coordinator._history.entries)
 
-        coordinator._sequencer_order_panel.on_paste_block(OrderCell(generator=GeneratorName.NOISE, position=1))
+        coordinator._sequencer_order_panel.on_paste_block(OrderCell(channel=ChannelName.NOISE, position=1))
 
         assert coordinator._sequencer_order_logic.position_count() == 2
-        assert coordinator._sequencer_order_logic.entry(GeneratorName.NOISE, 1) == 0
+        assert coordinator._sequencer_order_logic.entry(ChannelName.NOISE, 1) == 0
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
 
@@ -1584,7 +1584,7 @@ class TestOrderBlockEdits:
         _place_transpose(coordinator, 5)
         recorded = len(coordinator._history.entries)
 
-        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE2))
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE2))
 
         assert len(coordinator._history.entries) == recorded
 
@@ -1638,9 +1638,9 @@ class TestSystemClipboardPrecedence:
         coordinator._on_tracker_copy_block(PULSE1_CELL)
         coordinator._system_clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
 
-        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 9
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 9
 
     def test_unrelated_text_leaves_the_copied_block_in_hand(
         self,
@@ -1651,9 +1651,9 @@ class TestSystemClipboardPrecedence:
         coordinator._on_tracker_copy_block(PULSE1_CELL)
         coordinator._system_clipboard.write("a line from a message")
 
-        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 5
 
     def test_a_truncated_block_leaves_the_copied_block_in_hand(
         self,
@@ -1664,9 +1664,9 @@ class TestSystemClipboardPrecedence:
         coordinator._on_tracker_copy_block(PULSE1_CELL)
         coordinator._system_clipboard.write("SampleToNES/1 tracker rows=4 slots=3..5\n.. +09 .")
 
-        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, generator=GeneratorName.PULSE1))
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(GeneratorName.PULSE1, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 5
 
     def test_the_other_grid_s_text_leaves_the_copied_block_in_hand(
         self,
@@ -1677,9 +1677,9 @@ class TestSystemClipboardPrecedence:
         coordinator._on_order_copy_block(PULSE1_FRAME)
         coordinator._system_clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
 
-        coordinator._sequencer_order_panel.on_paste_block(OrderCell(generator=GeneratorName.NOISE, position=1))
+        coordinator._sequencer_order_panel.on_paste_block(OrderCell(channel=ChannelName.NOISE, position=1))
 
-        assert coordinator._sequencer_order_logic.entry(GeneratorName.NOISE, 1) == 0
+        assert coordinator._sequencer_order_logic.entry(ChannelName.NOISE, 1) == 0
 
     def test_a_paste_offers_itself_on_the_text_standing_on_the_clipboard(
         self,

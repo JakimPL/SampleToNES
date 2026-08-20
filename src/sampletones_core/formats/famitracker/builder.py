@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.slices import (
     InstrumentSlot,
@@ -26,7 +26,7 @@ from sampletones_core.formats.famitracker.sequences.features import (
 )
 from sampletones_core.formats.famitracker.specification.channels import (
     CHANNEL_COUNT_2A03,
-    GENERATOR_NAME_TO_CHANNEL_ID,
+    CHANNEL_TO_ID,
     ChannelId,
 )
 from sampletones_core.formats.famitracker.specification.instruments import (
@@ -68,7 +68,7 @@ def build_instrument(
     *,
     loop: bool,
 ) -> Instrument2A03:
-    """Builds one FamiTracker instrument from the envelopes of a generator slice.
+    """Builds one FamiTracker instrument from the envelopes of a channel slice.
 
     The slice's envelopes become the instrument's five 2A03 sequences, so an instrument reaching a
     ``.fti`` file on its own and one taking a slot in a module are built the same way.
@@ -99,7 +99,7 @@ def build_instrument(
 
 
 def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], InstrumentTable]:
-    """Builds one FamiTracker instrument per generator slice of every sample.
+    """Builds one FamiTracker instrument per channel slice of every sample.
 
     Each sample contributes one instrument for every channel its reconstruction
     covers, so a sample yields one to four instruments. Instruments are numbered in
@@ -127,11 +127,11 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
 
 def _note_and_octave(
     transpose: int,
-    channel_generator: GeneratorName,
+    channel_generator: ChannelName,
     slot: InstrumentSlot,
 ) -> Tuple[int, int]:
     base_pitch = slot.initial_pitch + transpose
-    if channel_generator == GeneratorName.NOISE:
+    if channel_generator == ChannelName.NOISE:
         cell = period_to_note_cell(base_pitch)
     else:
         cell = pitch_to_note_cell(base_pitch)
@@ -142,7 +142,7 @@ def _note_and_octave(
 def _row_cell(
     row: Row,
     row_number: int,
-    channel_generator: GeneratorName,
+    channel_generator: ChannelName,
     slots: InstrumentTable,
 ) -> Optional[RowCell]:
     note = EMPTY_NOTE
@@ -154,11 +154,11 @@ def _row_cell(
         case NoteOff():
             note = int(NoteValue.HALT)
         case Instrument() as reference:
-            slot = slots.get((reference.sample_id, reference.generator_name))
+            slot = slots.get((reference.sample_id, reference.channel_name))
             if slot is None:
                 raise ValueError(
                     f"Row references sample '{reference.sample_id}' slice "
-                    f"'{reference.generator_name}' that has no instrument"
+                    f"'{reference.channel_name}' that has no instrument"
                 )
             instrument = slot.index
             note, octave = _note_and_octave(
@@ -191,11 +191,11 @@ def _has_data(cell: RowCell) -> bool:
 
 
 def _channel_patterns(
-    generator: GeneratorName,
+    name: ChannelName,
     channel: Channel,
     slots: InstrumentTable,
 ) -> List[PatternData]:
-    channel_id = GENERATOR_NAME_TO_CHANNEL_ID[generator]
+    channel_id = CHANNEL_TO_ID[name]
     patterns: List[PatternData] = []
 
     for index in sorted(channel.patterns):
@@ -209,7 +209,7 @@ def _channel_patterns(
                 _row_cell(
                     row,
                     row_number,
-                    generator,
+                    name,
                     slots,
                 )
                 for row_number, row in enumerate(pattern.rows)
@@ -239,17 +239,17 @@ def _build_order(song: Song) -> Tuple[OrderFrame, ...]:
     if len(song.order) > MAX_FRAMES:
         raise ValueError(f"Order length {len(song.order)} exceeds the FamiTracker limit of {MAX_FRAMES} frames")
 
-    empty_indices = {generator: _reserved_empty_index(song.channels[generator]) for generator in GeneratorName.items()}
-    for generator, empty_index in empty_indices.items():
+    empty_indices = {channel: _reserved_empty_index(song.channels[channel]) for channel in ChannelName.items()}
+    for channel, empty_index in empty_indices.items():
         if empty_index > MAX_PATTERN_INDEX:
-            raise ValueError(f"Channel '{generator}' has no free pattern index for empty order slots")
+            raise ValueError(f"Channel '{channel}' has no free pattern index for empty order slots")
 
     frames: List[OrderFrame] = []
     for frame in song.order:
         entries: List[int] = []
-        for generator in GeneratorName.items():
-            index = frame.get(generator)
-            entries.append(index if index is not None else empty_indices[generator])
+        for channel in ChannelName.items():
+            index = frame.get(channel)
+            entries.append(index if index is not None else empty_indices[channel])
 
         entries.append(DPCM_EMPTY_PATTERN_INDEX)
         frames.append(tuple(entries))
@@ -282,11 +282,11 @@ def project_to_module(project: Project) -> FamiTrackerModule:
     )
 
     patterns: List[PatternData] = []
-    for generator in GeneratorName.items():
+    for channel in ChannelName.items():
         patterns.extend(
             _channel_patterns(
-                generator,
-                song.channels[generator],
+                channel,
+                song.channels[channel],
                 slots,
             ),
         )

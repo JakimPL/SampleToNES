@@ -4,7 +4,7 @@ from typing import Dict, Final, Optional, Tuple
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.utils.palette.colors.base import BaseColor
-from sampletones_core.constants.enums import FeatureKey, LibraryGeneratorName
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.features import feature_range, supported_features
 
 
@@ -31,7 +31,7 @@ FEATURE_TICK_STEPS: Final[Dict[FeatureKey, int]] = {
 def make_feature_plot_configs(
     feature_colors: FeatureColors,
     language_manager: LanguageManager,
-) -> Dict[LibraryGeneratorName, Dict[FeatureKey, FeaturePlotConfig]]:
+) -> Dict[GeneratorName, Dict[FeatureKey, FeaturePlotConfig]]:
     labels = _feature_labels(language_manager)
     colors = _feature_colors(feature_colors)
     return _build_plot_configs(labels, colors)
@@ -66,16 +66,16 @@ def _feature_colors(feature_colors: FeatureColors) -> Dict[FeatureKey, BaseColor
 def _build_plot_configs(
     labels: Dict[FeatureKey, str],
     colors: Dict[FeatureKey, BaseColor],
-) -> Dict[LibraryGeneratorName, Dict[FeatureKey, FeaturePlotConfig]]:
-    configs: Dict[LibraryGeneratorName, Dict[FeatureKey, FeaturePlotConfig]] = {}
-    for kind in LibraryGeneratorName:
+) -> Dict[GeneratorName, Dict[FeatureKey, FeaturePlotConfig]]:
+    configs: Dict[GeneratorName, Dict[FeatureKey, FeaturePlotConfig]] = {}
+    for kind in GeneratorName:
         configs[kind] = _build_kind_plot_configs(kind, labels, colors)
 
     return configs
 
 
 def _build_kind_plot_configs(
-    kind: LibraryGeneratorName,
+    kind: GeneratorName,
     labels: Dict[FeatureKey, str],
     colors: Dict[FeatureKey, BaseColor],
 ) -> Dict[FeatureKey, FeaturePlotConfig]:
@@ -92,7 +92,7 @@ def _build_kind_plot_configs(
 
 
 def _build_plot_config(
-    kind: LibraryGeneratorName,
+    kind: GeneratorName,
     feature_key: FeatureKey,
     labels: Dict[FeatureKey, str],
     colors: Dict[FeatureKey, BaseColor],

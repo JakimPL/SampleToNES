@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Iterable
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
@@ -71,7 +71,7 @@ def features_footprint(
     *,
     loop: bool,
 ) -> InstrumentFootprint:
-    """Measures the instrument a generator slice's envelopes export to.
+    """Measures the instrument a channel slice's envelopes export to.
 
     The envelopes pass through the same builder an export uses, so the measured item counts are
     the ones a file carries: brought to one shared length and capped at what a FamiTracker
@@ -99,7 +99,7 @@ def reconstruction_footprints(
     reconstruction: Reconstruction,
     *,
     loop: bool,
-) -> Dict[GeneratorName, InstrumentFootprint]:
+) -> Dict[ChannelName, InstrumentFootprint]:
     """Measures one instrument per channel a reconstruction plays.
 
     An export writes an instrument for each channel that plays, so the result holds an entry
@@ -111,11 +111,11 @@ def reconstruction_footprints(
         loop: Whether the sample carrying it loops while its note is held.
 
     Returns:
-        Dict[GeneratorName, InstrumentFootprint]: The footprint of each playing channel's instrument.
+        Dict[ChannelName, InstrumentFootprint]: The footprint of each playing channel's instrument.
     """
     return {
-        generator_name: features_footprint(features, loop=loop)
-        for generator_name, features in reconstruction.export().items()
+        channel_name: features_footprint(features, loop=loop)
+        for channel_name, features in reconstruction.export().items()
         if features.has_frames
     }
 

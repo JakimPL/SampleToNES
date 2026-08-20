@@ -79,7 +79,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.trackers.backend import TrackerBackend
@@ -226,7 +226,7 @@ class ReconstructionTabCoordinator:
         self._browser_panel.on_directory_remove_requested = self._request_remove_directory
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
-        self._reconstruction_plot_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
+        self._reconstruction_plot_panel.on_channels_changed = self._reconstruction_panel_logic.set_selected_channels
         self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
@@ -351,9 +351,9 @@ class ReconstructionTabCoordinator:
         self,
         default_filename: str,
         default_path: str,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
     ) -> None:
-        """Prompts for the file the ``generator_name`` slice is written to.
+        """Prompts for the file the ``channel_name`` slice is written to.
 
         Every format that writes a single slice is offered at once, so the type picked in the
         dialog names the tracker the slice is written for.
@@ -364,7 +364,7 @@ class ReconstructionTabCoordinator:
             default_filename=default_filename,
             filters=self._instrument_filters(),
         )
-        self._handle_export_instrument(filepath, generator_name)
+        self._handle_export_instrument(filepath, channel_name)
 
     def _instrument_filters(self) -> Tuple[FileFilter, ...]:
         """The types a destination for one slice may be given, one per tracker offered.
@@ -380,9 +380,9 @@ class ReconstructionTabCoordinator:
     def _handle_export_instrument(
         self,
         filepath: Path,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
     ) -> None:
-        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath, generator_name)
+        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath, channel_name)
 
     def _open_export_instruments_dialog(
         self,
@@ -635,9 +635,9 @@ class ReconstructionTabCoordinator:
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
 
-    def toggle_generator(self, generator: GeneratorName) -> None:
-        """Switches one generator's slice in and out of the waveform and of what plays."""
-        self._reconstruction_plot_panel.toggle_generator(generator)
+    def toggle_channel(self, channel: ChannelName) -> None:
+        """Switches one channel's slice in and out of the waveform and of what plays."""
+        self._reconstruction_plot_panel.toggle_channel(channel)
 
     @property
     def player(self) -> AudioPlayerProtocol:

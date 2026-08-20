@@ -67,7 +67,7 @@ from sampletones_application.view_model.instruction.details import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
@@ -241,7 +241,7 @@ class InstructionsTabCoordinator:
     def _on_generator_selected(
         self,
         library_key: InstructionLibraryKey,
-        generator_name: LibraryGeneratorName,
+        generator_name: GeneratorName,
     ) -> None:
         self._library_logic.load_library_and_set_current(library_key)
         self._library_logic.load_generator(generator_name)

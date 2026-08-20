@@ -1,6 +1,6 @@
 from typing import Final
 
-from .enums import PhaseAlignerName, SelectorName, SpectralDistance
+from .enums import HierarchyMode, PhaseAlignerName, SelectorName, SpectralDistance
 from .general import MAX_VOLUME, MIN_VOLUME
 
 # Matching floors
@@ -56,6 +56,11 @@ TRANSITION_ON_OFF_WEIGHT: Final[float] = 0.20
 
 DRIVE: Final[float] = 1.0
 MAX_DRIVE: Final[float] = 5.0
+
+# Stems assignment
+
+DEFAULT_STEMS_CHANNEL_CAP: Final[int] = 1
+DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
 
 # Execution
 

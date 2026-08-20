@@ -8,7 +8,7 @@ from sampletones_core.configs.display import (
     format_spectrum_method,
     format_transformation_gamma,
 )
-from sampletones_core.constants.enums import GeneratorName, abbreviate_generator_names
+from sampletones_core.constants.enums import ChannelName, abbreviate_channel_names
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 
 HASH = "6edf7c948606917a78b45d153c7ca7e0"
@@ -35,7 +35,7 @@ class TestGenerateConfigDirectoryName:
 
     def test_different_generator_sets_produce_different_names(self, config: Config) -> None:
         single_generator_config = config.model_copy(
-            update={"generation": config.generation.model_copy(update={"generators": [GeneratorName.PULSE1]})}
+            update={"generation": config.generation.model_copy(update={"channels": [ChannelName.PULSE1]})}
         )
 
         assert ConfigDirectoryFields.generate_config_directory_name(
@@ -58,7 +58,7 @@ class TestConfigDirectoryFields:
         assert fields.nf == config.library.nes_frequency
         assert fields.sm == config.library.spectrum_method
         assert fields.tg == config.library.transformation_gamma
-        assert fields.generators == tuple(config.generation.generators)
+        assert fields.channels == tuple(config.generation.channels)
 
     def test_directory_name_embeds_field_keys(self, config: Config) -> None:
         name = ConfigDirectoryFields.generate_config_directory_name(config)
@@ -90,5 +90,5 @@ class TestConfigDirectoryFields:
         assert format_nes_frequency(config.library.nes_frequency) in display
         assert format_spectrum_method(config.library.spectrum_method) in display
         assert format_transformation_gamma(config.library.transformation_gamma) in display
-        assert abbreviate_generator_names(list(config.generation.generators)) in display
+        assert abbreviate_channel_names(list(config.generation.channels)) in display
         assert DISPLAY_SEPARATOR in display

@@ -17,9 +17,9 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import (
+    ChannelName,
     FeatureKey,
-    GeneratorName,
-    abbreviate_generator_names,
+    abbreviate_channel_names,
 )
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
 
@@ -87,13 +87,13 @@ class SequencerHistoryDetail:
     def edit_row(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         sample_id: Optional[str],
         transpose: Optional[int],
         volume: Optional[int],
     ) -> Segments:
-        affected = self._edit_row_generators(generator, sample_id, row_index)
-        segments = list(self._location(row_index, generator, affected))
+        affected = self._edit_row_channels(channel, sample_id, row_index)
+        segments = list(self._location(row_index, channel, affected))
         if sample_id is not None:
             segments.append(self._arrow())
             segments.append(self._sample(sample_id))
@@ -118,29 +118,29 @@ class SequencerHistoryDetail:
     def note_off(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> Segments:
-        return self._location(row_index, generator, GeneratorName.items())
+        return self._location(row_index, channel, ChannelName.items())
 
     def clear_row(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> Segments:
-        return self._location(row_index, generator, GeneratorName.items())
+        return self._location(row_index, channel, ChannelName.items())
 
     def clear_subcolumn(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         subcolumn: SubColumn,
     ) -> Segments:
         affected = (
-            GeneratorName.items()
+            ChannelName.items()
             if subcolumn is SubColumn.INSTRUMENT
-            else self._tracker_logic.relevant_generators(row_index)
+            else self._tracker_logic.relevant_channels(row_index)
         )
-        segments = list(self._location(row_index, generator, affected))
+        segments = list(self._location(row_index, channel, affected))
         segments.append(self._subcolumn(subcolumn))
         return tuple(segments)
 
@@ -164,20 +164,20 @@ class SequencerHistoryDetail:
 
     def tracker_paste(self, cell: TrackerCell) -> Segments:
         """Reads as the cell a block was written from, the one place a paste chooses."""
-        return self._location(cell.row, cell.generator, GeneratorName.items())
+        return self._location(cell.row, cell.channel, ChannelName.items())
 
     def order_block(self, region: OrderRegion) -> Segments:
         """Reads as the positions a block covers and the channels its rows reach."""
         return (
             self._frame_range(region.first_position, region.last_position),
-            self._channel(self._covered_channels(set(region.generators))),
+            self._channel(self._covered_channels(set(region.channels))),
         )
 
     def order_paste(self, cell: OrderCell) -> Segments:
         """Reads as the cell a block was written from, the one place a paste chooses."""
         return (
             self._frame(cell.position),
-            self._channel(self._covered_channels({cell.generator})),
+            self._channel(self._covered_channels({cell.channel})),
         )
 
     def add_frame(self, position: int) -> Segments:
@@ -202,13 +202,13 @@ class SequencerHistoryDetail:
 
     def set_order_entry(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         position: int,
         pattern_index: Optional[int],
     ) -> Segments:
         return (
             self._frame(position),
-            self._channel([generator]),
+            self._channel([channel]),
             self._arrow(),
             self._value(display_id(pattern_index)),
         )
@@ -220,7 +220,7 @@ class SequencerHistoryDetail:
     ) -> Segments:
         return (
             self._frame(position),
-            self._channel(GeneratorName.items()),
+            self._channel(ChannelName.items()),
             self._arrow(),
             self._value(display_id(pattern_index)),
         )
@@ -273,7 +273,7 @@ class SequencerHistoryDetail:
     def edit_reconstruction(
         self,
         sample_id: str,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> Segments:
         """Describes a regenerated sample: its position, channel, and edited feature.
@@ -284,26 +284,26 @@ class SequencerHistoryDetail:
         """
         return (
             self._sample(sample_id, colon=True),
-            self._channel([generator_name]),
+            self._channel([channel_name]),
             self._segment(_FEATURE_LETTERS[feature_key], _FEATURE_ROLES[feature_key]),
         )
 
     def value(self, number: int) -> Segments:
         return (self._value(str(number)),)
 
-    def _edit_row_generators(
+    def _edit_row_channels(
         self,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         sample_id: Optional[str],
         row_index: int,
-    ) -> List[GeneratorName]:
-        if generator is not None:
-            return [generator]
+    ) -> List[ChannelName]:
+        if channel is not None:
+            return [channel]
 
         if sample_id is not None:
             return self._tracker_logic.used_generators(sample_id)
 
-        return self._tracker_logic.relevant_generators(row_index)
+        return self._tracker_logic.relevant_channels(row_index)
 
     def _tracker_region(self, region: TrackerRegion) -> Segments:
         """Reads a rectangle of the tracker as its frame, the channels it spans and the rows it covers.
@@ -320,10 +320,10 @@ class SequencerHistoryDetail:
     def _location(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
-        affected: List[GeneratorName],
+        channel: Optional[ChannelName],
+        affected: List[ChannelName],
     ) -> Segments:
-        channels = [generator] if generator is not None else affected
+        channels = [channel] if channel is not None else affected
         return (
             self._frame(self._tracker_logic.frame_index),
             self._channel(channels),
@@ -363,20 +363,20 @@ class SequencerHistoryDetail:
         )
 
     @staticmethod
-    def _covered_channels(covered: Set[Optional[GeneratorName]]) -> List[GeneratorName]:
+    def _covered_channels(covered: Set[Optional[ChannelName]]) -> List[ChannelName]:
         """The channels a run of columns names, an aggregate one standing for all it summarises.
 
         Both grids carry a column that answers for every channel — the tracker's sample column and
         the order's master row — so a gesture reaching one of them reads as the whole set.
         """
         if None in covered:
-            return GeneratorName.items()
+            return ChannelName.items()
 
-        return [generator for generator in GeneratorName.items() if generator in covered]
+        return [channel for channel in ChannelName.items() if channel in covered]
 
-    def _channel(self, generators: List[GeneratorName]) -> HistoryDetailSegment:
+    def _channel(self, channels: List[ChannelName]) -> HistoryDetailSegment:
         return HistoryDetailSegment(
-            text=abbreviate_generator_names(generators),
+            text=abbreviate_channel_names(channels),
             role=HistoryDetailRole.CHANNEL,
         )
 

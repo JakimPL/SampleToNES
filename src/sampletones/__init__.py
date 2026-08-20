@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, List
 
 if TYPE_CHECKING:
     from sampletones_core.configs import Config
-    from sampletones_core.constants.enums import GeneratorName
+    from sampletones_core.constants.enums import ChannelName
     from sampletones_core.fft import Window
     from sampletones_core.generators import (
         Generator,
@@ -33,10 +33,10 @@ def __getattr__(name: str) -> Any:
 
         return SAMPLETONES_VERSION
 
-    if name == "GeneratorName":
-        from sampletones_core.constants.enums import GeneratorName
+    if name == "ChannelName":
+        from sampletones_core.constants.enums import ChannelName
 
-        return GeneratorName
+        return ChannelName
 
     if name == "Window":
         from sampletones_core.fft import Window
@@ -76,7 +76,7 @@ def __getattr__(name: str) -> Any:
 __all__ = [
     "Config",
     "Generator",
-    "GeneratorName",
+    "ChannelName",
     "Instruction",
     "InstructionLibrary",
     "NoiseGenerator",

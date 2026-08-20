@@ -1,30 +1,30 @@
 from typing import Dict, List
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.instructions import (
     INSTRUCTION_CLASS_MAP,
     InstructionUnion,
 )
 
 from .maps import (
+    CHANNEL_CLASSES,
     GENERATOR_CLASS_MAP,
-    GENERATOR_CLASSES,
     INSTRUCTION_TO_GENERATOR_MAP,
 )
 from .types import GeneratorUnion
 
 
-def get_generators_by_names(
+def get_generators_by_channels(
     config: Config,
-    generator_names: List[GeneratorName],
-) -> Dict[GeneratorName, GeneratorUnion]:
-    names = generator_names.copy()
-    if GeneratorName.PULSE2 in names and not GeneratorName.PULSE1 in names:
-        names.remove(GeneratorName.PULSE2)
-        names.insert(0, GeneratorName.PULSE1)
+    channel_names: List[ChannelName],
+) -> Dict[ChannelName, GeneratorUnion]:
+    names = channel_names.copy()
+    if ChannelName.PULSE2 in names and not ChannelName.PULSE1 in names:
+        names.remove(ChannelName.PULSE2)
+        names.insert(0, ChannelName.PULSE1)
 
-    return {name: GENERATOR_CLASSES[name](config, name) for name in names}
+    return {name: CHANNEL_CLASSES[name](config, name) for name in names}
 
 
 def get_generators_map(
@@ -34,9 +34,21 @@ def get_generators_map(
 
 
 def get_remaining_generator_classes(
-    remaining_generators: Dict[GeneratorName, GeneratorUnion],
+    remaining_channels: Dict[ChannelName, GeneratorUnion],
 ) -> Dict[GeneratorClassName, GeneratorUnion]:
-    return {generator.class_name(): generator for generator in reversed(remaining_generators.values())}
+    """
+    Maps each remaining generator class to its representative channel generator.
+
+    Channels of one kind share a candidate catalogue, so one channel stands for the
+    kind while its candidates are scored. The lowest remaining channel of a kind is
+    its representative, which resolves successive picks over same-kind channels to
+    the lowest free channel deterministically.
+    """
+    return {
+        remaining_channels[name].class_name(): remaining_channels[name]
+        for name in reversed(ChannelName.items())
+        if name in remaining_channels
+    }
 
 
 def get_generator_by_instruction(

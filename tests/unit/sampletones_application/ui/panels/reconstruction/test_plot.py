@@ -7,16 +7,20 @@ from sampletones_application.ui.panels.reconstruction import plot as plot_module
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
-from sampletones_application.view_model.reconstruction.reconstruction import (
-    ReconstructionPathState,
+from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
+    ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-ALL_GENERATORS = frozenset(GeneratorName)
+ALL_CHANNELS = frozenset(ChannelName)
 
 
 class StubTheme:
@@ -31,19 +35,19 @@ class StubTheme:
 
 
 class Harness:
-    """The panel over its generator checkboxes, each shown or disabled as a reconstruction leaves
+    """The panel over its channel checkboxes, each shown or disabled as a reconstruction leaves
     it."""
 
     def __init__(
         self,
         *,
-        selected: FrozenSet[GeneratorName],
-        available: FrozenSet[GeneratorName],
+        selected: FrozenSet[ChannelName],
+        available: FrozenSet[ChannelName],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        self.values: Dict[str, bool] = {self._tag(generator): generator in selected for generator in GeneratorName}
-        self.enabled: Dict[str, bool] = {self._tag(generator): generator in available for generator in GeneratorName}
-        self.reported: List[List[GeneratorName]] = []
+        self.values: Dict[str, bool] = {self._tag(channel): channel in selected for channel in ChannelName}
+        self.enabled: Dict[str, bool] = {self._tag(channel): channel in available for channel in ChannelName}
+        self.reported: List[List[ChannelName]] = []
         self.bound_themes: Dict[str, str] = {}
 
         monkeypatch.setattr(plot_module.dpg, "get_value", self.values.__getitem__)
@@ -58,38 +62,38 @@ class Harness:
         )
 
         self.panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
-        self.panel.on_generators_changed = self.reported.append
+        self.panel.on_channels_changed = self.reported.append
 
     def _configure(self, tag: str, *, enabled: bool, default_value: bool) -> None:
         self.enabled[tag] = enabled
         self.values[tag] = default_value
 
     @staticmethod
-    def _tag(generator: GeneratorName) -> str:
-        return GUIReconstructionPlotPanel._get_generator_checkbox_tag(generator)
+    def _tag(channel: ChannelName) -> str:
+        return GUIReconstructionPlotPanel._get_generator_checkbox_tag(channel)
 
-    def offered(self) -> FrozenSet[GeneratorName]:
-        return frozenset(generator for generator in GeneratorName if self.enabled[self._tag(generator)])
+    def offered(self) -> FrozenSet[ChannelName]:
+        return frozenset(channel for channel in ChannelName if self.enabled[self._tag(channel)])
 
-    def selected(self) -> FrozenSet[GeneratorName]:
-        return frozenset(generator for generator in GeneratorName if self.values[self._tag(generator)])
+    def selected(self) -> FrozenSet[ChannelName]:
+        return frozenset(channel for channel in ChannelName if self.values[self._tag(channel)])
 
 
 def _view_model(
-    playing: FrozenSet[GeneratorName],
-    selected: FrozenSet[GeneratorName],
+    playing: FrozenSet[ChannelName],
+    selected: FrozenSet[ChannelName],
 ) -> ReconstructionViewModel:
-    empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path="")
+    empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=())
     return ReconstructionViewModel(
         reconstruction_loaded=True,
-        playing_generators=playing,
-        selected_generators=selected,
+        playing_channels=playing,
+        selected_channels=selected,
         reconstruction_file=empty_path,
         original_audio=empty_path,
     )
 
 
-class TestGeneratorCheckboxes:
+class TestChannelCheckboxes:
     """The checkboxes offer the channels that play and tick the ones the reader keeps on."""
 
     def test_a_channel_that_plays_is_offered(
@@ -97,7 +101,7 @@ class TestGeneratorCheckboxes:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         harness = Harness(selected=frozenset(), available=frozenset(), monkeypatch=monkeypatch)
-        playing = frozenset({GeneratorName.PULSE1, GeneratorName.NOISE})
+        playing = frozenset({ChannelName.PULSE1, ChannelName.NOISE})
 
         harness.panel.update_view(_view_model(playing, playing))
 
@@ -109,69 +113,69 @@ class TestGeneratorCheckboxes:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """An edit reports the view again, and the report carries the reader's choice."""
-        harness = Harness(selected=ALL_GENERATORS, available=ALL_GENERATORS, monkeypatch=monkeypatch)
-        playing = frozenset({GeneratorName.PULSE1, GeneratorName.NOISE})
+        harness = Harness(selected=ALL_CHANNELS, available=ALL_CHANNELS, monkeypatch=monkeypatch)
+        playing = frozenset({ChannelName.PULSE1, ChannelName.NOISE})
 
-        harness.panel.update_view(_view_model(playing, frozenset({GeneratorName.NOISE})))
+        harness.panel.update_view(_view_model(playing, frozenset({ChannelName.NOISE})))
 
         assert harness.offered() == playing
-        assert harness.selected() == frozenset({GeneratorName.NOISE})
+        assert harness.selected() == frozenset({ChannelName.NOISE})
 
     def test_a_channel_standing_by_is_left_unticked(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        harness = Harness(selected=ALL_GENERATORS, available=ALL_GENERATORS, monkeypatch=monkeypatch)
-        playing = frozenset({GeneratorName.PULSE1})
+        harness = Harness(selected=ALL_CHANNELS, available=ALL_CHANNELS, monkeypatch=monkeypatch)
+        playing = frozenset({ChannelName.PULSE1})
 
         harness.panel.update_view(_view_model(playing, playing))
 
         assert harness.selected() == playing
-        assert GeneratorName.PULSE2 not in harness.offered()
+        assert ChannelName.PULSE2 not in harness.offered()
 
     def test_a_channel_that_plays_carries_its_own_tint(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         harness = Harness(selected=frozenset(), available=frozenset(), monkeypatch=monkeypatch)
-        playing = frozenset({GeneratorName.TRIANGLE})
+        playing = frozenset({ChannelName.TRIANGLE})
 
         harness.panel.update_view(_view_model(playing, playing))
 
-        assert set(harness.bound_themes) == {Harness._tag(GeneratorName.TRIANGLE)}
+        assert set(harness.bound_themes) == {Harness._tag(ChannelName.TRIANGLE)}
 
 
-class TestToggleGenerator(BaseTestSuite):
+class TestToggleChannel(BaseTestSuite):
     """The key a channel answers to switches its slice in and out of the waveform."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        selected: FrozenSet[GeneratorName]
-        available: FrozenSet[GeneratorName]
-        generator: GeneratorName
-        expected: FrozenSet[GeneratorName]
+        selected: FrozenSet[ChannelName]
+        available: FrozenSet[ChannelName]
+        channel: ChannelName
+        expected: FrozenSet[ChannelName]
 
     test_cases = (
         TestCase(
             label="switching a shown slice out",
-            selected=ALL_GENERATORS,
-            available=ALL_GENERATORS,
-            generator=GeneratorName.PULSE1,
-            expected=ALL_GENERATORS - {GeneratorName.PULSE1},
+            selected=ALL_CHANNELS,
+            available=ALL_CHANNELS,
+            channel=ChannelName.PULSE1,
+            expected=ALL_CHANNELS - {ChannelName.PULSE1},
         ),
         TestCase(
             label="switching a hidden slice back in",
-            selected=frozenset({GeneratorName.NOISE}),
-            available=ALL_GENERATORS,
-            generator=GeneratorName.TRIANGLE,
-            expected=frozenset({GeneratorName.TRIANGLE, GeneratorName.NOISE}),
+            selected=frozenset({ChannelName.NOISE}),
+            available=ALL_CHANNELS,
+            channel=ChannelName.TRIANGLE,
+            expected=frozenset({ChannelName.TRIANGLE, ChannelName.NOISE}),
         ),
         TestCase(
-            label="a generator the reconstruction holds none of stays out",
-            selected=frozenset({GeneratorName.PULSE1}),
-            available=frozenset({GeneratorName.PULSE1}),
-            generator=GeneratorName.NOISE,
-            expected=frozenset({GeneratorName.PULSE1}),
+            label="a channel the reconstruction holds none of stays out",
+            selected=frozenset({ChannelName.PULSE1}),
+            available=frozenset({ChannelName.PULSE1}),
+            channel=ChannelName.NOISE,
+            expected=frozenset({ChannelName.PULSE1}),
         ),
     )
 
@@ -191,13 +195,13 @@ class TestToggleGenerator(BaseTestSuite):
             monkeypatch=monkeypatch,
         )
 
-        harness.panel.toggle_generator(test_case.generator)
+        harness.panel.toggle_channel(test_case.channel)
 
         assert harness.selected() == test_case.expected
 
     @pytest.mark.parametrize(
         "test_case",
-        [test_case for test_case in test_cases if test_case.generator in test_case.available],
+        [test_case for test_case in test_cases if test_case.channel in test_case.available],
         ids=lambda test_case: test_case.label,
     )
     def test_the_selection_the_panel_reports(
@@ -212,10 +216,10 @@ class TestToggleGenerator(BaseTestSuite):
             monkeypatch=monkeypatch,
         )
 
-        harness.panel.toggle_generator(test_case.generator)
+        harness.panel.toggle_channel(test_case.channel)
 
         assert harness.reported == [
-            [generator for generator in GeneratorName if generator in test_case.expected],
+            [channel for channel in ChannelName if channel in test_case.expected],
         ]
 
     def test_a_generator_the_reconstruction_holds_none_of_reports_nothing(
@@ -224,12 +228,12 @@ class TestToggleGenerator(BaseTestSuite):
     ) -> None:
         """Its checkbox already reads as unavailable, so the key leaves the waveform as it stands."""
         harness = Harness(
-            selected=frozenset({GeneratorName.PULSE1}),
-            available=frozenset({GeneratorName.PULSE1}),
+            selected=frozenset({ChannelName.PULSE1}),
+            available=frozenset({ChannelName.PULSE1}),
             monkeypatch=monkeypatch,
         )
 
-        harness.panel.toggle_generator(GeneratorName.NOISE)
+        harness.panel.toggle_channel(ChannelName.NOISE)
 
         assert harness.reported == []
 
@@ -238,12 +242,12 @@ class TestToggleGenerator(BaseTestSuite):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         harness = Harness(
-            selected=ALL_GENERATORS,
-            available=ALL_GENERATORS,
+            selected=ALL_CHANNELS,
+            available=ALL_CHANNELS,
             monkeypatch=monkeypatch,
         )
 
-        harness.panel.toggle_generator(GeneratorName.PULSE2)
-        harness.panel.toggle_generator(GeneratorName.PULSE2)
+        harness.panel.toggle_channel(ChannelName.PULSE2)
+        harness.panel.toggle_channel(ChannelName.PULSE2)
 
-        assert harness.selected() == ALL_GENERATORS
+        assert harness.selected() == ALL_CHANNELS

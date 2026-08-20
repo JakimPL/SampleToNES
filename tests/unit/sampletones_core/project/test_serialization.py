@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
@@ -20,7 +20,7 @@ def _pattern_with_instrument() -> Pattern:
         volume=15,
         instrument=Instrument(
             sample_id="abc123",
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
         ),
     )
     return pattern
@@ -42,7 +42,7 @@ class TestPatternSerialization:
 class TestChannelSerialization:
     def _channel(self) -> Channel:
         return Channel(
-            generator=GeneratorName.PULSE1,
+            name=ChannelName.PULSE1,
             patterns={0: Pattern.empty(4, name="a"), 1: Pattern.empty(4, name="b")},
         )
 
@@ -76,12 +76,12 @@ class TestSongSerialization:
     def test_channels_preserved(self) -> None:
         song = Song.empty(rows_per_pattern=8)
         restored = Song.model_validate(song.model_dump())
-        assert set(restored.channels) == set(GeneratorName.items())
+        assert set(restored.channels) == set(ChannelName.items())
 
     def test_order_preserved(self) -> None:
         song = Song.empty(rows_per_pattern=8)
         song.append_frame()
-        song.set_order_entry(1, GeneratorName.PULSE1, 0)
+        song.set_order_entry(1, ChannelName.PULSE1, 0)
         restored = Song.model_validate(song.model_dump())
         assert restored.order == song.order
         assert restored.rows_per_pattern == song.rows_per_pattern

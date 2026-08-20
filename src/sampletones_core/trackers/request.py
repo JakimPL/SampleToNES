@@ -1,25 +1,25 @@
 from dataclasses import dataclass
 from typing import Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.project.project import Project
 
 
 @dataclass(frozen=True)
 class InstrumentExport:
-    """One generator slice of a reconstruction, ready for a backend to write.
+    """One channel slice of a reconstruction, ready for a backend to write.
 
     Attributes:
         name: Name the written instrument carries.
-        generator: The NES channel the slice was reconstructed for.
+        channel: The NES channel the slice was reconstructed for.
         features: The per-dimension envelopes describing the slice.
         loop: Whether the instrument repeats its envelopes while its note is held.
         nes_frequency: Rate in Hz the envelopes advance at, one item per tick.
     """
 
     name: str
-    generator: GeneratorName
+    channel: ChannelName
     features: Features
     loop: bool
     nes_frequency: int
@@ -27,7 +27,7 @@ class InstrumentExport:
 
 @dataclass(frozen=True)
 class SampleExport:
-    """Every generator slice of one reconstruction.
+    """Every channel slice of one reconstruction.
 
     Attributes:
         name: Name of the reconstruction the slices came from.

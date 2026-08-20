@@ -18,7 +18,7 @@ from sampletones_application.logic.sequencer.tracker.block import BlockKey
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -48,19 +48,19 @@ UNKNOWN_SAMPLE: Final[str] = "!!"
 UNKNOWN_SAMPLE_ID: Final[str] = "a-sample-no-project-holds"
 
 
-def sample_reconstruction(generators: Sequence[GeneratorName]) -> Reconstruction:
-    """A reconstruction carrying one instruction on each of ``generators``.
+def sample_reconstruction(channels: Sequence[ChannelName]) -> Reconstruction:
+    """A reconstruction carrying one instruction on each of ``channels``.
 
     The channels a reconstruction covers are what a sample governs in the sequencer, so this is
     the knob a sequencer test turns: the audio itself is silent, since what is under test is which
     channels a sample reaches and not how it sounds.
 
-    Each channel carries the instruction its own generator sounds, since the instruction type is
+    Each channel carries the instruction its own channel sounds, since the instruction type is
     what names the exporter a channel is read through — so a reading taken off this reconstruction
     is the reading the channel gives.
     """
-    instructions = {generator: [_instruction(generator)] for generator in generators}
-    approximations = {generator: np.zeros(SAMPLE_LENGTH, dtype=np.float32) for generator in generators}
+    instructions = {channel: [_instruction(channel)] for channel in channels}
+    approximations = {channel: np.zeros(SAMPLE_LENGTH, dtype=np.float32) for channel in channels}
     return Reconstruction.create(
         approximation=np.zeros(SAMPLE_LENGTH, dtype=np.float32),
         approximations=approximations,
@@ -80,8 +80,7 @@ def render_frame(tracker_logic: SequencerTrackerLogic) -> Tuple[str, ...]:
     """
     grid = tracker_logic.build_grid()
     return tuple(
-        f" {COLUMN_SEPARATOR} ".join(row.cells[generator].label for generator in GeneratorName.items())
-        for row in grid.rows
+        f" {COLUMN_SEPARATOR} ".join(row.cells[channel].label for channel in ChannelName.items()) for row in grid.rows
     )
 
 
@@ -95,7 +94,7 @@ def render_slots(
     pattern the channel had not held before.
     """
     frame = controller.project.song.order[frame_index]
-    return " ".join(display_id(frame.get(generator)) for generator in GeneratorName.items())
+    return " ".join(display_id(frame.get(channel)) for channel in ChannelName.items())
 
 
 def render_order(order_logic: SequencerOrderLogic) -> Tuple[str, ...]:
@@ -107,8 +106,8 @@ def render_order(order_logic: SequencerOrderLogic) -> Tuple[str, ...]:
     """
     view_model = order_logic.build_order()
     return tuple(
-        " ".join(view_model.entry_label(generator, position) for position in range(view_model.position_count))
-        for generator in GeneratorName.items()
+        " ".join(view_model.entry_label(channel, position) for position in range(view_model.position_count))
+        for channel in ChannelName.items()
     )
 
 
@@ -150,9 +149,9 @@ def fill_order(
     for _ in range(reach - order_logic.position_count()):
         order_logic.append_frame()
 
-    for generator, tokens in zip(GeneratorName.items(), lines):
+    for channel, tokens in zip(ChannelName.items(), lines):
         for position, token in enumerate(tokens):
-            order_logic.set_order_entry(generator, position, parse_index(token))
+            order_logic.set_order_entry(channel, position, parse_index(token))
 
 
 def parse_index(token: str) -> Optional[int]:
@@ -226,11 +225,11 @@ def fill_frame(
     exercised it.
     """
     for row_index, line in enumerate(rows):
-        for generator, cell in zip(GeneratorName.items(), line.split(COLUMN_SEPARATOR)):
+        for channel, cell in zip(ChannelName.items(), line.split(COLUMN_SEPARATOR)):
             _fill_cell(
                 tracker_logic,
                 row_index,
-                generator,
+                channel,
                 cell.split(),
                 sample_ids,
             )
@@ -268,19 +267,19 @@ def parse_volume(token: str) -> Optional[int]:
     return int(token, HEXADECIMAL_BASE)
 
 
-def _instruction(generator: GeneratorName) -> InstructionUnion:
-    """The instruction a channel sounds, which is the type its generator and exporter pair with.
+def _instruction(channel: ChannelName) -> InstructionUnion:
+    """The instruction a channel sounds, which is the type its channel and exporter pair with.
 
     The two pulse channels share the pulse instruction; the triangle and the noise each take their
     own.
     """
-    match generator:
-        case GeneratorName.TRIANGLE:
+    match channel:
+        case ChannelName.TRIANGLE:
             return TriangleInstruction(
                 on=True,
                 pitch=SAMPLE_PITCH,
             )
-        case GeneratorName.NOISE:
+        case ChannelName.NOISE:
             return NoiseInstruction(
                 on=True,
                 period=SAMPLE_PERIOD,
@@ -299,7 +298,7 @@ def _instruction(generator: GeneratorName) -> InstructionUnion:
 def _fill_cell(
     tracker_logic: SequencerTrackerLogic,
     row_index: int,
-    generator: GeneratorName,
+    channel: ChannelName,
     tokens: Sequence[str],
     sample_ids: Sequence[str],
 ) -> None:
@@ -315,9 +314,9 @@ def _fill_cell(
         return
 
     tracker_logic.set_row(
-        generator,
+        channel,
         row_index,
-        command=_command(note, generator),
+        command=_command(note, channel),
         transpose=transpose,
         volume=volume,
     )
@@ -325,14 +324,14 @@ def _fill_cell(
 
 def _command(
     note: Optional[BlockNote],
-    generator: GeneratorName,
+    channel: ChannelName,
 ) -> Optional[NoteCommand]:
     """The command a note becomes in the channel it is written to, which is what carries its pitch."""
     match note:
         case NoteOff():
             return note
         case str() as sample_id:
-            return Instrument(sample_id=sample_id, generator_name=generator)
+            return Instrument(sample_id=sample_id, channel_name=channel)
         case None:
             return None
 

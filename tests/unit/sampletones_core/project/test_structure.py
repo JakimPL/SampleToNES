@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict
 from unittest.mock import Mock
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.channel import Channel
@@ -27,26 +27,26 @@ class TestPattern:
 
 class TestChannel:
     def test_empty_channel(self) -> None:
-        channel = Channel.empty(GeneratorName.PULSE1, rows_per_pattern=16)
-        assert channel.generator == GeneratorName.PULSE1
+        channel = Channel.empty(ChannelName.PULSE1, rows_per_pattern=16)
+        assert channel.name == ChannelName.PULSE1
         assert len(channel.patterns) == 1
         assert 0 in channel.patterns
 
     def test_pattern_resolution(self) -> None:
-        channel = Channel.empty(GeneratorName.NOISE, rows_per_pattern=4)
+        channel = Channel.empty(ChannelName.NOISE, rows_per_pattern=4)
         assert channel.pattern(0) is channel.patterns[0]
 
     def test_unknown_pattern_returns_none(self) -> None:
-        channel = Channel.empty(GeneratorName.NOISE, rows_per_pattern=4)
+        channel = Channel.empty(ChannelName.NOISE, rows_per_pattern=4)
         assert channel.pattern(99) is None
 
 
 class TestSong:
     def test_empty_song_has_all_channels(self) -> None:
         song = Song.empty(rows_per_pattern=8)
-        assert set(song.channels) == set(GeneratorName.items())
-        for generator in GeneratorName.items():
-            assert song[generator].generator == generator
+        assert set(song.channels) == set(ChannelName.items())
+        for channel in ChannelName.items():
+            assert song[channel].name == channel
 
 
 class TestProject:
@@ -54,7 +54,7 @@ class TestProject:
         project = Project.create(title="Demo")
         assert project.info.title == "Demo"
         assert len(project.samples) == 0
-        assert set(project.song.channels) == set(GeneratorName.items())
+        assert set(project.song.channels) == set(ChannelName.items())
 
     def test_instrument_resolution(self) -> None:
         project = Project.create()
@@ -81,7 +81,7 @@ class TestReferenceIntegrity:
         first = _sample("first")
         second = _sample("second")
         project.samples.extend([first, second])
-        instrument = Instrument(sample_id=first.id, generator_name=GeneratorName.PULSE1)
+        instrument = Instrument(sample_id=first.id, channel_name=ChannelName.PULSE1)
         return SampleContext(project=project, sample=first, instrument=instrument)
 
     def test_instrument_survives_instrument_reorder(self) -> None:

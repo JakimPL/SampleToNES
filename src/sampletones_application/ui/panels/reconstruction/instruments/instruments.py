@@ -69,12 +69,12 @@ from sampletones_application.view_model.reconstruction.instruments import (
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import (
+    ChannelName,
     FeatureKey,
     GeneratorName,
-    LibraryGeneratorName,
 )
 from sampletones_core.exporters import Features
-from sampletones_core.features import GENERATOR_KIND, resting_reference, supported_features
+from sampletones_core.features import CHANNEL_GENERATOR_KIND, resting_reference, supported_features
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
@@ -88,7 +88,7 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
-OnInstrumentExportCallback = Callable[[GeneratorName], None]
+OnInstrumentExportCallback = Callable[[ChannelName], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
@@ -107,9 +107,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._language_manager = language_manager
         self._status_bar = status_bar
 
-        self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
-        self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
-        self._export_buttons: Dict[GeneratorName, GUIButton] = {}
+        self.channel_plots: Dict[ChannelName, Dict[FeatureKey, GUIBarGraph]] = {}
+        self._pitch_steppers: Dict[ChannelName, GUIPitchStepper] = {}
+        self._export_buttons: Dict[ChannelName, GUIButton] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
         self.no_data_message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE)
@@ -118,7 +118,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
 
         self._graphs: Dict[str, GUIBarGraph] = {}
-        self._sequence_lengths: Dict[Tuple[GeneratorName, FeatureKey], int] = {}
+        self._sequence_lengths: Dict[Tuple[ChannelName, FeatureKey], int] = {}
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
         self._layout_graphs = layout_graphs
@@ -134,9 +134,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
-        self.on_pitch_value_changed: Optional[Callable[[GeneratorName, int], None]] = None
-        self.on_bar_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
-        self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
+        self.on_pitch_value_changed: Optional[Callable[[ChannelName, int], None]] = None
+        self.on_bar_data_changed: Optional[Callable[[ChannelName, FeatureKey, np.ndarray], None]] = None
+        self.on_raw_data_changed: Optional[Callable[[ChannelName, FeatureKey, np.ndarray], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
@@ -147,8 +147,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             language_manager,
             language_manager["reconstructions.instruments.template.initial_pitch_tooltip_template"],
         )
-        self._generator_labels: Dict[GeneratorName, str] = {
-            generator_name: channel_label(language_manager, generator_name) for generator_name in GeneratorName.items()
+        self._channel_labels: Dict[ChannelName, str] = {
+            channel_name: channel_label(language_manager, channel_name) for channel_name in ChannelName.items()
         }
 
         super().__init__(
@@ -232,13 +232,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             tag=compose_tag(value_tag, SUF_TOOLTIP),
         )
 
-    def _get_generator_tab_tag(self, generator_name: GeneratorName) -> str:
-        return compose_tag(self.tab_bar_tag, generator_name)
+    def _get_generator_tab_tag(self, channel_name: ChannelName) -> str:
+        return compose_tag(self.tab_bar_tag, channel_name)
 
-    def _get_instrument_size_tag(self, generator_name: GeneratorName) -> str:
+    def _get_instrument_size_tag(self, channel_name: ChannelName) -> str:
         return compose_tag(
             self.tab_bar_tag,
-            generator_name,
+            channel_name,
             SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
         )
 
@@ -247,80 +247,80 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _get_feature_group_tag(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> str:
-        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GROUP)
+        return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GROUP)
 
     def _get_feature_text_group_tag(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> str:
-        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GRAPH_RAW_DATA)
+        return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GRAPH_RAW_DATA)
 
     def _get_feature_text_tag(self, text_group_tag: str) -> str:
         return compose_tag(text_group_tag, SUF_TEXT)
 
     def _get_feature_plot_tag(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> str:
-        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GRAPH)
+        return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GRAPH)
 
     def _setup_mouse_event_handler(self) -> None:
         with dpg.handler_registry(tag=self.mouse_item_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_move)
 
-    def _export_callback(self, generator_name: GeneratorName) -> VoidCallback:
-        """The press handler for one generator's export button.
-        the generator is captured in a closure, which carries one.
+    def _export_callback(self, channel_name: ChannelName) -> VoidCallback:
+        """The press handler for one channel's export button.
+        the channel is captured in a closure, which carries one.
         """
-        return lambda: self.call(self.on_instrument_export, generator_name)
+        return lambda: self.call(self.on_instrument_export, channel_name)
 
     def _create_tabs_for_generators(self) -> None:
-        for generator_name in GeneratorName.items():
-            self._create_generator_tab(generator_name)
+        for channel_name in ChannelName.items():
+            self._create_generator_tab(channel_name)
 
     def _generator_kind(
         self,
-        generator_name: GeneratorName,
-    ) -> LibraryGeneratorName:
-        return GENERATOR_KIND[generator_name]
+        channel_name: ChannelName,
+    ) -> GeneratorName:
+        return CHANNEL_GENERATOR_KIND[channel_name]
 
     def _generator_features(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
     ) -> List[FeatureKey]:
-        return supported_features(self._generator_kind(generator_name))
+        return supported_features(self._generator_kind(channel_name))
 
-    def _feature_plot_config(self, generator_name: GeneratorName, feature_key: FeatureKey) -> FeaturePlotConfig:
-        return self._feature_plot_configs[self._generator_kind(generator_name)][feature_key]
+    def _feature_plot_config(self, channel_name: ChannelName, feature_key: FeatureKey) -> FeaturePlotConfig:
+        return self._feature_plot_configs[self._generator_kind(channel_name)][feature_key]
 
-    def _create_generator_tab(self, generator_name: GeneratorName) -> None:
-        tab_tag = self._get_generator_tab_tag(generator_name)
+    def _create_generator_tab(self, channel_name: ChannelName) -> None:
+        tab_tag = self._get_generator_tab_tag(channel_name)
         window_tag = self._get_window_tag(tab_tag)
 
         with dpg.tab(
-            label=self._generator_labels[generator_name],
+            label=self._channel_labels[channel_name],
             tag=tab_tag,
             parent=self.tab_bar_tag,
             show=False,
         ):
-            self.generator_plots[generator_name] = {}
+            self.channel_plots[channel_name] = {}
             button_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT, tab_tag)
-            self._export_buttons[generator_name] = GUIButton(
+            self._export_buttons[channel_name] = GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
                 label=self._language_manager["reconstructions.instruments.label.export_instrument_button"],
                 width=-1,
-                callback=self._export_callback(generator_name),
+                callback=self._export_callback(channel_name),
             )
             self._status_bar.bind_to_item(
                 button_tag,
                 self._language_manager["reconstructions.instruments.message.status_export_instrument"].format(
-                    generator=self._generator_labels[generator_name]
+                    channel=self._channel_labels[channel_name]
                 ),
             )
 
@@ -329,7 +329,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 parent=tab_tag,
                 height=-1,
             ):
-                self._create_generator_content(generator_name, window_tag)
+                self._create_generator_content(channel_name, window_tag)
 
             ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_INSTRUMENT).bind_to_item(window_tag)
 
@@ -337,41 +337,41 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _create_generator_content(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         window_tag: str,
     ) -> None:
-        initial_pitch = self._default_initial_pitch(generator_name)
+        initial_pitch = self._default_initial_pitch(channel_name)
         self._create_size_field(
             self._lbl_instrument_size,
-            self._get_instrument_size_tag(generator_name),
+            self._get_instrument_size_tag(channel_name),
             window_tag,
         )
-        self._create_pitch_stepper(generator_name, initial_pitch, window_tag)
-        self._create_generator_feature_displays(generator_name, window_tag)
+        self._create_pitch_stepper(channel_name, initial_pitch, window_tag)
+        self._create_generator_feature_displays(channel_name, window_tag)
 
-    def _default_initial_pitch(self, generator_name: GeneratorName) -> int:
-        return resting_reference(generator_name)
+    def _default_initial_pitch(self, channel_name: ChannelName) -> int:
+        return resting_reference(channel_name)
 
     def _create_generator_feature_displays(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         window_tag: str,
     ) -> None:
-        for feature_key in self._generator_features(generator_name):
+        for feature_key in self._generator_features(channel_name):
             self._add_generator_feature_display(
-                generator_name,
+                channel_name,
                 feature_key,
                 window_tag,
             )
 
     def _add_generator_feature_display(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         window_tag: str,
     ) -> None:
         feature_group_tag = self._get_feature_group_tag(
-            generator_name,
+            channel_name,
             feature_key,
         )
         with dpg.group(
@@ -381,29 +381,29 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             dpg.add_separator(parent=window_tag)
             feature_data_array = np.empty(0, dtype=np.int8)
             plot = self._create_feature_display(
-                generator_name,
+                channel_name,
                 feature_key,
                 feature_data_array,
                 feature_group_tag,
             )
-            self.generator_plots[generator_name][feature_key] = plot
+            self.channel_plots[channel_name][feature_key] = plot
 
     def _apply_pitch_display(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         value: int,
     ) -> None:
-        stepper = self._pitch_steppers.get(generator_name)
+        stepper = self._pitch_steppers.get(channel_name)
         if stepper is not None:
             stepper.set_value(value)
 
     def _update_generator_plot(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
-        plots = self.generator_plots.get(generator_name)
+        plots = self.channel_plots.get(channel_name)
         if plots is None:
             return
 
@@ -411,10 +411,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         if plot is None:
             return
 
-        config = self._feature_plot_config(generator_name, feature_key)
+        config = self._feature_plot_config(channel_name, feature_key)
         self._configure_plot_data(
             plot,
-            generator_name,
+            channel_name,
             feature_key,
             config,
             data,
@@ -422,18 +422,18 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _update_raw_data_text(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
         text_group_tag = self._get_feature_text_group_tag(
-            generator_name,
+            channel_name,
             feature_key,
         )
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
         raw_data_text = self._format_data(data)
         dpg_set_value(raw_data_tag, raw_data_text)
-        self._apply_input_theme(generator_name, feature_key, len(data))
+        self._apply_input_theme(channel_name, feature_key, len(data))
 
     def update_view(
         self,
@@ -451,17 +451,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dpg_configure_item(self.sample_size_group_tag, show=is_loaded)
         self._update_sizes(view_model.footprint)
 
-        for generator_name in GeneratorName.items():
-            tab_tag = self._get_generator_tab_tag(generator_name)
+        for channel_name in ChannelName.items():
+            tab_tag = self._get_generator_tab_tag(channel_name)
             dpg_configure_item(tab_tag, show=is_loaded)
             self._apply_playing_state(
-                generator_name,
-                generator_name in view_model.playing_generators,
+                channel_name,
+                channel_name in view_model.playing_channels,
             )
 
     def _apply_playing_state(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         is_playing: bool,
     ) -> None:
         """Marks one channel's tab as playing or standing by.
@@ -470,9 +470,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         so a channel standing by stays as readable to edit as one that plays.
         """
         theme_tag = TAG_GLOBAL_THEME_INSTRUMENT_TABS if is_playing else TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED
-        ThemeRegistry.get(theme_tag).bind_to_item(self._get_generator_tab_tag(generator_name))
+        ThemeRegistry.get(theme_tag).bind_to_item(self._get_generator_tab_tag(channel_name))
 
-        export_button = self._export_buttons.get(generator_name)
+        export_button = self._export_buttons.get(channel_name)
         if export_button is not None:
             export_button.set_enabled(is_playing)
 
@@ -488,10 +488,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             return
 
         dpg_set_value(self.sample_size_tag, self._format_size(footprint.total_bytes))
-        for generator_name in GeneratorName.items():
-            instrument_bytes = footprint.bytes_for(generator_name)
+        for channel_name in ChannelName.items():
+            instrument_bytes = footprint.bytes_for(channel_name)
             dpg_set_value(
-                self._get_instrument_size_tag(generator_name),
+                self._get_instrument_size_tag(channel_name),
                 self._format_size(instrument_bytes if instrument_bytes is not None else 0),
             )
 
@@ -500,45 +500,45 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def update_feature_data(
         self,
-        generators: Optional[Dict[GeneratorName, Features]],
+        generators: Optional[Dict[ChannelName, Features]],
     ) -> None:
         if generators is None:
             return
 
-        for generator_name in GeneratorName.items():
-            generator_features = generators.get(generator_name)
+        for channel_name in ChannelName.items():
+            generator_features = generators.get(channel_name)
             if generator_features is None:
                 continue
 
             self._update_generator_feature_data(
-                generator_name,
+                channel_name,
                 generator_features,
             )
 
     def _update_generator_feature_data(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         generator_features: Features,
     ) -> None:
         initial_pitch = cast(int, generator_features[FeatureKey.INITIAL_PITCH])
-        self._apply_pitch_display(generator_name, initial_pitch)
+        self._apply_pitch_display(channel_name, initial_pitch)
 
-        for feature_key in self._generator_features(generator_name):
+        for feature_key in self._generator_features(channel_name):
             self._update_generator_feature_display(
-                generator_name,
+                channel_name,
                 generator_features,
                 feature_key,
             )
 
     def _update_generator_feature_display(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         generator_features: Features,
         feature_key: FeatureKey,
     ) -> None:
         feature = self._feature_array(generator_features, feature_key)
-        self._update_generator_plot(generator_name, feature_key, feature)
-        self._update_raw_data_text(generator_name, feature_key, feature)
+        self._update_generator_plot(channel_name, feature_key, feature)
+        self._update_raw_data_text(channel_name, feature_key, feature)
 
     def _feature_array(
         self,
@@ -550,17 +550,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             return np.array([], dtype=np.int8)
         return feature
 
-    def _pitch_kind(self, generator_name: GeneratorName) -> PitchValueKind:
-        return PERIOD_VALUE_KIND if generator_name == GeneratorName.NOISE else PITCH_VALUE_KIND
+    def _pitch_kind(self, channel_name: ChannelName) -> PitchValueKind:
+        return PERIOD_VALUE_KIND if channel_name == ChannelName.NOISE else PITCH_VALUE_KIND
 
     def _create_pitch_stepper(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         initial_pitch: int,
         parent: str,
     ) -> None:
-        is_noise = generator_name == GeneratorName.NOISE
-        kind = self._pitch_kind(generator_name)
+        is_noise = channel_name == ChannelName.NOISE
+        kind = self._pitch_kind(channel_name)
         stepper = GUIPitchStepper(
             tag=parent,
             parent=parent,
@@ -584,16 +584,16 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
         stepper.on_value_changed = partial(
             self._on_pitch_value_changed,
-            generator_name,
+            channel_name,
         )
-        self._pitch_steppers[generator_name] = stepper
+        self._pitch_steppers[channel_name] = stepper
 
     def _on_pitch_value_changed(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         value: int,
     ) -> None:
-        self.call(self.on_pitch_value_changed, generator_name, value)
+        self.call(self.on_pitch_value_changed, channel_name, value)
 
     def _on_mouse_move(self, _sender: Sender, _app_data: Tuple[int, int]) -> None:
         tab = dpg.get_value(self.tab_bar_tag)
@@ -608,22 +608,22 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _create_feature_display(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
         parent: str,
     ) -> GUIBarGraph:
-        config = self._feature_plot_config(generator_name, feature_key)
+        config = self._feature_plot_config(channel_name, feature_key)
         plot = self._add_bar_plot(
             parent,
             config,
             data,
-            generator_name,
+            channel_name,
             feature_key,
         )
         self._add_raw_data_text(
             parent,
-            generator_name,
+            channel_name,
             feature_key,
             config,
             plot,
@@ -656,10 +656,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         parent: str,
         config: FeaturePlotConfig,
         data: np.ndarray,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> GUIBarGraph:
-        plot_tag = self._get_feature_plot_tag(generator_name, feature_key)
+        plot_tag = self._get_feature_plot_tag(channel_name, feature_key)
         y_min, y_max, _ = self._calculate_plot_limits(config, data)
         plot = GUIBarGraph(
             tag=plot_tag,
@@ -677,7 +677,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self._configure_plot_data(
             plot,
-            generator_name,
+            channel_name,
             feature_key,
             config,
             data,
@@ -688,15 +688,15 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _configure_plot_data(
         self,
         plot: GUIBarGraph,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         config: FeaturePlotConfig,
         data: np.ndarray,
     ) -> None:
-        self._load_plot_data(plot, generator_name, feature_key, config, data)
+        self._load_plot_data(plot, channel_name, feature_key, config, data)
         plot.set_callbacks(
             on_bar_point_clicked=lambda data: self._on_bar_point_clicked(
-                generator_name,
+                channel_name,
                 feature_key,
                 data,
                 plot.plot_tag,
@@ -706,14 +706,14 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _on_bar_point_clicked(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
         plot_tag: str,
     ) -> None:
         raw_data_tag = compose_tag(plot_tag, SUF_GRAPH_RAW_DATA)
         dpg_set_value(raw_data_tag, self._format_data(data))
-        self.call(self.on_bar_data_changed, generator_name, feature_key, data)
+        self.call(self.on_bar_data_changed, channel_name, feature_key, data)
 
     def _on_bar_point_hovered(
         self,
@@ -731,14 +731,14 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _add_raw_data_text(
         self,
         parent: str,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         config: FeaturePlotConfig,
         plot: GUIBarGraph,
         data: np.ndarray,
     ) -> None:
         text_group_tag = self._get_feature_text_group_tag(
-            generator_name,
+            channel_name,
             feature_key,
         )
         raw_data_text = self._format_data(data)
@@ -765,7 +765,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 decimal=False,
                 callback=self._parse_raw_data_input,
                 user_data=(
-                    generator_name,
+                    channel_name,
                     feature_key,
                     config,
                     plot,
@@ -779,18 +779,18 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
         self._status_bar.bind_to_item(
             raw_data_tag,
-            partial(self._sequence_status_message, generator_name, feature_key),
+            partial(self._sequence_status_message, channel_name, feature_key),
         )
 
     def _sequence_status_message(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         *_args: Any,
         **_kwargs: Any,
     ) -> str:
         """Describes the sequence input, naming the export limit once a sequence passes it."""
-        item_count = self._sequence_lengths.get((generator_name, feature_key), 0)
+        item_count = self._sequence_lengths.get((channel_name, feature_key), 0)
         if item_count > MAX_SEQUENCE_ITEMS:
             return self._language_manager["reconstructions.instruments.message.status_sequence_too_long"].format(
                 instrument_feature=feature_key.capitalized,
@@ -804,7 +804,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _apply_input_theme(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         item_count: int,
     ) -> None:
@@ -814,8 +814,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         input carries the warning colour to show which part of the envelope reaches a
         FamiTracker file.
         """
-        self._sequence_lengths[(generator_name, feature_key)] = item_count
-        text_group_tag = self._get_feature_text_group_tag(generator_name, feature_key)
+        self._sequence_lengths[(channel_name, feature_key)] = item_count
+        text_group_tag = self._get_feature_text_group_tag(channel_name, feature_key)
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
         theme = self.warning_input_theme if item_count > MAX_SEQUENCE_ITEMS else self.theme
         theme.bind_to_item(raw_data_tag)
@@ -824,9 +824,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self,
         sender: Sender,
         app_data: str,
-        user_data: Tuple[GeneratorName, FeatureKey, FeaturePlotConfig, GUIBarGraph],
+        user_data: Tuple[ChannelName, FeatureKey, FeaturePlotConfig, GUIBarGraph],
     ) -> None:
-        generator_name, feature_key, config, plot = user_data
+        channel_name, feature_key, config, plot = user_data
         data_range = config.data_range if config.data_range is not None else (-128, 127)
 
         try:
@@ -836,14 +836,14 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 dtype=np.int8,
             )
         except ValueError:
-            logger.error(f"Invalid {generator_name.name} data input for {feature_key.name}: {app_data}")
+            logger.error(f"Invalid {channel_name.name} data input for {feature_key.name}: {app_data}")
             self.invalid_input_theme.bind_to_item(sender)
             return
 
-        self._apply_input_theme(generator_name, feature_key, len(raw_data))
+        self._apply_input_theme(channel_name, feature_key, len(raw_data))
         dpg.set_value(sender, self._format_data(raw_data))
-        self.call(self.on_raw_data_changed, generator_name, feature_key, raw_data)
-        self._load_plot_data(plot, generator_name, feature_key, config, raw_data)
+        self.call(self.on_raw_data_changed, channel_name, feature_key, raw_data)
+        self._load_plot_data(plot, channel_name, feature_key, config, raw_data)
 
     def _format_data(self, data: np.ndarray) -> str:
         string_data = [str(clamp(int(value), -128, 127)) for value in data]
@@ -852,13 +852,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _load_plot_data(
         self,
         plot: GUIBarGraph,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         config: FeaturePlotConfig,
         data: np.ndarray,
     ) -> None:
         _, _, y_ticks = self._calculate_plot_limits(config, data)
-        name = f"{generator_name.capitalize()}: {feature_key.capitalized}"
+        name = f"{channel_name.capitalize()}: {feature_key.capitalized}"
         plot.load_data(
             data=data,
             name=name,

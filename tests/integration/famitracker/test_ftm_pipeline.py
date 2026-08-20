@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.export import write_ftm
 from sampletones_core.formats.famitracker.specification.channels import ChannelId
 from sampletones_core.formats.famitracker.specification.file import FTM_VERSION
@@ -65,8 +65,8 @@ class TestSilencedChannelsReachTheModuleWhole:
         module_path: Path,
     ) -> None:
         channels = SequencerChannelsLogic()
-        channels.solo(GeneratorName.TRIANGLE)
-        assert channels.active_channels == frozenset({GeneratorName.TRIANGLE})
+        channels.solo(ChannelName.TRIANGLE)
+        assert channels.active_channels == frozenset({ChannelName.TRIANGLE})
 
         write_ftm(module_path, integration_project)
 

@@ -8,7 +8,7 @@ from sampletones_application.constants.playback import MAX_TICKS_PER_ROW, MIN_TI
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.timing import Metre, RowRate, TickClock, calculate_groove
 from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
@@ -225,7 +225,7 @@ class TestChannelsFillTheRow(BaseTestSuite):
         controller = make_controller()
         reconstruction = make_pulse_reconstruction(count=1)
         sample = add_sample(controller, reconstruction, loop=True)
-        place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+        place_row(controller, channel=ChannelName.PULSE1, row_index=0, sample_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
         chunk, _ = synthesizer.render_row()
@@ -238,7 +238,7 @@ class TestChannelsFillTheRow(BaseTestSuite):
         controller = make_controller()
         reconstruction = make_pulse_reconstruction(count=1)
         sample = add_sample(controller, reconstruction, loop=True)
-        place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+        place_row(controller, channel=ChannelName.PULSE1, row_index=0, sample_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
         chunk, _ = synthesizer.render_row()

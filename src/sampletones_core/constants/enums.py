@@ -5,13 +5,13 @@ from enum import StrEnum
 from typing import Dict, Final, List, Literal
 
 
-class LibraryGeneratorName(StrEnum):
+class GeneratorName(StrEnum):
     PULSE = "pulse"
     TRIANGLE = "triangle"
     NOISE = "noise"
 
 
-class GeneratorName(StrEnum):
+class ChannelName(StrEnum):
     PULSE1 = "pulse1"
     PULSE2 = "pulse2"
     TRIANGLE = "triangle"
@@ -23,7 +23,7 @@ class GeneratorName(StrEnum):
         return spaced_value.capitalize()
 
     @classmethod
-    def items(cls) -> List[GeneratorName]:
+    def items(cls) -> List[ChannelName]:
         return [cls.PULSE1, cls.PULSE2, cls.TRIANGLE, cls.NOISE]
 
 
@@ -73,6 +73,11 @@ class SelectorName(StrEnum):
     VITERBI = "viterbi"
 
 
+class HierarchyMode(StrEnum):
+    ROUND_ROBIN = "round_robin"
+    STRICT = "strict"
+
+
 class SpectrumMethod(StrEnum):
     FFT = "fft"
     LOG_SPACED_FFT = "logfft"
@@ -84,28 +89,28 @@ class CQTWindow(StrEnum):
     RECTANGULAR = "rectangular"
 
 
-GENERATOR_ABBREVIATIONS: Final[Dict[GeneratorName, Literal["P", "p", "T", "N"]]] = {
-    GeneratorName.PULSE1: "P",
-    GeneratorName.PULSE2: "p",
-    GeneratorName.TRIANGLE: "T",
-    GeneratorName.NOISE: "N",
+CHANNEL_ABBREVIATIONS: Final[Dict[ChannelName, Literal["P", "p", "T", "N"]]] = {
+    ChannelName.PULSE1: "P",
+    ChannelName.PULSE2: "p",
+    ChannelName.TRIANGLE: "T",
+    ChannelName.NOISE: "N",
 }
 
 
-GENERATOR_ABBREVIATION_TO_NAME: Final[Dict[str, GeneratorName]] = {
-    abbreviation: name for name, abbreviation in GENERATOR_ABBREVIATIONS.items()
+CHANNEL_ABBREVIATION_TO_NAME: Final[Dict[str, ChannelName]] = {
+    abbreviation: name for name, abbreviation in CHANNEL_ABBREVIATIONS.items()
 }
 
 
-GENERATOR_ABBREVIATION_PATTERN: Final[str] = rf"^[{''.join(GENERATOR_ABBREVIATIONS.values())}]+$"
+CHANNEL_ABBREVIATION_PATTERN: Final[str] = rf"^[{''.join(CHANNEL_ABBREVIATIONS.values())}]+$"
 
 
-DEFAULT_GENERATORS: Final[List[GeneratorName]] = [
-    GeneratorName.PULSE1,
-    GeneratorName.TRIANGLE,
-    GeneratorName.NOISE,
+DEFAULT_CHANNELS: Final[List[ChannelName]] = [
+    ChannelName.PULSE1,
+    ChannelName.TRIANGLE,
+    ChannelName.NOISE,
 ]
 
 
-def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:
-    return "".join(GENERATOR_ABBREVIATIONS[name] for name in generator_names)
+def abbreviate_channel_names(channel_names: List[ChannelName]) -> str:
+    return "".join(CHANNEL_ABBREVIATIONS[name] for name in channel_names)

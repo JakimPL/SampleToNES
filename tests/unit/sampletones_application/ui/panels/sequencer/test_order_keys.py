@@ -10,7 +10,7 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.shortcuts import shipped_source
 
 POSITION_COUNT = 4
@@ -38,7 +38,7 @@ class OrderPanelFixture:
 def order(monkeypatch: pytest.MonkeyPatch) -> OrderPanelFixture:
     panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
     panel._shortcuts = shipped_source()
-    panel._input_state = OrderInputState(cursor=OrderCursor(GeneratorName.PULSE1, CURSOR_POSITION))
+    panel._input_state = OrderInputState(cursor=OrderCursor(ChannelName.PULSE1, CURSOR_POSITION))
     panel._position_count = POSITION_COUNT
     panel._current_position = CURSOR_POSITION
     panel._buttons = None
@@ -110,7 +110,7 @@ class TestFrameMoves:
 
     def test_a_move_with_nowhere_to_go_still_consumes_the_key(self, order: OrderPanelFixture) -> None:
         """A boundary keeps the press, so a repeated move stays out of the global shortcuts."""
-        order.panel._input_state = OrderInputState(cursor=OrderCursor(GeneratorName.PULSE1, 0))
+        order.panel._input_state = OrderInputState(cursor=OrderCursor(ChannelName.PULSE1, 0))
 
         assert order.panel._on_key_pressed(_press("Alt+Left")) is True
         assert order.moved == []
@@ -119,15 +119,15 @@ class TestFrameMoves:
 class TestCursorMoves:
     def test_the_next_position_key_moves_the_cursor_one_column_on(self, order: OrderPanelFixture) -> None:
         assert order.panel._on_key_pressed(_press("Right")) is True
-        assert order.states[-1].cursor == OrderCursor(GeneratorName.PULSE1, CURSOR_POSITION + 1)
+        assert order.states[-1].cursor == OrderCursor(ChannelName.PULSE1, CURSOR_POSITION + 1)
 
     def test_the_enter_alias_moves_the_cursor_the_same_way(self, order: OrderPanelFixture) -> None:
         assert order.panel._on_key_pressed(_press("Enter")) is True
-        assert order.states[-1].cursor == OrderCursor(GeneratorName.PULSE1, CURSOR_POSITION + 1)
+        assert order.states[-1].cursor == OrderCursor(ChannelName.PULSE1, CURSOR_POSITION + 1)
 
     def test_the_last_position_key_jumps_to_the_final_column(self, order: OrderPanelFixture) -> None:
         assert order.panel._on_key_pressed(_press("End")) is True
-        assert order.states[-1].cursor == OrderCursor(GeneratorName.PULSE1, POSITION_COUNT - 1)
+        assert order.states[-1].cursor == OrderCursor(ChannelName.PULSE1, POSITION_COUNT - 1)
 
 
 class TestCellEntry:

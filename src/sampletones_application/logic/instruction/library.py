@@ -10,11 +10,11 @@ from sampletones_application.logic.instruction.library_manager import (
 from sampletones_application.view_model.instruction.library import (
     LibraryPanelViewModel,
 )
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.generators import (
     GENERATOR_CLASS_MAP,
+    GENERATOR_TO_CLASS_NAME_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
-    LIBRARY_GENERATOR_CLASS_MAP,
 )
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import (
@@ -185,11 +185,11 @@ class LibraryLogic(CallbackMixin):
         self.load_library_and_set_current(library_key)
         self.update_status()
 
-    def load_generator(self, library_generator_name: LibraryGeneratorName) -> None:
+    def load_generator(self, generator_name: GeneratorName) -> None:
         if self._is_locked:
             return
 
-        generator_class = GENERATOR_CLASS_MAP[LIBRARY_GENERATOR_CLASS_MAP[library_generator_name]]
+        generator_class = GENERATOR_CLASS_MAP[GENERATOR_TO_CLASS_NAME_MAP[generator_name]]
         instruction_class = GENERATOR_TO_INSTRUCTION_MAP[generator_class]
         instruction = instruction_class.default_instruction()
         self.load_instruction(instruction)

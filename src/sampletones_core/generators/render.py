@@ -3,15 +3,15 @@ from typing import Dict, Mapping, Sequence
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion
 
-from .maps import GENERATOR_CLASSES
+from .maps import CHANNEL_CLASSES
 
 
 def render_instructions(
     instructions: Sequence[InstructionUnion],
-    generator_name: GeneratorName,
+    channel_name: ChannelName,
     config: Config,
 ) -> np.ndarray:
     """One channel's audio, rendered frame by frame from the instructions that drive it.
@@ -22,7 +22,7 @@ def render_instructions(
 
     Args:
         instructions: The channel's instructions, one per frame.
-        generator_name: The channel the instructions drive.
+        channel_name: The channel the instructions drive.
         config: The configuration the frames are rendered at.
 
     Returns:
@@ -31,15 +31,15 @@ def render_instructions(
     Raises:
         ValueError: If the channel describes no frame.
     """
-    generator = GENERATOR_CLASSES[generator_name](config, generator_name.value)
+    generator = CHANNEL_CLASSES[channel_name](config, channel_name.value)
     frames = [generator(instruction, save=True) for instruction in instructions]  # type: ignore[arg-type]
     return np.concatenate(frames)
 
 
-def render_generators(
-    instructions: Mapping[GeneratorName, Sequence[InstructionUnion]],
+def render_channels(
+    instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
     config: Config,
-) -> Dict[GeneratorName, np.ndarray]:
+) -> Dict[ChannelName, np.ndarray]:
     """The audio of every channel that describes a frame, in channel order.
 
     A channel standing by renders nothing, so what comes back names the channels that sound and
@@ -50,10 +50,10 @@ def render_generators(
         config: The configuration the frames are rendered at.
 
     Returns:
-        Dict[GeneratorName, np.ndarray]: The waveform each sounding channel renders to.
+        Dict[ChannelName, np.ndarray]: The waveform each sounding channel renders to.
     """
     return {
-        generator_name: render_instructions(instructions[generator_name], generator_name, config)
-        for generator_name in GeneratorName.items()
-        if instructions.get(generator_name)
+        channel_name: render_instructions(instructions[channel_name], channel_name, config)
+        for channel_name in ChannelName.items()
+        if instructions.get(channel_name)
     }

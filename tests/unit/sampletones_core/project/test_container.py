@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import Metadata
 from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.instruments.instrument import Instrument
@@ -55,23 +55,23 @@ def _populated_project(
     project.samples.extend([first, second])
 
     song = project.song
-    channel = song[GeneratorName.PULSE1]
+    channel = song[ChannelName.PULSE1]
     pattern = channel.patterns[0]
     pattern.name = "intro"
     pattern.rows[0] = Row(
         transpose=0,
         command=Instrument(
             sample_id=first.id,
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
         ),
         volume=15,
     )
 
     extra_index = channel.add_pattern(song.rows_per_pattern, name="verse")
     song.append_frame()
-    song.set_order_entry(1, GeneratorName.PULSE1, extra_index)
+    song.set_order_entry(1, ChannelName.PULSE1, extra_index)
     song.append_frame()
-    song.set_order_entry(2, GeneratorName.PULSE1, 0)
+    song.set_order_entry(2, ChannelName.PULSE1, 0)
     return project
 
 
@@ -95,9 +95,9 @@ class TestRoundTrip:
 
         loaded_song = loaded.song
         assert loaded_song.order == project.song.order
-        pulse1_index_at_0 = loaded_song.order[0].get(GeneratorName.PULSE1)
+        pulse1_index_at_0 = loaded_song.order[0].get(ChannelName.PULSE1)
         first_pattern = loaded_song.pattern(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             pulse1_index_at_0,
         )
         assert first_pattern.name == "intro"
@@ -117,11 +117,11 @@ class TestRoundTrip:
 
         loaded = ProjectContainer.load(path)
         loaded_song = loaded.song
-        channel = loaded_song[GeneratorName.PULSE1]
-        index_at_0 = loaded_song.order[0].get(GeneratorName.PULSE1)
+        channel = loaded_song[ChannelName.PULSE1]
+        index_at_0 = loaded_song.order[0].get(ChannelName.PULSE1)
         row = channel.pattern(index_at_0).rows[0]
         assert loaded.sample(row.command.sample_id) is loaded.samples[0]
-        index_at_2 = loaded_song.order[2].get(GeneratorName.PULSE1)
+        index_at_2 = loaded_song.order[2].get(ChannelName.PULSE1)
         assert channel.pattern(index_at_0) is channel.pattern(index_at_2)
 
 
@@ -171,7 +171,7 @@ class TestArchiveLayout:
             document = json.loads(archive.read(PROJECT_DOCUMENT_NAME).decode("utf-8"))
 
         assert document["format_version"] == SAMPLETONES_PROJECT_DATA_VERSION
-        assert set(document["song"]["channels"]) == {generator.value for generator in GeneratorName.items()}
+        assert set(document["song"]["channels"]) == {channel.value for channel in ChannelName.items()}
 
 
 class TestEmptyProject:
@@ -183,7 +183,7 @@ class TestEmptyProject:
         loaded = ProjectContainer.load(path)
 
         assert len(loaded.samples) == 0
-        assert set(loaded.song.channels) == set(GeneratorName.items())
+        assert set(loaded.song.channels) == set(ChannelName.items())
 
         with zipfile.ZipFile(path, "r") as archive:
             assert all(not name.startswith(f"{RECONSTRUCTIONS_DIRECTORY}/") for name in archive.namelist())

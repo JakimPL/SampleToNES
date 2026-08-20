@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project import Project
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
@@ -97,7 +97,7 @@ class TestDisplayCommand:
         project, samples = _project_with_samples(2)
         instrument = Instrument(
             sample_id=samples[1].id,
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
         )
         assert (
             display_command(

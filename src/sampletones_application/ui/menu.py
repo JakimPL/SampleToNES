@@ -87,7 +87,7 @@ from sampletones_application.utils.gui.shortcuts.ids import (
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -132,7 +132,7 @@ class MenuBar:
         on_play_from_start: VoidCallback,
         on_pause_or_resume: VoidCallback,
         on_stop: VoidCallback,
-        on_channel_muted: Callable[[GeneratorName], None],
+        on_channel_muted: Callable[[ChannelName], None],
     ) -> None:
         self._shortcut_manager = shortcut_manager
         self._fps_theme = fps_theme
@@ -507,14 +507,14 @@ class MenuBar:
             tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS,
             label=self._label(MenuElements.GROUP_PLAYBACK_CHANNELS),
         ):
-            for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
+            for channel, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
                 self._shortcut_manager.add_menu_item(
                     shortcut_id,
-                    callback=partial(self._on_channel_muted, generator),
-                    tag=self._channel_menu_item_tag(generator),
-                    label=channel_label(self._language_manager, generator),
+                    callback=partial(self._on_channel_muted, channel),
+                    tag=self._channel_menu_item_tag(channel),
+                    label=channel_label(self._language_manager, channel),
                     check=True,
-                    default_value=not state.channels.is_muted(generator),
+                    default_value=not state.channels.is_muted(channel),
                 )
             dpg.add_separator()
             self._shortcut_manager.add_menu_item(
@@ -705,8 +705,8 @@ class MenuBar:
 
     def _update_channels(self, state: MenuBarViewModel) -> None:
         """Shows the mute set the sequencer's tables show: a check on every channel that sounds."""
-        for generator in CHANNEL_SHORTCUT_IDS:
-            dpg_set_value(self._channel_menu_item_tag(generator), not state.channels.is_muted(generator))
+        for channel in CHANNEL_SHORTCUT_IDS:
+            dpg_set_value(self._channel_menu_item_tag(channel), not state.channels.is_muted(channel))
 
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
@@ -741,9 +741,9 @@ class MenuBar:
         )
 
     @staticmethod
-    def _channel_menu_item_tag(generator: GeneratorName) -> str:
-        """The tag of the Channels submenu item that switches ``generator``."""
-        return compose_tag(TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS, generator.value)
+    def _channel_menu_item_tag(channel: ChannelName) -> str:
+        """The tag of the Channels submenu item that switches ``channel``."""
+        return compose_tag(TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS, channel.value)
 
     @staticmethod
     def _follow_menu_item_tag(mode: FollowMode) -> str:

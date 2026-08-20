@@ -1,5 +1,7 @@
+import errno
+import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
@@ -11,7 +13,8 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.serialization import hash_model
-from sampletones_shared.utils.system.paths import open_path_in_explorer
+from sampletones_shared.utils.system.paths import first_missing
+from sampletones_shared.utils.system.reveal.selection import open_paths_in_explorer
 
 
 class ReconstructionManager(CallbackMixin):
@@ -172,14 +175,19 @@ class ReconstructionManager(CallbackMixin):
         )
 
     def locate_original_audio(self) -> None:
-        original_audio_path = self.audio_filepath
-        if not original_audio_path:
+        original_audio_paths = self.source_paths
+        if not original_audio_paths:
             return
 
-        if not original_audio_path.exists():
-            raise FileNotFoundError(f"Original audio file '{original_audio_path}' could not be found.")
+        missing_path = first_missing(original_audio_paths)
+        if missing_path is not None:
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                str(missing_path),
+            )
 
-        open_path_in_explorer(original_audio_path)
+        open_paths_in_explorer(original_audio_paths)
 
     @property
     def current_reconstruction(self) -> Optional[ReconstructionData]:
@@ -208,8 +216,8 @@ class ReconstructionManager(CallbackMixin):
         return self.filepath is not None
 
     @property
-    def audio_filepath(self) -> Optional[Path]:
+    def source_paths(self) -> Tuple[Path, ...]:
         if self._current_reconstruction is None:
-            return None
+            return ()
 
-        return self._current_reconstruction.reconstruction.audio_filepath
+        return self._current_reconstruction.reconstruction.source_paths

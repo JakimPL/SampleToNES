@@ -10,8 +10,8 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_application.utils.parallelization.coalescing import LatestWinsExecutor
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, Features
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
@@ -27,7 +27,7 @@ class RegeneratedInstrument:
     """
 
     reconstruction: Reconstruction
-    generator_name: GeneratorName
+    channel_name: ChannelName
     feature_key: FeatureKey
 
 
@@ -56,7 +56,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
     def start(
         self,
         reconstruction: Reconstruction,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         features: Features,
         feature_key: FeatureKey,
         value: FeatureValue,
@@ -67,7 +67,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         return self._executor.submit(
             lambda: self._run(
                 reconstruction,
-                generator_name,
+                channel_name,
                 features,
                 feature_key,
                 value,
@@ -83,7 +83,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
     def _run(
         self,
         reconstruction: Reconstruction,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         features: Features,
         feature_key: FeatureKey,
         value: FeatureValue,
@@ -92,7 +92,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
             self._emit(ServiceCancelled())
             return
         try:
-            exporter_class = GENERATOR_NAME_TO_EXPORTER_MAP[generator_name]
+            exporter_class = CHANNEL_TO_EXPORTER_MAP[channel_name]
             generator_class = exporter_class.get_generator_type()
             features[feature_key] = value
 
@@ -100,12 +100,12 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 List[InstructionUnion],
                 exporter_class.from_features(features),
             )
-            generator = generator_class(reconstruction.config, generator_name)
+            generator = generator_class(reconstruction.config, channel_name)
             audio = self._render(generator, instructions)
 
             updated = reconstruction.model_copy(deep=True)
-            updated.update_generator_data(
-                generator_name,
+            updated.update_channel_data(
+                channel_name,
                 instructions,
                 audio,
                 features.initial_pitch,
@@ -115,7 +115,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 ServiceSuccess(
                     value=RegeneratedInstrument(
                         reconstruction=updated,
-                        generator_name=generator_name,
+                        channel_name=channel_name,
                         feature_key=feature_key,
                     )
                 )

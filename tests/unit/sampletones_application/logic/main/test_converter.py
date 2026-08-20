@@ -101,14 +101,14 @@ class TestCancelDuringLibraryGeneration:
         scheduled.assert_called_once()
 
 
-class TestNoGeneratorsGuard:
-    """With no generators enabled there is nothing to reconstruct, so the conversion must not start."""
+class TestNoChannelsGuard:
+    """With no channels enabled there is nothing to reconstruct, so the conversion must not start."""
 
     def test_no_generators_notifies_and_does_not_start(
         self,
         converter_logic: ConverterLogic,
     ) -> None:
-        converter_logic._config_manager.config.generation.generators = []
+        converter_logic._config_manager.config.generation.channels = []
         on_no_generators = MagicMock()
         converter_logic.on_no_generators = on_no_generators
 

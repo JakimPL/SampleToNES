@@ -1,14 +1,14 @@
 from sampletones_core.constants.enums import (
+    ChannelName,
     FeatureKey,
     GeneratorName,
-    LibraryGeneratorName,
 )
 from sampletones_core.exporters.implementation.noise import NoiseExporter
 from sampletones_core.exporters.implementation.pulse import PulseExporter
 from sampletones_core.exporters.implementation.triangle import TriangleExporter
 from sampletones_core.features import (
+    CHANNEL_GENERATOR_KIND,
     FEATURE_DIMENSION_ORDER,
-    GENERATOR_KIND,
     feature_range,
     supported_features,
     supports,
@@ -20,16 +20,16 @@ from sampletones_core.formats.famitracker.specification.sequences import (
 
 
 def test_supported_features_follow_dimension_order() -> None:
-    assert supported_features(LibraryGeneratorName.PULSE) == [
+    assert supported_features(GeneratorName.PULSE) == [
         FeatureKey.VOLUME,
         FeatureKey.ARPEGGIO,
         FeatureKey.DUTY_CYCLE,
     ]
-    assert supported_features(LibraryGeneratorName.TRIANGLE) == [
+    assert supported_features(GeneratorName.TRIANGLE) == [
         FeatureKey.VOLUME,
         FeatureKey.ARPEGGIO,
     ]
-    assert supported_features(LibraryGeneratorName.NOISE) == [
+    assert supported_features(GeneratorName.NOISE) == [
         FeatureKey.VOLUME,
         FeatureKey.ARPEGGIO,
         FeatureKey.DUTY_CYCLE,
@@ -37,24 +37,24 @@ def test_supported_features_follow_dimension_order() -> None:
 
 
 def test_feature_ranges_match_expected_channel_domains() -> None:
-    assert feature_range(LibraryGeneratorName.PULSE, FeatureKey.DUTY_CYCLE) == feature_range(
-        GENERATOR_KIND[GeneratorName.PULSE1],
+    assert feature_range(GeneratorName.PULSE, FeatureKey.DUTY_CYCLE) == feature_range(
+        CHANNEL_GENERATOR_KIND[ChannelName.PULSE1],
         FeatureKey.DUTY_CYCLE,
     )
-    assert feature_range(LibraryGeneratorName.NOISE, FeatureKey.DUTY_CYCLE).maximum == 1
-    assert feature_range(LibraryGeneratorName.NOISE, FeatureKey.ARPEGGIO).minimum == 0
-    assert feature_range(LibraryGeneratorName.NOISE, FeatureKey.ARPEGGIO).maximum == 15
+    assert feature_range(GeneratorName.NOISE, FeatureKey.DUTY_CYCLE).maximum == 1
+    assert feature_range(GeneratorName.NOISE, FeatureKey.ARPEGGIO).minimum == 0
+    assert feature_range(GeneratorName.NOISE, FeatureKey.ARPEGGIO).maximum == 15
 
 
 def test_supports_reports_triangle_lacks_duty_cycle() -> None:
-    assert supports(LibraryGeneratorName.TRIANGLE, FeatureKey.VOLUME)
-    assert not supports(LibraryGeneratorName.TRIANGLE, FeatureKey.DUTY_CYCLE)
+    assert supports(GeneratorName.TRIANGLE, FeatureKey.VOLUME)
+    assert not supports(GeneratorName.TRIANGLE, FeatureKey.DUTY_CYCLE)
 
 
 def test_supported_features_match_exporter_attribute_maps() -> None:
-    assert tuple(supported_features(LibraryGeneratorName.PULSE)) == tuple(PulseExporter._ATTRIBUTE_MAP)
-    assert tuple(supported_features(LibraryGeneratorName.TRIANGLE)) == tuple(TriangleExporter._ATTRIBUTE_MAP)
-    assert tuple(supported_features(LibraryGeneratorName.NOISE)) == tuple(NoiseExporter._ATTRIBUTE_MAP)
+    assert tuple(supported_features(GeneratorName.PULSE)) == tuple(PulseExporter._ATTRIBUTE_MAP)
+    assert tuple(supported_features(GeneratorName.TRIANGLE)) == tuple(TriangleExporter._ATTRIBUTE_MAP)
+    assert tuple(supported_features(GeneratorName.NOISE)) == tuple(NoiseExporter._ATTRIBUTE_MAP)
 
 
 def test_feature_dimension_order_matches_famitracker_sequence_slots() -> None:

@@ -6,4 +6,4 @@ components:
     entries:
       - type: color
         key: Text
-        value: .library_generator
+        value: .generator

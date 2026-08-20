@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Optional
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
 from sampletones_core.project import Project
 from sampletones_core.project.instruments.sample import Sample
@@ -258,28 +258,28 @@ class ProjectController(CallbackMixin):
         self._announce(self.on_samples_changed)
         self._announce(self.on_song_changed)
 
-    def add_pattern(self, generator: GeneratorName) -> int:
-        index = self.song.add_pattern(generator)
+    def add_pattern(self, channel: ChannelName) -> int:
+        index = self.song.add_pattern(channel)
         self._touch()
         self._announce(self.on_song_changed)
         return index
 
     def clone_pattern(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         pattern_index: int,
     ) -> int:
-        clone_index = self.song.clone_pattern(generator, pattern_index)
+        clone_index = self.song.clone_pattern(channel, pattern_index)
         self._touch()
         self._announce(self.on_song_changed)
         return clone_index
 
     def remove_pattern(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         pattern_index: int,
     ) -> None:
-        self.song.remove_pattern(generator, pattern_index)
+        self.song.remove_pattern(channel, pattern_index)
         self._touch()
         self._announce(self.on_song_changed)
 
@@ -297,7 +297,7 @@ class ProjectController(CallbackMixin):
 
     def _existing_row(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         pattern_index: int,
         row_index: int,
     ) -> Row:
@@ -307,7 +307,7 @@ class ProjectController(CallbackMixin):
         clear edits treat that as a blank row, and :meth:`set_row` materialises the
         pattern when it writes.
         """
-        pattern = self.song.pattern(generator, pattern_index)
+        pattern = self.song.pattern(channel, pattern_index)
         if pattern is None:
             return Row()
 
@@ -315,7 +315,7 @@ class ProjectController(CallbackMixin):
 
     def set_row(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         pattern_index: int,
         row_index: int,
         *,
@@ -333,12 +333,12 @@ class ProjectController(CallbackMixin):
             transpose=self._clamp_transpose(transpose),
             volume=self._clamp_volume(volume),
         )
-        channel = self.song[generator]
-        channel.ensure_pattern(
+        channel_pool = self.song[channel]
+        channel_pool.ensure_pattern(
             pattern_index,
             self.song.rows_per_pattern,
         )
-        channel.set_row(
+        channel_pool.set_row(
             pattern_index,
             row_index,
             row,
@@ -348,7 +348,7 @@ class ProjectController(CallbackMixin):
 
     def update_row(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         pattern_index: int,
         row_index: int,
         *,
@@ -362,9 +362,9 @@ class ProjectController(CallbackMixin):
         single subcolumn while the rest of the row carries over. For clearing a
         subcolumn, :meth:`set_row` interprets ``None`` as "clear".
         """
-        existing = self._existing_row(generator, pattern_index, row_index)
+        existing = self._existing_row(channel, pattern_index, row_index)
         self.set_row(
-            generator,
+            channel,
             pattern_index,
             row_index,
             command=command if command is not None else existing.command,
@@ -374,7 +374,7 @@ class ProjectController(CallbackMixin):
 
     def clear_row(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         pattern_index: int,
         row_index: int,
         *,
@@ -388,9 +388,9 @@ class ProjectController(CallbackMixin):
         subcolumn to keep its current value. With no selectors this is the inverse
         of :meth:`update_row`.
         """
-        existing = self._existing_row(generator, pattern_index, row_index)
+        existing = self._existing_row(channel, pattern_index, row_index)
         self.set_row(
-            generator,
+            channel,
             pattern_index,
             row_index,
             command=None if instrument else existing.command,
@@ -410,11 +410,11 @@ class ProjectController(CallbackMixin):
 
     def set_order_entry(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         position: int,
         pattern_index: Optional[int],
     ) -> None:
-        self.song.set_order_entry(position, generator, pattern_index)
+        self.song.set_order_entry(position, channel, pattern_index)
         self._touch()
         self._announce(self.on_song_changed)
 

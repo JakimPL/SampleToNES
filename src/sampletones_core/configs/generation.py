@@ -24,8 +24,8 @@ from sampletones_core.constants.algorithm import (
     TRANSITION_VOLUME_WEIGHT,
 )
 from sampletones_core.constants.enums import (
-    DEFAULT_GENERATORS,
-    GeneratorName,
+    DEFAULT_CHANNELS,
+    ChannelName,
     PhaseAlignerName,
     SelectorName,
     SpectralDistance,
@@ -84,7 +84,13 @@ class GenerationConfig(DataModel):
     reset_phase: bool = Field(default=RESET_PHASE)
     final_regeneration: bool = Field(default=FINAL_REGENERATION)
 
-    generators: List[GeneratorName] = Field(default_factory=DEFAULT_GENERATORS.copy)
+    channels: List[ChannelName] = Field(
+        default_factory=DEFAULT_CHANNELS.copy,
+        validation_alias=AliasChoices(
+            "channels",
+            "generators",
+        ),
+    )
     calculation: CalculationConfig = Field(default_factory=CalculationConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
     metric: MetricConfig = Field(default_factory=MetricConfig)

@@ -196,7 +196,7 @@ given, one per slice.
 
 | Scope | `.btp` | `.json` preset |
 | --- | --- | --- |
-| One generator slice | a playable document holding that instrument | one file |
+| One channel slice | a playable document holding that instrument | one file |
 | A whole reconstruction | a playable document holding every slice | one file per slice, beside the chosen name |
 | A project | the song, its samples and its arrangement | — |
 

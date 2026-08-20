@@ -4,22 +4,22 @@ from typing import FrozenSet
 import pytest
 
 from sampletones_application.view_model.sequencer.channels import SequencerChannelsViewModel
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-ALL_CHANNELS = frozenset(GeneratorName.items())
+ALL_CHANNELS = frozenset(ChannelName.items())
 
-PULSE1 = GeneratorName.PULSE1
-PULSE2 = GeneratorName.PULSE2
-TRIANGLE = GeneratorName.TRIANGLE
-NOISE = GeneratorName.NOISE
+PULSE1 = ChannelName.PULSE1
+PULSE2 = ChannelName.PULSE2
+TRIANGLE = ChannelName.TRIANGLE
+NOISE = ChannelName.NOISE
 
 
 class TestAllMuted(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class AllMutedCase(BaseRegularTestCase):
-        muted: FrozenSet[GeneratorName]
+        muted: FrozenSet[ChannelName]
         expected: bool
 
     test_cases = (
@@ -55,7 +55,7 @@ class TestAllMuted(BaseTestSuite):
 class TestAnyMuted(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class AllMutedCase(BaseRegularTestCase):
-        muted: FrozenSet[GeneratorName]
+        muted: FrozenSet[ChannelName]
         expected: bool
 
     test_cases = (
@@ -98,29 +98,29 @@ class TestAnyMuted(BaseTestSuite):
 
 class TestIsSoloed:
     @pytest.mark.parametrize(
-        "generator",
-        GeneratorName.items(),
-        ids=lambda generator: generator.value,
+        "channel",
+        ChannelName.items(),
+        ids=lambda channel: channel.value,
     )
     def test_the_one_audible_channel_reads_as_soloed(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
     ) -> None:
-        view_model = SequencerChannelsViewModel(muted=ALL_CHANNELS - {generator})
+        view_model = SequencerChannelsViewModel(muted=ALL_CHANNELS - {channel})
 
-        soloed = {other for other in GeneratorName.items() if view_model.is_soloed(other)}
+        soloed = {other for other in ChannelName.items() if view_model.is_soloed(other)}
 
-        assert soloed == {generator}
+        assert soloed == {channel}
 
     def test_no_channel_is_soloed_in_a_full_mix(self) -> None:
         view_model = SequencerChannelsViewModel(muted=frozenset())
 
-        assert not any(view_model.is_soloed(generator) for generator in GeneratorName.items())
+        assert not any(view_model.is_soloed(channel) for channel in ChannelName.items())
 
     def test_no_channel_is_soloed_in_full_silence(self) -> None:
         view_model = SequencerChannelsViewModel(muted=ALL_CHANNELS)
 
-        assert not any(view_model.is_soloed(generator) for generator in GeneratorName.items())
+        assert not any(view_model.is_soloed(channel) for channel in ChannelName.items())
 
     def test_two_audible_channels_leave_neither_soloed(self) -> None:
         view_model = SequencerChannelsViewModel(muted=frozenset({PULSE1, PULSE2}))
@@ -131,19 +131,19 @@ class TestIsSoloed:
 
 class TestIsMuted:
     @pytest.mark.parametrize(
-        "generator",
-        GeneratorName.items(),
-        ids=lambda generator: generator.value,
+        "channel",
+        ChannelName.items(),
+        ids=lambda channel: channel.value,
     )
     def test_is_muted_reports_membership_of_the_mute_set(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
     ) -> None:
         view_model = SequencerChannelsViewModel(muted=frozenset({TRIANGLE, NOISE}))
 
-        assert view_model.is_muted(generator) is (generator in {TRIANGLE, NOISE})
+        assert view_model.is_muted(channel) is (channel in {TRIANGLE, NOISE})
 
     def test_no_channel_is_muted_in_a_full_mix(self) -> None:
         view_model = SequencerChannelsViewModel(muted=frozenset())
 
-        assert not any(view_model.is_muted(generator) for generator in GeneratorName.items())
+        assert not any(view_model.is_muted(channel) for channel in ChannelName.items())

@@ -5,7 +5,7 @@ from typing import Dict, Final, List, Optional, Sequence
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
@@ -134,7 +134,7 @@ PLAYER_APPROXIMATION_SAMPLES: Final[int] = 64
 
 
 def player_reconstruction(
-    instructions: Dict[GeneratorName, List[InstructionUnion]],
+    instructions: Dict[ChannelName, List[InstructionUnion]],
     nes_frequency: int,
 ) -> Reconstruction:
     """A reconstruction carrying the given channel streams, built at ``nes_frequency``.

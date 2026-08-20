@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.library import InstructionLibraryData
@@ -17,11 +17,11 @@ class TestReconstructorWorkerHelpers:
     def test_get_remaining_generator_classes_maps_by_class_name(
         self,
         worker: ReconstructorWorker,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
     ) -> None:
-        remaining = dict(worker.generators.items())
+        remaining = dict(worker.channels.items())
         by_class = worker.get_remaining_generator_classes(remaining)
-        expected_class_names = {gen.class_name() for gen in generators.values()}
+        expected_class_names = {gen.class_name() for gen in channels.values()}
         assert set(by_class.keys()) == expected_class_names
 
 
@@ -39,21 +39,21 @@ class TestReconstructorWorkerIntegration:
         self,
         worker: ReconstructorWorker,
         fragmented_audio: Any,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
     ) -> None:
         result = worker(fragmented_audio, [fragmented_audio.fragments_ids[0]])
         per_fragment = next(iter(result.values()))
-        assert set(per_fragment.keys()) == set(generators.keys())
+        assert set(per_fragment.keys()) == set(channels.keys())
 
     def test_approximation_data_has_valid_generator_name(
         self,
         worker: ReconstructorWorker,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
         synthetic_fragment: Fragment,
     ) -> None:
         result = worker.reconstruct(synthetic_fragment)
-        for generator_name in result:
-            assert generator_name in generators
+        for channel_name in result:
+            assert channel_name in channels
 
     def test_combined_approximation_is_not_all_zeros(
         self,
@@ -82,7 +82,7 @@ class TestReconstructorWorkerIntegration:
         self,
         config: Config,
         window: Window,
-        generators: Dict[GeneratorName, GeneratorUnion],
+        channels: Dict[ChannelName, GeneratorUnion],
         library_data: InstructionLibraryData,
     ) -> None:
         updated_config = config.model_copy(
@@ -103,7 +103,7 @@ class TestReconstructorWorkerIntegration:
         local_worker = ReconstructorWorker(
             config=updated_config,
             window=window,
-            generators=generators,
+            channels=channels,
             library_data=library_data,
             signal_length=1 << 20,
         )
@@ -125,7 +125,7 @@ class TestModuleLevelReconstruct:
             fragmented_audio=fragmented_audio,
             config=worker.config,
             window=worker.window,
-            generators=worker.generators,
+            channels=worker.channels,
             library_data=library_data,
         )
 
@@ -158,8 +158,8 @@ class TestModuleLevelReconstruct:
         fragment_ids = [fragmented_audio.fragments_ids[0]]
         result_a = self._call(worker, fragmented_audio, library_data, fragment_ids)
         result_b = self._call(worker, fragmented_audio, library_data, fragment_ids)
-        for generator_name in result_a[fragment_ids[0]]:
+        for channel_name in result_a[fragment_ids[0]]:
             assert (
-                result_a[fragment_ids[0]][generator_name].instruction
-                == result_b[fragment_ids[0]][generator_name].instruction
+                result_a[fragment_ids[0]][channel_name].instruction
+                == result_b[fragment_ids[0]][channel_name].instruction
             )

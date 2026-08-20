@@ -19,7 +19,7 @@ complements `docs/development/architecture.md` (layering and ownership) and
    render one model, so they show one shape, and each rule is exercised without a window.
 3. **A row's identity is its path; its name is a label.** Favorites, the context menus, copy-path,
    playback and opening a reconstruction all key on `filepath`. That is what frees a name to be
-   rewritten — a configuration directory renamed to its generator abbreviation, a chain of headings
+   rewritten — a configuration directory renamed to its channel abbreviation, a chain of headings
    joined into one row, a colliding label marked with its configuration hash.
 4. **The browser writes the headings the disk states rather than holds.** A frequency pair, a
    transformation, a source folder, one source audio: each becomes a row that carries no path of its
@@ -54,7 +54,7 @@ drive, and `get_all_reconstruction_files` reads the scan.
 |---|---|---|
 | Scan | `tree/scan.py` | `scan_reconstructions` walks the directory once, recording each folder with the configuration its name states and each `.stn` file beneath it |
 | Records | `tree/entries/` | `DirectoryEntry`, `ReconstructionEntry`, `ReconstructionScan` — frozen, path-only, no widgets and no tree |
-| Configuration branch | `tree/configurations/` | `branch.py` lays the scanned folders out as they sit; `grouping.py` lifts a top-level configuration directory under frequency ▶ transformation configuration headings and names it by its generators, so the rows leading to it spell its display name; `naming.py` gives the remaining configuration directories friendly names, unique among their siblings |
+| Configuration branch | `tree/configurations/` | `branch.py` lays the scanned folders out as they sit; `grouping.py` lifts a top-level configuration directory under frequency ▶ transformation configuration headings and names it by its channels, so the rows leading to it spell its display name; `naming.py` gives the remaining configuration directories friendly names, unique among their siblings |
 | Sample branch | `tree/samples/` | `variants.py` regroups every top-level configuration directory's reconstructions by the audio they mirror (`SampleSource` → `SampleVariant`); `branch.py` rebuilds the mirrored folders as groups and gathers each audio's variants under one sample row, each labelled by its configuration |
 | Shaping | `tree/prune.py`, `tree/collapse.py`, `tree/order.py` | Run in that order over each branch, deepest rows first |
 | Containers | `tree/containers.py` | `find_or_create_group`, `find_or_create_config_group` and `find_or_create_sample` extend the heading of that name a parent already holds; each heading is looked up among the siblings of its own kind and class, so a folder and an audio sharing a name stay two rows |
@@ -106,7 +106,7 @@ configuration is what distinguishes one row from the next.
   in.
 * **Unique sibling labels** (`unique_display_names`, `sampletones_core/configs/display.py`) — where
   siblings would read alike, every member of that label takes its short configuration hash. One rule
-  serves the generator directories under a transformation group, the nested configuration directories,
+  serves the channel directories under a transformation group, the nested configuration directories,
   and the variants under a sample.
 
 ## The panels

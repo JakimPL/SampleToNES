@@ -26,7 +26,7 @@ clicking either path shows it in your file manager. When a single file finishes,
 only one runs at a time.
 
 A few settings are worth knowing before you convert. Under **Reconstructor
-settings**, the **Generators** toggles choose which channels take part — at least
+settings**, the **Channels** toggles choose which channels take part — at least
 one must be on — and **Drive** sets how hard they are pushed. **General settings**
 holds the analysis options: sample rate, NES frequency, generation method, and
 feature scaling. The rest, including the worker count and the output and library
@@ -122,7 +122,7 @@ reconstructed.
 one key away.
 
 `1` to `4` toggle the four NES channels on the tab in front of you: the
-generators on **Main**, the channels drawn on **Reconstructions**, and the song's
+the channels on **Main**, the channels drawn on **Reconstructions**, and the song's
 mix on the **Sequencer**. In the sequencer's grids the digits type values into the
 cell you are on, so use the channel names or the **Playback ▸ Channels** menu to
 mute there.

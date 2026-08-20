@@ -43,7 +43,7 @@ class TrackerBackend(Protocol):
         destination: Path,
         request: InstrumentExport,
     ) -> ExportArtifact:
-        """Writes one generator slice.
+        """Writes one channel slice.
 
         Args:
             destination: The file to write.
@@ -61,7 +61,7 @@ class TrackerBackend(Protocol):
         destination: Path,
         request: SampleExport,
     ) -> ExportArtifact:
-        """Writes every generator slice of one reconstruction.
+        """Writes every channel slice of one reconstruction.
 
         Args:
             destination: The file this scope is written to. A format that keeps one

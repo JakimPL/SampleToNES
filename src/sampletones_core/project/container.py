@@ -4,6 +4,8 @@ from typing import Dict
 
 from pydantic import ValidationError
 
+from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.compatibility.upgrade import upgrade_json
 from sampletones_core.project.document import ProjectDocument
 from sampletones_core.project.instruments.record import SampleRecord
 from sampletones_core.project.instruments.sample import Sample
@@ -63,7 +65,12 @@ class ProjectContainer:
     def load(path: Pathlike) -> Project:
         try:
             with zipfile.ZipFile(path, "r") as archive:
-                document = ProjectDocument.model_validate_json(archive.read(PROJECT_DOCUMENT_NAME))
+                document = ProjectDocument.model_validate_json(
+                    upgrade_json(
+                        ObjectKind.PROJECT,
+                        archive.read(PROJECT_DOCUMENT_NAME),
+                    )
+                )
                 ProjectContainer._validate_document(document)
                 reconstructions = ProjectContainer._read_reconstructions(archive)
             return ProjectContainer._build_project(document, reconstructions)

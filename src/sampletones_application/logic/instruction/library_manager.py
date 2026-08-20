@@ -5,7 +5,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import Window
 from sampletones_core.instructions.types import InstructionUnion
 from sampletones_core.library import (
@@ -295,7 +295,7 @@ class InstructionsLibraryManager(CallbackMixin):
         return library_node
 
     def _build_generator_nodes(self, parent: TreeNode) -> None:
-        for generator_name in LibraryGeneratorName:
+        for generator_name in GeneratorName:
             GeneratorNode(
                 generator_name.value.capitalize(),
                 generator_name=generator_name,

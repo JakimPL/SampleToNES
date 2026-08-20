@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, ExporterTypeUnion
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, ExporterTypeUnion
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 
@@ -33,21 +33,21 @@ class SampleVoice:
     def read(
         cls,
         reconstruction: Reconstruction,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
     ) -> SampleVoice:
         """The voice one channel of ``reconstruction`` is played through.
 
         Args:
             reconstruction: The sample's reconstruction.
-            generator_name: The channel being sounded.
+            channel_name: The channel being sounded.
 
         Returns:
             SampleVoice: The reading of that channel's frames.
         """
         return cls(
-            exporter=GENERATOR_NAME_TO_EXPORTER_MAP[generator_name],
-            initial_pitch=reconstruction.initial_pitches[generator_name],
-            held_features=reconstruction.held_features[generator_name],
+            exporter=CHANNEL_TO_EXPORTER_MAP[channel_name],
+            initial_pitch=reconstruction.initial_pitches[channel_name],
+            held_features=reconstruction.held_features[channel_name],
         )
 
     def sound(

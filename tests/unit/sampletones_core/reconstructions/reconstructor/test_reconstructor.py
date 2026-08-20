@@ -33,8 +33,8 @@ class TestReconstructorInit:
         library_data: InstructionLibraryData,
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
-        expected_names = set(config.generation.generators)
-        assert set(reconstructor.generators.keys()) == expected_names
+        expected_names = set(config.generation.channels)
+        assert set(reconstructor.channels.keys()) == expected_names
 
     def test_window_created_from_config(
         self,
@@ -66,7 +66,7 @@ class TestReconstructorGetCoefficient:
         reconstructor = _make_reconstructor(config, library_data)
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
         coefficient = reconstructor.get_coefficient(audio)
-        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.generators.values())
+        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.channels.values())
         assert coefficient == pytest.approx(0.5 / total_mixer)
 
     def test_coefficient_is_robust_to_a_lone_transient(
@@ -76,7 +76,7 @@ class TestReconstructorGetCoefficient:
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
         frame_length = config.library.frame_length
-        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.generators.values())
+        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.channels.values())
         audio = np.full(frame_length * 24, 0.05, dtype=np.float32)
         audio[:frame_length] = 1.0
         coefficient = reconstructor.get_coefficient(audio)
@@ -119,7 +119,7 @@ class TestReconstructorGetFragments:
             assert len(fragment.audio) == config.library.frame_length
 
 
-class TestReconstructorResetGenerators:
+class TestReconstructorResetChannels:
     def test_reset_clears_generator_states(
         self,
         config: Config,
@@ -137,7 +137,7 @@ class TestReconstructorResetGenerators:
         )
 
         reconstructor = _make_reconstructor(config, library_data)
-        for generator in reconstructor.generators.values():
+        for generator in reconstructor.channels.values():
             if isinstance(generator, PulseGenerator):
                 generator.save_state(True, PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=0))
             elif isinstance(generator, TriangleGenerator):
@@ -145,9 +145,9 @@ class TestReconstructorResetGenerators:
             elif isinstance(generator, NoiseGenerator):
                 generator.save_state(True, NoiseInstruction(on=True, period=0, volume=10, short=False))
 
-        assert all(gen.previous_instruction is not None for gen in reconstructor.generators.values())
+        assert all(gen.previous_instruction is not None for gen in reconstructor.channels.values())
         reconstructor.reset_generators()
-        assert all(gen.previous_instruction is None for gen in reconstructor.generators.values())
+        assert all(gen.previous_instruction is None for gen in reconstructor.channels.values())
 
 
 class TestReconstructorUpdateState:
@@ -168,19 +168,19 @@ class TestReconstructorUpdateState:
             }
         )
         reconstructor = _make_reconstructor(updated_config, library_data)
-        generator_name = next(iter(reconstructor.generators))
+        channel_name = next(iter(reconstructor.channels))
         instruction = next(
             instrument
             for instrument, frag in library_data.data.items()
-            if frag.generator_class == reconstructor.generators[generator_name].class_name() and instrument.on
+            if frag.generator_class == reconstructor.channels[channel_name].class_name() and instrument.on
         )
         approximation_data = ApproximationData(
-            generator_name=generator_name,
+            channel_name=channel_name,
             approximation=synthetic_fragment,
             instruction=instruction,
         )
-        reconstructor.state = ReconstructionState.create(list(reconstructor.generators.keys()))
-        return reconstructor, generator_name, approximation_data
+        reconstructor.state = ReconstructionState.create(list(reconstructor.channels.keys()))
+        return reconstructor, channel_name, approximation_data
 
     def test_without_final_regeneration_stores_precomputed_audio_scaled_by_drive(
         self,
@@ -188,7 +188,7 @@ class TestReconstructorUpdateState:
         library_data: InstructionLibraryData,
         synthetic_fragment: Fragment,
     ) -> None:
-        reconstructor, generator_name, approximation_data = self._setup(
+        reconstructor, channel_name, approximation_data = self._setup(
             config,
             library_data,
             synthetic_fragment,
@@ -197,7 +197,7 @@ class TestReconstructorUpdateState:
         reconstructor.update_state(approximation_data)
         expected = np.asarray(synthetic_fragment.audio) * reconstructor.config.generation.drive
         np.testing.assert_array_almost_equal(
-            reconstructor.state.approximations[generator_name][0],
+            reconstructor.state.approximations[channel_name][0],
             expected,
         )
 
@@ -207,14 +207,14 @@ class TestReconstructorUpdateState:
         library_data: InstructionLibraryData,
         synthetic_fragment: Fragment,
     ) -> None:
-        reconstructor, generator_name, approximation_data = self._setup(
+        reconstructor, channel_name, approximation_data = self._setup(
             config,
             library_data,
             synthetic_fragment,
             final_regeneration=False,
         )
         reconstructor.update_state(approximation_data)
-        assert reconstructor.generators[generator_name].previous_instruction is None
+        assert reconstructor.channels[channel_name].previous_instruction is None
 
     def test_with_final_regeneration_reruns_generator(
         self,
@@ -222,14 +222,14 @@ class TestReconstructorUpdateState:
         library_data: InstructionLibraryData,
         synthetic_fragment: Fragment,
     ) -> None:
-        reconstructor, generator_name, approximation_data = self._setup(
+        reconstructor, channel_name, approximation_data = self._setup(
             config,
             library_data,
             synthetic_fragment,
             final_regeneration=True,
         )
         reconstructor.update_state(approximation_data)
-        assert reconstructor.generators[generator_name].previous_instruction is approximation_data.instruction
+        assert reconstructor.channels[channel_name].previous_instruction is approximation_data.instruction
 
 
 class TestReconstructorReconstruct:
@@ -240,12 +240,12 @@ class TestReconstructorReconstruct:
         fragmented_audio: FragmentedAudio,
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
-        reconstructor.state = ReconstructionState.create(list(reconstructor.generators.keys()))
+        reconstructor.state = ReconstructionState.create(list(reconstructor.channels.keys()))
         reconstructor.reconstruct(fragmented_audio)
         fragment_count = len(fragmented_audio.fragments_ids)
-        for generator_name in reconstructor.generators:
-            assert len(reconstructor.state.instructions[generator_name]) == fragment_count
-            assert len(reconstructor.state.approximations[generator_name]) == fragment_count
+        for channel_name in reconstructor.channels:
+            assert len(reconstructor.state.instructions[channel_name]) == fragment_count
+            assert len(reconstructor.state.approximations[channel_name]) == fragment_count
 
     def test_approximations_have_correct_frame_length(
         self,
@@ -254,10 +254,10 @@ class TestReconstructorReconstruct:
         fragmented_audio: FragmentedAudio,
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
-        reconstructor.state = ReconstructionState.create(list(reconstructor.generators.keys()))
+        reconstructor.state = ReconstructionState.create(list(reconstructor.channels.keys()))
         reconstructor.reconstruct(fragmented_audio)
-        for generator_name in reconstructor.generators:
-            for approximation in reconstructor.state.approximations[generator_name]:
+        for channel_name in reconstructor.channels:
+            for approximation in reconstructor.state.approximations[channel_name]:
                 assert len(approximation) == config.library.frame_length
 
 

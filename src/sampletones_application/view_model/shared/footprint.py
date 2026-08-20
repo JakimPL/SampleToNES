@@ -2,7 +2,7 @@ from typing import Dict, Optional, Self, Tuple
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import (
     InstrumentFootprint,
     total_footprint,
@@ -16,7 +16,7 @@ class InstrumentSizeViewModel(BaseModel, frozen=True):
     whole and one naming a region read the same figure.
     """
 
-    generator: GeneratorName
+    channel: ChannelName
     footprint: InstrumentFootprint
 
     @property
@@ -39,17 +39,17 @@ class SampleFootprintViewModel(BaseModel, frozen=True):
     @classmethod
     def from_footprints(
         cls,
-        footprints: Dict[GeneratorName, InstrumentFootprint],
+        footprints: Dict[ChannelName, InstrumentFootprint],
     ) -> Self:
         """Collects measured channels in the generators' own order, so displays list them alike."""
         return cls(
             instruments=tuple(
                 InstrumentSizeViewModel(
-                    generator=generator_name,
-                    footprint=footprints[generator_name],
+                    channel=channel_name,
+                    footprint=footprints[channel_name],
                 )
-                for generator_name in GeneratorName.items()
-                if generator_name in footprints
+                for channel_name in ChannelName.items()
+                if channel_name in footprints
             ),
         )
 
@@ -62,10 +62,10 @@ class SampleFootprintViewModel(BaseModel, frozen=True):
         """
         return total_footprint(instrument.footprint for instrument in self.instruments).total_bytes
 
-    def bytes_for(self, generator: GeneratorName) -> Optional[int]:
+    def bytes_for(self, channel: ChannelName) -> Optional[int]:
         """The bytes one channel's instrument occupies, where the sample covers that channel."""
         for instrument in self.instruments:
-            if instrument.generator == generator:
+            if instrument.channel == channel:
                 return instrument.total_bytes
 
         return None

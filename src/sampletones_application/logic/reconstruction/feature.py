@@ -5,7 +5,7 @@ from typing import Dict, Optional, cast
 
 import numpy as np
 
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
 
@@ -18,18 +18,18 @@ class FeatureData:
     for any of them and :attr:`Features.has_frames` says which ones play.
     """
 
-    generators: Dict[GeneratorName, Features]
+    channels: Dict[ChannelName, Features]
 
-    def __getitem__(self, generator_name: GeneratorName) -> Features:
-        return self.generators[generator_name]
+    def __getitem__(self, channel_name: ChannelName) -> Features:
+        return self.channels[channel_name]
 
     @classmethod
     def load(cls, reconstruction: Reconstruction) -> FeatureData:
         exported_features = reconstruction.export()
 
-        generators = {}
+        channels = {}
         for generator_name_str, features in exported_features.items():
-            generator_name = GeneratorName(generator_name_str)
+            channel_name = ChannelName(generator_name_str)
             feature = Features(
                 initial_pitch=cast(int, features.get(FeatureKey.INITIAL_PITCH)),
                 volume=cast(np.ndarray, features.get(FeatureKey.VOLUME)),
@@ -39,6 +39,6 @@ class FeatureData:
                 duty_cycle=cast(Optional[np.ndarray], features.get(FeatureKey.DUTY_CYCLE)),
             )
 
-            generators[generator_name] = feature
+            channels[channel_name] = feature
 
-        return cls(generators=generators)
+        return cls(channels=channels)

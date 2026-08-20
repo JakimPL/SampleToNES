@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
 from sampletones_application.view_model.sequencer.region import OrderRegion
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.utils.agreement import Agreement
 
 from .block import BlockKey, OrderBlock
@@ -26,9 +26,9 @@ class OrderBlockReader:
         value the paste passes by.
         """
         entries: Dict[BlockKey, Optional[int]] = {}
-        for row_offset, generator in enumerate(region.generators):
+        for row_offset, channel in enumerate(region.channels):
             for position_offset, position in enumerate(region.positions):
-                agreement = self._agree(generator, position)
+                agreement = self._agree(channel, position)
                 if agreement.is_unanimous:
                     entries[(row_offset, position_offset)] = agreement.value
 
@@ -36,7 +36,7 @@ class OrderBlockReader:
 
     def _agree(
         self,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         position: int,
     ) -> Agreement[Optional[int]]:
         """What a row holds at a position: a channel's own index, or the one its channels share.
@@ -45,7 +45,7 @@ class OrderBlockReader:
         answers for every channel, which is the group its display summarises too, so a block states
         about a cell exactly what the table it came from shows there.
         """
-        if generator is not None:
-            return Agreement.collapse([self._order.entry(generator, position)])
+        if channel is not None:
+            return Agreement.collapse([self._order.entry(channel, position)])
 
-        return Agreement.collapse(self._order.entry(channel, position) for channel in GeneratorName.items())
+        return Agreement.collapse(self._order.entry(channel, position) for channel in ChannelName.items())

@@ -124,7 +124,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWordSegment,
 )
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
@@ -421,9 +421,9 @@ class SequencerTabCoordinator:
         """The mute set the tables show, for the menu bar that lists the same channels."""
         return self._sequencer_channels_logic.build_channels()
 
-    def toggle_channel(self, generator: GeneratorName) -> None:
+    def toggle_channel(self, channel: ChannelName) -> None:
         """Flips one channel between audible and silent, the menu's per-channel gesture."""
-        self._sequencer_channels_logic.toggle(generator)
+        self._sequencer_channels_logic.toggle(channel)
 
     def unmute_all_channels(self) -> None:
         """Returns every channel to audible, the menu's whole-mix gesture."""
@@ -768,15 +768,15 @@ class SequencerTabCoordinator:
     def _cell_key(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> CoalesceKey:
         """Identifies one cell of the displayed frame as a coalescing target.
 
-        The sample column (``generator`` absent) is its own target, distinct from
+        The sample column (``channel`` absent) is its own target, distinct from
         every channel column.
         """
-        channel = generator if generator is not None else ""
-        return (self._sequencer_tracker_logic.frame_index, channel, row_index)
+        channel_key = channel if channel is not None else ""
+        return (self._sequencer_tracker_logic.frame_index, channel_key, row_index)
 
     def _adjustment_key(
         self,
@@ -800,7 +800,7 @@ class SequencerTabCoordinator:
     def _edit_row_key(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         sample_id: Optional[str],
         transpose: Optional[int],
         volume: Optional[int],
@@ -812,7 +812,7 @@ class SequencerTabCoordinator:
         separate entries.
         """
         return (
-            *self._cell_key(row_index, generator),
+            *self._cell_key(row_index, channel),
             sample_id is not None,
             transpose is not None,
             volume is not None,
@@ -874,13 +874,13 @@ class SequencerTabCoordinator:
     def reconstruction_edit_detail(
         self,
         sample_id: str,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> HistoryDetail:
         """Describes a reconstruction edit for the project history's detail line."""
         return self._history_detail.edit_reconstruction(
             sample_id,
-            generator_name,
+            channel_name,
             feature_key,
         )
 

@@ -6,10 +6,11 @@ import numpy as np
 
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.view_model.shared.waveform_data import WaveformData
-from sampletones_core.audio import load_audio
+from sampletones_core.audio import load_audio, mix
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.naming.derive import derive_name
 from sampletones_shared.logger import logger
 
 
@@ -103,11 +104,15 @@ class ReconstructionData:
     def _derive_name(reconstruction: Reconstruction, filepath: Path) -> str:
         """Names the document after its source audio when present, otherwise after the file.
 
-        A file-backed reconstruction keeps the audio's name for display and export; a detached
+        A file-backed reconstruction keeps the audio's name for display and export; several
+        source paths (stems) name the document through the source-naming rules, and a detached
         reconstruction (no source audio) falls back to the ``.stn`` filename.
         """
-        audio_filepath = reconstruction.audio_filepath
-        return audio_filepath.stem if audio_filepath is not None else filepath.stem
+        source_paths = reconstruction.source_paths
+        if source_paths:
+            return derive_name(source_paths, fallback_stem=filepath.stem)
+
+        return filepath.stem
 
     @staticmethod
     def _load_original_audio(
@@ -116,24 +121,32 @@ class ReconstructionData:
         """Loads the source audio, yielding ``None`` when no usable original exists.
 
         A reconstruction detached from its origin (a project sample) records no source path, and a
-        file-backed reconstruction may point at audio absent or unreadable on this machine. Both
-        cases yield ``None``; the approximation then stands on its own in playback and the display.
+        file-backed reconstruction may point at audio absent or unreadable on this machine. Several
+        recorded paths (stems) mix into one recording, so one unreadable stem costs the whole
+        original. Every such case yields ``None``; the approximation then stands on its own in
+        playback and the display.
         """
-        audio_filepath = reconstruction.audio_filepath
-        if audio_filepath is None:
+        source_paths = reconstruction.source_paths
+        if not source_paths:
             return None
 
         config = reconstruction.config
-        try:
-            return load_audio(
-                path=audio_filepath,
-                target_sample_rate=config.library.sample_rate,
-                normalize=config.general.normalize,
-                quantize=config.general.quantize,
-            )
-        except (FileNotFoundError, IsADirectoryError, PermissionError, OSError):
-            logger.warning(f"Could not load original audio from '{audio_filepath}'. The original is unavailable")
-            return None
+        recordings: List[np.ndarray] = []
+        for path in source_paths:
+            try:
+                recordings.append(
+                    load_audio(
+                        path=path,
+                        target_sample_rate=config.library.sample_rate,
+                        normalize=config.general.normalize,
+                        quantize=config.general.quantize,
+                    )
+                )
+            except (FileNotFoundError, IsADirectoryError, PermissionError, OSError):
+                logger.warning(f"Could not load original audio from '{path}'. The original is unavailable")
+                return None
+
+        return mix(recordings)
 
     def waveform_data(self) -> WaveformData:
         """Projects the slice of this data the waveform display renders."""
@@ -145,5 +158,5 @@ class ReconstructionData:
             frame_length=self.reconstruction.config.frame_length,
         )
 
-    def get_partials(self, generator_names: List[GeneratorName]) -> np.ndarray:
-        return self.waveform_data().partials(generator_names)
+    def get_partials(self, channel_names: List[ChannelName]) -> np.ndarray:
+        return self.waveform_data().partials(channel_names)

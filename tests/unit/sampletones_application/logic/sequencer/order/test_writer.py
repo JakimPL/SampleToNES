@@ -12,7 +12,7 @@ from sampletones_application.logic.sequencer.order import (
     SequencerOrderLogic,
 )
 from sampletones_application.view_model.sequencer.region import OrderCell, OrderRegion
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.sequencer import fill_order, parse_order_block, render_order
@@ -50,8 +50,8 @@ def table() -> Table:
     )
 
 
-def _row(generator: Optional[GeneratorName]) -> int:
-    return CHANNEL_AXIS.index(generator)
+def _row(channel: Optional[ChannelName]) -> int:
+    return CHANNEL_AXIS.index(channel)
 
 
 class TestPaste(BaseTestSuite):
@@ -72,7 +72,7 @@ class TestPaste(BaseTestSuite):
         TestCase(
             label="a block lands at the cell it is written from",
             block=("07 08",),
-            origin=OrderCell(generator=GeneratorName.PULSE2, position=1),
+            origin=OrderCell(channel=ChannelName.PULSE2, position=1),
             expected=(
                 SILENT,
                 ".. 07 08",
@@ -83,7 +83,7 @@ class TestPaste(BaseTestSuite):
         TestCase(
             label="a block through the master row reaches every channel",
             block=("05",),
-            origin=OrderCell(generator=None, position=0),
+            origin=OrderCell(channel=None, position=0),
             expected=(
                 "05 .. ..",
                 "05 .. ..",
@@ -97,7 +97,7 @@ class TestPaste(BaseTestSuite):
                 "05",
                 "06",
             ),
-            origin=OrderCell(generator=None, position=0),
+            origin=OrderCell(channel=None, position=0),
             expected=(
                 "06 .. ..",
                 "05 .. ..",
@@ -108,7 +108,7 @@ class TestPaste(BaseTestSuite):
         TestCase(
             label="a block read from the master row writes one channel when written to one",
             block=("05",),
-            origin=OrderCell(generator=GeneratorName.TRIANGLE, position=2),
+            origin=OrderCell(channel=ChannelName.TRIANGLE, position=2),
             expected=(
                 SILENT,
                 SILENT,
@@ -125,7 +125,7 @@ class TestPaste(BaseTestSuite):
                 SILENT,
             ),
             block=("09 ? 0A",),
-            origin=OrderCell(generator=GeneratorName.PULSE1, position=0),
+            origin=OrderCell(channel=ChannelName.PULSE1, position=0),
             expected=(
                 "09 02 0A",
                 SILENT,
@@ -142,7 +142,7 @@ class TestPaste(BaseTestSuite):
                 SILENT,
             ),
             block=(".. ..",),
-            origin=OrderCell(generator=GeneratorName.PULSE1, position=0),
+            origin=OrderCell(channel=ChannelName.PULSE1, position=0),
             expected=(
                 ".. .. 03",
                 SILENT,
@@ -157,7 +157,7 @@ class TestPaste(BaseTestSuite):
                 "02",
                 "03",
             ),
-            origin=OrderCell(generator=GeneratorName.TRIANGLE, position=0),
+            origin=OrderCell(channel=ChannelName.TRIANGLE, position=0),
             expected=(
                 SILENT,
                 SILENT,
@@ -171,7 +171,7 @@ class TestPaste(BaseTestSuite):
                 "01",
                 "02",
             ),
-            origin=OrderCell(generator=GeneratorName.NOISE, position=0),
+            origin=OrderCell(channel=ChannelName.NOISE, position=0),
             expected=(
                 SILENT,
                 SILENT,
@@ -211,7 +211,7 @@ class TestGrowth(BaseTestSuite):
         TestCase(
             label="a block reaching past the end appends exactly the positions it writes",
             block=("01 02 03",),
-            origin=OrderCell(generator=GeneratorName.PULSE1, position=2),
+            origin=OrderCell(channel=ChannelName.PULSE1, position=2),
             expected=(
                 ".. .. 01 02 03",
                 ".. .. .. .. ..",
@@ -222,7 +222,7 @@ class TestGrowth(BaseTestSuite):
         TestCase(
             label="a column the block says nothing about appends no position",
             block=("01 ? ?",),
-            origin=OrderCell(generator=GeneratorName.PULSE1, position=2),
+            origin=OrderCell(channel=ChannelName.PULSE1, position=2),
             expected=(
                 ".. .. 01",
                 SILENT,
@@ -233,7 +233,7 @@ class TestGrowth(BaseTestSuite):
         TestCase(
             label="a column the block silences appends the position it silences",
             block=("01 ? ..",),
-            origin=OrderCell(generator=GeneratorName.PULSE1, position=2),
+            origin=OrderCell(channel=ChannelName.PULSE1, position=2),
             expected=(
                 ".. .. 01 .. ..",
                 ".. .. .. .. ..",
@@ -247,7 +247,7 @@ class TestGrowth(BaseTestSuite):
                 "01 ?",
                 "?  02",
             ),
-            origin=OrderCell(generator=GeneratorName.NOISE, position=2),
+            origin=OrderCell(channel=ChannelName.NOISE, position=2),
             expected=(
                 SILENT,
                 SILENT,
@@ -258,7 +258,7 @@ class TestGrowth(BaseTestSuite):
         TestCase(
             label="a wholly mixed block leaves the order the length it was",
             block=("? ? ?",),
-            origin=OrderCell(generator=GeneratorName.PULSE1, position=2),
+            origin=OrderCell(channel=ChannelName.PULSE1, position=2),
             expected=(
                 SILENT,
                 SILENT,
@@ -299,8 +299,8 @@ class TestClear:
 
         table.writer.clear(
             OrderRegion(
-                first_row=_row(GeneratorName.PULSE2),
-                last_row=_row(GeneratorName.TRIANGLE),
+                first_row=_row(ChannelName.PULSE2),
+                last_row=_row(ChannelName.TRIANGLE),
                 first_position=0,
                 last_position=1,
             )
@@ -355,7 +355,7 @@ class TestClear:
         table.writer.clear(
             OrderRegion(
                 first_row=_row(None),
-                last_row=_row(GeneratorName.NOISE),
+                last_row=_row(ChannelName.NOISE),
                 first_position=0,
                 last_position=2,
             )
@@ -379,14 +379,14 @@ class TestRoundTrip:
         )
         before = render_order(table.logic)
         region = OrderRegion(
-            first_row=_row(GeneratorName.PULSE1),
-            last_row=_row(GeneratorName.NOISE),
+            first_row=_row(ChannelName.PULSE1),
+            last_row=_row(ChannelName.NOISE),
             first_position=0,
             last_position=2,
         )
         block = OrderBlockReader(table.logic).read(region)
 
         table.writer.clear(region)
-        table.writer.write(block, OrderCell(generator=GeneratorName.PULSE1, position=0))
+        table.writer.write(block, OrderCell(channel=ChannelName.PULSE1, position=0))
 
         assert render_order(table.logic) == before

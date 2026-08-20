@@ -35,7 +35,7 @@ from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
@@ -52,18 +52,18 @@ SILENT_INSTRUMENT: Final[InstrumentFootprint] = InstrumentFootprint(instrument_b
 
 NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
     reconstruction_loaded=False,
-    playing_generators=frozenset(),
+    playing_channels=frozenset(),
     footprint=None,
 )
 
 
 def build_view_model(
-    channel_footprints: Dict[GeneratorName, InstrumentFootprint],
+    channel_footprints: Dict[ChannelName, InstrumentFootprint],
 ) -> ReconstructionInstrumentsViewModel:
     """A loaded reconstruction playing the given channels, each measured as given."""
     return ReconstructionInstrumentsViewModel(
         reconstruction_loaded=True,
-        playing_generators=frozenset(channel_footprints),
+        playing_channels=frozenset(channel_footprints),
         footprint=SampleFootprintViewModel.from_footprints(channel_footprints),
     )
 
@@ -141,7 +141,7 @@ class TestSequenceLengthWarning:
         bound_themes: List[str],
         item_count: int,
     ) -> None:
-        panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, item_count)
+        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, item_count)
         assert bound_themes == [TAG_GLOBAL_THEME_DEFAULT]
 
     def test_a_sequence_beyond_the_limit_takes_the_warning_theme(
@@ -149,7 +149,7 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
+        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
         assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING]
 
     def test_a_shortened_sequence_returns_to_the_default_theme(
@@ -157,8 +157,8 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(GeneratorName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 40)
-        panel._apply_input_theme(GeneratorName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS)
+        panel._apply_input_theme(ChannelName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 40)
+        panel._apply_input_theme(ChannelName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS)
         assert bound_themes == [
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
@@ -169,8 +169,8 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
-        panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.ARPEGGIO, 8)
+        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
+        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.ARPEGGIO, 8)
         assert bound_themes == [
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
@@ -178,31 +178,31 @@ class TestSequenceLengthWarning:
 
 
 class TestInstrumentExport:
-    """The export button carries the generator whose slice it writes; the destination the
+    """The export button carries the channel whose slice it writes; the destination the
     dialog answers with names the tracker, so no format travels from here."""
 
     def test_the_generator_reaches_the_export_callback(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        calls: List[GeneratorName] = []
+        calls: List[ChannelName] = []
         panel.on_instrument_export = calls.append
 
-        panel._export_callback(GeneratorName.NOISE)()
+        panel._export_callback(ChannelName.NOISE)()
 
-        assert calls == [GeneratorName.NOISE]
+        assert calls == [ChannelName.NOISE]
 
     def test_each_generator_gets_its_own_handler(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        calls: List[GeneratorName] = []
+        calls: List[ChannelName] = []
         panel.on_instrument_export = calls.append
 
-        for generator_name in GeneratorName.items():
-            panel._export_callback(generator_name)()
+        for channel_name in ChannelName.items():
+            panel._export_callback(channel_name)()
 
-        assert calls == list(GeneratorName.items())
+        assert calls == list(ChannelName.items())
 
     def test_the_handler_is_one_the_framework_can_dispatch(
         self,
@@ -211,7 +211,7 @@ class TestInstrumentExport:
         """DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it,
         so a press handler carries one and takes the arguments the framework offers a button.
         """
-        callback = panel._export_callback(GeneratorName.NOISE)
+        callback = panel._export_callback(ChannelName.NOISE)
 
         assert callback.__code__.co_argcount == 0
 
@@ -223,12 +223,12 @@ class TestSequenceStatusMessage:
         bound_themes: List[str],
     ) -> None:
         panel._apply_input_theme(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
             HEXADECIMAL_BASE,
         )
         message = panel._sequence_status_message(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
         )
         assert message == panel._language_manager[SEQUENCE_STATUS_KEY].format(
@@ -240,8 +240,8 @@ class TestSequenceStatusMessage:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(GeneratorName.PULSE1, FeatureKey.VOLUME, 300)
-        message = panel._sequence_status_message(GeneratorName.PULSE1, FeatureKey.VOLUME)
+        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, 300)
+        message = panel._sequence_status_message(ChannelName.PULSE1, FeatureKey.VOLUME)
         assert "300" in message
         assert str(MAX_SEQUENCE_ITEMS) in message
 
@@ -251,27 +251,27 @@ class TestSizeFields(BaseTestSuite):
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        channel_footprints: Dict[GeneratorName, InstrumentFootprint]
+        channel_footprints: Dict[ChannelName, InstrumentFootprint]
         expected: str
 
     test_cases = (
         TestCase(
             label="a single channel spends what its instrument does",
-            channel_footprints={GeneratorName.PULSE1: LARGEST_PULSE},
+            channel_footprints={ChannelName.PULSE1: LARGEST_PULSE},
             expected="777 B",
         ),
         TestCase(
             label="three channels spend their instruments together",
             channel_footprints={
-                GeneratorName.PULSE1: LARGEST_PULSE,
-                GeneratorName.TRIANGLE: LARGEST_TRIANGLE,
-                GeneratorName.NOISE: LARGEST_PULSE,
+                ChannelName.PULSE1: LARGEST_PULSE,
+                ChannelName.TRIANGLE: LARGEST_TRIANGLE,
+                ChannelName.NOISE: LARGEST_PULSE,
             },
             expected="2073 B",
         ),
         TestCase(
             label="a silent channel spends the instrument definition alone",
-            channel_footprints={GeneratorName.TRIANGLE: SILENT_INSTRUMENT},
+            channel_footprints={ChannelName.TRIANGLE: SILENT_INSTRUMENT},
             expected="3 B",
         ),
     )
@@ -295,11 +295,11 @@ class TestSizeFields(BaseTestSuite):
     ) -> None:
         panel.update_view(build_view_model(test_case.channel_footprints))
         assert {
-            generator_name: written[panel._get_instrument_size_tag(generator_name)]
-            for generator_name in test_case.channel_footprints
+            channel_name: written[panel._get_instrument_size_tag(channel_name)]
+            for channel_name in test_case.channel_footprints
         } == {
-            generator_name: f"{footprint.total_bytes} B"
-            for generator_name, footprint in test_case.channel_footprints.items()
+            channel_name: f"{footprint.total_bytes} B"
+            for channel_name, footprint in test_case.channel_footprints.items()
         }
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -312,13 +312,13 @@ class TestSizeFields(BaseTestSuite):
         """A channel that describes no frame is written by no export, so its tab states what that costs."""
         panel.update_view(build_view_model(test_case.channel_footprints))
         assert {
-            generator_name: written[panel._get_instrument_size_tag(generator_name)]
-            for generator_name in GeneratorName.items()
-            if generator_name not in test_case.channel_footprints
+            channel_name: written[panel._get_instrument_size_tag(channel_name)]
+            for channel_name in ChannelName.items()
+            if channel_name not in test_case.channel_footprints
         } == {
-            generator_name: "0 B"
-            for generator_name in GeneratorName.items()
-            if generator_name not in test_case.channel_footprints
+            channel_name: "0 B"
+            for channel_name in ChannelName.items()
+            if channel_name not in test_case.channel_footprints
         }
 
 
@@ -334,36 +334,35 @@ class TestPlayingChannels:
         panel: GUIReconstructionInstrumentsPanel,
         shown: Dict[str, bool],
     ) -> None:
-        panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
         assert {
-            generator_name: shown[panel._get_generator_tab_tag(generator_name)]
-            for generator_name in GeneratorName.items()
-        } == {generator_name: True for generator_name in GeneratorName.items()}
+            channel_name: shown[panel._get_generator_tab_tag(channel_name)] for channel_name in ChannelName.items()
+        } == {channel_name: True for channel_name in ChannelName.items()}
 
     def test_a_channel_standing_by_reads_muted(
         self,
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
-        assert dict(zip(GeneratorName.items(), bound_themes)) == {
-            GeneratorName.PULSE1: TAG_GLOBAL_THEME_INSTRUMENT_TABS,
-            GeneratorName.PULSE2: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
-            GeneratorName.TRIANGLE: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
-            GeneratorName.NOISE: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
+        assert dict(zip(ChannelName.items(), bound_themes)) == {
+            ChannelName.PULSE1: TAG_GLOBAL_THEME_INSTRUMENT_TABS,
+            ChannelName.PULSE2: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
+            ChannelName.TRIANGLE: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
+            ChannelName.NOISE: TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
         }
 
     def test_only_a_playing_channel_offers_its_export(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        buttons = {generator_name: MagicMock() for generator_name in GeneratorName.items()}
-        panel._export_buttons.update(cast(Dict[GeneratorName, GUIButton], buttons))
+        buttons = {channel_name: MagicMock() for channel_name in ChannelName.items()}
+        panel._export_buttons.update(cast(Dict[ChannelName, GUIButton], buttons))
 
-        panel.update_view(build_view_model({GeneratorName.TRIANGLE: LARGEST_TRIANGLE}))
+        panel.update_view(build_view_model({ChannelName.TRIANGLE: LARGEST_TRIANGLE}))
 
-        assert {generator_name: button.set_enabled.call_args.args[0] for generator_name, button in buttons.items()} == {
-            generator_name: generator_name is GeneratorName.TRIANGLE for generator_name in GeneratorName.items()
+        assert {channel_name: button.set_enabled.call_args.args[0] for channel_name, button in buttons.items()} == {
+            channel_name: channel_name is ChannelName.TRIANGLE for channel_name in ChannelName.items()
         }
 
 
@@ -373,7 +372,7 @@ class TestSizeVisibility:
         panel: GUIReconstructionInstrumentsPanel,
         shown: Dict[str, bool],
     ) -> None:
-        panel.update_view(build_view_model({GeneratorName.PULSE1: LARGEST_PULSE}))
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
         assert shown[panel.sample_size_group_tag] is True
 
     def test_no_reconstruction_hides_the_sample_size(

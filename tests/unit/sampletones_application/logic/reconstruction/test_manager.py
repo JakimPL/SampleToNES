@@ -1,13 +1,14 @@
 from pathlib import Path
 from typing import Callable
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import LoadReconstructionError
@@ -283,14 +284,14 @@ class TestReconstructionManagerClose:
         reconstruction_manager.close_reconstruction()
         assert not reconstruction_manager.session.is_loaded
 
-    def test_close_resets_audio_filepath_to_none(
+    def test_close_resets_source_paths_to_empty(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
         reconstruction_manager.close_reconstruction()
-        assert reconstruction_manager.audio_filepath is None
+        assert reconstruction_manager.source_paths == ()
 
 
 class TestReconstructionManagerProperties:
@@ -311,14 +312,14 @@ class TestReconstructionManagerProperties:
         reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
         assert reconstruction_manager.filepath is None
 
-    def test_audio_filepath_returns_reconstruction_audio_filepath(
+    def test_source_paths_return_reconstruction_source_paths(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
         reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
-        assert reconstruction_manager.audio_filepath == reconstruction.audio_filepath
+        assert reconstruction_manager.source_paths == reconstruction.source_paths
 
     def test_current_features_is_populated_after_load(
         self,
@@ -342,11 +343,11 @@ class TestReconstructionManagerPropertiesWhenEmpty:
     ) -> None:
         assert reconstruction_manager.filepath is None
 
-    def test_audio_filepath_is_none_when_nothing_loaded(
+    def test_source_paths_are_empty_when_nothing_loaded(
         self,
         reconstruction_manager: ReconstructionManager,
     ) -> None:
-        assert reconstruction_manager.audio_filepath is None
+        assert reconstruction_manager.source_paths == ()
 
 
 class TestReconstructionManagerMarkUpdated:
@@ -378,8 +379,8 @@ class TestReconstructionManagerLocateOriginalAudio:
         missing_path = tmp_path / "ghost.wav"
         reconstruction = Reconstruction.create(
             approximation=np.zeros(64, dtype=np.float32),
-            approximations={GeneratorName.PULSE1: np.zeros(64, dtype=np.float32)},
-            instructions={GeneratorName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
+            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
+            instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             config=Config(),
             coefficient=1.0,
             audio_filepath=missing_path,
@@ -393,3 +394,50 @@ class TestReconstructionManagerLocateOriginalAudio:
         reconstruction_manager: ReconstructionManager,
     ) -> None:
         reconstruction_manager.locate_original_audio()
+
+    def test_locate_audio_opens_the_recorded_paths(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        tmp_path: Path,
+    ) -> None:
+        first = tmp_path / "kick.wav"
+        second = tmp_path / "snare.wav"
+        write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32))
+        write_wave(second, Config().library.sample_rate, np.ones(64, dtype=np.float32))
+        reconstruction = Reconstruction.create(
+            approximation=np.zeros(64, dtype=np.float32),
+            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
+            instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=(first, second),
+        )
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+
+        with patch("sampletones_application.logic.reconstruction.manager.open_paths_in_explorer") as open_paths:
+            reconstruction_manager.locate_original_audio()
+
+        open_paths.assert_called_once_with((first, second))
+
+    def test_locate_audio_reports_the_first_missing_path(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        tmp_path: Path,
+    ) -> None:
+        present = tmp_path / "kick.wav"
+        missing = tmp_path / "gone.wav"
+        write_wave(present, Config().library.sample_rate, np.ones(64, dtype=np.float32))
+        reconstruction = Reconstruction.create(
+            approximation=np.zeros(64, dtype=np.float32),
+            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
+            instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=(present, missing),
+        )
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+
+        with pytest.raises(FileNotFoundError) as raised:
+            reconstruction_manager.locate_original_audio()
+
+        assert raised.value.filename == str(missing)

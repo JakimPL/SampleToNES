@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.builder import (
     build_instrument_table,
     project_to_module,
@@ -46,12 +46,12 @@ class TestBuildInstrumentTable:
 
     def test_slot_maps_sample_and_generator_to_index(self, project_fixture: ProjectFixture) -> None:
         _, slots = build_instrument_table(project_fixture.project)
-        assert slots[(project_fixture.lead.id, GeneratorName.PULSE1)].index == 0
-        assert slots[(project_fixture.bell.id, GeneratorName.TRIANGLE)].index == 4
+        assert slots[(project_fixture.lead.id, ChannelName.PULSE1)].index == 0
+        assert slots[(project_fixture.bell.id, ChannelName.TRIANGLE)].index == 4
 
     def test_slot_carries_initial_pitch(self, project_fixture: ProjectFixture) -> None:
         _, slots = build_instrument_table(project_fixture.project)
-        assert slots[(project_fixture.lead.id, GeneratorName.PULSE1)].initial_pitch == LEAD_PITCH
+        assert slots[(project_fixture.lead.id, ChannelName.PULSE1)].initial_pitch == LEAD_PITCH
 
     def test_slot_keeps_its_pitch_after_an_arpeggio_edit(self, project_fixture: ProjectFixture) -> None:
         """A pattern row triggers the instrument at the note its sample was reconstructed at.
@@ -64,8 +64,8 @@ class TestBuildInstrumentTable:
             PulseInstruction(on=True, pitch=LEAD_PITCH + OCTAVE, volume=15, duty_cycle=0),
             PulseInstruction(on=True, pitch=LEAD_PITCH, volume=8, duty_cycle=0),
         ]
-        project_fixture.lead.reconstruction.update_generator_data(
-            GeneratorName.PULSE1,
+        project_fixture.lead.reconstruction.update_channel_data(
+            ChannelName.PULSE1,
             arpeggiated,
             np.ones(RECONSTRUCTION_LENGTH, dtype=np.float32),
             LEAD_PITCH,
@@ -74,26 +74,26 @@ class TestBuildInstrumentTable:
 
         instruments, slots = build_instrument_table(project_fixture.project)
 
-        slot = slots[(project_fixture.lead.id, GeneratorName.PULSE1)]
+        slot = slots[(project_fixture.lead.id, ChannelName.PULSE1)]
         assert slot.initial_pitch == LEAD_PITCH
         assert list(instruments[slot.index].sequences[SequenceKind.ARPEGGIO].items)[0] == OCTAVE
 
     def test_looping_sample_loops_populated_sequences(self, project_fixture: ProjectFixture) -> None:
         instruments, slots = build_instrument_table(project_fixture.project)
-        pad_index = slots[(project_fixture.pad.id, GeneratorName.PULSE1)].index
+        pad_index = slots[(project_fixture.pad.id, ChannelName.PULSE1)].index
         pad = instruments[pad_index]
         assert pad.sequences[SequenceKind.VOLUME].loop_point == LOOP_FROM_START
 
     def test_non_looping_sample_leaves_loop_disabled(self, project_fixture: ProjectFixture) -> None:
         instruments, slots = build_instrument_table(project_fixture.project)
-        lead_index = slots[(project_fixture.lead.id, GeneratorName.PULSE1)].index
+        lead_index = slots[(project_fixture.lead.id, ChannelName.PULSE1)].index
         assert instruments[lead_index].sequences[SequenceKind.VOLUME].loop_point == NO_LOOP_POINT
 
     def test_exceeding_max_instruments_raises(self) -> None:
         project = Project.create()
         for number in range(MAX_INSTRUMENTS + 1):
             instructions = [PulseInstruction(on=True, pitch=60, volume=15, duty_cycle=0)]
-            reconstruction = build_reconstruction({GeneratorName.PULSE1: instructions})
+            reconstruction = build_reconstruction({ChannelName.PULSE1: instructions})
             project.samples.append(Sample(name=f"sample-{number}", reconstruction=reconstruction))
         with pytest.raises(ValueError):
             build_instrument_table(project)

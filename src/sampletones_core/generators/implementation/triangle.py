@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import (
     MIN_PITCH,
     MIXER_TRIANGLE,
@@ -23,7 +23,7 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
     def __init__(
         self,
         config: Config,
-        name: str = GeneratorName.TRIANGLE,
+        name: str = ChannelName.TRIANGLE,
     ) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(

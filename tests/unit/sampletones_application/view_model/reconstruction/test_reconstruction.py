@@ -1,10 +1,15 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
-from sampletones_application.view_model.reconstruction.reconstruction import (
-    ReconstructionPathState,
+from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
+    ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 
@@ -23,6 +28,14 @@ enablement_cases = [
     EnablementCase(
         "audio_file_present",
         original_audio_state=ReconstructionPathState.AVAILABLE,
+        reconstruction_loaded=True,
+        audio_source_enabled=True,
+        locate_audio_enabled=True,
+        show_locate_audio_hint=False,
+    ),
+    EnablementCase(
+        "stems_recorded",
+        original_audio_state=ReconstructionPathState.MULTIPLE,
         reconstruction_loaded=True,
         audio_source_enabled=True,
         locate_audio_enabled=True,
@@ -71,12 +84,45 @@ class TestReconstructionViewModelEnablement:
     ) -> None:
         view_model = ReconstructionViewModel(
             reconstruction_loaded=case.reconstruction_loaded,
-            playing_generators=frozenset(),
-            selected_generators=frozenset(),
-            reconstruction_file=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path=""),
-            original_audio=ReconstructionPathViewModel(state=case.original_audio_state, path=""),
+            playing_channels=frozenset(),
+            selected_channels=frozenset(),
+            reconstruction_file=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=()),
+            original_audio=ReconstructionPathViewModel(state=case.original_audio_state, paths=()),
         )
 
         assert view_model.audio_source_enabled is case.audio_source_enabled
         assert view_model.locate_audio_enabled is case.locate_audio_enabled
         assert view_model.show_locate_audio_hint is case.show_locate_audio_hint
+
+
+class TestReconstructionPathViewModelPath:
+    def test_single_path_is_the_location(self) -> None:
+        view_model = ReconstructionPathViewModel(
+            state=ReconstructionPathState.AVAILABLE,
+            paths=("/songs/source.wav",),
+        )
+
+        assert view_model.path == "/songs/source.wav"
+
+    def test_several_paths_leave_no_single_location(self) -> None:
+        view_model = ReconstructionPathViewModel(
+            state=ReconstructionPathState.MULTIPLE,
+            paths=("/a/one.wav", "/b/two.wav"),
+        )
+
+        assert view_model.path == ""
+
+
+class TestReconstructionPathStateFromSourcePaths:
+    def test_no_paths_are_not_applicable(self) -> None:
+        assert ReconstructionPathState.from_source_paths(()) is ReconstructionPathState.NOT_APPLICABLE
+
+    def test_one_path_is_available(self) -> None:
+        assert (
+            ReconstructionPathState.from_source_paths((Path("/songs/source.wav"),)) is ReconstructionPathState.AVAILABLE
+        )
+
+    def test_several_paths_are_multiple(self) -> None:
+        paths = (Path("/a/one.wav"), Path("/b/two.wav"))
+
+        assert ReconstructionPathState.from_source_paths(paths) is ReconstructionPathState.MULTIPLE

@@ -48,7 +48,7 @@ top-level keys and groups the scoring controls into `calculation`, `weights`,
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `generators` | channels used | list of `pulse1`, `pulse2`, `triangle`, `noise` |
+| `channels` | channels used | list of `pulse1`, `pulse2`, `triangle`, `noise` (legacy key `generators` loads too) |
 | `drive` | how hard the channels are pushed (alias: `mixer`) | 0 < value ≤ 5 |
 | `reset_phase` | reset oscillator phase within each instruction | `true` / `false` |
 | `final_regeneration` | re-render the chosen instructions at the end to keep oscillators continuous | `true` / `false` |
