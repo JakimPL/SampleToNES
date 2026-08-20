@@ -17,6 +17,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.waveform_data import WaveformData
+from sampletones_core.configs.library import InstructionsLibraryConfig
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
@@ -26,6 +27,7 @@ from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_shared.logger import logger
+from sampletones_shared.music import Tuning
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import (
@@ -332,6 +334,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 if feature.has_frames
             ),
             nes_frequency=self._nes_frequency(),
+            tuning=self._tuning(),
         )
         self._session_manager.set_instrument_path(destination.parent)
         self._export_service.export_sample(
@@ -383,15 +386,33 @@ class ReconstructionPanelLogic(CallbackMixin):
             features=feature,
             loop=False,
             nes_frequency=self._nes_frequency(),
+            tuning=self._tuning(),
         )
 
     def _nes_frequency(self) -> int:
         """The rate the loaded reconstruction's envelopes advance at, in Hz."""
+        return self._library_config().nes_frequency
+
+    def _tuning(self) -> Tuning:
+        """Where concert pitch sat for the loaded reconstruction.
+
+        A backend sounding the export on its own — the console player's driver reaching pitches
+        through timer values — measures them from the tuning the reconstruction was built with,
+        which keeps what it plays in tune with the reconstruction's own approximation.
+        """
+        return self._library_config().tuning
+
+    def _library_config(self) -> InstructionsLibraryConfig:
+        """The instruction settings the loaded reconstruction was built with.
+
+        Raises:
+            AssertionError: If no reconstruction is loaded.
+        """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be present")
 
-        return reconstruction_data.config.library.nes_frequency
+        return reconstruction_data.config.library
 
     def handle_export_wav_confirmed(self, filepath: Path) -> None:
         reconstruction_data = self._reconstruction_data

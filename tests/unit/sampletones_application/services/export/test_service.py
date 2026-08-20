@@ -21,6 +21,7 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.project.project import Project
+from sampletones_shared.music import Tuning
 
 NES_FREQUENCY: Final[int] = 60
 
@@ -100,6 +101,7 @@ def build_instrument(name: str = "Lead") -> InstrumentExport:
         ),
         loop=False,
         nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
     )
 
 
@@ -108,6 +110,7 @@ def build_sample(count: int = 2) -> SampleExport:
         name="Kick",
         instruments=tuple(build_instrument(f"Kick {index}") for index in range(count)),
         nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
     )
 
 

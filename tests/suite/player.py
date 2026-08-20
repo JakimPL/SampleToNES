@@ -7,6 +7,8 @@ import numpy as np
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
+from sampletones_core.exporters import Features
+from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timers.arithmetic import frequency_to_timer
@@ -26,6 +28,7 @@ from sampletones_player.specification.registers import (
     TRIANGLE_SILENT_RELOAD,
     TRIANGLE_SOUNDING_RELOAD,
 )
+from sampletones_shared.music import Tuning
 from sampletones_shared.utils.frequencies import pitch_to_frequency
 
 PLAYER_REFERENCE_TIMER: Final[int] = 0x154
@@ -149,4 +152,60 @@ def player_reconstruction(
         config=Config().with_library(nes_frequency=nes_frequency),
         coefficient=1.0,
         audio_filepath=Path(os.devnull),
+    )
+
+
+PLAYER_TUNING: Final[Tuning] = Tuning()
+
+
+def player_features(
+    frames: int,
+    pitch: int,
+    *,
+    duty_cycle: bool,
+) -> Features:
+    """Envelopes sounding one pitch at full volume for ``frames`` ticks."""
+    return Features(
+        initial_pitch=pitch,
+        volume=np.full(frames, PLAYER_FULL_VOLUME, dtype=int),
+        arpeggio=np.zeros(frames, dtype=int),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=np.zeros(frames, dtype=int) if duty_cycle else None,
+    )
+
+
+def player_instrument(
+    name: str,
+    channel: ChannelName,
+    features: Features,
+    *,
+    nes_frequency: int,
+    loop: bool,
+    tuning: Tuning = PLAYER_TUNING,
+) -> InstrumentExport:
+    """One channel slice of an export request."""
+    return InstrumentExport(
+        name=name,
+        channel=channel,
+        features=features,
+        loop=loop,
+        nes_frequency=nes_frequency,
+        tuning=tuning,
+    )
+
+
+def player_sample(
+    name: str,
+    instruments: Sequence[InstrumentExport],
+    *,
+    nes_frequency: int,
+    tuning: Tuning = PLAYER_TUNING,
+) -> SampleExport:
+    """Every channel slice of one reconstruction, as an export request carries them."""
+    return SampleExport(
+        name=name,
+        instruments=tuple(instruments),
+        nes_frequency=nes_frequency,
+        tuning=tuning,
     )

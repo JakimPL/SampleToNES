@@ -24,6 +24,7 @@ from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.registry import build_tracker_backends
 from sampletones_core.instructions import TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import (
     EXT_FILE_BITPHASE,
     EXT_FILE_INSTRUMENT,
@@ -33,6 +34,7 @@ from sampletones_shared.paths.extensions import (
 from tests.suite.case import BaseRegularTestCase
 
 NO_EXTENSION: Final[str] = ""
+RETUNED_A4_FREQUENCY: Final[float] = 432.0
 
 
 @dataclass(frozen=True)
@@ -109,6 +111,20 @@ def loaded_data(
 ) -> ReconstructionData:
     return ReconstructionData.from_reconstruction(
         reconstruction_factory(),
+        name="Sample",
+    )
+
+
+@pytest.fixture
+def retuned_data(
+    reconstruction_factory: Callable[[], Reconstruction],
+) -> ReconstructionData:
+    """A reconstruction built against a concert pitch other than the standard one."""
+    reconstruction = reconstruction_factory()
+    library = reconstruction.config.library.model_copy(update={"a4_frequency": RETUNED_A4_FREQUENCY})
+    config = reconstruction.config.model_copy(update={"library": library})
+    return ReconstructionData.from_reconstruction(
+        reconstruction.model_copy(update={"config": config}),
         name="Sample",
     )
 
@@ -652,6 +668,25 @@ class TestReconstructionPanelLogicExportInstrument:
         backend = mock_export_service.export_instrument.call_args.args[1]
         assert backend is mock_export_backends[case.export_format]
 
+    def test_handle_export_instrument_confirmed_carries_the_reconstructions_tuning(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        retuned_data: ReconstructionData,
+        mock_export_service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """A backend sounding the export itself measures its pitches from the tuning the
+        reconstruction was built with, so the request states that tuning rather than the standard.
+        """
+        mock_reconstruction_manager.current_reconstruction = retuned_data
+        panel_logic.handle_export_instrument_confirmed(
+            tmp_path / "instrument.fti",
+            ChannelName.PULSE1,
+        )
+        request = mock_export_service.export_instrument.call_args.args[2]
+        assert request.tuning == Tuning(a4_frequency=RETUNED_A4_FREQUENCY)
+
     @pytest.mark.parametrize("extension", UNSUPPORTED_EXTENSIONS)
     def test_handle_export_instrument_confirmed_refuses_an_extension_no_format_writes(
         self,
@@ -763,6 +798,24 @@ class TestReconstructionPanelLogicExportInstruments:
         request = mock_export_service.export_sample.call_args.args[2]
         assert request.name == "Clap"
         assert [instrument.name for instrument in request.instruments] == ["Clap (pulse1)"]
+
+    def test_handle_export_instruments_confirmed_carries_the_reconstructions_tuning(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        retuned_data: ReconstructionData,
+        mock_export_service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = retuned_data
+        panel_logic.handle_export_instruments_confirmed(
+            tmp_path / "Clap.fti",
+            ExportFormat.FAMITRACKER,
+        )
+        request = mock_export_service.export_sample.call_args.args[2]
+        retuned = Tuning(a4_frequency=RETUNED_A4_FREQUENCY)
+        assert request.tuning == retuned
+        assert [instrument.tuning for instrument in request.instruments] == [retuned]
 
     @pytest.mark.parametrize(
         "case",

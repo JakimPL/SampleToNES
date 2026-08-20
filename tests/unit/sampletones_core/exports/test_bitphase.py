@@ -22,6 +22,7 @@ from sampletones_core.exports.request import (
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
 
 NES_FREQUENCY: Final[int] = 60
@@ -53,11 +54,17 @@ def build_instrument(name: str, frames: int) -> InstrumentExport:
         features=build_features(frames),
         loop=False,
         nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
     )
 
 
 def build_sample(name: str, *instruments: InstrumentExport) -> SampleExport:
-    return SampleExport(name=name, instruments=instruments, nes_frequency=NES_FREQUENCY)
+    return SampleExport(
+        name=name,
+        instruments=instruments,
+        nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
+    )
 
 
 def read_document(destination: Path) -> Dict[str, Any]:

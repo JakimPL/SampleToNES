@@ -30,6 +30,21 @@ def play_calls_covering(song: Song) -> int:
     return calls + TRAILING_CALLS
 
 
+def captured_file_trace(data: bytes, song: Song) -> RegisterTrace:
+    """Runs an exported file on a 6502 and answers with every APU write it made.
+
+    Args:
+        data: The whole ``.nsf`` file, header included.
+        song: The song the file plays, which states how far the run reaches.
+
+    Returns:
+        RegisterTrace: The writes of the initialisation and of every play call in the run.
+    """
+    image = DriverImage.load()
+    console = Console(data, image.addresses)
+    return console.trace(play_calls_covering(song))
+
+
 def captured_trace(song: Song, information: NSFInformation) -> RegisterTrace:
     """Exports a song, runs the file on a 6502 and answers with every APU write it made.
 
@@ -40,6 +55,4 @@ def captured_trace(song: Song, information: NSFInformation) -> RegisterTrace:
     Returns:
         RegisterTrace: The writes of the initialisation and of every play call in the run.
     """
-    image = DriverImage.load()
-    console = Console(nsf_to_bytes(song, information), image.addresses)
-    return console.trace(play_calls_covering(song))
+    return captured_file_trace(nsf_to_bytes(song, information), song)

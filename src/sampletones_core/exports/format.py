@@ -7,3 +7,4 @@ class ExportFormat(StrEnum):
     FAMITRACKER = "famitracker"
     BITPHASE = "bitphase"
     BITPHASE_PRESET = "bitphase_preset"
+    NSF = "nsf"

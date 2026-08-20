@@ -149,6 +149,7 @@ from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.types.feature import FeatureValue
+from sampletones_player.export import NSFBackend
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
@@ -239,7 +240,10 @@ class Application:
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
 
-        self.export_backends: Dict[ExportFormat, ExportBackend] = build_tracker_backends()
+        self.export_backends: Dict[ExportFormat, ExportBackend] = {
+            **build_tracker_backends(),
+            ExportFormat.NSF: NSFBackend(),
+        }
 
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)

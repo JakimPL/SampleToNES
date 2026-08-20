@@ -12,6 +12,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.exports.implementation.famitracker import FamiTrackerBackend
 from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_shared.music import Tuning
 
 NES_FREQUENCY: Final[int] = 60
 
@@ -28,11 +29,17 @@ def instrument_export(name: str, features: Features) -> InstrumentExport:
         features=features,
         loop=False,
         nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
     )
 
 
 def sample_export(name: str, *instruments: InstrumentExport) -> SampleExport:
-    return SampleExport(name=name, instruments=instruments, nes_frequency=NES_FREQUENCY)
+    return SampleExport(
+        name=name,
+        instruments=instruments,
+        nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
+    )
 
 
 class TestExportWavIntegration:

@@ -319,6 +319,7 @@ def instrument_to_bitphase(request: InstrumentExport) -> BitphaseProject:
         name=request.name,
         instruments=(request,),
         nes_frequency=request.nes_frequency,
+        tuning=request.tuning,
     )
     return sample_to_bitphase(sample)
 

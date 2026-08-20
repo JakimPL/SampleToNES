@@ -38,7 +38,8 @@ change any of these and a different library is selected or generated.
 | `sample_rate` | audio sample rate in Hz | 8000–192000 |
 | `spectrum_method` | how the spectrum is computed | `fft` / `logfft` / `cqt` |
 | `transformation_gamma` | feature-space scaling (0 keeps the power spectrum, 100 is logarithmic) | 0–100 |
-| `a4_frequency`, `a4_pitch` | tuning reference: the frequency of A4 and its pitch number | — |
+| `a4_frequency` | tuning reference: what A4 sounds at, in Hz | 311 < value < 623 |
+| `a4_pitch` | tuning reference: the pitch number A4 names | 24–127 |
 
 ## `generation`
 

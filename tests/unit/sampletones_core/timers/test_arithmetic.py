@@ -10,6 +10,8 @@ from sampletones_core.timers.arithmetic import (
     timer_to_frequency,
 )
 from sampletones_core.timers.utils import get_frequency_table, get_timer_table
+from sampletones_shared.constants.music import A4_PITCH, LIMIT_MAX_PITCH, LIMIT_MIN_PITCH
+from sampletones_shared.music import Tuning
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
@@ -85,14 +87,19 @@ class TestTimerRoundTrip:
 
 
 class TestGetTimerTable:
-    def test_covers_the_same_pitches_as_the_frequency_table(self) -> None:
-        config = Config()
-        assert get_timer_table(config).keys() == get_frequency_table(config).keys()
+    def test_covers_every_pitch_the_project_sounds(self) -> None:
+        timers = get_timer_table(Tuning())
+        assert set(timers) == set(range(LIMIT_MIN_PITCH, LIMIT_MAX_PITCH + 1))
 
     def test_every_timer_sounds_its_pitch_frequency(self) -> None:
         config = Config()
         frequencies = get_frequency_table(config)
-        timers = get_timer_table(config)
+        timers = get_timer_table(config.tuning)
 
         for pitch, frequency in frequencies.items():
             assert timer_to_frequency(timers[pitch]) == frequency
+
+    def test_a_retuned_table_follows_concert_pitch(self) -> None:
+        standard = get_timer_table(Tuning())
+        retuned = get_timer_table(Tuning(a4_frequency=432.0))
+        assert retuned[A4_PITCH] > standard[A4_PITCH]

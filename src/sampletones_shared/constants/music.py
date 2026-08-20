@@ -8,3 +8,5 @@ LIMIT_MAX_PITCH: Final[int] = 127
 
 A4_FREQUENCY: Final[float] = 440.0
 A4_PITCH: Final[int] = 69
+MIN_A4_FREQUENCY: Final[float] = 311.0
+MAX_A4_FREQUENCY: Final[float] = 623.0

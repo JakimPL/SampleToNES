@@ -14,6 +14,7 @@ from sampletones_core.exports.scope import ExportScope
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
+from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 
 NES_FREQUENCY: Final[int] = 60
@@ -38,11 +39,17 @@ def build_instrument(name: str, frames: int) -> InstrumentExport:
         features=build_features(frames),
         loop=False,
         nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
     )
 
 
 def build_sample(name: str, *instruments: InstrumentExport) -> SampleExport:
-    return SampleExport(name=name, instruments=instruments, nes_frequency=NES_FREQUENCY)
+    return SampleExport(
+        name=name,
+        instruments=instruments,
+        nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
+    )
 
 
 @pytest.fixture(name="backend")

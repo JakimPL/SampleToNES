@@ -11,6 +11,7 @@ from sampletones_core.configs.library import InstructionsLibraryConfig
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.data.metadata import Metadata
+from sampletones_shared.music import Tuning
 from sampletones_shared.paths.user import CONFIG_PATH
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_json, save_json
@@ -128,6 +129,10 @@ class Config(DataModel):
     @property
     def sample_rate(self) -> int:
         return self.library.sample_rate
+
+    @property
+    def tuning(self) -> Tuning:
+        return self.library.tuning
 
     @property
     def frame_length(self) -> int:

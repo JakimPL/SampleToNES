@@ -5,6 +5,7 @@ import numpy as np
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_shared.music import Tuning
 
 NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60
@@ -42,8 +43,14 @@ def build_instrument(
         features=features,
         loop=loop,
         nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
     )
 
 
 def build_sample(name: str, *instruments: InstrumentExport) -> SampleExport:
-    return SampleExport(name=name, instruments=instruments, nes_frequency=NES_FREQUENCY)
+    return SampleExport(
+        name=name,
+        instruments=instruments,
+        nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
+    )

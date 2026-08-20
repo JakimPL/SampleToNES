@@ -11,12 +11,13 @@ from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.general import MIN_FREQUENCY
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.data import DataModel
-from sampletones_shared.constants.music import A4_FREQUENCY, A4_PITCH, LIMIT_MAX_PITCH
+from sampletones_shared.constants.music import A4_FREQUENCY, A4_PITCH
 from sampletones_shared.constants.nes import (
     DEFAULT_NES_FREQUENCY,
     MAX_NES_FREQUENCY,
     MIN_NES_FREQUENCY,
 )
+from sampletones_shared.music import ReferenceFrequency, ReferencePitch, Tuning
 
 
 class InstructionsLibraryConfig(DataModel):
@@ -42,19 +43,23 @@ class InstructionsLibraryConfig(DataModel):
         ge=0,
         le=MAX_TRANSFORMATION_GAMMA,
     )
-    a4_frequency: float = Field(
+    a4_frequency: ReferenceFrequency = Field(
         default=A4_FREQUENCY,
-        gt=20.0,
-        lt=20000.0,
     )
-    a4_pitch: int = Field(
+    a4_pitch: ReferencePitch = Field(
         default=A4_PITCH,
-        ge=1,
-        le=LIMIT_MAX_PITCH,
     )
     spectrum_method: SpectrumMethod = Field(
         default=SpectrumMethod.CQT,
     )
+
+    @property
+    def tuning(self) -> Tuning:
+        """The tuning the reconstruction's pitches are measured from."""
+        return Tuning(
+            a4_frequency=self.a4_frequency,
+            a4_pitch=self.a4_pitch,
+        )
 
     @property
     def frame_length(self) -> int:

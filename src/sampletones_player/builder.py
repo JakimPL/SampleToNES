@@ -1,6 +1,8 @@
-from typing import Dict, List, Mapping, Optional, Sequence, Type
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Type
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
+from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.instructions import (
     InstructionT,
     InstructionUnion,
@@ -16,6 +18,8 @@ from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.registers.triangle import TriangleRegisters
 from sampletones_player.song import Song
+
+SONG_START: Final[int] = 0
 
 
 def channel_instructions(
@@ -123,8 +127,82 @@ def song_from_reconstruction(
     return Song(
         streams=streams_from_instructions(
             reconstruction.instructions,
-            get_timer_table(reconstruction.config),
+            get_timer_table(reconstruction.config.tuning),
         ),
         schedule=PlaySchedule.from_parameters(reconstruction.config.nes_frequency),
         loop_tick=loop_tick,
+    )
+
+
+def instructions_from_instruments(
+    instruments: Sequence[InstrumentExport],
+) -> Dict[ChannelName, Sequence[InstructionUnion]]:
+    """Reads every channel slice of an export request back as instructions.
+
+    A request describes each slice as the envelopes an instrument carries, which is the form a
+    tracker reads it in. The console sounds instructions instead, so each slice is walked back
+    through the exporter belonging to the channel it was reconstructed for.
+
+    Args:
+        instruments: The slices to sound.
+
+    Returns:
+        Dict[ChannelName, Sequence[InstructionUnion]]: The stream each channel carries.
+
+    Raises:
+        ValueError: If two slices name the same channel, which the console sounds one of.
+    """
+    instructions: Dict[ChannelName, Sequence[InstructionUnion]] = {}
+    for instrument in instruments:
+        if instrument.channel in instructions:
+            raise ValueError(f"Channel '{instrument.channel}' carries two slices, and the console sounds one")
+
+        exporter = CHANNEL_TO_EXPORTER_MAP[instrument.channel]
+        instructions[instrument.channel] = exporter.from_features(instrument.features)
+
+    return instructions
+
+
+def loop_tick_from_instruments(instruments: Sequence[InstrumentExport]) -> Optional[int]:
+    """The tick a request's song returns to once it ends.
+
+    A song repeats from its first tick where every slice it carries repeats, and ends at its
+    last tick where any slice plays its envelopes once.
+
+    Args:
+        instruments: The slices the song carries.
+
+    Returns:
+        Optional[int]: The tick to return to, or ``None`` where the song stops at its end.
+    """
+    if instruments and all(instrument.loop for instrument in instruments):
+        return SONG_START
+
+    return None
+
+
+def song_from_sample(request: SampleExport) -> Song:
+    """Builds the song the console plays an export request as.
+
+    Every slice sounds at once on the channel it was reconstructed for, and the request states
+    both halves of what that takes: the tuning its pitches are measured from, and the rate its
+    envelopes advance at, which the driver re-clocks to the rate the console calls it at.
+
+    Args:
+        request: The slices to play together.
+
+    Returns:
+        Song: The streams, the clock and the loop point as the player holds them.
+
+    Raises:
+        TypeError: If a channel's stream holds an instruction another channel sounds.
+        ValueError: If two slices name the same channel.
+    """
+    return Song(
+        streams=streams_from_instructions(
+            instructions_from_instruments(request.instruments),
+            get_timer_table(request.tuning),
+        ),
+        schedule=PlaySchedule.from_parameters(request.nes_frequency),
+        loop_tick=loop_tick_from_instruments(request.instruments),
     )
