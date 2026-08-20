@@ -1,4 +1,3 @@
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -7,6 +6,7 @@ from typing import Final, Optional
 import numpy as np
 
 from sampletones_core.audio.io import write_wave
+from sampletones_shared.utils.system.programs import locate_program
 
 ZIMTOHRLI_BINARY: Final[str] = "zimtohrli"
 
@@ -58,5 +58,4 @@ class ZimtohrliReferee:
 
 def find_zimtohrli() -> Optional[Path]:
     """Path of the `zimtohrli` binary on the system, when installed."""
-    binary = shutil.which(ZIMTOHRLI_BINARY)
-    return Path(binary) if binary else None
+    return locate_program(ZIMTOHRLI_BINARY)

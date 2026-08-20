@@ -1,12 +1,12 @@
 import importlib.util
 import os
-import shutil
 from typing import Final, Optional
 
 from sampletones_application.utils.file_dialogs.backends.kdialog import KDialogBackend
 from sampletones_application.utils.file_dialogs.backends.zenity import ZenityBackend
 from sampletones_application.utils.file_dialogs.protocol import FileDialogBackend
 from sampletones_shared.exceptions import FileDialogUnavailableError
+from sampletones_shared.utils.system.programs import locate_program
 from sampletones_shared.utils.system.system import System
 
 KDIALOG: Final[str] = "kdialog"
@@ -58,8 +58,8 @@ def _select_linux_backend() -> Optional[FileDialogBackend]:
     if portal is not None:
         return portal
 
-    kdialog = KDialogBackend() if shutil.which(KDIALOG) is not None else None
-    zenity = ZenityBackend() if shutil.which(ZENITY) is not None else None
+    kdialog = KDialogBackend() if locate_program(KDIALOG) is not None else None
+    zenity = ZenityBackend() if locate_program(ZENITY) is not None else None
 
     preferred: Optional[FileDialogBackend]
     alternative: Optional[FileDialogBackend]
