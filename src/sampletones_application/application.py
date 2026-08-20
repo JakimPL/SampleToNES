@@ -142,12 +142,12 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.registry import build_tracker_backends
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.registry import build_tracker_backends
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
@@ -239,7 +239,7 @@ class Application:
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
 
-        self.tracker_backends: Dict[TrackerFormat, TrackerBackend] = build_tracker_backends()
+        self.export_backends: Dict[ExportFormat, ExportBackend] = build_tracker_backends()
 
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)
@@ -357,7 +357,7 @@ class Application:
             self.project_manager,
             self.session_manager,
             self.export_service,
-            tracker_backends=self.tracker_backends,
+            export_backends=self.export_backends,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
             on_tab_switch=self._set_current_tab,
@@ -389,7 +389,7 @@ class Application:
             reconstruction_manager=self.reconstruction_manager,
             browser_manager=self.browser_manager,
             export_service=self.export_service,
-            tracker_backends=self.tracker_backends,
+            export_backends=self.export_backends,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
             on_change_audio_state=self._update_menu,
             on_favorite_changed=self._repaint_reconstruction_favorites,
@@ -903,9 +903,9 @@ class Application:
         if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_wav_dialog()
 
-    def _export_reconstruction_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
+    def _export_reconstruction_instruments_dialog(self, export_format: ExportFormat) -> None:
         if self._reconstruction_coordinator.check_loaded():
-            self._reconstructions_tab.request_export_instruments_dialog(tracker_format)
+            self._reconstructions_tab.request_export_instruments_dialog(export_format)
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)

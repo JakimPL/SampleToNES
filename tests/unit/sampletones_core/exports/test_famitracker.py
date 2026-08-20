@@ -7,13 +7,13 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.implementation.famitracker import FamiTrackerBackend
+from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.exports.scope import ExportScope
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.implementation.famitracker import FamiTrackerBackend
-from sampletones_core.trackers.request import InstrumentExport, SampleExport
-from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 
 NES_FREQUENCY: Final[int] = 60
@@ -52,7 +52,7 @@ def backend_fixture() -> FamiTrackerBackend:
 
 class TestFormatDeclaration:
     def test_the_backend_names_its_format(self, backend: FamiTrackerBackend) -> None:
-        assert backend.tracker_format == TrackerFormat.FAMITRACKER
+        assert backend.export_format == ExportFormat.FAMITRACKER
 
     def test_every_scope_is_supported(self, backend: FamiTrackerBackend) -> None:
         assert backend.supported_scopes == frozenset(ExportScope)

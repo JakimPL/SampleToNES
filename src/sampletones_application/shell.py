@@ -52,7 +52,7 @@ from sampletones_application.utils.parallelization.thread import SingleThreadExe
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback, PathCallback
 
@@ -72,7 +72,7 @@ class ShortcutBindings:
     save_project: Callback
     save_project_as: Callback
     project_properties: Callback
-    export_project: Callable[[TrackerFormat], None]
+    export_project: Callable[[ExportFormat], None]
     render_song: Callback
     close_project: Callback
     exit: Callback
@@ -87,7 +87,7 @@ class ShortcutBindings:
     save_reconstruction_as: Callback
     close_reconstruction: Callback
     export_wav: Callback
-    export_instruments: Callable[[TrackerFormat], None]
+    export_instruments: Callable[[ExportFormat], None]
     add_reconstruction_to_sequencer: Callback
     open_reconstruction_in_explorer: Callback
     locate_original_audio: Callback
@@ -271,18 +271,18 @@ class ApplicationShell:
     def _export_callbacks(
         bindings: ShortcutBindings,
     ) -> Dict[ShortcutId, Callback]:
-        """One export action per tracker format, the entries the Export submenus list.
+        """One export action per format, the entries the Export submenus list.
 
         Each action carries the format it writes, so a menu entry and its key combination reach
         the same coordinator call.
         """
         project = {
-            shortcut_id: partial(bindings.export_project, tracker_format)
-            for tracker_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items()
+            shortcut_id: partial(bindings.export_project, export_format)
+            for export_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items()
         }
         instruments = {
-            shortcut_id: partial(bindings.export_instruments, tracker_format)
-            for tracker_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items()
+            shortcut_id: partial(bindings.export_instruments, export_format)
+            for export_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items()
         }
         return {**project, **instruments}
 

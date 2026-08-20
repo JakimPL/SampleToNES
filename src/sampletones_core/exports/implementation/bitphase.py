@@ -1,6 +1,14 @@
 from pathlib import Path
 from typing import FrozenSet, List
 
+from sampletones_core.exports.artifact import ExportArtifact
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.request import (
+    InstrumentExport,
+    ProjectExport,
+    SampleExport,
+)
+from sampletones_core.exports.scope import ExportScope
 from sampletones_core.formats.bitphase.btp import write_btp
 from sampletones_core.formats.bitphase.builder import (
     instrument_to_bitphase,
@@ -8,10 +16,6 @@ from sampletones_core.formats.bitphase.builder import (
     sample_to_bitphase,
 )
 from sampletones_core.formats.bitphase.preset import instrument_to_preset, write_preset
-from sampletones_core.trackers.artifact import ExportArtifact
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.request import InstrumentExport, ProjectExport, SampleExport
-from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from sampletones_shared.utils.system.paths import get_filename
 
@@ -31,8 +35,8 @@ class BitphaseBackend:
     """
 
     @property
-    def tracker_format(self) -> TrackerFormat:
-        return TrackerFormat.BITPHASE
+    def export_format(self) -> ExportFormat:
+        return ExportFormat.BITPHASE
 
     @property
     def supported_scopes(self) -> FrozenSet[ExportScope]:
@@ -76,8 +80,8 @@ class BitphasePresetBackend:
     """
 
     @property
-    def tracker_format(self) -> TrackerFormat:
-        return TrackerFormat.BITPHASE_PRESET
+    def export_format(self) -> ExportFormat:
+        return ExportFormat.BITPHASE_PRESET
 
     @property
     def supported_scopes(self) -> FrozenSet[ExportScope]:
@@ -103,7 +107,12 @@ class BitphasePresetBackend:
 
         paths: List[Path] = []
         for instrument in request.instruments:
-            filepath = destination.with_name(get_filename(instrument.name, EXT_FILE_JSON))
+            filepath = destination.with_name(
+                get_filename(
+                    instrument.name,
+                    EXT_FILE_JSON,
+                )
+            )
             paths.extend(self.write_instrument(filepath, instrument).paths)
 
         return ExportArtifact(paths=tuple(paths), truncation=WHOLE_ENVELOPE)

@@ -7,9 +7,9 @@ from sampletones_application.categories.elements.global_ import (
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
+from sampletones_application.categories.exports import EXPORT_PROJECT_ELEMENTS
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.trackers import TRACKER_PROJECT_ELEMENTS
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -31,9 +31,9 @@ from sampletones_application.utils.file_dialogs.api import (
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.scope import ExportScope
 from sampletones_shared.constants.project import (
     DEFAULT_EXPORT_NAME,
     DEFAULT_PROJECT_FILENAME,
@@ -67,7 +67,7 @@ class ProjectCoordinator:
         session_manager: SessionManager,
         export_service: ExportService,
         *,
-        tracker_backends: Dict[TrackerFormat, TrackerBackend],
+        export_backends: Dict[ExportFormat, ExportBackend],
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
         on_tab_switch: Callback,
@@ -77,7 +77,7 @@ class ProjectCoordinator:
         self._project_manager = project_manager
         self._session_manager = session_manager
         self._export_service = export_service
-        self._tracker_backends = tracker_backends
+        self._export_backends = export_backends
         self._dialogs = dialogs
         self._language_manager = language_manager
         self._on_tab_switch = on_tab_switch
@@ -195,17 +195,17 @@ class ProjectCoordinator:
         name = self.project_name or DEFAULT_EXPORT_NAME
         return get_filename(name, extension)
 
-    def export_project_dialog(self, tracker_format: TrackerFormat) -> None:
-        """Prompts for a destination and writes the open project in ``tracker_format``.
+    def export_project_dialog(self, export_format: ExportFormat) -> None:
+        """Prompts for a destination and writes the open project in ``export_format``.
 
         Args:
-            tracker_format: The tracker the project is written for.
+            export_format: The format the project is written in.
         """
         if not self._project_controller.is_open:
             return
 
-        backend = self._tracker_backends[tracker_format]
-        elements = TRACKER_PROJECT_ELEMENTS[tracker_format]
+        backend = self._export_backends[export_format]
+        elements = EXPORT_PROJECT_ELEMENTS[export_format]
         extension = backend.extension(ExportScope.PROJECT)
         path = self._session_manager.get_project_path()
         filepath = save_file_dialog(
@@ -220,7 +220,7 @@ class ProjectCoordinator:
             ),
         )
 
-        self._handle_export_project(filepath, tracker_format)
+        self._handle_export_project(filepath, export_format)
 
     def _open_dialog(self) -> None:
         filepath = open_file_dialog(
@@ -242,10 +242,10 @@ class ProjectCoordinator:
         return self._save(filepath)
 
     @ignore_none_path
-    def _handle_export_project(self, filepath: Path, tracker_format: TrackerFormat) -> None:
+    def _handle_export_project(self, filepath: Path, export_format: ExportFormat) -> None:
         self._export_service.export_project(
             filepath,
-            self._tracker_backends[tracker_format],
+            self._export_backends[export_format],
             self._project_controller.export_request,
         )
 
@@ -299,21 +299,21 @@ class ProjectCoordinator:
         match result:
             case ExportSuccess(
                 kind=ExportKind.PROJECT,
-                tracker_format=TrackerFormat() as tracker_format,
+                export_format=ExportFormat() as export_format,
             ):
                 self._dialogs.show_info(
                     TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
-                    self._message(TRACKER_PROJECT_ELEMENTS[tracker_format].exported_message),
+                    self._message(EXPORT_PROJECT_ELEMENTS[export_format].exported_message),
                     self._title(GlobalDialogTitleElements.PROJECT_EXPORTED),
                 )
             case ExportError(
                 kind=ExportKind.PROJECT,
-                tracker_format=TrackerFormat() as tracker_format,
+                export_format=ExportFormat() as export_format,
                 exception=exception,
             ):
                 self._dialogs.show_error(
                     exception,
-                    self._message(TRACKER_PROJECT_ELEMENTS[tracker_format].export_failed_message),
+                    self._message(EXPORT_PROJECT_ELEMENTS[export_format].export_failed_message),
                 )
 
     def _guard_open(

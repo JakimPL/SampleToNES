@@ -12,15 +12,15 @@ from sampletones_application.services.export.success import ExportSuccess
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.project.project import Project
-from sampletones_core.trackers.artifact import ExportArtifact
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.request import (
+from sampletones_core.exports.artifact import ExportArtifact
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
     SampleExport,
 )
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.exports.scope import ExportScope
+from sampletones_core.project.project import Project
 
 NES_FREQUENCY: Final[int] = 60
 
@@ -42,8 +42,8 @@ class StubBackend:
         self.calls: List[Tuple[str, Path, Any]] = []
 
     @property
-    def tracker_format(self) -> TrackerFormat:
-        return TrackerFormat.FAMITRACKER
+    def export_format(self) -> ExportFormat:
+        return ExportFormat.FAMITRACKER
 
     @property
     def supported_scopes(self) -> frozenset:
@@ -356,7 +356,7 @@ class TestExportFormatReporting:
             build_instrument(),
         )
 
-        assert results[0].tracker_format == TrackerFormat.FAMITRACKER
+        assert results[0].export_format == ExportFormat.FAMITRACKER
 
     def test_a_failed_tracker_export_names_the_format_it_was_written_in(
         self,
@@ -371,7 +371,7 @@ class TestExportFormatReporting:
             build_sample(),
         )
 
-        assert results[0].tracker_format == TrackerFormat.FAMITRACKER
+        assert results[0].export_format == ExportFormat.FAMITRACKER
 
     def test_a_wav_export_names_no_format(self, service, tmp_path) -> None:
         export_service, results = service
@@ -383,7 +383,7 @@ class TestExportFormatReporting:
                 np.zeros(100),
             )
 
-        assert results[0].tracker_format is None
+        assert results[0].export_format is None
 
 
 class TestExportTruncationReporting:

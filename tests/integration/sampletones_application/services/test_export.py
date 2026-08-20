@@ -10,8 +10,8 @@ from sampletones_application.services.export.success import ExportSuccess
 from sampletones_core.audio import read_wave
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
-from sampletones_core.trackers.implementation.famitracker import FamiTrackerBackend
-from sampletones_core.trackers.request import InstrumentExport, SampleExport
+from sampletones_core.exports.implementation.famitracker import FamiTrackerBackend
+from sampletones_core.exports.request import InstrumentExport, SampleExport
 
 NES_FREQUENCY: Final[int] = 60
 

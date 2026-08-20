@@ -20,10 +20,10 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.registry import build_tracker_backends
 from sampletones_core.instructions import TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.registry import build_tracker_backends
 from sampletones_shared.paths.extensions import (
     EXT_FILE_BITPHASE,
     EXT_FILE_INSTRUMENT,
@@ -38,13 +38,13 @@ NO_EXTENSION: Final[str] = ""
 @dataclass(frozen=True)
 class FormatCase:
     extension: str
-    tracker_format: TrackerFormat
+    export_format: ExportFormat
 
 
 INSTRUMENT_FORMAT_CASES: Final[List[FormatCase]] = [
-    FormatCase(extension=EXT_FILE_INSTRUMENT, tracker_format=TrackerFormat.FAMITRACKER),
-    FormatCase(extension=EXT_FILE_BITPHASE, tracker_format=TrackerFormat.BITPHASE),
-    FormatCase(extension=EXT_FILE_JSON, tracker_format=TrackerFormat.BITPHASE_PRESET),
+    FormatCase(extension=EXT_FILE_INSTRUMENT, export_format=ExportFormat.FAMITRACKER),
+    FormatCase(extension=EXT_FILE_BITPHASE, export_format=ExportFormat.BITPHASE),
+    FormatCase(extension=EXT_FILE_JSON, export_format=ExportFormat.BITPHASE_PRESET),
 ]
 
 UNSUPPORTED_EXTENSIONS: Final[List[str]] = [".xm", EXT_FILE_MODULE, NO_EXTENSION]
@@ -76,29 +76,29 @@ def panel_logic(
     session_manager: MagicMock,
     mock_reconstruction_manager: MagicMock,
     mock_export_service: MagicMock,
-    mock_tracker_backends: Dict[TrackerFormat, MagicMock],
+    mock_export_backends: Dict[ExportFormat, MagicMock],
 ) -> ReconstructionPanelLogic:
     return ReconstructionPanelLogic(
         session_manager,
         mock_reconstruction_manager,
         mock_export_service,
-        mock_tracker_backends,
+        mock_export_backends,
     )
 
 
 @pytest.fixture
-def mock_tracker_backends() -> Dict[TrackerFormat, MagicMock]:
+def mock_export_backends() -> Dict[ExportFormat, MagicMock]:
     """Stands in for the real backends while declaring the scopes and extensions they do.
 
     The logic reads the destination's extension to pick a backend, so each stub mirrors what
     the registry's backend declares and leaves only the writing to the mock.
     """
-    backends: Dict[TrackerFormat, MagicMock] = {}
-    for tracker_format, backend in build_tracker_backends().items():
+    backends: Dict[ExportFormat, MagicMock] = {}
+    for export_format, backend in build_tracker_backends().items():
         stub = MagicMock()
         stub.supported_scopes = backend.supported_scopes
         stub.extension.side_effect = backend.extension
-        backends[tracker_format] = stub
+        backends[export_format] = stub
 
     return backends
 
@@ -640,7 +640,7 @@ class TestReconstructionPanelLogicExportInstrument:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
         mock_export_service: MagicMock,
-        mock_tracker_backends: Dict[TrackerFormat, MagicMock],
+        mock_export_backends: Dict[ExportFormat, MagicMock],
         tmp_path: Path,
         case: FormatCase,
     ) -> None:
@@ -650,7 +650,7 @@ class TestReconstructionPanelLogicExportInstrument:
             ChannelName.PULSE1,
         )
         backend = mock_export_service.export_instrument.call_args.args[1]
-        assert backend is mock_tracker_backends[case.tracker_format]
+        assert backend is mock_export_backends[case.export_format]
 
     @pytest.mark.parametrize("extension", UNSUPPORTED_EXTENSIONS)
     def test_handle_export_instrument_confirmed_refuses_an_extension_no_format_writes(
@@ -678,7 +678,7 @@ class TestReconstructionPanelLogicExportInstruments:
         panel_logic: ReconstructionPanelLogic,
     ) -> None:
         with pytest.raises(AssertionError):
-            panel_logic.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
+            panel_logic.request_export_instruments_dialog(ExportFormat.FAMITRACKER)
 
     def test_request_export_instruments_dialog_fires_dialog_callback(
         self,
@@ -689,7 +689,7 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         callback = MagicMock()
         panel_logic.on_open_export_instruments_dialog = callback
-        panel_logic.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
+        panel_logic.request_export_instruments_dialog(ExportFormat.FAMITRACKER)
         callback.assert_called_once()
 
     def test_request_export_instruments_dialog_suggests_the_reconstruction_name(
@@ -704,7 +704,7 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         callback = MagicMock()
         panel_logic.on_open_export_instruments_dialog = callback
-        panel_logic.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
+        panel_logic.request_export_instruments_dialog(ExportFormat.FAMITRACKER)
         assert callback.call_args.args[0] == f"{loaded_data.name}{EXT_FILE_INSTRUMENT}"
 
     def test_request_export_instruments_dialog_carries_the_chosen_tracker(
@@ -717,8 +717,8 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         callback = MagicMock()
         panel_logic.on_open_export_instruments_dialog = callback
-        panel_logic.request_export_instruments_dialog(TrackerFormat.BITPHASE_PRESET)
-        assert callback.call_args.args[2] == TrackerFormat.BITPHASE_PRESET
+        panel_logic.request_export_instruments_dialog(ExportFormat.BITPHASE_PRESET)
+        assert callback.call_args.args[2] == ExportFormat.BITPHASE_PRESET
 
     def test_handle_export_instruments_confirmed_with_no_data_is_no_op(
         self,
@@ -728,7 +728,7 @@ class TestReconstructionPanelLogicExportInstruments:
     ) -> None:
         panel_logic.handle_export_instruments_confirmed(
             tmp_path / "sample.fti",
-            TrackerFormat.FAMITRACKER,
+            ExportFormat.FAMITRACKER,
         )
         mock_export_service.export_sample.assert_not_called()
 
@@ -743,7 +743,7 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.handle_export_instruments_confirmed(
             tmp_path / "sample.fti",
-            TrackerFormat.FAMITRACKER,
+            ExportFormat.FAMITRACKER,
         )
         mock_export_service.export_sample.assert_called_once()
 
@@ -758,7 +758,7 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.handle_export_instruments_confirmed(
             tmp_path / "Clap.fti",
-            TrackerFormat.FAMITRACKER,
+            ExportFormat.FAMITRACKER,
         )
         request = mock_export_service.export_sample.call_args.args[2]
         assert request.name == "Clap"
@@ -775,7 +775,7 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
         mock_export_service: MagicMock,
-        mock_tracker_backends: Dict[TrackerFormat, MagicMock],
+        mock_export_backends: Dict[ExportFormat, MagicMock],
         tmp_path: Path,
         case: FormatCase,
     ) -> None:
@@ -785,10 +785,10 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager.current_reconstruction = loaded_data
         panel_logic.handle_export_instruments_confirmed(
             tmp_path / f"sample{case.extension}",
-            case.tracker_format,
+            case.export_format,
         )
         backend = mock_export_service.export_sample.call_args.args[1]
-        assert backend is mock_tracker_backends[case.tracker_format]
+        assert backend is mock_export_backends[case.export_format]
 
 
 class TestReconstructionPanelLogicExportWav:

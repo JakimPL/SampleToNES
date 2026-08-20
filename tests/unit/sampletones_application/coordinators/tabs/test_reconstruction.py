@@ -13,7 +13,7 @@ from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -270,7 +270,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.INSTRUMENT,
                 filepath=Path("lead.fti"),
-                tracker_format=TrackerFormat.FAMITRACKER,
+                export_format=ExportFormat.FAMITRACKER,
                 truncation=None,
             )
         )
@@ -285,7 +285,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.INSTRUMENT,
                 filepath=Path("lead.fti"),
-                tracker_format=TrackerFormat.FAMITRACKER,
+                export_format=ExportFormat.FAMITRACKER,
                 truncation=EnvelopeTruncation(frames=252, source_frames=300, instruments=1),
             )
         )
@@ -303,7 +303,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.SAMPLE,
                 filepath=Path("instruments"),
-                tracker_format=TrackerFormat.FAMITRACKER,
+                export_format=ExportFormat.FAMITRACKER,
                 truncation=EnvelopeTruncation(
                     frames=252,
                     source_frames=410,
@@ -324,7 +324,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.WAV,
                 filepath=Path("track.wav"),
-                tracker_format=None,
+                export_format=None,
                 truncation=None,
             )
         )

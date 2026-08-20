@@ -2,6 +2,14 @@ from pathlib import Path
 from typing import FrozenSet, List, Optional
 
 from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.exports.artifact import ExportArtifact
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.request import (
+    InstrumentExport,
+    ProjectExport,
+    SampleExport,
+)
+from sampletones_core.exports.scope import ExportScope
 from sampletones_core.formats.famitracker.builder import build_instrument
 from sampletones_core.formats.famitracker.export import write_ftm
 from sampletones_core.formats.famitracker.instrument import write_fti
@@ -11,14 +19,6 @@ from sampletones_core.formats.famitracker.specification.instruments import (
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
-from sampletones_core.trackers.artifact import ExportArtifact
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.request import (
-    InstrumentExport,
-    ProjectExport,
-    SampleExport,
-)
-from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_shared.utils.system.paths import get_filename
 
@@ -34,8 +34,8 @@ class FamiTrackerBackend:
     """
 
     @property
-    def tracker_format(self) -> TrackerFormat:
-        return TrackerFormat.FAMITRACKER
+    def export_format(self) -> ExportFormat:
+        return ExportFormat.FAMITRACKER
 
     @property
     def supported_scopes(self) -> FrozenSet[ExportScope]:

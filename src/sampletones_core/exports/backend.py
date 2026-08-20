@@ -1,18 +1,18 @@
 from pathlib import Path
 from typing import FrozenSet, Protocol
 
-from sampletones_core.trackers.artifact import ExportArtifact
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.request import (
+from sampletones_core.exports.artifact import ExportArtifact
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
     SampleExport,
 )
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.exports.scope import ExportScope
 
 
-class TrackerBackend(Protocol):
-    """Writes the application's work in the file format one tracker reads.
+class ExportBackend(Protocol):
+    """Writes the application's work in one of the file formats it exports to.
 
     A backend owns both the byte layout and the shape each :class:`ExportScope` takes on
     disk, so a format that gathers a whole reconstruction into one document writes one
@@ -21,7 +21,7 @@ class TrackerBackend(Protocol):
     """
 
     @property
-    def tracker_format(self) -> TrackerFormat:
+    def export_format(self) -> ExportFormat:
         """The format this backend writes."""
 
     @property

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Final, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exports.request import InstrumentExport
 from sampletones_core.formats.bitphase.envelopes import features_to_envelopes
 from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset, NesInstrumentRow
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
@@ -14,7 +15,6 @@ from sampletones_core.formats.bitphase.specification.instruments import (
 )
 from sampletones_core.formats.bitphase.specification.patterns import MAX_NOTE_INDEX, MIN_NOTE_INDEX
 from sampletones_core.formats.bitphase.tuning import generate_tuning_table
-from sampletones_core.trackers.request import InstrumentExport
 
 PRESET_TUNING_TABLE: Final[Tuple[int, ...]] = generate_tuning_table(
     DEFAULT_CPU_FREQUENCY,

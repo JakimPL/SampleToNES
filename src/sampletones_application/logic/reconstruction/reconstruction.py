@@ -20,11 +20,11 @@ from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.extensions import format_for_extension
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.request import InstrumentExport, SampleExport
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.extensions import format_for_extension
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.exports.scope import ExportScope
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -52,14 +52,14 @@ class ExportServiceProtocol(Protocol):
     def export_instrument(
         self,
         destination: Path,
-        backend: TrackerBackend,
+        backend: ExportBackend,
         request: InstrumentExport,
     ) -> None: ...
 
     def export_sample(
         self,
         destination: Path,
-        backend: TrackerBackend,
+        backend: ExportBackend,
         request: SampleExport,
     ) -> None: ...
 
@@ -70,12 +70,12 @@ class ReconstructionPanelLogic(CallbackMixin):
         session_manager: SessionManager,
         reconstruction_manager: ReconstructionManager,
         export_service: ExportServiceProtocol,
-        tracker_backends: Dict[TrackerFormat, TrackerBackend],
+        export_backends: Dict[ExportFormat, ExportBackend],
     ) -> None:
         self._session_manager = session_manager
         self._reconstruction_manager = reconstruction_manager
         self._export_service = export_service
-        self._tracker_backends = tracker_backends
+        self._export_backends = export_backends
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._playing_channels: FrozenSet[ChannelName] = frozenset()
@@ -89,7 +89,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
         self.on_open_export_instrument_dialog: Optional[Callable[[str, str, ChannelName], None]] = None
-        self.on_open_export_instruments_dialog: Optional[Callable[[str, str, TrackerFormat], None]] = None
+        self.on_open_export_instruments_dialog: Optional[Callable[[str, str, ExportFormat], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
@@ -207,9 +207,9 @@ class ReconstructionPanelLogic(CallbackMixin):
     ) -> None:
         """Asks for the destination one channel slice is written to.
 
-        Every tracker able to write a single slice is offered at once, so the channel travels
+        Every format able to write a single slice is offered at once, so the channel travels
         with the request to the dialog and back. The suggestion is the instrument's name on its
-        own, leaving the tracker to the dialog's file-type selector and to any extension typed
+        own, leaving the format to the dialog's file-type selector and to any extension typed
         over it.
 
         Args:
@@ -234,28 +234,28 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     def request_export_instruments_dialog(
         self,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
     ) -> None:
         """Asks for the destination the loaded reconstruction's slices are named after.
 
-        The tracker comes from the action that was chosen, so the dialog offers that
-        tracker's file type alone and the suggestion already ends in its extension.
+        The format comes from the action that was chosen, so the dialog offers that
+        format's file type alone and the suggestion already ends in its extension.
 
         Args:
-            tracker_format: The tracker the slices are written for.
+            export_format: The format the slices are written in.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
 
         default_path = str(self._session_manager.get_instrument_path())
-        extension = self._tracker_backends[tracker_format].extension(ExportScope.SAMPLE)
+        extension = self._export_backends[export_format].extension(ExportScope.SAMPLE)
 
         self.call(
             self.on_open_export_instruments_dialog,
             get_filename(reconstruction_data.name, extension),
             default_path,
-            tracker_format,
+            export_format,
         )
 
     def request_export_wav_dialog(self) -> None:
@@ -275,9 +275,9 @@ class ReconstructionPanelLogic(CallbackMixin):
     ) -> None:
         """Writes the ``channel_name`` slice of the loaded reconstruction to ``filepath``.
 
-        The extension picks the tracker the slice is written for, and the instrument carries
+        The extension picks the format the slice is written in, and the instrument carries
         the name the destination was saved under, so renaming the file in the dialog renames
-        the instrument the tracker lists.
+        the instrument the file carries.
 
         Args:
             filepath: The destination the dialog was confirmed with.
@@ -288,20 +288,20 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for instrument export")
             return
 
-        tracker_format = self._tracker_format(filepath, ExportScope.INSTRUMENT)
+        export_format = self._export_format(filepath, ExportScope.INSTRUMENT)
         feature = reconstruction_data.feature_data[channel_name]
 
         self._session_manager.set_instrument_path(filepath.parent)
         self._export_service.export_instrument(
             filepath,
-            self._tracker_backends[tracker_format],
+            self._export_backends[export_format],
             self._instrument_export(channel_name, feature, filepath.stem),
         )
 
     def handle_export_instruments_confirmed(
         self,
         destination: Path,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
     ) -> None:
         """Writes the slice of every playing channel of the loaded reconstruction to ``destination``.
 
@@ -312,7 +312,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         Args:
             destination: The file the export was confirmed with.
-            tracker_format: The tracker the slices are written for.
+            export_format: The format the slices are written in.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
@@ -336,16 +336,16 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._session_manager.set_instrument_path(destination.parent)
         self._export_service.export_sample(
             destination,
-            self._tracker_backends[tracker_format],
+            self._export_backends[export_format],
             request,
         )
 
-    def _tracker_format(
+    def _export_format(
         self,
         destination: Path,
         scope: ExportScope,
-    ) -> TrackerFormat:
-        """Reads the tracker format out of the destination's extension.
+    ) -> ExportFormat:
+        """Reads the export format out of the destination's extension.
 
         A save dialog answers with one of the extensions it offered, and an export offers the
         types its own formats write, so every destination reaching here names a format.
@@ -355,16 +355,16 @@ class ReconstructionPanelLogic(CallbackMixin):
             scope: The scope about to be written.
 
         Returns:
-            TrackerFormat: The format to write in.
+            ExportFormat: The format to write in.
 
         Raises:
             ValueError: If no format able to express ``scope`` claims the extension.
         """
-        tracker_format = format_for_extension(self._tracker_backends, scope, destination.suffix)
-        if tracker_format is None:
-            raise ValueError(f"No tracker format writes '{destination.suffix}' for a {scope} export")
+        export_format = format_for_extension(self._export_backends, scope, destination.suffix)
+        if export_format is None:
+            raise ValueError(f"No export format writes '{destination.suffix}' for a {scope} export")
 
-        return tracker_format
+        return export_format
 
     def _instrument_export(
         self,
@@ -372,7 +372,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         feature: Features,
         name: str,
     ) -> InstrumentExport:
-        """Packages one channel slice under ``name`` for a tracker backend.
+        """Packages one channel slice under ``name`` for an export backend.
 
         A reconstruction has no loop flag of its own — that belongs to a sample placed in
         a project — so the instrument plays its envelopes once.

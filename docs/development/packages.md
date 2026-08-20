@@ -53,7 +53,7 @@ Third-party imports are the package author's own choice and stand outside this t
 **The reconstruction engine stands below the console player.** A reconstruction is produced, saved
 and exported to a tracker with `sampletones_player` absent from the process, which is what lets the
 player's format move while the engine holds still. The consequence is that an export backend
-reaching the console — the seam `sampletones_core/trackers/backend.py` describes — is registered
+reaching the console — the seam `sampletones_core/exports/backend.py` describes — is registered
 from above rather than from the engine's own registry.
 
 **Equal temperament sits at the bottom.** The MIDI pitch limits and the A4 reference are

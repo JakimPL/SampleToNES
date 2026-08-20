@@ -2,33 +2,33 @@ from typing import Dict, FrozenSet, Set
 
 import pytest
 
-from sampletones_application.categories.trackers import (
+from sampletones_application.categories.exports import (
+    EXPORT_INSTRUMENT_FILTERS,
+    EXPORT_PROJECT_ELEMENTS,
+    EXPORT_PROJECT_MENU_LABELS,
+    EXPORT_SAMPLE_MENU_LABELS,
     INSTRUMENT_EXPORT_FORMATS,
-    TRACKER_INSTRUMENT_FILTERS,
-    TRACKER_PROJECT_ELEMENTS,
-    TRACKER_PROJECT_MENU_LABELS,
-    TRACKER_SAMPLE_MENU_LABELS,
 )
 from sampletones_application.utils.gui.shortcuts.ids import (
     PROJECT_EXPORT_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
 )
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.registry import build_tracker_backends
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.registry import build_tracker_backends
+from sampletones_core.exports.scope import ExportScope
 
 
 @pytest.fixture(name="backends")
-def backends_fixture() -> Dict[TrackerFormat, TrackerBackend]:
+def backends_fixture() -> Dict[ExportFormat, ExportBackend]:
     return build_tracker_backends()
 
 
 def formats_supporting(
-    backends: Dict[TrackerFormat, TrackerBackend],
+    backends: Dict[ExportFormat, ExportBackend],
     scope: ExportScope,
-) -> Set[TrackerFormat]:
-    return {tracker_format for tracker_format, backend in backends.items() if scope in backend.supported_scopes}
+) -> Set[ExportFormat]:
+    return {export_format for export_format, backend in backends.items() if scope in backend.supported_scopes}
 
 
 class TestEveryOfferedFormatHasABackend:
@@ -39,10 +39,10 @@ class TestEveryOfferedFormatHasABackend:
         "offered",
         [
             frozenset(PROJECT_EXPORT_SHORTCUT_IDS),
-            frozenset(TRACKER_PROJECT_MENU_LABELS),
-            frozenset(TRACKER_PROJECT_ELEMENTS),
+            frozenset(EXPORT_PROJECT_MENU_LABELS),
+            frozenset(EXPORT_PROJECT_ELEMENTS),
             frozenset(SAMPLE_EXPORT_SHORTCUT_IDS),
-            frozenset(TRACKER_SAMPLE_MENU_LABELS),
+            frozenset(EXPORT_SAMPLE_MENU_LABELS),
             frozenset(INSTRUMENT_EXPORT_FORMATS),
         ],
         ids=[
@@ -56,8 +56,8 @@ class TestEveryOfferedFormatHasABackend:
     )
     def test_the_registry_builds_every_offered_format(
         self,
-        backends: Dict[TrackerFormat, TrackerBackend],
-        offered: FrozenSet[TrackerFormat],
+        backends: Dict[ExportFormat, ExportBackend],
+        offered: FrozenSet[ExportFormat],
     ) -> None:
         assert offered <= frozenset(backends)
 
@@ -72,19 +72,19 @@ class TestTheMenusMatchTheSupportedScopes:
 
     def test_the_project_export_menu_lists_the_formats_that_write_a_project(
         self,
-        backends: Dict[TrackerFormat, TrackerBackend],
+        backends: Dict[ExportFormat, ExportBackend],
     ) -> None:
-        assert set(TRACKER_PROJECT_MENU_LABELS) == formats_supporting(backends, ExportScope.PROJECT)
+        assert set(EXPORT_PROJECT_MENU_LABELS) == formats_supporting(backends, ExportScope.PROJECT)
 
     def test_the_instruments_menu_offers_formats_that_write_a_whole_sample(
         self,
-        backends: Dict[TrackerFormat, TrackerBackend],
+        backends: Dict[ExportFormat, ExportBackend],
     ) -> None:
-        assert set(TRACKER_SAMPLE_MENU_LABELS) <= formats_supporting(backends, ExportScope.SAMPLE)
+        assert set(EXPORT_SAMPLE_MENU_LABELS) <= formats_supporting(backends, ExportScope.SAMPLE)
 
     def test_the_instrument_button_offers_formats_that_write_one_slice(
         self,
-        backends: Dict[TrackerFormat, TrackerBackend],
+        backends: Dict[ExportFormat, ExportBackend],
     ) -> None:
         assert set(INSTRUMENT_EXPORT_FORMATS) <= formats_supporting(backends, ExportScope.INSTRUMENT)
 
@@ -94,10 +94,10 @@ class TestEveryMenuEntryCarriesAnAction:
     cover the same formats."""
 
     def test_the_project_menu_pairs_every_label_with_a_shortcut(self) -> None:
-        assert set(TRACKER_PROJECT_MENU_LABELS) == set(PROJECT_EXPORT_SHORTCUT_IDS)
+        assert set(EXPORT_PROJECT_MENU_LABELS) == set(PROJECT_EXPORT_SHORTCUT_IDS)
 
     def test_the_instruments_menu_pairs_every_label_with_a_shortcut(self) -> None:
-        assert set(TRACKER_SAMPLE_MENU_LABELS) == set(SAMPLE_EXPORT_SHORTCUT_IDS)
+        assert set(EXPORT_SAMPLE_MENU_LABELS) == set(SAMPLE_EXPORT_SHORTCUT_IDS)
 
 
 class TestEveryOfferedFormatIsNamedInItsDialog:
@@ -105,5 +105,5 @@ class TestEveryOfferedFormatIsNamedInItsDialog:
     without a type name would reach the dialog unnamed."""
 
     def test_every_instrument_export_format_carries_a_file_type(self) -> None:
-        offered = set(INSTRUMENT_EXPORT_FORMATS) | set(TRACKER_SAMPLE_MENU_LABELS)
-        assert offered <= set(TRACKER_INSTRUMENT_FILTERS)
+        offered = set(INSTRUMENT_EXPORT_FORMATS) | set(EXPORT_SAMPLE_MENU_LABELS)
+        assert offered <= set(EXPORT_INSTRUMENT_FILTERS)

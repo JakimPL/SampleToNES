@@ -11,26 +11,26 @@ from sampletones_application.services.export.result import ExportResult
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.audio import write_wave
-from sampletones_core.trackers.artifact import ExportArtifact
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.request import (
+from sampletones_core.exports.artifact import ExportArtifact
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
     SampleExport,
 )
 from sampletones_shared.logger import logger
 
-NO_TRACKER_FORMAT: None = None
+NO_EXPORT_FORMAT: None = None
 
 
 class ExportService(ServiceBase[ExportResult]):
     """Writes exports on a background thread and reports each outcome as a result.
 
-    The tracker backend arrives per call, so the service stays free of any one file
+    The export backend arrives per call, so the service stays free of any one file
     format: it owns the thread boundary and the error boundary, and the backend owns
     what lands on disk. Each result names the format it was written in, letting one
-    subscriber report an outcome in the words of the tracker that reads it.
+    subscriber report an outcome in the words of the program that reads it.
     """
 
     def __init__(self, priority: int = 0) -> None:
@@ -51,7 +51,7 @@ class ExportService(ServiceBase[ExportResult]):
                     ExportSuccess(
                         kind=ExportKind.WAV,
                         filepath=filepath,
-                        tracker_format=NO_TRACKER_FORMAT,
+                        export_format=NO_EXPORT_FORMAT,
                         truncation=None,
                     )
                 )
@@ -60,7 +60,7 @@ class ExportService(ServiceBase[ExportResult]):
                 self._emit(
                     ExportError(
                         kind=ExportKind.WAV,
-                        tracker_format=NO_TRACKER_FORMAT,
+                        export_format=NO_EXPORT_FORMAT,
                         exception=exception,
                     )
                 )
@@ -70,39 +70,39 @@ class ExportService(ServiceBase[ExportResult]):
     def export_instrument(
         self,
         destination: Path,
-        backend: TrackerBackend,
+        backend: ExportBackend,
         request: InstrumentExport,
     ) -> None:
         self._submit(
             ExportKind.INSTRUMENT,
             destination,
-            backend.tracker_format,
+            backend.export_format,
             partial(backend.write_instrument, destination, request),
         )
 
     def export_sample(
         self,
         destination: Path,
-        backend: TrackerBackend,
+        backend: ExportBackend,
         request: SampleExport,
     ) -> None:
         self._submit(
             ExportKind.SAMPLE,
             destination,
-            backend.tracker_format,
+            backend.export_format,
             partial(backend.write_sample, destination, request),
         )
 
     def export_project(
         self,
         destination: Path,
-        backend: TrackerBackend,
+        backend: ExportBackend,
         request: ProjectExport,
     ) -> None:
         self._submit(
             ExportKind.PROJECT,
             destination,
-            backend.tracker_format,
+            backend.export_format,
             partial(backend.write_project, destination, request),
         )
 
@@ -110,7 +110,7 @@ class ExportService(ServiceBase[ExportResult]):
         self,
         kind: ExportKind,
         destination: Path,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
         write: Callable[[], ExportArtifact],
     ) -> None:
         """Runs one backend write on the executor and reports what it produced.
@@ -122,7 +122,7 @@ class ExportService(ServiceBase[ExportResult]):
         Args:
             kind: The artefact the run produces, naming the dialog that reports it.
             destination: The destination the run was given.
-            tracker_format: The format the run writes, carried through to the result.
+            export_format: The format the run writes, carried through to the result.
             write: Calls the backend and returns what it left on disk.
         """
 
@@ -136,7 +136,7 @@ class ExportService(ServiceBase[ExportResult]):
                     ExportSuccess(
                         kind=kind,
                         filepath=artifact.paths[0] if artifact.paths else destination,
-                        tracker_format=tracker_format,
+                        export_format=export_format,
                         truncation=artifact.truncation,
                     )
                 )
@@ -145,7 +145,7 @@ class ExportService(ServiceBase[ExportResult]):
                 self._emit(
                     ExportError(
                         kind=kind,
-                        tracker_format=tracker_format,
+                        export_format=export_format,
                         exception=exception,
                     )
                 )

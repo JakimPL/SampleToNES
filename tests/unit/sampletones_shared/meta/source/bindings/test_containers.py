@@ -8,12 +8,12 @@ from sampletones_shared.meta.source.bindings.containers import (
 )
 from tests.suite.source import parse_source
 
-FILTER_TYPES: Final[Tuple[str, ...]] = ("TrackerFormat", "FileFilterElements")
+FILTER_TYPES: Final[Tuple[str, ...]] = ("ExportFormat", "FileFilterElements")
 
 ANNOTATED_SOURCE: Final[str] = """
 from typing import Dict, Final, List
 
-FILTERS: Final[Dict[TrackerFormat, FileFilterElements]] = {}
+FILTERS: Final[Dict[ExportFormat, FileFilterElements]] = {}
 NAMES: Final[List[str]] = []
 PLAIN = {}
 
@@ -71,8 +71,8 @@ class TestIteratedContainer:
 
 class TestIteratedTypes:
     def test_walking_items_types_the_key_and_the_value_target(self) -> None:
-        assert typed_names("tracker_format, element", "items", FILTER_TYPES) == [
-            ("tracker_format", "TrackerFormat"),
+        assert typed_names("export_format, element", "items", FILTER_TYPES) == [
+            ("export_format", "ExportFormat"),
             ("element", "FileFilterElements"),
         ]
 
@@ -88,20 +88,20 @@ class TestIteratedTypes:
         ]
 
     def test_walking_keys_types_the_target_from_the_key_type(self) -> None:
-        assert typed_names("tracker_format", "keys", FILTER_TYPES) == [
+        assert typed_names("export_format", "keys", FILTER_TYPES) == [
             (
-                "tracker_format",
-                "TrackerFormat",
+                "export_format",
+                "ExportFormat",
             )
         ]
 
     def test_walking_a_container_directly_types_the_target_from_the_key_type(
         self,
     ) -> None:
-        assert typed_names("tracker_format", None, FILTER_TYPES) == [
+        assert typed_names("export_format", None, FILTER_TYPES) == [
             (
-                "tracker_format",
-                "TrackerFormat",
+                "export_format",
+                "ExportFormat",
             )
         ]
 

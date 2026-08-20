@@ -7,7 +7,7 @@ from tests.suite.source import parse_source, scope_named
 PANEL_SOURCE: Final[str] = """
 from typing import Dict, Final
 
-FILTERS: Final[Dict[TrackerFormat, FileFilterElements]] = {}
+FILTERS: Final[Dict[ExportFormat, FileFilterElements]] = {}
 
 
 class Panel:
@@ -29,8 +29,8 @@ class Panel:
         self._labels = [label(item) for item in FILTERS.values()]
 
     def _filters(self) -> None:
-        for tracker_format, element in FILTERS.items():
-            print(tracker_format, element)
+        for export_format, element in FILTERS.items():
+            print(export_format, element)
 
     def _names(self) -> None:
         for name in FILTERS:
@@ -39,23 +39,23 @@ class Panel:
 
 IMPORTED_SOURCE: Final[str] = """
 def create() -> None:
-    for tracker_format, element in TRACKER_FILTERS.items():
-        print(tracker_format, element)
+    for export_format, element in EXPORT_FILTERS.items():
+        print(export_format, element)
 """
 
 LOCAL_OVER_IMPORTED_SOURCE: Final[str] = """
 from typing import Dict, Final
 
-TRACKER_FILTERS: Final[Dict[str, MenuElements]] = {}
+EXPORT_FILTERS: Final[Dict[str, MenuElements]] = {}
 
 
 def create() -> None:
-    for element in TRACKER_FILTERS.values():
+    for element in EXPORT_FILTERS.values():
         print(element)
 """
 
 IMPORTED_FILTERS: Final[Mapping[str, Tuple[str, ...]]] = {
-    "TRACKER_FILTERS": ("TrackerFormat", "FileFilterElements"),
+    "EXPORT_FILTERS": ("ExportFormat", "FileFilterElements"),
 }
 
 
@@ -137,10 +137,10 @@ class TestLoopTargets:
     def test_walking_items_states_the_key_and_the_value_type(self) -> None:
         environment = panel_environment("_filters")
         assert (
-            environment.type_of("tracker_format"),
+            environment.type_of("export_format"),
             environment.type_of("element"),
         ) == (
-            "TrackerFormat",
+            "ExportFormat",
             "FileFilterElements",
         )
 
@@ -148,7 +148,7 @@ class TestLoopTargets:
         assert panel_environment("_load").type_of("item") == "FileFilterElements"
 
     def test_walking_a_mapping_states_the_key_type(self) -> None:
-        assert panel_environment("_names").type_of("name") == "TrackerFormat"
+        assert panel_environment("_names").type_of("name") == "ExportFormat"
 
     def test_an_imported_container_states_its_item_types(self) -> None:
         assert (

@@ -1,8 +1,8 @@
 from enum import StrEnum
 
 
-class TrackerFormat(StrEnum):
-    """A file format one tracker reads, and the backend that writes it."""
+class ExportFormat(StrEnum):
+    """A file format the application exports to, and the backend that writes it."""
 
     FAMITRACKER = "famitracker"
     BITPHASE = "bitphase"

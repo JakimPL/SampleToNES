@@ -4,12 +4,12 @@ from typing import Iterator, Optional
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
+from sampletones_core.exports.request import ProjectExport
 from sampletones_core.project import Project
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.trackers.request import ProjectExport
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 from sampletones_shared.utils.callbacks import CallbackMixin

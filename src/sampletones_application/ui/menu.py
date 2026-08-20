@@ -8,12 +8,12 @@ from sampletones_application.categories.elements.global_ import (
     ContextElements,
     MenuElements,
 )
+from sampletones_application.categories.exports import (
+    EXPORT_PROJECT_MENU_LABELS,
+    EXPORT_SAMPLE_MENU_LABELS,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.trackers import (
-    TRACKER_PROJECT_MENU_LABELS,
-    TRACKER_SAMPLE_MENU_LABELS,
-)
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.layout.glyphs.player import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
@@ -236,7 +236,7 @@ class MenuBar:
             )
 
     def _create_project_export_menu(self, state: MenuBarViewModel) -> None:
-        """Builds the submenu that writes the open project for one tracker.
+        """Builds the submenu that writes the open project for one format.
 
         Each format reads its own kind of file, so the formats are listed side by side and
         the one chosen decides what the destination dialog offers. The submenu is open while
@@ -247,10 +247,10 @@ class MenuBar:
             label=self._label(MenuElements.GROUP_FILE_EXPORT),
             enabled=state.project_open,
         ):
-            for tracker_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items():
+            for export_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items():
                 self._shortcut_manager.add_menu_item(
                     shortcut_id,
-                    label=self._label(TRACKER_PROJECT_MENU_LABELS[tracker_format]),
+                    label=self._label(EXPORT_PROJECT_MENU_LABELS[export_format]),
                 )
 
     def _create_edit_menu(self, state: MenuBarViewModel) -> None:
@@ -410,20 +410,20 @@ class MenuBar:
             self._create_instruments_export_menu(state)
 
     def _create_instruments_export_menu(self, state: MenuBarViewModel) -> None:
-        """Builds the submenu that writes the loaded reconstruction's slices for one tracker.
+        """Builds the submenu that writes the loaded reconstruction's slices for one format.
 
-        Each format able to write a file per slice gets its own item, so choosing the tracker
-        is one click and the destination dialog then offers that tracker's file type alone.
+        Each format able to write a file per slice gets its own item, so choosing the format
+        is one click and the destination dialog then offers that format's file type alone.
         """
         with dpg.menu(
             tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
             label=self._label(MenuElements.GROUP_RECONSTRUCTION_EXPORT_INSTRUMENTS),
             enabled=state.reconstruction_loaded,
         ):
-            for tracker_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items():
+            for export_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items():
                 self._shortcut_manager.add_menu_item(
                     shortcut_id,
-                    label=self._label(TRACKER_SAMPLE_MENU_LABELS[tracker_format]),
+                    label=self._label(EXPORT_SAMPLE_MENU_LABELS[export_format]),
                 )
 
     def _create_playback_menu(self, state: MenuBarViewModel) -> None:

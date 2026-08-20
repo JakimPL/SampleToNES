@@ -4,12 +4,12 @@ from typing import Callable, Dict, Optional, Sequence, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.export import ExportMessages
+from sampletones_application.categories.exports import (
+    EXPORT_INSTRUMENT_FILTERS,
+    INSTRUMENT_EXPORT_FORMATS,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.trackers import (
-    INSTRUMENT_EXPORT_FORMATS,
-    TRACKER_INSTRUMENT_FILTERS,
-)
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
@@ -81,10 +81,10 @@ from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.scope import ExportScope
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -111,7 +111,7 @@ class ReconstructionTabCoordinator:
         reconstruction_manager: ReconstructionManager,
         browser_manager: BrowserManager,
         export_service: ExportService,
-        tracker_backends: Dict[TrackerFormat, TrackerBackend],
+        export_backends: Dict[ExportFormat, ExportBackend],
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
         on_change_audio_state: VoidCallback,
         on_favorite_changed: Callable[[FileSystemNode], None],
@@ -126,7 +126,7 @@ class ReconstructionTabCoordinator:
         self._language_manager = language_manager
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
-        self._tracker_backends = tracker_backends
+        self._export_backends = export_backends
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
 
@@ -138,14 +138,14 @@ class ReconstructionTabCoordinator:
 
         self._msg_load_error = language_manager["reconstructions.browser.message.load_error"]
         self._export_messages = ExportMessages.build(language_manager)
-        self._instrument_filter_names: Dict[TrackerFormat, str] = {
-            tracker_format: language_manager[
+        self._instrument_filter_names: Dict[ExportFormat, str] = {
+            export_format: language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.FILTER,
                 element,
             ]
-            for tracker_format, element in TRACKER_INSTRUMENT_FILTERS.items()
+            for export_format, element in EXPORT_INSTRUMENT_FILTERS.items()
         }
 
         self._browser_logic: BrowserLogic = BrowserLogic(
@@ -203,7 +203,7 @@ class ReconstructionTabCoordinator:
             session_manager,
             reconstruction_manager,
             export_service,
-            tracker_backends,
+            export_backends,
         )
         self._reconstruction_instruments_panel: GUIReconstructionInstrumentsPanel = GUIReconstructionInstrumentsPanel(
             pitch_stepper_style=layout.pitch_stepper_style,
@@ -356,7 +356,7 @@ class ReconstructionTabCoordinator:
         """Prompts for the file the ``channel_name`` slice is written to.
 
         Every format that writes a single slice is offered at once, so the type picked in the
-        dialog names the tracker the slice is written for.
+        dialog names the format the slice is written in.
         """
         filepath = save_file_dialog(
             title=self._language_manager["reconstructions.instruments.title.export_instrument_dialog"],
@@ -367,13 +367,13 @@ class ReconstructionTabCoordinator:
         self._handle_export_instrument(filepath, channel_name)
 
     def _instrument_filters(self) -> Tuple[FileFilter, ...]:
-        """The types a destination for one slice may be given, one per tracker offered.
+        """The types a destination for one slice may be given, one per format offered.
 
-        Naming each tracker's own type puts the trackers an export can reach in the dialog's
+        Naming each format's own type puts the programs an export can reach in the dialog's
         type selector, so the one that is picked there names the format.
         """
         return tuple(
-            self._tracker_filter(tracker_format, ExportScope.INSTRUMENT) for tracker_format in INSTRUMENT_EXPORT_FORMATS
+            self._export_filter(export_format, ExportScope.INSTRUMENT) for export_format in INSTRUMENT_EXPORT_FORMATS
         )
 
     @ignore_none_path
@@ -388,11 +388,11 @@ class ReconstructionTabCoordinator:
         self,
         default_filename: str,
         default_path: str,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
     ) -> None:
         """Prompts for the destination the loaded reconstruction's slices are named after.
 
-        The tracker was chosen with the action, so the dialog offers its file type alone: a
+        The format was chosen with the action, so the dialog offers its file type alone: a
         format that gathers the whole reconstruction into one document writes it at the
         destination, while one that keeps an instrument per file writes its slices beside it.
         """
@@ -400,28 +400,28 @@ class ReconstructionTabCoordinator:
             title=self._language_manager["reconstructions.instruments.title.export_instruments_dialog"],
             initial_directory=default_path,
             default_filename=default_filename,
-            filters=(self._tracker_filter(tracker_format, ExportScope.SAMPLE),),
+            filters=(self._export_filter(export_format, ExportScope.SAMPLE),),
         )
-        self._handle_export_instruments(destination, tracker_format)
+        self._handle_export_instruments(destination, export_format)
 
-    def _tracker_filter(
+    def _export_filter(
         self,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
         scope: ExportScope,
     ) -> FileFilter:
-        """The type ``tracker_format`` writes ``scope`` files as, named after that tracker."""
+        """The type ``export_format`` writes ``scope`` files as, named after that format."""
         return FileFilter.for_extensions(
-            self._instrument_filter_names[tracker_format],
-            [self._tracker_backends[tracker_format].extension(scope)],
+            self._instrument_filter_names[export_format],
+            [self._export_backends[export_format].extension(scope)],
         )
 
     @ignore_none_path
     def _handle_export_instruments(
         self,
         destination: Path,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
     ) -> None:
-        self._reconstruction_panel_logic.handle_export_instruments_confirmed(destination, tracker_format)
+        self._reconstruction_panel_logic.handle_export_instruments_confirmed(destination, export_format)
 
     def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
         filepath = save_file_dialog(
@@ -646,8 +646,8 @@ class ReconstructionTabCoordinator:
     def request_export_wav_dialog(self) -> None:
         self._reconstruction_panel_logic.request_export_wav_dialog()
 
-    def request_export_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
-        self._reconstruction_panel_logic.request_export_instruments_dialog(tracker_format)
+    def request_export_instruments_dialog(self, export_format: ExportFormat) -> None:
+        self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)
 
     def _on_browser_autoplay_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))

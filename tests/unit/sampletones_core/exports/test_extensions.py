@@ -3,11 +3,11 @@ from typing import Dict, Final, List, Optional
 
 import pytest
 
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.extensions import format_for_extension
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.registry import build_tracker_backends
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.extensions import format_for_extension
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.registry import build_tracker_backends
+from sampletones_core.exports.scope import ExportScope
 from sampletones_shared.paths.extensions import (
     EXT_FILE_BITPHASE,
     EXT_FILE_INSTRUMENT,
@@ -23,34 +23,34 @@ NO_EXTENSION: Final[str] = ""
 class ExtensionCase:
     scope: ExportScope
     extension: str
-    expected: Optional[TrackerFormat]
+    expected: Optional[ExportFormat]
 
 
 EXTENSION_CASES: Final[List[ExtensionCase]] = [
     ExtensionCase(
         scope=ExportScope.INSTRUMENT,
         extension=EXT_FILE_INSTRUMENT,
-        expected=TrackerFormat.FAMITRACKER,
+        expected=ExportFormat.FAMITRACKER,
     ),
     ExtensionCase(
         scope=ExportScope.INSTRUMENT,
         extension=EXT_FILE_BITPHASE,
-        expected=TrackerFormat.BITPHASE,
+        expected=ExportFormat.BITPHASE,
     ),
     ExtensionCase(
         scope=ExportScope.INSTRUMENT,
         extension=EXT_FILE_JSON,
-        expected=TrackerFormat.BITPHASE_PRESET,
+        expected=ExportFormat.BITPHASE_PRESET,
     ),
     ExtensionCase(
         scope=ExportScope.SAMPLE,
         extension=EXT_FILE_JSON,
-        expected=TrackerFormat.BITPHASE_PRESET,
+        expected=ExportFormat.BITPHASE_PRESET,
     ),
     ExtensionCase(
         scope=ExportScope.PROJECT,
         extension=EXT_FILE_MODULE,
-        expected=TrackerFormat.FAMITRACKER,
+        expected=ExportFormat.FAMITRACKER,
     ),
     ExtensionCase(
         scope=ExportScope.INSTRUMENT,
@@ -66,7 +66,7 @@ EXTENSION_CASES: Final[List[ExtensionCase]] = [
 
 
 @pytest.fixture(name="backends")
-def backends_fixture() -> Dict[TrackerFormat, TrackerBackend]:
+def backends_fixture() -> Dict[ExportFormat, ExportBackend]:
     return build_tracker_backends()
 
 
@@ -78,23 +78,23 @@ class TestFormatForExtension:
     )
     def test_the_extension_names_the_format_that_writes_it(
         self,
-        backends: Dict[TrackerFormat, TrackerBackend],
+        backends: Dict[ExportFormat, ExportBackend],
         case: ExtensionCase,
     ) -> None:
         assert format_for_extension(backends, case.scope, case.extension) == case.expected
 
     def test_an_extension_typed_in_capitals_reaches_the_same_format(
         self,
-        backends: Dict[TrackerFormat, TrackerBackend],
+        backends: Dict[ExportFormat, ExportBackend],
     ) -> None:
         assert (
             format_for_extension(backends, ExportScope.INSTRUMENT, EXT_FILE_INSTRUMENT.upper())
-            == TrackerFormat.FAMITRACKER
+            == ExportFormat.FAMITRACKER
         )
 
     def test_a_format_that_cannot_express_the_scope_stays_unmatched(
         self,
-        backends: Dict[TrackerFormat, TrackerBackend],
+        backends: Dict[ExportFormat, ExportBackend],
     ) -> None:
         """A preset holds one instrument, so a project named with its extension resolves
         to no format at all.
@@ -104,13 +104,13 @@ class TestFormatForExtension:
     @pytest.mark.parametrize("scope", list(ExportScope), ids=lambda scope: str(scope))
     def test_every_extension_a_backend_writes_resolves_back_to_it(
         self,
-        backends: Dict[TrackerFormat, TrackerBackend],
+        backends: Dict[ExportFormat, ExportBackend],
         scope: ExportScope,
     ) -> None:
         """A dialog offers the extension of each format it can reach, so a destination taking
         one of them names the backend that put it in the selector. Each scope's extensions are
         therefore distinct across formats, which is what the resolution reads them as.
         """
-        for tracker_format, backend in backends.items():
+        for export_format, backend in backends.items():
             if scope in backend.supported_scopes:
-                assert format_for_extension(backends, scope, backend.extension(scope)) == tracker_format
+                assert format_for_extension(backends, scope, backend.extension(scope)) == export_format

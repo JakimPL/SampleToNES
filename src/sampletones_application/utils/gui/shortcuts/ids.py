@@ -4,7 +4,7 @@ from typing import Dict, Final, Self, Tuple
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.constants.playback import FollowMode
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.exports.format import ExportFormat
 
 
 class ShortcutCategory(StrEnum):
@@ -220,12 +220,12 @@ CHANNEL_SHORTCUT_IDS: Final[Dict[ChannelName, ShortcutId]] = {
     ChannelName.NOISE: ShortcutId.TOGGLE_CHANNEL_NOISE,
 }
 
-PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {
-    TrackerFormat.FAMITRACKER: ShortcutId.EXPORT_PROJECT_FAMITRACKER,
-    TrackerFormat.BITPHASE: ShortcutId.EXPORT_PROJECT_BITPHASE,
+PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
+    ExportFormat.FAMITRACKER: ShortcutId.EXPORT_PROJECT_FAMITRACKER,
+    ExportFormat.BITPHASE: ShortcutId.EXPORT_PROJECT_BITPHASE,
 }
 
-SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {
-    TrackerFormat.FAMITRACKER: ShortcutId.EXPORT_INSTRUMENTS_FAMITRACKER,
-    TrackerFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
+SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
+    ExportFormat.FAMITRACKER: ShortcutId.EXPORT_INSTRUMENTS_FAMITRACKER,
+    ExportFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
 }

@@ -4,7 +4,7 @@ import numpy as np
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
-from sampletones_core.trackers.request import InstrumentExport, SampleExport
+from sampletones_core.exports.request import InstrumentExport, SampleExport
 
 NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60

@@ -7,15 +7,15 @@ from sampletones_application.categories.elements.global_ import (
     GlobalMessageElements,
     MenuElements,
 )
-from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.exports.format import ExportFormat
 
 
 @dataclass(frozen=True)
-class TrackerProjectElements:
-    """Which texts one tracker format's project export reads.
+class ExportProjectElements:
+    """Which texts one export format's project export reads.
 
     Every format names its own file kind, so the dialog that picks a destination and the
-    one that reports the outcome speak in the words of the tracker that reads the file.
+    one that reports the outcome speak in the words of the program that reads the file.
 
     Attributes:
         dialog_title: Title of the dialog the destination is picked in.
@@ -30,14 +30,14 @@ class TrackerProjectElements:
     export_failed_message: GlobalMessageElements
 
 
-TRACKER_PROJECT_ELEMENTS: Final[Dict[TrackerFormat, TrackerProjectElements]] = {
-    TrackerFormat.FAMITRACKER: TrackerProjectElements(
+EXPORT_PROJECT_ELEMENTS: Final[Dict[ExportFormat, ExportProjectElements]] = {
+    ExportFormat.FAMITRACKER: ExportProjectElements(
         dialog_title=GlobalDialogTitleElements.EXPORT_MODULE,
         filter_name=FileFilterElements.MODULE,
         exported_message=GlobalMessageElements.PROJECT_EXPORTED_SUCCESSFULLY,
         export_failed_message=GlobalMessageElements.PROJECT_EXPORT_FAILED,
     ),
-    TrackerFormat.BITPHASE: TrackerProjectElements(
+    ExportFormat.BITPHASE: ExportProjectElements(
         dialog_title=GlobalDialogTitleElements.EXPORT_BITPHASE_PROJECT,
         filter_name=FileFilterElements.BITPHASE_PROJECT,
         exported_message=GlobalMessageElements.BITPHASE_PROJECT_EXPORTED_SUCCESSFULLY,
@@ -45,22 +45,22 @@ TRACKER_PROJECT_ELEMENTS: Final[Dict[TrackerFormat, TrackerProjectElements]] = {
     ),
 }
 
-TRACKER_PROJECT_MENU_LABELS: Final[Dict[TrackerFormat, MenuElements]] = {
-    TrackerFormat.FAMITRACKER: MenuElements.ITEM_FILE_EXPORT_FAMITRACKER,
-    TrackerFormat.BITPHASE: MenuElements.ITEM_FILE_EXPORT_BITPHASE,
+EXPORT_PROJECT_MENU_LABELS: Final[Dict[ExportFormat, MenuElements]] = {
+    ExportFormat.FAMITRACKER: MenuElements.ITEM_FILE_EXPORT_FAMITRACKER,
+    ExportFormat.BITPHASE: MenuElements.ITEM_FILE_EXPORT_BITPHASE,
 }
 
-INSTRUMENT_EXPORT_FORMATS: Final[Tuple[TrackerFormat, ...]] = (
-    TrackerFormat.FAMITRACKER,
-    TrackerFormat.BITPHASE_PRESET,
+INSTRUMENT_EXPORT_FORMATS: Final[Tuple[ExportFormat, ...]] = (
+    ExportFormat.FAMITRACKER,
+    ExportFormat.BITPHASE_PRESET,
 )
 
-TRACKER_INSTRUMENT_FILTERS: Final[Dict[TrackerFormat, FileFilterElements]] = {
-    TrackerFormat.FAMITRACKER: FileFilterElements.FAMITRACKER_INSTRUMENT,
-    TrackerFormat.BITPHASE_PRESET: FileFilterElements.BITPHASE_PRESET,
+EXPORT_INSTRUMENT_FILTERS: Final[Dict[ExportFormat, FileFilterElements]] = {
+    ExportFormat.FAMITRACKER: FileFilterElements.FAMITRACKER_INSTRUMENT,
+    ExportFormat.BITPHASE_PRESET: FileFilterElements.BITPHASE_PRESET,
 }
 
-TRACKER_SAMPLE_MENU_LABELS: Final[Dict[TrackerFormat, MenuElements]] = {
-    TrackerFormat.FAMITRACKER: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER,
-    TrackerFormat.BITPHASE_PRESET: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET,
+EXPORT_SAMPLE_MENU_LABELS: Final[Dict[ExportFormat, MenuElements]] = {
+    ExportFormat.FAMITRACKER: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER,
+    ExportFormat.BITPHASE_PRESET: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET,
 }

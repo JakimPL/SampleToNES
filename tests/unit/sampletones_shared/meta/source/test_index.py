@@ -9,7 +9,7 @@ from tests.suite.source import parse_source
 TAGS_SOURCE: Final[str] = """
 from typing import Dict, Final
 
-FILTERS: Final[Dict[TrackerFormat, FileFilterElements]] = {}
+FILTERS: Final[Dict[ExportFormat, FileFilterElements]] = {}
 TAG_MAIN_WINDOW = "main.window"
 """
 
@@ -32,7 +32,7 @@ def index_of(*sources: str) -> SourceIndex:
 class TestSourceIndex:
     def test_a_container_states_its_item_types(self) -> None:
         assert index_of(TAGS_SOURCE).item_types["FILTERS"] == (
-            "TrackerFormat",
+            "ExportFormat",
             "FileFilterElements",
         )
 

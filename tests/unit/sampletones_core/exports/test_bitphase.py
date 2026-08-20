@@ -9,19 +9,19 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
-from sampletones_core.project.project import Project
-from sampletones_core.project.settings import ProjectSettings
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.implementation.bitphase import (
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.implementation.bitphase import (
     BitphaseBackend,
     BitphasePresetBackend,
 )
-from sampletones_core.trackers.request import (
+from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
     SampleExport,
 )
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.exports.scope import ExportScope
+from sampletones_core.project.project import Project
+from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
 
 NES_FREQUENCY: Final[int] = 60
@@ -82,7 +82,7 @@ def project_fixture() -> Project:
 
 class TestFormatDeclaration:
     def test_the_backend_names_its_format(self, backend: BitphaseBackend) -> None:
-        assert backend.tracker_format == TrackerFormat.BITPHASE
+        assert backend.export_format == ExportFormat.BITPHASE
 
     def test_every_scope_is_supported(self, backend: BitphaseBackend) -> None:
         assert backend.supported_scopes == frozenset(ExportScope)
@@ -171,7 +171,7 @@ class TestWriteProject:
 
 class TestThePresetBackend:
     def test_the_backend_names_its_format(self, preset_backend: BitphasePresetBackend) -> None:
-        assert preset_backend.tracker_format == TrackerFormat.BITPHASE_PRESET
+        assert preset_backend.export_format == ExportFormat.BITPHASE_PRESET
 
     def test_a_preset_holds_instruments_rather_than_a_song(self, preset_backend: BitphasePresetBackend) -> None:
         assert preset_backend.supported_scopes == frozenset({ExportScope.INSTRUMENT, ExportScope.SAMPLE})

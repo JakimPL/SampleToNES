@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.slices import iterate_sample_slices
+from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.formats.bitphase.envelopes import (
     ChannelEnvelopes,
     features_to_envelopes,
@@ -66,7 +67,6 @@ from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.timing import Groove, Metre, RowRate, calculate_groove
-from sampletones_core.trackers.request import InstrumentExport, SampleExport
 from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN, DEFAULT_SPEED
 
 PREVIEW_SPEED = DEFAULT_SPEED
