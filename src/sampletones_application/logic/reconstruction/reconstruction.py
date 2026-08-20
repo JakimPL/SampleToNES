@@ -15,6 +15,10 @@ from sampletones_application.view_model.reconstruction.paths.state import (
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.reconstruction.stems import (
+    ReconstructionStemsViewModel,
+    StemViewModel,
+)
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
@@ -80,6 +84,8 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._playing_channels: FrozenSet[ChannelName] = frozenset()
         self._selected_channels: List[ChannelName] = []
+        self._available_stems: FrozenSet[int] = frozenset()
+        self._selected_stems: FrozenSet[int] = frozenset()
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
@@ -93,6 +99,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
+        self.on_stems_view_changed: Optional[Callable[[ReconstructionStemsViewModel], None]] = None
 
     def display_reconstruction(self) -> None:
         reconstruction_data = self._reconstruction_data
@@ -101,16 +108,22 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self._playing_channels = frozenset(reconstruction_data.reconstruction.playing_channels)
         self._selected_channels = self._in_channel_order(self._playing_channels)
+        self._available_stems = self._all_stem_ids(reconstruction_data)
+        self._selected_stems = self._available_stems
 
         view_model = self._build_view_model(reconstruction_data)
         if not view_model.audio_source_enabled:
             self._current_audio_source = AudioSourceType.RECONSTRUCTION
 
         self.call(self.on_view_changed, view_model)
+        self.call(
+            self.on_stems_view_changed,
+            self._build_stems_view_model(reconstruction_data),
+        )
         self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(),
+            reconstruction_data.waveform_data(self._selected_stems),
             self._selected_channels,
         )
         self._emit_audio_data()
@@ -121,11 +134,16 @@ class ReconstructionPanelLogic(CallbackMixin):
             return
 
         self._adopt_playing_channels(frozenset(reconstruction_data.reconstruction.playing_channels))
+        self._adopt_selected_stems(self._all_stem_ids(reconstruction_data))
 
         self.call(self.on_view_changed, self._build_view_model(reconstruction_data))
         self.call(
+            self.on_stems_view_changed,
+            self._build_stems_view_model(reconstruction_data),
+        )
+        self.call(
             self.on_waveform_update_changed,
-            reconstruction_data.waveform_data(),
+            reconstruction_data.waveform_data(self._selected_stems),
             self._selected_channels,
         )
         if self._current_audio_source != AudioSourceType.ORIGINAL:
@@ -166,8 +184,17 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
         self._playing_channels = frozenset()
         self._selected_channels = []
+        self._available_stems = frozenset()
+        self._selected_stems = frozenset()
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
+        self.call(
+            self.on_stems_view_changed,
+            ReconstructionStemsViewModel(
+                reconstruction_loaded=False,
+                stems=(),
+            ),
+        )
         empty_path = ReconstructionPathViewModel(
             state=ReconstructionPathState.EMPTY,
             paths=(),
@@ -196,10 +223,103 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(),
+            reconstruction_data.waveform_data(self._selected_stems),
             channels,
         )
         self._emit_audio_data()
+
+    def set_selected_stems(self, stem_ids: FrozenSet[int]) -> None:
+        """Adopts the reader's stem choice and re-answers playback and the waveform.
+
+        The choice is listening state, so it filters what plays and what the waveform
+        shows without touching the document.
+        """
+        self._selected_stems = stem_ids
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
+            return
+
+        self.call(
+            self.on_stems_view_changed,
+            self._build_stems_view_model(reconstruction_data),
+        )
+        self.call(
+            self.on_waveform_load_changed,
+            reconstruction_data.waveform_data(self._selected_stems),
+            self._selected_channels,
+        )
+        self._emit_audio_data()
+
+    def _adopt_selected_stems(self, stem_ids: FrozenSet[int]) -> None:
+        """Carries the reader's stem choice across an edit.
+
+        A stem that keeps existing keeps whatever the reader chose for it, and one
+        appearing for the first time joins selected, so a deliberate choice survives
+        while the new stems' content is heard.
+        """
+        selected = (set(self._selected_stems) & stem_ids) | (stem_ids - self._available_stems)
+        self._available_stems = stem_ids
+        self._selected_stems = frozenset(selected)
+
+    @staticmethod
+    def _all_stem_ids(
+        reconstruction_data: ReconstructionData,
+    ) -> FrozenSet[int]:
+        stems_data = reconstruction_data.reconstruction.stems_data
+        if stems_data is not None:
+            return frozenset(entry.id for entry in stems_data.config.entries)
+
+        if reconstruction_data.reconstruction.source_paths:
+            return frozenset({0})
+
+        return frozenset()
+
+    def _build_stems_view_model(
+        self,
+        reconstruction_data: ReconstructionData,
+    ) -> ReconstructionStemsViewModel:
+        reconstruction = reconstruction_data.reconstruction
+        stems_data = reconstruction.stems_data
+        if stems_data is not None:
+            assigned_stem_ids = {
+                stem_id for stem_ids in stems_data.assignments_by_channel.values() for stem_id in stem_ids
+            }
+            rows = tuple(
+                StemViewModel(
+                    stem_id=entry.id,
+                    label=reconstruction.source_paths[index].name,
+                    channels=tuple(entry.channels),
+                    enabled=entry.id in assigned_stem_ids,
+                    selected=entry.id in self._selected_stems,
+                )
+                for index, entry in enumerate(stems_data.config.entries)
+            )
+            return ReconstructionStemsViewModel(
+                reconstruction_loaded=True,
+                stems=rows,
+                hierarchy_mode=stems_data.config.hierarchy.mode,
+                channel_cap=stems_data.config.channel_cap,
+            )
+
+        source_paths = reconstruction.source_paths
+        if source_paths:
+            return ReconstructionStemsViewModel(
+                reconstruction_loaded=True,
+                stems=(
+                    StemViewModel(
+                        stem_id=0,
+                        label=source_paths[0].name,
+                        channels=tuple(reconstruction.playing_channels),
+                        enabled=True,
+                        selected=0 in self._selected_stems,
+                    ),
+                ),
+            )
+
+        return ReconstructionStemsViewModel(
+            reconstruction_loaded=True,
+            stems=(),
+        )
 
     def request_export_instrument_dialog(
         self,
@@ -399,7 +519,10 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for WAV export")
             return
 
-        audio_snapshot = reconstruction_data.get_partials(self._selected_channels)
+        audio_snapshot = reconstruction_data.partials_for(
+            self._selected_channels,
+            self._selected_stems,
+        )
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         self._session_manager.set_audio_path(filepath)
         self._export_service.export_wav(filepath, sample_rate, audio_snapshot)
@@ -449,9 +572,13 @@ class ReconstructionPanelLogic(CallbackMixin):
             if original_audio is None:
                 return None
 
+            original_audio = reconstruction_data.original_mix_for(self._selected_stems)
             return AudioData.from_array(original_audio, sample_rate)
 
-        partial_approximation = reconstruction_data.get_partials(self._selected_channels)
+        partial_approximation = reconstruction_data.partials_for(
+            self._selected_channels,
+            self._selected_stems,
+        )
         return AudioData.from_array(partial_approximation, sample_rate)
 
     def _build_path_view_models(

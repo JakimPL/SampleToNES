@@ -59,7 +59,7 @@ def reconstruction_data(default_config, minimal_reconstruction) -> Reconstructio
     return ReconstructionData(
         config=default_config,
         reconstruction=minimal_reconstruction,
-        original_audio=np.zeros(256, dtype=np.float32),
+        stem_audios=(),
         feature_data=feature_data,
         filepath=Path("/dev/null"),
         name="null",

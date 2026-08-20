@@ -1,6 +1,7 @@
 from dataclasses import dataclass, replace
+from functools import cached_property
 from pathlib import Path
-from typing import List, Optional, Self
+from typing import AbstractSet, Dict, List, Optional, Self, Tuple
 
 import numpy as np
 
@@ -11,6 +12,10 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.naming.derive import derive_name
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.filter import (
+    filter_approximations,
+)
 from sampletones_shared.logger import logger
 
 
@@ -19,7 +24,7 @@ class ReconstructionData:
     name: str
     config: Config
     reconstruction: Reconstruction
-    original_audio: Optional[np.ndarray]
+    stem_audios: Tuple[np.ndarray, ...]
     feature_data: FeatureData
     filepath: Optional[Path]
 
@@ -53,8 +58,8 @@ class ReconstructionData:
         Save As writes the reconstruction to its own file and adopts this copy as the open
         document. The copy owns a fresh reconstruction object, so a document that was a project
         sample becomes a standalone entity: later edits reach only the saved file, leaving the
-        project's sample unchanged. The already-loaded original audio is reused, since the copy
-        shares the same source.
+        project's sample unchanged. The copy shares the loaded recordings, so the original
+        audio carries over without a reload.
         """
         reconstruction = self.reconstruction.model_copy(deep=True)
         return replace(
@@ -88,13 +93,13 @@ class ReconstructionData:
         filepath: Optional[Path],
         name: str,
     ) -> Self:
-        original_audio = cls._load_original_audio(reconstruction)
+        stem_audios = cls._load_stem_audios(reconstruction)
         feature_data = FeatureData.load(reconstruction)
 
         return cls(
             config=reconstruction.config,
             reconstruction=reconstruction,
-            original_audio=original_audio,
+            stem_audios=stem_audios,
             feature_data=feature_data,
             filepath=filepath,
             name=name,
@@ -115,20 +120,20 @@ class ReconstructionData:
         return filepath.stem
 
     @staticmethod
-    def _load_original_audio(
+    def _load_stem_audios(
         reconstruction: Reconstruction,
-    ) -> Optional[np.ndarray]:
-        """Loads the source audio, yielding ``None`` when no usable original exists.
+    ) -> Tuple[np.ndarray, ...]:
+        """Loads the recorded source, one recording per path, in path order.
 
-        A reconstruction detached from its origin (a project sample) records no source path, and a
-        file-backed reconstruction may point at audio absent or unreadable on this machine. Several
-        recorded paths (stems) mix into one recording, so one unreadable stem costs the whole
-        original. Every such case yields ``None``; the approximation then stands on its own in
-        playback and the display.
+        A reconstruction detached from its origin (a project sample) records no source
+        path, and a file-backed reconstruction may point at audio absent or unreadable on
+        this machine. One unreadable stem costs the whole original, so the recordings
+        come back as one empty tuple in either case; the approximation then stands on its
+        own in playback and the display.
         """
         source_paths = reconstruction.source_paths
         if not source_paths:
-            return None
+            return ()
 
         config = reconstruction.config
         recordings: List[np.ndarray] = []
@@ -144,19 +149,134 @@ class ReconstructionData:
                 )
             except (FileNotFoundError, IsADirectoryError, PermissionError, OSError):
                 logger.warning(f"Could not load original audio from '{path}'. The original is unavailable")
-                return None
+                return ()
+
+        return tuple(recordings)
+
+    @cached_property
+    def original_audio(self) -> Optional[np.ndarray]:
+        """The recorded source mixed into one waveform, ``None`` while no source loads."""
+        return mix(list(self.stem_audios)) if self.stem_audios else None
+
+    @cached_property
+    def _stem_recording_indexes(self) -> Dict[int, int]:
+        """Maps each stem id to the index of its recording in ``stem_audios``.
+
+        A stems reconstruction maps the entries' ids to their recordings in entry order, a
+        single source presents one implicit stem (id 0) holding its recording, and source
+        audio absent or unreadable maps nothing.
+        """
+        if not self.stem_audios:
+            return {}
+
+        stems_data = self.reconstruction.stems_data
+        if stems_data is not None:
+            return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
+
+        return {0: 0}
+
+    def original_mix_for(self, selected_stem_ids: AbstractSet[int]) -> np.ndarray:
+        """The original audio of the selected stems, silence once none are selected."""
+        indexes = self._stem_recording_indexes
+        recordings = [self.stem_audios[index] for stem_id, index in indexes.items() if stem_id in selected_stem_ids]
+        if not recordings:
+            return np.zeros_like(self.reconstruction.approximation)
 
         return mix(recordings)
 
-    def waveform_data(self) -> WaveformData:
-        """Projects the slice of this data the waveform display renders."""
+    def waveform_data(
+        self,
+        selected_stem_ids: Optional[AbstractSet[int]] = None,
+    ) -> WaveformData:
+        """Projects the slice of this data the waveform display renders.
+
+        With a stems selection, the projection carries the selected stems' frames alone
+        and their original mix, so the waveform answers exactly what plays.
+        """
+        if selected_stem_ids is None:
+            return self._unfiltered_waveform()
+
+        stems_data = self.reconstruction.stems_data
+        if stems_data is None:
+            return self._single_source_waveform(selected_stem_ids)
+
+        return self._filtered_waveform(selected_stem_ids, stems_data)
+
+    def _unfiltered_waveform(self) -> WaveformData:
+        """The whole document: every channel's stored approximation and the full original."""
+        return self._waveform_data(
+            self.original_audio,
+            dict(self.reconstruction.approximations),
+            self.reconstruction.approximation,
+        )
+
+    def _single_source_waveform(self, selected_stem_ids: AbstractSet[int]) -> WaveformData:
+        """The projection of a reconstruction that records no stems assignment.
+
+        A recorded source with its one implicit stem unselected projects silence; every other
+        selection projects the whole document.
+        """
+        if self.reconstruction.source_paths and not selected_stem_ids:
+            return self._silenced_waveform()
+
+        return self._unfiltered_waveform()
+
+    def _filtered_waveform(
+        self,
+        selected_stem_ids: AbstractSet[int],
+        stems_data: StemsData,
+    ) -> WaveformData:
+        """The selected stems' frames and their original mix, in the unfiltered shape."""
+        approximations = filter_approximations(
+            stems_data,
+            self.reconstruction.approximations,
+            selected_stem_ids,
+            self.reconstruction.config.frame_length,
+        )
+        return self._waveform_data(
+            self.original_mix_for(selected_stem_ids),
+            approximations,
+            mix(list(approximations.values())),
+        )
+
+    def _waveform_data(
+        self,
+        original_audio: Optional[np.ndarray],
+        approximations: Dict[ChannelName, np.ndarray],
+        approximation: np.ndarray,
+    ) -> WaveformData:
         return WaveformData(
-            original_audio=self.original_audio,
-            approximation=self.reconstruction.approximation,
-            approximations=dict(self.reconstruction.approximations),
+            original_audio=original_audio,
+            approximation=approximation,
+            approximations=approximations,
+            coefficient=self.reconstruction.coefficient,
+            frame_length=self.reconstruction.config.frame_length,
+        )
+
+    def _silenced_waveform(self) -> WaveformData:
+        """A projection of silence in the shape of the reconstruction."""
+        approximation = self.reconstruction.approximation
+        return WaveformData(
+            original_audio=np.zeros_like(approximation),
+            approximation=np.zeros_like(approximation),
+            approximations={
+                channel: np.zeros_like(audio) for channel, audio in self.reconstruction.approximations.items()
+            },
             coefficient=self.reconstruction.coefficient,
             frame_length=self.reconstruction.config.frame_length,
         )
 
     def get_partials(self, channel_names: List[ChannelName]) -> np.ndarray:
         return self.waveform_data().partials(channel_names)
+
+    def partials_for(
+        self,
+        channel_names: List[ChannelName],
+        selected_stem_ids: AbstractSet[int],
+    ) -> np.ndarray:
+        """Sums the selected channels with the unselected stems' frames silenced.
+
+        A single source with its one stem unselected is silence, and a reconstruction
+        recording no source answers its full approximation.
+        """
+        return self.waveform_data(selected_stem_ids).partials(channel_names)

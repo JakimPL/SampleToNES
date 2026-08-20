@@ -3,9 +3,9 @@
 This document explains how one reconstruction is assigned across several stems.
 Consult it when changing the stems assignment algorithm, its configuration, the
 per-stem record a reconstruction carries, or the way the application loads,
-names, and reveals the recorded stems. The single-sample pipeline this builds on
-is described in [Reconstruction](reconstruction.md), and the stored record in
-[Reconstructions](../formats/reconstructions.md).
+names, reveals, and plays the recorded stems. The single-sample pipeline this
+builds on is described in [Reconstruction](reconstruction.md), and the stored
+record in [Reconstructions](../formats/reconstructions.md).
 
 A stems reconstruction converts several audio stems at once. The stems are
 mixed and the mix is matched against the instruction library; within each frame,
@@ -104,3 +104,46 @@ recorded path according to the capability matrix in
 [Desktop capabilities](../development/desktop-capabilities.md): one file-manager
 window with every stem selected where the file manager supports it, one window
 per directory otherwise.
+
+## The stems card
+
+The reconstruction tab's Stems card turns the recorded assignment into a
+listener the user can steer. Each row carries one stem: a checkbox, the recorded
+file name, and the channels the stem holds, in entry order. A setup line above
+the rows names the assignment's hierarchy mode and channel cap. Checking a stem
+admits its frames to everything the tab plays and exports; unchecking silences
+them.
+
+### Principles
+
+1. **Selection filters what plays.** A checked set projects the document rather
+   than mutating it: the waveform shows the checked stems' frames alone, the
+   reconstruction toggle plays their frames mixed, original playback plays
+   their recordings mixed, and WAV export writes the same filtered projection.
+   Each answer derives from the recorded per-channel assignment, so a stem that
+   holds a frame owns its samples everywhere at once.
+2. **Every stem starts checked.** A freshly opened stems reconstruction selects
+   every recorded stem, which answers the full waveform and the full original —
+   the unfiltered document.
+3. **The selection follows the open document.** The card lives with the
+   reconstruction it describes: opening a document seeds the rows and the
+   checked set, a regenerated reconstruction keeps the checked stems and admits
+   the newly recorded ones, and closing the document empties the card.
+4. **Listening choices stay out of the document.** The checked set is session
+   state, like every choice that shapes what is heard — see
+   [Playback](../development/playback.md). Saving the reconstruction records
+   the assignment, never the selection.
+
+### Mechanics
+
+`ReconstructionData.partials_for` and `ReconstructionData.waveform_data` take
+the checked ids and zero the unselected stems' frames per channel before
+mixing — `filter_approximations` in
+`sampletones_core.reconstructions.reconstruction.stems` — keeping every array
+at its unfiltered length, so a filtered mix aligns with the unfiltered one
+sample for sample. `ReconstructionPanelLogic` holds the checked set and
+re-answers the stems view model, the waveform, and the audio data whenever it
+changes; the coordinator wires the card's `on_stems_changed` hook to that
+handler. A reconstruction that records one source presents a single implicit
+stem for its recording, and one that records no source shows the card's empty
+state.

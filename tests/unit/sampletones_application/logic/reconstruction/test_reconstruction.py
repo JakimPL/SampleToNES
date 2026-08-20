@@ -22,6 +22,10 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.instructions import TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.trackers.format import TrackerFormat
 from sampletones_core.trackers.registry import build_tracker_backends
 from sampletones_shared.paths.extensions import (
@@ -870,3 +874,100 @@ class TestReconstructionPanelLogicLocateAudio:
         panel_logic.on_locate_audio_not_found = callback
         panel_logic.handle_locate_original_audio()
         callback.assert_called_once_with(missing)
+
+
+class TestReconstructionPanelLogicStemSelection:
+    @pytest.fixture(name="stems_data")
+    def stems_data_fixture(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        reconstruction = reconstruction_factory()
+        frame_count = len(reconstruction.approximations[ChannelName.PULSE1]) // reconstruction.config.frame_length
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(id=0, channels=[ChannelName.PULSE1]),
+                StemEntry(id=1, channels=[ChannelName.PULSE1]),
+            ],
+        )
+        stems_reconstruction = reconstruction.model_copy(
+            update={
+                "audio_filepath": (tmp_path / "a.wav", tmp_path / "b.wav"),
+                "stems_data": StemsData(
+                    config=stems_config,
+                    assignments=[
+                        ChannelAssignment(
+                            channel_name=ChannelName.PULSE1,
+                            stem_ids=[0, 1] * (frame_count // 2) + ([0] if frame_count % 2 else []),
+                        )
+                    ],
+                ),
+            }
+        )
+        return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
+
+    def test_display_selects_every_stem(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        assert panel_logic._selected_stems == frozenset({0, 1})
+        assert len(stems_views) == 1
+        assert {row.stem_id for row in stems_views[0].stems} == {0, 1}
+        assert all(row.selected for row in stems_views[0].stems)
+        assert stems_views[0].hierarchy_mode is None or stems_views[0].show_setup_line
+
+    def test_set_selected_stems_filters_waveform_and_playback(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+        panel_logic.display_reconstruction()
+        waveform_updates = []
+        audio_updates = []
+        panel_logic.on_waveform_load_changed = lambda waveform, channels: waveform_updates.append(waveform)
+        panel_logic.on_audio_data_changed = lambda audio: audio_updates.append(audio)
+
+        panel_logic.set_selected_stems(frozenset({0}))
+
+        expected = stems_data.partials_for(
+            panel_logic._selected_channels,
+            frozenset({0}),
+        )
+        assert len(waveform_updates) == 1
+        np.testing.assert_allclose(waveform_updates[0].partials(panel_logic._selected_channels), expected)
+        assert len(audio_updates) == 1
+        assert audio_updates[0] is not None
+        np.testing.assert_allclose(audio_updates[0].sample, expected)
+
+    def test_export_wav_uses_the_stems_filter(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        mock_export_service: MagicMock,
+        stems_data: ReconstructionData,
+        tmp_path: Path,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+        panel_logic.display_reconstruction()
+        panel_logic.set_selected_stems(frozenset({0}))
+
+        panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
+
+        mock_export_service.export_wav.assert_called_once()
+        exported_audio = mock_export_service.export_wav.call_args.args[2]
+        expected = stems_data.partials_for(
+            panel_logic._selected_channels,
+            frozenset({0}),
+        )
+        np.testing.assert_allclose(exported_audio, expected)

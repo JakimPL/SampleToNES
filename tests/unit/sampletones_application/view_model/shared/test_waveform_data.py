@@ -60,3 +60,33 @@ class TestPartials:
         result = waveform_data.partials([ChannelName.PULSE1, ChannelName.TRIANGLE])
 
         assert np.array_equal(result, approximations[ChannelName.PULSE1])
+
+    def test_short_generators_leave_the_tail_in_silence(self) -> None:
+        approximation = np.array([1.0, 0.0, -1.0, 0.0])
+        data = WaveformData(
+            original_audio=approximation,
+            approximation=approximation,
+            approximations={ChannelName.PULSE1: np.array([0.5, 0.5]), ChannelName.NOISE: approximation},
+            coefficient=1.0,
+            frame_length=2,
+        )
+
+        result = data.partials([ChannelName.PULSE1, ChannelName.NOISE])
+
+        expected = np.array([1.5, 0.5, -1.0, 0.0])
+        assert np.array_equal(result, expected)
+
+    def test_a_short_single_generator_reaches_the_approximation_length(self) -> None:
+        approximation = np.array([1.0, 0.0, -1.0, 0.0])
+        data = WaveformData(
+            original_audio=approximation,
+            approximation=approximation,
+            approximations={ChannelName.PULSE1: np.array([0.5, 0.5])},
+            coefficient=1.0,
+            frame_length=2,
+        )
+
+        result = data.partials([ChannelName.PULSE1])
+
+        expected = np.array([0.5, 0.5, 0.0, 0.0])
+        assert np.array_equal(result, expected)
