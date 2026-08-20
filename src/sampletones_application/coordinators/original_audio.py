@@ -37,6 +37,9 @@ class OriginalAudioLocator:
         if audio_filepath is None:
             return
 
+        if not isinstance(audio_filepath, Path):
+            return
+
         if not audio_filepath.exists():
             self._dialogs.show_file_not_found(
                 audio_filepath,

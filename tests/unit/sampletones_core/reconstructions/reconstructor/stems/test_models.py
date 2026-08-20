@@ -1,11 +1,8 @@
 from typing import Final, FrozenSet
 
-from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.reconstructor.stems import (
-    HierarchyMode,
-    Stem,
-    StemHierarchy,
-)
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.reconstructions.reconstructor.stems.configs.stem import Stem
+from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy import StemHierarchy
 
 PULSE_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset((ChannelName.PULSE1, ChannelName.PULSE2))
 

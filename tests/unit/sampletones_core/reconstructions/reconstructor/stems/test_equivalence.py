@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
@@ -12,14 +12,11 @@ from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.approximation import ApproximationData
 from sampletones_core.reconstructions.reconstructor.selector.greedy import GreedySelector
 from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
-from sampletones_core.reconstructions.reconstructor.stems import (
-    HierarchyMode,
-    Stem,
-    StemChoice,
-    StemFrameAssignment,
-    StemHierarchy,
-    assign_frame,
-)
+from sampletones_core.reconstructions.reconstructor.stems.configs.stem import Stem
+from sampletones_core.reconstructions.reconstructor.stems.frame import assign_frame
+from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
+from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy import StemHierarchy
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 RANDOM_SEEDS: Final[Tuple[int, ...]] = (11, 23, 47, 89, 131, 197)

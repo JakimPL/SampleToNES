@@ -168,6 +168,14 @@ strict = true
 fail-under = 9.9
 ignore-paths = "^tests/.*$"
 load-plugins = ["pylint_pydantic"]
+fail-on = [
+    "fatal",
+    "fixme",
+    "redefined-outer-name",
+    "used-before-assignment",
+    "unused-import",
+    "unused-variable",
+]
 
 [tool.pylint.messages_control]
 disable = [

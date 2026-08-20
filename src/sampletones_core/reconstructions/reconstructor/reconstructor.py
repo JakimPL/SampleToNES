@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -14,14 +14,21 @@ from sampletones_core.generators import (
     get_generators_by_channels,
 )
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
+from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstructor.approximation import ApproximationData
+from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.stem import Stem
+from sampletones_core.reconstructions.reconstructor.stems.frame import assign_frame
+from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy import StemHierarchy
+from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils.arrays import pad
 from sampletones_shared.utils.system.paths import to_path
-
-from ..reconstruction.reconstruction import Reconstruction
-from .approximation import ApproximationData
-from .state import ReconstructionState
-from .worker import ReconstructorWorker
 
 
 def reconstruct(
@@ -120,6 +127,126 @@ class Reconstructor:
         fragmented_audio = self.get_fragments(audio / coefficient)
         self.reconstruct(fragmented_audio)
         return Reconstruction.from_state(self.state, self.config, coefficient, path)
+
+    # TODO: refactor: split into steps so this function reads as prose
+    # each step should be a separate function that has a single concrete objective
+    def reconstruct_stems(
+        self,
+        paths: Sequence[Pathlike],
+        stems_config: StemsConfig,
+    ) -> Optional[Reconstruction]:
+        """Reconstructs the mix of several stem audio files into one reconstruction.
+
+        Loads and normalizes every stem, matches the frames of the stems' mix against
+        the library, and assigns each frame's channels to the stems following the
+        configured hierarchy and channel cap. The per-frame assignment is recorded in
+        the reconstruction's stems data.
+
+        Args:
+            paths: Paths to the stem audio files, one per stems entry.
+            stems_config: The stems setup built for this process from the inputs:
+                the entries with their channels, the precedence hierarchy, and the
+                per-stem channel cap.
+
+        Returns:
+            Optional[Reconstruction]: The reconstruction built from the mix.
+
+        Raises:
+            ValueError: If the entries count differently than ``paths``.
+            TypeError: If a path is not a string or ``Path``.
+        """
+        if len(paths) != len(stems_config.entries):
+            raise ValueError(f"Expected {len(stems_config.entries)} stem paths, got {len(paths)}")
+
+        checked_paths: List[Path] = []
+        for path in paths:
+            if not isinstance(path, (str, Path)):
+                raise TypeError("Input must be a path to an audio file")
+            checked_paths.append(to_path(path))
+
+        audios = [self.load_audio(path) for path in checked_paths]
+        mix = self._mix_audios(audios)
+        coefficient = self.get_coefficient(mix)
+        self.reset_generators()
+        covered = {channel for entry in stems_config.entries for channel in entry.channels}
+        self.state = ReconstructionState.create([name for name in ChannelName.items() if name in covered])
+        fragmented_audio = self.get_fragments(mix / coefficient)
+
+        worker = ReconstructorWorker(
+            config=self.config,
+            window=self.window,
+            channels=self.channels,
+            library_data=self.library_data,
+            signal_length=mix.shape[0],
+        )
+        matcher = FrameMatcher(
+            config=worker.config,
+            candidate_provider=worker.candidate_provider,
+            scorer=worker.scorer,
+            phase_aligner=worker.phase_aligner,
+        )
+        stems = {
+            entry.id: Stem(
+                id=entry.id,
+                channels=frozenset(entry.channels),
+            )
+            for entry in stems_config.entries
+        }
+        hierarchy = StemHierarchy(
+            levels=tuple(tuple(level) for level in stems_config.hierarchy.levels),
+            mode=stems_config.hierarchy.mode,
+        )
+
+        assignments: Dict[ChannelName, List[int]] = {}
+        for fragment_id in fragmented_audio.fragments_ids:
+            fragment = fragmented_audio[fragment_id]
+            frame_assignment = assign_frame(
+                fragment,
+                stems,
+                hierarchy,
+                self.channels,
+                matcher,
+                worker.feature_extractor,
+                stems_config.channel_cap,
+            )
+            for choice in frame_assignment.choices:
+                self.update_state(
+                    ApproximationData(
+                        channel_name=choice.channel_name,
+                        approximation=choice.approximation,
+                        instruction=choice.instruction,
+                    )
+                )
+                assignments.setdefault(choice.channel_name, []).append(choice.stem_id)
+
+        stems_data = StemsData(
+            config=stems_config,
+            assignments=[
+                ChannelAssignment(
+                    channel_name=channel,
+                    stem_ids=stem_ids,
+                )
+                for channel, stem_ids in assignments.items()
+            ],
+        )
+        return Reconstruction.from_state(
+            self.state,
+            self.config,
+            coefficient,
+            tuple(checked_paths),
+            stems_data=stems_data,
+        )
+
+    def _mix_audios(self, audios: List[np.ndarray]) -> np.ndarray:
+        """Sums the stem audios, each padded to the longest stem's length."""
+        if not audios:
+            raise ValueError("At least one stem audio is required")
+
+        max_length = max(audio.shape[0] for audio in audios)
+        return sum(
+            (pad(audio, 0, max_length) for audio in audios),
+            np.zeros(max_length, dtype=np.float64),
+        )
 
     def load_audio(self, path: Path) -> np.ndarray:
         """Loads and preconditions the audio at ``path`` for reconstruction.

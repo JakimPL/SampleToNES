@@ -73,6 +73,11 @@ class SelectorName(StrEnum):
     VITERBI = "viterbi"
 
 
+class HierarchyMode(StrEnum):
+    ROUND_ROBIN = "round_robin"
+    STRICT = "strict"
+
+
 class SpectrumMethod(StrEnum):
     FFT = "fft"
     LOG_SPACED_FFT = "logfft"

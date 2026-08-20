@@ -14,6 +14,7 @@ from typing import (
     Self,
     Sequence,
     Tuple,
+    Union,
 )
 from uuid import uuid4
 
@@ -34,6 +35,10 @@ from sampletones_core.exporters import (
 )
 from sampletones_core.generators.maps import CHANNEL_CLASSES
 from sampletones_core.instructions import InstructionUnion
+from sampletones_core.reconstructions.reconstruction.approximations import ApproximationsItem
+from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
 from sampletones_shared.exceptions import (
     IncompatibleReconstructionVersionError,
@@ -47,10 +52,6 @@ from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.arrays import pad
 from sampletones_shared.utils.serialization import load_binary, serialize_array
-
-from ..reconstructor.state import ReconstructionState
-from .approximations import ApproximationsItem
-from .instructions import InstructionsItem
 
 RECONSTRUCTION_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
     label="Reconstruction data",
@@ -70,9 +71,9 @@ class Reconstruction(DataModel):
         ...,
         description="Unique identifier for the reconstruction",
     )
-    audio_filepath: Optional[Path] = Field(
+    audio_filepath: Optional[Union[Path, Tuple[Path, ...]]] = Field(
         ...,
-        description="Location of the source audio; None marks a reconstruction detached from its local origin",
+        description="Location of the source audio: one path for a single source, the stem paths for a stems reconstruction, and None once detached from the local origin",
     )
     config: Config = Field(
         ...,
@@ -90,6 +91,10 @@ class Reconstruction(DataModel):
     instructions_data: List[InstructionsItem] = Field(
         ...,
         description="Instructions per channel",
+    )
+    stems_data: Optional[StemsData] = Field(
+        None,
+        description="Stems assignment recorded when built from several stems",
     )
     coefficient: float = Field(
         ...,
@@ -184,7 +189,8 @@ class Reconstruction(DataModel):
         instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
         config: Config,
         coefficient: float,
-        audio_filepath: Path,
+        audio_filepath: Union[Path, Tuple[Path, ...]],
+        stems_data: Optional[StemsData] = None,
     ) -> Self:
         approximation = np.nan_to_num(approximation, nan=0.0)
         approximations_data: List[ApproximationsItem] = [
@@ -217,6 +223,7 @@ class Reconstruction(DataModel):
             approximation=approximation,
             approximations_data=approximations_data,
             instructions_data=instructions_data,
+            stems_data=stems_data,
             config=config,
             coefficient=coefficient,
             audio_filepath=audio_filepath,
@@ -228,7 +235,8 @@ class Reconstruction(DataModel):
         state: ReconstructionState,
         config: Config,
         coefficient: float,
-        path: Path,
+        path: Union[Path, Tuple[Path, ...]],
+        stems_data: Optional[StemsData] = None,
     ) -> Optional[Self]:
         if any(len(approximation) == 0 for approximation in state.approximations.values()):
             logger.warning(f"Reconstruction for file: {path} is empty")
@@ -244,6 +252,7 @@ class Reconstruction(DataModel):
             config=config,
             coefficient=coefficient,
             audio_filepath=path,
+            stems_data=stems_data,
         )
 
     def update_channel_data(
@@ -496,10 +505,13 @@ class Reconstruction(DataModel):
     @field_serializer("audio_filepath")
     def _serialize_audio_filepath(
         self,
-        audio_filepath: Optional[Path],
+        audio_filepath: Optional[Union[Path, Tuple[Path, ...]]],
         _info: Any,
-    ) -> Optional[str]:
+    ) -> Optional[Union[str, List[str]]]:
         if audio_filepath is None:
             return None
 
-        return str(audio_filepath)
+        if isinstance(audio_filepath, Path):
+            return str(audio_filepath)
+
+        return [str(path) for path in audio_filepath]

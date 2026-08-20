@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
@@ -173,7 +173,7 @@ class ReconstructionManager(CallbackMixin):
 
     def locate_original_audio(self) -> None:
         original_audio_path = self.audio_filepath
-        if not original_audio_path:
+        if not isinstance(original_audio_path, Path):  # to do: support multiple paths
             return
 
         if not original_audio_path.exists():
@@ -208,7 +208,7 @@ class ReconstructionManager(CallbackMixin):
         return self.filepath is not None
 
     @property
-    def audio_filepath(self) -> Optional[Path]:
+    def audio_filepath(self) -> Optional[Union[Path, Tuple[Path, ...]]]:
         if self._current_reconstruction is None:
             return None
 

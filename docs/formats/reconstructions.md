@@ -13,8 +13,9 @@ A `.stn` file holds:
 * **metadata** — the application name and version, and the reconstruction
   data-version used to check compatibility on load (see [Versioning](#versioning));
 * **id** — a unique identifier for the reconstruction;
-* **source audio** — the path to the original recording, or empty when the
-  reconstruction is [detached](#detached-reconstructions);
+* **source audio** — the path to the original recording, the stem paths when the
+  reconstruction was built from several stems, or empty when the reconstruction
+  is [detached](#detached-reconstructions);
 * **configuration** — a frozen snapshot of the
   [generation configuration](../guide/configuration.md) used, so the file records
   exactly how it was made: sample rate, NES frequency, enabled channels, spectrum
@@ -44,7 +45,11 @@ A `.stn` file holds:
   is what says which of them the instrument itself writes; the rest are the
   channel's, and the player keeps the value it already holds for them. A channel
   in play writes them all as it is built, and clearing an envelope in the
-  instruments panel adds that dimension here.
+  instruments panel adds that dimension here;
+* **stems assignment** — present when the reconstruction was built from several
+  stems: the stems setup the assignment was made under and, per channel, the
+  stem holding each frame (`stems_data`). A reconstruction from a single file
+  carries none.
 
 A channel standing by rests at a reference pitch of its own, so the first envelope
 written into it sounds on a mid-range note, and it leaves every dimension it offers
@@ -73,7 +78,9 @@ is stored alongside the data version, for reference.
 The current data version is 2.2. Version 2.2 renamed the per-channel stream and
 approximation keys from `generator_name` to `channel_name` and the channel
 selection under the embedded config from `generators` to `channels`; the enum
-values stored inside (`pulse1`, `pulse2`, `triangle`, `noise`) never changed.
+values stored inside (`pulse1`, `pulse2`, `triangle`, `noise`) never changed. A
+reconstruction built from several stems also carries the optional `stems_data`
+record; a file written before the record existed reads without one.
 
 ## Storage and export
 

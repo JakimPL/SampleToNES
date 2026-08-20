@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.fft import Fragment
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import (
@@ -8,15 +8,11 @@ from sampletones_core.generators import (
     get_generator_by_instruction,
     get_remaining_generator_classes,
 )
-
-from ..selector.matching import FrameMatcher
-from .models import (
-    HierarchyMode,
-    Stem,
-    StemChoice,
-    StemFrameAssignment,
-    StemHierarchy,
-)
+from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.stems.configs.stem import Stem
+from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
+from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy import StemHierarchy
 
 
 def assign_frame(
@@ -126,6 +122,7 @@ class _AssignmentSession:
                 self._round_robin()
             case HierarchyMode.STRICT:
                 self._strict()
+
         return StemFrameAssignment(tuple(self.choices))
 
     def _round_robin(self) -> None:
@@ -133,15 +130,22 @@ class _AssignmentSession:
             for level in self.hierarchy.levels:
                 if not self.free_channels:
                     return
+
                 self._pick_from_level(level, repeat=False)
 
     def _strict(self) -> None:
         for level in self.hierarchy.levels:
             if not self.free_channels:
                 return
+
             self._pick_from_level(level, repeat=True)
 
-    def _pick_from_level(self, level: Tuple[int, ...], *, repeat: bool) -> None:
+    def _pick_from_level(
+        self,
+        level: Tuple[int, ...],
+        *,
+        repeat: bool,
+    ) -> None:
         picked_this_visit: Set[int] = set()
         while True:
             eligible = [
@@ -185,6 +189,7 @@ class _AssignmentSession:
             )
             if best is None or choice.cost < best.cost:
                 best = choice
+
         return best
 
     def _remaining_channels(

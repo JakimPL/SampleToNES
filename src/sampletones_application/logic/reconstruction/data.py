@@ -107,7 +107,10 @@ class ReconstructionData:
         reconstruction (no source audio) falls back to the ``.stn`` filename.
         """
         audio_filepath = reconstruction.audio_filepath
-        return audio_filepath.stem if audio_filepath is not None else filepath.stem
+        if isinstance(audio_filepath, Path):
+            return audio_filepath.stem
+
+        return filepath.stem
 
     @staticmethod
     def _load_original_audio(
@@ -120,7 +123,7 @@ class ReconstructionData:
         cases yield ``None``; the approximation then stands on its own in playback and the display.
         """
         audio_filepath = reconstruction.audio_filepath
-        if audio_filepath is None:
+        if not isinstance(audio_filepath, Path):
             return None
 
         config = reconstruction.config

@@ -174,7 +174,9 @@ on machines with a GPU, runs on the array backend in `sampletones_shared`.
 
 Both selectors live in `sampletones_core.reconstructions.reconstructor.selector` and
 are chosen with `generation.decoder.selector`. They share the criterion and the
-library; they differ only in how they search.
+library; they differ only in how they search. The same candidate scoring drives
+the stems assignment, which hands channels to several stems per frame
+(see [Stems reconstruction](stems.md)).
 
 Both score candidates in two stages: every candidate is first ranked by the
 phase-independent spectral term, and the best `top_k` are then re-scored with the

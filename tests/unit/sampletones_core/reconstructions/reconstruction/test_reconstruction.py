@@ -8,12 +8,19 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import ChannelName, FeatureKey, HierarchyMode
 from sampletones_core.data import Metadata
 from sampletones_core.features import resting_reference
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
+from sampletones_core.reconstructions.reconstruction.stems.data import (
+    ChannelAssignment,
+    StemsData,
+)
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_shared.application import (
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
@@ -69,6 +76,67 @@ def _saved_playing_channels_only(path: Path) -> Path:
     ]
     reconstruction.save(path)
     return path
+
+
+class TestStemsDataRoundTrip:
+    def test_stems_data_survives_save_and_load(self, tmp_path: Path) -> None:
+        stems_config = StemsConfig(
+            entries=[StemEntry(id=0, channels=[ChannelName.PULSE1])],
+            hierarchy=StemsHierarchy(levels=[[0]], mode=HierarchyMode.STRICT),
+            channel_cap=1,
+        )
+        stems_data = StemsData(
+            config=stems_config,
+            assignments=[
+                ChannelAssignment(
+                    channel_name=ChannelName.PULSE1,
+                    stem_ids=[0, 0],
+                )
+            ],
+        )
+        reconstruction = Reconstruction.create(
+            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
+            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
+            instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=Path("/dev/null"),
+            stems_data=stems_data,
+        )
+        path = tmp_path / "stems.stn"
+        reconstruction.save(path)
+
+        loaded = Reconstruction.load(path)
+
+        assert loaded.stems_data == stems_data
+
+    def test_load_without_stems_data_keeps_none(self, tmp_path: Path) -> None:
+        path = tmp_path / "plain.stn"
+        _reconstruction([_pulse(_BASE_PITCH)]).save(path)
+
+        loaded = Reconstruction.load(path)
+
+        assert loaded.stems_data is None
+
+    def test_audio_filepath_tuple_survives_save_and_load(self, tmp_path: Path) -> None:
+        stem_paths = (
+            Path("/dev/null/stem_a.wav"),
+            Path("/dev/null/stem_b.wav"),
+        )
+        reconstruction = Reconstruction.create(
+            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
+            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
+            instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=stem_paths,
+        )
+        path = tmp_path / "stems_paths.stn"
+        reconstruction.save(path)
+
+        loaded = Reconstruction.load(path)
+
+        assert loaded.audio_filepath == stem_paths
 
 
 class TestRoundTrip:

@@ -292,7 +292,7 @@ class ReconstructionCoordinator:
 
         self._audio_device_manager.stop()
         audio_filepath = reconstruction_data.reconstruction.audio_filepath
-        if audio_filepath is not None and not audio_filepath.exists():
+        if isinstance(audio_filepath, Path) and not audio_filepath.exists():
             self._dialogs.show_file_not_found(
                 audio_filepath,
                 self._language_manager["reconstructions.browser.message.audio_file_not_found"],

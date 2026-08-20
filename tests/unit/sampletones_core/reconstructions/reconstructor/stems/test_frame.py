@@ -2,19 +2,16 @@ from typing import Dict, FrozenSet, Sequence, Tuple
 
 import pytest
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.fft import Fragment
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
-from sampletones_core.reconstructions.reconstructor.stems import (
-    HierarchyMode,
-    Stem,
-    StemChoice,
-    StemFrameAssignment,
-    StemHierarchy,
-    assign_frame,
-)
+from sampletones_core.reconstructions.reconstructor.stems.configs.stem import Stem
+from sampletones_core.reconstructions.reconstructor.stems.frame import assign_frame
+from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
+from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy import StemHierarchy
 
 DEFAULT_CHANNELS: FrozenSet[ChannelName] = frozenset((ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE))
 

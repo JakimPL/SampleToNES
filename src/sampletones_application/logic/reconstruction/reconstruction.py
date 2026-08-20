@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, List, Optional, Protocol, Tuple
+from typing import Callable, Dict, FrozenSet, List, Optional, Protocol, Tuple, Union
 
 import numpy as np
 
@@ -398,7 +398,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     def handle_locate_original_audio(self) -> None:
         path = self._reconstruction_manager.audio_filepath
-        if path is None:
+        if not isinstance(path, Path):
             return
 
         try:
@@ -478,7 +478,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     @staticmethod
     def _build_audio_path_view_model(
-        audio_filepath: Optional[Path],
+        audio_filepath: Optional[Union[Path, Tuple[Path, ...]]],
         original_audio: Optional[np.ndarray],
     ) -> ReconstructionPathViewModel:
         """Reports the original-audio location, treating a recorded path with unusable content
@@ -495,9 +495,15 @@ class ReconstructionPanelLogic(CallbackMixin):
                 path="",
             )
 
+        if isinstance(audio_filepath, Path):
+            return ReconstructionPathViewModel(
+                state=ReconstructionPathState.AVAILABLE,
+                path=str(audio_filepath),
+            )
+
         return ReconstructionPathViewModel(
             state=ReconstructionPathState.AVAILABLE,
-            path=str(audio_filepath),
+            path=", ".join(str(path) for path in audio_filepath),
         )
 
     @property
