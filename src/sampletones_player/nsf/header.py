@@ -1,7 +1,6 @@
 from sampletones_core.formats.binary import BinaryWriter
 from sampletones_player.driver.addresses import DriverAddresses
 from sampletones_player.nsf.information import NSFInformation
-from sampletones_player.specification.clock import PLAY_PERIOD_MICROSECONDS
 from sampletones_player.specification.nsf import (
     FIRST_SONG,
     NO_BANKSWITCHING,
@@ -10,6 +9,7 @@ from sampletones_player.specification.nsf import (
     NSF2_LENGTH_UNSTATED,
     NSF_MAGIC,
     NSF_VERSION,
+    NTSC_PLAY_PERIOD_MICROSECONDS,
     NTSC_REGION,
     PAL_PLAY_PERIOD_MICROSECONDS,
     SONG_COUNT,
@@ -37,7 +37,7 @@ def _write_strings(writer: BinaryWriter, information: NSFInformation) -> None:
 
 
 def _write_playback(writer: BinaryWriter) -> None:
-    writer.write_uint16(PLAY_PERIOD_MICROSECONDS)
+    writer.write_uint16(NTSC_PLAY_PERIOD_MICROSECONDS)
     writer.write_bytes(NO_BANKSWITCHING)
     writer.write_uint16(PAL_PLAY_PERIOD_MICROSECONDS)
     writer.write_uint8(NTSC_REGION)

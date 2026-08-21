@@ -12,8 +12,7 @@ from sampletones_player.specification.clock import (
     FIXED_POINT_BITS,
     FIXED_POINT_SCALE,
     MAX_STEP_WHOLE,
-    MICROSECONDS_PER_SECOND,
-    PLAY_PERIOD_MICROSECONDS,
+    NTSC_FRAME_RATE,
 )
 from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from tests.suite.base import BaseTestSuite
@@ -24,7 +23,7 @@ NES_FREQUENCIES: Final[Tuple[int, ...]] = (15, 24, 25, 30, 50, 60, 100, 120, 200
 
 
 def exact_rate(nes_frequency: int) -> Fraction:
-    return Fraction(nes_frequency * PLAY_PERIOD_MICROSECONDS, MICROSECONDS_PER_SECOND)
+    return Fraction(nes_frequency) / NTSC_FRAME_RATE
 
 
 class TestPlaySchedule(BaseTestSuite):
@@ -99,12 +98,12 @@ class TestTheScheduleHoldsTheRate(BaseTestSuite):
     """The rate a stream is read at, and the advances a rate dividing the play period produces."""
 
     @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
-    def test_the_rate_is_the_stream_measured_against_the_play_period(self, nes_frequency: int) -> None:
+    def test_the_rate_is_the_stream_measured_against_the_frame_rate(self, nes_frequency: int) -> None:
         schedule = PlaySchedule.from_parameters(nes_frequency)
         assert schedule.ticks_per_play_call == exact_rate(nes_frequency)
 
     def test_a_stream_at_the_play_rate_advances_a_tick_a_call(self) -> None:
-        """A stream built at the period the header asks for lands a whole tick on every call."""
+        """A stream built at the rate the console calls at lands a whole tick on every call."""
         schedule = PlaySchedule(ticks_per_play_call=Fraction(1))
         assert all(schedule.advance_at(play_call) == 1 for play_call in range(LONG_RUN_PLAY_CALLS))
 
@@ -127,15 +126,15 @@ class TestFixedPointStep(BaseTestSuite):
             return f"{self.nes_frequency}hz"
 
     test_cases = (
-        TestCase(nes_frequency=15, expected=(0, 16383)),
-        TestCase(nes_frequency=24, expected=(0, 26213)),
-        TestCase(nes_frequency=30, expected=(0, 32767)),
-        TestCase(nes_frequency=50, expected=(0, 54611)),
-        TestCase(nes_frequency=60, expected=(0, 65533)),
-        TestCase(nes_frequency=100, expected=(1, 43686)),
-        TestCase(nes_frequency=120, expected=(1, 65531)),
-        TestCase(nes_frequency=200, expected=(3, 21837)),
-        TestCase(nes_frequency=300, expected=(4, 65523)),
+        TestCase(nes_frequency=15, expected=(0, 16357)),
+        TestCase(nes_frequency=24, expected=(0, 26171)),
+        TestCase(nes_frequency=30, expected=(0, 32714)),
+        TestCase(nes_frequency=50, expected=(0, 54524)),
+        TestCase(nes_frequency=60, expected=(0, 65428)),
+        TestCase(nes_frequency=100, expected=(1, 43511)),
+        TestCase(nes_frequency=120, expected=(1, 65320)),
+        TestCase(nes_frequency=200, expected=(3, 21486)),
+        TestCase(nes_frequency=300, expected=(4, 64997)),
     )
 
     @pytest.mark.parametrize(

@@ -38,8 +38,6 @@
 * Per-tab undo routing
 * In-application console
 * Improve performance of browser favorite scan of the entire tree per click
-* NSF play rate: the driver's step follows the 16666 µs the header asks for, while players drive the play routine from the NTSC frame rate
-* Pylint gate: `fail-on` lists `fixme` while the source carries TODO comments, so the hook fails until either the comments are resolved or `fixme` leaves the list
 
 ## Bugs
 

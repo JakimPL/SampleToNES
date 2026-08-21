@@ -1,6 +1,10 @@
+from fractions import Fraction
 from typing import Final
 
-PLAY_PERIOD_MICROSECONDS: Final[int] = 16666
+NTSC_MASTER_CYCLES_PER_FRAME: Final[int] = 357_366
+NTSC_MASTER_CLOCK_HERTZ: Final[Fraction] = Fraction(236_250_000, 11)
+NTSC_FRAME_RATE: Final[Fraction] = NTSC_MASTER_CLOCK_HERTZ / NTSC_MASTER_CYCLES_PER_FRAME
+
 MICROSECONDS_PER_SECOND: Final[int] = 1_000_000
 
 FIXED_POINT_BITS: Final[int] = 16

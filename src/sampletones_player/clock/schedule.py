@@ -11,8 +11,7 @@ from sampletones_player.specification.clock import (
     FIXED_POINT_BITS,
     FIXED_POINT_SCALE,
     MAX_STEP_WHOLE,
-    MICROSECONDS_PER_SECOND,
-    PLAY_PERIOD_MICROSECONDS,
+    NTSC_FRAME_RATE,
 )
 
 
@@ -49,8 +48,10 @@ class PlaySchedule(BaseModel):
     def from_parameters(cls, nes_frequency: int) -> PlaySchedule:
         """Derives the schedule a stream built at ``nes_frequency`` plays on.
 
-        The play rate follows from the period the NSF header asks for, so the step the driver
-        carries and the rate the file requests state the same clock.
+        The console calls the play routine once a video frame, so the rate a stream is read at
+        is its own rate measured against `NTSC_FRAME_RATE`. The header states that same rate as
+        the period it asks for, so a player honouring the field and one driving from the frame
+        itself run the stream at the speed it was built at.
 
         Args:
             nes_frequency: The engine tick rate the reconstruction was built at, in Hz.
@@ -65,12 +66,7 @@ class PlaySchedule(BaseModel):
         if nes_frequency < 1:
             raise ValueError(f"nes_frequency must be at least 1, got {nes_frequency}")
 
-        return cls(
-            ticks_per_play_call=Fraction(
-                nes_frequency * PLAY_PERIOD_MICROSECONDS,
-                MICROSECONDS_PER_SECOND,
-            ),
-        )
+        return cls(ticks_per_play_call=Fraction(nes_frequency) / NTSC_FRAME_RATE)
 
     def ticks_at(self, play_calls: int) -> int:
         """The tick the stream stands on once ``play_calls`` calls have been made.

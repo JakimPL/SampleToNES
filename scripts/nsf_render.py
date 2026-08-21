@@ -10,8 +10,7 @@ from typing import Dict, Final, List, Sequence
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.specification.clock import (
     FIXED_POINT_SCALE,
-    MICROSECONDS_PER_SECOND,
-    PLAY_PERIOD_MICROSECONDS,
+    NTSC_FRAME_RATE,
 )
 from sampletones_player.specification.nsf import HEADER_SIZE
 from sampletones_player.specification.song import (
@@ -64,9 +63,8 @@ def decodes_exports() -> bool:
 def song_seconds(data: bytes, code_length: int) -> float:
     """How long the song in an exported file lasts, read out of the block behind the driver.
 
-    The block states the ticks the song covers and the step the driver advances them by, and the
-    header asks the console for one play call every `PLAY_PERIOD_MICROSECONDS`, so the three
-    together give the seconds the song sounds for.
+    The block states the ticks the song covers and the step the driver advances them by, which
+    gives the play calls the song takes, and the console makes one of those every video frame.
 
     Args:
         data: The whole `.nsf` file, header included.
@@ -79,7 +77,8 @@ def song_seconds(data: bytes, code_length: int) -> float:
     ticks: int = struct.unpack_from(WORD, block, TOTAL_TICKS_OFFSET)[0]
     fraction: int = struct.unpack_from(WORD, block, STEP_FRACTION_OFFSET)[0]
     step: float = block[STEP_WHOLE_OFFSET] + fraction / FIXED_POINT_SCALE
-    return ticks / step * PLAY_PERIOD_MICROSECONDS / MICROSECONDS_PER_SECOND
+    play_calls = ticks / step
+    return play_calls / float(NTSC_FRAME_RATE)
 
 
 def render(source: Path, destination: Path, seconds: float) -> None:

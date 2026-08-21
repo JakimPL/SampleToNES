@@ -61,7 +61,7 @@ class TestSongBytes:
     """
 
     EXPECTED: Final[bytes] = (
-        b"\x00\xff\x7f"
+        b"\x00\xca\x7f"
         b"\x02\x00"
         b"\xff\xff"
         b"\x0f\x00\x15\x00\x1b\x00\x21\x00"

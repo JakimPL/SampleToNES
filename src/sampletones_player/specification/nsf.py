@@ -1,6 +1,10 @@
 from typing import Final
 
 from sampletones_player.specification.binary import WORD_SIZE
+from sampletones_player.specification.clock import (
+    MICROSECONDS_PER_SECOND,
+    NTSC_FRAME_RATE,
+)
 
 PROGRAM_START: Final[int] = 0x8000
 PROGRAM_SIZE: Final[int] = 0x8000
@@ -33,6 +37,7 @@ NSF2_FEATURES_OFFSET: Final[int] = EXPANSION_OFFSET + 1
 NSF2_LENGTH_OFFSET: Final[int] = NSF2_FEATURES_OFFSET + 1
 HEADER_SIZE: Final[int] = NSF2_LENGTH_OFFSET + NSF2_LENGTH_SIZE
 
+NTSC_PLAY_PERIOD_MICROSECONDS: Final[int] = round(MICROSECONDS_PER_SECOND / NTSC_FRAME_RATE)
 PAL_PLAY_PERIOD_MICROSECONDS: Final[int] = 20000
 NTSC_REGION: Final[int] = 0x00
 NO_EXPANSION_CHIPS: Final[int] = 0x00
