@@ -145,6 +145,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
 
     def _render_row(self, row: StemViewModel) -> None:
         checkbox_tag = self._stem_checkbox_tag(row.stem_id)
+        dpg.configure_item(checkbox_tag, label=row.label)
         dpg.configure_item(checkbox_tag, enabled=row.enabled)
         dpg.set_value(checkbox_tag, row.selected)
         dpg.set_value(

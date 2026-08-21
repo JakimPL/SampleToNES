@@ -137,6 +137,22 @@ class TestStemsPanelRows:
         assert not dpg.does_item_exist(GUIReconstructionStemsPanel._stem_checkbox_tag(0))
         assert dpg.does_item_exist(GUIReconstructionStemsPanel._stem_checkbox_tag(1))
 
+    def test_a_reused_row_takes_the_new_stem_label(self, panel: GUIReconstructionStemsPanel) -> None:
+        render(panel)
+        panel.update_view(
+            _view_model(
+                _stem_row(0, label="kick.wav", selected=True, enabled=True),
+            )
+        )
+
+        panel.update_view(
+            _view_model(
+                _stem_row(0, label="snare.wav", selected=True, enabled=True),
+            )
+        )
+
+        assert dpg.get_item_label(GUIReconstructionStemsPanel._stem_checkbox_tag(0)) == "snare.wav"
+
 
 class TestStemsPanelSelection:
     def test_unchecking_a_stem_reports_the_remaining_selection(self, panel: GUIReconstructionStemsPanel) -> None:
