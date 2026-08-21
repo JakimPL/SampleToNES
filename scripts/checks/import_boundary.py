@@ -92,18 +92,18 @@ PLAYER_GRAPH: Final[LayerGraph] = LayerGraph(
 
 APPLICATION_RULES: Final[Tuple[BoundaryRule, ...]] = (
     BoundaryRule(
-        APPLICATION,
-        "config/**/*.py",
-        (
+        root=APPLICATION,
+        pattern="config/**/*.py",
+        forbidden=(
             *VISUAL,
             "sampletones_application.coordinators",
             "sampletones_application.application",
         ),
     ),
     BoundaryRule(
-        APPLICATION,
-        "logic/**/*.py",
-        (
+        root=APPLICATION,
+        pattern="logic/**/*.py",
+        forbidden=(
             *VISUAL,
             "sampletones_application.coordinators",
             "sampletones_application.services",
@@ -111,9 +111,9 @@ APPLICATION_RULES: Final[Tuple[BoundaryRule, ...]] = (
         contracts=SERVICE_CONTRACTS,
     ),
     BoundaryRule(
-        APPLICATION,
-        "view_model/**/*.py",
-        (
+        root=APPLICATION,
+        pattern="view_model/**/*.py",
+        forbidden=(
             *VISUAL,
             "sampletones_application.coordinators",
             "sampletones_application.config",
@@ -122,9 +122,9 @@ APPLICATION_RULES: Final[Tuple[BoundaryRule, ...]] = (
         ),
     ),
     BoundaryRule(
-        APPLICATION,
-        "services/**/*.py",
-        (
+        root=APPLICATION,
+        pattern="services/**/*.py",
+        forbidden=(
             *VISUAL,
             "sampletones_application.view_model",
             "sampletones_application.coordinators",
@@ -133,25 +133,25 @@ APPLICATION_RULES: Final[Tuple[BoundaryRule, ...]] = (
         ),
     ),
     BoundaryRule(
-        APPLICATION,
-        "shell.py",
-        (
+        root=APPLICATION,
+        pattern="shell.py",
+        forbidden=(
             "sampletones_application.logic",
             "sampletones_application.services",
         ),
     ),
     BoundaryRule(
-        APPLICATION,
-        "coordinators/**/*.py",
-        (
+        root=APPLICATION,
+        pattern="coordinators/**/*.py",
+        forbidden=(
             "sampletones_application.application",
             "sampletones_application.shell",
         ),
     ),
     BoundaryRule(
-        APPLICATION,
-        "ui/**/*.py",
-        (
+        root=APPLICATION,
+        pattern="ui/**/*.py",
+        forbidden=(
             "sampletones_application.coordinators",
             "sampletones_application.logic",
             "sampletones_application.services",
@@ -171,24 +171,24 @@ RULES: Final[Tuple[BoundaryRule, ...]] = (
 
 TOKEN_RULES: Final[Tuple[TokenRule, ...]] = (
     TokenRule(
-        APPLICATION,
-        "ui/panels/**/*.py",
-        r"\bSUF_PANEL_",
-        "ui/panels must not reference a column suffix (SUF_PANEL_*); a panel receives its "
+        root=APPLICATION,
+        pattern="ui/panels/**/*.py",
+        forbidden=r"\bSUF_PANEL_",
+        message="ui/panels must not reference a column suffix (SUF_PANEL_*); a panel receives its "
         "parent through create_panel(parent), set by the coordinator that owns the layout",
     ),
     TokenRule(
-        APPLICATION,
-        "ui/panels/**/*.py",
-        r"parent\s*=\s*TAG_SEQUENCER_TRACKER_PANEL\b",
-        "ui/panels must not parent into another panel's container (TAG_SEQUENCER_TRACKER_PANEL); "
+        root=APPLICATION,
+        pattern="ui/panels/**/*.py",
+        forbidden=r"parent\s*=\s*TAG_SEQUENCER_TRACKER_PANEL\b",
+        message="ui/panels must not parent into another panel's container (TAG_SEQUENCER_TRACKER_PANEL); "
         "the coordinator injects the parent through create_panel(parent)",
     ),
     TokenRule(
-        APPLICATION,
-        "ui/panels/**/*.py",
-        r"\bTAG_GLOBAL_THEME_PANEL_(SURFACE|GROUND)\b",
-        "ui/panels must not bind a structural depth theme (TAG_GLOBAL_THEME_PANEL_SURFACE/"
+        root=APPLICATION,
+        pattern="ui/panels/**/*.py",
+        forbidden=r"\bTAG_GLOBAL_THEME_PANEL_(SURFACE|GROUND)\b",
+        message="ui/panels must not bind a structural depth theme (TAG_GLOBAL_THEME_PANEL_SURFACE/"
         "GROUND); only the layout primitives own depth (TabColumns binds the column, card() "
         "binds the card), and a panel binds only semantic themes",
     ),

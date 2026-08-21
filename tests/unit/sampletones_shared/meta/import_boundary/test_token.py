@@ -1,6 +1,9 @@
 from pathlib import Path
 from typing import Final
 
+import pytest
+from pydantic import ValidationError
+
 from sampletones_shared.meta.import_boundary.token import TokenRule
 from tests.suite.source import write_module
 
@@ -38,3 +41,16 @@ class TestTokenViolations:
         path = write_module(tmp_path, "left.py", body)
 
         assert len(RULE.violations(path)) == 2
+
+
+class TestUnusableSpellings:
+    """A rule states a spelling `re` accepts, so one it cannot read is refused as the rule is."""
+
+    def test_a_spelling_that_is_no_expression_is_refused(self) -> None:
+        with pytest.raises(ValidationError):
+            TokenRule(
+                root="package",
+                pattern="ui/**/*.py",
+                forbidden="(unclosed",
+                message=MESSAGE,
+            )

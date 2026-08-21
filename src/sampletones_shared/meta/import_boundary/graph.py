@@ -1,20 +1,31 @@
-from typing import Dict, List, NamedTuple, Tuple
+from typing import Dict, Final, List, Tuple
+
+from pydantic import BaseModel, ConfigDict
 
 from sampletones_shared.meta.import_boundary.rule import BoundaryRule
-from sampletones_shared.meta.import_boundary.units import nested_globs, unit_glob, unit_prefix
+from sampletones_shared.meta.import_boundary.units import (
+    nested_globs,
+    unit_glob,
+    unit_prefix,
+)
+
+SOURCE_TREE: Final[str] = ""
 
 
-class LayerGraph(NamedTuple):
+class LayerGraph(BaseModel):
     """A tree of modules, the units it divides into, and what each unit may import.
 
     Attributes:
-        root: Directory under the source root the units are named within.
+        root: Directory under the source root the units are named within, empty where the units
+            sit at the source root itself.
         package: Import prefix the units sit under, empty where the units are packages themselves.
         layers: Each unit and the units it may import.
     """
 
-    root: str
-    package: str
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    root: str = SOURCE_TREE
+    package: str = SOURCE_TREE
     layers: Dict[str, Tuple[str, ...]]
 
     def rules(self) -> List[BoundaryRule]:
@@ -33,7 +44,12 @@ class LayerGraph(NamedTuple):
                 root=self.root,
                 pattern=unit_glob(unit),
                 forbidden=tuple(
-                    unit_prefix(self.package, other) for other in self.layers if other != unit and other not in allowed
+                    unit_prefix(
+                        self.package,
+                        other,
+                    )
+                    for other in self.layers
+                    if other != unit and other not in allowed
                 ),
                 excluding=nested_globs(unit, self.layers),
             )

@@ -13,12 +13,26 @@ ALLOWED: Final[str] = "from package.inner import Helper\n"
 SPELLING: Final[str] = "dpg.add_group(parent=SUF_PANEL_LEFT)\n"
 
 RULES: Final[Tuple[BoundaryRule, ...]] = (
-    BoundaryRule("package", "logic/**/*.py", ("other_package",)),
-    BoundaryRule("package", "nested/**/*.py", ("other_package",), excluding=("nested/inner/**/*.py",)),
+    BoundaryRule(
+        root="package",
+        pattern="logic/**/*.py",
+        forbidden=("other_package",),
+    ),
+    BoundaryRule(
+        root="package",
+        pattern="nested/**/*.py",
+        forbidden=("other_package",),
+        excluding=("nested/inner/**/*.py",),
+    ),
 )
 
 TOKEN_RULES: Final[Tuple[TokenRule, ...]] = (
-    TokenRule("package", "ui/**/*.py", r"\bSUF_PANEL_", "ui stays clear of a column suffix"),
+    TokenRule(
+        root="package",
+        pattern="ui/**/*.py",
+        forbidden=r"\bSUF_PANEL_",
+        message="ui stays clear of a column suffix",
+    ),
 )
 
 

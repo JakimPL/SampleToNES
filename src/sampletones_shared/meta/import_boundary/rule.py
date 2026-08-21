@@ -1,5 +1,7 @@
 from pathlib import Path
-from typing import List, NamedTuple, Tuple
+from typing import List, Tuple
+
+from pydantic import BaseModel, ConfigDict
 
 from sampletones_shared.meta.import_boundary.imports import (
     imported_module,
@@ -9,7 +11,7 @@ from sampletones_shared.meta.import_boundary.lines import numbered_lines
 from sampletones_shared.meta.import_boundary.violation import Violation
 
 
-class BoundaryRule(NamedTuple):
+class BoundaryRule(BaseModel):
     """One tree of modules and the imports it stays clear of.
 
     Attributes:
@@ -19,6 +21,8 @@ class BoundaryRule(NamedTuple):
         contracts: Import prefixes exempt from the forbidden ones.
         excluding: Globs naming the modules a rule of their own owns instead.
     """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     root: str
     pattern: str
@@ -45,11 +49,24 @@ class BoundaryRule(NamedTuple):
         violations: List[Violation] = []
         for line_number, line in numbered_lines(path):
             module = imported_module(line)
-            if module is None or any(matches_prefix(module, contract) for contract in self.contracts):
+            if module is None or any(
+                matches_prefix(
+                    module,
+                    contract,
+                )
+                for contract in self.contracts
+            ):
                 continue
 
             crossed = next(
-                (prefix for prefix in self.forbidden if matches_prefix(module, prefix)),
+                (
+                    prefix
+                    for prefix in self.forbidden
+                    if matches_prefix(
+                        module,
+                        prefix,
+                    )
+                ),
                 None,
             )
             if crossed is not None:
