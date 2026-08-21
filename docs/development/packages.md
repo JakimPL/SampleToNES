@@ -2,8 +2,9 @@
 
 _SampleToNES_ is one repository holding several packages under `src/`, ordered so that dependencies
 run one way. This document states that order, what each package is for, and how the console player
-is layered inside it. It is prescriptive: `scripts/checks/import_boundary.py` holds the source tree
-to these tables on every commit, and a divergence between them and the script is itself a defect.
+is layered inside it. It is prescriptive: `sampletones_config/boundaries/graphs.yaml` restates these
+tables in the form the import-boundary check runs on every commit, and a divergence between this
+document and that configuration is itself a defect.
 
 The layering of `sampletones_application` has its own document,
 [`architecture.md`](architecture.md), which the same check enforces.
@@ -39,8 +40,8 @@ graph TD
 
 | Package | Purpose | May import |
 |---------|---------|------------|
-| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the source layer the checks read the tree through | — |
-| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, calibration — reached as package data rather than by import | — |
+| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, the source layer the checks read the tree through, and the schema these boundaries are declared in | — |
+| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, calibration, and these boundaries themselves — reached as package data rather than by import | — |
 | `sampletones_assets` | The application mark and the bundled fonts, with the code that draws the mark | `sampletones_shared` |
 | `sampletones_synthesis` | Analytic waveform synthesis: oscillators, envelopes, layers and voices | `sampletones_shared` |
 | `sampletones_core` | The reconstruction engine, the project model, and the tracker export formats | `sampletones_shared`, `sampletones_synthesis` |
@@ -95,13 +96,18 @@ copy, and no unit above declares it. The developer toolchain it needs is describ
 
 ## Enforcement
 
-`scripts/checks/import_boundary.py` declares both graphs as layer tables — each unit and the units
-it may import — and derives the rule it runs from them: every unit a table leaves out is out of
-reach, so an edge is declared before it is taken. The hook audits the whole source tree on every
-commit (`make check-import-boundary`), which means adding an edge to a table is how a new dependency
-is opened, and removing one enumerates the work of closing it.
+`sampletones_config/boundaries/graphs.yaml` declares both graphs as layer tables — each unit and the
+units it may import — and the rule the check runs derives from them: every unit a table leaves out is
+out of reach, so an edge is declared before it is taken. The hook audits the whole source tree on
+every commit (`make check-import-boundary`), which means adding an edge to a table is how a new
+dependency is opened, and removing one enumerates the work of closing it.
 
-The script is the declaration alone. Reading a module line by line, resolving a unit to the modules
-it owns, deriving a rule from a graph and reporting what crosses it live in
-`sampletones_shared/meta/import_boundary/`, beside the source layer the other checks read the tree
-through.
+A graph answers for its own well-formedness as it is read: a unit reaching a unit the graph leaves
+undeclared is refused, and so is a graph whose units reach themselves, since a unit's layers state a
+level only where the units stand in an order.
+
+Three parts share the work. `sampletones_config/boundaries/` states what the boundaries are.
+`sampletones_shared/meta/import_boundary/` validates that statement and holds the mechanism —
+reading a module line by line, resolving a unit to the modules it owns, deriving a rule from a graph
+and reporting what crosses it — beside the source layer the other checks read the tree through.
+`scripts/checks/import_boundary.py` runs them over a source tree and prints what they find.

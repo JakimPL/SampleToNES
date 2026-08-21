@@ -42,7 +42,7 @@ class BitphaseBackend:
     def supported_scopes(self) -> FrozenSet[ExportScope]:
         return DOCUMENT_SCOPES
 
-    def extension(self, scope: ExportScope) -> str:
+    def extension(self, scope: ExportScope) -> str:  # pylint: disable=unused-argument
         return EXT_FILE_BITPHASE
 
     def write_instrument(
@@ -87,7 +87,7 @@ class BitphasePresetBackend:
     def supported_scopes(self) -> FrozenSet[ExportScope]:
         return PRESET_SCOPES
 
-    def extension(self, scope: ExportScope) -> str:
+    def extension(self, scope: ExportScope) -> str:  # pylint: disable=unused-argument
         return EXT_FILE_JSON
 
     def write_instrument(

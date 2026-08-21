@@ -10,7 +10,8 @@ is read; use it as the reference when adding or moving a value. It sits alongsid
 first:
 
 - **Shipped configuration** — the `sampletones_config` YAML package: layout, theme,
-  palettes, keybindings, language, behavior, deployment, and calibration. *(This document.)*
+  palettes, keybindings, language, behavior, deployment, calibration, and the import
+  boundaries. *(This document.)*
 - **Runtime user preferences** — mutable state persisted to the user profile
   (`sampletones_application/config`, e.g. `PlaybackConfig`, `ShortcutsConfig`,
   `ApplicationState`), governed by that package.
@@ -32,8 +33,8 @@ empty `__init__.py`. Each schema lives with its reader:
 - `sampletones_application` owns the layout, theme, palettes, keybindings, language,
   behavior, and deployment schemas.
 - `sampletones_core` owns the calibration schemas.
-- `sampletones_shared` owns the loader primitives (`load_yaml_model`,
-  `load_yaml_model_dir`).
+- `sampletones_shared` owns the import-boundary schemas and the loader primitives
+  (`load_yaml_model`, `load_yaml_model_dir`).
 
 So the data carries the values and the consumer carries the meaning, and the two evolve
 on their own terms.
@@ -41,9 +42,10 @@ on their own terms.
 ### 2. The top level is organized by domain
 
 `sampletones_config` has one top-level directory per schema family and its loader:
-`application`, `behavior`, `calibration`, `keybindings`, `lang`, `layout`, `palettes`,
-`theme`. Each domain owns its schema and its load path (see [Domains](#domains)). A new domain
-is a new top-level directory with its own schema owner and loader.
+`application`, `behavior`, `boundaries`, `calibration`, `keybindings`, `lang`, `layout`,
+`palettes`, `theme`. Each domain owns its schema and its load path (see
+[Domains](#domains)). A new domain is a new top-level directory with its own schema owner
+and loader.
 
 Palettes are a domain of their own because two other domains resolve against them: a colour
 field in `layout/` and a colour entry in `theme/` both name a palette token, and the palette
@@ -130,6 +132,7 @@ each value sits in the tree stays in the factory.
 |--------|-----------|--------------|------------------|
 | Application | `application/` | `DeploymentConfig` (`sampletones_application/config/deployment/`) | `DeploymentConfig.load()`, with `SAMPLETONES_*` env overrides |
 | Behavior | `behavior/` | `BehaviorConfig` (`sampletones_application/layout/behavior.py`) | folded into `LayoutConfig.behavior` by `load_layout_config` |
+| Boundaries | `boundaries/` | `ImportBoundaryRules` (`sampletones_shared/meta/import_boundary/configs/`) | `ImportBoundaryRules.load()` |
 | Calibration | `calibration/` | `CorpusConfig`, `RefereeConfig` (`sampletones_core/calibration/config/`) | each model's own `.load()` |
 | Keybindings | `keybindings/` | `ShortcutScheme` (`sampletones_application/utils/gui/shortcuts/`) | `ShortcutCatalog.load()`, indexed by scheme name |
 | Language | `lang/` | `LanguageManager` (`sampletones_application/categories/`) | flat string map keyed `page.panel.text_type.element`, each key validated at load |
@@ -165,6 +168,14 @@ consumers reach it as `layout.behavior.*`. A single access path serves the ~15 r
 sites across `application.py` and the tab coordinators that read it, and the ~10 modules
 that import `SchedulingBehavior` as a type.
 
+Boundaries is the domain a developer tool reads. It states the layer graphs the packages
+divide into, the imports each part of the application stays clear of, and the spellings a
+tree keeps out, and `scripts/checks/import_boundary.py` runs it over the source tree on every
+commit. A declaration draws on the named prefix groups `general.yaml` holds, so a set several
+rules reach for is written once and each rule names it, and a name reaching no group is
+refused as the domain is read. The bundle carries the domain because `--add-data` copies
+`sampletones_config` whole — the terms `calibration/` already ships on.
+
 ---
 
 ## Loading
@@ -189,6 +200,6 @@ Three load mechanisms serve the three grouping schemes:
   file on disk. `ShortcutCatalog.load()` reads `keybindings/` the same way, keyed by
   `ShortcutScheme.name`.
 
-Deployment and calibration each load through a bespoke `.load()` classmethod over
-the same low-level primitives in `sampletones_shared/utils/serialization.py` — the one
-module that calls `yaml.safe_load`.
+Deployment, calibration and the boundaries each load through a bespoke `.load()`
+classmethod over the same low-level primitives in
+`sampletones_shared/utils/serialization.py` — the one module that calls `yaml.safe_load`.

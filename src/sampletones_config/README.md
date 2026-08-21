@@ -9,7 +9,7 @@ The schema that validates each file lives in the **consuming** package:
 
 - `sampletones_application` — layout, theme, palettes, language, behavior, deployment.
 - `sampletones_core` — calibration.
-- `sampletones_shared` — the loader primitives only.
+- `sampletones_shared` — the import boundaries and the loader primitives.
 
 The data package must not import a schema, and a schema package must not inline data.
 
@@ -19,6 +19,7 @@ The data package must not import a schema, and a schema package must not inline 
 |-----------|---------|--------------|
 | `application/` | Deployment-time environment knobs | `DeploymentConfig` |
 | `behavior/` | Non-visual runtime behavior | `BehaviorConfig` |
+| `boundaries/` | The imports the source tree is held to | `ImportBoundaryRules` |
 | `calibration/` | DSP calibration tuning | `CorpusConfig`, `RefereeConfig` |
 | `keybindings/` | The key combinations each named action answers | `ShortcutScheme` |
 | `lang/` | Interface strings (i18n) | `LanguageManager` |
