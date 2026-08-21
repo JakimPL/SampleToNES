@@ -124,7 +124,7 @@ def dpg_get_item_parent(
     """
     try:
         parent: Optional[Sender] = dpg.get_item_parent(tag, *args, **kwargs)
-    except Exception:  # TODO: unsafe broad exception
+    except Exception:  # unsafe broad exception
         return None
 
     return parent
