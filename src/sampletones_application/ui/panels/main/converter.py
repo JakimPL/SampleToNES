@@ -102,11 +102,10 @@ class GUIConverterPanel(GUIPanel):
         self._update_controls(view_model)
 
     def _update_visibility(self, view_model: ConverterViewModel) -> None:
-        has_input = view_model.input_path is not None
         dpg.configure_item(TAG_MAIN_CONVERTER_GROUP, show=view_model.subpanel_visible)
         dpg_configure_item(TAG_MAIN_CONVERTER_WINDOW_SUMMARY, show=not view_model.subpanel_visible)
-        dpg_configure_item(TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT, show=not has_input)
-        dpg_configure_item(TAG_MAIN_CONVERTER_GROUP_SUMMARY, show=has_input)
+        dpg_configure_item(TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT, show=not view_model.has_input)
+        dpg_configure_item(TAG_MAIN_CONVERTER_GROUP_SUMMARY, show=view_model.has_input)
 
     def _update_status(self, view_model: ConverterViewModel) -> None:
         dpg_set_value(TAG_MAIN_CONVERTER_TEXT_STATUS, view_model.status_text)

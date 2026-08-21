@@ -1,10 +1,16 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional, Protocol, Tuple
+from typing import Callable, FrozenSet, List, Optional, Protocol, Sequence, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.constants.conversion import (
+    DEFAULT_STEM_LEVEL,
+    MAX_STEM_SOURCES,
+    MIN_CHANNEL_CAP,
+)
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.main.stems import StemSource, derive_stems_config, effective_channels
 from sampletones_application.services.result import (
     ConversionResult,
     ServiceCancelled,
@@ -20,14 +26,18 @@ from sampletones_application.view_model.main.converter import (
     ACTIVE_PHASES,
     ConversionPhase,
     ConverterViewModel,
+    StemSourceRow,
 )
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.parallelization import ETAEstimator, TaskProgress
 from sampletones_core.reconstructions.converter import (
     ConversionPlan,
     DirectoryConversion,
     GroupConversion,
     get_output_path,
+    group_output_path,
 )
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.exceptions import NoFilesToProcessError
@@ -96,6 +106,10 @@ class ConverterLogic(CallbackMixin):
         self._output_path: Optional[Path] = None
         self._written: Tuple[Path, ...] = ()
         self._is_file: bool = True
+        self._stems_mode: bool = False
+        self._sources: List[StemSource] = []
+        self._channel_cap: int = len(ChannelName)
+        self._hierarchy_mode: HierarchyMode = DEFAULT_STEMS_HIERARCHY_MODE
         self._system_progress = SystemProgress()
 
         self._service.subscribe(self._on_service_result)
@@ -139,6 +153,74 @@ class ConverterLogic(CallbackMixin):
 
         if convert:
             self.start_conversion()
+
+    def select_source(self, path: Path) -> None:
+        """Answers a recording picked in the explorer: it joins the list, or becomes the input.
+
+        In stems mode a pick adds to the setup being built, so a reader gathers a conversion by
+        clicking the recordings it mixes. Otherwise it is the single thing to convert.
+        """
+        if self._stems_mode:
+            self.add_sources([path])
+            return
+
+        self.set_input_path(path)
+
+    def add_sources(self, paths: Sequence[Path]) -> None:
+        """Adds recordings to the stems list, up to the room it has left.
+
+        A path already listed keeps the row it has, so adding it again leaves the setup as it is.
+        """
+        enabled = frozenset(self._config_manager.config.generation.channels)
+        listed = {source.path for source in self._sources}
+        for path in paths:
+            if path in listed or len(self._sources) >= MAX_STEM_SOURCES:
+                continue
+
+            self._sources.append(StemSource(path=path, channels=enabled, level=DEFAULT_STEM_LEVEL))
+            listed.add(path)
+
+        self._refresh_setup()
+
+    def remove_source(self, path: Path) -> None:
+        """Takes a recording out of the stems list."""
+        self._sources = [source for source in self._sources if source.path != path]
+        self._refresh_setup()
+
+    def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
+        """Names the channels one recording may take."""
+        self._replace_source(path, lambda source: source.with_channels(channels))
+
+    def set_source_level(self, path: Path, level: int) -> None:
+        """Names the level one recording picks on."""
+        self._replace_source(path, lambda source: source.with_level(max(level, DEFAULT_STEM_LEVEL)))
+
+    def set_stems_mode(self, stems_mode: bool) -> None:
+        """Switches between converting one selection and mixing several recordings into one.
+
+        Entering stems mode carries a selected file in as the first row. Leaving it keeps the
+        first row as the single selection, which is what the reader picked first.
+        """
+        if stems_mode == self._stems_mode:
+            return
+
+        self._stems_mode = stems_mode
+        if stems_mode:
+            self._enter_stems_mode()
+        else:
+            self._leave_stems_mode()
+
+        self._refresh_setup()
+
+    def set_channel_cap(self, channel_cap: int) -> None:
+        """Names how many channels one recording may hold in a frame, for every conversion."""
+        self._channel_cap = min(max(channel_cap, MIN_CHANNEL_CAP), self._max_channel_cap())
+        self._refresh_setup()
+
+    def set_hierarchy_mode(self, hierarchy_mode: HierarchyMode) -> None:
+        """Names how the levels take turns: round by round, or one level exhausted before the next."""
+        self._hierarchy_mode = hierarchy_mode
+        self._refresh_setup()
 
     def start_conversion(self) -> None:
         if self._is_operation_active():
@@ -275,13 +357,81 @@ class ConverterLogic(CallbackMixin):
         self._service.start(config, self._conversion_plan(config, self._input_path))
 
     def _conversion_plan(self, config: Config, input_path: Path) -> ConversionPlan:
-        """What the request amounts to: one reconstruction from the selected file, or one per
-        audio file the selected directory holds."""
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        """What the request amounts to: one reconstruction from the recordings listed or the file
+        selected, or one per audio file the selected directory holds."""
+        stems = self._stems_setup(config)
+        if self._stems_mode:
+            return GroupConversion(sources=self._source_paths, stems=stems)
+
         if self._is_file:
             return GroupConversion(sources=(input_path,), stems=stems)
 
         return DirectoryConversion(directory=input_path, stems=stems)
+
+    def _stems_setup(self, config: Config) -> StemsConfig:
+        """The setup the conversion runs under: the rows a reader listed, or one stem over every
+        enabled channel where none were listed. Either way it carries the channel cap."""
+        enabled = list(config.generation.channels)
+        if self._stems_mode and self._sources:
+            return derive_stems_config(
+                self._sources,
+                enabled,
+                channel_cap=self._effective_channel_cap,
+                hierarchy_mode=self._hierarchy_mode,
+            )
+
+        return StemsConfig.single_entry(enabled, channel_cap=self._effective_channel_cap)
+
+    @property
+    def _source_paths(self) -> Tuple[Path, ...]:
+        return tuple(source.path for source in self._sources)
+
+    @property
+    def _effective_channel_cap(self) -> int:
+        """The cap a run holds to: what the reader asked for, within the channels now enabled."""
+        return min(self._channel_cap, self._max_channel_cap())
+
+    def _max_channel_cap(self) -> int:
+        return max(len(self._config_manager.config.generation.channels), MIN_CHANNEL_CAP)
+
+    def _replace_source(self, path: Path, change: Callable[[StemSource], StemSource]) -> None:
+        """Rewrites one row of the stems list, leaving the others where they are."""
+        self._sources = [change(source) if source.path == path else source for source in self._sources]
+        self._refresh_setup()
+
+    def _enter_stems_mode(self) -> None:
+        enabled = frozenset(self._config_manager.config.generation.channels)
+        if not self._sources and self._input_path is not None and self._is_file:
+            self._sources = [StemSource(path=self._input_path, channels=enabled, level=DEFAULT_STEM_LEVEL)]
+
+    def _leave_stems_mode(self) -> None:
+        if self._sources:
+            self._sources = self._sources[:1]
+            self._assign_paths(self._sources[0].path, self._config_manager.config)
+
+    def _refresh_setup(self) -> None:
+        """Follows the setup wherever it changed: the destination it now names, and the view."""
+        self._update_stems_output_path()
+        if not self.is_active:
+            self._phase = ConversionPhase.IDLE
+            self._emit_view_model(self._msg_idle, 0.0)
+
+    def _update_stems_output_path(self) -> None:
+        if not self._stems_mode or not self._sources:
+            return
+
+        self._output_path = group_output_path(self._config_manager.config, self._source_paths)
+
+    def _stem_rows(self, config: Config) -> Tuple[StemSourceRow, ...]:
+        enabled = list(config.generation.channels)
+        return tuple(
+            StemSourceRow(
+                path=source.path,
+                channels=frozenset(effective_channels(source, enabled)),
+                level=source.level,
+            )
+            for source in self._sources
+        )
 
     def _on_conversion_complete(self, written: Tuple[Path, ...]) -> None:
         self._written = written
@@ -337,6 +487,7 @@ class ConverterLogic(CallbackMixin):
         progress: float,
         input_path: Optional[Path] = None,
     ) -> None:
+        config = self._config_manager.config
         display_output = (
             self._output_path if self._output_path is not None else self._config_manager.get_reconstructions_directory()
         )
@@ -350,5 +501,12 @@ class ConverterLogic(CallbackMixin):
             output_path=display_output,
             is_file=self._is_file,
             other_operation_active=self._is_operation_active(),
+            stems_mode=self._stems_mode,
+            stem_sources=self._stem_rows(config),
+            enabled_channels=frozenset(config.generation.channels),
+            channel_cap=self._effective_channel_cap,
+            max_channel_cap=self._max_channel_cap(),
+            hierarchy_mode=self._hierarchy_mode,
+            max_sources=MAX_STEM_SOURCES,
         )
         self.call(self.on_view_changed, view_model)

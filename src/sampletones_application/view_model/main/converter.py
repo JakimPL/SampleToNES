@@ -1,10 +1,11 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Final, FrozenSet, Optional
+from typing import Final, FrozenSet, Optional, Tuple
 
 from pydantic import BaseModel
 
 from sampletones_application.view_model.shared.percent import format_percent
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 
 
 class ConversionPhase(StrEnum):
@@ -37,6 +38,18 @@ ACTIVE_PHASES: Final[FrozenSet[ConversionPhase]] = frozenset(
 )
 
 
+class StemSourceRow(BaseModel, frozen=True):
+    """One recording in the converter's stems list, as the panel renders it."""
+
+    path: Path
+    channels: FrozenSet[ChannelName]
+    level: int
+
+    @property
+    def name(self) -> str:
+        return self.path.name
+
+
 class ConverterViewModel(BaseModel, frozen=True):
     """
     An immutable snapshot of converter state that defines what the panel is allowed to know.
@@ -54,6 +67,13 @@ class ConverterViewModel(BaseModel, frozen=True):
     output_path: Optional[Path]
     is_file: bool
     other_operation_active: bool
+    stems_mode: bool
+    stem_sources: Tuple[StemSourceRow, ...]
+    enabled_channels: FrozenSet[ChannelName]
+    channel_cap: int
+    max_channel_cap: int
+    hierarchy_mode: HierarchyMode
+    max_sources: int
 
     @property
     def progress_overlay(self) -> str:
@@ -69,8 +89,25 @@ class ConverterViewModel(BaseModel, frozen=True):
         return self.phase != ConversionPhase.IDLE
 
     @property
+    def has_input(self) -> bool:
+        """Something is selected to convert: a listed recording in stems mode, a path otherwise."""
+        if self.stems_mode:
+            return bool(self.stem_sources)
+
+        return self.input_path is not None
+
+    @property
+    def source_count(self) -> int:
+        return len(self.stem_sources)
+
+    @property
+    def can_add_source(self) -> bool:
+        """The list has room for another recording."""
+        return self.source_count < self.max_sources
+
+    @property
     def convert_button_enabled(self) -> bool:
-        return self.phase == ConversionPhase.IDLE and self.input_path is not None and not self.other_operation_active
+        return self.phase == ConversionPhase.IDLE and self.has_input and not self.other_operation_active
 
     @property
     def primary_action(self) -> ConverterAction:

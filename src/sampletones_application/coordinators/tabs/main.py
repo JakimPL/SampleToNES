@@ -249,6 +249,7 @@ class MainTabCoordinator:
         self._converter_logic.on_load_directory = on_load_directory
         self._converter_logic.on_cancelled = on_cancelled
         self._converter_logic.generate_library = on_generate_library
+        config_manager.add_config_change_callback(self._converter_logic.refresh_view)
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
@@ -267,7 +268,7 @@ class MainTabCoordinator:
 
     def _on_wave_file_clicked(self, filepath: Path) -> None:
         if not self._is_operation_active():
-            self._converter_logic.set_input_path(filepath, convert=False)
+            self._converter_logic.select_source(filepath)
 
     def _on_directory_clicked(self, directory_path: Path) -> None:
         if not self._is_operation_active():

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from sampletones_application.constants.conversion import MAX_STEM_SOURCES, MIN_CHANNEL_CAP
 from sampletones_application.logic.main.converter import (
     ConversionSuccess,
     ConverterLogic,
@@ -14,6 +15,7 @@ from sampletones_application.view_model.main.converter import (
     ConverterViewModel,
 )
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.converter import DirectoryConversion, GroupConversion
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from tests.suite.language import FakeLanguageManager
@@ -371,12 +373,14 @@ class TestConversionPlan:
         assert plan.directory == Path("/audio")
 
     def test_the_setup_covers_every_enabled_channel(self, converter_logic: ConverterLogic) -> None:
-        """With no stems chosen, one stem holds every channel the configuration enables."""
+        """With no stems listed, one stem holds every channel the configuration enables."""
         config = self._prepare(converter_logic, Path("/audio/kick.wav"), is_file=True)
+        channels = list(config.generation.channels)
 
         plan = converter_logic._conversion_plan(config, Path("/audio/kick.wav"))
 
-        assert plan.stems == StemsConfig.single_entry(list(config.generation.channels))
+        assert plan.stems == StemsConfig.single_entry(channels, channel_cap=len(channels))
+        assert plan.stems.covered_channels == frozenset(channels)
 
     def test_starting_hands_the_plan_to_the_service(self, converter_logic: ConverterLogic) -> None:
         config = self._prepare(converter_logic, Path("/audio/kick.wav"), is_file=True)
@@ -387,3 +391,171 @@ class TestConversionPlan:
         started_config, started_plan = converter_logic._service.start.call_args.args
         assert started_config == config
         assert isinstance(started_plan, GroupConversion)
+
+
+class TestStemsSetup:
+    """The rows a reader gathers, and the setup they turn into."""
+
+    def _with_config(self, converter_logic: ConverterLogic) -> Config:
+        config = Config()
+        converter_logic._config_manager.config = config
+        return config
+
+    def test_selecting_a_recording_in_stems_mode_adds_it(self, converter_logic: ConverterLogic) -> None:
+        self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+
+        converter_logic.select_source(Path("/audio/bass.wav"))
+        converter_logic.select_source(Path("/audio/lead.wav"))
+
+        assert converter_logic._source_paths == (Path("/audio/bass.wav"), Path("/audio/lead.wav"))
+
+    def test_adding_a_listed_recording_leaves_the_list_as_it_is(self, converter_logic: ConverterLogic) -> None:
+        self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/bass.wav")])
+
+        converter_logic.set_source_level(Path("/audio/bass.wav"), 3)
+        converter_logic.add_sources([Path("/audio/bass.wav")])
+
+        assert converter_logic._source_paths == (Path("/audio/bass.wav"),)
+        assert converter_logic._sources[0].level == 3
+
+    def test_the_list_stops_at_the_room_it_has(self, converter_logic: ConverterLogic) -> None:
+        self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+
+        converter_logic.add_sources([Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES + 3)])
+
+        assert len(converter_logic._sources) == MAX_STEM_SOURCES
+
+    def test_removing_a_recording_takes_it_out(self, converter_logic: ConverterLogic) -> None:
+        self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav"), Path("/audio/b.wav")])
+
+        converter_logic.remove_source(Path("/audio/a.wav"))
+
+        assert converter_logic._source_paths == (Path("/audio/b.wav"),)
+
+    def test_entering_stems_mode_carries_the_selected_file_in(self, converter_logic: ConverterLogic) -> None:
+        self._with_config(converter_logic)
+        converter_logic._input_path = Path("/audio/kick.wav")
+        converter_logic._is_file = True
+
+        converter_logic.set_stems_mode(True)
+
+        assert converter_logic._source_paths == (Path("/audio/kick.wav"),)
+
+    def test_leaving_stems_mode_keeps_the_first_recording(self, converter_logic: ConverterLogic) -> None:
+        self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav"), Path("/audio/b.wav")])
+
+        converter_logic.set_stems_mode(False)
+
+        assert converter_logic._source_paths == (Path("/audio/a.wav"),)
+
+    def test_a_stems_conversion_groups_every_listed_recording(self, converter_logic: ConverterLogic) -> None:
+        config = self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav"), Path("/audio/b.wav")])
+
+        plan = converter_logic._conversion_plan(config, Path("/audio/a.wav"))
+
+        assert isinstance(plan, GroupConversion)
+        assert plan.sources == (Path("/audio/a.wav"), Path("/audio/b.wav"))
+        assert [entry.id for entry in plan.stems.entries] == [0, 1]
+
+    def test_the_rows_channels_and_levels_reach_the_setup(self, converter_logic: ConverterLogic) -> None:
+        config = self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav"), Path("/audio/b.wav")])
+        converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset({ChannelName.PULSE1}))
+        converter_logic.set_source_level(Path("/audio/b.wav"), 2)
+
+        plan = converter_logic._conversion_plan(config, Path("/audio/a.wav"))
+
+        assert plan.stems.entries[0].channels == [ChannelName.PULSE1]
+        assert plan.stems.hierarchy.levels == [[0], [1]]
+
+    def test_the_cap_holds_within_the_channels_enabled(self, converter_logic: ConverterLogic) -> None:
+        config = self._with_config(converter_logic)
+        channels = list(config.generation.channels)
+
+        converter_logic.set_channel_cap(len(channels) + 5)
+
+        assert converter_logic._effective_channel_cap == len(channels)
+
+    def test_a_cap_below_one_is_refused(self, converter_logic: ConverterLogic) -> None:
+        self._with_config(converter_logic)
+
+        converter_logic.set_channel_cap(0)
+
+        assert converter_logic._effective_channel_cap == MIN_CHANNEL_CAP
+
+    def test_the_cap_reaches_a_classic_conversion_too(self, converter_logic: ConverterLogic) -> None:
+        """One recording per frame is a choice a reader makes for every conversion, batch included."""
+        config = self._with_config(converter_logic)
+        converter_logic._input_path = Path("/audio/kick.wav")
+        converter_logic._is_file = True
+        converter_logic.set_channel_cap(1)
+
+        plan = converter_logic._conversion_plan(config, Path("/audio/kick.wav"))
+
+        assert plan.stems.channel_cap == 1
+
+    def test_the_hierarchy_mode_reaches_the_setup(self, converter_logic: ConverterLogic) -> None:
+        config = self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav")])
+
+        converter_logic.set_hierarchy_mode(HierarchyMode.STRICT)
+
+        plan = converter_logic._conversion_plan(config, Path("/audio/a.wav"))
+        assert plan.stems.hierarchy.mode == HierarchyMode.STRICT
+
+
+class TestStemsView:
+    """What the panel is told about the setup being built."""
+
+    def _emitted(self, converter_logic: ConverterLogic) -> ConverterViewModel:
+        return converter_logic.on_view_changed.call_args.args[0]
+
+    def test_the_rows_reach_the_view_in_list_order(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._config_manager.config = Config()
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav"), Path("/audio/b.wav")])
+
+        view_model = self._emitted(converter_logic)
+
+        assert [row.name for row in view_model.stem_sources] == ["a.wav", "b.wav"]
+        assert view_model.stems_mode is True
+        assert view_model.has_input is True
+
+    def test_a_row_shows_the_channels_it_may_take(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._config_manager.config = Config()
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav")])
+        converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset({ChannelName.NOISE}))
+
+        assert self._emitted(converter_logic).stem_sources[0].channels == frozenset({ChannelName.NOISE})
+
+    def test_the_view_states_whether_another_recording_fits(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._config_manager.config = Config()
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES)])
+
+        view_model = self._emitted(converter_logic)
+
+        assert view_model.source_count == MAX_STEM_SOURCES
+        assert view_model.can_add_source is False
+
+    def test_an_empty_stems_list_offers_nothing_to_convert(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._config_manager.config = Config()
+        converter_logic.set_stems_mode(True)
+
+        view_model = self._emitted(converter_logic)
+
+        assert view_model.has_input is False
+        assert view_model.convert_button_enabled is False

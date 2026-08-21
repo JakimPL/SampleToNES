@@ -1,12 +1,24 @@
 from pathlib import Path
+from typing import Final, FrozenSet, Optional, Tuple
 
 import pytest
 
+from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterAction,
     ConverterViewModel,
+    StemSourceRow,
 )
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
+
+ENABLED_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
+    {ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE}
+)
+
+
+def _row(name: str, level: int = 1) -> StemSourceRow:
+    return StemSourceRow(path=Path(f"/audio/{name}.wav"), channels=ENABLED_CHANNELS, level=level)
 
 
 def _view_model(
@@ -14,16 +26,28 @@ def _view_model(
     phase: ConversionPhase,
     other_operation_active: bool = False,
     progress: float = 0.0,
+    input_path: Optional[Path] = Path("/audio/sample.wav"),
+    stems_mode: bool = False,
+    stem_sources: Tuple[StemSourceRow, ...] = (),
+    channel_cap: int = len(ENABLED_CHANNELS),
+    max_sources: int = MAX_STEM_SOURCES,
 ) -> ConverterViewModel:
     return ConverterViewModel(
         phase=phase,
         status_text="",
         action_label="",
         progress=progress,
-        input_path=Path("/audio/sample.wav"),
+        input_path=input_path,
         output_path=Path("/reconstructions"),
         is_file=True,
         other_operation_active=other_operation_active,
+        stems_mode=stems_mode,
+        stem_sources=stem_sources,
+        enabled_channels=ENABLED_CHANNELS,
+        channel_cap=channel_cap,
+        max_channel_cap=len(ENABLED_CHANNELS),
+        hierarchy_mode=HierarchyMode.ROUND_ROBIN,
+        max_sources=max_sources,
     )
 
 
@@ -105,3 +129,44 @@ class TestPrimaryActionEnabled:
 
     def test_convert_enabled_when_idle_with_input(self) -> None:
         assert _view_model(phase=ConversionPhase.IDLE).primary_action_enabled is True
+
+
+class TestStemsSection:
+    """In stems mode the listed recordings are what there is to convert, and the list has a bound."""
+
+    def test_a_listed_recording_counts_as_an_input(self) -> None:
+        view_model = _view_model(
+            phase=ConversionPhase.IDLE,
+            input_path=None,
+            stems_mode=True,
+            stem_sources=(_row("bass"),),
+        )
+
+        assert view_model.has_input is True
+        assert view_model.source_count == 1
+        assert view_model.convert_button_enabled is True
+
+    def test_an_empty_list_offers_nothing_to_convert(self) -> None:
+        view_model = _view_model(phase=ConversionPhase.IDLE, stems_mode=True)
+
+        assert view_model.has_input is False
+        assert view_model.convert_button_enabled is False
+
+    def test_the_selected_path_carries_a_classic_conversion(self) -> None:
+        view_model = _view_model(phase=ConversionPhase.IDLE, stems_mode=False)
+
+        assert view_model.has_input is True
+
+    def test_a_full_list_takes_no_more(self) -> None:
+        rows = tuple(_row(str(index)) for index in range(MAX_STEM_SOURCES))
+        view_model = _view_model(phase=ConversionPhase.IDLE, stems_mode=True, stem_sources=rows)
+
+        assert view_model.can_add_source is False
+
+    def test_a_list_with_room_takes_another(self) -> None:
+        view_model = _view_model(phase=ConversionPhase.IDLE, stems_mode=True, stem_sources=(_row("bass"),))
+
+        assert view_model.can_add_source is True
+
+    def test_a_row_names_itself_by_its_file(self) -> None:
+        assert _row("bass").name == "bass.wav"
