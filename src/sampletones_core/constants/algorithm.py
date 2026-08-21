@@ -53,6 +53,7 @@ PERCEPTUAL_EXPONENT: Final[float] = 1.0
 
 SELECTOR: Final[SelectorName] = SelectorName.VITERBI
 DECODER_TOP_K: Final[int] = 8
+SINGLE_STATE_LATTICE_WIDTH: Final[int] = 1
 TRANSITION_PITCH_WEIGHT: Final[float] = 0.03
 TRANSITION_VOLUME_WEIGHT: Final[float] = 0.02
 TRANSITION_TIMBRE_WEIGHT: Final[float] = 0.10
@@ -69,6 +70,7 @@ ALL_STEMS_CHANNEL_CAP: Final[int] = len(ChannelName)
 DEFAULT_STEMS_CHANNEL_CAP: Final[int] = ALL_STEMS_CHANNEL_CAP
 DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
 RESTING_STEM_ID: Final[int] = -1
+RESTING_FRAME_COST: Final[float] = 0.0
 
 # Execution
 

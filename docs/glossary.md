@@ -137,12 +137,12 @@ Perceptual weightings applied so each frequency bin counts in proportion to how
 the ear hears it: ERB spaces bins by auditory critical bands, and K-weighting
 applies a loudness curve.
 
-### Selector
+### Decoder
 
-The strategy that searches the library for each frame's instructions. The
-**greedy** selector treats every frame independently; the **Viterbi** selector
-(the default) favours continuity, changing a channel only when the gain in match
-quality outweighs the cost of the change.
+The strategy that reads a channel's per-frame candidates into the stream it plays,
+named by `generation.decoder.selector`. The **greedy** decoder plays each frame's
+best candidate; the **Viterbi** decoder (the default) favours continuity, changing a
+channel only when the gain in match quality outweighs the cost of the change.
 
 ### Calibration
 

@@ -2,6 +2,7 @@ from typing import Dict, NamedTuple, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
+from sampletones_core.reconstructions.reconstructor.stems.models.rest import StemRest
 
 
 class StemFrameAssignment(NamedTuple):
@@ -12,8 +13,12 @@ class StemFrameAssignment(NamedTuple):
     """
 
     choices: Tuple[StemChoice, ...]
-    resting: Tuple[ChannelName, ...]
+    rests: Tuple[StemRest, ...]
 
     @property
     def by_channel(self) -> Dict[ChannelName, StemChoice]:
         return {choice.channel_name: choice for choice in self.choices}
+
+    @property
+    def resting(self) -> Tuple[ChannelName, ...]:
+        return tuple(rest.channel_name for rest in self.rests)

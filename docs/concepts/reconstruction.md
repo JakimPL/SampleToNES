@@ -55,14 +55,16 @@ input through a fixed sequence of stages:
    instruction per frame.
 4. **Describe each frame** by a spectral feature that captures its frequency
    content (§3).
-5. **Select** the instructions — for every frame and channel, pick the candidate
-   that best matches, judged by the criterion (§5 and §4).
-6. **Render** the chosen instructions back into audio through the generators,
+5. **Assign** every frame's channels to the sources, and with each channel the
+   candidates it may sound there, judged by the criterion (§5 and §4).
+6. **Decode** each channel's stream, reading its candidates across the whole
+   recording (§5).
+7. **Render** the chosen instructions back into audio through the generators,
    keeping each oscillator continuous across frames.
-7. **Reassemble** the channels into the final approximation and package it, with the
+8. **Reassemble** the channels into the final approximation and package it, with the
    instruction streams, as a `Reconstruction`.
 
-Stages 3–5 are where the algorithms described below live; the rest is preparation
+Stages 3–6 are where the algorithms described below live; the rest is preparation
 and playback.
 
 ## 3. Representing a frame
@@ -172,54 +174,77 @@ on machines with a GPU, runs on the array backend in `sampletones_shared`.
 
 ## 5. Choosing instructions
 
-Both selectors live in `sampletones_core.reconstructions.reconstructor.selector` and
-are chosen with `generation.decoder.selector`. They share the criterion and the
-library; they differ only in how they search. The same candidate scoring drives
-the stems assignment, which hands channels to several stems per frame
-(see [Stems reconstruction](stems.md)).
+Two questions settle what a frame plays, and each has its own owner. **Ownership** —
+which channel a source holds this frame — is answered by the assignment in
+`sampletones_core.reconstructions.reconstructor.stems.assignment`. **The stream** —
+what a channel plays across the frames it holds — is answered by a decoder in
+`sampletones_core.reconstructions.reconstructor.decoder`, named by
+`generation.decoder.selector`. Both work from the same candidate scoring
+(`reconstructor/matching.py`), the same criterion and the same library.
 
-Both score candidates in two stages: every candidate is first ranked by the
+The assignment leaves every channel in play a **column** per frame: the candidates
+that channel may sound there, best first. The decoder reads those columns into one
+candidate per frame. Each decoder states how wide a column it reads, and the
+assignment builds columns to exactly that width.
+
+Candidates are scored in two stages: every candidate is first ranked by the
 phase-independent spectral term, and the best `top_k` are then re-scored with the
 full criterion, whose temporal term is evaluated on the candidate aligned to the
 target (`find_best_phase`). The aligned phase stands in for the rendered phase,
 which keeps each oscillator continuous across frames.
 
-### 5.1 Greedy (per-frame)
+### 5.1 Assigning channels
 
-The greedy selector treats every frame independently:
+A frame is assigned one pick at a time:
 
 ```
-remaining = {enabled channels}
-while remaining:
-    pick the single (channel, instruction) with the lowest cost
-        across all candidates of all remaining channels
+free = {channels the setup covers}
+while a source may still take a channel and free is non-empty:
+    pick the single (source, channel, instruction) with the lowest cost
+        across every candidate of every channel that source may still take
     subtract its rendered contribution from the frame's residual
-    assign it and remove that channel from `remaining`
+    assign it and remove that channel from `free`
 ```
 
-It assigns each channel exactly once per frame, always letting the channel that fits
-the residual best go first. When several channels share one generator kind, the
-lowest remaining channel of that kind represents it during scoring, so successive
-picks over one kind land on the lowest free channel. It is simple and fast, but it
-has **no memory between frames**: nothing discourages the instruction streams from
-jumping around frame to frame, which can sound jittery even when each individual
-frame is well matched.
+Every pick lets whichever channel fits the residual best go first. Where several
+channels share one generator kind, the lowest free channel of that kind represents it
+during scoring, so successive picks over one kind land on the lowest free channel. A
+channel still free when the picks end **rests**: it holds its channel's null
+instruction for that frame, which is what keeps every channel's stream in step with
+the frames it describes.
 
-### 5.2 Viterbi (continuity-aware)
+A classic single-file conversion is one source covering every enabled channel, so the
+loop above assigns each channel exactly once per frame. Several sources, a precedence
+hierarchy and a per-source channel cap are the general case, described in
+[Stems reconstruction](stems.md).
 
-The Viterbi selector adds temporal continuity. For each frame it keeps the *top-k*
-lowest-cost candidates per channel, forming a lattice of states over time. It then
+### 5.2 Greedy decoding
+
+The greedy decoder plays each frame's best candidate, reading one candidate per
+column. Each frame is then decided by its own cost alone, which is fast and
+straightforward, and the instruction streams follow each frame's match wherever it
+leads — audible as jitter even where every individual frame is well matched.
+
+### 5.3 Viterbi decoding
+
+The Viterbi decoder weighs a frame's candidates against the frames around them. It
+reads `top_k` candidates per column, forming a lattice of states over time, and
 finds, per channel, the lowest-cost **path** through that lattice, where the path
 cost combines:
 
 - the per-frame **match cost** (the criterion, as an emission cost), and
-- a **transition cost** between consecutive frames that penalizes discontinuity —
-  switching a channel on or off, and changing pitch, volume or timbre.
+- a **transition cost** between consecutive frames that grows with what changes
+  between two instructions — turning a channel on or off, and changing pitch, volume
+  or timbre.
 
 Minimizing emission plus transition costs (the classic Viterbi dynamic program)
 yields instruction streams that track the audio while changing only when the
-improvement in match quality outweighs the cost of the change. The result is
-smoother and more musical than the greedy output. It is the default.
+improvement in match quality outweighs the cost of the change. The result is smoother
+and more musical than the greedy output. It is the default.
+
+A resting frame reaches the decoder as a column of one, so a channel that no source
+took sits in the path as the off state it is, and coming back on costs what any other
+on/off change costs.
 
 ## 6. Rendering and reassembly
 

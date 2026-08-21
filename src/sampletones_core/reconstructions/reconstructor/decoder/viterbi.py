@@ -1,102 +1,43 @@
 import itertools
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
-from sampletones_core.fft import Fragment, FragmentedAudio, Window
-from sampletones_core.fft.features import FeatureExtractor
-from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
 
-from ..approximation import ApproximationData
-from ..candidates import CandidateProvider
-from ..phase import PhaseAligner
-from ..scorer import Scorer
-from .base import Selector
-from .matching import ScoredCandidate
-
-ChannelLattice = List[List[ScoredCandidate]]
-FrameCandidates = Dict[ChannelName, List[ScoredCandidate]]
+from ..matching import ScoredCandidate
+from .base import ChannelLattice, Decoder, Lattices, Streams
 
 
-class ViterbiSelector(Selector):
-    def __init__(
-        self,
-        config: Config,
-        window: Window,
-        channels: Dict[ChannelName, GeneratorUnion],
-        scorer: Scorer,
-        candidate_provider: CandidateProvider,
-        phase_aligner: PhaseAligner,
-        feature_extractor: FeatureExtractor,
-    ) -> None:
-        super().__init__(
-            config,
-            window,
-            channels,
-            scorer,
-            candidate_provider,
-            phase_aligner,
-            feature_extractor,
-        )
+class ViterbiDecoder(Decoder):
+    """
+    Plays the cheapest path through each channel's frames, cost and continuity together.
+
+    A frame's candidates are weighed against the frames around them: on top of each
+    candidate's own cost, moving between two candidates costs what changes between their
+    instructions — pitch, volume, timbre, and turning a channel on or off. The path that
+    minimizes the total holds a steady note where per-frame costs alone would flicker.
+    """
+
+    def __init__(self, config: Config) -> None:
+        super().__init__(config)
         decoder = config.generation.decoder
         self.pitch_weight = decoder.pitch_weight
         self.volume_weight = decoder.volume_weight
         self.timbre_weight = decoder.timbre_weight
         self.on_off_weight = decoder.on_off_weight
 
-    def select(
-        self,
-        fragmented_audio: FragmentedAudio,
-        fragment_ids: List[int],
-    ) -> Dict[int, Dict[ChannelName, ApproximationData]]:
-        lattices = self._build_lattices(fragmented_audio, fragment_ids)
-        return self._decode_lattices(lattices, fragment_ids)
+    @property
+    def lattice_width(self) -> int:
+        return self.config.generation.decoder.top_k
 
-    def _build_lattices(
-        self,
-        fragmented_audio: FragmentedAudio,
-        fragment_ids: List[int],
-    ) -> Dict[ChannelName, ChannelLattice]:
-        lattices: Dict[ChannelName, ChannelLattice] = {name: [] for name in self.channels}
-        for fragment_id in fragment_ids:
-            for channel_name, states in self._frame_candidates(fragmented_audio[fragment_id]).items():
-                lattices[channel_name].append(states)
+    def decode(self, lattices: Lattices) -> Streams:
+        return {channel_name: self._decode_channel(frames) for channel_name, frames in lattices.items()}
 
-        return lattices
-
-    def _decode_lattices(
-        self,
-        lattices: Dict[ChannelName, ChannelLattice],
-        fragment_ids: List[int],
-    ) -> Dict[int, Dict[ChannelName, ApproximationData]]:
-        result: Dict[int, Dict[ChannelName, ApproximationData]] = {fragment_id: {} for fragment_id in fragment_ids}
-        for channel_name, frames in lattices.items():
-            path = self._decode(frames)
-            for position, fragment_id in enumerate(fragment_ids):
-                state = frames[position][path[position]]
-                result[fragment_id][channel_name] = ApproximationData(
-                    channel_name=channel_name,
-                    approximation=state.approximation,
-                    instruction=state.instruction,
-                )
-
-        return result
-
-    def _frame_candidates(self, fragment: Fragment) -> FrameCandidates:
-        candidates: FrameCandidates = {}
-        residual = fragment
-        for channel_name, generator in self.channels.items():
-            channel_states = self._channel_candidates(residual, generator)
-            candidates[channel_name] = channel_states
-            residual = self.feature_extractor.subtract(residual, channel_states[0].approximation)
-
-        return candidates
-
-    def _channel_candidates(self, residual: Fragment, generator: GeneratorUnion) -> List[ScoredCandidate]:
-        return self._score_candidates(residual, {generator.class_name(): generator})
+    def _decode_channel(self, frames: ChannelLattice) -> List[ScoredCandidate]:
+        path = self._decode(frames)
+        return [frames[position][state] for position, state in enumerate(path)]
 
     def _decode(self, frames: ChannelLattice) -> List[int]:
         if not frames:
@@ -125,7 +66,7 @@ class ViterbiSelector(Selector):
     def _best_predecessor(
         self,
         previous_costs: List[float],
-        previous_states: List[ScoredCandidate],
+        previous_states: Tuple[ScoredCandidate, ...],
         instruction: InstructionUnion,
     ) -> Tuple[int, float]:
         best_index = 0

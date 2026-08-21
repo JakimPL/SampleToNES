@@ -7,14 +7,10 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.fft import Fragment, FragmentedAudio, Window
+from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import MIXER_LEVELS
 from sampletones_core.library import InstructionLibraryData
-from sampletones_core.reconstructions.reconstructor.approximation import (
-    ApproximationData,
-)
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
-from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.exceptions import NoLibraryDataError
 
@@ -173,117 +169,6 @@ class TestReconstructorResetChannels:
         assert all(gen.previous_instruction is None for gen in reconstructor.channels.values())
 
 
-class TestReconstructorUpdateState:
-    def _setup(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        synthetic_fragment: Fragment,
-        final_regeneration: bool,
-    ) -> tuple:
-        updated_config = config.model_copy(
-            update={
-                "generation": config.generation.model_copy(
-                    update={
-                        "final_regeneration": final_regeneration,
-                    }
-                )
-            }
-        )
-        reconstructor = _make_reconstructor(updated_config, library_data)
-        channel_name = next(iter(reconstructor.channels))
-        instruction = next(
-            instrument
-            for instrument, frag in library_data.data.items()
-            if frag.generator_class == reconstructor.channels[channel_name].class_name() and instrument.on
-        )
-        approximation_data = ApproximationData(
-            channel_name=channel_name,
-            approximation=synthetic_fragment,
-            instruction=instruction,
-        )
-        reconstructor.state = ReconstructionState.create(list(reconstructor.channels.keys()))
-        return reconstructor, channel_name, approximation_data
-
-    def test_without_final_regeneration_stores_precomputed_audio_scaled_by_drive(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        synthetic_fragment: Fragment,
-    ) -> None:
-        reconstructor, channel_name, approximation_data = self._setup(
-            config,
-            library_data,
-            synthetic_fragment,
-            final_regeneration=False,
-        )
-        reconstructor.update_state(approximation_data)
-        expected = np.asarray(synthetic_fragment.audio) * reconstructor.config.generation.drive
-        np.testing.assert_array_almost_equal(
-            reconstructor.state.approximations[channel_name][0],
-            expected,
-        )
-
-    def test_without_final_regeneration_does_not_run_generator(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        synthetic_fragment: Fragment,
-    ) -> None:
-        reconstructor, channel_name, approximation_data = self._setup(
-            config,
-            library_data,
-            synthetic_fragment,
-            final_regeneration=False,
-        )
-        reconstructor.update_state(approximation_data)
-        assert reconstructor.channels[channel_name].previous_instruction is None
-
-    def test_with_final_regeneration_reruns_generator(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        synthetic_fragment: Fragment,
-    ) -> None:
-        reconstructor, channel_name, approximation_data = self._setup(
-            config,
-            library_data,
-            synthetic_fragment,
-            final_regeneration=True,
-        )
-        reconstructor.update_state(approximation_data)
-        assert reconstructor.channels[channel_name].previous_instruction is approximation_data.instruction
-
-
-class TestReconstructorReconstruct:
-    def test_state_is_populated_for_each_fragment(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        fragmented_audio: FragmentedAudio,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        reconstructor.state = ReconstructionState.create(list(reconstructor.channels.keys()))
-        reconstructor.reconstruct(fragmented_audio)
-        fragment_count = len(fragmented_audio.fragments_ids)
-        for channel_name in reconstructor.channels:
-            assert len(reconstructor.state.instructions[channel_name]) == fragment_count
-            assert len(reconstructor.state.approximations[channel_name]) == fragment_count
-
-    def test_approximations_have_correct_frame_length(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        fragmented_audio: FragmentedAudio,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        reconstructor.state = ReconstructionState.create(list(reconstructor.channels.keys()))
-        reconstructor.reconstruct(fragmented_audio)
-        for channel_name in reconstructor.channels:
-            for approximation in reconstructor.state.approximations[channel_name]:
-                assert len(approximation) == config.library.frame_length
-
-
 class TestReconstructorCall:
     def test_non_path_argument_raises_type_error(
         self,
@@ -312,3 +197,55 @@ class TestReconstructorCall:
         reconstructor = _make_reconstructor(config, library_data)
         result = reconstructor(audio_path)
         assert isinstance(result, Reconstruction)
+
+
+class TestReconstructorFinalRegeneration:
+    """What a frame records: the instruction rendered afresh, or the audio it was matched on."""
+
+    def _tone_path(self, tmp_path: Path, config: Config, synthetic_fragment: Fragment) -> Path:
+        from sampletones_core.audio import write_wave
+
+        audio_path = tmp_path / "tone.wav"
+        write_wave(audio_path, config.library.sample_rate, np.tile(synthetic_fragment.audio, 3).astype(np.float32))
+        return audio_path
+
+    def _reconstructor(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        final_regeneration: bool,
+    ) -> Reconstructor:
+        updated_config = config.model_copy(
+            update={"generation": config.generation.model_copy(update={"final_regeneration": final_regeneration})}
+        )
+        return _make_reconstructor(updated_config, library_data)
+
+    def test_final_regeneration_reruns_every_channel_generator(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+        tmp_path: Path,
+    ) -> None:
+        reconstructor = self._reconstructor(config, library_data, final_regeneration=True)
+
+        reconstruction = reconstructor(self._tone_path(tmp_path, config, synthetic_fragment))
+
+        assert reconstruction is not None
+        for channel_name in reconstruction.playing_channels:
+            generator = reconstructor.channels[channel_name]
+            assert generator.previous_instruction is reconstruction.instructions[channel_name][-1]
+
+    def test_without_final_regeneration_the_matched_audio_stands(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+        tmp_path: Path,
+    ) -> None:
+        reconstructor = self._reconstructor(config, library_data, final_regeneration=False)
+
+        reconstruction = reconstructor(self._tone_path(tmp_path, config, synthetic_fragment))
+
+        assert reconstruction is not None
+        assert all(generator.previous_instruction is None for generator in reconstructor.channels.values())

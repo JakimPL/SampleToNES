@@ -7,6 +7,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.fft import Fragment, Window
+from sampletones_core.generators import get_remaining_generator_classes
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.scorer import Scorer
@@ -16,8 +17,7 @@ from sampletones_core.reconstructions.reconstructor.worker import ReconstructorW
 def _candidate_approximations(
     worker: ReconstructorWorker,
 ) -> Tuple[Tuple[InstructionUnion, ...], Fragment]:
-    remaining_channels = dict(worker.channels.items())
-    remaining_generator_classes = worker.get_remaining_generator_classes(remaining_channels)
+    remaining_generator_classes = get_remaining_generator_classes(dict(worker.channels))
     return worker.candidate_provider.candidates(remaining_generator_classes)
 
 

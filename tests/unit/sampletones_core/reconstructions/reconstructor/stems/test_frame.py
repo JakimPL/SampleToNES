@@ -1,12 +1,14 @@
 from typing import Dict, List, Sequence, Tuple
 
+import numpy as np
 import pytest
 
+from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.fft import Fragment
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
-from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -36,6 +38,7 @@ def _assign(
     channels: Dict[ChannelName, GeneratorUnion],
     matcher: FrameMatcher,
     extractor: FeatureExtractor,
+    lattice_width: int = SINGLE_STATE_LATTICE_WIDTH,
 ) -> StemFrameAssignment:
     return assign_frame(
         fragment,
@@ -43,6 +46,7 @@ def _assign(
         channels,
         matcher,
         extractor,
+        lattice_width,
     )
 
 
@@ -104,6 +108,81 @@ class TestFrameCompleteness:
 
         assert set(assignment.by_channel) == {ChannelName.PULSE1}
         assert assignment.resting == ()
+
+
+class TestColumns:
+    """Every channel leaves the frame with the alternatives the decoder reads."""
+
+    def test_a_narrow_lattice_answers_each_pick_with_itself(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
+
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+
+        for choice in assignment.choices:
+            assert len(choice.column) == SINGLE_STATE_LATTICE_WIDTH
+            assert choice.column[0].instruction == choice.instruction
+
+    def test_a_wide_lattice_holds_the_pick_among_its_alternatives(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        """A wider column reaches the winning channel's own candidates, the pick among them."""
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
+        width = matcher.top_k
+
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor, width)
+
+        for choice in assignment.choices:
+            instructions = [candidate.instruction for candidate in choice.column]
+            assert 0 < len(choice.column) <= width
+            assert choice.instruction in instructions
+            assert len(set(instructions)) == len(instructions)
+
+    def test_a_wide_lattice_offers_one_channel_its_own_candidates(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        stems_config = _config({0: [ChannelName.PULSE1]}, [[0]], HierarchyMode.STRICT, 1)
+
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor, matcher.top_k)
+
+        column = assignment.by_channel[ChannelName.PULSE1].column
+        pulse_class = channels[ChannelName.PULSE1].class_name()
+        expected = matcher.score_candidates(synthetic_fragment, {pulse_class: channels[ChannelName.PULSE1]})
+        assert [candidate.instruction for candidate in column] == [
+            candidate.instruction for candidate in expected[: matcher.top_k]
+        ]
+
+    def test_a_resting_channel_holds_its_null_instruction_alone(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        """A rest is a column of one, so a channel no stem took still answers its frame."""
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, 1)
+
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor, matcher.top_k)
+
+        assert assignment.rests
+        for rest in assignment.rests:
+            assert len(rest.column) == SINGLE_STATE_LATTICE_WIDTH
+            candidate = rest.column[0]
+            assert candidate.instruction == channels[rest.channel_name].get_instruction_type().null_instruction()
+            assert not np.any(np.asarray(candidate.approximation.audio))
 
 
 class TestChannelCap:

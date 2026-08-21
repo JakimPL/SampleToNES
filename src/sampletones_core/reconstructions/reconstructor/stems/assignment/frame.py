@@ -4,7 +4,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
-from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.stems.assignment.session import AssignmentSession
 from sampletones_core.reconstructions.reconstructor.stems.assignment.validation import validate_stems_config
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -17,6 +17,7 @@ def assign_frame(
     channels: Dict[ChannelName, GeneratorUnion],
     matcher: FrameMatcher,
     extractor: FeatureExtractor,
+    lattice_width: int,
 ) -> StemFrameAssignment:
     """
     Assigns one target frame's channels to stems, one pick at a time.
@@ -30,7 +31,9 @@ def assign_frame(
 
     The frame is answered whole: every covered channel is either picked or reported as
     resting, so a caller records one entry per channel per frame and the streams it
-    assembles stay parallel to the frames they describe.
+    assembles stay parallel to the frames they describe. Every channel leaves the frame
+    with a column of alternatives ``lattice_width`` wide, which is what the decoder
+    reading the frames chooses its stream from.
 
     Args:
         fragment: The frame to assign, matching the matcher and extractor feature
@@ -39,6 +42,7 @@ def assign_frame(
         channels: The enabled channels with their generators.
         matcher: The candidate scoring machinery.
         extractor: The feature extractor whose subtraction forms the residual.
+        lattice_width: How many alternatives per channel the decoder reads.
 
     Returns:
         The picks in the order they were made, together with the channels left resting.
@@ -53,5 +57,6 @@ def assign_frame(
         channels,
         matcher,
         extractor,
+        lattice_width,
     )
     return session.run()

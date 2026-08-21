@@ -4,21 +4,21 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.library import InstructionLibraryData
-from sampletones_core.reconstructions.reconstructor.approximation import ApproximationData
-from sampletones_core.reconstructions.reconstructor.selector.greedy import GreedySelector
-from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
-from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
+
+from .conftest import greedy_baseline
 
 RANDOM_SEEDS: Final[Tuple[int, ...]] = (11, 23, 47, 89, 131, 197)
 
@@ -43,7 +43,6 @@ class TestSingleStemEquivalence:
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
-        greedy_selector: GreedySelector,
     ) -> None:
         stems_config = _config({0: channels}, [[0]], HierarchyMode.STRICT, len(channels))
 
@@ -53,8 +52,9 @@ class TestSingleStemEquivalence:
             channels,
             matcher,
             extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
         )
-        baseline = greedy_selector.reconstruct_fragment(synthetic_fragment)
+        baseline = greedy_baseline(synthetic_fragment, channels, matcher, extractor)
 
         assert len(assignment.choices) == len(channels)
         assert len(baseline) == len(channels)
@@ -66,7 +66,6 @@ class TestSingleStemEquivalence:
         all_channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
-        all_channels_selector: GreedySelector,
     ) -> None:
         stems_config = _config({0: all_channels}, [[0]], HierarchyMode.STRICT, len(all_channels))
 
@@ -76,18 +75,60 @@ class TestSingleStemEquivalence:
             all_channels,
             matcher,
             extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
         )
-        baseline = all_channels_selector.reconstruct_fragment(synthetic_fragment)
+        baseline = greedy_baseline(synthetic_fragment, all_channels, matcher, extractor)
 
         assert len(assignment.choices) == len(all_channels)
         assert len(baseline) == len(all_channels)
         _assert_same_picks(assignment, baseline)
 
 
+class TestLatticeWidthLeavesOwnership:
+    """A wider lattice grows what the decoder may choose from, and the picks stay put."""
+
+    def test_ownership_and_picks_hold_across_widths(
+        self,
+        synthetic_fragment: Fragment,
+        all_channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        stems_config = _config(
+            {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.PULSE2, ChannelName.NOISE]},
+            [[0], [1]],
+            HierarchyMode.STRICT,
+            2,
+        )
+
+        narrow = assign_frame(
+            synthetic_fragment,
+            stems_config,
+            all_channels,
+            matcher,
+            extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+        wide = assign_frame(
+            synthetic_fragment,
+            stems_config,
+            all_channels,
+            matcher,
+            extractor,
+            matcher.top_k,
+        )
+
+        assert _choice_keys(narrow.choices) == _choice_keys(wide.choices)
+        assert narrow.resting == wide.resting
+        for narrow_choice, wide_choice in zip(narrow.choices, wide.choices):
+            assert narrow_choice.instruction == wide_choice.instruction
+            _assert_same_fragment(narrow_choice.approximation, wide_choice.approximation)
+            assert len(wide_choice.column) >= len(narrow_choice.column)
+
+
 class TestStrictDisjointStems:
     def test_matches_sequential_per_subset_baselines(
         self,
-        worker: ReconstructorWorker,
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
@@ -99,11 +140,11 @@ class TestStrictDisjointStems:
         }
         subset_noise = {ChannelName.NOISE: channels[ChannelName.NOISE]}
 
-        baseline_first = _restricted_selector(worker, subset_pulse_triangle).reconstruct_fragment(synthetic_fragment)
+        baseline_first = greedy_baseline(synthetic_fragment, subset_pulse_triangle, matcher, extractor)
         residual = synthetic_fragment
-        for approximation_data in baseline_first.values():
-            residual = extractor.subtract(residual, approximation_data.approximation)
-        baseline_second = _restricted_selector(worker, subset_noise).reconstruct_fragment(residual)
+        for candidate in baseline_first.values():
+            residual = extractor.subtract(residual, candidate.approximation)
+        baseline_second = greedy_baseline(residual, subset_noise, matcher, extractor)
 
         expected = dict(baseline_first)
         expected.update(baseline_second)
@@ -121,6 +162,7 @@ class TestStrictDisjointStems:
             channels,
             matcher,
             extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
         )
 
         assert len(assignment.choices) == len(channels)
@@ -149,6 +191,7 @@ class TestRandomizedDifferential:
             all_channels,
             matcher,
             extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
         )
         repeat = assign_frame(
             fragment,
@@ -156,6 +199,7 @@ class TestRandomizedDifferential:
             all_channels,
             matcher,
             extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
         )
 
         assert _choice_keys(assignment.choices) == _choice_keys(repeat.choices)
@@ -178,15 +222,15 @@ class TestRandomizedDifferential:
 
 def _assert_same_picks(
     assignment: StemFrameAssignment,
-    baseline: Dict[ChannelName, ApproximationData],
+    baseline: Dict[ChannelName, ScoredCandidate],
 ) -> None:
     assert [choice.channel_name for choice in assignment.choices] == list(baseline.keys())
     assert set(assignment.by_channel) == set(baseline)
 
-    for channel_name, approximation_data in baseline.items():
+    for channel_name, candidate in baseline.items():
         choice = assignment.by_channel[channel_name]
-        assert choice.instruction == approximation_data.instruction
-        _assert_same_fragment(choice.approximation, approximation_data.approximation)
+        assert choice.instruction == candidate.instruction
+        _assert_same_fragment(choice.approximation, candidate.approximation)
 
 
 def _assert_same_fragment(left: Fragment, right: Fragment) -> None:
@@ -217,21 +261,6 @@ def _assert_strict_ordering(
 
 def _choice_keys(choices: Tuple[StemChoice, ...]) -> Tuple[Tuple[int, ChannelName], ...]:
     return tuple((choice.stem_id, choice.channel_name) for choice in choices)
-
-
-def _restricted_selector(
-    worker: ReconstructorWorker,
-    channels: Dict[ChannelName, GeneratorUnion],
-) -> GreedySelector:
-    return GreedySelector(
-        config=worker.config,
-        window=worker.window,
-        channels=channels,
-        scorer=worker.scorer,
-        candidate_provider=worker.candidate_provider,
-        phase_aligner=worker.phase_aligner,
-        feature_extractor=worker.feature_extractor,
-    )
 
 
 def _random_setup(
