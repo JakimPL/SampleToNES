@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
+from sampletones_core.audio.mixing import align, mix
 from sampletones_core.constants.enums import ChannelName
 
 
@@ -31,10 +32,4 @@ class WaveformData:
         if not selected_approximations:
             return np.zeros_like(self.approximation)
 
-        length = len(self.approximation)
-        dtype: np.dtype = np.result_type(*[audio.dtype for audio in selected_approximations])
-        summed = np.zeros(length, dtype=dtype)
-        for audio in selected_approximations:
-            summed[: len(audio)] += audio  # does audio.mixing applies here? if no, remove the comment; otherwises apply
-
-        return summed
+        return mix(align(selected_approximations, len(self.approximation)))
